@@ -49,8 +49,7 @@
     }
 
     function onIncompletePaymentFound(payment) {
-        // Tamamlanmamış ödeme kalırsa sunucuya tamamla emri gönder
-        handleServerSidePayment(payment.identifier, 'complete');
+        handleServerSidePayment(payment.identifier, 'complete', payment.transaction.txid);
     }
 
     function createTestPayment() {
@@ -63,11 +62,11 @@
         }, {
             onReadyForServerApproval: function(paymentId) {
                 document.getElementById('status-text').innerText = "Sunucu onayı gönderiliyor...";
-                handleServerSidePayment(paymentId, 'approve');
+                handleServerSidePayment(paymentId, 'approve', null);
             },
             onReadyForServerCompletion: function(paymentId, txid) {
-                document.getElementById('status-text').innerText = "Sunucu tamamlaması gönderiliyor...";
-                handleServerSidePayment(paymentId, 'complete');
+                document.getElementById('status-text').innerText = "Blockchain tamamlaması yapılıyor...";
+                handleServerSidePayment(paymentId, 'complete', txid);
             },
             onCancel: function(paymentId) {
                 document.getElementById('status-text').innerText = "Ödeme iptal edildi.";
@@ -78,12 +77,11 @@
         });
     }
 
-    // Bizim kurduğumuz Vercel Backend sunucusuna sinyal gönderen fonksiyon
-    function handleServerSidePayment(paymentId, action) {
+    function handleServerSidePayment(paymentId, action, txid) {
         fetch('/api/approve', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ paymentId: paymentId, action: action })
+            body: JSON.stringify({ paymentId: paymentId, action: action, txid: txid })
         })
         .then(res => res.json())
         .then(data => {
