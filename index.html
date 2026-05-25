@@ -11,7 +11,7 @@
         .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
         .item { background: #334155; padding: 15px; border-radius: 10px; border: 1px solid #475569; }
         .sold { background: #0f172a; border: 1px solid #3b82f6; color: #64748b; }
-        .btn { background: #6366f1; border: none; color: white; padding: 10px; border-radius: 8px; cursor: pointer; width: 100%; margin-top: 10px; }
+        .btn { background: #6366f1; border: none; color: white; padding: 12px; border-radius: 8px; cursor: pointer; width: 100%; margin-top: 10px; }
     </style>
 </head>
 <body>
@@ -23,12 +23,13 @@
 
 <div class="card">
     <h3>Satıştaki Domainler</h3>
-    <div class="grid" id="market">
-        </div>
+    <div class="grid" id="market"></div>
 </div>
 
 <script>
-    Pi.init({ version: "2.0", sandbox: false });
+    // 1. SDK'yı başlat (Test ortamındaysan sandbox: true olmalı)
+    Pi.init({ version: "2.0", sandbox: true }); 
+    
     const domains = ['etstur.pi', 'eminevim.pi', 'fuzulev.pi', 'fibabank.pi', 'sekerbank.pi', 'doganay.pi'];
 
     function loadMarket() {
@@ -48,21 +49,24 @@
     async function login() {
         try {
             const auth = await Pi.authenticate(['payments'], () => {});
-            // Kullanıcı adını başlığa yazdırıyoruz
             document.getElementById('user').innerText = "@" + auth.user.username;
             document.getElementById('auth-btn').style.display = 'none';
-        } catch(e) { alert("Bağlantı hatası"); }
+        } catch(e) { 
+            alert("Giriş başarısız: " + e.message); 
+        }
     }
 
     function pay(d) {
-        // Fiyatı 1000 Pi olarak güncelledik
-        Pi.createPayment({ amount: 1000, memo: "Domain: " + d }, {
+        Pi.createPayment({ 
+            amount: 1000, 
+            memo: "Domain: " + d 
+        }, {
             onReadyForServerCompletion: (id, txid) => {
                 localStorage.setItem(d, 'sold');
-                alert("Başarılı! Domain sizin.");
+                alert("Başarılı!");
                 loadMarket();
             },
-            onError: (e) => alert("Ödeme Hatası: " + e.message),
+            onError: (e) => alert("Hata: " + e.message),
             onCancel: () => alert("İptal edildi.")
         });
     }
