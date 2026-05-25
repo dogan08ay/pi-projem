@@ -6,72 +6,61 @@
     <title>Web3 Domain Gateway</title>
     <script src="https://sdk.minepi.com/pi-sdk.js"></script>
     <style>
-        :root { --bg: #0f172a; --card: #1e293b; --accent: #6366f1; --text: #f8fafc; }
-        body { font-family: sans-serif; background: var(--bg); color: var(--text); padding: 20px; display: flex; justify-content: center; }
-        .container { max-width: 600px; width: 100%; text-align: center; }
-        .card { background: var(--card); padding: 25px; border-radius: 20px; margin-bottom: 20px; }
-        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
-        .domain-card { background: #334155; padding: 20px; border-radius: 12px; border: 1px solid #475569; }
-        .sold-card { opacity: 0.5; background: #000; }
-        .btn-buy { background: var(--accent); color: white; border: none; padding: 10px; border-radius: 8px; cursor: pointer; margin-top: 10px; width: 100%; }
+        body { background: #0f172a; color: white; font-family: sans-serif; padding: 20px; text-align: center; }
+        .card { background: #1e293b; padding: 20px; border-radius: 20px; margin: 10px auto; max-width: 500px; }
+        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .item { background: #334155; padding: 15px; border-radius: 10px; border: 1px solid #475569; }
+        .sold { opacity: 0.5; background: #000; }
+        .btn { background: #6366f1; border: none; color: white; padding: 10px; border-radius: 8px; cursor: pointer; width: 100%; margin-top: 5px; }
     </style>
 </head>
 <body>
 
-<div class="container">
-    <div class="card">
-        <h1 id="user-status">Web3 Domain</h1>
-        <button id="auth-btn" onclick="loginWithPi()" style="padding:10px 20px; background:#6366f1; color:white; border:none; border-radius:10px;">Pi ile Bağlan</button>
-    </div>
-
-    <div class="card">
-        <div class="grid" id="domain-list"></div>
-    </div>
+<div class="card">
+    <h1 id="user-status">Web3 Domain</h1>
+    <button id="auth-btn" onclick="login()" class="btn">Pi ile Bağlan</button>
 </div>
+
+<div class="card" id="market">
+    </div>
 
 <script>
     Pi.init({ version: "2.0", sandbox: true });
     const domains = ['etstur.pi', 'eminevim.pi', 'fuzulev.pi', 'fibabank.pi', 'sekerbank.pi', 'doganay.pi'];
 
     function render() {
-        const list = document.getElementById('domain-list');
-        list.innerHTML = '';
+        const market = document.getElementById('market');
+        market.innerHTML = '<h3>Satıştaki Domainler</h3><div class="grid" id="list"></div>';
+        const list = document.getElementById('list');
         domains.forEach(d => {
-            const isSold = localStorage.getItem(d) === 'sold';
-            const div = document.createElement('div');
-            div.className = `domain-card ${isSold ? 'sold-card' : ''}`;
-            div.innerHTML = `<strong>${d}</strong><br><span>${isSold ? 'SATILDI' : '10 Pi'}</span>`;
-            
-            if (!isSold) {
-                const btn = document.createElement('button');
-                btn.className = 'btn-buy';
-                btn.innerText = 'Satın Al';
-                // En güvenli yöntem: addEventListener
-                btn.onclick = () => startPurchase(d);
-                div.appendChild(btn);
-            }
-            list.appendChild(div);
+            const sold = localStorage.getItem(d) === 'sold';
+            list.innerHTML += `
+                <div class="item ${sold ? 'sold' : ''}">
+                    <strong>${d}</strong><br>
+                    <small>${sold ? 'SATILDI' : '1000 Pi'}</small>
+                    ${!sold ? `<button class="btn" onclick="pay('${d}')">Satın Al</button>` : ''}
+                </div>`;
         });
     }
 
-    function loginWithPi() {
-        Pi.authenticate(['username', 'payments'], () => {}).then(auth => {
+    async function login() {
+        try {
+            const auth = await Pi.authenticate(['payments'], () => {});
             document.getElementById('user-status').innerText = "@" + auth.user.username;
             document.getElementById('auth-btn').style.display = 'none';
-        }).catch(err => alert("Giriş başarısız"));
+        } catch(e) { alert("Giriş başarısız."); }
     }
 
-    function startPurchase(domain) {
-        Pi.createPayment({ amount: 10, memo: "Domain: " + domain }, {
+    function pay(d) {
+        Pi.createPayment({ amount: 1000, memo: "Domain: " + d }, {
             onReadyForServerCompletion: (id, txid) => {
-                localStorage.setItem(domain, 'sold');
+                localStorage.setItem(d, 'sold');
                 render();
                 alert("Başarılı!");
             },
             onError: (e) => alert("Hata: " + e.message)
         });
     }
-
     render();
 </script>
 </body>
