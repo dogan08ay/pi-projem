@@ -6,11 +6,11 @@
     <style>
         body { font-family: sans-serif; background: #0f172a; color: white; padding: 20px; text-align: center; }
         .card { background: #334155; padding: 20px; margin: 15px; border-radius: 12px; border: 1px solid #6366f1; }
-        .btn { padding: 12px 25px; border: none; border-radius: 8px; cursor: pointer; background: #6366f1; color: white; font-size: 16px; }
+        .btn { padding: 15px 30px; border: none; border-radius: 8px; cursor: pointer; background: #6366f1; color: white; font-size: 18px; }
     </style>
 </head>
 <body>
-    <h1>Premium Web3 Domainler</h1>
+    <h1>Domain Satın Al</h1>
     <div id="market"></div>
 
     <script>
@@ -26,31 +26,23 @@
         ];
 
         const market = document.getElementById('market');
-
         domainList.forEach(d => {
             const div = document.createElement('div');
             div.className = 'card';
-            div.innerHTML = `<strong>${d.name}</strong><br><p>${d.price} Pi</p>
-                             <button class="btn" onclick="odemeYap('${d.name}', ${d.price})">Satın Al</button>`;
+            div.innerHTML = `<strong>${d.name}</strong><br><br><button class="btn" onclick="baslat('${d.name}', ${d.price})">Satın Al (${d.price} Pi)</button>`;
             market.appendChild(div);
         });
 
-        function odemeYap(name, price) {
+        function baslat(name, price) {
+            // Sadece ödeme penceresini tetikliyoruz, sunucu onayı beklemiyoruz
             Pi.createPayment({
                 amount: price,
-                memo: "Domain: " + name,
+                memo: "Domain Satin Alim: " + name,
                 metadata: { domain: name }
             }, {
-                // Burada server-side beklemiyoruz, onReadyForServerCompletion'ı tetikliyoruz
-                onReadyForServerApproval: (id) => {
-                    console.log("Onay bekliyor...");
-                },
-                onReadyForServerCompletion: (id, txid) => {
-                    alert("Başarılı! Tx: " + txid);
-                },
-                onError: (err) => {
-                    alert("İşlem hatası: " + err.message);
-                }
+                onReadyForServerCompletion: (id, txid) => alert("Başarılı! Tx: " + txid),
+                onError: (err) => alert("Hata: " + err.message),
+                onCancel: () => alert("İptal edildi.")
             });
         }
     </script>
