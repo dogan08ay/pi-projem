@@ -1,7 +1,6 @@
 <!DOCTYPE html>
-<html lang="tr">
+<html>
 <head>
-    <meta charset="UTF-8">
     <script src="https://sdk.minepi.com/pi-sdk.js"></script>
     <style>
         body { font-family: sans-serif; background: #0f172a; color: white; padding: 20px; text-align: center; }
@@ -10,37 +9,34 @@
 </head>
 <body>
     <h1>Domain Listesi</h1>
-    <div id="app">Yükleniyor...</div>
+    <div id="app">SDK Hazırlanıyor...</div>
 
     <script>
-        // Senin daha önce paylaştığın ve sisteme kayıtlı olan App ID
-        const APP_ID = 'web3-domain-gateway'; 
-
+        // SDK'yı başlat
         Pi.init({ version: "2.0", sandbox: true });
 
         Pi.onReady(() => {
-            document.getElementById('app').innerHTML = "";
+            document.getElementById('app').innerHTML = "SDK Aktif!";
             const domains = ['etstur.pi', 'eminevim.pi', 'fuzulev.pi'];
             domains.forEach(d => {
                 const div = document.createElement('div');
                 div.className = 'card';
                 div.innerText = "Satın Al: " + d;
-                div.onclick = () => odemeYap(d);
+                div.onclick = () => {
+                    // İşlemi manuel tamamla (API'ye gerek kalmadan)
+                    Pi.createPayment({
+                        amount: 0.1,
+                        memo: "Domain: " + d,
+                        metadata: { domain: d }
+                    }, {
+                        onReadyForServerCompletion: (id, txid) => alert("Başarılı! ID: " + txid),
+                        onError: (err) => alert("Hata: " + err.message),
+                        onCancel: () => alert("İptal edildi.")
+                    });
+                };
                 document.getElementById('app').appendChild(div);
             });
         });
-
-        function odemeYap(domain) {
-            Pi.createPayment({
-                amount: 0.1,
-                memo: "Domain: " + domain,
-                metadata: { domain: domain }
-            }, {
-                onReadyForServerCompletion: (id, txid) => alert("Başarılı! Tx: " + txid),
-                onError: (err) => alert("Hata: " + err.message),
-                onCancel: () => alert("İptal edildi.")
-            });
-        }
     </script>
 </body>
 </html>
