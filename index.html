@@ -5,51 +5,75 @@
     <script src="https://sdk.minepi.com/pi-sdk.js"></script>
     <style>
         body { font-family: sans-serif; background: #0f172a; color: white; padding: 20px; text-align: center; }
-        .card { background: #334155; padding: 15px; margin: 10px; border-radius: 8px; border: 1px solid #6366f1; }
-        .btn { padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; background: #6366f1; color: white; }
-        .sold { background: #475569; cursor: not-allowed; opacity: 0.7; }
-        #history { margin-top: 30px; padding-top: 20px; border-top: 1px solid #475569; }
+        .card { background: #334155; padding: 20px; margin: 15px; border-radius: 12px; border: 1px solid #6366f1; }
+        .price { font-size: 1.2em; color: #fbbf24; font-weight: bold; }
+        .btn { padding: 12px 25px; border: none; border-radius: 8px; cursor: pointer; background: #6366f1; color: white; font-size: 16px; margin-top: 10px; }
+        .sold { background: #475569; cursor: not-allowed; }
     </style>
 </head>
 <body>
-    <h1>Domain Market</h1>
-    <div id="status">Bağlı: @doganay0808</div>
+    <h1>Premium Web3 Domainler</h1>
     <div id="market"></div>
-    <div id="history"><h3>İşlemlerim</h3><ul id="list"></ul></div>
 
     <script>
         Pi.init({ version: "2.0", sandbox: true });
-        const market = document.getElementById('market');
-        const list = document.getElementById('list');
-        const domains = ['etstur.pi', 'eminevim.pi', 'fuzulev.pi', 'fibabank.pi'];
 
-        domains.forEach(d => {
+        // Fiyatlar 2000 Pi olarak güncellendi
+        const domainList = [
+            { name: 'etstur.pi', price: 2000 },
+            { name: 'eminevim.pi', price: 2000 },
+            { name: 'fuzulev.pi', price: 2000 },
+            { name: 'fibabank.pi', price: 2000 },
+            { name: 'sekerbank.pi', price: 2000 },
+            { name: 'doganay.pi', price: 2000 }
+        ];
+
+        const market = document.getElementById('market');
+
+        domainList.forEach(d => {
             const div = document.createElement('div');
             div.className = 'card';
-            div.innerHTML = `<strong>${d}</strong><br><br><button class="btn" id="btn-${d}" onclick="odemeYap('${d}')">0.1 Pi Satın Al</button>`;
+            div.innerHTML = `
+                <strong style="font-size: 1.5em;">${d.name}</strong><br>
+                <p class="price">${d.price} Pi</p>
+                <button class="btn" id="btn-${d.name}" onclick="odemeYap('${d.name}', ${d.price})">Satın Al</button>
+            `;
             market.appendChild(div);
         });
 
-        function odemeYap(domain) {
-            const btn = document.getElementById(`btn-${domain}`);
-            btn.innerText = "Yükleniyor...";
-            
+        function odemeYap(name, price) {
+            const btn = document.getElementById(`btn-${name}`);
+            btn.innerText = "İşleniyor...";
+            btn.disabled = true;
+
+            const timeout = setTimeout(() => {
+                alert("İstek zaman aşımına uğradı, lütfen tekrar deneyin.");
+                btn.innerText = "Satın Al";
+                btn.disabled = false;
+            }, 15000); // Süreyi 15 saniyeye çıkardım (Pi ağı yoğun olabilir)
+
             Pi.createPayment({
-                amount: 0.1,
-                memo: "Domain: " + domain,
-                metadata: { domain: domain }
+                amount: price,
+                memo: "Premium Domain: " + name,
+                metadata: { domain: name }
             }, {
                 onReadyForServerCompletion: (id, txid) => {
-                    alert("Başarılı! Tx: " + txid);
+                    clearTimeout(timeout);
+                    alert("Tebrikler! Ödeme Başarılı. Tx: " + txid);
                     btn.innerText = "SATILDI";
                     btn.className = "btn sold";
-                    btn.disabled = true;
-                    const li = document.createElement('li');
-                    li.innerText = `${domain} - TxID: ${txid.substring(0,10)}...`;
-                    list.appendChild(li);
                 },
-                onError: (err) => { btn.innerText = "0.1 Pi Satın Al"; alert("Hata!"); },
-                onCancel: () => { btn.innerText = "0.1 Pi Satın Al"; }
+                onError: (err) => {
+                    clearTimeout(timeout);
+                    btn.innerText = "Satın Al";
+                    btn.disabled = false;
+                    alert("Hata oluştu, lütfen bakiyenizi kontrol edin.");
+                },
+                onCancel: () => {
+                    clearTimeout(timeout);
+                    btn.innerText = "Satın Al";
+                    btn.disabled = false;
+                }
             });
         }
     </script>
