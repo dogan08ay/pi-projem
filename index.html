@@ -26,7 +26,7 @@
     </div>
 
     <div class="card">
-        <h3>Satıştaki Domainler</h3>
+        <h3>Satıştaki Domainler (1000 Pi)</h3>
         <div class="domain-grid">
             <div class="domain-card" onclick="startPurchase('etstur.pi')">etstur.pi</div>
             <div class="domain-card" onclick="startPurchase('eminevim.pi')">eminevim.pi</div>
@@ -39,7 +39,6 @@
 </div>
 
 <script>
-    // SDK başlatma
     Pi.init({ version: "2.0", sandbox: true });
 
     function loginWithPi() {
@@ -54,21 +53,20 @@
     }
 
     function startPurchase(domain) {
-        // Kullanıcı giriş yapmamışsa uyarı ver
         if(document.getElementById('auth-btn').style.display !== 'none') {
             alert("Lütfen önce Pi ile bağlanın!");
             return;
         }
 
         Pi.createPayment({
-            amount: 0.1,
+            amount: 1000, // Fiyat 1000 Pi olarak güncellendi
             memo: "Domain: " + domain,
             metadata: { domain: domain }
         }, {
             onReadyForServerApproval: (id) => handleServerSidePayment(id, 'approve', null),
             onReadyForServerCompletion: (id, txid) => handleServerSidePayment(id, 'complete', txid),
             onCancel: () => alert("Ödeme iptal edildi."),
-            onError: (err) => alert("Ödeme hatası: " + err)
+            onError: (err) => alert("Ödeme hatası: " + err.message)
         });
     }
 
@@ -80,7 +78,7 @@
         })
         .then(res => res.json())
         .then(data => {
-            if(action === 'complete') alert("✅ Başarılı! " + paymentId + " tamamlandı.");
+            if(action === 'complete') alert("✅ Başarılı! Satın alma tamamlandı.");
         })
         .catch(err => console.error("Sunucu Hatası:", err));
     }
