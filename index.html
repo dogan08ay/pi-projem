@@ -1,12 +1,38 @@
-// Pi Developer Portal'da uygulamanızın "App ID"sini kopyalayın
-Pi.init({ version: "2.0", sandbox: true }); 
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <script src="https://sdk.minepi.com/pi-sdk.js"></script>
+</head>
+<body>
+    <h1>Web3 Domain</h1>
+    <button id="btn" onclick="piTest()">Ödemeyi Başlat</button>
 
-function piTest() {
-    Pi.createPayment({
-        amount: 0.1,
-        memo: "Test",
-        metadata: { type: "test" }
-    }, {
-        // ... (diğer kısımlar)
-    });
-}
+    <script>
+        // SDK'yı başlatıyoruz (App ID gerekirse buraya ekle)
+        Pi.init({ version: "2.0", sandbox: true });
+
+        function piTest() {
+            // Ödeme isteği
+            Pi.createPayment({
+                amount: 0.1,
+                memo: "Test Ödemesi",
+                metadata: { type: "test" }
+            }, {
+                onReadyForServerApproval: (id) => {
+                    console.log("Onay aşaması: " + id);
+                },
+                onReadyForServerCompletion: (id, txid) => {
+                    alert("Başarılı! İşlem ID: " + txid);
+                },
+                onError: (err) => {
+                    alert("Hata oluştu: " + JSON.stringify(err));
+                },
+                onCancel: () => {
+                    alert("İşlem iptal edildi.");
+                }
+            });
+        }
+    </script>
+</body>
+</html>
