@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
+    <meta charset="UTF-8">
     <script src="https://sdk.minepi.com/pi-sdk.js"></script>
     <style>
         body { font-family: sans-serif; background: #0f172a; color: white; padding: 20px; text-align: center; }
@@ -9,34 +10,37 @@
 </head>
 <body>
     <h1>Domain Listesi</h1>
-    <div id="app">SDK Hazırlanıyor...</div>
+    <div id="app">Sistemi başlatmak için butona basın...</div>
+    <button onclick="baslat()">Uygulamayı Başlat</button>
 
     <script>
-        // SDK'yı başlat
-        Pi.init({ version: "2.0", sandbox: true });
-
-        Pi.onReady(() => {
-            document.getElementById('app').innerHTML = "SDK Aktif!";
+        function baslat() {
+            // SDK'yı manuel olarak başlat
+            Pi.init({ version: "2.0", sandbox: true });
+            
+            document.getElementById('app').innerHTML = "SDK Başlatıldı. Domainler Yükleniyor...";
+            
             const domains = ['etstur.pi', 'eminevim.pi', 'fuzulev.pi'];
+            document.getElementById('app').innerHTML = "";
+            
             domains.forEach(d => {
                 const div = document.createElement('div');
                 div.className = 'card';
                 div.innerText = "Satın Al: " + d;
                 div.onclick = () => {
-                    // İşlemi manuel tamamla (API'ye gerek kalmadan)
                     Pi.createPayment({
                         amount: 0.1,
                         memo: "Domain: " + d,
                         metadata: { domain: d }
                     }, {
-                        onReadyForServerCompletion: (id, txid) => alert("Başarılı! ID: " + txid),
-                        onError: (err) => alert("Hata: " + err.message),
+                        onReadyForServerCompletion: (id, txid) => alert("Başarılı! Tx: " + txid),
+                        onError: (err) => alert("Hata: " + JSON.stringify(err)),
                         onCancel: () => alert("İptal edildi.")
                     });
                 };
                 document.getElementById('app').appendChild(div);
             });
-        });
+        }
     </script>
 </body>
 </html>
