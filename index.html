@@ -1,15 +1,89 @@
-function baslat(name, price) {
-    try {
-        Pi.createPayment({
-            amount: price,
-            memo: "Domain Satin Alim: " + name,
-            metadata: { domain: name }
-        }, {
-            onReadyForServerCompletion: (id, txid) => alert("Başarılı! Tx: " + txid),
-            onError: (err) => alert("Hata Detayı: " + JSON.stringify(err)),
-            onCancel: () => alert("İptal edildi.")
-        });
-    } catch (e) {
-        alert("Kod hatası: " + e.message);
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Web3 Domain Gateway</title>
+    <script src="https://sdk.minepi.com/pi-sdk.js"></script>
+    <style>
+        :root { --bg: #0f172a; --card: #1e293b; --accent: #6366f1; --text: #f8fafc; }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 20px; display: flex; justify-content: center; }
+        .container { max-width: 600px; width: 100%; text-align: center; }
+        .card { background: var(--card); padding: 25px; border-radius: 20px; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.3); margin-bottom: 20px; }
+        .domain-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 20px; }
+        .domain-card { background: #334155; padding: 20px; border-radius: 12px; border: 1px solid #475569; cursor: pointer; transition: 0.3s; }
+        .domain-card:hover { border-color: var(--accent); background: #475569; }
+        #auth-btn { background: var(--accent); color: white; border: none; padding: 12px 25px; border-radius: 50px; font-weight: bold; cursor: pointer; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="card">
+        <h1>Web3 Domain</h1>
+        <p id="user-status">Lütfen önce bağlanın.</p>
+        <button id="auth-btn" onclick="loginWithPi()">Pi ile Bağlan</button>
+    </div>
+
+    <div class="card">
+        <h3>Satıştaki Domainler</h3>
+        <div class="domain-grid">
+            <div class="domain-card" onclick="startPurchase('etstur.pi')">etstur.pi</div>
+            <div class="domain-card" onclick="startPurchase('eminevim.pi')">eminevim.pi</div>
+            <div class="domain-card" onclick="startPurchase('fuzulev.pi')">fuzulev.pi</div>
+            <div class="domain-card" onclick="startPurchase('fibabank.pi')">fibabank.pi</div>
+            <div class="domain-card" onclick="startPurchase('sekerbank.pi')">sekerbank.pi</div>
+            <div class="domain-card" onclick="startPurchase('doganay.pi')">doganay.pi</div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // SDK başlatma
+    Pi.init({ version: "2.0", sandbox: true });
+
+    function loginWithPi() {
+        Pi.authenticate(['username', 'payments'], (payment) => {
+            handleServerSidePayment(payment.identifier, 'complete', payment.transaction.txid);
+        })
+        .then(auth => {
+            document.getElementById('user-status').innerText = "Bağlı: @" + auth.user.username;
+            document.getElementById('auth-btn').style.display = 'none';
+        })
+        .catch(err => alert("Giriş başarısız: " + err));
     }
-}
+
+    function startPurchase(domain) {
+        // Kullanıcı giriş yapmamışsa uyarı ver
+        if(document.getElementById('auth-btn').style.display !== 'none') {
+            alert("Lütfen önce Pi ile bağlanın!");
+            return;
+        }
+
+        Pi.createPayment({
+            amount: 0.1,
+            memo: "Domain: " + domain,
+            metadata: { domain: domain }
+        }, {
+            onReadyForServerApproval: (id) => handleServerSidePayment(id, 'approve', null),
+            onReadyForServerCompletion: (id, txid) => handleServerSidePayment(id, 'complete', txid),
+            onCancel: () => alert("Ödeme iptal edildi."),
+            onError: (err) => alert("Ödeme hatası: " + err)
+        });
+    }
+
+    function handleServerSidePayment(paymentId, action, txid) {
+        fetch('/api/approve', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ paymentId, action, txid })
+        })
+        .then(res => res.json())
+        .then(data => {
+            if(action === 'complete') alert("✅ Başarılı! " + paymentId + " tamamlandı.");
+        })
+        .catch(err => console.error("Sunucu Hatası:", err));
+    }
+</script>
+</body>
+</html>
