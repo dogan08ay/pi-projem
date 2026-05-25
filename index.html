@@ -6,94 +6,48 @@
     <title>Web3 Domain Gateway</title>
     <script src="https://sdk.minepi.com/pi-sdk.js"></script>
     <style>
-        body { font-family: Arial, sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; background-color: #f5f5f5; margin: 0; }
-        .card { background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); text-align: center; max-width: 350px; width: 100%; }
-        h1 { font-size: 24px; color: #333; margin-bottom: 10px; }
-        p { color: #666; font-size: 16px; margin-bottom: 20px; }
-        button { background-color: #673ab7; color: white; border: none; padding: 12px 24px; font-size: 16px; border-radius: 25px; cursor: pointer; width: 100%; font-weight: bold; margin-bottom: 10px; }
-        button:hover { background-color: #512da8; }
-        .status { margin-top: 15px; font-weight: bold; color: #2e7d32; }
-        .pay-btn { background-color: #ffb74d; color: #333; display: none; }
-        .pay-btn:hover { background-color: #ffa726; }
+        :root { --bg: #0f172a; --card: #1e293b; --accent: #6366f1; --text: #f8fafc; }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 20px; display: flex; justify-content: center; }
+        .container { max-width: 600px; width: 100%; text-align: center; }
+        .card { background: var(--card); padding: 25px; border-radius: 20px; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.3); margin-bottom: 20px; }
+        h1 { margin-bottom: 5px; color: var(--accent); }
+        .domain-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 20px; }
+        .domain-card { background: #334155; padding: 20px; border-radius: 12px; border: 1px solid #475569; transition: 0.3s; }
+        .domain-card:hover { border-color: var(--accent); transform: translateY(-5px); }
+        button { background: var(--accent); color: white; border: none; padding: 12px 25px; border-radius: 50px; font-weight: bold; cursor: pointer; transition: 0.3s; }
+        button:hover { filter: brightness(1.2); }
     </style>
 </head>
 <body>
 
-<div class="card">
-    <h1>Web3 Domain Gateway</h1>
-    <p>Pi Alan Adı Uygulama Portalı</p>
-    
-    <button id="auth-btn" onclick="loginWithPi()">Pi Hesabı ile Bağlan</button>
-    <button id="pay-btn" class="pay-btn" onclick="createTestPayment()">10. Adım: Test Ödemesi Yap</button>
-    
-    <div id="status-text" class="status">Pi SDK Yükleniyor...</div>
+<div class="container">
+    <div class="card">
+        <h1>Web3 Domain</h1>
+        <p>Pi tabanlı dijital varlık yönetim portalı</p>
+        <button id="auth-btn" onclick="loginWithPi()">Pi ile Bağlan</button>
+        <p id="user-status" style="margin-top: 10px; font-weight: bold;"></p>
+    </div>
+
+    <div class="card">
+        <h3>Satıştaki Domainler</h3>
+        <div class="domain-grid">
+            <div class="domain-card">doganay.pi</div>
+            <div class="domain-card">etstur.pi</div>
+            <div class="domain-card">fibabank.pi</div>
+            <div class="domain-card">dijital.pi</div>
+        </div>
+    </div>
 </div>
 
 <script>
     Pi.init({ version: "2.0", sandbox: true });
-    document.getElementById('status-text').innerText = "Pi SDK Başarıyla Yüklendi.";
-
-    let currentUser = null;
-
+    
     function loginWithPi() {
-        Pi.authenticate(['username', 'payments'], onIncompletePaymentFound)
-        .then(function(auth) {
-            currentUser = auth.user;
-            document.getElementById('status-text').innerText = "🎉 Bağlandı: @" + auth.user.username;
+        Pi.authenticate(['username'], () => {}).then(auth => {
+            document.getElementById('user-status').innerText = "Hoş geldin, @" + auth.user.username;
             document.getElementById('auth-btn').style.display = 'none';
-            document.getElementById('pay-btn').style.display = 'block';
-        })
-        .catch(function(error) {
-            document.getElementById('status-text').innerText = "Bağlantı hatası.";
-        });
-    }
-
-    function onIncompletePaymentFound(payment) {
-        handleServerSidePayment(payment.identifier, 'complete', payment.transaction.txid);
-    }
-
-    function createTestPayment() {
-        document.getElementById('status-text').innerText = "Ödeme başlatılıyor...";
-        
-        Pi.createPayment({
-            amount: 0.1,
-            memo: "10. Adim Test Odemesi",
-            metadata: { step: "10" }
-        }, {
-            onReadyForServerApproval: function(paymentId) {
-                document.getElementById('status-text').innerText = "Sunucu onayı gönderiliyor...";
-                handleServerSidePayment(paymentId, 'approve', null);
-            },
-            onReadyForServerCompletion: function(paymentId, txid) {
-                document.getElementById('status-text').innerText = "Blockchain tamamlaması yapılıyor...";
-                handleServerSidePayment(paymentId, 'complete', txid);
-            },
-            onCancel: function(paymentId) {
-                document.getElementById('status-text').innerText = "Ödeme iptal edildi.";
-            },
-            onError: function(error, payment) {
-                document.getElementById('status-text').innerText = "Ödeme hatası!";
-            }
-        });
-    }
-
-    function handleServerSidePayment(paymentId, action, txid) {
-        fetch('/api/approve', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ paymentId: paymentId, action: action, txid: txid })
-        })
-        .then(res => res.json())
-        .then(data => {
-            if(action === 'complete') {
-                document.getElementById('status-text').innerText = "✅ Test Ödemesi Başarılı!";
-            }
-        })
-        .catch(err => {
-            console.error("Backend hatası:", err);
         });
     }
 </script>
-
 </body>
 </html>
