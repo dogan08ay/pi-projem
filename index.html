@@ -5,72 +5,66 @@
     <title>Web3 Domain Gateway</title>
     <script src="https://sdk.minepi.com/pi-sdk.js"></script>
     <style>
-        :root { --bg: #0f172a; --card: #1e293b; --accent: #6366f1; --text: #f8fafc; }
-        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); padding: 20px; }
-        .container { max-width: 600px; margin: auto; text-align: center; }
-        .card { background: var(--card); padding: 20px; border-radius: 15px; margin-bottom: 20px; }
-        .domain-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-        .domain-card { background: #334155; padding: 15px; border-radius: 10px; cursor: pointer; border: 1px solid #475569; }
-        .domain-card:hover { border-color: var(--accent); }
+        body { font-family: sans-serif; background: #0f172a; color: white; padding: 20px; text-align: center; }
+        .card { background: #1e293b; padding: 20px; border-radius: 15px; margin: 10px 0; }
+        .domain-card { background: #334155; padding: 15px; margin: 5px; border-radius: 8px; cursor: pointer; display: inline-block; width: 40%; }
+        button { padding: 10px 20px; background: #6366f1; border: none; color: white; border-radius: 5px; cursor: pointer; }
     </style>
 </head>
 <body>
-
-<div class="container">
     <div class="card">
         <h1>Web3 Domain</h1>
         <button id="auth-btn" onclick="loginWithPi()">Pi ile Bağlan</button>
         <p id="user-status"></p>
     </div>
-
     <div class="card">
-        <h3>Satıştaki Domainler</h3>
-        <div class="domain-grid">
-            <div class="domain-card" onclick="startPurchase('etstur.pi')">etstur.pi</div>
-            <div class="domain-card" onclick="startPurchase('eminevim.pi')">eminevim.pi</div>
-            <div class="domain-card" onclick="startPurchase('fuzulev.pi')">fuzulev.pi</div>
-            <div class="domain-card" onclick="startPurchase('fibabank.pi')">fibabank.pi</div>
-            <div class="domain-card" onclick="startPurchase('sekerbank.pi')">sekerbank.pi</div>
-            <div class="domain-card" onclick="startPurchase('doganay.pi')">doganay.pi</div>
-        </div>
+        <h3>Domainler (Tıkla ve Dene)</h3>
+        <div id="grid"></div>
     </div>
-
     <div class="card">
         <h3>İşlem Geçmişi</h3>
-        <div id="history-list">Henüz işlem yapılmadı.</div>
+        <div id="history">Henüz işlem yok.</div>
     </div>
-</div>
 
-<script>
-    Pi.init({ version: "2.0", sandbox: true });
-    let isLoggedIn = false; // Giriş durumunu takip eden değişken
+    <script>
+        Pi.init({ version: "2.0", sandbox: true });
+        const domains = ['etstur.pi', 'eminevim.pi', 'fuzulev.pi', 'fibabank.pi', 'sekerbank.pi', 'doganay.pi'];
+        let user = null;
 
-    function loginWithPi() {
-        Pi.authenticate(['username'], () => {}).then(auth => {
-            document.getElementById('user-status').innerText = "Bağlı: @" + auth.user.username;
-            document.getElementById('auth-btn').style.display = 'none';
-            isLoggedIn = true; // Giriş yapıldı
+        // Domainleri otomatik oluştur
+        const grid = document.getElementById('grid');
+        domains.forEach(d => {
+            const div = document.createElement('div');
+            div.className = 'domain-card';
+            div.innerText = d;
+            div.onclick = () => startPurchase(d);
+            grid.appendChild(div);
         });
-    }
 
-    function startPurchase(domain) {
-        if (!isLoggedIn) {
-            alert("Lütfen önce Pi ile bağlanın!");
-            return;
+        function loginWithPi() {
+            Pi.authenticate(['username'], () => {}).then(auth => {
+                user = auth.user.username;
+                document.getElementById('user-status').innerText = "Bağlı: @" + user;
+                document.getElementById('auth-btn').style.display = 'none';
+            });
         }
 
-        Pi.createPayment({
-            amount: 0.1,
-            memo: "Domain: " + domain,
-            metadata: { domain: domain }
-        }, {
-            onReadyForServerCompletion: (id, txid) => {
-                document.getElementById('history-list').innerHTML += "<br>✅ " + domain + " (Tamamlandı)";
-                alert("Başarılı! " + domain + " için işlem tamamlandı.");
-            },
-            onError: (err) => alert("Hata: " + err)
-        });
-    }
-</script>
+        function startPurchase(domain) {
+            if(!user) { alert("Önce bağlan!"); return; }
+            
+            Pi.createPayment({
+                amount: 0.1,
+                memo: "Domain Satın Alım: " + domain,
+                metadata: { domain: domain }
+            }, {
+                onReadyForServerApproval: (id) => console.log("Onay bekleniyor:", id),
+                onReadyForServerCompletion: (id, txid) => {
+                    document.getElementById('history').innerHTML += "<br>✅ " + domain + " tamamlandı!";
+                },
+                onCancel: () => alert("İptal edildi."),
+                onError: (err) => alert("Hata: " + err)
+            });
+        }
+    </script>
 </body>
 </html>
