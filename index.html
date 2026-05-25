@@ -1,24 +1,22 @@
-Pi.createPayment({
-    amount: 0.1,
-    memo: "Domain: " + d,
-    metadata: { domain: d }
-}, {
-    onReadyForServerApproval: (id) => {
-        fetch('/api/approve', { 
-            method: 'POST', 
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ paymentId: id, action: 'approve' }) 
-        });
-    },
-    onReadyForServerCompletion: (id, txid) => {
-        fetch('/api/approve', { 
-            method: 'POST', 
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ paymentId: id, action: 'complete', txid: txid }) 
-        }).then(res => {
-            if(res.ok) alert("✅ İşlem başarıyla blockchain'e kaydedildi!");
-        });
-    },
-    onError: (err) => console.log("Hata oluştu:", err),
-    onCancel: () => console.log("Kullanıcı iptal etti.")
-});
+// ... (Diğer kodlar aynı kalacak, sadece startPurchase kısmını şu şekilde değiştir)
+
+function startPurchase(d) {
+    Pi.createPayment({
+        amount: 0.1,
+        memo: "Domain: " + d,
+        metadata: { domain: d }
+    }, {
+        onReadyForServerApproval: (id) => {
+            console.log("Onay aşaması geçildi, işlem ID:", id);
+        },
+        onReadyForServerCompletion: (id, txid) => {
+            // Sadece bu kısım başarılıysa işlem bitmiştir
+            alert("✅ Ödeme başarıyla tamamlandı! İşlem ID: " + txid);
+        },
+        onError: (err) => {
+            console.error("Hata:", err);
+            alert("İşlem sırasında bir hata oluştu. Lütfen tekrar deneyin.");
+        },
+        onCancel: () => alert("İşlem iptal edildi.")
+    });
+}
