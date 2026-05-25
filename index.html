@@ -1,61 +1,22 @@
-<!DOCTYPE html>
-<html lang="tr">
-<head>
-    <meta charset="UTF-8">
-    <title>Web3 Domain</title>
-    <script src="https://sdk.minepi.com/pi-sdk.js"></script>
-    <style>
-        body { font-family: sans-serif; background: #0f172a; color: white; padding: 20px; text-align: center; }
-        .domain-card { background: #334155; padding: 15px; margin: 10px; border-radius: 8px; border: 1px solid #6366f1; cursor: pointer; }
-    </style>
-</head>
-<body>
-    <h1>Web3 Domain</h1>
-    <button id="auth-btn" onclick="loginWithPi()">Pi ile Bağlan</button>
-    <div id="grid"></div>
-
-    <script>
-        Pi.init({ version: "2.0", sandbox: true });
-
-        function loginWithPi() {
-            Pi.authenticate(['username', 'payments'], () => {}).then(auth => {
-                document.getElementById('auth-btn').style.display = 'none';
-                renderDomains();
-            }).catch(e => alert("Giriş Hatası: " + e));
-        }
-
-        function renderDomains() {
-            const domains = ['etstur.pi', 'eminevim.pi', 'fuzulev.pi', 'fibabank.pi', 'sekerbank.pi', 'doganay.pi'];
-            const grid = document.getElementById('grid');
-            grid.innerHTML = "";
-            
-            domains.forEach(d => {
-                const btn = document.createElement('div');
-                btn.className = 'domain-card';
-                btn.innerText = "Satın Al: " + d;
-                
-                // Ödeme tetikleyiciyi burada tanımlıyoruz
-                btn.addEventListener('click', function() {
-                    console.log("Ödeme başlatılıyor: " + d);
-                    
-                    try {
-                        Pi.createPayment({
-                            amount: 0.1,
-                            memo: "Domain: " + d,
-                            metadata: { domain: d }
-                        }, {
-                            onReadyForServerApproval: (id) => console.log("Approval ID:", id),
-                            onReadyForServerCompletion: (id, txid) => alert("İşlem Başarılı: " + txid),
-                            onError: (err) => alert("Ödeme Hatası: " + err),
-                            onCancel: () => console.log("İptal edildi")
-                        });
-                    } catch (e) {
-                        alert("SDK Hatası: " + e);
-                    }
-                });
-                grid.appendChild(btn);
-            });
-        }
-    </script>
-</body>
-</html>
+// ... (Diğer kısımlar aynı)
+Pi.createPayment({
+    amount: 0.1,
+    memo: "Domain Satın Alımı: " + d,
+    metadata: { domain: d }
+}, {
+    onReadyForServerApproval: (id) => {
+        fetch('/api/approve', { 
+            method: 'POST', 
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ paymentId: id, action: 'approve' }) 
+        });
+    },
+    onReadyForServerCompletion: (id, txid) => {
+        fetch('/api/approve', { 
+            method: 'POST', 
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ paymentId: id, action: 'complete', txid: txid }) 
+        }).then(() => alert("✅ Başarılı! İşlem kaydedildi."));
+    },
+    onError: (err) => alert("Hata: " + err)
+});
