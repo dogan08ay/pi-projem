@@ -10,11 +10,9 @@
         body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 20px; display: flex; justify-content: center; }
         .container { max-width: 600px; width: 100%; text-align: center; }
         .card { background: var(--card); padding: 25px; border-radius: 20px; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.3); margin-bottom: 20px; }
-        h1 { margin-bottom: 5px; color: var(--accent); }
         .domain-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 20px; }
         .domain-card { background: #334155; padding: 20px; border-radius: 12px; border: 1px solid #475569; cursor: pointer; transition: 0.3s; }
-        .domain-card:hover { border-color: var(--accent); transform: translateY(-5px); }
-        button { background: var(--accent); color: white; border: none; padding: 12px 25px; border-radius: 50px; font-weight: bold; cursor: pointer; margin-top: 10px; }
+        .domain-card:hover { border-color: var(--accent); }
     </style>
 </head>
 <body>
@@ -22,9 +20,8 @@
 <div class="container">
     <div class="card">
         <h1>Web3 Domain</h1>
-        <p>Dijital varlık yönetim portalı</p>
+        <p id="user-status">Pi ile bağlanın.</p>
         <button id="auth-btn" onclick="loginWithPi()">Pi ile Bağlan</button>
-        <p id="user-status" style="margin-top: 10px;"></p>
     </div>
 
     <div class="card">
@@ -44,24 +41,34 @@
     Pi.init({ version: "2.0", sandbox: true });
 
     function loginWithPi() {
-        Pi.authenticate(['username'], () => {}).then(auth => {
+        Pi.authenticate(['username', 'payments'], (p) => handleServerSidePayment(p.identifier, 'complete', p.transaction.txid))
+        .then(auth => {
             document.getElementById('user-status').innerText = "Bağlı: @" + auth.user.username;
             document.getElementById('auth-btn').style.display = 'none';
         });
     }
 
     function startPurchase(domain) {
-        if(!confirm(domain + " için satın alma işlemini başlatmak istiyor musunuz?")) return;
-        
         Pi.createPayment({
-            amount: 0.1, 
+            amount: 0.1,
             memo: "Domain Satın Alımı: " + domain,
             metadata: { domain: domain }
         }, {
-            onReadyForServerApproval: (id) => Pi.backend.approvePayment(id),
-            onReadyForServerCompletion: (id, txid) => Pi.backend.completePayment(id, txid),
-            onError: (err) => alert("İşlem hatası: " + err)
+            onReadyForServerApproval: (id) => handleServerSidePayment(id, 'approve', null),
+            onReadyForServerCompletion: (id, txid) => handleServerSidePayment(id, 'complete', txid),
+            onError: (err) => alert("Hata: " + err)
         });
+    }
+
+    function handleServerSidePayment(paymentId, action, txid) {
+        fetch('/api/approve', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ paymentId, action, txid })
+        })
+        .then(res => res.json())
+        .then(data => console.log("Sunucu yanıtı:", data))
+        .catch(err => console.error("Hata:", err));
     }
 </script>
 </body>
