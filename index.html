@@ -3,62 +3,71 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Web3 Domain Gateway</title>
+    <title>Web3 Domain</title>
     <script src="https://sdk.minepi.com/pi-sdk.js"></script>
     <style>
         body { background: #0f172a; color: white; font-family: sans-serif; text-align: center; padding: 20px; }
         .card { background: #1e293b; padding: 20px; border-radius: 20px; margin: 10px auto; max-width: 500px; }
         .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
         .item { background: #334155; padding: 15px; border-radius: 10px; border: 1px solid #475569; }
-        .sold { background: #1e3a8a; border: 1px solid #3b82f6; opacity: 0.8; }
-        .btn { background: #6366f1; padding: 10px; border-radius: 8px; border: none; color: white; cursor: pointer; width: 100%; margin-top: 5px; }
+        .sold { background: #0f172a; border: 1px solid #3b82f6; color: #64748b; }
+        .btn { background: #6366f1; border: none; color: white; padding: 10px; border-radius: 8px; cursor: pointer; width: 100%; margin-top: 10px; }
     </style>
 </head>
 <body>
-    <div class="card">
-        <h1 id="user">Web3 Domain</h1>
-        <button id="auth-btn" class="btn" onclick="login()">Pi ile Bağlan</button>
-    </div>
-    <div class="card">
-        <h3>Satıştaki Domainler</h3>
-        <div class="grid" id="market"></div>
-    </div>
 
-    <script>
-        Pi.init({ version: "2.0", sandbox: false });
-        const domains = ['etstur.pi', 'eminevim.pi', 'fuzulev.pi', 'fibabank.pi', 'sekerbank.pi', 'doganay.pi'];
+<div class="card">
+    <h1 id="user">Web3 Domain</h1>
+    <button id="auth-btn" class="btn" onclick="login()">Pi ile Bağlan</button>
+</div>
 
-        function render() {
-            const market = document.getElementById('market');
-            market.innerHTML = '';
-            domains.forEach(d => {
-                const isSold = localStorage.getItem(d) === 'sold';
-                market.innerHTML += `
-                    <div class="item ${isSold ? 'sold' : ''}">
-                        <strong>${d}</strong><br>
-                        <small>${isSold ? 'SATILDI' : '1000 Pi'}</small>
-                        ${!isSold ? `<button class="btn" onclick="pay('${d}')">Satın Al</button>` : ''}
-                    </div>`;
-            });
-        }
+<div class="card">
+    <h3>Satıştaki Domainler</h3>
+    <div class="grid" id="market">
+        </div>
+</div>
 
-        async function login() {
+<script>
+    Pi.init({ version: "2.0", sandbox: false });
+    const domains = ['etstur.pi', 'eminevim.pi', 'fuzulev.pi', 'fibabank.pi', 'sekerbank.pi', 'doganay.pi'];
+
+    function loadMarket() {
+        const market = document.getElementById('market');
+        market.innerHTML = '';
+        domains.forEach(d => {
+            const isSold = localStorage.getItem(d) === 'sold';
+            market.innerHTML += `
+                <div class="item ${isSold ? 'sold' : ''}">
+                    <strong>${d}</strong><br>
+                    <small>${isSold ? 'SATILDI' : '1000 Pi'}</small>
+                    ${!isSold ? `<button class="btn" onclick="pay('${d}')">Satın Al</button>` : ''}
+                </div>`;
+        });
+    }
+
+    async function login() {
+        try {
             const auth = await Pi.authenticate(['payments'], () => {});
+            // Kullanıcı adını başlığa yazdırıyoruz
             document.getElementById('user').innerText = "@" + auth.user.username;
             document.getElementById('auth-btn').style.display = 'none';
-        }
+        } catch(e) { alert("Bağlantı hatası"); }
+    }
 
-        function pay(d) {
-            Pi.createPayment({ amount: 10, memo: "Domain: " + d }, {
-                onReadyForServerCompletion: (id, txid) => {
-                    localStorage.setItem(d, 'sold');
-                    alert("Başarılı! Domain sizin.");
-                    render();
-                },
-                onError: (e) => alert("Hata: " + e.message)
-            });
-        }
-        render();
-    </script>
+    function pay(d) {
+        // Fiyatı 1000 Pi olarak güncelledik
+        Pi.createPayment({ amount: 1000, memo: "Domain: " + d }, {
+            onReadyForServerCompletion: (id, txid) => {
+                localStorage.setItem(d, 'sold');
+                alert("Başarılı! Domain sizin.");
+                loadMarket();
+            },
+            onError: (e) => alert("Ödeme Hatası: " + e.message),
+            onCancel: () => alert("İptal edildi.")
+        });
+    }
+
+    loadMarket();
+</script>
 </body>
 </html>
