@@ -1,50 +1,15 @@
-<!DOCTYPE html>
-<html lang="tr">
-<head>
-    <meta charset="UTF-8">
-    <script src="https://sdk.minepi.com/pi-sdk.js"></script>
-    <style>
-        body { font-family: sans-serif; background: #0f172a; color: white; padding: 20px; text-align: center; }
-        .card { background: #334155; padding: 20px; margin: 15px; border-radius: 12px; border: 1px solid #6366f1; }
-        .btn { padding: 15px 30px; border: none; border-radius: 8px; cursor: pointer; background: #6366f1; color: white; font-size: 18px; }
-    </style>
-</head>
-<body>
-    <h1>Domain Satın Al</h1>
-    <div id="market"></div>
-
-    <script>
-        Pi.init({ version: "2.0", sandbox: true });
-
-        const domainList = [
-            { name: 'etstur.pi', price: 2000 },
-            { name: 'eminevim.pi', price: 2000 },
-            { name: 'fuzulev.pi', price: 2000 },
-            { name: 'fibabank.pi', price: 2000 },
-            { name: 'sekerbank.pi', price: 2000 },
-            { name: 'doganay.pi', price: 2000 }
-        ];
-
-        const market = document.getElementById('market');
-        domainList.forEach(d => {
-            const div = document.createElement('div');
-            div.className = 'card';
-            div.innerHTML = `<strong>${d.name}</strong><br><br><button class="btn" onclick="baslat('${d.name}', ${d.price})">Satın Al (${d.price} Pi)</button>`;
-            market.appendChild(div);
+function baslat(name, price) {
+    try {
+        Pi.createPayment({
+            amount: price,
+            memo: "Domain Satin Alim: " + name,
+            metadata: { domain: name }
+        }, {
+            onReadyForServerCompletion: (id, txid) => alert("Başarılı! Tx: " + txid),
+            onError: (err) => alert("Hata Detayı: " + JSON.stringify(err)),
+            onCancel: () => alert("İptal edildi.")
         });
-
-        function baslat(name, price) {
-            // Sadece ödeme penceresini tetikliyoruz, sunucu onayı beklemiyoruz
-            Pi.createPayment({
-                amount: price,
-                memo: "Domain Satin Alim: " + name,
-                metadata: { domain: name }
-            }, {
-                onReadyForServerCompletion: (id, txid) => alert("Başarılı! Tx: " + txid),
-                onError: (err) => alert("Hata: " + err.message),
-                onCancel: () => alert("İptal edildi.")
-            });
-        }
-    </script>
-</body>
-</html>
+    } catch (e) {
+        alert("Kod hatası: " + e.message);
+    }
+}
