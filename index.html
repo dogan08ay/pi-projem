@@ -11,7 +11,7 @@
         .card { background: var(--card); padding: 20px; border-radius: 15px; margin-bottom: 20px; }
         .domain-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
         .domain-card { background: #334155; padding: 15px; border-radius: 10px; cursor: pointer; border: 1px solid #475569; }
-        #history-list { text-align: left; font-size: 0.9em; color: #94a3b8; }
+        .domain-card:hover { border-color: var(--accent); }
     </style>
 </head>
 <body>
@@ -43,24 +43,29 @@
 
 <script>
     Pi.init({ version: "2.0", sandbox: true });
-    const history = [];
+    let isLoggedIn = false; // Giriş durumunu takip eden değişken
 
     function loginWithPi() {
         Pi.authenticate(['username'], () => {}).then(auth => {
             document.getElementById('user-status').innerText = "Bağlı: @" + auth.user.username;
             document.getElementById('auth-btn').style.display = 'none';
+            isLoggedIn = true; // Giriş yapıldı
         });
     }
 
     function startPurchase(domain) {
+        if (!isLoggedIn) {
+            alert("Lütfen önce Pi ile bağlanın!");
+            return;
+        }
+
         Pi.createPayment({
             amount: 0.1,
             memo: "Domain: " + domain,
             metadata: { domain: domain }
         }, {
             onReadyForServerCompletion: (id, txid) => {
-                history.push(domain + " (Onaylandı)");
-                document.getElementById('history-list').innerHTML = history.join('<br>');
+                document.getElementById('history-list').innerHTML += "<br>✅ " + domain + " (Tamamlandı)";
                 alert("Başarılı! " + domain + " için işlem tamamlandı.");
             },
             onError: (err) => alert("Hata: " + err)
