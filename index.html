@@ -1,40 +1,59 @@
 <!DOCTYPE html>
-<html>
+<html lang="tr">
 <head>
+    <meta charset="UTF-8">
+    <title>Web3 Domain</title>
     <script src="https://sdk.minepi.com/pi-sdk.js"></script>
+    <style>
+        body { font-family: sans-serif; background: #0f172a; color: white; padding: 20px; text-align: center; }
+        .domain-card { background: #334155; padding: 15px; margin: 10px; border-radius: 8px; border: 1px solid #6366f1; cursor: pointer; }
+    </style>
 </head>
 <body>
-    <h1>Web3 Domain Gateway</h1>
-    <div id="status">SDK bekleniyor...</div>
-    <button id="pay-btn" style="display:none;" onclick="startPayment()">Domain Satın Al</button>
+    <h1>Web3 Domain</h1>
+    <div id="status">SDK Hazırlanıyor...</div>
+    <div id="grid"></div>
 
     <script>
-        // SDK'yı en hızlı şekilde tetiklemek için
-        const Pi = window.Pi;
+        // BURAYA DEVELOPER PORTAL'DAN ALDIĞIN APP ID'Yİ YAZ!
+        const MY_APP_ID = 'APP_ID_BURAYA'; 
+
         Pi.init({ version: "2.0", sandbox: true });
 
-        // SDK hazır değilse 3 saniye sonra otomatik kontrol et
-        setTimeout(() => {
-            if (document.getElementById('status').innerText === "SDK bekleniyor...") {
-                document.getElementById('status').innerText = "SDK manuel tetiklendi.";
-                document.getElementById('pay-btn').style.display = "block";
-            }
-        }, 3000);
-
         Pi.onReady(() => {
-            document.getElementById('status').innerText = "SDK Aktif!";
-            document.getElementById('pay-btn').style.display = "block";
+            document.getElementById('status').innerText = "SDK Aktif. Pi ile giriş yapın.";
+            login();
         });
 
-        function startPayment() {
+        function login() {
+            Pi.authenticate(['username', 'payments'], () => {}).then(auth => {
+                document.getElementById('status').innerText = "Bağlı: @" + auth.user.username;
+                renderDomains();
+            }).catch(e => console.log("Giriş hatası:", e));
+        }
+
+        function renderDomains() {
+            const domains = ['etstur.pi', 'eminevim.pi', 'fuzulev.pi'];
+            const grid = document.getElementById('grid');
+            domains.forEach(d => {
+                const btn = document.createElement('div');
+                btn.className = 'domain-card';
+                btn.innerText = "Satın Al: " + d;
+                btn.onclick = () => startPayment(d);
+                grid.appendChild(btn);
+            });
+        }
+
+        function startPayment(d) {
             Pi.createPayment({
                 amount: 0.1,
-                memo: "Domain test",
-                metadata: { domain: "test.pi" }
+                memo: "Domain: " + d,
+                metadata: { domain: d }
             }, {
-                onReadyForServerApproval: (id) => console.log(id),
-                onReadyForServerCompletion: (id, txid) => alert("Başarılı!"),
-                onError: (err) => alert("Hata: " + JSON.stringify(err))
+                onReadyForServerApproval: (id) => console.log("Onay Bekleniyor:", id),
+                onReadyForServerCompletion: (id, txid) => alert("Başarılı! İşlem: " + txid),
+                onError: (err) => alert("Hata: " + JSON.stringify(err)),
+                onCancel: () => alert("İptal edildi.")
             });
         }
     </script>
