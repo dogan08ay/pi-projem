@@ -25,8 +25,12 @@
         // Pi SDK hazır olduğunda çalışacak ana fonksiyon
         window.onload = function() {
             try {
-                // Gerçek Pi Browser modunda başlatıyoruz
-                Pi.init({ version: "2.0" });
+                // Kodun Pi Browser ile güvenli konuşması için API Key entegrasyonu
+                Pi.init({ 
+                    version: "2.0", 
+                    sandbox: false,
+                    apiKey: "ghb5xxx8hxyw5awngiqafh6scdrhpbnvou2iyzk2jzc5rtdkfowa2xghmoig5s1p" 
+                });
                 document.getElementById('status').innerText = "Pi SDK Başarıyla Yüklendi.";
             } catch(e) {
                 document.getElementById('status').innerText = "Pi SDK Başlatılamadı: " + e.message;
