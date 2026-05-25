@@ -1,21 +1,21 @@
-// Pi SDK'sını tarayıcıda da simüle edebilmek için sandbox modunda başlatıyoruz
-Pi.init({ version: "2.0", sandbox: true });
+// Pi SDK'sını Pi Browser içerisinde gerçek modda çalışacak şekilde başlatıyoruz
+Pi.init({ version: "2.0" });
 
 const loginBtn = document.getElementById('login-btn');
 const userInfoDiv = document.getElementById('user-info');
 
-// Butona tıklandığında çalışacak olan fonksiyon
+// Kullanıcı butona tıkladığında çalışacak fonksiyon
 loginBtn.addEventListener('click', async () => {
     try {
-        // Kullanıcıdan sadece kullanıcı adı bilgisini istiyoruz
+        // Pi kullanıcısından sadece kullanıcı adını talep ediyoruz
         const scopes = ['username'];
         
-        // Pi cüzdan giriş penceresini açar
+        // Pi Browser'ın cüzdan yetkilendirme penceresini tetikliyoruz
         const authResult = await Pi.authenticate(scopes, onIncompletePaymentFound);
         
-        // Bağlantı başarılıysa ekrana yazdırıyoruz
+        // Giriş başarılı ise bilgileri ekrana yazdırıyoruz
         userInfoDiv.innerHTML = `🎉 Bağlantı Başarılı!<br>Hoş geldin: <strong>@${authResult.user.username}</strong>`;
-        loginBtn.style.display = 'none'; // Butonu gizle
+        loginBtn.style.display = 'none'; // Giriş butonunu gizle
         
     } catch (error) {
         console.error("Pi Giriş Hatası:", error);
@@ -23,7 +23,7 @@ loginBtn.addEventListener('click', async () => {
     }
 });
 
-// İleride ödeme alırken yarım kalan işlemleri kurtarmak için zorunlu fonksiyon
+// İleride Pi ile ödeme alırken yarım kalan işlemleri kurtarmak için zorunlu fonksiyon
 function onIncompletePaymentFound(payment) {
     console.log("Tamamlanmamış ödeme kaydı:", payment);
 }
