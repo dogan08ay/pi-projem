@@ -26,14 +26,14 @@
     </div>
 
     <div class="card">
-        <h3>Satıştaki Domainler (1000 Pi)</h3>
+        <h3>Satıştaki Domainler</h3>
         <div class="domain-grid">
-            <div class="domain-card" onclick="startPurchase('etstur.pi')">etstur.pi</div>
-            <div class="domain-card" onclick="startPurchase('eminevim.pi')">eminevim.pi</div>
-            <div class="domain-card" onclick="startPurchase('fuzulev.pi')">fuzulev.pi</div>
-            <div class="domain-card" onclick="startPurchase('fibabank.pi')">fibabank.pi</div>
-            <div class="domain-card" onclick="startPurchase('sekerbank.pi')">sekerbank.pi</div>
-            <div class="domain-card" onclick="startPurchase('doganay.pi')">doganay.pi</div>
+            <div class="domain-card" onclick="startPurchase('etstur.pi')"><strong>etstur.pi</strong><br><span style="font-size: 0.85em; color: #a5b4fc;">1000 Pi</span></div>
+            <div class="domain-card" onclick="startPurchase('eminevim.pi')"><strong>eminevim.pi</strong><br><span style="font-size: 0.85em; color: #a5b4fc;">1000 Pi</span></div>
+            <div class="domain-card" onclick="startPurchase('fuzulev.pi')"><strong>fuzulev.pi</strong><br><span style="font-size: 0.85em; color: #a5b4fc;">1000 Pi</span></div>
+            <div class="domain-card" onclick="startPurchase('fibabank.pi')"><strong>fibabank.pi</strong><br><span style="font-size: 0.85em; color: #a5b4fc;">1000 Pi</span></div>
+            <div class="domain-card" onclick="startPurchase('sekerbank.pi')"><strong>sekerbank.pi</strong><br><span style="font-size: 0.85em; color: #a5b4fc;">1000 Pi</span></div>
+            <div class="domain-card" onclick="startPurchase('doganay.pi')"><strong>doganay.pi</strong><br><span style="font-size: 0.85em; color: #a5b4fc;">1000 Pi</span></div>
         </div>
     </div>
 </div>
@@ -59,7 +59,7 @@
         }
 
         Pi.createPayment({
-            amount: 1000, // Fiyat 1000 Pi olarak güncellendi
+            amount: 1000,
             memo: "Domain: " + domain,
             metadata: { domain: domain }
         }, {
