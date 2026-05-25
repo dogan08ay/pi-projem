@@ -2,46 +2,57 @@
 <html lang="tr">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Domain Market</title>
     <script src="https://sdk.minepi.com/pi-sdk.js"></script>
     <style>
-        body { background: #0f172a; color: white; text-align: center; font-family: sans-serif; padding: 20px; }
-        .domain-card { background: #334155; padding: 20px; margin: 10px; border-radius: 12px; border: 1px solid #475569; cursor: pointer; display: inline-block; width: 40%; }
-        button { padding: 15px; background: #6366f1; color: white; border: none; border-radius: 10px; cursor: pointer; }
+        body { background: #0f172a; color: white; font-family: sans-serif; text-align: center; padding: 20px; }
+        .card { background: #1e293b; padding: 20px; border-radius: 15px; margin-bottom: 20px; }
+        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .item { background: #334155; padding: 15px; border-radius: 10px; border: 1px solid #475669; cursor: pointer; }
     </style>
 </head>
 <body>
-    <h1>Domain Market</h1>
-    <button id="auth-btn" onclick="login()">Pi ile Bağlan</button>
-    <div id="market" style="margin-top:20px;"></div>
 
-    <script>
-        Pi.init({ version: "2.0", sandbox: true });
+<div class="card">
+    <h2 id="status">Lütfen Bağlanın</h2>
+    <button id="btn-login" onclick="login()" style="padding: 10px 20px; border-radius: 20px; border:none; background:#6366f1; color:white;">Pi ile Bağlan</button>
+</div>
 
-        async function login() {
-            try {
-                const auth = await Pi.authenticate(['payments'], () => {});
-                document.getElementById('auth-btn').innerText = "Bağlı: @" + auth.user.username;
-                document.getElementById('auth-btn').disabled = true;
-                showMarket();
-            } catch (e) { alert("Bağlantı hatası!"); }
+<div class="card">
+    <h3>Satıştaki Domainler</h3>
+    <div class="grid">
+        <div class="item" onclick="pay('etstur.pi')"><strong>etstur.pi</strong><br>1000 Pi</div>
+        <div class="item" onclick="pay('eminevim.pi')"><strong>eminevim.pi</strong><br>1000 Pi</div>
+        <div class="item" onclick="pay('fuzulev.pi')"><strong>fuzulev.pi</strong><br>1000 Pi</div>
+        <div class="item" onclick="pay('fibabank.pi')"><strong>fibabank.pi</strong><br>1000 Pi</div>
+        <div class="item" onclick="pay('sekerbank.pi')"><strong>sekerbank.pi</strong><br>1000 Pi</div>
+        <div class="item" onclick="pay('doganay.pi')"><strong>doganay.pi</strong><br>1000 Pi</div>
+    </div>
+</div>
+
+<script>
+    Pi.init({ version: "2.0", sandbox: true });
+
+    async function login() {
+        try {
+            const auth = await Pi.authenticate(['payments'], () => {});
+            document.getElementById('status').innerText = "Bağlı: @" + auth.user.username;
+            document.getElementById('btn-login').style.display = 'none';
+        } catch (e) { alert("Bağlantı başarısız: " + e); }
+    }
+
+    function pay(domain) {
+        if(document.getElementById('btn-login').style.display !== 'none') {
+            return alert("Önce bağlanmalısın!");
         }
-
-        function showMarket() {
-            const domains = ['etstur.pi', 'eminevim.pi', 'fuzulev.pi', 'fibabank.pi', 'sekerbank.pi', 'doganay.pi'];
-            const market = document.getElementById('market');
-            domains.forEach(d => {
-                const div = document.createElement('div');
-                div.className = 'domain-card';
-                div.innerHTML = `<strong>${d}</strong><br>1000 Pi`;
-                div.onclick = () => {
-                    Pi.createPayment({ amount: 1000, memo: "Domain: " + d, metadata: { domain: d } }, {
-                        onReadyForServerCompletion: (id, txid) => alert("Başarılı!"),
-                        onError: (err) => alert("Hata: " + err.message)
-                    });
-                };
-                market.appendChild(div);
-            });
-        }
-    </script>
+        
+        Pi.createPayment({ amount: 1000, memo: "Domain: " + domain, metadata: { domain: domain } }, {
+            onReadyForServerCompletion: (id, txid) => alert("Başarılı! Tx: " + txid),
+            onError: (err) => alert("Hata: " + err.message),
+            onCancel: () => {}
+        });
+    }
+</script>
 </body>
 </html>
