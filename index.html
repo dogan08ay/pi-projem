@@ -12,10 +12,9 @@
         .card { background: var(--card); padding: 25px; border-radius: 20px; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.3); margin-bottom: 20px; }
         h1 { margin-bottom: 5px; color: var(--accent); }
         .domain-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 20px; }
-        .domain-card { background: #334155; padding: 20px; border-radius: 12px; border: 1px solid #475569; transition: 0.3s; }
+        .domain-card { background: #334155; padding: 20px; border-radius: 12px; border: 1px solid #475569; cursor: pointer; transition: 0.3s; }
         .domain-card:hover { border-color: var(--accent); transform: translateY(-5px); }
-        button { background: var(--accent); color: white; border: none; padding: 12px 25px; border-radius: 50px; font-weight: bold; cursor: pointer; transition: 0.3s; }
-        button:hover { filter: brightness(1.2); }
+        button { background: var(--accent); color: white; border: none; padding: 12px 25px; border-radius: 50px; font-weight: bold; cursor: pointer; margin-top: 10px; }
     </style>
 </head>
 <body>
@@ -23,29 +22,45 @@
 <div class="container">
     <div class="card">
         <h1>Web3 Domain</h1>
-        <p>Pi tabanlı dijital varlık yönetim portalı</p>
+        <p>Dijital varlık yönetim portalı</p>
         <button id="auth-btn" onclick="loginWithPi()">Pi ile Bağlan</button>
-        <p id="user-status" style="margin-top: 10px; font-weight: bold;"></p>
+        <p id="user-status" style="margin-top: 10px;"></p>
     </div>
 
     <div class="card">
         <h3>Satıştaki Domainler</h3>
         <div class="domain-grid">
-            <div class="domain-card">doganay.pi</div>
-            <div class="domain-card">etstur.pi</div>
-            <div class="domain-card">fibabank.pi</div>
-            <div class="domain-card">dijital.pi</div>
+            <div class="domain-card" onclick="startPurchase('etstur.pi')">etstur.pi</div>
+            <div class="domain-card" onclick="startPurchase('eminevim.pi')">eminevim.pi</div>
+            <div class="domain-card" onclick="startPurchase('fuzulev.pi')">fuzulev.pi</div>
+            <div class="domain-card" onclick="startPurchase('fibabank.pi')">fibabank.pi</div>
+            <div class="domain-card" onclick="startPurchase('sekerbank.pi')">sekerbank.pi</div>
+            <div class="domain-card" onclick="startPurchase('doganay.pi')">doganay.pi</div>
         </div>
     </div>
 </div>
 
 <script>
     Pi.init({ version: "2.0", sandbox: true });
-    
+
     function loginWithPi() {
         Pi.authenticate(['username'], () => {}).then(auth => {
-            document.getElementById('user-status').innerText = "Hoş geldin, @" + auth.user.username;
+            document.getElementById('user-status').innerText = "Bağlı: @" + auth.user.username;
             document.getElementById('auth-btn').style.display = 'none';
+        });
+    }
+
+    function startPurchase(domain) {
+        if(!confirm(domain + " için satın alma işlemini başlatmak istiyor musunuz?")) return;
+        
+        Pi.createPayment({
+            amount: 0.1, 
+            memo: "Domain Satın Alımı: " + domain,
+            metadata: { domain: domain }
+        }, {
+            onReadyForServerApproval: (id) => Pi.backend.approvePayment(id),
+            onReadyForServerCompletion: (id, txid) => Pi.backend.completePayment(id, txid),
+            onError: (err) => alert("İşlem hatası: " + err)
         });
     }
 </script>
