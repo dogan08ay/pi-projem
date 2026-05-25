@@ -1,22 +1,87 @@
-async function handleServerSidePayment(paymentId, action, txid) {
-        console.log("İşlem başlatıldı:", action);
-        
-        // Sunucuya istek atıyoruz ama beklerken takılmasın diye try-catch ekliyoruz
-        try {
-            const res = await fetch('/api/approve', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ paymentId, action, txid })
-            });
-            
-            if(action === 'complete') {
-                alert("✅ Başarılı! İşlem ağa gönderildi.");
-                // Burada domaini "Satıldı" olarak işaretleyen localStorage fonksiyonunu çağırabilirsin
-            }
-        } catch(err) {
-            console.error("Sunucu Hatası, ama işleme devam ediliyor:", err);
-            if(action === 'complete') {
-                alert("✅ İşlem kaydedildi (Sunucu yanıt vermedi ama ödeme yapıldı).");
-            }
-        }
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Web3 Domain Gateway</title>
+    <script src="https://sdk.minepi.com/pi-sdk.js"></script>
+    <style>
+        :root { --bg: #0f172a; --card: #1e293b; --accent: #6366f1; --text: #f8fafc; }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 20px; display: flex; justify-content: center; }
+        .container { max-width: 600px; width: 100%; text-align: center; }
+        .card { background: var(--card); padding: 25px; border-radius: 20px; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.3); margin-bottom: 20px; }
+        .domain-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 20px; }
+        .domain-card { background: #334155; padding: 20px; border-radius: 12px; border: 1px solid #475569; transition: 0.3s; }
+        .sold-card { background: #0f172a; border: 1px solid #1e293b; opacity: 0.7; }
+        #auth-btn { background: var(--accent); color: white; border: none; padding: 12px 25px; border-radius: 50px; font-weight: bold; cursor: pointer; }
+        .btn-buy { background: var(--accent); color: white; border: none; padding: 8px 15px; border-radius: 8px; cursor: pointer; margin-top: 10px; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="card">
+        <h1>Web3 Domain</h1>
+        <p id="user-status">Lütfen önce bağlanın.</p>
+        <button id="auth-btn" onclick="loginWithPi()">Pi ile Bağlan</button>
+    </div>
+
+    <div class="card">
+        <h3>Satıştaki Domainler</h3>
+        <div class="domain-grid" id="domain-list">
+            </div>
+    </div>
+</div>
+
+<script>
+    Pi.init({ version: "2.0", sandbox: true });
+    const domains = ['etstur.pi', 'eminevim.pi', 'fuzulev.pi', 'fibabank.pi', 'sekerbank.pi', 'doganay.pi'];
+
+    function renderDomains() {
+        const list = document.getElementById('domain-list');
+        list.innerHTML = '';
+        domains.forEach(d => {
+            const isSold = localStorage.getItem(d) === 'sold';
+            list.innerHTML += `
+                <div class="domain-card ${isSold ? 'sold-card' : ''}">
+                    <strong>${d}</strong><br>
+                    <span style="font-size: 0.9em; color: #a5b4fc;">${isSold ? 'SATILDI' : '10 Pi'}</span><br>
+                    ${!isSold ? `<button class="btn-buy" onclick="startPurchase('${d}')">Satın Al</button>` : ''}
+                </div>`;
+        });
     }
+
+    function loginWithPi() {
+        Pi.authenticate(['username', 'payments'], () => {})
+        .then(auth => {
+            document.getElementById('user-status').innerText = "Bağlı: @" + auth.user.username;
+            document.getElementById('auth-btn').style.display = 'none';
+        })
+        .catch(err => alert("Giriş başarısız: " + err));
+    }
+
+    function startPurchase(domain) {
+        if(document.getElementById('auth-btn').style.display !== 'none') {
+            alert("Lütfen önce Pi ile bağlanın!");
+            return;
+        }
+
+        Pi.createPayment({
+            amount: 10,
+            memo: "Domain: " + domain,
+            metadata: { domain: domain }
+        }, {
+            onReadyForServerCompletion: (id, txid) => {
+                localStorage.setItem(domain, 'sold');
+                renderDomains(); // Listeyi güncelle
+                alert("✅ Başarılı! " + domain + " sizin oldu.");
+            },
+            onError: (err) => alert("Ödeme hatası: " + err.message),
+            onCancel: () => alert("İptal edildi.")
+        });
+    }
+
+    renderDomains(); // Sayfa açıldığında çalıştır
+</script>
+</body>
+</html>
