@@ -4,35 +4,38 @@
     <script src="https://sdk.minepi.com/pi-sdk.js"></script>
 </head>
 <body>
-    <h1>Web3 Domain</h1>
-    <div id="status">SDK Hazırlanıyor...</div>
-    <button id="pay-btn" style="display:none;" onclick="startPayment()">Şimdi Öde (0.1 Pi)</button>
+    <h1>Web3 Domain Gateway</h1>
+    <div id="status">SDK bekleniyor...</div>
+    <button id="pay-btn" style="display:none;" onclick="startPayment()">Domain Satın Al</button>
 
     <script>
-        // Pi'yi başlat
+        // SDK'yı en hızlı şekilde tetiklemek için
+        const Pi = window.Pi;
         Pi.init({ version: "2.0", sandbox: true });
 
-        // SDK hazır olduğunda butonu göster
+        // SDK hazır değilse 3 saniye sonra otomatik kontrol et
+        setTimeout(() => {
+            if (document.getElementById('status').innerText === "SDK bekleniyor...") {
+                document.getElementById('status').innerText = "SDK manuel tetiklendi.";
+                document.getElementById('pay-btn').style.display = "block";
+            }
+        }, 3000);
+
         Pi.onReady(() => {
-            document.getElementById('status').innerText = "SDK Hazır!";
+            document.getElementById('status').innerText = "SDK Aktif!";
             document.getElementById('pay-btn').style.display = "block";
         });
 
         function startPayment() {
-            try {
-                Pi.createPayment({
-                    amount: 0.1,
-                    memo: "Test Ödemesi",
-                    metadata: { type: "test" }
-                }, {
-                    onReadyForServerApproval: (id) => console.log("Approval:", id),
-                    onReadyForServerCompletion: (id, txid) => alert("Başarılı! ID: " + txid),
-                    onError: (err) => alert("Hata: " + JSON.stringify(err)),
-                    onCancel: () => alert("İptal edildi.")
-                });
-            } catch (e) {
-                alert("Kritik Hata: " + e);
-            }
+            Pi.createPayment({
+                amount: 0.1,
+                memo: "Domain test",
+                metadata: { domain: "test.pi" }
+            }, {
+                onReadyForServerApproval: (id) => console.log(id),
+                onReadyForServerCompletion: (id, txid) => alert("Başarılı!"),
+                onError: (err) => alert("Hata: " + JSON.stringify(err))
+            });
         }
     </script>
 </body>
