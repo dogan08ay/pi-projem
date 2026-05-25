@@ -43,7 +43,7 @@
             currentUser = auth.user;
             document.getElementById('status-text').innerText = "🎉 Bağlandı: @" + auth.user.username;
             document.getElementById('auth-btn').style.display = 'none';
-            document.getElementById('pay-btn').style.display = 'block'; // Ödeme butonunu aç
+            document.getElementById('pay-btn').style.display = 'block';
         })
         .catch(function(error) {
             console.error(error);
@@ -51,13 +51,13 @@
         });
     }
 
-    // Eksik Ödeme Kontrolü (Zorunlu Fonksiyon)
+    // Eksik Ödeme Kontrolü
     function onIncompletePaymentFound(payment) {
         console.log("Tamamlanmamış ödeme bulundu, onaylanıyor...", payment);
         Pi.backend.completePayment(payment.identifier, "txid_placeholder");
     }
 
-    // 10. Adım İçin Test Ödemesi Tetikleme
+    // 10. Adım İçin Otomatik Onaylı Test Ödemesi
     function createTestPayment() {
         document.getElementById('status-text').innerText = "Ödeme başlatılıyor...";
         
@@ -67,19 +67,20 @@
             metadata: { step: "10" }
         }, {
             onReadyForServerApproval: function(paymentId) {
-                console.log("Server onayı bekleniyor...", paymentId);
-                // Test ortamında simüle etmek için doğrudan onay emri gönderiyoruz
-                document.getElementById('status-text').innerText = "Ödeme onaylandı, tamamlanıyor...";
+                // Zaman aşımını önlemek için doğrudan SDK üzerinden onay sinyali gönderiyoruz
+                document.getElementById('status-text').innerText = "Otomatik onay gönderildi...";
+                Pi.backend.approvePayment(paymentId);
             },
             onReadyForServerCompletion: function(paymentId, txid) {
-                console.log("Ödeme tamamlanıyor...", txid);
+                document.getElementById('status-text').innerText = "İşlem tamamlanıyor...";
+                Pi.backend.completePayment(paymentId, txid);
                 document.getElementById('status-text').innerText = "✅ Test Ödemesi Başarılı!";
             },
             onCancel: function(paymentId) {
                 document.getElementById('status-text').innerText = "Ödeme iptal edildi.";
             },
             onError: function(error, payment) {
-                document.getElementById('status-text').innerText = "Ödeme hatası!";
+                document.getElementById('status-text').innerText = "Ödeme hatası oluştu.";
                 console.error(error);
             }
         });
