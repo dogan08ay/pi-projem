@@ -30,13 +30,11 @@
 </div>
 
 <script>
-    // Pi SDK Başlatma
     Pi.init({ version: "2.0", sandbox: true });
     document.getElementById('status-text').innerText = "Pi SDK Başarıyla Yüklendi.";
 
     let currentUser = null;
 
-    // Giriş Fonksiyonu
     function loginWithPi() {
         Pi.authenticate(['username', 'payments'], onIncompletePaymentFound)
         .then(function(auth) {
@@ -46,18 +44,15 @@
             document.getElementById('pay-btn').style.display = 'block';
         })
         .catch(function(error) {
-            console.error(error);
-            document.getElementById('status-text').innerText = "Bağlantı hatası oluştu.";
+            document.getElementById('status-text').innerText = "Bağlantı hatası.";
         });
     }
 
-    // Eksik Ödeme Kontrolü
     function onIncompletePaymentFound(payment) {
-        console.log("Tamamlanmamış ödeme bulundu, onaylanıyor...", payment);
-        Pi.backend.completePayment(payment.identifier, "txid_placeholder");
+        // Tamamlanmamış ödeme kalırsa sunucuya tamamla emri gönder
+        handleServerSidePayment(payment.identifier, 'complete');
     }
 
-    // 10. Adım İçin Otomatik Onaylı Test Ödemesi
     function createTestPayment() {
         document.getElementById('status-text').innerText = "Ödeme başlatılıyor...";
         
@@ -67,22 +62,37 @@
             metadata: { step: "10" }
         }, {
             onReadyForServerApproval: function(paymentId) {
-                // Zaman aşımını önlemek için doğrudan SDK üzerinden onay sinyali gönderiyoruz
-                document.getElementById('status-text').innerText = "Otomatik onay gönderildi...";
-                Pi.backend.approvePayment(paymentId);
+                document.getElementById('status-text').innerText = "Sunucu onayı gönderiliyor...";
+                handleServerSidePayment(paymentId, 'approve');
             },
             onReadyForServerCompletion: function(paymentId, txid) {
-                document.getElementById('status-text').innerText = "İşlem tamamlanıyor...";
-                Pi.backend.completePayment(paymentId, txid);
-                document.getElementById('status-text').innerText = "✅ Test Ödemesi Başarılı!";
+                document.getElementById('status-text').innerText = "Sunucu tamamlaması gönderiliyor...";
+                handleServerSidePayment(paymentId, 'complete');
             },
             onCancel: function(paymentId) {
                 document.getElementById('status-text').innerText = "Ödeme iptal edildi.";
             },
             onError: function(error, payment) {
-                document.getElementById('status-text').innerText = "Ödeme hatası oluştu.";
-                console.error(error);
+                document.getElementById('status-text').innerText = "Ödeme hatası!";
             }
+        });
+    }
+
+    // Bizim kurduğumuz Vercel Backend sunucusuna sinyal gönderen fonksiyon
+    function handleServerSidePayment(paymentId, action) {
+        fetch('/api/approve', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ paymentId: paymentId, action: action })
+        })
+        .then(res => res.json())
+        .then(data => {
+            if(action === 'complete') {
+                document.getElementById('status-text').innerText = "✅ Test Ödemesi Başarılı!";
+            }
+        })
+        .catch(err => {
+            console.error("Backend hatası:", err);
         });
     }
 </script>
