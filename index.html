@@ -6,9 +6,7 @@
     <style>
         body { font-family: sans-serif; background: #0f172a; color: white; padding: 20px; text-align: center; }
         .card { background: #334155; padding: 20px; margin: 15px; border-radius: 12px; border: 1px solid #6366f1; }
-        .price { font-size: 1.2em; color: #fbbf24; font-weight: bold; }
-        .btn { padding: 12px 25px; border: none; border-radius: 8px; cursor: pointer; background: #6366f1; color: white; font-size: 16px; margin-top: 10px; }
-        .sold { background: #475569; cursor: not-allowed; }
+        .btn { padding: 12px 25px; border: none; border-radius: 8px; cursor: pointer; background: #6366f1; color: white; font-size: 16px; }
     </style>
 </head>
 <body>
@@ -18,7 +16,6 @@
     <script>
         Pi.init({ version: "2.0", sandbox: true });
 
-        // Fiyatlar 2000 Pi olarak güncellendi
         const domainList = [
             { name: 'etstur.pi', price: 2000 },
             { name: 'eminevim.pi', price: 2000 },
@@ -33,46 +30,26 @@
         domainList.forEach(d => {
             const div = document.createElement('div');
             div.className = 'card';
-            div.innerHTML = `
-                <strong style="font-size: 1.5em;">${d.name}</strong><br>
-                <p class="price">${d.price} Pi</p>
-                <button class="btn" id="btn-${d.name}" onclick="odemeYap('${d.name}', ${d.price})">Satın Al</button>
-            `;
+            div.innerHTML = `<strong>${d.name}</strong><br><p>${d.price} Pi</p>
+                             <button class="btn" onclick="odemeYap('${d.name}', ${d.price})">Satın Al</button>`;
             market.appendChild(div);
         });
 
         function odemeYap(name, price) {
-            const btn = document.getElementById(`btn-${name}`);
-            btn.innerText = "İşleniyor...";
-            btn.disabled = true;
-
-            const timeout = setTimeout(() => {
-                alert("İstek zaman aşımına uğradı, lütfen tekrar deneyin.");
-                btn.innerText = "Satın Al";
-                btn.disabled = false;
-            }, 15000); // Süreyi 15 saniyeye çıkardım (Pi ağı yoğun olabilir)
-
             Pi.createPayment({
                 amount: price,
-                memo: "Premium Domain: " + name,
+                memo: "Domain: " + name,
                 metadata: { domain: name }
             }, {
+                // Burada server-side beklemiyoruz, onReadyForServerCompletion'ı tetikliyoruz
+                onReadyForServerApproval: (id) => {
+                    console.log("Onay bekliyor...");
+                },
                 onReadyForServerCompletion: (id, txid) => {
-                    clearTimeout(timeout);
-                    alert("Tebrikler! Ödeme Başarılı. Tx: " + txid);
-                    btn.innerText = "SATILDI";
-                    btn.className = "btn sold";
+                    alert("Başarılı! Tx: " + txid);
                 },
                 onError: (err) => {
-                    clearTimeout(timeout);
-                    btn.innerText = "Satın Al";
-                    btn.disabled = false;
-                    alert("Hata oluştu, lütfen bakiyenizi kontrol edin.");
-                },
-                onCancel: () => {
-                    clearTimeout(timeout);
-                    btn.innerText = "Satın Al";
-                    btn.disabled = false;
+                    alert("İşlem hatası: " + err.message);
                 }
             });
         }
