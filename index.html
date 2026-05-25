@@ -1,37 +1,38 @@
 <!DOCTYPE html>
-<html lang="tr">
+<html>
 <head>
-    <meta charset="UTF-8">
     <script src="https://sdk.minepi.com/pi-sdk.js"></script>
 </head>
 <body>
     <h1>Web3 Domain</h1>
-    <button id="btn" onclick="piTest()">Ödemeyi Başlat</button>
+    <div id="status">SDK Hazırlanıyor...</div>
+    <button id="pay-btn" style="display:none;" onclick="startPayment()">Şimdi Öde (0.1 Pi)</button>
 
     <script>
-        // SDK'yı başlatıyoruz (App ID gerekirse buraya ekle)
+        // Pi'yi başlat
         Pi.init({ version: "2.0", sandbox: true });
 
-        function piTest() {
-            // Ödeme isteği
-            Pi.createPayment({
-                amount: 0.1,
-                memo: "Test Ödemesi",
-                metadata: { type: "test" }
-            }, {
-                onReadyForServerApproval: (id) => {
-                    console.log("Onay aşaması: " + id);
-                },
-                onReadyForServerCompletion: (id, txid) => {
-                    alert("Başarılı! İşlem ID: " + txid);
-                },
-                onError: (err) => {
-                    alert("Hata oluştu: " + JSON.stringify(err));
-                },
-                onCancel: () => {
-                    alert("İşlem iptal edildi.");
-                }
-            });
+        // SDK hazır olduğunda butonu göster
+        Pi.onReady(() => {
+            document.getElementById('status').innerText = "SDK Hazır!";
+            document.getElementById('pay-btn').style.display = "block";
+        });
+
+        function startPayment() {
+            try {
+                Pi.createPayment({
+                    amount: 0.1,
+                    memo: "Test Ödemesi",
+                    metadata: { type: "test" }
+                }, {
+                    onReadyForServerApproval: (id) => console.log("Approval:", id),
+                    onReadyForServerCompletion: (id, txid) => alert("Başarılı! ID: " + txid),
+                    onError: (err) => alert("Hata: " + JSON.stringify(err)),
+                    onCancel: () => alert("İptal edildi.")
+                });
+            } catch (e) {
+                alert("Kritik Hata: " + e);
+            }
         }
     </script>
 </body>
