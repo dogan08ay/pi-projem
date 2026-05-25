@@ -26,14 +26,14 @@
     </div>
 
     <div class="card">
-        <h3>Satıştaki Domainler</h3>
+        <h3>Satıştaki Domainler (1000 Pi)</h3>
         <div class="domain-grid">
-            <div class="domain-card" onclick="startPurchase('etstur.pi')"><strong>etstur.pi</strong><br><span style="font-size: 0.8em; color: #94a3b8;">1000 Pi</span></div>
-            <div class="domain-card" onclick="startPurchase('eminevim.pi')"><strong>eminevim.pi</strong><br><span style="font-size: 0.8em; color: #94a3b8;">1000 Pi</span></div>
-            <div class="domain-card" onclick="startPurchase('fuzulev.pi')"><strong>fuzulev.pi</strong><br><span style="font-size: 0.8em; color: #94a3b8;">1000 Pi</span></div>
-            <div class="domain-card" onclick="startPurchase('fibabank.pi')"><strong>fibabank.pi</strong><br><span style="font-size: 0.8em; color: #94a3b8;">1000 Pi</span></div>
-            <div class="domain-card" onclick="startPurchase('sekerbank.pi')"><strong>sekerbank.pi</strong><br><span style="font-size: 0.8em; color: #94a3b8;">1000 Pi</span></div>
-            <div class="domain-card" onclick="startPurchase('doganay.pi')"><strong>doganay.pi</strong><br><span style="font-size: 0.8em; color: #94a3b8;">1000 Pi</span></div>
+            <div class="domain-card" onclick="startPurchase('etstur.pi')">etstur.pi</div>
+            <div class="domain-card" onclick="startPurchase('eminevim.pi')">eminevim.pi</div>
+            <div class="domain-card" onclick="startPurchase('fuzulev.pi')">fuzulev.pi</div>
+            <div class="domain-card" onclick="startPurchase('fibabank.pi')">fibabank.pi</div>
+            <div class="domain-card" onclick="startPurchase('sekerbank.pi')">sekerbank.pi</div>
+            <div class="domain-card" onclick="startPurchase('doganay.pi')">doganay.pi</div>
         </div>
     </div>
 </div>
@@ -42,26 +42,45 @@
     Pi.init({ version: "2.0", sandbox: true });
 
     function loginWithPi() {
-        Pi.authenticate(['payments'], () => {}).then(auth => {
+        Pi.authenticate(['username', 'payments'], (payment) => {
+            handleServerSidePayment(payment.identifier, 'complete', payment.transaction.txid);
+        })
+        .then(auth => {
             document.getElementById('user-status').innerText = "Bağlı: @" + auth.user.username;
             document.getElementById('auth-btn').style.display = 'none';
-        }).catch(err => alert("Giriş başarısız."));
+        })
+        .catch(err => alert("Giriş başarısız: " + err));
     }
 
     function startPurchase(domain) {
         if(document.getElementById('auth-btn').style.display !== 'none') {
-            return alert("Lütfen önce Pi ile bağlanın!");
+            alert("Lütfen önce Pi ile bağlanın!");
+            return;
         }
 
         Pi.createPayment({
-            amount: 1000,
-            memo: "Domain Satin Alim: " + domain,
+            amount: 1000, // Fiyat 1000 Pi olarak güncellendi
+            memo: "Domain: " + domain,
             metadata: { domain: domain }
         }, {
-            onReadyForServerCompletion: (id, txid) => { alert("Başarılı! Tx: " + txid); },
-            onError: (err) => { alert("Ödeme başlatılamadı. Lütfen sayfayı yenileyip tekrar deneyin."); },
-            onCancel: () => { alert("İptal edildi."); }
+            onReadyForServerApproval: (id) => handleServerSidePayment(id, 'approve', null),
+            onReadyForServerCompletion: (id, txid) => handleServerSidePayment(id, 'complete', txid),
+            onCancel: () => alert("Ödeme iptal edildi."),
+            onError: (err) => alert("Ödeme hatası: " + err.message)
         });
+    }
+
+    function handleServerSidePayment(paymentId, action, txid) {
+        fetch('/api/approve', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ paymentId, action, txid })
+        })
+        .then(res => res.json())
+        .then(data => {
+            if(action === 'complete') alert("✅ Başarılı! Satın alma tamamlandı.");
+        })
+        .catch(err => console.error("Sunucu Hatası:", err));
     }
 </script>
 </body>
