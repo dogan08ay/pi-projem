@@ -3,51 +3,55 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pi Alan Adı Uygulaması</title>
+    <title>Web3 Domain Gateway</title>
     <script src="https://sdk.minepi.com/pi-sdk.js"></script>
     <style>
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            text-align: center;
-            padding: 50px 20px;
-            background-color: #f7f9fc;
-            color: #333;
-        }
-        .container {
-            max-width: 500px;
-            margin: 0 auto;
-            background: white;
-            padding: 30px;
-            border-radius: 12px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
-        }
-        h1 { color: #673ab7; margin-bottom: 10px; }
-        p { color: #666; font-size: 16px; margin-bottom: 30px; }
-        .btn {
-            padding: 15px 30px;
-            font-size: 16px;
-            font-weight: bold;
-            background-color: #673ab7;
-            color: white;
-            border: none;
-            border-radius: 25px;
-            cursor: pointer;
-            transition: background 0.2s;
-        }
-        .btn:hover { background-color: #512da8; }
-        #user-info { margin-top: 25px; font-size: 18px; color: #2e7d32; }
+        body { font-family: sans-serif; text-align: center; padding: 50px; background-color: #f7f9fc; }
+        .box { max-width: 400px; margin: 0 auto; background: white; padding: 30px; border-radius: 10px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+        .btn { padding: 15px 30px; font-size: 16px; font-weight: bold; background-color: #673ab7; color: white; border: none; border-radius: 25px; cursor: pointer; width: 100%; }
+        #status { margin-top: 20px; font-weight: bold; word-wrap: break-word; }
     </style>
 </head>
 <body>
 
-    <div class="container">
-        <h1>Pi Uygulamama Hoş Geldiniz</h1>
-        <p>Açık artırmadan kazanılan alan adı projesi</p>
-        
+    <div class="box">
+        <h2>Web3 Domain Gateway</h2>
+        <p>Pi Alan Adı Uygulama Portalı</p>
         <button id="login-btn" class="btn">Pi Hesabı ile Bağlan</button>
-        <div id="user-info"></div>
+        <div id="status"></div>
     </div>
 
-    <script src="app.js"></script>
+    <script>
+        // Pi SDK hazır olduğunda çalışacak ana fonksiyon
+        window.onload = function() {
+            try {
+                // Gerçek Pi Browser modunda başlatıyoruz
+                Pi.init({ version: "2.0" });
+                document.getElementById('status').innerText = "Pi SDK Başarıyla Yüklendi.";
+            } catch(e) {
+                document.getElementById('status').innerText = "Pi SDK Başlatılamadı: " + e.message;
+            }
+        };
+
+        document.getElementById('login-btn').addEventListener('click', async () => {
+            const statusDiv = document.getElementById('status');
+            statusDiv.innerText = "Bağlantı isteği gönderiliyor... Lütfen bekleyin...";
+            
+            try {
+                const scopes = ['username'];
+                const authResult = await Pi.authenticate(scopes, function(payment) {
+                    console.log("Eksik ödeme:", payment);
+                });
+                
+                statusDiv.style.color = "green";
+                statusDiv.innerHTML = `🎉 Başarılı!<br>Kullanıcı: @${authResult.user.username}`;
+                document.getElementById('login-btn').style.display = 'none';
+            } catch (error) {
+                console.error(error);
+                statusDiv.style.color = "red";
+                statusDiv.innerHTML = "❌ Hata Oluştu:<br>" + JSON.stringify(error);
+            }
+        });
+    </script>
 </body>
 </html>
