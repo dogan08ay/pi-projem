@@ -4,17 +4,23 @@
     <script src="https://sdk.minepi.com/pi-sdk.js"></script>
 </head>
 <body>
-    <button onclick="testOdeme()">Test Ödemesini Başlat</button>
+    <button onclick="piTest()">Ödemeyi Başlat</button>
     <script>
+        // SDK'yı başlat
         Pi.init({ version: "2.0", sandbox: true });
-        function testOdeme() {
+
+        function piTest() {
+            // SDK hazır mı kontrol et
+            if (!Pi) { alert("SDK yüklenemedi!"); return; }
+
             Pi.createPayment({
                 amount: 0.1,
-                memo: "Test",
+                memo: "Test Ödemesi",
                 metadata: { type: "test" }
             }, {
-                onReadyForServerCompletion: (id, txid) => alert("Başarılı! ID: " + txid),
-                onError: (e) => alert("Hata: " + e),
+                onReadyForServerApproval: (id) => console.log("Onay Aşamasında:", id),
+                onReadyForServerCompletion: (id, txid) => alert("Başarılı! TxID: " + txid),
+                onError: (err) => alert("Ödeme Hatası: " + JSON.stringify(err)),
                 onCancel: () => alert("İptal edildi.")
             });
         }
