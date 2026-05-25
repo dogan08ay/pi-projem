@@ -1,21 +1,33 @@
 export default async function handler(req, res) {
+    // CORS ayarları (Pi Browser'ın sunucuya erişebilmesi için zorunlu)
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+
+    if (req.method === 'OPTIONS') {
+        return res.status(200).end();
+    }
+
     if (req.method !== 'POST') {
         return res.status(405).json({ error: 'Yalnızca POST istekleri kabul edilir' });
     }
 
-    const { paymentId, action } = req.body;
+    const { paymentId, action, txid } = req.body;
+    
+    // Sizin ürettiğiniz orijinal Sandbox API Anahtarınız buraya yerleştirildi
+    const apiKey = "fdolemqtquahyy662hba2vmps38mrerzetumrpqz8uqchinoazsagnk7hqevvcqa"; 
 
-    // Pi Network Developer Portal'dan aldığınız Sandbox API anahtarınız (Gerekirse buraya yazılabilir)
-    // Ancak test ortamında doğrudan onaylamak için Pi API'sine istek atıyoruz
     try {
-        const apiKey = "fdolemqtquahyy662hba2vmps38mrerzetumrpqz8uqchinoazsagnk7hqevvcqa"; 
-        
-        const response = await fetch(`https://api.minepi.com/v2/payments/${paymentId}/${action}`, {
+        const url = `https://api.minepi.com/v2/payments/${paymentId}/${action}`;
+        const bodyData = action === 'complete' ? JSON.stringify({ txid: txid }) : JSON.stringify({});
+
+        const response = await fetch(url, {
             method: 'POST',
             headers: {
                 'Authorization': `Key ${apiKey}`,
                 'Content-Type': 'application/json'
-            }
+            },
+            body: bodyData
         });
 
         const data = await response.json();
