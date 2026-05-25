@@ -8,7 +8,7 @@ export default async function handler(req, res) {
     // Pi Network Developer Portal'dan aldığınız Sandbox API anahtarınız (Gerekirse buraya yazılabilir)
     // Ancak test ortamında doğrudan onaylamak için Pi API'sine istek atıyoruz
     try {
-        const apiKey = "Uygulama oluştururken aldığınız o uzun server API key"; 
+        const apiKey = "fdolemqtquahyy662hba2vmps38mrerzetumrpqz8uqchinoazsagnk7hqevvcqa"; 
         
         const response = await fetch(`https://api.minepi.com/v2/payments/${paymentId}/${action}`, {
             method: 'POST',
