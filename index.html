@@ -3,46 +3,60 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Web3 Domain</title>
+    <title>Web3 Domain Gateway</title>
     <script src="https://sdk.minepi.com/pi-sdk.js"></script>
     <style>
-        body { background: #0f172a; color: white; font-family: sans-serif; text-align: center; margin: 0; padding: 20px; }
-        .card { background: #1e293b; padding: 20px; border-radius: 20px; margin: 10px auto; max-width: 500px; }
-        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-        .item { background: #334155; padding: 15px; border-radius: 10px; cursor: pointer; border: 1px solid #475569; }
-        .btn { background: #6366f1; padding: 10px 20px; border-radius: 20px; border: none; color: white; cursor: pointer; }
+        body { background: #0f172a; color: white; font-family: sans-serif; text-align: center; padding: 20px; }
+        .card { background: #1e293b; padding: 20px; border-radius: 20px; margin-bottom: 20px; }
+        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+        .btn { background: #6366f1; border: none; color: white; padding: 20px; border-radius: 12px; cursor: pointer; border: 1px solid #475569; }
     </style>
 </head>
 <body>
-    <div class="card">
-        <h1>Web3 Domain</h1>
-        <button id="auth-btn" class="btn" onclick="login()">Pi ile Bağlan</button>
+
+<div class="card">
+    <h1 id="user">Web3 Domain</h1>
+    <button id="auth-btn" onclick="login()" style="padding:10px 20px; border-radius:20px; border:none; background:#475569; color:white;">Pi ile Bağlan</button>
+</div>
+
+<div class="card">
+    <div class="grid">
+        <button class="btn" onclick="pay('etstur.pi')">etstur.pi<br>1000 Pi</button>
+        <button class="btn" onclick="pay('eminevim.pi')">eminevim.pi<br>1000 Pi</button>
+        <button class="btn" onclick="pay('fuzulev.pi')">fuzulev.pi<br>1000 Pi</button>
+        <button class="btn" onclick="pay('fibabank.pi')">fibabank.pi<br>1000 Pi</button>
+        <button class="btn" onclick="pay('sekerbank.pi')">sekerbank.pi<br>1000 Pi</button>
+        <button class="btn" onclick="pay('doganay.pi')">doganay.pi<br>1000 Pi</button>
     </div>
-    <div class="card">
-        <h3>Domain Listesi</h3>
-        <div class="grid">
-            <div class="item" onclick="pay('etstur.pi')">etstur.pi<br>1000 Pi</div>
-            <div class="item" onclick="pay('eminevim.pi')">eminevim.pi<br>1000 Pi</div>
-            <div class="item" onclick="pay('fuzulev.pi')">fuzulev.pi<br>1000 Pi</div>
-            <div class="item" onclick="pay('fibabank.pi')">fibabank.pi<br>1000 Pi</div>
-            <div class="item" onclick="pay('sekerbank.pi')">sekerbank.pi<br>1000 Pi</div>
-            <div class="item" onclick="pay('doganay.pi')">doganay.pi<br>1000 Pi</div>
-        </div>
-    </div>
-    <script>
-        Pi.init({ version: "2.0", sandbox: true });
-        async function login() {
-            try {
-                const auth = await Pi.authenticate(['payments'], () => {});
-                document.getElementById('auth-btn').innerText = "Bağlı: @" + auth.user.username;
-            } catch(e) { alert("Hata: " + e); }
-        }
-        function pay(d) {
-            Pi.createPayment({ amount: 1000, memo: "Domain: " + d }, {
+</div>
+
+<script>
+    // SDK başlatma
+    Pi.init({ version: "2.0", sandbox: false });
+
+    async function login() {
+        try {
+            const auth = await Pi.authenticate(['payments'], () => {});
+            document.getElementById('user').innerText = "@" + auth.user.username;
+            document.getElementById('auth-btn').style.display = 'none';
+        } catch (e) { alert("Bağlantı hatası!"); }
+    }
+
+    async function pay(domain) {
+        try {
+            const payment = await Pi.createPayment({
+                amount: 1000,
+                memo: "Domain: " + domain,
+                metadata: { domain: domain }
+            }, {
                 onReadyForServerCompletion: (id, txid) => alert("Başarılı!"),
-                onError: (e) => alert("Hata: " + e.message)
+                onError: (e) => alert("Ödeme Hatası: " + e.message),
+                onCancel: () => alert("İptal edildi.")
             });
+        } catch (e) {
+            alert("İşlem başlatılamadı: " + e.message);
         }
-    </script>
+    }
+</script>
 </body>
 </html>
