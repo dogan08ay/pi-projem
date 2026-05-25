@@ -1,7 +1,6 @@
-// ... (Diğer kısımlar aynı)
 Pi.createPayment({
     amount: 0.1,
-    memo: "Domain Satın Alımı: " + d,
+    memo: "Domain: " + d,
     metadata: { domain: d }
 }, {
     onReadyForServerApproval: (id) => {
@@ -16,7 +15,10 @@ Pi.createPayment({
             method: 'POST', 
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ paymentId: id, action: 'complete', txid: txid }) 
-        }).then(() => alert("✅ Başarılı! İşlem kaydedildi."));
+        }).then(res => {
+            if(res.ok) alert("✅ İşlem başarıyla blockchain'e kaydedildi!");
+        });
     },
-    onError: (err) => alert("Hata: " + err)
+    onError: (err) => console.log("Hata oluştu:", err),
+    onCancel: () => console.log("Kullanıcı iptal etti.")
 });
