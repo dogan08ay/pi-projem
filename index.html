@@ -1,22 +1,23 @@
-// ... (Diğer kodlar aynı kalacak, sadece startPurchase kısmını şu şekilde değiştir)
-
-function startPurchase(d) {
-    Pi.createPayment({
-        amount: 0.1,
-        memo: "Domain: " + d,
-        metadata: { domain: d }
-    }, {
-        onReadyForServerApproval: (id) => {
-            console.log("Onay aşaması geçildi, işlem ID:", id);
-        },
-        onReadyForServerCompletion: (id, txid) => {
-            // Sadece bu kısım başarılıysa işlem bitmiştir
-            alert("✅ Ödeme başarıyla tamamlandı! İşlem ID: " + txid);
-        },
-        onError: (err) => {
-            console.error("Hata:", err);
-            alert("İşlem sırasında bir hata oluştu. Lütfen tekrar deneyin.");
-        },
-        onCancel: () => alert("İşlem iptal edildi.")
-    });
-}
+<!DOCTYPE html>
+<html>
+<head>
+    <script src="https://sdk.minepi.com/pi-sdk.js"></script>
+</head>
+<body>
+    <button onclick="testOdeme()">Test Ödemesini Başlat</button>
+    <script>
+        Pi.init({ version: "2.0", sandbox: true });
+        function testOdeme() {
+            Pi.createPayment({
+                amount: 0.1,
+                memo: "Test",
+                metadata: { type: "test" }
+            }, {
+                onReadyForServerCompletion: (id, txid) => alert("Başarılı! ID: " + txid),
+                onError: (e) => alert("Hata: " + e),
+                onCancel: () => alert("İptal edildi.")
+            });
+        }
+    </script>
+</body>
+</html>
