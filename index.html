@@ -6,40 +6,31 @@
     <title>Web3 Domain Gateway</title>
     <script src="https://sdk.minepi.com/pi-sdk.js"></script>
     <style>
-        :root { --bg: #0f172a; --card: #1e293b; --accent: #6366f1; --text: #f8fafc; }
-        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 20px; display: flex; justify-content: center; }
-        .container { max-width: 600px; width: 100%; text-align: center; }
-        .card { background: var(--card); padding: 25px; border-radius: 20px; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.3); margin-bottom: 20px; }
-        .domain-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 20px; }
-        .domain-card { background: #334155; padding: 20px; border-radius: 12px; border: 1px solid #475569; transition: 0.3s; display: flex; flex-direction: column; align-items: center; }
-        .domain-img { width: 60px; height: 60px; margin-bottom: 10px; border-radius: 8px; object-fit: cover; }
-        .btn-buy { background: var(--accent); color: white; border: none; padding: 8px 16px; border-radius: 8px; cursor: pointer; margin-top: 10px; font-weight: bold; width: 100%; }
-        #auth-btn { background: var(--accent); color: white; border: none; padding: 12px 25px; border-radius: 50px; font-weight: bold; cursor: pointer; }
+        :root { --bg: #f3f4f6; --card: #ffffff; --text: #1f2937; }
+        body { font-family: sans-serif; background: var(--bg); color: var(--text); padding: 20px; display: flex; justify-content: center; }
+        .container { max-width: 500px; width: 100%; text-align: center; }
+        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 20px; }
+        .domain-card { background: var(--card); padding: 15px; border-radius: 15px; border: 1px solid #e5e7eb; display: flex; flex-direction: column; align-items: center; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+        .icon { width: 50px; height: 50px; margin-bottom: 8px; }
+        .status-sold { color: #6b7280; font-weight: bold; font-size: 0.85em; margin-top: 5px; }
+        .btn-buy { background: #6366f1; color: white; border: none; padding: 8px 15px; border-radius: 8px; cursor: pointer; margin-top: 10px; width: 100%; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <div class="card">
-        <h1>Web3 Domain</h1>
-        <p id="user-status">Lütfen önce bağlanın.</p>
-        <button id="auth-btn" onclick="loginWithPi()">Pi ile Bağlan</button>
-    </div>
-
-    <div class="card">
-        <h3>Satıştaki Domainler</h3>
-        <div class="domain-grid" id="domain-list"></div>
-    </div>
+    <h3>Satıştaki Domainler</h3>
+    <div class="grid" id="domain-list"></div>
 </div>
 
 <script>
     Pi.init({ version: "2.0", sandbox: true });
 
     const domains = [
-        { name: 'etstur.pi', img: 'https://cdn-icons-png.flaticon.com/128/2947/2947610.png' },
         { name: 'eminevim.pi', img: 'https://cdn-icons-png.flaticon.com/128/3063/3063198.png' },
         { name: 'fuzulev.pi', img: 'https://cdn-icons-png.flaticon.com/128/833/833472.png' },
         { name: 'fibabank.pi', img: 'https://cdn-icons-png.flaticon.com/128/2830/2830283.png' },
+        { name: 'etstur.pi', img: 'https://cdn-icons-png.flaticon.com/128/2947/2947610.png' },
         { name: 'sekerbank.pi', img: 'https://cdn-icons-png.flaticon.com/128/2830/2830325.png' },
         { name: 'doganay.pi', img: 'https://cdn-icons-png.flaticon.com/128/4807/4807471.png' }
     ];
@@ -51,65 +42,26 @@
             const isSold = localStorage.getItem(d.name) === 'sold';
             const card = document.createElement('div');
             card.className = 'domain-card';
-            card.innerHTML = `
-                <img src="${d.img}" class="domain-img">
-                <strong>${d.name}</strong><br>
-                <span style="font-size: 0.85em; color: #a5b4fc;">${isSold ? 'SATILDI' : '10 Pi'}</span>
-            `;
             
-            if (!isSold) {
-                const btn = document.createElement('button');
-                btn.className = 'btn-buy';
-                btn.innerText = 'Satın Al';
-                btn.onclick = () => startPurchase(d.name);
-                card.appendChild(btn);
-            }
+            card.innerHTML = `
+                <img src="${d.img}" class="icon">
+                <strong>${d.name}</strong>
+                <span style="font-size: 0.8em; color: #6b7280;">10 Pi</span>
+                ${isSold ? '<div class="status-sold">🚫 SATILDI</div>' : `<button class="btn-buy" onclick="startPurchase('${d.name}')">Satın Al</button>`}
+            `;
             list.appendChild(card);
         });
     }
 
-    function loginWithPi() {
-        Pi.authenticate(['username', 'payments'], () => {})
-        .then(auth => {
-            document.getElementById('user-status').innerText = "Bağlı: @" + auth.user.username;
-            document.getElementById('auth-btn').style.display = 'none';
-        })
-        .catch(err => alert("Giriş başarısız: " + err));
-    }
-
     function startPurchase(domain) {
-        if(document.getElementById('auth-btn').style.display !== 'none') {
-            alert("Lütfen önce Pi ile bağlanın!");
-            return;
-        }
-
-        Pi.createPayment({
-            amount: 10,
-            memo: "Domain: " + domain,
-            metadata: { domain: domain }
-        }, {
-            onReadyForServerApproval: (id) => handleServerSidePayment(id, 'approve', null),
+        Pi.createPayment({ amount: 10, memo: "Domain: " + domain }, {
             onReadyForServerCompletion: (id, txid) => {
                 localStorage.setItem(domain, 'sold');
-                handleServerSidePayment(id, 'complete', txid);
                 render();
+                alert("Başarılı!");
             },
-            onCancel: () => alert("Ödeme iptal edildi."),
-            onError: (err) => alert("Ödeme hatası: " + err.message)
+            onError: (err) => alert("Hata: " + err.message)
         });
-    }
-
-    function handleServerSidePayment(paymentId, action, txid) {
-        fetch('/api/approve', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ paymentId, action, txid })
-        })
-        .then(res => res.json())
-        .then(data => {
-            if(action === 'complete') alert("✅ Başarılı! Satın alma tamamlandı.");
-        })
-        .catch(err => console.error("Sunucu Hatası:", err));
     }
 
     render();
