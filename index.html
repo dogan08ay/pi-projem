@@ -1,38 +1,96 @@
-// Kodun başındaki domainler listesini şu şekilde güncelleyerek değiştir:
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Web3 Domain Gateway</title>
+    <script src="https://sdk.minepi.com/pi-sdk.js"></script>
+    <style>
+        :root { --bg: #0f172a; --card: #1e293b; --accent: #6366f1; --text: #f8fafc; }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 20px; display: flex; justify-content: center; }
+        .container { max-width: 600px; width: 100%; text-align: center; }
+        .card { background: var(--card); padding: 25px; border-radius: 20px; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.3); margin-bottom: 20px; }
+        .domain-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 20px; }
+        .domain-card { background: #334155; padding: 15px; border-radius: 12px; border: 1px solid #475569; transition: 0.3s; }
+        .btn-buy { background: var(--accent); color: white; border: none; padding: 8px 16px; border-radius: 8px; cursor: pointer; margin-top: 10px; font-weight: bold; width: 100%; }
+        #auth-btn { background: var(--accent); color: white; border: none; padding: 12px 25px; border-radius: 50px; font-weight: bold; cursor: pointer; }
+    </style>
+</head>
+<body>
 
-const domains = [
-    { name: 'etstur.pi', img: 'https://i.imgur.com/kZ4Xy4F.png' }, // Buraya görsel linklerini koyabilirsin
-    { name: 'eminevim.pi', img: 'https://i.imgur.com/example2.png' },
-    { name: 'fuzulev.pi', img: 'https://i.imgur.com/example3.png' },
-    { name: 'fibabank.pi', img: 'https://i.imgur.com/example4.png' },
-    { name: 'sekerbank.pi', img: 'https://i.imgur.com/example5.png' },
-    { name: 'doganay.pi', img: 'https://i.imgur.com/example6.png' }
-];
+<div class="container">
+    <div class="card">
+        <h1>Web3 Domain</h1>
+        <p id="user-status">Lütfen önce bağlanın.</p>
+        <button id="auth-btn" onclick="loginWithPi()">Pi ile Bağlan</button>
+    </div>
 
-// Ve render fonksiyonundaki döngüyü buna göre güncelle:
-function render() {
-    const list = document.getElementById('domain-list');
-    list.innerHTML = '';
-    domains.forEach(d => {
-        const isSold = localStorage.getItem(d.name) === 'sold';
-        const card = document.createElement('div');
-        card.className = 'domain-card';
-        // Görseli arkaplana ekliyoruz
-        card.style.backgroundImage = `url('${d.img}')`;
-        card.style.backgroundSize = 'cover';
-        card.innerHTML = `
-            <div style="background: rgba(30, 41, 59, 0.8); padding: 10px; border-radius: 8px;">
-                <strong>${d.name}</strong><br>
-                <span style="font-size: 0.85em;">${isSold ? 'SATILDI' : '10 Pi'}</span>
-            </div>`;
-        
-        if (!isSold) {
-            const btn = document.createElement('button');
-            btn.className = 'btn-buy';
-            btn.innerText = 'Satın Al';
-            btn.onclick = () => startPurchase(d.name);
-            card.appendChild(btn);
+    <div class="card">
+        <h3>Satıştaki Domainler</h3>
+        <div class="domain-grid" id="domain-list"></div>
+    </div>
+</div>
+
+<script>
+    Pi.init({ version: "2.0", sandbox: true });
+
+    const domains = [
+        { name: 'etstur.pi', img: 'https://cdn-icons-png.flaticon.com/128/2947/2947610.png' },
+        { name: 'eminevim.pi', img: 'https://cdn-icons-png.flaticon.com/128/3063/3063198.png' },
+        { name: 'fuzulev.pi', img: 'https://cdn-icons-png.flaticon.com/128/833/833472.png' },
+        { name: 'fibabank.pi', img: 'https://cdn-icons-png.flaticon.com/128/2830/2830283.png' },
+        { name: 'sekerbank.pi', img: 'https://cdn-icons-png.flaticon.com/128/2830/2830325.png' },
+        { name: 'doganay.pi', img: 'https://cdn-icons-png.flaticon.com/128/4807/4807471.png' }
+    ];
+
+    function render() {
+        const list = document.getElementById('domain-list');
+        list.innerHTML = '';
+        domains.forEach(d => {
+            const isSold = localStorage.getItem(d.name) === 'sold';
+            const card = document.createElement('div');
+            card.className = 'domain-card';
+            card.innerHTML = `
+                <img src="${d.img}" style="width:50px; height:50px; margin-bottom:10px;">
+                <br><strong>${d.name}</strong><br>
+                <span style="font-size: 0.85em; color: #a5b4fc;">${isSold ? 'SATILDI' : '10 Pi'}</span>
+            `;
+            if (!isSold) {
+                const btn = document.createElement('button');
+                btn.className = 'btn-buy';
+                btn.innerText = 'Satın Al';
+                btn.onclick = () => startPurchase(d.name);
+                card.appendChild(btn);
+            }
+            list.appendChild(card);
+        });
+    }
+
+    function loginWithPi() {
+        Pi.authenticate(['username', 'payments'], () => {})
+        .then(auth => {
+            document.getElementById('user-status').innerText = "Bağlı: @" + auth.user.username;
+            document.getElementById('auth-btn').style.display = 'none';
+        })
+        .catch(err => alert("Giriş başarısız: " + err));
+    }
+
+    function startPurchase(domain) {
+        if(document.getElementById('auth-btn').style.display !== 'none') {
+            alert("Lütfen önce Pi ile bağlanın!");
+            return;
         }
-        list.appendChild(card);
-    });
-}
+        Pi.createPayment({ amount: 10, memo: "Domain: " + domain }, {
+            onReadyForServerCompletion: (id, txid) => {
+                localStorage.setItem(domain, 'sold');
+                render();
+                alert("✅ Başarılı! Domain artık sizin.");
+            },
+            onError: (err) => alert("Hata: " + err.message)
+        });
+    }
+
+    render();
+</script>
+</body>
+</html>
