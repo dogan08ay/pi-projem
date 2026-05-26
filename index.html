@@ -35,13 +35,14 @@
 <script>
     Pi.init({ version: "2.0", sandbox: true });
 
+    // Görseller GitHub'daki assets klasöründen çekiliyor
     const domains = [
-        { name: 'etstur.pi', img: 'https://i.imgur.com/vH3sDqS.png' },
-        { name: 'eminevim.pi', img: 'https://i.imgur.com/w4J4s8T.png' },
-        { name: 'fuzulev.pi', img: 'https://i.imgur.com/0iK8eQ1.png' },
-        { name: 'fibabank.pi', img: 'https://i.imgur.com/0aZJ3yH.png' },
-        { name: 'sekerbank.pi', img: 'https://i.imgur.com/w6vYy5R.png' },
-        { name: 'doganay.pi', img: 'https://i.imgur.com/N545O2k.png' }
+        { name: 'etstur.pi', img: 'assets/etstur.jpeg' },
+        { name: 'eminevim.pi', img: 'assets/eminevim.jpeg' },
+        { name: 'fuzulev.pi', img: 'assets/fuzulev.jpeg' },
+        { name: 'fibabank.pi', img: 'assets/fibabank.jpeg' },
+        { name: 'sekerbank.pi', img: 'assets/sekerbank.jpeg' },
+        { name: 'doganay.pi', img: 'assets/doganay.jpeg' }
     ];
 
     function render() {
@@ -52,7 +53,7 @@
             const card = document.createElement('div');
             card.className = 'domain-card';
             card.innerHTML = `
-                <img src="${d.img}" class="domain-img">
+                <img src="${d.img}" class="domain-img" onerror="this.src='https://via.placeholder.com/60'">
                 <strong>${d.name}</strong><br>
                 <span style="font-size: 0.85em; color: #a5b4fc;">${isSold ? 'SATILDI' : '10 Pi'}</span>
             `;
