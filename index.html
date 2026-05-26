@@ -15,7 +15,6 @@
         .domain-img { width: 60px; height: 60px; margin-bottom: 10px; border-radius: 8px; object-fit: cover; }
         .btn-buy { background: var(--accent); color: white; border: none; padding: 8px 16px; border-radius: 8px; cursor: pointer; margin-top: 10px; font-weight: bold; width: 100%; }
         #auth-btn { background: var(--accent); color: white; border: none; padding: 12px 25px; border-radius: 50px; font-weight: bold; cursor: pointer; }
-        .reset-btn { background: #ef4444; color: white; border: none; padding: 10px; border-radius: 8px; cursor: pointer; margin-top: 20px; width: 100%; }
     </style>
 </head>
 <body>
@@ -30,13 +29,13 @@
     <div class="card">
         <h3>Satıştaki Domainler</h3>
         <div class="domain-grid" id="domain-list"></div>
-        <button class="reset-btn" onclick="resetTest()">Testi Sıfırla (Tümünü Satışa Aç)</button>
     </div>
 </div>
 
 <script>
     Pi.init({ version: "2.0", sandbox: true });
 
+    // Görseller GitHub'daki assets klasöründen çekiliyor
     const domains = [
         { name: 'etstur.pi', img: 'assets/etstur.jpeg' },
         { name: 'eminevim.pi', img: 'assets/eminevim.jpeg' },
@@ -54,7 +53,7 @@
             const card = document.createElement('div');
             card.className = 'domain-card';
             card.innerHTML = `
-                <img src="${d.img}" class="domain-img" onerror="this.style.display='none'">
+                <img src="${d.img}" class="domain-img" onerror="this.src='https://via.placeholder.com/60'">
                 <strong>${d.name}</strong><br>
                 <span style="font-size: 0.85em; color: #a5b4fc;">${isSold ? 'SATILDI' : '10 Pi'}</span>
             `;
@@ -68,11 +67,6 @@
             }
             list.appendChild(card);
         });
-    }
-
-    function resetTest() {
-        localStorage.clear();
-        location.reload();
     }
 
     function loginWithPi() {
