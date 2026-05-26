@@ -32,10 +32,24 @@
     </div>
 </div>
 
-<script>
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
+    import { getFirestore, doc, onSnapshot, updateDoc } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
+
+    const firebaseConfig = {
+        apiKey: "AIzaSyC9r244vRVGbYOcLHyS6EHxKyiygajW7_A",
+        authDomain: "web3-domain-gateway.firebaseapp.com",
+        projectId: "web3-domain-gateway",
+        storageBucket: "web3-domain-gateway.firebasestorage.app",
+        messagingSenderId: "315563254318",
+        appId: "1:315563254318:web:12f2f3f340bb69606df5bf"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
     Pi.init({ version: "2.0", sandbox: true });
 
-    // Görseller GitHub'daki assets klasöründen çekiliyor
     const domains = [
         { name: 'etstur.pi', img: 'assets/etstur.jpeg' },
         { name: 'eminevim.pi', img: 'assets/eminevim.jpeg' },
@@ -45,11 +59,13 @@
         { name: 'doganay.pi', img: 'assets/doganay.jpeg' }
     ];
 
+    let domainData = {};
+
     function render() {
         const list = document.getElementById('domain-list');
         list.innerHTML = '';
         domains.forEach(d => {
-            const isSold = localStorage.getItem(d.name) === 'sold';
+            const isSold = domainData[d.name] === true;
             const card = document.createElement('div');
             card.className = 'domain-card';
             card.innerHTML = `
@@ -69,7 +85,17 @@
         });
     }
 
-    function loginWithPi() {
+    // Firebase'i gerçek zamanlı dinle
+    domains.forEach(d => {
+        onSnapshot(doc(db, "domains", d.name), (doc) => {
+            if (doc.exists()) {
+                domainData[d.name] = doc.data().sold;
+                render();
+            }
+        });
+    });
+
+    window.loginWithPi = function() {
         Pi.authenticate(['username', 'payments'], () => {})
         .then(auth => {
             document.getElementById('user-status').innerText = "Bağlı: @" + auth.user.username;
@@ -78,7 +104,7 @@
         .catch(err => alert("Giriş başarısız: " + err));
     }
 
-    function startPurchase(domain) {
+    window.startPurchase = function(domain) {
         if(document.getElementById('auth-btn').style.display !== 'none') {
             alert("Lütfen önce Pi ile bağlanın!");
             return;
@@ -91,9 +117,8 @@
         }, {
             onReadyForServerApproval: (id) => handleServerSidePayment(id, 'approve', null),
             onReadyForServerCompletion: (id, txid) => {
-                localStorage.setItem(domain, 'sold');
+                updateDoc(doc(db, "domains", domain), { sold: true });
                 handleServerSidePayment(id, 'complete', txid);
-                render();
             },
             onCancel: () => alert("Ödeme iptal edildi."),
             onError: (err) => alert("Ödeme hatası: " + err.message)
@@ -112,8 +137,6 @@
         })
         .catch(err => console.error("Sunucu Hatası:", err));
     }
-
-    render();
 </script>
 </body>
 </html>
