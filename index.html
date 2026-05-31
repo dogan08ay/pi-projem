@@ -74,16 +74,17 @@
         const list = document.getElementById('domain-list');
         list.innerHTML = '';
         domains.forEach(d => {
-            const domainInfo = domainData[d.name] || { sold: false, price: 10 };
-            const isSold = domainInfo.sold === true;
-            const price = domainInfo.price || 10;
+            const data = domainData[d.name] || { sold: false, price: 10 };
+            const isSold = data.sold === true;
+            const price = (data.price !== undefined && data.price !== null) ? data.price : 10;
             
             const card = document.createElement('div');
             card.className = 'domain-card';
+            
             card.innerHTML = `
                 <img src="${d.img}" class="domain-img" onerror="this.src='https://via.placeholder.com/60'">
                 <strong>${d.name}</strong><br>
-                <span style="font-size: 0.85em; color: #a5b4fc;">${isSold ? 'SATILDI' : price + ' Pi'}</span>
+                <span style="font-size: 0.85em; color: #a5b4fc;">${isSold ? `SATILDI (${price} Pi)` : price + ' Pi'}</span>
             `;
             
             if (!isSold) {
