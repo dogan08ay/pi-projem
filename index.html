@@ -11,14 +11,14 @@
         .container { max-width: 600px; width: 100%; text-align: center; }
         .card { background: var(--card); padding: 25px; border-radius: 20px; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.3); margin-bottom: 20px; }
         .domain-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 20px; }
-        .domain-card { background: #334155; padding: 20px; border-radius: 12px; border: 1px solid #475569; transition: 0.3s; display: flex; flex-direction: column; align-items: center; }
+        .domain-card { background: #334155; padding: 15px; border-radius: 12px; border: 1px solid #475569; display: flex; flex-direction: column; align-items: center; overflow: hidden; }
         .domain-img { 
             width: 100%; 
-            height: 120px; 
+            aspect-ratio: 1 / 1; 
             margin-bottom: 10px; 
             border-radius: 12px; 
             object-fit: contain; 
-            background-color: #334155; 
+            background-color: #1e293b; 
             padding: 5px;
         }
         .btn-buy { background: var(--accent); color: white; border: none; padding: 8px 16px; border-radius: 8px; cursor: pointer; margin-top: 10px; font-weight: bold; width: 100%; }
@@ -83,8 +83,10 @@
             
             card.innerHTML = `
                 <img src="${d.img}" class="domain-img" onerror="this.src='https://via.placeholder.com/60'">
-                <strong>${d.name}</strong><br>
-                <span style="font-size: 0.85em; color: #a5b4fc;">${isSold ? `SATILDI (${price} Pi)` : price + ' Pi'}</span>
+                <strong style="font-size: 0.9em;">${d.name}</strong>
+                <span style="font-size: 0.85em; color: #a5b4fc; white-space: nowrap; margin-top: 5px;">
+                    ${isSold ? `SATILDI (${price} Pi)` : price + ' Pi'}
+                </span>
             `;
             
             if (!isSold) {
@@ -130,25 +132,4 @@
             onReadyForServerApproval: (id) => handleServerSidePayment(id, 'approve', null),
             onReadyForServerCompletion: (id, txid) => {
                 updateDoc(doc(db, "domains", domain), { sold: true });
-                handleServerSidePayment(id, 'complete', txid);
-            },
-            onCancel: () => alert("Ödeme iptal edildi."),
-            onError: (err) => alert("Ödeme hatası: " + err.message)
-        });
-    }
-
-    function handleServerSidePayment(paymentId, action, txid) {
-        fetch('/api/approve', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ paymentId, action, txid })
-        })
-        .then(res => res.json())
-        .then(data => {
-            if(action === 'complete') alert("✅ Başarılı! Satın alma tamamlandı.");
-        })
-        .catch(err => console.error("Sunucu Hatası:", err));
-    }
-</script>
-</body>
-</html>
+                handle
