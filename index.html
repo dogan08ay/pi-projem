@@ -12,7 +12,15 @@
         .card { background: var(--card); padding: 25px; border-radius: 20px; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.3); margin-bottom: 20px; }
         .domain-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 20px; }
         .domain-card { background: #334155; padding: 20px; border-radius: 12px; border: 1px solid #475569; transition: 0.3s; display: flex; flex-direction: column; align-items: center; }
-        .domain-img { width: 100%; height: 100px; margin-bottom: 10px; border-radius: 8px; object-fit: cover; }
+        .domain-img { 
+            width: 100%; 
+            height: 120px; 
+            margin-bottom: 10px; 
+            border-radius: 12px; 
+            object-fit: contain; 
+            background-color: #334155; 
+            padding: 5px;
+        }
         .btn-buy { background: var(--accent); color: white; border: none; padding: 8px 16px; border-radius: 8px; cursor: pointer; margin-top: 10px; font-weight: bold; width: 100%; }
         #auth-btn { background: var(--accent); color: white; border: none; padding: 12px 25px; border-radius: 50px; font-weight: bold; cursor: pointer; }
     </style>
@@ -50,7 +58,6 @@
 
     Pi.init({ version: "2.0", sandbox: true });
 
-    // TEST DOMAIN en başa eklendi
     const domains = [
         { name: 'test-domain', img: 'assets/test.jpeg' },
         { name: 'etstur.pi', img: 'assets/etstur.jpeg' },
@@ -67,8 +74,9 @@
         const list = document.getElementById('domain-list');
         list.innerHTML = '';
         domains.forEach(d => {
-            const isSold = domainData[d.name]?.sold === true;
-            const price = domainData[d.name]?.price || 10; // Firebase'den fiyatı çek, yoksa 10 varsay
+            const domainInfo = domainData[d.name] || { sold: false, price: 10 };
+            const isSold = domainInfo.sold === true;
+            const price = domainInfo.price || 10;
             
             const card = document.createElement('div');
             card.className = 'domain-card';
@@ -92,7 +100,7 @@
     domains.forEach(d => {
         onSnapshot(doc(db, "domains", d.name), (doc) => {
             if (doc.exists()) {
-                domainData[d.name] = doc.data(); // Tüm objeyi al (sold ve price dahil)
+                domainData[d.name] = doc.data();
                 render();
             }
         });
