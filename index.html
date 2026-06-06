@@ -12,17 +12,10 @@
         .card { background: var(--card); padding: 25px; border-radius: 20px; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.3); margin-bottom: 20px; }
         .domain-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 20px; }
         .domain-card { background: #334155; padding: 20px; border-radius: 12px; border: 1px solid #475569; transition: 0.3s; display: flex; flex-direction: column; align-items: center; }
-        .domain-img { 
-            width: 100%; 
-            height: 120px; 
-            margin-bottom: 10px; 
-            border-radius: 12px; 
-            object-fit: contain; 
-            background-color: #334155; 
-            padding: 5px;
-        }
+        .domain-img { width: 100%; height: 120px; margin-bottom: 10px; border-radius: 12px; object-fit: contain; background-color: #334155; padding: 5px; }
         .btn-buy { background: var(--accent); color: white; border: none; padding: 8px 16px; border-radius: 8px; cursor: pointer; margin-top: 10px; font-weight: bold; width: 100%; }
         #auth-btn { background: var(--accent); color: white; border: none; padding: 12px 25px; border-radius: 50px; font-weight: bold; cursor: pointer; }
+        .footer { font-size: 0.8em; color: #94a3b8; margin-top: 20px; }
     </style>
 </head>
 <body>
@@ -37,6 +30,12 @@
     <div class="card">
         <h3>Satıştaki Domainler</h3>
         <div class="domain-grid" id="domain-list"></div>
+    </div>
+
+    <div class="footer">
+        <p>Sorularınız için bize ulaşın: <strong>doganay08@hotmail.com</strong></p>
+        <a href="privacy.html" style="color: var(--accent);">Gizlilik Politikası</a> | 
+        <a href="terms.html" style="color: var(--accent);">Kullanım Şartları</a>
     </div>
 </div>
 
@@ -81,7 +80,6 @@
             const card = document.createElement('div');
             card.className = 'domain-card';
             
-            // white-space: nowrap; satırın bölünmesini engeller, display: block; kutu içine hizalar
             card.innerHTML = `
                 <img src="${d.img}" class="domain-img" onerror="this.src='https://via.placeholder.com/60'">
                 <strong style="display:block; width: 100%; overflow: hidden; text-overflow: ellipsis;">${d.name}</strong><br>
