@@ -16,6 +16,7 @@
         .btn-buy { background: var(--accent); color: white; border: none; padding: 8px 16px; border-radius: 8px; cursor: pointer; margin-top: 10px; font-weight: bold; width: 100%; }
         #auth-btn { background: var(--accent); color: white; border: none; padding: 12px 25px; border-radius: 50px; font-weight: bold; cursor: pointer; }
         .footer { font-size: 0.8em; color: #94a3b8; margin-top: 20px; }
+        .auth-warning { color: #f1f5f9; padding: 20px; font-size: 0.95em; line-height: 1.5; border: 1px dashed #475569; border-radius: 12px; background: #1e293b; }
     </style>
 </head>
 <body>
@@ -23,25 +24,30 @@
 <div class="container">
     <div class="card">
         <h1>Web3 Domain</h1>
-        <p id="online-count" style="color: #a5b4fc; font-size: 0.9em; margin-bottom: 10px;">Aktif Kullanıcı: Yukleniyor...</p>
+        <p id="online-count" style="color: #a5b4fc; font-size: 0.9em; margin-bottom: 15px; font-weight: bold;">Aktif Kullanıcı: Yükleniyor...</p>
         <p id="user-status">Lütfen önce bağlanın.</p>
         <button id="auth-btn" onclick="loginWithPi()">Pi ile Bağlan</button>
     </div>
 
     <div class="card">
         <h3>Satıştaki Domainler</h3>
-        <div class="domain-grid" id="domain-list"></div>
+        <div class="domain-grid" id="domain-list">
+            <div class="auth-warning" style="grid-column: span 2;">
+                Satıştaki domainleri görmek için lütfen Pi hesabı ile bağlan butonunu tıklayın.
+            </div>
+        </div>
     </div>
 
     <div class="footer">
-        <p>Sorularınız için: <strong>doganay08@hotmail.com</strong></p>
-        <a href="privacy.html" style="color: var(--accent);">Gizlilik Politikası</a>
+        <p>Sorularınız için bize ulaşın: <strong>doganay08@hotmail.com</strong></p>
+        <a href="privacy.html" style="color: var(--accent);">Gizlilik Politikası</a> | 
+        <a href="terms.html" style="color: var(--accent);">Kullanım Şartları</a>
     </div>
 </div>
 
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
-    import { getFirestore, doc, onSnapshot, collection, setDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
+    import { getFirestore, doc, onSnapshot, updateDoc, collection, setDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
     import { getAnalytics } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-analytics.js";
 
     const firebaseConfig = {
@@ -58,76 +64,142 @@
     const db = getFirestore(app);
     const analytics = getAnalytics(app);
 
-    // 1. SAYAÇ DİNLEYİCİSİ
+    // 1. CANLI SAYAÇ DİNLEYİCİSİ
     onSnapshot(collection(db, "online_users"), (snapshot) => {
         const countElement = document.getElementById('online-count');
         if (countElement) {
             countElement.innerText = "Aktif Kullanıcı: " + snapshot.size;
         }
     }, (error) => {
-        console.log("Sayac hatasi:", error);
+        console.log("Sayaç yüklenirken hata oluştu.");
     });
 
-    // 2. DOMAİNLERİ LİSTELEME (Daha önce çalışan orijinal mantığın)
-    const domainListContainer = document.getElementById('domain-list');
-    
-    onSnapshot(collection(db, "domains"), (snapshot) => {
-        if (domainListContainer) {
-            domainListContainer.innerHTML = ""; 
-            snapshot.forEach((doc) => {
-                const data = doc.data();
-                const isSold = data.status === "sold";
-                
-                const domainCard = document.createElement('div');
-                domainCard.className = 'domain-card';
-                domainCard.innerHTML = `
-                    <img src="${data.image || 'https://via.placeholder.com/150'}" class="domain-img" alt="${doc.id}">
-                    <strong>${doc.id}</strong>
-                    <p style="color: #cbd5e1; margin: 5px 0;">${data.price} Pi</p>
-                    <button class="btn-buy" ${isSold ? 'disabled style="background:#64748b;"' : ''} id="btn-${doc.id}">
-                        ${isSold ? 'Satıldı' : 'Satın Al'}
-                    </button>
-                `;
-                domainListContainer.appendChild(domainCard);
+    const domains = [
+        { name: 'test-domain', img: 'assets/test.jpeg' },
+        { name: 'etstur.pi', img: 'assets/etstur.jpeg' },
+        { name: 'eminevim.pi', img: 'assets/eminevim.jpeg' },
+        { name: 'fuzulev.pi', img: 'assets/fuzulev.jpeg' },
+        { name: 'fibabank.pi', img: 'assets/fibabank.jpeg' },
+        { name: 'sekerbank.pi', img: 'assets/sekerbank.jpeg' },
+        { name: 'doganay.pi', img: 'assets/doganay.jpeg' }
+    ];
 
-                // Tıklama olayını güvenli bağla
-                const btn = document.getElementById(`btn-${doc.id}`);
-                if (btn && !isSold) {
-                    btn.onclick = () => window.buyDomain(doc.id, data.price);
-                }
-            });
+    let domainData = {};
+    let isUserAuthenticated = false; // Kullanıcının giriş durumunu tutar
+
+    function render() {
+        const list = document.getElementById('domain-list');
+        if (!list) return;
+
+        // Eğer kullanıcı henüz Pi ile bağlanmadıysa domainleri gösterme, uyarıyı tut
+        if (!isUserAuthenticated) {
+            list.innerHTML = `
+                <div class="auth-warning" style="grid-column: span 2;">
+                    Satıştaki domainleri görmek için lütfen Pi hesabı ile bağlan butonunu tıklayın.
+                </div>
+            `;
+            return;
         }
-    });
 
-    // Pi SDK Ayarı
-    try {
-        Pi.init({ version: "2.0", sandbox: true });
-    } catch(e) {
-        console.error("Pi Init Hatasi:", e);
+        list.innerHTML = '';
+        domains.forEach(d => {
+            const data = domainData[d.name] || { sold: false, price: 10 };
+            const isSold = data.sold === true;
+            const price = (data.price !== undefined && data.price !== null) ? data.price : 10;
+            
+            const card = document.createElement('div');
+            card.className = 'domain-card';
+            
+            card.innerHTML = `
+                <img src="${d.img}" class="domain-img" onerror="this.src='https://via.placeholder.com/60'">
+                <strong style="display:block; width: 100%; overflow: hidden; text-overflow: ellipsis;">${d.name}</strong><br>
+                <span style="font-size: 0.85em; color: #a5b4fc; white-space: nowrap; display: block;">
+                    ${isSold ? `SATILDI (${price} Pi)` : price + ' Pi'}
+                </span>
+            `;
+            
+            if (!isSold) {
+                const btn = document.createElement('button');
+                btn.className = 'btn-buy';
+                btn.innerText = 'Satın Al';
+                btn.onclick = () => startPurchase(d.name, price);
+                card.appendChild(btn);
+            }
+            list.appendChild(card);
+        });
     }
 
-    // 3. Pİ ILE GİRİŞ
+    // Gerçek zamanlı veritabanı takibi
+    domains.forEach(d => {
+        onSnapshot(doc(db, "domains", d.name), (doc) => {
+            if (doc.exists()) {
+                domainData[d.name] = doc.data();
+                render();
+            }
+        });
+    });
+
+    Pi.init({ version: "2.0", sandbox: true });
+
+    // 2. Pİ ILE BAĞLANMA FONKSİYONU
     window.loginWithPi = function() {
         Pi.authenticate(['username', 'payments'], () => {})
         .then(async (auth) => {
+            isUserAuthenticated = true; // Giriş yapıldı olarak işaretle
             document.getElementById('user-status').innerText = "Bağlı: @" + auth.user.username;
             document.getElementById('auth-btn').style.display = 'none';
             
-            // Veritabanına online yaz
-            await setDoc(doc(db, "online_users", auth.user.username), { joined: new Date() });
-            
-            // Çıkarken sil
-            window.addEventListener("beforeunload", async () => {
-                await deleteDoc(doc(db, "online_users", auth.user.username));
-            });
+            // Arayüzü tetikle (Domain listesini getirir)
+            render();
+
+            // Kullanıcıyı veritabanında çevrimiçi yap
+            try {
+                await setDoc(doc(db, "online_users", auth.user.username), { lastSeen: new Date() });
+                
+                // Uygulamadan çıkarken veya sekmeyi kapatırken kullanıcıyı listeden sil
+                window.addEventListener("beforeunload", async () => {
+                    await deleteDoc(doc(db, "online_users", auth.user.username));
+                });
+            } catch (e) {
+                console.error("Sayaç güncelleme hatası:", e);
+            }
         })
         .catch(err => alert("Giriş başarısız: " + err));
     }
 
-    // 4. SATIN ALMA
-    window.buyDomain = function(domainId, price) {
-        console.log("Satinalma tetiklendi:", domainId, price);
-        // Ödeme kodların buraya gelecek
+    // 3. SATIN ALMA FONKSİYONU
+    window.startPurchase = function(domain, amount) {
+        if(!isUserAuthenticated) {
+            alert("Lütfen önce Pi ile bağlanın!");
+            return;
+        }
+
+        Pi.createPayment({
+            amount: amount,
+            memo: "Domain: " + domain,
+            metadata: { domain: domain }
+        }, {
+            onReadyForServerApproval: (id) => handleServerSidePayment(id, 'approve', null),
+            onReadyForServerCompletion: (id, txid) => {
+                updateDoc(doc(db, "domains", domain), { sold: true });
+                handleServerSidePayment(id, 'complete', txid);
+            },
+            onCancel: () => alert("Ödeme iptal edildi."),
+            onError: (err) => alert("Ödeme hatası: " + err.message)
+        });
+    }
+
+    function handleServerSidePayment(paymentId, action, txid) {
+        fetch('/api/approve', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ paymentId, action, txid })
+        })
+        .then(res => res.json())
+        .then(data => {
+            if(action === 'complete') alert("✅ Başarılı! Satın alma tamamlandı.");
+        })
+        .catch(err => console.error("Sunucu Hatası:", err));
     }
 </script>
 </body>
