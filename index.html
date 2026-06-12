@@ -17,45 +17,53 @@
         #auth-btn { background: var(--accent); color: white; border: none; padding: 12px 25px; border-radius: 50px; font-weight: bold; cursor: pointer; box-shadow: 0 4px 14px rgba(99, 102, 241, 0.4); }
         .footer { font-size: 0.8em; color: #94a3b8; margin-top: 20px; line-height: 1.6; }
         
-        /* 🚀 ŞABLONA BİREBİR UYGUN PREMIUM KUTU TASARIMI */
+        /* 🚀 PREMİUM VE PROFESYONEL WEB3 UYARI KUTUSU */
         .auth-warning { 
             color: #1e293b; 
-            padding: 20px; 
+            padding: 24px; 
             font-size: 0.95em; 
             line-height: 1.6; 
-            border: 4px solid #f59e0b; /* 1. Adım: Çok daha vurgulu ve net dış çerçeve */
+            border: 4px solid #f59e0b; 
             border-radius: 24px; 
-            background: #fef3c7; /* Yumuşak ve dikkat çekici amber zemin */
+            /* Basitliği yok eden modern gradyan geçişli premium arka plan */
+            background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); 
             text-align: center;
-            box-shadow: 0 10px 25px rgba(245, 158, 11, 0.2);
+            box-shadow: 0 12px 28px rgba(245, 158, 11, 0.25);
         }
 
-        /* 2. Adım: Başlık kısmını tamamen ayıran siber lacivert iç çerçeve kutusu */
+        /* Katmanlı siber lacivert iç başlık paneli */
         .auth-title-box {
             background: #2e3b6e; 
             color: #ffffff;
             padding: 14px;
-            border-radius: 12px;
+            border-radius: 14px;
             font-weight: bold;
             font-size: 1.05em;
-            margin-bottom: 15px;
+            margin-bottom: 16px;
             border: 1px solid #1e293b;
             display: flex;
             align-items: center;
             justify-content: center;
             gap: 8px;
+            box-shadow: inset 0 1px 3px rgba(255,255,255,0.1), 0 4px 6px rgba(0,0,0,0.15);
         }
 
-        /* 3. Adım: Metin içindeki Pi ile Bağlan ibaresini parlatıp buton yapan özel stil */
+        /* 💎 İSTEK: Tek satırda bağımsız duran, maksimum dikkat çekici buton alanı */
+        .highlight-btn-row {
+            display: block;
+            margin: 12px auto 4px auto;
+        }
+
         .highlight-btn-text {
-            background: #0052ff; /* Görseldeki o net canlı mavi */
-            color: #ffffff;      /* Beyaz yazı */
-            padding: 4px 12px;
-            border-radius: 12px; /* Oval kenar yapısı */
+            background: #0052ff; 
+            color: #ffffff;      
+            padding: 6px 20px;
+            border-radius: 50px; /* Tam oval kurumsal buton yapısı */
             font-weight: bold;
-            white-space: nowrap;
+            font-size: 0.95em;
             display: inline-block;
-            box-shadow: 0 2px 6px rgba(0, 82, 255, 0.3);
+            box-shadow: 0 4px 10px rgba(0, 82, 255, 0.35);
+            letter-spacing: 0.5px;
         }
         
         /* Linklerin canlı ve parlak mavi renk stili */
@@ -83,8 +91,11 @@
                 <div class="auth-title-box">
                     🔒 Web3 Kimlik Doğrulaması Gerekli
                 </div>
-                <span style="font-size: 0.95em; color: #334155; display: block; font-weight: 500;">
-                    Satıştaki domain listesini görmek için yukarıdaki <span class="highlight-btn-text">"Pi ile Bağlan"</span> butonunu kullanın.
+                <span style="font-size: 0.95em; color: #475569; display: block; font-weight: 600;">
+                    Satıştaki domain listesini görmek için şu butonu kullanın:
+                </span>
+                <span class="highlight-btn-row">
+                    <span class="highlight-btn-text">Pi ile Bağlan</span>
                 </span>
             </div>
         </div>
@@ -170,8 +181,11 @@
                     <div class="auth-title-box">
                         🔒 Web3 Kimlik Doğrulaması Gerekli
                     </div>
-                    <span style="font-size: 0.95em; color: #334155; display: block; font-weight: 500;">
-                        Satıştaki domain listesini görmek için yukarıdaki <span class="highlight-btn-text">"Pi ile Bağlan"</span> butonunu kullanın.
+                    <span style="font-size: 0.95em; color: #475569; display: block; font-weight: 600;">
+                        Satıştaki domain listesini görmek için şu butonu kullanın:
+                    </span>
+                    <span class="highlight-btn-row">
+                        <span class="highlight-btn-text">Pi ile Bağlan</span>
                     </span>
                 </div>
             `;
