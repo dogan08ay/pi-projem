@@ -17,19 +17,17 @@
         #auth-btn { background: var(--accent); color: white; border: none; padding: 12px 25px; border-radius: 50px; font-weight: bold; cursor: pointer; box-shadow: 0 4px 14px rgba(99, 102, 241, 0.4); }
         .footer { font-size: 0.8em; color: #94a3b8; margin-top: 20px; line-height: 1.6; }
         
-        /* 💎 YENİ NESİL WEB3 BİLGİLENDİRME KARTI STİLİ */
+        /* 💎 PREMIUM, TAMAMEN AYRI VE GÖZE ÇARPAN WEB3 DOĞRULAMA KARTI */
         .auth-warning { 
-            color: #e2e8f0; 
+            color: #f1f5f9; 
             padding: 24px; 
             font-size: 0.95em; 
-            line-height: 1.6; 
-            border: 1px solid rgba(99, 102, 241, 0.25); 
-            border-left: 5px solid #818cf8; 
+            line-height: 1.5; 
+            border: 2px solid rgba(129, 140, 248, 0.4); /* Net ve belirgin çerçeve */
             border-radius: 16px; 
-            background: rgba(30, 41, 59, 0.7); 
-            backdrop-filter: blur(8px);
+            background: #1e1b4b; /* Ekrandan tamamen ayrışan, dikkat çekici özel arka plan */
             text-align: center;
-            box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.05), 0 4px 20px rgba(0, 0, 0, 0.2);
+            box-shadow: 0 0 20px rgba(99, 102, 241, 0.15); /* Hafif dış ışıltı ile bağımsız katman hissi */
         }
         
         /* Linklerin canlı ve parlak mavi renk stili */
@@ -54,7 +52,8 @@
         <h3>Satıştaki Domainler</h3>
         <div class="domain-grid" id="domain-list">
             <div class="auth-warning" style="grid-column: span 2;">
-                🔒 ✨ <strong>Web3 Ağ Bağlantısı Gerekli:</strong> Satıştaki aktif domain listesini ve fiyatlandırmaları görüntülemek için lütfen yukarıdaki <strong>"Pi ile Bağlan"</strong> adımı ile cüzdan doğrulaması yapın.
+                🔒 <strong>Web3 Kimlik Doğrulaması Gerekli</strong><br>
+                <span style="font-size: 0.9em; color: #cbd5e1; display: block; margin-top: 6px;">Satıştaki domain listesini ve fiyatları görmek için lütfen yukarıdaki <strong>"Pi ile Bağlan"</strong> butonunu kullanın.</span>
             </div>
         </div>
     </div>
@@ -136,7 +135,8 @@
         if (!isUserAuthenticated) {
             list.innerHTML = `
                 <div class="auth-warning" style="grid-column: span 2;">
-                    🔒 ✨ <strong>Web3 Ağ Bağlantısı Gerekli:</strong> Satıştaki aktif domain listesini ve fiyatlandırmaları görüntülemek için lütfen yukarıdaki <strong>"Pi ile Bağlan"</strong> adımı ile cüzdan doğrulaması yapın.
+                    🔒 <strong>Web3 Kimlik Doğrulaması Gerekli</strong><br>
+                    <span style="font-size: 0.9em; color: #cbd5e1; display: block; margin-top: 6px;">Satıştaki domain listesini ve fiyatları görmek için lütfen yukarıdaki <strong>"Pi ile Bağlan"</strong> butonunu kullanın.</span>
                 </div>
             `;
             return;
