@@ -22,7 +22,7 @@
         .footer-link { color: #38bdf8; font-weight: bold; text-decoration: none; display: inline-flex; align-items: center; gap: 4px; }
         .footer-link:hover { text-decoration: underline; }
         
-        /* Mail sembolü, tıpkı Telegram sembolü gibi net ve temiz beyaz yapıldı */
+        /* Mail sembolü beyaz stili */
         .mail-icon { color: #ffffff; font-weight: bold; margin-right: 2px; font-size: 1.1em; }
     </style>
 </head>
@@ -54,7 +54,7 @@
 
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
-    import { getFirestore, doc, onSnapshot, updateDoc, collection, setDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
+    import { getFirestore, doc, onSnapshot, updateDoc, collection, setDoc, deleteDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
     import { getAnalytics, logEvent } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-analytics.js";
 
     const firebaseConfig = {
@@ -78,11 +78,27 @@
         console.log("Analytics başlatılamadı, pasif modda devam ediliyor.");
     }
 
-    // 1. CANLI SAYAÇ DİNLEYİCİSİ
+    // 1. KUSURSUZ HALE GETİRİLMİŞ CANLI SAYAÇ DİNLEYİCİSİ
     onSnapshot(collection(db, "online_users"), (snapshot) => {
         const countElement = document.getElementById('online-count');
         if (countElement) {
-            countElement.innerText = "Aktif Kullanıcı: " + snapshot.size;
+            const now = Date.now();
+            const fiveMinutesAgo = now - (5 * 60 * 1000);
+            let activeCount = 0;
+            
+            snapshot.forEach((doc) => {
+                const data = doc.data();
+                if (data.lastSeen && data.lastSeen.toMillis) {
+                    const lastSeenTime = data.lastSeen.toMillis();
+                    // Sadece son 5 dakika içinde sinyal göndermiş olan gerçek aktifleri say
+                    if (lastSeenTime > fiveMinutesAgo) {
+                        activeCount++;
+                    }
+                }
+            });
+            
+            // Eğer herkes çıktıysa ve aktif sayısı 0 ise ekrana net olarak 0 yazsın
+            countElement.innerText = "Aktif Kullanıcı: " + activeCount;
         }
     }, (error) => {
         console.log("Sayaç yüklenirken hata oluştu.");
@@ -168,8 +184,16 @@
             }
 
             try {
-                await setDoc(doc(db, "online_users", auth.user.username), { lastSeen: new Date() });
+                // Sunucu saatini (serverTimestamp) taban alarak oturumu başlatıyoruz
+                await setDoc(doc(db, "online_users", auth.user.username), { lastSeen: serverTimestamp() });
                 
+                // Arka planda donmayı engellemek için düzenli güncelleme
+                setInterval(async () => {
+                    if (isUserAuthenticated) {
+                        await setDoc(doc(db, "online_users", auth.user.username), { lastSeen: serverTimestamp() }, { merge: true });
+                    }
+                }, 30000); // 30 saniyede bir can suyu sinyali gönderir
+
                 window.addEventListener("beforeunload", async () => {
                     await deleteDoc(doc(db, "online_users", auth.user.username));
                 });
