@@ -48,7 +48,7 @@
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
     import { getFirestore, doc, onSnapshot, updateDoc, collection, setDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
-    import { getAnalytics } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-analytics.js";
+    import { getAnalytics, logEvent } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-analytics.js";
 
     const firebaseConfig = {
         apiKey: "AIzaSyC9r244vRVGbYOcLHyS6EHxKyiygajW7_A",
@@ -57,12 +57,15 @@
         storageBucket: "web3-domain-gateway.firebasestorage.app",
         messagingSenderId: "315563254318",
         appId: "1:315563254318:web:12f2f3f340bb69606df5bf",
-        measurementId: "G-1MC05YBPCC"
+        measurementId: "G-1MC05YBPCC" // Analytics ölçüm kimliği eklendi
     };
 
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
-    const analytics = getAnalytics(app);
+    const analytics = getAnalytics(app); // Analytics başlatıldı
+
+    // Sayfa ilk açıldığında Analytics'e bildirim gönder
+    logEvent(analytics, 'page_view');
 
     // 1. CANLI SAYAÇ DİNLEYİCİSİ
     onSnapshot(collection(db, "online_users"), (snapshot) => {
@@ -112,95 +115,4 @@
             
             card.innerHTML = `
                 <img src="${d.img}" class="domain-img" onerror="this.src='https://via.placeholder.com/60'">
-                <strong style="display:block; width: 100%; overflow: hidden; text-overflow: ellipsis;">${d.name}</strong><br>
-                <span style="font-size: 0.85em; color: #a5b4fc; white-space: nowrap; display: block;">
-                    ${isSold ? `SATILDI (${price} Pi)` : price + ' Pi'}
-                </span>
-            `;
-            
-            if (!isSold) {
-                const btn = document.createElement('button');
-                btn.className = 'btn-buy';
-                btn.innerText = 'Satın Al';
-                btn.onclick = () => startPurchase(d.name, price);
-                card.appendChild(btn);
-            }
-            list.appendChild(card);
-        });
-    }
-
-    // Gerçek zamanlı veritabanı takibi
-    domains.forEach(d => {
-        onSnapshot(doc(db, "domains", d.name), (doc) => {
-            if (doc.exists()) {
-                domainData[d.name] = doc.data();
-                render();
-            }
-        });
-    });
-
-    Pi.init({ version: "2.0", sandbox: true });
-
-    // 2. Pİ ILE BAĞLANMA FONKSİYONU
-    window.loginWithPi = function() {
-        Pi.authenticate(['username', 'payments'], () => {})
-        .then(async (auth) => {
-            isUserAuthenticated = true; // Giriş yapıldı olarak işaretle
-            document.getElementById('user-status').innerText = "Bağlı: @" + auth.user.username;
-            document.getElementById('auth-btn').style.display = 'none';
-            
-            // Arayüzü tetikle (Domain listesini getirir)
-            render();
-
-            // Kullanıcıyı veritabanında çevrimiçi yap
-            try {
-                await setDoc(doc(db, "online_users", auth.user.username), { lastSeen: new Date() });
-                
-                // Uygulamadan çıkarken veya sekmeyi kapatırken kullanıcıyı listeden sil
-                window.addEventListener("beforeunload", async () => {
-                    await deleteDoc(doc(db, "online_users", auth.user.username));
-                });
-            } catch (e) {
-                console.error("Sayaç güncelleme hatası:", e);
-            }
-        })
-        .catch(err => alert("Giriş başarısız: " + err));
-    }
-
-    // 3. SATIN ALMA FONKSİYONU
-    window.startPurchase = function(domain, amount) {
-        if(!isUserAuthenticated) {
-            alert("Lütfen önce Pi ile bağlanın!");
-            return;
-        }
-
-        Pi.createPayment({
-            amount: amount,
-            memo: "Domain: " + domain,
-            metadata: { domain: domain }
-        }, {
-            onReadyForServerApproval: (id) => handleServerSidePayment(id, 'approve', null),
-            onReadyForServerCompletion: (id, txid) => {
-                updateDoc(doc(db, "domains", domain), { sold: true });
-                handleServerSidePayment(id, 'complete', txid);
-            },
-            onCancel: () => alert("Ödeme iptal edildi."),
-            onError: (err) => alert("Ödeme hatası: " + err.message)
-        });
-    }
-
-    function handleServerSidePayment(paymentId, action, txid) {
-        fetch('/api/approve', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ paymentId, action, txid })
-        })
-        .then(res => res.json())
-        .then(data => {
-            if(action === 'complete') alert("✅ Başarılı! Satın alma tamamlandı.");
-        })
-        .catch(err => console.error("Sunucu Hatası:", err));
-    }
-</script>
-</body>
-</html>
+                <strong style="display:block; width: 100%; overflow: hidden;
