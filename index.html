@@ -15,12 +15,10 @@
         .domain-img { width: 100%; height: 120px; margin-bottom: 10px; border-radius: 12px; object-fit: contain; background-color: #334155; padding: 5px; }
         .btn-buy { background: var(--accent); color: white; border: none; padding: 8px 16px; border-radius: 8px; cursor: pointer; margin-top: 10px; font-weight: bold; width: 100%; }
         #auth-btn { background: var(--accent); color: white; border: none; padding: 12px 25px; border-radius: 50px; font-weight: bold; cursor: pointer; box-shadow: 0 4px 14px rgba(99, 102, 241, 0.4); }
-        .section-title-box { background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); color: #1e293b; padding: 12px 28px; border-radius: 16px; border: 3px solid #f59e0b; font-size: 1.15em; font-weight: 800; display: inline-block; margin: 5px auto 25px auto; }
-        .auth-warning { color: #1e293b; padding: 24px; border: 4px solid #f59e0b; border-radius: 24px; background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); text-align: center; }
-        .lock-message { font-size: 1.05em; font-weight: 700; line-height: 1.8; color: #f8fafc; }
-        .inline-btn-highlight { background: #0052ff; color: #ffffff; padding: 6px 20px; border-radius: 50px; font-weight: 800; display: inline-block; margin: 10px 0; }
-        .admin-card { display: none; background: #111827; border: 2px dashed #10b981; padding: 20px; border-radius: 20px; margin-top: 30px; text-align: left; width: 100%; }
-        .user-tag { background: #1f2937; padding: 4px 12px; border-radius: 50px; font-size: 0.8em; margin: 4px; display: inline-block; }
+        
+        /* GİZLİ YÖNETİCİ PANELİ */
+        .admin-panel { display: none; background: #0f172a; border: 2px solid #10b981; padding: 20px; border-radius: 15px; margin-top: 20px; text-align: left; }
+        .log-day { background: #1e293b; padding: 10px; margin-bottom: 10px; border-radius: 8px; }
     </style>
 </head>
 <body>
@@ -28,77 +26,58 @@
 <div class="container">
     <div class="card">
         <h1>Web3 Domain</h1>
-        <p id="online-count" style="color: #a5b4fc; font-size: 0.9em; font-weight: bold;">Aktif: Yükleniyor...</p>
         <p id="user-status">Lütfen bağlanın.</p>
         <button id="auth-btn" onclick="loginWithPi()">Pi ile Bağlan</button>
     </div>
 
-    <div class="card">
-        <div class="section-title-box">Satıştaki Domainler</div>
-        <div class="domain-grid" id="domain-list">
-            <div class="auth-warning" style="grid-column: span 2;">
-                <div class="lock-message">
-                    🔒 Erişim için Pi doğrulamasını yukarıdaki<br>
-                    <span class="inline-btn-highlight">Pi ile Bağlan</span><br>
-                    butonunu kullanarak tamamlayınız.
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <div class="admin-card" id="developer-panel">
-        <div style="color:#10b981; font-weight:bold;">📊 Yönetici Paneli</div>
-        <div id="total-users-list"></div>
+    <div class="admin-panel" id="admin-panel">
+        <h3 style="color: #10b981;">📅 Günlük Giriş Kayıtları</h3>
+        <div id="logs-container"></div>
     </div>
 </div>
 
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
-    import { getFirestore, doc, onSnapshot, updateDoc, collection, setDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
+    import { getFirestore, doc, setDoc, onSnapshot, collection, arrayUnion, query, orderBy } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
 
-    const firebaseConfig = {
-        apiKey: "AIzaSyC9r244vRVGbYOcLHyS6EHxKyiygajW7_A",
-        authDomain: "web3-domain-gateway.firebaseapp.com",
-        projectId: "web3-domain-gateway",
-        storageBucket: "web3-domain-gateway.firebasestorage.app",
-        messagingSenderId: "315563254318",
-        appId: "1:315563254318:web:12f2f3f340bb69606df5bf",
-        measurementId: "G-1MC05YBPCC"
-    };
-
+    const firebaseConfig = { /* ... AYNI CONFIG ... */ };
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
     const ADMIN_USER = "doganay0808";
 
-    // Pi SDK Başlatma
     Pi.init({ version: "2.0", sandbox: true });
 
     window.loginWithPi = function() {
-        Pi.authenticate(['username', 'payments'], () => {}).then(async (auth) => {
+        Pi.authenticate(['username'], () => {}).then(async (auth) => {
             const username = auth.user.username;
             document.getElementById('user-status').innerText = "Bağlı: @" + username;
             document.getElementById('auth-btn').style.display = 'none';
-            
-            if (username === ADMIN_USER) document.getElementById('developer-panel').style.display = 'block';
-            
-            // Veri Kayıt
-            await setDoc(doc(db, "all_users", username), { firstLogin: Date.now() }, { merge: true });
-            await setDoc(doc(db, "online_users", username), { lastSeen: Date.now() });
-            
-            // Liste Yenileme (Örnek Domainler)
-            document.getElementById('domain-list').innerHTML = `
-                <div class="domain-card"><img src="assets/doganay.jpeg" class="domain-img"><strong>doganay.pi</strong><button class="btn-buy">Satın Al</button></div>
-                <div class="domain-card"><img src="assets/test.jpeg" class="domain-img"><strong>test.pi</strong><button class="btn-buy">Satın Al</button></div>
-            `;
-        }).catch(err => alert("Giriş hatası: " + err.message));
+
+            if (username === ADMIN_USER) {
+                document.getElementById('admin-panel').style.display = 'block';
+                loadAdminLogs();
+            }
+
+            // GÜNLÜK LOG KAYDI
+            const today = new Date().toISOString().split('T')[0];
+            await setDoc(doc(db, "login_logs", today), {
+                users: arrayUnion(username)
+            }, { merge: true });
+        });
     }
 
-    // Sayaçlar
-    onSnapshot(collection(db, "all_users"), (snap) => {
-        const list = document.getElementById('total-users-list');
-        list.innerHTML = '';
-        snap.forEach(d => list.innerHTML += `<span class="user-tag">@${d.id}</span>`);
-    });
+    function loadAdminLogs() {
+        onSnapshot(query(collection(db, "login_logs"), orderBy("__name__", "desc")), (snap) => {
+            const container = document.getElementById('logs-container');
+            container.innerHTML = '';
+            snap.forEach(doc => {
+                container.innerHTML += `
+                    <div class="log-day">
+                        <strong>${doc.id}</strong>: ${doc.data().users.join(', ')}
+                    </div>`;
+            });
+        });
+    }
 </script>
 </body>
 </html>
