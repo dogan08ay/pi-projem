@@ -17,18 +17,19 @@
         #auth-btn { background: var(--accent); color: white; border: none; padding: 12px 25px; border-radius: 50px; font-weight: bold; cursor: pointer; box-shadow: 0 4px 14px rgba(99, 102, 241, 0.4); }
         .footer { font-size: 0.8em; color: #94a3b8; margin-top: 20px; line-height: 1.6; }
         
-        /* YENİLENEN VE DİKKAT ÇEKEN UYARI ALANI STİLİ */
+        /* 💎 YENİ NESİL WEB3 BİLGİLENDİRME KARTI STİLİ */
         .auth-warning { 
-            color: #fef08a; 
-            padding: 22px; 
+            color: #e2e8f0; 
+            padding: 24px; 
             font-size: 0.95em; 
             line-height: 1.6; 
-            border: 1px solid rgba(245, 158, 11, 0.3); 
-            border-left: 5px solid #f59e0b; 
-            border-radius: 12px; 
-            background: rgba(245, 158, 11, 0.08); 
+            border: 1px solid rgba(99, 102, 241, 0.25); 
+            border-left: 5px solid #818cf8; 
+            border-radius: 16px; 
+            background: rgba(30, 41, 59, 0.7); 
+            backdrop-filter: blur(8px);
             text-align: center;
-            font-weight: 500;
+            box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.05), 0 4px 20px rgba(0, 0, 0, 0.2);
         }
         
         /* Linklerin canlı ve parlak mavi renk stili */
@@ -53,7 +54,7 @@
         <h3>Satıştaki Domainler</h3>
         <div class="domain-grid" id="domain-list">
             <div class="auth-warning" style="grid-column: span 2;">
-                ⚠️ <strong>Erişim Kısıtlı:</strong> Satıştaki domain listesini ve güncel fiyatları inceleyebilmek için lütfen yukarıdaki <strong>"Pi ile Bağlan"</strong> butonunu kullanarak giriş yapın.
+                🔒 ✨ <strong>Web3 Ağ Bağlantısı Gerekli:</strong> Satıştaki aktif domain listesini ve fiyatlandırmaları görüntülemek için lütfen yukarıdaki <strong>"Pi ile Bağlan"</strong> adımı ile cüzdan doğrulaması yapın.
             </div>
         </div>
     </div>
@@ -135,7 +136,7 @@
         if (!isUserAuthenticated) {
             list.innerHTML = `
                 <div class="auth-warning" style="grid-column: span 2;">
-                    ⚠️ <strong>Erişim Kısıtlı:</strong> Satıştaki domain listesini ve güncel fiyatları inceleyebilmek için lütfen yukarıdaki <strong>"Pi ile Bağlan"</strong> butonunu kullanarak giriş yapın.
+                    🔒 ✨ <strong>Web3 Ağ Bağlantısı Gerekli:</strong> Satıştaki aktif domain listesini ve fiyatlandırmaları görüntülemek için lütfen yukarıdaki <strong>"Pi ile Bağlan"</strong> adımı ile cüzdan doğrulaması yapın.
                 </div>
             `;
             return;
