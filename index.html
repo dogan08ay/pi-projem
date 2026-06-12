@@ -42,6 +42,7 @@
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
     import { getFirestore, doc, onSnapshot, updateDoc } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
+    import { getAnalytics } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-analytics.js";
 
     const firebaseConfig = {
         apiKey: "AIzaSyC9r244vRVGbYOcLHyS6EHxKyiygajW7_A",
@@ -49,11 +50,13 @@
         projectId: "web3-domain-gateway",
         storageBucket: "web3-domain-gateway.firebasestorage.app",
         messagingSenderId: "315563254318",
-        appId: "1:315563254318:web:12f2f3f340bb69606df5bf"
+        appId: "1:315563254318:web:12f2f3f340bb69606df5bf",
+        measurementId: "G-1MC05YBPCC"
     };
 
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
+    const analytics = getAnalytics(app); // Analiz sistemi aktif edildi
 
     Pi.init({ version: "2.0", sandbox: true });
 
