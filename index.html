@@ -17,6 +17,21 @@
         #auth-btn { background: var(--accent); color: white; border: none; padding: 12px 25px; border-radius: 50px; font-weight: bold; cursor: pointer; box-shadow: 0 4px 14px rgba(99, 102, 241, 0.4); }
         .footer { font-size: 0.8em; color: #94a3b8; margin-top: 20px; line-height: 1.6; }
         
+        /* 🎯 YENİ: SATIŞTAKİ DOMAİNLER BAŞLIK PANELİ (PREMİUM ÇERÇEVELİ) */
+        .section-title-box {
+            background: #1e293b;
+            color: #ffffff;
+            padding: 12px 20px;
+            border-radius: 14px;
+            border: 2px solid #475569;
+            font-size: 1.15em;
+            font-weight: bold;
+            display: inline-block;
+            margin: 5px auto 15px auto;
+            letter-spacing: 0.5px;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.2), 0 4px 6px rgba(0,0,0,0.1);
+        }
+
         /* 🚀 PREMİUM VE PROFESYONEL WEB3 UYARI KUTUSU */
         .auth-warning { 
             color: #1e293b; 
@@ -25,7 +40,6 @@
             line-height: 1.6; 
             border: 4px solid #f59e0b; 
             border-radius: 24px; 
-            /* Basitliği yok eden modern gradyan geçişli premium arka plan */
             background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); 
             text-align: center;
             box-shadow: 0 12px 28px rgba(245, 158, 11, 0.25);
@@ -48,7 +62,7 @@
             box-shadow: inset 0 1px 3px rgba(255,255,255,0.1), 0 4px 6px rgba(0,0,0,0.15);
         }
 
-        /* 💎 İSTEK: Tek satırda bağımsız duran, maksimum dikkat çekici buton alanı */
+        /* Tek satırda bağımsız duran, maksimum dikkat çekici buton alanı */
         .highlight-btn-row {
             display: block;
             margin: 12px auto 4px auto;
@@ -58,7 +72,7 @@
             background: #0052ff; 
             color: #ffffff;      
             padding: 6px 20px;
-            border-radius: 50px; /* Tam oval kurumsal buton yapısı */
+            border-radius: 50px; 
             font-weight: bold;
             font-size: 0.95em;
             display: inline-block;
@@ -85,14 +99,15 @@
     </div>
 
     <div class="card">
-        <h3>Satıştaki Domainler</h3>
+        <div class="section-title-box">Satıştaki Domainler</div>
+        
         <div class="domain-grid" id="domain-list">
             <div class="auth-warning" style="grid-column: span 2;">
                 <div class="auth-title-box">
                     🔒 Web3 Kimlik Doğrulaması Gerekli
                 </div>
-                <span style="font-size: 0.95em; color: #475569; display: block; font-weight: 600;">
-                    Satıştaki domain listesini görmek için şu butonu kullanın:
+                <span style="font-size: 0.95em; color: #475569; display: block; font-weight: 600; padding: 0 5px;">
+                    Satıştaki domain listesini görmek için yukarıdaki bölümü kullanın:
                 </span>
                 <span class="highlight-btn-row">
                     <span class="highlight-btn-text">Pi ile Bağlan</span>
@@ -181,8 +196,8 @@
                     <div class="auth-title-box">
                         🔒 Web3 Kimlik Doğrulaması Gerekli
                     </div>
-                    <span style="font-size: 0.95em; color: #475569; display: block; font-weight: 600;">
-                        Satıştaki domain listesini görmek için şu butonu kullanın:
+                    <span style="font-size: 0.95em; color: #475569; display: block; font-weight: 600; padding: 0 5px;">
+                        Satıştaki domain listesini görmek için yukarıdaki bölümü kullanın:
                     </span>
                     <span class="highlight-btn-row">
                         <span class="highlight-btn-text">Pi ile Bağlan</span>
