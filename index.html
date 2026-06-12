@@ -14,9 +14,22 @@
         .domain-card { background: #334155; padding: 20px; border-radius: 12px; border: 1px solid #475569; transition: 0.3s; display: flex; flex-direction: column; align-items: center; }
         .domain-img { width: 100%; height: 120px; margin-bottom: 10px; border-radius: 12px; object-fit: contain; background-color: #334155; padding: 5px; }
         .btn-buy { background: var(--accent); color: white; border: none; padding: 8px 16px; border-radius: 8px; cursor: pointer; margin-top: 10px; font-weight: bold; width: 100%; }
-        #auth-btn { background: var(--accent); color: white; border: none; padding: 12px 25px; border-radius: 50px; font-weight: bold; cursor: pointer; }
+        #auth-btn { background: var(--accent); color: white; border: none; padding: 12px 25px; border-radius: 50px; font-weight: bold; cursor: pointer; box-shadow: 0 4px 14px rgba(99, 102, 241, 0.4); }
         .footer { font-size: 0.8em; color: #94a3b8; margin-top: 20px; line-height: 1.6; }
-        .auth-warning { color: #f1f5f9; padding: 20px; font-size: 0.95em; line-height: 1.5; border: 1px dashed #475569; border-radius: 12px; background: #1e293b; }
+        
+        /* YENİLENEN VE DİKKAT ÇEKEN UYARI ALANI STİLİ */
+        .auth-warning { 
+            color: #fef08a; 
+            padding: 22px; 
+            font-size: 0.95em; 
+            line-height: 1.6; 
+            border: 1px solid rgba(245, 158, 11, 0.3); 
+            border-left: 5px solid #f59e0b; 
+            border-radius: 12px; 
+            background: rgba(245, 158, 11, 0.08); 
+            text-align: center;
+            font-weight: 500;
+        }
         
         /* Linklerin canlı ve parlak mavi renk stili */
         .footer-link { color: #38bdf8; font-weight: bold; text-decoration: none; display: inline-flex; align-items: center; gap: 4px; }
@@ -40,7 +53,7 @@
         <h3>Satıştaki Domainler</h3>
         <div class="domain-grid" id="domain-list">
             <div class="auth-warning" style="grid-column: span 2;">
-                Satıştaki domainleri görmek için lütfen Pi hesabı ile bağlan butonunu tıklayın.
+                ⚠️ <strong>Erişim Kısıtlı:</strong> Satıştaki domain listesini ve güncel fiyatları inceleyebilmek için lütfen yukarıdaki <strong>"Pi ile Bağlan"</strong> butonunu kullanarak giriş yapın.
             </div>
         </div>
     </div>
@@ -78,7 +91,7 @@
         console.log("Analytics başlatılamadı, pasif modda devam ediliyor.");
     }
 
-    // 1. DÜZENLENMİŞ CANLI SAYAÇ DİNLEYİCİSİ
+    // 1. CANLI SAYAÇ DİNLEYİCİSİ
     onSnapshot(collection(db, "online_users"), (snapshot) => {
         const countElement = document.getElementById('online-count');
         if (countElement) {
@@ -122,7 +135,7 @@
         if (!isUserAuthenticated) {
             list.innerHTML = `
                 <div class="auth-warning" style="grid-column: span 2;">
-                    Satıştaki domainleri görmek için lütfen Pi hesabı ile bağlan butonunu tıklayın.
+                    ⚠️ <strong>Erişim Kısıtlı:</strong> Satıştaki domain listesini ve güncel fiyatları inceleyebilmek için lütfen yukarıdaki <strong>"Pi ile Bağlan"</strong> butonunu kullanarak giriş yapın.
                 </div>
             `;
             return;
@@ -200,7 +213,7 @@
         .catch(err => alert("Giriş başarısız: " + err));
     }
 
-    // 3. SATIN ALMA VE "SATILDI" DURUMUNU GÜNCELLEME FONKSİYONU
+    // 3. SATIN ALMA FONKSİYONU
     window.startPurchase = function(domain, amount) {
         if(!isUserAuthenticated) {
             alert("Lütfen önce Pi ile bağlanın!");
@@ -218,7 +231,6 @@
         }, {
             onReadyForServerApproval: (id) => handleServerSidePayment(id, 'approve', null),
             onReadyForServerCompletion: (id, txid) => {
-                // Ödeme bittiği an veri tabanını güncelliyoruz (Artık kurallar izin veriyor)
                 updateDoc(doc(db, "domains", domain), { sold: true })
                 .then(() => {
                     console.log("Domain durumu başarıyla SATILDI olarak işaretlendi.");
