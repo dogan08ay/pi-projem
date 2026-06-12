@@ -17,8 +17,10 @@
         #auth-btn { background: var(--accent); color: white; border: none; padding: 12px 25px; border-radius: 50px; font-weight: bold; cursor: pointer; }
         .footer { font-size: 0.8em; color: #94a3b8; margin-top: 20px; line-height: 1.6; }
         .auth-warning { color: #f1f5f9; padding: 20px; font-size: 0.95em; line-height: 1.5; border: 1px dashed #475569; border-radius: 12px; background: #1e293b; }
-        .tg-link { color: #38bdf8; font-weight: bold; text-decoration: none; margin-left: 10px; display: inline-flex; align-items: center; }
-        .tg-link:hover { text-decoration: underline; }
+        
+        /* Mail ve Telegram linkleri için ortak, net ve canlı mavi renk stili */
+        .footer-link { color: #38bdf8; font-weight: bold; text-decoration: none; }
+        .footer-link:hover { text-decoration: underline; }
     </style>
 </head>
 <body>
@@ -41,7 +43,7 @@
     </div>
 
     <div class="footer">
-        <p>Sorularınız için bize ulaşın: <strong>doganay08@hotmail.com</strong> | <a href="https://t.me/+5jZi9vrcNMM2NGVk" target="_blank" class="tg-link">📱 Telegram Grubumuz</a></p>
+        <p>Sorularınız için bize ulaşın: <a href="mailto:doganay08@hotmail.com" class="footer-link">doganay08@hotmail.com</a> | <a href="https://t.me/+5jZi9vrcNMM2NGVk" target="_blank" class="footer-link">📱 Telegram Grubumuz</a></p>
         <a href="privacy.html" style="color: var(--accent);">Gizlilik Politikası</a> | 
         <a href="terms.html" style="color: var(--accent);">Kullanım Şartları</a>
     </div>
