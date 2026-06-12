@@ -7,7 +7,7 @@
     <script src="https://sdk.minepi.com/pi-sdk.js"></script>
     <style>
         :root { --bg: #0f172a; --card: #1e293b; --accent: #6366f1; --text: #f8fafc; }
-        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 20px; display: flex; justify-content: center; }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 20px; display: flex; flex-direction: column; align-items: center; }
         .container { max-width: 600px; width: 100%; text-align: center; }
         .card { background: var(--card); padding: 25px; border-radius: 20px; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.3); margin-bottom: 20px; }
         .domain-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 20px; }
@@ -58,7 +58,6 @@
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
         }
 
-        /* Satır satır böldüğümüz ana yazı stili */
         .lock-message {
             font-size: 1.05em;
             font-weight: 700;
@@ -67,7 +66,6 @@
             max-width: 95%;
         }
 
-        /* KUTU İÇİNDEKİ PARLAK MAVİ REEL BUTON VURGUSU */
         .inline-btn-highlight {
             background: #0052ff; 
             color: #ffffff;      
@@ -82,7 +80,12 @@
             border: 1px solid rgba(255, 255, 255, 0.2);
         }
         
-        /* Alt linkler */
+        /* 🛠️ YENİ EKLEMELER: GİRİŞ YAPANLAR TAKİP PANELİ STİLLERİ */
+        .admin-card { background: #111827; border: 2px dashed #4b5563; padding: 20px; border-radius: 20px; margin-top: 30px; text-align: left; }
+        .admin-title { font-size: 1.1em; font-weight: bold; color: #10b981; margin-bottom: 10px; display: flex; align-items: center; gap: 8px; }
+        .user-tag-list { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+        .user-tag { background: #1f2937; border: 1px solid #374151; padding: 4px 12px; border-radius: 50px; font-size: 0.85em; color: #e5e7eb; }
+        
         .footer-link { color: #38bdf8; font-weight: bold; text-decoration: none; display: inline-flex; align-items: center; gap: 4px; }
         .footer-link:hover { text-decoration: underline; }
         .mail-icon { color: #ffffff; font-weight: bold; margin-right: 2px; font-size: 1.1em; }
@@ -112,6 +115,16 @@
                 </div>
             </div>
         </div>
+    </div>
+
+    <div class="admin-card container">
+        <div class="admin-title">📊 Uygulama Giriş Kayıtları (Geliştirici Paneli)</div>
+        <p style="font-size: 0.9em; color: #9ca3af; margin: 5px 0;">Firebase tabanından anlık çekilen tekil kullanıcı verileridir.</p>
+        <div style="font-weight: bold; color: #f3f4f6; margin-top: 10px;">
+            Toplam Kayıtlı Tekil Kullanıcı: <span id="total-users-count" style="color: #10b981;">0</span>
+        </div>
+        <div class="user-tag-list" id="total-users-list">
+            </div>
     </div>
 
     <div class="footer">
@@ -147,7 +160,7 @@
         console.log("Analytics başlatılamadı, pasif modda devam ediliyor.");
     }
 
-    // CANLI SAYAÇ DİNLEYİCİSİ
+    // 1. CANLI AKTİF SAYAÇ DİNLEYİCİSİ
     onSnapshot(collection(db, "online_users"), (snapshot) => {
         const countElement = document.getElementById('online-count');
         if (countElement) {
@@ -164,11 +177,30 @@
                     }
                 }
             });
-            
             countElement.innerText = "Aktif Kullanıcı: " + activeCount;
         }
-    }, (error) => {
-        console.log("Sayaç yüklenirken hata oluştu.");
+    });
+
+    // 🛠️ 2. KALICI TÜM KULLANICILARI TAKİP EDEN YENİ DİNLEYİCİ
+    onSnapshot(collection(db, "all_users"), (snapshot) => {
+        const countBox = document.getElementById('total-users-count');
+        const listBox = document.getElementById('total-users-list');
+        
+        if(countBox && listBox) {
+            listBox.innerHTML = '';
+            let totalCount = 0;
+            
+            snapshot.forEach((doc) => {
+                totalCount++;
+                const username = doc.id; // Belge kimliği kullanıcı adıdır
+                const tag = document.createElement('span');
+                tag.className = 'user-tag';
+                tag.innerText = "@" + username;
+                listBox.appendChild(tag);
+            });
+            
+            countBox.innerText = totalCount;
+        }
     });
 
     const domains = [
@@ -246,29 +278,32 @@
         Pi.authenticate(['username', 'payments'], () => {})
         .then(async (auth) => {
             isUserAuthenticated = true;
-            document.getElementById('user-status').innerText = "Bağlı: @" + auth.user.username;
+            const username = auth.user.username;
+            document.getElementById('user-status').innerText = "Bağlı: @" + username;
             document.getElementById('auth-btn').style.display = 'none';
             
             render();
 
             if (analytics) {
-                logEvent(analytics, 'login', { method: 'Pi Network', username: auth.user.username });
+                logEvent(analytics, 'login', { method: 'Pi Network', username: username });
             }
 
             try {
-                await setDoc(doc(db, "online_users", auth.user.username), { lastSeen: Date.now() });
+                // 🛠️ HEM AKTİF LİSTEYE EKLE HEM DE KALICI KAYIT LİSTESİNE YAZ
+                await setDoc(doc(db, "all_users", username), { firstLogin: Date.now() }, { merge: true });
+                await setDoc(doc(db, "online_users", username), { lastSeen: Date.now() });
                 
                 setInterval(async () => {
                     if (isUserAuthenticated) {
-                        await setDoc(doc(db, "online_users", auth.user.username), { lastSeen: Date.now() }, { merge: true });
+                        await setDoc(doc(db, "online_users", username), { lastSeen: Date.now() }, { merge: true });
                     }
                 }, 30000);
 
                 window.addEventListener("beforeunload", async () => {
-                    await deleteDoc(doc(db, "online_users", auth.user.username));
+                    await deleteDoc(doc(db, "online_users", username));
                 });
             } catch (e) {
-                console.error("Sayaç güncelleme hatası:", e);
+                console.error("Kullanıcı kaydı oluşturulurken hata:", e);
             }
         })
         .catch(err => alert("Giriş başarısız: " + err));
