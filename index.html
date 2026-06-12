@@ -43,73 +43,60 @@
             box-shadow: 0 12px 28px rgba(245, 158, 11, 0.25);
         }
 
-        /* 💎 YENİ SİSTEM ALERTI TARZI LÜKS BAŞLIK ÇERÇEVESİ */
+        /* 💎 TÜM AÇIKLAMAYI İÇİNE ALAN PREMİUM SİSTEM BİLGİ KUTUSU */
         .auth-title-box {
-            background: #1e293b; /* Kart rengi ile pürüzsüz uyum */
+            background: #1e293b; 
             color: #ffffff;
-            padding: 20px 16px;
+            padding: 26px 20px;
             border-radius: 18px;
-            margin-bottom: 22px;
-            border: 1.5px solid rgba(245, 158, 11, 0.4); /* Zarif, ince geçiş çizgisi */
+            border: 1.5px solid rgba(245, 158, 11, 0.4); 
             display: flex;
-            flex-direction: column; /* İkon üstte, yazı altta modern yerleşim */
+            flex-direction: column; 
             align-items: center;
             justify-content: center;
-            gap: 12px;
+            gap: 14px;
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
         }
 
-        /* Yuvarlak, korumalı kilit yatağı */
+        /* Üst taraftaki yuvarlak korumalı kilit yatağı */
         .lock-badge {
             background: rgba(245, 158, 11, 0.15);
             border: 1px solid rgba(245, 158, 11, 0.3);
-            width: 44px;
-            height: 44px;
+            width: 46px;
+            height: 46px;
             border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 1.3em;
-            box-shadow: inset 0 1px 3px rgba(255,255,255,0.05);
+            font-size: 1.4em;
+            margin-bottom: 4px;
         }
 
-        /* Kart içi kurumsal mesaj stili */
+        /* Satır satır böldüğümüz ana yazı stili */
         .lock-message {
-            font-size: 1em;
-            font-weight: 700;
-            line-height: 1.5;
-            letter-spacing: -0.1px;
+            font-size: 0.98em;
+            font-weight: 600;
+            line-height: 1.7;
             color: #f8fafc;
+            max-width: 90%;
         }
 
-        /* Alt yönlendirme açıklama metni */
-        .sub-warning-text {
-            font-size: 0.95em; 
-            color: #334155; 
-            display: block; 
-            font-weight: 600; 
-            line-height: 1.6;
-        }
-
-        /* Metin içindeki buton satırı */
-        .highlight-btn-row {
-            display: block;
-            margin: 14px auto;
-        }
-
-        .highlight-btn-text {
+        /* KUTU İÇİNDEKİ PARLAK MAVİ DURAN REEL BUTON VURGUSU */
+        .inline-btn-highlight {
             background: #0052ff; 
             color: #ffffff;      
-            padding: 9px 28px;
+            padding: 6px 24px;
             border-radius: 50px; 
-            font-weight: bold;
+            font-weight: 800;
             font-size: 0.95em;
             display: inline-block;
-            box-shadow: 0 5px 15px rgba(0, 82, 255, 0.4);
+            margin: 8px 0;
+            box-shadow: 0 4px 12px rgba(0, 82, 255, 0.5);
             letter-spacing: 0.5px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
         }
         
-        /* Link stilleri */
+        /* Alt linkler */
         .footer-link { color: #38bdf8; font-weight: bold; text-decoration: none; display: inline-flex; align-items: center; gap: 4px; }
         .footer-link:hover { text-decoration: underline; }
         .mail-icon { color: #ffffff; font-weight: bold; margin-right: 2px; font-size: 1.1em; }
@@ -133,16 +120,11 @@
                 <div class="auth-title-box">
                     <div class="lock-badge">🔒</div>
                     <div class="lock-message">
-                        Erişim sağlamak ve listeyi görüntülemek için lütfen Pi kullanıcı doğrulamasını tamamlayın.
+                        Erişim sağlamak ve listeyi görüntülemek için lütfen Pi kullanıcı doğrulamasını,<br>
+                        <span class="inline-btn-highlight">Pi ile Bağlan</span><br>
+                        butonunu kullanarak tamamlayınız.
                     </div>
                 </div>
-                <span class="sub-warning-text">
-                    Mevcut domain listesini görüntülemek için yukarıdaki:
-                    <span class="highlight-btn-row">
-                        <span class="highlight-btn-text">Pi ile Bağlan</span>
-                    </span>
-                    butonunu kullanın.
-                </span>
             </div>
         </div>
     </div>
@@ -180,7 +162,7 @@
         console.log("Analytics başlatılamadı, pasif modda devam ediliyor.");
     }
 
-    // 1. CANLI SAYAÇ DİNLEYİCİSİ
+    // CANLI SAYAÇ DİNLEYİCİSİ
     onSnapshot(collection(db, "online_users"), (snapshot) => {
         const countElement = document.getElementById('online-count');
         if (countElement) {
@@ -227,16 +209,11 @@
                     <div class="auth-title-box">
                         <div class="lock-badge">🔒</div>
                         <div class="lock-message">
-                            Erişim sağlamak ve listeyi görüntülemek için lütfen Pi kullanıcı doğrulamasını tamamlayın.
+                            Erişim sağlamak ve listeyi görüntülemek için lütfen Pi kullanıcı doğrulamasını,<br>
+                            <span class="inline-btn-highlight">Pi ile Bağlan</span><br>
+                            butonunu kullanarak tamamlayınız.
                         </div>
                     </div>
-                    <span class="sub-warning-text">
-                        Mevcut domain listesini görüntülemek için yukarıdaki:
-                        <span class="highlight-btn-row">
-                            <span class="highlight-btn-text">Pi ile Bağlan</span>
-                        </span>
-                        butonunu kullanın.
-                    </span>
                 </div>
             `;
             return;
