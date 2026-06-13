@@ -73,61 +73,7 @@
         { name: 'doganay.pi', img: 'assets/doganay.jpeg', price: 150 }
     ];
 
-    window.loginWithPi = loginWithPi;
-    window.startPurchase = startPurchase;
-
-    function render() {
-        const list = document.getElementById('domain-list');
-        if (!isUserAuthenticated) return;
-        list.innerHTML = '';
-        domains.forEach(d => {
-            const data = domainData[d.name] || { sold: false, price: d.price };
-            const isSold = data.sold === true;
-            const priceToDisplay = data.price || d.price;
-            const card = document.createElement('div');
-            card.className = 'domain-card';
-            card.innerHTML = `<img src="${d.img}" class="domain-img"><strong>${d.name}</strong><br><span>${isSold ? `SATILDI (${priceToDisplay} Pi)` : priceToDisplay + ' Pi'}</span>${!isSold ? `<button class="btn-buy" onclick="window.startPurchase('${d.name}', ${priceToDisplay})">Satın Al</button>` : ''}`;
-            list.appendChild(card);
-        });
-    }
-
-    async function startPurchase(domainName, amount) {
-        if (typeof Pi === 'undefined') { alert("Pi SDK yüklenmedi!"); return; }
+    // SDK Başlatma
+    const initPi = async () => {
         try {
-            Pi.createPayment({ amount: amount, memo: "Domain: " + domainName, metadata: { domain: domainName } }, {
-                onReadyForServerCompletion: async (paymentId, txid) => {
-                    await updateDoc(doc(db, "domains", domainName), { sold: true });
-                    alert("Satın alma başarılı! Domain hesabınıza tanımlandı.");
-                    location.reload();
-                },
-                onCancel: (paymentId) => { alert("İşlem iptal edildi."); },
-                onError: (err) => { alert("Ödeme Hatası: " + err.message); }
-            });
-        } catch (e) { alert("Hata: " + e.message); }
-    }
-
-    function loginWithPi() {
-        if (typeof Pi === 'undefined') { alert("Pi Browser bekleniyor..."); return; }
-        Pi.authenticate(['username', 'payments'], () => {}).then(async (auth) => {
-            isUserAuthenticated = true;
-            document.getElementById('user-status').innerText = "Bağlı: @" + auth.user.username;
-            document.getElementById('auth-btn').style.display = 'none';
-            render();
-        });
-    }
-
-    const checkPiSDK = setInterval(() => {
-        if (typeof Pi !== 'undefined') {
-            Pi.init({ version: "2.0", sandbox: true });
-            clearInterval(checkPiSDK);
-        }
-    }, 500);
-
-    domains.forEach(d => {
-        onSnapshot(doc(db, "domains", d.name), (snap) => {
-            if (snap.exists()) { domainData[d.name] = snap.data(); render(); }
-        });
-    });
-</script>
-</body>
-</html>
+            await Pi.init({ version: "2.
