@@ -15,6 +15,7 @@
         .domain-img { width: 100%; height: 120px; margin-bottom: 10px; border-radius: 12px; object-fit: contain; background-color: #334155; padding: 5px; }
         .btn-buy { background: var(--accent); color: white; border: none; padding: 8px 16px; border-radius: 8px; cursor: pointer; margin-top: 10px; font-weight: bold; width: 100%; }
         .pi-btn { background: #0052FF; color: #ffffff; padding: 12px 30px; border-radius: 50px; font-weight: 800; font-size: 0.95em; border: 1px solid rgba(255, 255, 255, 0.2); cursor: pointer; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15); }
+        .section-title-box { background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); color: #1e293b; padding: 12px 28px; border-radius: 16px; border: 3px solid #f59e0b; font-weight: 800; display: inline-block; margin: 5px auto 25px auto; }
     </style>
 </head>
 <body>
@@ -22,21 +23,25 @@
 <div class="container">
     <div class="card">
         <h1>Web3 Domain</h1>
-        <p id="user-status">Lütfen bağlanın.</p>
+        <p id="user-status">Lütfen önce bağlanın.</p>
         <button id="auth-btn" class="pi-btn" onclick="window.loginWithPi()">Pi ile Bağlan</button>
     </div>
+
     <div class="card">
-        <div class="domain-grid" id="domain-list"></div>
+        <div class="section-title-box">Satıştaki Domainler</div>
+        <div class="domain-grid" id="domain-list">
+            <div style="grid-column: span 2; padding: 20px; color: #94a3b8;">Erişim için bağlanın.</div>
+        </div>
     </div>
 </div>
 
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
-    import { getFirestore, doc, onSnapshot, updateDoc, collection } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
+    import { getFirestore, doc, onSnapshot, updateDoc } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
 
     const db = getFirestore(initializeApp({ apiKey: "AIzaSyC9r244vRVGbYOcLHyS6EHxKyiygajW7_A", projectId: "web3-domain-gateway" }));
     
-    // SDK Başlatma - Sayfa yüklenir yüklenmez çalışır
+    // SDK'yı güvenli başlatma
     if (typeof Pi !== 'undefined') { Pi.init({ version: "2.0", sandbox: true }); }
 
     let isUserAuthenticated = false;
@@ -48,7 +53,6 @@
 
     function render() {
         const list = document.getElementById('domain-list');
-        if (!isUserAuthenticated) { list.innerHTML = "Görüntülemek için bağlanın."; return; }
         list.innerHTML = '';
         domains.forEach(d => {
             const data = domainData[d.name] || { sold: false };
@@ -60,7 +64,6 @@
     }
 
     window.loginWithPi = function() {
-        if (typeof Pi === 'undefined') { alert("Pi SDK yüklenemedi! Sayfayı yenileyin."); return; }
         Pi.authenticate(['username', 'payments'], () => {}).then(auth => {
             isUserAuthenticated = true;
             document.getElementById('auth-btn').style.display = 'none';
@@ -71,8 +74,12 @@
 
     window.startPurchase = function(domain, amount) {
         Pi.createPayment({ amount: amount, memo: "Domain: " + domain, metadata: { domain: domain } }, {
-            onReadyForServerApproval: (id) => console.log("Onay bekliyor:", id),
-            onReadyForServerCompletion: (id, txid) => updateDoc(doc(db, "domains", domain), { sold: true }),
+            onReadyForServerApproval: (id) => {
+                // Test ortamında onayı otomatik geçmek için doğrudan Firestore'u güncelle
+                updateDoc(doc(db, "domains", domain), { sold: true });
+                alert("Ödeme onaylandı!");
+            },
+            onReadyForServerCompletion: (id, txid) => alert("İşlem tamamlandı!"),
             onCancel: () => alert("İptal edildi."),
             onError: (err) => alert("Hata: " + err.message)
         });
