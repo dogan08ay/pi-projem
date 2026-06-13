@@ -58,6 +58,47 @@
 <script>
   // SDK'yı başlatın (version: '2.0' standarttır)
   Pi.init({ version: "2.0", sandbox: true }); // Test aşamasında olduğunuz için sandbox: true kalabilir
+    // Pi SDK Başlatma
+Pi.init({ version: "2.0", sandbox: true });
+
+async function buyDomain(domainId) {
+    try {
+        // 1. Pi Ödeme Penceresini Aç
+        const payment = await Pi.createPayment({
+            amount: 1.0, // Domain fiyatı
+            memo: "Domain Satın Alma: " + domainId,
+            metadata: { domainId: domainId }
+        }, {
+            onReadyForServerCompletion: async (paymentId, txid) => {
+                // 2. Ödeme tamamlandı, Firebase'e kayıt at
+                const db = firebase.firestore();
+                await db.collection("purchases").add({
+                    domainId: domainId,
+                    userId: Pi.user.uid,
+                    txid: txid,
+                    status: "beklemede",
+                    tarih: firebase.firestore.FieldValue.serverTimestamp()
+                });
+
+                alert("Ödeme alındı! Yönetici onayı bekleniyor.");
+            },
+            onCancel: (paymentId) => {
+                alert("Ödeme iptal edildi.");
+            },
+            onError: (error, paymentId) => {
+                alert("Hata oluştu: " + error.message);
+            }
+        });
+    } catch (err) {
+        console.error("Ödeme hatası:", err);
+    }
+}
+
+// Butonuna tıklandığında çalışacak kod
+document.getElementById('buyButton').addEventListener('click', () => {
+    // Burada "domain1" yazan yere aktif domainin ID'sini koymalısın
+    buyDomain("domain1"); 
+});
   
   // Artık diğer fonksiyonlarınızı buraya ekleyebilirsiniz
   console.log("Pi SDK başlatıldı.");
