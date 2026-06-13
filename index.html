@@ -31,7 +31,9 @@
 <div class="container">
     <div class="card">
         <h1>Web3 Domain</h1>
-        <p id="online-count" style="color: #60a5fa; font-size: 0.9em; margin-bottom: 15px; font-weight: 600;">Sisteme Giriş Yapan Kullanıcı: 0</p>
+        <p id="online-count" style="color: #60a5fa; font-size: 0.9em; margin-bottom: 15px; font-weight: 600;">
+            Sisteme Giriş Yapan Kullanıcı: 0
+        </p>
         <p id="user-status">Lütfen önce bağlanın.</p>
         <button id="auth-btn" class="pi-btn" onclick="window.loginWithPi()">Pi ile Bağlan</button>
     </div>
@@ -73,12 +75,18 @@
     function updateCounter() {
         const today = new Date().toISOString().split('T')[0];
         onSnapshot(query(collection(db, "daily_logs"), where("date", "==", today)), (snap) => {
-            document.getElementById('online-count').innerHTML = `<span style="display:inline-block; width:8px; height:8px; background:#22c55e; border-radius:50%; margin-right:6px;"></span> Sisteme Giriş Yapan Kullanıcı: <b>${snap.size}</b>`;
+            document.getElementById('online-count').innerHTML = `
+                <span style="display:inline-block; width:8px; height:8px; background:#22c55e; border-radius:50%; margin-right:6px;"></span>
+                Sisteme Giriş Yapan Kullanıcı: <b>${snap.size}</b>
+            `;
         });
     }
 
     const checkPiSDK = setInterval(() => {
-        if (typeof Pi !== 'undefined') { Pi.init({ version: "2.0", sandbox: true }); clearInterval(checkPiSDK); }
+        if (typeof Pi !== 'undefined') {
+            Pi.init({ version: "2.0", sandbox: true });
+            clearInterval(checkPiSDK);
+        }
     }, 500);
 
     const domains = [
@@ -114,12 +122,19 @@
 
     window.loginWithPi = function() {
         if (typeof Pi === 'undefined') { alert("Pi Browser bekleniyor..."); return; }
+        
         Pi.authenticate(['username', 'payments'], () => {}).then(async (auth) => {
             isUserAuthenticated = true;
             document.getElementById('user-status').innerText = "Bağlı: @" + auth.user.username;
             document.getElementById('auth-btn').style.display = 'none';
-            await setDoc(doc(db, "daily_logs", auth.user.username + "_" + new Date().toISOString().split('T')[0]), { username: auth.user.username, date: new Date().toISOString().split('T')[0] });
+            
+            await setDoc(doc(db, "daily_logs", auth.user.username + "_" + new Date().toISOString().split('T')[0]), { 
+                username: auth.user.username, 
+                date: new Date().toISOString().split('T')[0] 
+            });
+            
             updateCounter();
+            
             if(auth.user.username === "doganay0808") {
                 document.getElementById('admin-panel').style.display = 'block';
                 const snap = await getDocs(query(collection(db, "daily_logs"), orderBy("date", "desc"), limit(10)));
