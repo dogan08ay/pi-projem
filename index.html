@@ -150,30 +150,6 @@
             margin: 10px 0;
             border: 1px solid rgba(255,255,255,0.2);
         }
-
-        /* YENİ EKLEMELER BURADAN BAŞLIYOR */
-        .footer-section {
-            margin-top: 30px;
-            padding: 20px;
-            color: #94a3b8;
-            font-size: 0.9em;
-            text-align: center;
-            border-top: 1px solid #334155;
-        }
-        .footer-section a {
-            color: #38bdf8;
-            text-decoration: none;
-            transition: 0.3s;
-        }
-        .footer-section a:hover {
-            color: #f8fafc;
-            text-decoration: underline;
-        }
-        .footer-divider {
-            margin: 0 10px;
-            color: #475569;
-        }
-        /* YENİ EKLEMELER BİTTİ */
     </style>
 </head>
 
@@ -187,17 +163,17 @@
 
         <p id="online-count"
            style="color:#60a5fa;font-size:0.9em;margin-bottom:15px;font-weight:600;">
-            Sisteme Giriş Yapan Kullanıcı: 0
+           Sisteme Giriş Yapan Kullanıcı: 0
         </p>
 
         <p id="user-status">
-            Lütfen önce bağlanın.
+           Lütfen önce bağlanın.
         </p>
 
         <button id="auth-btn"
                 class="pi-btn"
                 onclick="window.loginWithPi()">
-            Pi ile Bağlan
+           Pi ile Bağlan
         </button>
 
     </div>
@@ -218,7 +194,7 @@
     <div class="card">
 
         <div class="section-title-box">
-            Satıştaki Domainler
+           Satıştaki Domainler
         </div>
 
         <div class="domain-grid" id="domain-list">
@@ -245,19 +221,15 @@
         </div>
 
     </div>
-
-    <div class="footer-section">
-        <div>
-            Sorularınız için bize ulaşın: 
-                           <a href="mailto:doganay08@hotmail.com" class="footer-link"><span class="mail-icon">                       ✉️</span> doganay08@hotmail.com</a> | <a href="https://t.me/+5jZi9vrcNMM2NGVk" target="_blank" class="footer-link">💬 Telegram Grubumuz</a></p>
-        <a href="privacy.html" style="color: var(--accent);">Gizlilik Politikası</a> | 
-        <a href="terms.html" style="color: var(--accent);">Kullanım Şartları</a>
+    
+    <div style="margin-top: 20px; color: #94a3b8; font-size: 0.9em;">
+        📩 doganay08@hotmail.com
     </div>
+
 </div>
 
 <script type="module">
 
-// (Firebase ve diğer kodların tamamı burada aynı şekilde yer alıyor, silinmedi)
 import { initializeApp }
 from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
 
@@ -379,12 +351,12 @@ function render() {
     domains.forEach(d => {
 
         const data =
-           domainData[d.name] || {
+            domainData[d.name] || {
 
-               sold:false,
+                sold:false,
 
-               price:d.price
-           };
+                price:d.price
+            };
 
         const isSold =
             data.sold === true;
@@ -448,7 +420,7 @@ domains.forEach(d => {
             if (snap.exists()) {
 
                 domainData[d.name] =
-                   snap.data();
+                    snap.data();
 
                 render();
             }
