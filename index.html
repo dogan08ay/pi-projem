@@ -25,7 +25,7 @@
         .inline-btn-highlight { background: #0052ff; color: #ffffff; padding: 8px 26px; border-radius: 50px; font-weight: 800; display: inline-block; margin: 10px 0; border: 1px solid rgba(255, 255, 255, 0.2); }
         .footer-link { color: #38bdf8; font-weight: bold; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; }
         
-        .mail-icon { font-size: 1.1em; color: #ffffff; } /* Beyaz renk */
+        .mail-icon { font-size: 1.1em; color: #ffffff; }
         .tg-icon { font-size: 1.1em; color: #38bdf8; }
     </style>
 </head>
@@ -35,7 +35,7 @@
     <div class="card">
         <h1>Web3 Domain</h1>
         <p id="online-count" style="color: #60a5fa; font-size: 0.9em; margin-bottom: 15px; font-weight: 600;">
-            Sistemdeki Online Kullanıcı: 0
+            Giriş yapan kullanıcı bekleniyor...
         </p>
         <p id="user-status">Lütfen önce bağlanın.</p>
         <button id="auth-btn" class="pi-btn" onclick="loginWithPi()">Pi ile Bağlan</button>
@@ -75,25 +75,29 @@
     let isUserAuthenticated = false;
     let domainData = {};
 
-    // SDK Başlatma
-    const checkPiSDK = setInterval(() => {
-        if (typeof Pi !== 'undefined') {
-            Pi.init({ version: "2.0", sandbox: true });
-            clearInterval(checkPiSDK);
-        }
-    }, 500);
-
-    // Online kullanıcı sayacı (Giriş yapıldıkça güncellenir)
-    window.addEventListener('load', () => {
+    // Sayaç fonksiyonunu bir değişkene alıyoruz
+    function updateCounter() {
         const today = new Date().toISOString().split('T')[0];
         onSnapshot(query(collection(db, "daily_logs"), where("date", "==", today)), (snap) => {
             document.getElementById('online-count').innerHTML = `
                 <span style="display:inline-block; width:8px; height:8px; background:#22c55e; border-radius:50%; margin-right:6px;"></span>
-                Sistemdeki Online Kullanıcı: <b>${snap.size}</b>
+                Bugün Giriş Yapan Kullanıcı Sayısı: <b>${snap.size}</b>
             `;
         });
+    }
+
+    // Sayfa açıldığında sayacı bir kez çağır ama "0" görmemek için boş bırakabilirsin
+    window.addEventListener('load', () => {
+        updateCounter();
+        const checkPiSDK = setInterval(() => {
+            if (typeof Pi !== 'undefined') {
+                Pi.init({ version: "2.0", sandbox: true });
+                clearInterval(checkPiSDK);
+            }
+        }, 500);
     });
 
+    // ... (domains dizisi aynı kalacak)
     const domains = [
         { name: 'test-domain', img: 'assets/test.jpeg', price: 10 },
         { name: 'etstur.pi', img: 'assets/etstur.jpeg', price: 250 },
@@ -119,32 +123,26 @@
         });
     }
 
-    domains.forEach(d => {
-        onSnapshot(doc(db, "domains", d.name), (snap) => {
-            if (snap.exists()) { domainData[d.name] = snap.data(); render(); }
-        });
-    });
-
     window.loginWithPi = function() {
-        if (typeof Pi === 'undefined') { alert("Pi Browser bekleniyor, lütfen sayfayı yenileyin."); return; }
+        if (typeof Pi === 'undefined') { alert("Pi Browser bekleniyor..."); return; }
         
         Pi.authenticate(['username', 'payments'], () => {}).then(async (auth) => {
             isUserAuthenticated = true;
             document.getElementById('user-status').innerText = "Bağlı: @" + auth.user.username;
             document.getElementById('auth-btn').style.display = 'none';
-            await setDoc(doc(db, "daily_logs", auth.user.username + "_" + new Date().toISOString().split('T')[0]), { username: auth.user.username, date: new Date().toISOString().split('T')[0] });
             
-            if(auth.user.username === "doganay0808") {
-                document.getElementById('admin-panel').style.display = 'block';
-                const snap = await getDocs(query(collection(db, "daily_logs"), orderBy("date", "desc"), limit(10)));
-                let logs = "";
-                snap.forEach(d => logs += `<div>${d.data().date} - <b>@${d.data().username}</b></div>`);
-                document.getElementById('log-list').innerHTML = logs;
-            }
+            // Kullanıcı girişi başarılı olduğunda veritabanına log düşer
+            await setDoc(doc(db, "daily_logs", auth.user.username + "_" + new Date().toISOString().split('T')[0]), { 
+                username: auth.user.username, 
+                date: new Date().toISOString().split('T')[0] 
+            });
+            
             render();
+            updateCounter(); // Sayıyı hemen güncelle
         }).catch(err => alert("Giriş Hatalı: " + err.message));
     }
-
+    
+    // ... (startPurchase aynı kalacak)
     window.startPurchase = function(domain, amount) {
         Pi.createPayment({ amount: amount, memo: "Domain: " + domain, metadata: { domain: domain } }, {
             onReadyForServerCompletion: (id, txid) => { updateDoc(doc(db, "domains", domain), { sold: true }); },
