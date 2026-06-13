@@ -15,8 +15,8 @@
         .domain-img { width: 100%; height: 120px; margin-bottom: 10px; border-radius: 12px; object-fit: contain; background-color: #334155; padding: 5px; }
         .btn-buy { background: var(--accent); color: white; border: none; padding: 8px 16px; border-radius: 8px; cursor: pointer; margin-top: 10px; font-weight: bold; width: 100%; }
         
-        /* Premium Buton Stili */
-        .pi-btn { background: #6366f1; color: white; border: none; padding: 14px 35px; border-radius: 50px; font-weight: bold; cursor: pointer; box-shadow: 0 4px 14px rgba(99, 102, 241, 0.4); font-size: 1em; transition: 0.3s; }
+        /* HER İKİ BUTON İÇİN AYNI STİL */
+        .pi-btn { background: #0052FF; color: #ffffff; padding: 12px 30px; border-radius: 50px; font-weight: 800; font-size: 0.95em; border: 1px solid rgba(255, 255, 255, 0.2); cursor: pointer; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15); transition: 0.3s; }
         
         .footer { font-size: 0.8em; color: #94a3b8; margin-top: 20px; line-height: 1.6; }
         .section-title-box { background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); color: #1e293b; padding: 12px 28px; border-radius: 16px; border: 3px solid #f59e0b; font-size: 1.15em; font-weight: 800; display: inline-block; margin: 5px auto 25px auto; box-shadow: 0 6px 16px rgba(245, 158, 11, 0.2); }
@@ -63,15 +63,4 @@
 </div>
 
 <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
-    import { getFirestore, doc, onSnapshot, updateDoc, collection, setDoc, getDocs, query, orderBy, limit } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
-
-    const db = getFirestore(initializeApp({ apiKey: "AIzaSyC9r244vRVGbYOcLHyS6EHxKyiygajW7_A", authDomain: "web3-domain-gateway.firebaseapp.com", projectId: "web3-domain-gateway", storageBucket: "web3-domain-gateway.firebasestorage.app", messagingSenderId: "315563254318", appId: "1:315563254318:web:12f2f3f340bb69606df5bf" }));
-    
-    let isUserAuthenticated = false;
-    let domainData = {};
-    const domains = [
-        { name: 'test-domain', img: 'assets/test.jpeg', price: 10 },
-        { name: 'etstur.pi', img: 'assets/etstur.jpeg', price: 250 },
-        { name: 'eminevim.pi', img: 'assets/eminevim.jpeg', price: 150 },
-        { name:
+    import { initializeApp } from "
