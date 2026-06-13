@@ -101,6 +101,7 @@
             const priceToDisplay = data.price || d.price;
             const card = document.createElement('div');
             card.className = 'domain-card';
+            // BUTON TANIMLAMASINDA window. ÖNEKİNİ EKLEDİM:
             card.innerHTML = `<img src="${d.img}" class="domain-img"><strong>${d.name}</strong><br><span>${isSold ? `SATILDI (${priceToDisplay} Pi)` : priceToDisplay + ' Pi'}</span>${!isSold ? `<button class="btn-buy" onclick="window.startPurchase('${d.name}', ${priceToDisplay})">Satın Al</button>` : ''}`;
             list.appendChild(card);
         });
@@ -112,6 +113,7 @@
         });
     });
 
+    // WINDOW NESNESİNE AKTARILMIŞ FONKSİYONLAR:
     window.loginWithPi = function() {
         if (typeof Pi === 'undefined') { alert("Pi Browser bekleniyor..."); return; }
         Pi.authenticate(['username', 'payments'], () => {}).then(async (auth) => {
