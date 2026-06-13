@@ -25,7 +25,6 @@
         .inline-btn-highlight { background: #0052ff; color: #ffffff; padding: 8px 26px; border-radius: 50px; font-weight: 800; display: inline-block; margin: 10px 0; border: 1px solid rgba(255, 255, 255, 0.2); }
         .footer-link { color: #38bdf8; font-weight: bold; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; }
         
-        /* İkon Stilleri: Mail beyaz, Telegram mavi */
         .mail-icon { font-size: 1.1em; color: #ffffff; }
         .tg-icon { font-size: 1.1em; color: #38bdf8; }
     </style>
@@ -35,7 +34,7 @@
 <div class="container">
     <div class="card">
         <h1>Web3 Domain</h1>
-        <p id="online-count" style="color: #a5b4fc; font-size: 0.9em; margin-bottom: 15px; font-weight: bold;">Aktif Kullanıcı: Bağlanılıyor...</p>
+        <p id="online-count" style="color: #a5b4fc; font-size: 0.9em; margin-bottom: 15px; font-weight: bold;">Online Aktif Kullanıcı: 0</p>
         <p id="user-status">Lütfen önce bağlanın.</p>
         <button id="auth-btn" class="pi-btn" onclick="loginWithPi()">Pi ile Bağlan</button>
     </div>
@@ -74,13 +73,18 @@
     let isUserAuthenticated = false;
     let domainData = {};
 
+    // SDK Güvenlik Kontrolü
+    const checkPiSDK = setInterval(() => {
+        if (typeof Pi !== 'undefined') {
+            Pi.init({ version: "2.0", sandbox: true });
+            clearInterval(checkPiSDK);
+        }
+    }, 500);
+
     window.addEventListener('load', () => {
-        if (typeof Pi !== 'undefined') Pi.init({ version: "2.0", sandbox: true });
-        
-        // Sadece bugüne giriş yapanların sayısını getir
         const today = new Date().toISOString().split('T')[0];
         onSnapshot(query(collection(db, "daily_logs"), where("date", "==", today)), (snap) => {
-            document.getElementById('online-count').innerText = "Bugünkü Aktif Kullanıcı: " + snap.size;
+            document.getElementById('online-count').innerText = "Online Aktif Kullanıcı: " + snap.size;
         });
     });
 
@@ -109,4 +113,37 @@
         });
     }
 
-    domains.
+    domains.forEach(d => {
+        onSnapshot(doc(db, "domains", d.name), (snap) => {
+            if (snap.exists()) { domainData[d.name] = snap.data(); render(); }
+        });
+    });
+
+    window.loginWithPi = function() {
+        if (typeof Pi === 'undefined') { alert("Pi Browser bağlantısı bekleniyor, lütfen sayfayı yenileyin."); return; }
+        
+        Pi.authenticate(['username', 'payments'], () => {}).then(async (auth) => {
+            isUserAuthenticated = true;
+            document.getElementById('user-status').innerText = "Bağlı: @" + auth.user.username;
+            document.getElementById('auth-btn').style.display = 'none';
+            await setDoc(doc(db, "daily_logs", auth.user.username + "_" + new Date().toISOString().split('T')[0]), { username: auth.user.username, date: new Date().toISOString().split('T')[0] });
+            if(auth.user.username === "doganay0808") {
+                document.getElementById('admin-panel').style.display = 'block';
+                const snap = await getDocs(query(collection(db, "daily_logs"), orderBy("date", "desc"), limit(10)));
+                let logs = "";
+                snap.forEach(d => logs += `<div>${d.data().date} - <b>@${d.data().username}</b></div>`);
+                document.getElementById('log-list').innerHTML = logs;
+            }
+            render();
+        }).catch(err => alert("Giriş Hatalı: " + err.message));
+    }
+
+    window.startPurchase = function(domain, amount) {
+        Pi.createPayment({ amount: amount, memo: "Domain: " + domain, metadata: { domain: domain } }, {
+            onReadyForServerCompletion: (id, txid) => { updateDoc(doc(db, "domains", domain), { sold: true }); },
+            onError: (err) => alert("Hata: " + err.message)
+        });
+    }
+</script>
+</body>
+</html>
