@@ -72,7 +72,6 @@
     let isUserAuthenticated = false;
     let domainData = {};
 
-    // Sayaç güncelleme mantığı
     function updateCounter() {
         const today = new Date().toISOString().split('T')[0];
         onSnapshot(query(collection(db, "daily_logs"), where("date", "==", today)), (snap) => {
@@ -83,7 +82,6 @@
         });
     }
 
-    // SDK Başlatma
     const checkPiSDK = setInterval(() => {
         if (typeof Pi !== 'undefined') {
             Pi.init({ version: "2.0", sandbox: true });
@@ -135,13 +133,17 @@
                 date: new Date().toISOString().split('T')[0] 
             });
             
-            updateCounter(); // Sadece giriş yapınca sayacı tetikle
+            updateCounter();
             
             if(auth.user.username === "doganay0808") {
                 document.getElementById('admin-panel').style.display = 'block';
                 const snap = await getDocs(query(collection(db, "daily_logs"), orderBy("date", "desc"), limit(10)));
                 let logs = "";
-                snap.forEach(d => logs += `<div>${d.data().date} - <b>@${d.data().username}</b></div>`);
+                snap.forEach(d => {
+                    const dateObj = new Date(d.data().date);
+                    const formattedDate = `${String(dateObj.getDate()).padStart(2, '0')}.${String(dateObj.getMonth() + 1).padStart(2, '0')}.${dateObj.getFullYear()}`;
+                    logs += `<div>${formattedDate} - <b>@${d.data().username}</b></div>`;
+                });
                 document.getElementById('log-list').innerHTML = logs;
             }
             render();
