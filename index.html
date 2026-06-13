@@ -54,7 +54,15 @@
     </div>
 </div>
 
-<script type="module">
+<script src="https://sdk.minepi.com/pi-sdk.js"></script>
+<script>
+  // SDK'yı başlatın (version: '2.0' standarttır)
+  Pi.init({ version: "2.0", sandbox: true }); // Test aşamasında olduğunuz için sandbox: true kalabilir
+  
+  // Artık diğer fonksiyonlarınızı buraya ekleyebilirsiniz
+  console.log("Pi SDK başlatıldı.");
+</script>
+    <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
     import { getFirestore, doc, onSnapshot, updateDoc, collection, setDoc, getDocs, query, orderBy, limit, where } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
 
