@@ -92,14 +92,18 @@
     }
 
     async function startPurchase(domainName, amount) {
-        if (typeof Pi === 'undefined') { alert("Pi SDK yüklenemedi."); return; }
-        Pi.createPayment({ amount: amount, memo: "Domain: " + domainName, metadata: { domain: domainName } }, {
-            onReadyForServerCompletion: async (id, txid) => {
-                await updateDoc(doc(db, "domains", domainName), { sold: true });
-                alert("Satın alma başarılı!");
-            },
-            onError: (err) => alert("Hata: " + err.message)
-        });
+        if (typeof Pi === 'undefined') { alert("Pi SDK yüklenmedi!"); return; }
+        try {
+            Pi.createPayment({ amount: amount, memo: "Domain: " + domainName, metadata: { domain: domainName } }, {
+                onReadyForServerCompletion: async (paymentId, txid) => {
+                    await updateDoc(doc(db, "domains", domainName), { sold: true });
+                    alert("Satın alma başarılı! Domain hesabınıza tanımlandı.");
+                    location.reload();
+                },
+                onCancel: (paymentId) => { alert("İşlem iptal edildi."); },
+                onError: (err) => { alert("Ödeme Hatası: " + err.message); }
+            });
+        } catch (e) { alert("Hata: " + e.message); }
     }
 
     function loginWithPi() {
@@ -112,18 +116,18 @@
         });
     }
 
-    domains.forEach(d => {
-        onSnapshot(doc(db, "domains", d.name), (snap) => {
-            if (snap.exists()) { domainData[d.name] = snap.data(); render(); }
-        });
-    });
-
     const checkPiSDK = setInterval(() => {
         if (typeof Pi !== 'undefined') {
             Pi.init({ version: "2.0", sandbox: true });
             clearInterval(checkPiSDK);
         }
     }, 500);
+
+    domains.forEach(d => {
+        onSnapshot(doc(db, "domains", d.name), (snap) => {
+            if (snap.exists()) { domainData[d.name] = snap.data(); render(); }
+        });
+    });
 </script>
 </body>
 </html>
