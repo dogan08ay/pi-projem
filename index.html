@@ -73,7 +73,69 @@
         { name: 'doganay.pi', img: 'assets/doganay.jpeg', price: 150 }
     ];
 
-    // SDK Başlatma
+    // Global fonksiyonları window'a atıyoruz
+    window.loginWithPi = loginWithPi;
+    window.startPurchase = startPurchase;
+
+    // Pi SDK Başlatma Bloğu
     const initPi = async () => {
         try {
-            await Pi.init({ version: "2.
+            await Pi.init({ version: "2.0", sandbox: true });
+            console.log("Pi SDK Başlatıldı");
+        } catch (e) { console.error("Pi Init Hatası: ", e); }
+    };
+    initPi();
+
+    function render() {
+        const list = document.getElementById('domain-list');
+        if (!isUserAuthenticated) return;
+        list.innerHTML = '';
+        domains.forEach(d => {
+            const data = domainData[d.name] || { sold: false, price: d.price };
+            const isSold = data.sold === true;
+            const priceToDisplay = data.price || d.price;
+            const card = document.createElement('div');
+            card.className = 'domain-card';
+            card.innerHTML = `<img src="${d.img}" class="domain-img"><strong>${d.name}</strong><br><span>${isSold ? `SATILDI (${priceToDisplay} Pi)` : priceToDisplay + ' Pi'}</span>${!isSold ? `<button class="btn-buy" onclick="window.startPurchase('${d.name}', ${priceToDisplay})">Satın Al</button>` : ''}`;
+            list.appendChild(card);
+        });
+    }
+
+    async function startPurchase(domainName, amount) {
+        if (typeof Pi === 'undefined') { alert("Pi SDK yüklenmedi!"); return; }
+        
+        Pi.createPayment({ 
+            amount: parseFloat(amount), 
+            memo: "Domain: " + domainName, 
+            metadata: { domain: domainName } 
+        }, {
+            onReadyForServerCompletion: async (paymentId, txid) => {
+                await updateDoc(doc(db, "domains", domainName), { sold: true });
+                alert("Satın alma başarılı!");
+                location.reload();
+            },
+            onCancel: (paymentId) => { alert("İşlem iptal edildi."); },
+            onError: (err) => { alert("Ödeme Hatası: " + err.message); }
+        });
+    }
+
+    async function loginWithPi() {
+        if (typeof Pi === 'undefined') { alert("Pi Browser bekleniyor..."); return; }
+        
+        try {
+            const auth = await Pi.authenticate(['username', 'payments'], () => {}, (err) => { alert("Auth Hatası: " + err); });
+            isUserAuthenticated = true;
+            document.getElementById('user-status').innerText = "Bağlı: @" + auth.user.username;
+            document.getElementById('auth-btn').style.display = 'none';
+            render();
+        } catch (err) { alert("Giriş Hatası: " + err.message); }
+    }
+
+    domains.forEach(d => {
+        onSnapshot(doc(db, "domains", d.name), (snap) => {
+            if (snap.exists()) { domainData[d.name] = snap.data(); render(); }
+        });
+    });
+</script>
+</body>
+</html>
