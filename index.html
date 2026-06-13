@@ -58,7 +58,7 @@
     </div>
 
     <div class="footer">
-        <p>Sorularınız için: <a href="mailto:doganay08@hotmail.com" class="footer-link"><span class="icon-size">📧</span> doganay08@hotmail.com</a> | <a href="https://t.me/+5jZi9vrcNMM2NGVk" target="_blank" class="footer-link"><span class="icon-size">💬</span> Telegram Grubumuz</a></p>
+        <p>Sorularınız için: <a href="mailto:doganay08@hotmail.com" class="footer-link"><span class="icon-size">✉</span> doganay08@hotmail.com</a> | <a href="https://t.me/+5jZi9vrcNMM2NGVk" target="_blank" class="footer-link"><span class="icon-size">💬</span> Telegram Grubumuz</a></p>
     </div>
 </div>
 
@@ -70,6 +70,16 @@
     
     let isUserAuthenticated = false;
     let domainData = {};
+
+    window.addEventListener('load', () => {
+        if (typeof Pi !== 'undefined') Pi.init({ version: "2.0", sandbox: true });
+        
+        // Aktif kullanıcı sayısını canlı güncelle
+        onSnapshot(collection(db, "daily_logs"), (snap) => {
+            document.getElementById('online-count').innerText = "Aktif Kullanıcı: " + snap.size;
+        });
+    });
+
     const domains = [
         { name: 'test-domain', img: 'assets/test.jpeg', price: 10 },
         { name: 'etstur.pi', img: 'assets/etstur.jpeg', price: 250 },
@@ -79,13 +89,6 @@
         { name: 'sekerbank.pi', img: 'assets/sekerbank.jpeg', price: 600 },
         { name: 'doganay.pi', img: 'assets/doganay.jpeg', price: 150 }
     ];
-
-    // SDK hazır olduğunda başlat
-    window.addEventListener('load', () => {
-        if (typeof Pi !== 'undefined') {
-            Pi.init({ version: "2.0", sandbox: true });
-        }
-    });
 
     function render() {
         const list = document.getElementById('domain-list');
@@ -109,10 +112,7 @@
     });
 
     window.loginWithPi = function() {
-        if (typeof Pi === 'undefined') {
-            alert("Pi SDK yüklenemedi! Sayfayı Pi Browser'da yenileyin.");
-            return;
-        }
+        if (typeof Pi === 'undefined') { alert("Pi SDK yüklenemedi! Sayfayı yenileyin."); return; }
         
         Pi.authenticate(['username', 'payments'], () => {}).then(async (auth) => {
             isUserAuthenticated = true;
