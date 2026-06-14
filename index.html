@@ -454,19 +454,15 @@ function render() {
 
         `;
 
-        if (!isSold) {
-
-            const btn = document.createElement('button');
-
-            btn.className = 'btn-buy';
-
-            btn.innerText = 'Satın Al';
-
-            btn.onclick = () => startPurchase(d.name, price);
-
-            card.appendChild(btn);
-
-        }
+       // render() fonksiyonunun içindeki şu bloğu değiştir:
+if (!isSold) {
+    const btn = document.createElement('button');
+    btn.className = 'btn-buy';
+    btn.innerText = 'Satın Al';
+    btn.id = 'buy-btn-' + d.name; // Benzersiz bir ID ver
+    btn.onclick = () => startPurchase(d.name, price);
+    card.appendChild(btn);
+}
 
         list.appendChild(card);
 
@@ -555,23 +551,31 @@ window.loginWithPi = function() {
     });
 };
 window.startPurchase = function(domain, amount) {
+    // 1. Adımda verdiğin ID ile butonu yakalıyoruz
+    const buyBtn = document.getElementById('buy-btn-' + domain);
+    
     if (!isUserAuthenticated) {
         alert("Önce giriş yapın");
         return;
     }
 
-    if (paymentInProgress) {
-        alert("Şu anda devam eden bir ödeme işlemi var, lütfen tamamlanmasını bekleyin veya pencereyi kapatıp tekrar deneyin.");
+    // Butonun kilitli olup olmadığını kontrol et
+    if (buyBtn && buyBtn.disabled) {
+        alert("İşlem zaten devam ediyor, lütfen bekleyin.");
         return;
     }
 
     const selectedDomain = domainData[domain];
     if (selectedDomain?.sold === true) {
-        alert("Bu domain zaten satılmış.");
+        alert("Bu domain satılmış");
         return;
     }
 
-    paymentInProgress = true; // İşlem başladı
+    // İŞLEM BAŞLADI: Butonu kilitle
+    if (buyBtn) {
+        buyBtn.disabled = true;
+        buyBtn.innerText = "İşleniyor...";
+    }
 
     Pi.createPayment({
         amount: Number(amount),
@@ -592,20 +596,36 @@ window.startPurchase = function(domain, amount) {
 
             Pi.completePayment(paymentId, txid)
                 .then(() => {
-                    paymentInProgress = false; // BAŞARILI: Sıfırla
+                    // BAŞARILI: Butonu aç
+                    if (buyBtn) {
+                        buyBtn.disabled = false;
+                        buyBtn.innerText = "Satın Al";
+                    }
                     alert("✅ Satın alma başarıyla tamamlandı!");
                 })
                 .catch(err => {
-                    paymentInProgress = false; // HATA: Yine de sıfırla
-                    alert("İşlem tamamlanırken hata oluştu: " + err.message);
+                    // HATA: Butonu aç
+                    if (buyBtn) {
+                        buyBtn.disabled = false;
+                        buyBtn.innerText = "Satın Al";
+                    }
+                    alert("Ödeme tamamlanırken hata: " + err.message);
                 });
         },
         onCancel: function() {
-            paymentInProgress = false; // İPTAL: Güvenli şekilde sıfırla
-            alert("Ödeme iptal edildi.");
+            // İPTAL: Butonu aç
+            if (buyBtn) {
+                buyBtn.disabled = false;
+                buyBtn.innerText = "Satın Al";
+            }
+            alert("Ödeme iptal edildi");
         },
         onError: function(err) {
-            paymentInProgress = false; // HATA: Güvenli şekilde sıfırla
+            // HATA: Butonu aç
+            if (buyBtn) {
+                buyBtn.disabled = false;
+                buyBtn.innerText = "Satın Al";
+            }
             alert("Ödeme hatası: " + err.message);
         }
     });
