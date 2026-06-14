@@ -8,7 +8,6 @@
     <script src="https://sdk.minepi.com/pi-sdk.js"></script>
 
     <style>
-
         :root {
             --bg:#0f172a;
             --card:#1e293b;
@@ -170,671 +169,168 @@
             margin:0 10px;
             color:#475569;
         }
-
     </style>
 </head>
 
 <body>
 
 <div class="container">
-
     <div class="card">
-
         <h1>Web3 Domain</h1>
-
-        <p id="online-count"
-           style="color:#60a5fa;font-size:0.9em;margin-bottom:15px;font-weight:600;">
+        <p id="online-count" style="color:#60a5fa;font-size:0.9em;margin-bottom:15px;font-weight:600;">
             Aktif Kullanıcı: 0
         </p>
-
-        <p id="user-status">
-            Lütfen önce bağlanın.
-        </p>
-
-        <button
-            id="auth-btn"
-            class="pi-btn"
-            onclick="window.loginWithPi()">
-            Pi ile Bağlan
-        </button>
-
+        <p id="user-status">Lütfen önce bağlanın.</p>
+        <button id="auth-btn" class="pi-btn" onclick="window.loginWithPi()">Pi ile Bağlan</button>
     </div>
 
-    <div class="card" id="admin-panel"
-         style="display:none;border:2px solid #6366f1;text-align:left;">
-
-        <h3 style="color:#6366f1;margin-top:0;">
-            🛠 Admin Paneli
-        </h3>
-
-        <div id="log-list"
-             style="font-size:0.85em;max-height:150px;overflow-y:auto;">
-        </div>
-
+    <div class="card" id="admin-panel" style="display:none;border:2px solid #6366f1;text-align:left;">
+        <h3 style="color:#6366f1;margin-top:0;">🛠 Admin Paneli</h3>
+        <div id="log-list" style="font-size:0.85em;max-height:150px;overflow-y:auto;"></div>
     </div>
 
     <div class="card">
-
-        <div class="section-title-box">
-            Satıştaki Domainler
-        </div>
-
+        <div class="section-title-box">Satıştaki Domainler</div>
         <div class="domain-grid" id="domain-list">
-
-            <div class="auth-warning"
-                 style="grid-column:span 2;">
-
+            <div class="auth-warning" style="grid-column:span 2;">
                 <div class="auth-title-box">
-
                     <div class="lock-message">
                         🔒 Erişim sağlamak için lütfen yukarıdaki<br>
-
-                        <span class="inline-btn-highlight">
-                            Pi ile Bağlan
-                        </span><br>
-
+                        <span class="inline-btn-highlight">Pi ile Bağlan</span><br>
                         butonunu kullanınız.
                     </div>
-
                 </div>
-
             </div>
-
         </div>
-
     </div>
 
     <div class="footer-section">
-
-        <div>
-            Sorularınız için bize ulaşın:
-            <a href="mailto:doganay08@hotmail.com">
-                📩 doganay08@hotmail.com
-            </a>
-        </div>
-
-        <div style="margin-top:8px;">
-            <a href="https://t.me/+5jZi9vrcNMM2NGVk" target="_blank">
-                💬 Telegram Grubumuz
-            </a>
-        </div>
-
+        <div>Sorularınız için bize ulaşın: <a href="mailto:doganay08@hotmail.com">📩 doganay08@hotmail.com</a></div>
+        <div style="margin-top:8px;"><a href="https://t.me/+5jZi9vrcNMM2NGVk" target="_blank">💬 Telegram Grubumuz</a></div>
         <div style="margin-top:15px;">
-            <a href="privacy.html">
-                Gizlilik Politikası
-            </a>
-
+            <a href="privacy.html">Gizlilik Politikası</a>
             <span class="footer-divider">|</span>
-
-            <a href="terms.html">
-                Kullanım Şartları
-            </a>
+            <a href="terms.html">Kullanım Şartları</a>
         </div>
-
     </div>
-
 </div>
 
 <script type="module">
-
-import {
-    initializeApp
-} from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
-
-import {
-    getFirestore,
-    doc,
-    onSnapshot,
-    updateDoc,
-    collection,
-    setDoc,
-    deleteDoc,
-    getDocs,
-    query,
-    orderBy,
-    limit,
-    where
-} from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
+import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
+import { getFirestore, doc, onSnapshot, updateDoc, collection, setDoc, deleteDoc, getDocs, query, orderBy, limit, where } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
 
 const firebaseConfig = {
-
     apiKey: "AIzaSyC9r244vRVGbYOcLHyS6EHxKyiygajW7_A",
     authDomain: "web3-domain-gateway.firebaseapp.com",
     projectId: "web3-domain-gateway",
     storageBucket: "web3-domain-gateway.firebasestorage.app",
     messagingSenderId: "315563254318",
     appId: "1:315563254318:web:12f2f3f340bb69606df5bf"
-
 };
 
 const app = initializeApp(firebaseConfig);
-
 const db = getFirestore(app);
 
-Pi.init({
-    version:"2.0",
-    sandbox:true
-});
+Pi.init({ version:"2.0", sandbox:true });
 
 let isUserAuthenticated = false;
-
 let paymentInProgress = false;
-
 let domainData = {};
-
 const domains = [
-
-    {
-        name:'test-domain',
-        img:'assets/test.jpeg',
-        price:10
-    },
-
-    {
-        name:'etstur.pi',
-        img:'assets/etstur.jpeg',
-        price:250
-    },
-
-    {
-        name:'eminevim.pi',
-        img:'assets/eminevim.jpeg',
-        price:150
-    },
-
-    {
-        name:'fuzulev.pi',
-        img:'assets/fuzulev.jpeg',
-        price:300
-    },
-
-    {
-        name:'fibabank.pi',
-        img:'assets/fibabank.jpeg',
-        price:500
-    },
-
-    {
-        name:'sekerbank.pi',
-        img:'assets/sekerbank.jpeg',
-        price:600
-    },
-
-    {
-        name:'doganay.pi',
-        img:'assets/doganay.jpeg',
-        price:150
-    }
-
+    { name:'test-domain', img:'assets/test.jpeg', price:10 },
+    { name:'etstur.pi', img:'assets/etstur.jpeg', price:250 },
+    { name:'eminevim.pi', img:'assets/eminevim.jpeg', price:150 },
+    { name:'fuzulev.pi', img:'assets/fuzulev.jpeg', price:300 },
+    { name:'fibabank.pi', img:'assets/fibabank.jpeg', price:500 },
+    { name:'sekerbank.pi', img:'assets/sekerbank.jpeg', price:600 },
+    { name:'doganay.pi', img:'assets/doganay.jpeg', price:150 }
 ];
 
 onSnapshot(collection(db, "online_users"), (snapshot) => {
-
     const countElement = document.getElementById('online-count');
-
     if (countElement) {
-
         const now = Date.now();
-
         const fiveMinutesAgo = now - (5 * 60 * 1000);
-
         let activeCount = 0;
-
         snapshot.forEach((doc) => {
-
             const data = doc.data();
-
             if (data.lastSeen) {
-
-                const lastSeenTime =
-                    data.lastSeen.toMillis
-                    ? data.lastSeen.toMillis()
-                    : new Date(data.lastSeen).getTime();
-
-                if (lastSeenTime > fiveMinutesAgo) {
-
-                    activeCount++;
-
-                }
-
+                const lastSeenTime = data.lastSeen.toMillis ? data.lastSeen.toMillis() : new Date(data.lastSeen).getTime();
+                if (lastSeenTime > fiveMinutesAgo) activeCount++;
             }
-
         });
-
-        countElement.innerText =
-            "Aktif Kullanıcı: " + activeCount;
-
+        countElement.innerText = "Aktif Kullanıcı: " + activeCount;
     }
-
 });
 
 function render() {
-
     const list = document.getElementById('domain-list');
-
-    if (!list) return;
-
-    if (!isUserAuthenticated) {
-
-        return;
-
-    }
-
+    if (!list || !isUserAuthenticated) return;
     list.innerHTML = '';
-
     domains.forEach(d => {
-
-        const data = domainData[d.name] || {
-            sold:false,
-            price:d.price
-        };
-
+        const data = domainData[d.name] || { sold:false, price:d.price };
         const isSold = data.sold === true;
-
-        const price =
-            data.price !== undefined
-            ? data.price
-            : d.price;
-
+        const price = data.price !== undefined ? data.price : d.price;
         const card = document.createElement('div');
-
         card.className = 'domain-card';
-
-        card.innerHTML = `
-
-            <img src="${d.img}" class="domain-img">
-
-            <strong>${d.name}</strong>
-
-            <br>
-
-            <span>
-                ${isSold ? `SATILDI (${price} Pi)` : price + ' Pi'}
-            </span>
-
-        `;
-
+        card.innerHTML = `<img src="${d.img}" class="domain-img"><strong>${d.name}</strong><br><span>${isSold ? `SATILDI (${price} Pi)` : price + ' Pi'}</span>`;
         if (!isSold) {
-
             const btn = document.createElement('button');
-
             btn.className = 'btn-buy';
-
             btn.innerText = 'Satın Al';
-
             btn.onclick = () => startPurchase(d.name, price);
-
             card.appendChild(btn);
-
         }
-
         list.appendChild(card);
-
     });
-
 }
 
 domains.forEach(d => {
-
-    onSnapshot(
-
-        doc(db, "domains", d.name),
-
-        (snap) => {
-
-            if (snap.exists()) {
-
-                domainData[d.name] = snap.data();
-
-                render();
-
-            }
-
+    onSnapshot(doc(db, "domains", d.name), (snap) => {
+        if (snap.exists()) {
+            domainData[d.name] = snap.data();
+            render();
         }
-
-    );
-
+    });
 });
 
 window.loginWithPi = function() {
-
-    Pi.authenticate(
-        ['username', 'payments'],
-        () => {}
-    )
-
-    .then(async (auth) => {
-
+    Pi.authenticate(['username', 'payments'], () => {}).then(async (auth) => {
         isUserAuthenticated = true;
-
-        document.getElementById('user-status').innerText =
-            "Bağlı: @" + auth.user.username;
-
+        document.getElementById('user-status').innerText = "Bağlı: @" + auth.user.username;
         document.getElementById('auth-btn').style.display = 'none';
-
         render();
-
-        await setDoc(
-
-            doc(db, "online_users", auth.user.username),
-
-            {
-                lastSeen: Date.now()
-            }
-
-        );
-
+        await setDoc(doc(db, "online_users", auth.user.username), { lastSeen: Date.now() });
         setInterval(async () => {
-
-            if (isUserAuthenticated) {
-
-                await setDoc(
-
-                    doc(db, "online_users", auth.user.username),
-
-                    {
-                        lastSeen: Date.now()
-                    },
-
-                    {
-                        merge:true
-                    }
-
-                );
-
-            }
-
+            if (isUserAuthenticated) await setDoc(doc(db, "online_users", auth.user.username), { lastSeen: Date.now() }, { merge:true });
         }, 30000);
-
         window.addEventListener("beforeunload", async () => {
-
-            await deleteDoc(
-                doc(db, "online_users", auth.user.username)
-            );
-
+            await deleteDoc(doc(db, "online_users", auth.user.username));
         });
-
         if(auth.user.username === "doganay0808") {
-
             document.getElementById('admin-panel').style.display = 'block';
-
             const today = new Date().toISOString().split('T')[0];
-
-            const snap = await getDocs(
-
-                query(
-
-                    collection(db, "daily_logs"),
-
-                    where("date", "==", today),
-
-                    orderBy("date", "desc"),
-
-                    limit(10)
-
-                )
-
-            );
-
+            const snap = await getDocs(query(collection(db, "daily_logs"), where("date", "==", today), orderBy("date", "desc"), limit(10)));
             let logs = "";
-
             snap.forEach(d => {
-
-                const rawDate = d.data().date;
-
-                const dateObj = new Date(rawDate);
-
-                const formattedDate =
-                    String(dateObj.getDate()).padStart(2, '0')
-                    + "."
-                    + String(dateObj.getMonth() + 1).padStart(2, '0')
-                    + "."
-                    + dateObj.getFullYear();
-
-                logs += `
-                    <div>
-                        ${formattedDate}
-                        -
-                        <b>@${d.data().username}</b>
-                    </div>
-                `;
-
+                const dateObj = new Date(d.data().date);
+                logs += `<div>${String(dateObj.getDate()).padStart(2, '0')}.${String(dateObj.getMonth() + 1).padStart(2, '0')}.${dateObj.getFullYear()} - <b>@${d.data().username}</b></div>`;
             });
-
             document.getElementById('log-list').innerHTML = logs;
-
         }
-
-        await setDoc(
-
-            doc(
-                db,
-                "daily_logs",
-                auth.user.username + "_" + new Date().toISOString().split('T')[0]
-            ),
-
-            {
-
-                username: auth.user.username,
-
-                date: new Date().toISOString().split('T')[0]
-
-            }
-
-        );
-
-    })
-
-    .catch(err => {
-
-        alert("Giriş başarısız: " + err);
-
-    });
-
+        await setDoc(doc(db, "daily_logs", auth.user.username + "_" + new Date().toISOString().split('T')[0]), { username: auth.user.username, date: new Date().toISOString().split('T')[0] });
+    }).catch(err => { alert("Giriş başarısız: " + err); });
 };
 
 window.startPurchase = function(domain, amount) {
-
-    if (!isUserAuthenticated) {
-
-        alert("Önce giriş yapın");
-        return;
-
-    }
-
-    if (paymentInProgress) {
-
-        alert("Bekleyen ödeme işlemi var");
-        return;
-
-    }
-
+    if (!isUserAuthenticated) { alert("Önce giriş yapın"); return; }
+    if (paymentInProgress) { alert("Bekleyen ödeme işlemi var"); return; }
     const selectedDomain = domainData[domain];
-
-    if (selectedDomain?.sold === true) {
-
-        alert("Bu domain satılmış");
-        return;
-
-    }
-
+    if (selectedDomain?.sold === true) { alert("Bu domain satılmış"); return; }
     paymentInProgress = true;
-
-    Pi.createPayment(
-
-        {
-
-            amount:Number(amount),
-
-            memo:"Domain: " + domain,
-
-            metadata:{
-                domain:domain
-            }
-
-        },
-
-        {
-
-            onReadyForServerApproval:function(paymentId) {
-
-                handleServerSidePayment(
-                    paymentId,
-                    'approve',
-                    null
-                );
-
-            },
-
-            onReadyForServerCompletion: async function(paymentId, txid) {
-
-    try {
-
-        await handleServerSidePayment(
-            paymentId,
-            'complete',
-            txid
-        );
-
-        await updateDoc(
-
-            doc(db, "domains", domain),
-
-            {
-
-                sold:true,
-                txid:txid,
-                soldAt:new Date().toISOString()
-
-            }
-
-        );
-
-        paymentInProgress = false;
-
-        alert("✅ Satın alma tamamlandı");
-
-    }
-
-    catch(error) {
-
-        paymentInProgress = false;
-
-        console.error(error);
-
-        alert("Complete hatası oluştu");
-
-    }
-
-},
-
-                updateDoc(
-
-                    doc(db, "domains", domain),
-
-                    {
-
-                        sold:true,
-                        txid:txid,
-                        soldAt:new Date().toISOString()
-
-                    }
-
-                );
-
-                handleServerSidePayment(
-                    paymentId,
-                    'complete',
-                    txid
-                );
-
-                paymentInProgress = false;
-
-                alert("✅ Satın alma tamamlandı");
-
-            },
-
-            onCancel:function() {
-
-                paymentInProgress = false;
-
-                alert("Ödeme iptal edildi");
-
-            },
-
-            onError:function(err) {
-
-                paymentInProgress = false;
-
-                alert("Ödeme hatası: " + err.message);
-
-            }
-
-        }
-
-    );
-
-};
-
-async function handleServerSidePayment(paymentId, action, txid) {
-
-    const response = await fetch('/api/approve', {
-
-        method:'POST',
-
-        headers:{
-            'Content-Type':'application/json'
-        },
-
-        body:JSON.stringify({
-
-            paymentId,
-            action,
-            txid
-
-        })
-
-    });
-
-    return await response.json();
-
-}
-
-    fetch('/api/approve', {
-
-        method:'POST',
-
-        headers:{
-            'Content-Type':'application/json'
-        },
-
-        body:JSON.stringify({
-
-            paymentId,
-            action,
-            txid
-
-        })
-
-    })
-
-    .then(res => res.json())
-
-    .then(data => {
-
-        console.log(data);
-
-    })
-
-    .catch(err => {
-
-        console.error(err);
-
-    });
-
-}
-
-</script>
-
-</body>
-</html>
+    Pi.createPayment({ amount:Number(amount), memo:"Domain: " + domain, metadata:{ domain:domain } }, {
+        onReadyForServerApproval: function(paymentId) { handleServerSidePayment(paymentId, 'approve', null); },
+        onReadyForServerCompletion: async function(paymentId, txid) {
+            try {
+                await handleServerSidePayment(paymentId, 'complete', txid);
+                await updateDoc(doc(db, "domains", domain), { sold:true, txid:txid, soldAt:new
