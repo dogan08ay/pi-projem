@@ -1,12 +1,8 @@
-import axios from "axios";
-
-const PI_API_KEY = process.env.PI_API_KEY;
-
 export default async function handler(req, res) {
 
-    if (req.method !== "POST") {
+    if (req.method !== 'POST') {
         return res.status(405).json({
-            error: "Method not allowed"
+            error: 'Method not allowed'
         });
     }
 
@@ -14,26 +10,28 @@ export default async function handler(req, res) {
 
         const { paymentId, txid } = req.body;
 
-        const result = await axios.post(
+        const response = await fetch(
             `https://api.minepi.com/v2/payments/${paymentId}/complete`,
             {
-                txid: txid
-            },
-            {
+                method: 'POST',
                 headers: {
-                    Authorization: `Key ${PI_API_KEY}`
-                }
+                    Authorization: `Key ${process.env.PI_API_KEY}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    txid: txid
+                })
             }
         );
 
-        res.status(200).json(result.data);
+        const data = await response.json();
 
-    } catch(err) {
+        return res.status(200).json(data);
 
-        console.error(err.response?.data || err.message);
+    } catch (error) {
 
-        res.status(500).json({
-            error: err.response?.data || err.message
+        return res.status(500).json({
+            error: error.message
         });
 
     }
