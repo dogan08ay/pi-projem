@@ -497,80 +497,37 @@ domains.forEach(d => {
 });
 
 window.loginWithPi = function() {
-
-    Pi.authenticate(
-        ['username', 'payments'],
-        () => {}
-    )
-
+    Pi.authenticate(['username', 'payments'], () => {})
     .then(async (auth) => {
-
         isUserAuthenticated = true;
-
-        document.getElementById('user-status').innerText =
-            "Bağlı: @" + auth.user.username;
-
+        document.getElementById('user-status').innerText = "Bağlı: @" + auth.user.username;
         document.getElementById('auth-btn').style.display = 'none';
-
         render();
 
-        await setDoc(
-    doc(db, "daily_logs", auth.user.username + "_" + new Date().toISOString().split('T')[0]),
-    {
-        username: auth.user.username,
-        // Tarih formatı: Gün/Ay/Yıl Saat:Dakika
-        date: new Date().toLocaleDateString("tr-TR") + " " + new Date().toLocaleTimeString("tr-TR", {hour: '2-digit', minute:'2-digit'})
-    }
-);
+        // 1. Giriş kaydını at (Tarihi manuel temiz bir şekilde oluştur)
+        const now = new Date();
+        const dateStr = now.toLocaleDateString("tr-TR");
+        const timeStr = now.toLocaleTimeString("tr-TR", {hour: '2-digit', minute:'2-digit'});
+        const fullDate = dateStr + " " + timeStr;
 
-        setInterval(async () => {
-
-            if (isUserAuthenticated) {
-
-                await setDoc(
-
-                    doc(db, "online_users", auth.user.username),
-
-                    {
-                        lastSeen: Date.now()
-                    },
-
-                    {
-                        merge:true
-                    }
-
-                );
-
-            }
-
-        }, 30000);
-
-        window.addEventListener("beforeunload", async () => {
-
-            await deleteDoc(
-                doc(db, "online_users", auth.user.username)
-            );
-
+        await setDoc(doc(db, "daily_logs", auth.user.username + "_" + dateStr.replace(/\./g, '-')), {
+            username: auth.user.username,
+            date: fullDate
         });
 
+        // 2. Admin Paneli Listeleme (Sadece tek ve temiz blok)
         if(auth.user.username === "doganay0808") {
-
             document.getElementById('admin-panel').style.display = 'block';
-
-            // 1. Verileri en yeniye göre çekiyoruz
+            
             const snap = await getDocs(
-                query(
-                    collection(db, "daily_logs"),
-                    orderBy("date", "desc"), 
-                    limit(15)
-                )
+                query(collection(db, "daily_logs"), orderBy("date", "desc"), limit(15))
             );
 
             let logs = "";
             snap.forEach(d => {
                 const data = d.data();
-                // 2. NaN hatalarını engellemek için kontrol
-                if (data.date && data.date !== "NaN.NaN.NaN") {
+                // NaN kontrolü: Eğer tarih düzgünse ekle
+                if (data.date && !data.date.includes("NaN")) {
                     logs += `
                         <div style="padding: 8px; border-bottom: 1px solid #334155; display: flex; justify-content: space-between;">
                             <span style="color: #60a5fa;">${data.date}</span>
@@ -579,53 +536,23 @@ window.loginWithPi = function() {
                     `;
                 }
             });
-
-            // 3. Listeyi ekrana tek seferde yazdır
             document.getElementById('log-list').innerHTML = logs;
-
-            snap.forEach(d => {
-
-                const rawDate = d.data().date;
-
-                const dateObj = new Date(rawDate);
-
-                const formattedDate =
-                    String(dateObj.getDate()).padStart(2, '0')
-                    + "."
-                    + String(dateObj.getMonth() + 1).padStart(2, '0')
-                    + "."
-                    + dateObj.getFullYear();
-
-                logs += `
-                    <div>
-                        ${formattedDate}
-                        -
-                        <b>@${d.data().username}</b>
-                    </div>
-                `;
-
-            });
-
-            document.getElementById('log-list').innerHTML = logs;
-
         }
 
-        await setDoc(
-    doc(db, "daily_logs", auth.user.username + "_" + new Date().toISOString().split('T')[0]),
-    {
-        username: auth.user.username,
-        date: new Date().toISOString().split('T')[0] // 'date' alanı mutlaka olmalı!
-    }
-);
+        // Online kullanıcı güncelleme
+        setInterval(async () => {
+            if (isUserAuthenticated) {
+                await setDoc(doc(db, "online_users", auth.user.username), { lastSeen: Date.now() }, { merge:true });
+            }
+        }, 30000);
 
+        window.addEventListener("beforeunload", async () => {
+            await deleteDoc(doc(db, "online_users", auth.user.username));
+        });
     })
-
     .catch(err => {
-
         alert("Giriş başarısız: " + err);
-
     });
-
 };
 
 window.startPurchase = function(domain, amount) {
