@@ -559,24 +559,28 @@ window.loginWithPi = function() {
 
             const today = new Date().toISOString().split('T')[0];
             
-// Sorguyu güncelle:
+// Admin Paneli Sorgusu (Filtresiz ve sıralı)
 const snap = await getDocs(
     query(
         collection(db, "daily_logs"),
-        orderBy("date", "desc"), // En yeni tarihli olan en üstte
-        limit(50)
+        orderBy("date", "desc"), // En yeni tarih en üstte görünür
+        limit(20)
     )
 );
 
 let logs = "";
 snap.forEach(d => {
     const data = d.data();
-    // Ekrana Tarih - Kullanıcı şeklinde basar
-    logs += `
-        <div style="font-family: monospace; padding: 8px; border-bottom: 1px solid #475569;">
-            <span style="color: #60a5fa;">${data.date}</span> | <b>@${data.username}</b>
-        </div>
-    `;
+    
+    // Sadece geçerli tarih verisi varsa ekrana yazdır (NaN hatalarını önler)
+    if (data.date && data.date !== "NaN.NaN.NaN") {
+        logs += `
+            <div style="padding: 5px; border-bottom: 1px solid #334155; display: flex; justify-content: space-between;">
+                <span>${data.date}</span>
+                <b>@${data.username}</b>
+            </div>
+        `;
+    }
 });
 document.getElementById('log-list').innerHTML = logs;
 
