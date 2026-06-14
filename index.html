@@ -686,7 +686,47 @@ window.startPurchase = function(domain, amount) {
 
             },
 
-            onReadyForServerCompletion:function(paymentId, txid) {
+            onReadyForServerCompletion: async function(paymentId, txid) {
+
+    try {
+
+        await handleServerSidePayment(
+            paymentId,
+            'complete',
+            txid
+        );
+
+        await updateDoc(
+
+            doc(db, "domains", domain),
+
+            {
+
+                sold:true,
+                txid:txid,
+                soldAt:new Date().toISOString()
+
+            }
+
+        );
+
+        paymentInProgress = false;
+
+        alert("✅ Satın alma tamamlandı");
+
+    }
+
+    catch(error) {
+
+        paymentInProgress = false;
+
+        console.error(error);
+
+        alert("Complete hatası oluştu");
+
+    }
+
+},
 
                 updateDoc(
 
@@ -736,7 +776,29 @@ window.startPurchase = function(domain, amount) {
 
 };
 
-function handleServerSidePayment(paymentId, action, txid) {
+async function handleServerSidePayment(paymentId, action, txid) {
+
+    const response = await fetch('/api/approve', {
+
+        method:'POST',
+
+        headers:{
+            'Content-Type':'application/json'
+        },
+
+        body:JSON.stringify({
+
+            paymentId,
+            action,
+            txid
+
+        })
+
+    });
+
+    return await response.json();
+
+}
 
     fetch('/api/approve', {
 
