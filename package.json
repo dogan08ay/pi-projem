@@ -1,8 +1,8 @@
 {
   "name": "pi-projem",
   "version": "1.0.0",
-  "type": "module", 
+  "type": "module",
   "dependencies": {
-    ...
+    "firebase": "^9.22.0"
   }
 }
