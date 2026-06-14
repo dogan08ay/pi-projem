@@ -557,34 +557,31 @@ window.loginWithPi = function() {
 
             document.getElementById('admin-panel').style.display = 'block';
 
-            const today = new Date().toISOString().split('T')[0];
-            
-// 1. Sorguyu al (orderBy desc = en yeniden en eskiye sıralar)
-const snap = await getDocs(
-    query(
-        collection(db, "daily_logs"),
-        orderBy("date", "desc"), 
-        limit(15)
-    )
-);
+            // 1. Verileri en yeniye göre çekiyoruz
+            const snap = await getDocs(
+                query(
+                    collection(db, "daily_logs"),
+                    orderBy("date", "desc"), 
+                    limit(15)
+                )
+            );
 
-let logs = "";
-snap.forEach(d => {
-    const data = d.data();
-    
-    // 2. NaN veya boş veri varsa listeye hiç ekleme (Filtreleme)
-    if (data.date && data.date !== "NaN.NaN.NaN" && data.date !== "undefined") {
-        logs += `
-            <div style="padding: 8px; border-bottom: 1px solid #334155; display: flex; justify-content: space-between;">
-                <span style="color: #60a5fa;">${data.date}</span>
-                <b style="color: #f8fafc;">@${data.username}</b>
-            </div>
-        `;
-    }
-});
+            let logs = "";
+            snap.forEach(d => {
+                const data = d.data();
+                // 2. NaN hatalarını engellemek için kontrol
+                if (data.date && data.date !== "NaN.NaN.NaN") {
+                    logs += `
+                        <div style="padding: 8px; border-bottom: 1px solid #334155; display: flex; justify-content: space-between;">
+                            <span style="color: #60a5fa;">${data.date}</span>
+                            <b style="color: #f8fafc;">@${data.username}</b>
+                        </div>
+                    `;
+                }
+            });
 
-// 3. Listeyi ekrana yaz (ESKİLERİ SİLER, YENİSİNİ YAZAR)
-document.getElementById('log-list').innerHTML = logs;
+            // 3. Listeyi ekrana tek seferde yazdır
+            document.getElementById('log-list').innerHTML = logs;
 
             snap.forEach(d => {
 
