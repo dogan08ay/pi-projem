@@ -1,97 +1,73 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Web3 Domain Gateway</title>
+    <script src="https://sdk.minepi.com/pi-sdk.js"></script>
+    <style>
+        :root { --bg:#0f172a; --card:#1e293b; --accent:#6366f1; --text:#f8fafc; }
+        body { font-family:'Segoe UI',sans-serif; background:var(--bg); color:var(--text); margin:0; padding:20px; display:flex; justify-content:center; }
+        .container { max-width:600px; width:100%; text-align:center; }
+        .card { background:var(--card); padding:25px; border-radius:20px; box-shadow:0 10px 15px -3px rgba(0,0,0,0.3); margin-bottom:20px; }
+        .pi-btn { background:#0052FF; color:#ffffff; padding:12px 30px; border-radius:50px; font-weight:800; cursor:pointer; border:none; }
+        .btn-buy { background:var(--accent); color:white; border:none; padding:8px 16px; border-radius:8px; cursor:pointer; width:100%; margin-top:10px; }
+        .domain-grid { display:grid; grid-template-columns:1fr 1fr; gap:15px; margin-top:20px; }
+        .domain-card { background:#334155; padding:20px; border-radius:12px; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="card">
+        <h1>Web3 Domain</h1>
+        <p id="user-status">Lütfen önce bağlanın.</p>
+        <button id="auth-btn" class="pi-btn" onclick="window.loginWithPi()">Pi ile Bağlan</button>
+    </div>
+    <div class="card" id="domain-list">
+        <p>Erişim sağlamak için giriş yapınız.</p>
+    </div>
+</div>
+
 <script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
-import { getFirestore, doc, onSnapshot, updateDoc, collection, setDoc, deleteDoc, getDocs, query, orderBy, limit, where } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
+    import { getFirestore, doc, onSnapshot, updateDoc, setDoc } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
 
-const firebaseConfig = {
-    apiKey: "AIzaSyC9r244vRVGbYOcLHyS6EHxKyiygajW7_A",
-    authDomain: "web3-domain-gateway.firebaseapp.com",
-    projectId: "web3-domain-gateway",
-    storageBucket: "web3-domain-gateway.firebasestorage.app",
-    messagingSenderId: "315563254318",
-    appId: "1:315563254318:web:12f2f3f340bb69606df5bf"
-};
+    const firebaseConfig = {
+        apiKey: "AIzaSyC9r244vRVGbYOcLHyS6EHxKyiygajW7_A",
+        authDomain: "web3-domain-gateway.firebaseapp.com",
+        projectId: "web3-domain-gateway",
+        storageBucket: "web3-domain-gateway.firebasestorage.app",
+        messagingSenderId: "315563254318",
+        appId: "1:315563254318:web:12f2f3f340bb69606df5bf"
+    };
 
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
 
-// Sandbox modunu test aşamasında true bırakın, canlıya alırken false yapın
-Pi.init({ version: "2.0", sandbox: true });
-
-let isUserAuthenticated = false;
-let paymentInProgress = false;
-let domainData = {};
-const domains = [ /* Aynı domain listeniz burada kalacak */ ];
-
-// YARIM KALAN ÖDEME YÖNETİMİ
-const onIncompletePaymentFound = (payment) => {
-    console.log("Yarım kalan ödeme bulundu, tamamlanıyor...");
-    handleServerSidePayment(payment.identifier, 'complete', payment.transaction.txid);
-};
-
-window.loginWithPi = function() {
-    Pi.authenticate(['username', 'payments'], onIncompletePaymentFound)
-    .then(async (auth) => {
-        isUserAuthenticated = true;
-        document.getElementById('user-status').innerText = "Bağlı: @" + auth.user.username;
-        document.getElementById('auth-btn').style.display = 'none';
-        render();
-        // ... (Kullanıcı loglama ve admin panel kodlarınız aynen kalsın)
-    })
-    .catch(err => { alert("Giriş başarısız: " + err); });
-};
-
-window.startPurchase = function(domain, amount) {
-    if (!isUserAuthenticated) return alert("Önce giriş yapın");
-    if (paymentInProgress) return alert("İşlem devam ediyor, lütfen bekleyin.");
-
-    const selectedDomain = domainData[domain];
-    if (selectedDomain?.sold === true) return alert("Bu domain zaten satılmış.");
-
-    paymentInProgress = true;
-
-    Pi.createPayment({
-        amount: Number(amount),
-        memo: "Domain: " + domain,
-        metadata: { domain: domain }
-    }, {
-        onReadyForServerApproval: (paymentId) => {
-            handleServerSidePayment(paymentId, 'approve', null);
-        },
-        onReadyForServerCompletion: (paymentId, txid) => {
-            // Firestore güncellendiğinde UI zaten onSnapshot ile güncellenir
-            updateDoc(doc(db, "domains", domain), {
-                sold: true,
-                txid: txid,
-                soldAt: new Date().toISOString()
-            }).then(() => {
-                handleServerSidePayment(paymentId, 'complete', txid);
-                paymentInProgress = false;
-                alert("✅ Satın alma başarıyla tamamlandı!");
-            }).catch(e => {
-                paymentInProgress = false;
-                alert("Veritabanı hatası: " + e.message);
-            });
-        },
-        onCancel: () => {
-            paymentInProgress = false;
-            alert("Ödeme iptal edildi.");
-        },
-        onError: (err) => {
-            paymentInProgress = false;
-            alert("Ödeme hatası: " + (err.message || err));
+    // Pi SDK Başlatma (Güvenli Kontrol)
+    window.addEventListener('load', () => {
+        if (typeof Pi !== 'undefined') {
+            Pi.init({ version: "2.0", sandbox: true });
         }
     });
-};
 
-function handleServerSidePayment(paymentId, action, txid) {
-    // Burada fetch isteğiniz kalacak, hata olsa bile akışı bozmamak için 
-    // catch bloğunda paymentInProgress'i resetlemeyin (sadece loglayın)
-    fetch('/api/approve', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ paymentId, action, txid })
-    }).catch(err => console.error("Server API hatası:", err));
-}
+    let isUserAuthenticated = false;
+    let paymentInProgress = false;
 
-// ... (Render ve diğer fonksiyonlarınız aynen kalsın)
-</script>
+    window.loginWithPi = function() {
+        if (typeof Pi === 'undefined') return alert("Pi SDK yüklenemedi!");
+        
+        Pi.authenticate(['username', 'payments'], (payment) => {
+            handleServerSidePayment(payment.identifier, 'complete', payment.transaction.txid);
+        })
+        .then((auth) => {
+            isUserAuthenticated = true;
+            document.getElementById('user-status').innerText = "Bağlı: @" + auth.user.username;
+            document.getElementById('auth-btn').style.display = 'none';
+            renderDomains();
+        })
+        .catch(err => alert("Giriş başarısız: " + err));
+    };
+
+    window.startPurchase = function(domain, amount) {
