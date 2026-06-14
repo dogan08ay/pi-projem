@@ -504,29 +504,22 @@ window.loginWithPi = function() {
         document.getElementById('auth-btn').style.display = 'none';
         render();
 
-        // 1. Giriş kaydını at (Tarihi manuel temiz bir şekilde oluştur)
+        // 1. Giriş kaydını at
         const now = new Date();
         const dateStr = now.toLocaleDateString("tr-TR");
         const timeStr = now.toLocaleTimeString("tr-TR", {hour: '2-digit', minute:'2-digit'});
         const fullDate = dateStr + " " + timeStr;
 
-        // ESKİSİNİ SİL VE BUNU YAZ:
         await setDoc(doc(db, "daily_logs", auth.user.username + "_" + dateStr.replace(/\./g, '-')), {
             username: auth.user.username,
             date: fullDate,
-            timestamp: Date.now() // Sıralamayı bu rakamla garanti ediyoruz
+            timestamp: Date.now() 
         });
 
-        // 2. Admin Paneli Listeleme (Sadece tek ve temiz blok)
+        // 2. Admin Paneli Listeleme
         if(auth.user.username === "doganay0808") {
             document.getElementById('admin-panel').style.display = 'block';
             
-            const snap = await getDocs(
-               // ESKİSİNİ SİL VE BUNU YAZ:
-        if(auth.user.username === "doganay0808") {
-            document.getElementById('admin-panel').style.display = 'block';
-            
-            // timestamp kullanarak en yeniyi en üste alıyoruz
             const snap = await getDocs(
                 query(collection(db, "daily_logs"), orderBy("timestamp", "desc"), limit(15))
             );
@@ -546,7 +539,7 @@ window.loginWithPi = function() {
             document.getElementById('log-list').innerHTML = logs;
         }
 
-        // Online kullanıcı güncelleme
+        // 3. Online kullanıcı güncelleme
         setInterval(async () => {
             if (isUserAuthenticated) {
                 await setDoc(doc(db, "online_users", auth.user.username), { lastSeen: Date.now() }, { merge:true });
@@ -561,7 +554,6 @@ window.loginWithPi = function() {
         alert("Giriş başarısız: " + err);
     });
 };
-
 window.startPurchase = function(domain, amount) {
 
     if (!isUserAuthenticated) {
