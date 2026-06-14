@@ -4,13 +4,13 @@ export default async function handler(req, res) {
   }
 
   const { paymentId, action, txid } = req.body;
-  const APP_SECRET = process.env.APP_SECRET; // Vercel'deki değişken
+  const APP_SECRET = process.env.APP_SECRET; // Vercel'den otomatik okur
 
   try {
     let piResponse;
 
     if (action === 'approve') {
-      // 1. ADIM: Ödemeyi Onayla
+      // Pi Network API'sine onay isteği
       piResponse = await fetch(`https://api.minepi.com/v2/payments/${paymentId}/approve`, {
         method: 'POST',
         headers: {
@@ -19,7 +19,7 @@ export default async function handler(req, res) {
         }
       });
     } else if (action === 'complete') {
-      // 2. ADIM: Ödemeyi Tamamla
+      // Pi Network API'sine tamamla isteği
       piResponse = await fetch(`https://api.minepi.com/v2/payments/${paymentId}/complete`, {
         method: 'POST',
         headers: {
