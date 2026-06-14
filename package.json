@@ -1,8 +1,5 @@
 {
-  "name": "pi-projem",
+  "name": "web3-domain-gateway",
   "version": "1.0.0",
-  "type": "module",
-  "dependencies": {
-    "firebase": "^9.22.0"
-  }
+  "type": "module"
 }
