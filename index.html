@@ -312,9 +312,15 @@ const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
 Pi.init({
-    version:"2.0",
-    sandbox:true
+    version: "2.0",
+    sandbox: true
 }, {
+    onIncompletePaymentFound: function(payment) {
+        Pi.completePayment(payment.identifier, payment.transaction.txid)
+            .then(() => alert("Bekleyen ödeme temizlendi."))
+            .catch(err => console.error("Temizleme hatası:", err));
+    }
+});
     onIncompletePaymentFound: function(payment) {
         Pi.completePayment(payment.identifier, payment.transaction.txid)
             .then(() => alert("Bekleyen ödeme temizlendi."))
@@ -692,21 +698,28 @@ window.startPurchase = function(domain, amount) {
 
             },
 
-            onReadyForServerCompletion:function(paymentId, txid) {
+            onReadyForServerCompletion: function(paymentId, txid) {
+    // 1. Firebase güncellemesi
     updateDoc(doc(db, "domains", domain), {
-        sold:true,
-        txid:txid,
-        soldAt:new Date().toISOString()
+        sold: true,
+        txid: txid,
+        soldAt: new Date().toISOString()
     });
 
+    // 2. Kendi sunucuna bildirim
     handleServerSidePayment(paymentId, 'complete', txid);
 
-    // Yeni eklenen satır:
+    // 3. Pi SDK'ya "işlemi bitir" komutu (Bu blok eksiksiz olmalı)
     Pi.completePayment(paymentId, txid)
         .then(() => {
             paymentInProgress = false;
             alert("✅ Satın alma tamamlandı");
         })
+        .catch(err => {
+            paymentInProgress = false;
+            alert("SDK Onay Hatası: " + err.message);
+        });
+},
         .catch(err => {
             paymentInProgress = false;
             alert("Onay hatası: " + err.message);
