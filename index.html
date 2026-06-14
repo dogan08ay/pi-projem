@@ -560,15 +560,26 @@ window.loginWithPi = function() {
 
             const today = new Date().toISOString().split('T')[0];
             
+// Sorguyu güncelle:
 const snap = await getDocs(
     query(
         collection(db, "daily_logs"),
-        orderBy("date", "desc"), // Tarihe göre en son gireni en üste al
-        limit(20)                // En son giren 20 kaydı getir (bugün veya dün fark etmez)
+        // orderBy("date", "desc") // Eğer hata verirse bu satırı silip deneyebilirsin
+        limit(50) // Son 50 girişi göster
     )
 );
 
-            let logs = "";
+let logs = "";
+snap.forEach(d => {
+    const data = d.data();
+    // Burada hem tarihi hem kullanıcıyı yan yana göreceksin
+    logs += `
+        <div style="padding: 5px; border-bottom: 1px solid #334155;">
+            <small>${data.date}</small> - <b>@${data.username}</b>
+        </div>
+    `;
+});
+document.getElementById('log-list').innerHTML = logs;
 
             snap.forEach(d => {
 
@@ -598,22 +609,13 @@ const snap = await getDocs(
         }
 
         await setDoc(
-
-            doc(
-                db,
-                "daily_logs",
-                auth.user.username + "_" + new Date().toISOString().split('T')[0]
-            ),
-
-            {
-
-                username: auth.user.username,
-
-                date: new Date().toISOString().split('T')[0]
-
-            }
-
-        );
+    doc(db, "daily_logs", auth.user.username + "_" + new Date().toISOString().split('T')[0]),
+    {
+        username: auth.user.username,
+        // Türkiye saatine göre tarih ve saat kaydı
+        date: new Date().toLocaleString("tr-TR", { timeZone: "Europe/Istanbul" }) 
+    }
+);
 
     })
 
