@@ -555,103 +555,61 @@ window.loginWithPi = function() {
     });
 };
 window.startPurchase = function(domain, amount) {
-
     if (!isUserAuthenticated) {
-
         alert("Önce giriş yapın");
         return;
-
     }
 
     if (paymentInProgress) {
-
-        alert("Bekleyen ödeme işlemi var");
+        alert("Şu anda devam eden bir ödeme işlemi var, lütfen tamamlanmasını bekleyin veya pencereyi kapatıp tekrar deneyin.");
         return;
-
     }
 
     const selectedDomain = domainData[domain];
-
     if (selectedDomain?.sold === true) {
-
-        alert("Bu domain satılmış");
+        alert("Bu domain zaten satılmış.");
         return;
-
     }
 
-    paymentInProgress = true;
+    paymentInProgress = true; // İşlem başladı
 
-    Pi.createPayment(
-
-        {
-
-            amount:Number(amount),
-
-            memo:"Domain: " + domain,
-
-            metadata:{
-                domain:domain
-            }
-
+    Pi.createPayment({
+        amount: Number(amount),
+        memo: "Domain: " + domain,
+        metadata: { domain: domain }
+    }, {
+        onReadyForServerApproval: function(paymentId) {
+            handleServerSidePayment(paymentId, 'approve', null);
         },
+        onReadyForServerCompletion: function(paymentId, txid) {
+            updateDoc(doc(db, "domains", domain), {
+                sold: true,
+                txid: txid,
+                soldAt: new Date().toISOString()
+            });
 
-        {
+            handleServerSidePayment(paymentId, 'complete', txid);
 
-            onReadyForServerApproval:function(paymentId) {
-
-                handleServerSidePayment(
-                    paymentId,
-                    'approve',
-                    null
-                );
-
-            },
-
-            onReadyForServerCompletion: function(paymentId, txid) {
-    // 1. Firebase güncellemesi (Veritabanını işaretle)
-    updateDoc(doc(db, "domains", domain), {
-        sold: true,
-        txid: txid,
-        soldAt: new Date().toISOString()
-    });
-
-    // 2. Kendi sunucuna bildirim (API'ne haber ver)
-    handleServerSidePayment(paymentId, 'complete', txid);
-
-    // 3. EN ÖNEMLİSİ: Pi SDK'ya "işlemi resmen tamamla" komutu
-    Pi.completePayment(paymentId, txid)
-        .then(() => {
-            paymentInProgress = false;
-            alert("✅ Satın alma başarıyla tamamlandı!");
-        })
-        .catch(err => {
-            paymentInProgress = false;
-            alert("Ödeme tamamlanırken hata oluştu: " + err.message);
-        });
-},
-
-            onCancel:function() {
-
-                paymentInProgress = false;
-
-                alert("Ödeme iptal edildi");
-
-            },
-
-            onError:function(err) {
-
-                paymentInProgress = false;
-
-                alert("Ödeme hatası: " + err.message);
-
-            }
-
+            Pi.completePayment(paymentId, txid)
+                .then(() => {
+                    paymentInProgress = false; // BAŞARILI: Sıfırla
+                    alert("✅ Satın alma başarıyla tamamlandı!");
+                })
+                .catch(err => {
+                    paymentInProgress = false; // HATA: Yine de sıfırla
+                    alert("İşlem tamamlanırken hata oluştu: " + err.message);
+                });
+        },
+        onCancel: function() {
+            paymentInProgress = false; // İPTAL: Güvenli şekilde sıfırla
+            alert("Ödeme iptal edildi.");
+        },
+        onError: function(err) {
+            paymentInProgress = false; // HATA: Güvenli şekilde sıfırla
+            alert("Ödeme hatası: " + err.message);
         }
-
-    );
-
+    });
 };
-
 function handleServerSidePayment(paymentId, action, txid) {
 
     fetch('/api/approve', {
