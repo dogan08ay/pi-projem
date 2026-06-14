@@ -515,14 +515,13 @@ window.loginWithPi = function() {
         render();
 
         await setDoc(
-
-            doc(db, "online_users", auth.user.username),
-
-            {
-                lastSeen: Date.now()
-            }
-
-        );
+    doc(db, "daily_logs", auth.user.username + "_" + new Date().toISOString().split('T')[0]),
+    {
+        username: auth.user.username,
+        // Tarih formatı: Gün/Ay/Yıl Saat:Dakika
+        date: new Date().toLocaleDateString("tr-TR") + " " + new Date().toLocaleTimeString("tr-TR", {hour: '2-digit', minute:'2-digit'})
+    }
+);
 
         setInterval(async () => {
 
@@ -560,22 +559,22 @@ window.loginWithPi = function() {
 
             const today = new Date().toISOString().split('T')[0];
             
-// ŞU KISMI YAZ:
+// Sorguyu güncelle:
 const snap = await getDocs(
     query(
         collection(db, "daily_logs"),
-        orderBy("date", "desc"), // Tarihe göre en son gireni en üste al
-        limit(20)                // En son giren 20 kaydı getir (bugün veya dün fark etmez)
+        orderBy("date", "desc"), // En yeni tarihli olan en üstte
+        limit(50)
     )
 );
 
 let logs = "";
 snap.forEach(d => {
     const data = d.data();
-    // Burada hem tarihi hem kullanıcıyı yan yana göreceksin
+    // Ekrana Tarih - Kullanıcı şeklinde basar
     logs += `
-        <div style="padding: 5px; border-bottom: 1px solid #334155;">
-            <small>${data.date}</small> - <b>@${data.username}</b>
+        <div style="font-family: monospace; padding: 8px; border-bottom: 1px solid #475569;">
+            <span style="color: #60a5fa;">${data.date}</span> | <b>@${data.username}</b>
         </div>
     `;
 });
