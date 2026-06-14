@@ -686,33 +686,28 @@ window.startPurchase = function(domain, amount) {
 
             },
 
-            onReadyForServerCompletion:function(paymentId, txid) {
+            onReadyForServerCompletion: function(paymentId, txid) {
+    // 1. Firebase güncellemesi (Veritabanını işaretle)
+    updateDoc(doc(db, "domains", domain), {
+        sold: true,
+        txid: txid,
+        soldAt: new Date().toISOString()
+    });
 
-                updateDoc(
+    // 2. Kendi sunucuna bildirim (API'ne haber ver)
+    handleServerSidePayment(paymentId, 'complete', txid);
 
-                    doc(db, "domains", domain),
-
-                    {
-
-                        sold:true,
-                        txid:txid,
-                        soldAt:new Date().toISOString()
-
-                    }
-
-                );
-
-                handleServerSidePayment(
-                    paymentId,
-                    'complete',
-                    txid
-                );
-
-                paymentInProgress = false;
-
-                alert("✅ Satın alma tamamlandı");
-
-            },
+    // 3. EN ÖNEMLİSİ: Pi SDK'ya "işlemi resmen tamamla" komutu
+    Pi.completePayment(paymentId, txid)
+        .then(() => {
+            paymentInProgress = false;
+            alert("✅ Satın alma başarıyla tamamlandı!");
+        })
+        .catch(err => {
+            paymentInProgress = false;
+            alert("Ödeme tamamlanırken hata oluştu: " + err.message);
+        });
+},
 
             onCancel:function() {
 
