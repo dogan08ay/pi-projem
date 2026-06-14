@@ -80,11 +80,6 @@
             width:100%;
         }
 
-        .btn-buy:disabled {
-            opacity:0.5;
-            cursor:not-allowed;
-        }
-
         .pi-btn {
             background:#0052FF;
             color:#ffffff;
@@ -94,6 +89,13 @@
             font-size:0.95em;
             border:1px solid rgba(255,255,255,0.2);
             cursor:pointer;
+        }
+
+        .footer {
+            font-size:0.8em;
+            color:#94a3b8;
+            margin-top:20px;
+            line-height:1.6;
         }
 
         .section-title-box {
@@ -182,7 +184,7 @@
 
         <p id="online-count"
            style="color:#60a5fa;font-size:0.9em;margin-bottom:15px;font-weight:600;">
-            Sisteme Giriş Yapan Kullanıcı: 0
+            Aktif Kullanıcı: 0
         </p>
 
         <p id="user-status">
@@ -198,18 +200,15 @@
 
     </div>
 
-    <div
-        class="card"
-        id="admin-panel"
-        style="display:none;border:2px solid #6366f1;text-align:left;">
+    <div class="card" id="admin-panel"
+         style="display:none;border:2px solid #6366f1;text-align:left;">
 
         <h3 style="color:#6366f1;margin-top:0;">
             🛠 Admin Paneli
         </h3>
 
-        <div
-            id="log-list"
-            style="font-size:0.85em;max-height:150px;overflow-y:auto;">
+        <div id="log-list"
+             style="font-size:0.85em;max-height:150px;overflow-y:auto;">
         </div>
 
     </div>
@@ -222,14 +221,12 @@
 
         <div class="domain-grid" id="domain-list">
 
-            <div
-                class="auth-warning"
-                style="grid-column:span 2;">
+            <div class="auth-warning"
+                 style="grid-column:span 2;">
 
                 <div class="auth-title-box">
 
                     <div class="lock-message">
-
                         🔒 Erişim sağlamak için lütfen yukarıdaki<br>
 
                         <span class="inline-btn-highlight">
@@ -237,7 +234,6 @@
                         </span><br>
 
                         butonunu kullanınız.
-
                     </div>
 
                 </div>
@@ -264,13 +260,13 @@
         </div>
 
         <div style="margin-top:15px;">
-            <a href="https://pi-projem.vercel.app/privacy.html">
+            <a href="privacy.html">
                 Gizlilik Politikası
             </a>
 
             <span class="footer-divider">|</span>
 
-            <a href="https://pi-projem.vercel.app/terms.html">
+            <a href="terms.html">
                 Kullanım Şartları
             </a>
         </div>
@@ -292,6 +288,7 @@ import {
     updateDoc,
     collection,
     setDoc,
+    deleteDoc,
     getDocs,
     query,
     orderBy,
@@ -311,26 +308,17 @@ const firebaseConfig = {
 };
 
 const app = initializeApp(firebaseConfig);
+
 const db = getFirestore(app);
 
-const waitForPi = setInterval(() => {
-
-    if (typeof Pi !== "undefined") {
-
-        Pi.init({
-            version:"2.0",
-            sandbox:false
-        });
-
-        console.log("Pi SDK hazır");
-
-        clearInterval(waitForPi);
-
-    }
-
-}, 500);
+Pi.init({
+    version:"2.0",
+    sandbox:true
+});
 
 let isUserAuthenticated = false;
+
+let paymentInProgress = false;
 
 let domainData = {};
 
@@ -380,33 +368,57 @@ const domains = [
 
 ];
 
-function updateCounter() {
+onSnapshot(collection(db, "online_users"), (snapshot) => {
 
-    const today = new Date().toISOString().split('T')[0];
+    const countElement = document.getElementById('online-count');
 
-    onSnapshot(
-        query(
-            collection(db, "daily_logs"),
-            where("date", "==", today)
-        ),
+    if (countElement) {
 
-        (snap) => {
+        const now = Date.now();
 
-            document.getElementById('online-count').innerHTML = `
-                <span style="display:inline-block;width:8px;height:8px;background:#22c55e;border-radius:50%;margin-right:6px;"></span>
-                Sisteme Giriş Yapan Kullanıcı: <b>${snap.size}</b>
-            `;
+        const fiveMinutesAgo = now - (5 * 60 * 1000);
 
-        }
-    );
+        let activeCount = 0;
 
-}
+        snapshot.forEach((doc) => {
+
+            const data = doc.data();
+
+            if (data.lastSeen) {
+
+                const lastSeenTime =
+                    data.lastSeen.toMillis
+                    ? data.lastSeen.toMillis()
+                    : new Date(data.lastSeen).getTime();
+
+                if (lastSeenTime > fiveMinutesAgo) {
+
+                    activeCount++;
+
+                }
+
+            }
+
+        });
+
+        countElement.innerText =
+            "Aktif Kullanıcı: " + activeCount;
+
+    }
+
+});
 
 function render() {
 
     const list = document.getElementById('domain-list');
 
-    if (!isUserAuthenticated) return;
+    if (!list) return;
+
+    if (!isUserAuthenticated) {
+
+        return;
+
+    }
 
     list.innerHTML = '';
 
@@ -419,7 +431,10 @@ function render() {
 
         const isSold = data.sold === true;
 
-        const price = data.price || d.price;
+        const price =
+            data.price !== undefined
+            ? data.price
+            : d.price;
 
         const card = document.createElement('div');
 
@@ -437,17 +452,21 @@ function render() {
                 ${isSold ? `SATILDI (${price} Pi)` : price + ' Pi'}
             </span>
 
-            ${
-                !isSold
-                ?
-                `<button class="btn-buy" onclick="window.startPurchase('${d.name}', ${price})">
-                    Satın Al
-                </button>`
-                :
-                ''
-            }
-
         `;
+
+        if (!isSold) {
+
+            const btn = document.createElement('button');
+
+            btn.className = 'btn-buy';
+
+            btn.innerText = 'Satın Al';
+
+            btn.onclick = () => startPurchase(d.name, price);
+
+            card.appendChild(btn);
+
+        }
 
         list.appendChild(card);
 
@@ -458,6 +477,7 @@ function render() {
 domains.forEach(d => {
 
     onSnapshot(
+
         doc(db, "domains", d.name),
 
         (snap) => {
@@ -471,19 +491,12 @@ domains.forEach(d => {
             }
 
         }
+
     );
 
 });
 
 window.loginWithPi = function() {
-
-    if (typeof Pi === "undefined") {
-
-        alert("Pi SDK yüklenemedi");
-
-        return;
-
-    }
 
     Pi.authenticate(
         ['username', 'payments'],
@@ -499,33 +512,68 @@ window.loginWithPi = function() {
 
         document.getElementById('auth-btn').style.display = 'none';
 
+        render();
+
         await setDoc(
 
-            doc(
-                db,
-                "daily_logs",
-                auth.user.username + "_" + new Date().toISOString().split('T')[0]
-            ),
+            doc(db, "online_users", auth.user.username),
 
             {
-                username: auth.user.username,
-                date: new Date().toISOString().split('T')[0]
+                lastSeen: Date.now()
             }
 
         );
 
-        updateCounter();
+        setInterval(async () => {
+
+            if (isUserAuthenticated) {
+
+                await setDoc(
+
+                    doc(db, "online_users", auth.user.username),
+
+                    {
+                        lastSeen: Date.now()
+                    },
+
+                    {
+                        merge:true
+                    }
+
+                );
+
+            }
+
+        }, 30000);
+
+        window.addEventListener("beforeunload", async () => {
+
+            await deleteDoc(
+                doc(db, "online_users", auth.user.username)
+            );
+
+        });
 
         if(auth.user.username === "doganay0808") {
 
             document.getElementById('admin-panel').style.display = 'block';
 
+            const today = new Date().toISOString().split('T')[0];
+
             const snap = await getDocs(
+
                 query(
+
                     collection(db, "daily_logs"),
+
+                    where("date", "==", today),
+
                     orderBy("date", "desc"),
+
                     limit(10)
+
                 )
+
             );
 
             let logs = "";
@@ -545,7 +593,9 @@ window.loginWithPi = function() {
 
                 logs += `
                     <div>
-                        ${formattedDate} - <b>@${d.data().username}</b>
+                        ${formattedDate}
+                        -
+                        <b>@${d.data().username}</b>
                     </div>
                 `;
 
@@ -555,24 +605,46 @@ window.loginWithPi = function() {
 
         }
 
-        render();
+        await setDoc(
+
+            doc(
+                db,
+                "daily_logs",
+                auth.user.username + "_" + new Date().toISOString().split('T')[0]
+            ),
+
+            {
+
+                username: auth.user.username,
+
+                date: new Date().toISOString().split('T')[0]
+
+            }
+
+        );
 
     })
 
     .catch(err => {
 
-        alert("Giriş Hatalı: " + err.message);
+        alert("Giriş başarısız: " + err);
 
     });
 
 };
 
-window.startPurchase = async function(domain, amount) {
+window.startPurchase = function(domain, amount) {
 
     if (!isUserAuthenticated) {
 
         alert("Önce giriş yapın");
+        return;
 
+    }
+
+    if (paymentInProgress) {
+
+        alert("Bekleyen ödeme işlemi var");
         return;
 
     }
@@ -582,144 +654,123 @@ window.startPurchase = async function(domain, amount) {
     if (selectedDomain?.sold === true) {
 
         alert("Bu domain satılmış");
-
         return;
 
     }
 
-    try {
+    paymentInProgress = true;
 
-        Pi.createPayment(
+    Pi.createPayment(
 
-            {
+        {
 
-                amount:Number(amount),
+            amount:Number(amount),
 
-                memo:"Domain: " + domain,
+            memo:"Domain: " + domain,
 
-                metadata:{
-                    domain:domain
-                }
+            metadata:{
+                domain:domain
+            }
+
+        },
+
+        {
+
+            onReadyForServerApproval:function(paymentId) {
+
+                handleServerSidePayment(
+                    paymentId,
+                    'approve',
+                    null
+                );
 
             },
 
-            {
+            onReadyForServerCompletion:function(paymentId, txid) {
 
-                onReadyForServerApproval: async function(paymentId) {
+                updateDoc(
 
-                    console.log("Approve başladı:", paymentId);
+                    doc(db, "domains", domain),
 
-                    try {
+                    {
 
-                        const response = await fetch('/api/approve', {
-
-                            method:'POST',
-
-                            headers:{
-                                'Content-Type':'application/json'
-                            },
-
-                            body:JSON.stringify({
-                                paymentId:paymentId
-                            })
-
-                        });
-
-                        const data = await response.json();
-
-                        console.log(data);
-
-                    } catch(err) {
-
-                        console.error(err);
-
-                        alert("Approve hatası");
+                        sold:true,
+                        txid:txid,
+                        soldAt:new Date().toISOString()
 
                     }
 
-                },
+                );
 
-                onReadyForServerCompletion: async function(paymentId, txid) {
+                handleServerSidePayment(
+                    paymentId,
+                    'complete',
+                    txid
+                );
 
-                    console.log("Complete başladı:", paymentId);
+                paymentInProgress = false;
 
-                    try {
+                alert("✅ Satın alma tamamlandı");
 
-                        const response = await fetch('/api/complete', {
+            },
 
-                            method:'POST',
+            onCancel:function() {
 
-                            headers:{
-                                'Content-Type':'application/json'
-                            },
+                paymentInProgress = false;
 
-                            body:JSON.stringify({
+                alert("Ödeme iptal edildi");
 
-                                paymentId:paymentId,
-                                txid:txid,
-                                domain:domain
+            },
 
-                            })
+            onError:function(err) {
 
-                        });
+                paymentInProgress = false;
 
-                        const data = await response.json();
-
-                        console.log(data);
-
-                        await updateDoc(
-
-                            doc(db, "domains", domain),
-
-                            {
-                                sold:true
-                            }
-
-                        );
-
-                        alert("✅ Ödeme başarıyla tamamlandı");
-
-                        render();
-
-                    } catch(err) {
-
-                        console.error(err);
-
-                        alert("Complete hatası");
-
-                    }
-
-                },
-
-                onCancel:function(paymentId) {
-
-                    console.log("İptal edildi:", paymentId);
-
-                    alert("Ödeme iptal edildi");
-
-                },
-
-                onError:function(error) {
-
-                    console.error(error);
-
-                    alert("Ödeme hatası: " + error.message);
-
-                }
+                alert("Ödeme hatası: " + err.message);
 
             }
 
-        );
+        }
 
-    } catch(err) {
+    );
+
+};
+
+function handleServerSidePayment(paymentId, action, txid) {
+
+    fetch('/api/approve', {
+
+        method:'POST',
+
+        headers:{
+            'Content-Type':'application/json'
+        },
+
+        body:JSON.stringify({
+
+            paymentId,
+            action,
+            txid
+
+        })
+
+    })
+
+    .then(res => res.json())
+
+    .then(data => {
+
+        console.log(data);
+
+    })
+
+    .catch(err => {
 
         console.error(err);
 
-        alert("Sistem hatası");
+    });
 
-    }
-
-};
+}
 
 </script>
 
