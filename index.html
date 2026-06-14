@@ -559,22 +559,14 @@ window.loginWithPi = function() {
             document.getElementById('admin-panel').style.display = 'block';
 
             const today = new Date().toISOString().split('T')[0];
-
-            const snap = await getDocs(
-
-                query(
-
-                    collection(db, "daily_logs"),
-
-                    where("date", "==", today),
-
-                    orderBy("date", "desc"),
-
-                    limit(10)
-
-                )
-
-            );
+            
+const snap = await getDocs(
+    query(
+        collection(db, "daily_logs"),
+        orderBy("date", "desc"), // Tarihe göre en son gireni en üste al
+        limit(20)                // En son giren 20 kaydı getir (bugün veya dün fark etmez)
+    )
+);
 
             let logs = "";
 
