@@ -8,28 +8,29 @@
 <script src="https://sdk.minepi.com/pi-sdk.js"></script>
 
 <style>
-:root{
+:root {
   --bg:#0f172a;
   --card:#1e293b;
   --accent:#6366f1;
   --text:#f8fafc;
 }
 
-body{
+body {
   font-family:Segoe UI;
   background:var(--bg);
   color:var(--text);
+  margin:0;
+  padding:20px;
   display:flex;
   justify-content:center;
-  padding:20px;
 }
 
 .container{max-width:600px;width:100%}
 
 .card{
   background:var(--card);
-  padding:20px;
-  border-radius:18px;
+  padding:25px;
+  border-radius:20px;
   margin-bottom:20px;
 }
 
@@ -43,22 +44,23 @@ body{
   background:#334155;
   padding:15px;
   border-radius:12px;
+  text-align:center;
 }
 
 .domain-img{
   width:100%;
-  height:120px;
+  height:100px;
   object-fit:contain;
 }
 
 .btn-buy{
-  width:100%;
-  margin-top:10px;
-  padding:8px;
-  border:none;
-  border-radius:8px;
   background:var(--accent);
+  border:none;
+  padding:8px;
+  width:100%;
   color:white;
+  border-radius:8px;
+  cursor:pointer;
 }
 
 .pi-btn{
@@ -68,6 +70,7 @@ body{
   color:white;
   border:none;
   font-weight:bold;
+  cursor:pointer;
 }
 </style>
 </head>
@@ -78,199 +81,168 @@ body{
 
 <div class="card">
 <h2>Web3 Domain</h2>
-<p id="status">Giriş yapılmadı</p>
-<button class="pi-btn" onclick="loginWithPi()">Pi ile Bağlan</button>
-</div>
-
-<div class="card" id="admin" style="display:none">
-<h3>Admin Panel</h3>
-<div id="logs"></div>
+<p id="status">Bağlanmadı</p>
+<button class="pi-btn" id="loginBtn">Pi ile Bağlan</button>
 </div>
 
 <div class="card">
-<div id="list"></div>
+<div id="domain-list" class="domain-grid"></div>
 </div>
 
 </div>
 
 <script type="module">
 
-import {initializeApp} from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
-import {
-getFirestore,
-doc,
-onSnapshot,
-setDoc,
-updateDoc,
-deleteDoc,
-collection
-} from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
+import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
+import { getFirestore, doc, onSnapshot, setDoc } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
 
 const app = initializeApp({
-apiKey:"XXX",
-authDomain:"web3-domain-gateway.firebaseapp.com",
-projectId:"web3-domain-gateway"
+  apiKey:"X",
+  authDomain:"X",
+  projectId:"X"
 });
 
 const db = getFirestore(app);
 
-/* 🔥 PI INIT */
-Pi.init({ version:"2.0", sandbox:true });
+let user = null;
+let paymentInProgress = false;
 
-/* 🔥 KRİTİK FIX: pending payment handler */
-Pi.authenticate([],()=>{});
-
-Pi.onIncompletePaymentFound = async function(payment){
-
-console.log("PENDING:",payment);
-
-try{
-await fetch("/api/approve",{
-method:"POST",
-headers:{"Content-Type":"application/json"},
-body:JSON.stringify({
-paymentId:payment.identifier,
-action:"complete",
-txid:payment.transaction?.txid||null
-})
-});
-}catch(e){
-console.error("pending fix error",e);
-}
-
-return Promise.resolve();
-};
-
-let user="";
-let auth=false;
-let lock=false;
-
-const domains=[
-{name:"test-domain",price:10,img:"assets/test.jpeg"},
-{name:"etstur.pi",price:250,img:"assets/etstur.jpeg"},
-{name:"eminevim.pi",price:150,img:"assets/eminevim.jpeg"},
-{name:"fuzulev.pi",price:300,img:"assets/fuzulev.jpeg"},
-{name:"fibabank.pi",price:500,img:"assets/fibabank.jpeg"},
-{name:"sekerbank.pi",price:600,img:"assets/sekerbank.jpeg"},
-{name:"doganay.pi",price:150,img:"assets/doganay.jpeg"}
+const domains = [
+ {name:"test-domain",price:10},
+ {name:"etstur.pi",price:250},
+ {name:"eminevim.pi",price:150}
 ];
 
-let data={};
+let domainData = {};
 
-/* RENDER */
-function render(){
+Pi.init({
+  version:"2.0",
+  sandbox:true,
 
-const el=document.getElementById("list");
-
-if(!auth){
-el.innerHTML="Giriş yap";
-return;
-}
-
-el.innerHTML="";
-
-domains.forEach(d=>{
-
-const info=data[d.name]||{sold:false,price:d.price};
-
-const div=document.createElement("div");
-div.className="domain-card";
-
-div.innerHTML=`
-<img src="${d.img}" class="domain-img">
-<b>${d.name}</b><br>
-<span>${info.sold?"SATILDI":info.price+" Pi"}</span>
-`;
-
-if(!info.sold){
-const b=document.createElement("button");
-b.className="btn-buy";
-b.innerText="Satın Al";
-b.onclick=()=>buy(d.name,info.price);
-div.appendChild(b);
-}
-
-el.appendChild(div);
+  // 🔥 KRİTİK FIX
+  onIncompletePaymentFound: async function(payment){
+    try{
+      await fetch("/api/approve",{
+        method:"POST",
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({
+          paymentId:payment.identifier,
+          action:"complete",
+          txid:payment.transaction?.txid || null
+        })
+      });
+    }catch(e){
+      console.log("Incomplete fix error",e);
+    }
+  }
 });
 
-}
+window.login = function(){
 
-/* FIRESTORE */
-domains.forEach(d=>{
-onSnapshot(doc(db,"domains",d.name),(snap)=>{
-if(snap.exists()){
-data[d.name]=snap.data();
-render();
-}
-});
-});
+  Pi.authenticate(['username','payments'])
 
-/* LOGIN */
-window.loginWithPi=()=>{
-Pi.authenticate(["username","payments"])
-.then(async r=>{
-user=r.user.username;
-auth=true;
+  .then(async auth=>{
+    user = auth.user.username;
 
-document.getElementById("status").innerText="@" + user;
+    document.getElementById("status").innerText =
+      "Bağlı: @" + user;
 
-setDoc(doc(db,"online_users",user),{
-lastSeen:Date.now()
-});
+    render();
 
-setInterval(()=>{
-setDoc(doc(db,"online_users",user),{
-lastSeen:Date.now()
-},{merge:true});
-},30000);
+    await setDoc(doc(db,"online_users",user),{
+      lastSeen:Date.now()
+    });
 
-if(user==="doganay0808"){
-document.getElementById("admin").style.display="block";
-}
-
-render();
-});
+  });
 };
 
-/* BUY */
-window.buy=(domain,price)=>{
+document.getElementById("loginBtn").onclick = login;
 
-if(lock) return;
-lock=true;
+function render(){
 
-Pi.createPayment({
-amount:price,
-memo:"Domain:"+domain,
-metadata:{domain}
-},{
-onReadyForServerApproval:(id)=>{
-fetch("/api/approve",{method:"POST"});
-},
+  const list = document.getElementById("domain-list");
+  if(!user) return;
 
-onReadyForServerCompletion:async(id,txid)=>{
+  list.innerHTML="";
 
-await updateDoc(doc(db,"domains",domain),{
-sold:true,
-txid,
-soldAt:new Date().toISOString()
-});
+  domains.forEach(d=>{
 
-lock=false;
-render();
+    const data = domainData[d.name] || {sold:false};
 
-alert("Satın alma başarılı");
-},
+    const div = document.createElement("div");
+    div.className="domain-card";
 
-onCancel:()=>{
-lock=false;
-},
+    div.innerHTML=`
+      <h4>${d.name}</h4>
+      <p>${data.sold ? "SATILDI" : d.price + " Pi"}</p>
+    `;
 
-onError:(e)=>{
-lock=false;
-alert(e.message);
+    if(!data.sold){
+      const btn=document.createElement("button");
+      btn.className="btn-buy";
+      btn.innerText="Satın Al";
+
+      btn.onclick=()=>buy(d.name,d.price);
+
+      div.appendChild(btn);
+    }
+
+    list.appendChild(div);
+  });
 }
+
+domains.forEach(d=>{
+  onSnapshot(doc(db,"domains",d.name),(snap)=>{
+    domainData[d.name]=snap.data()||{};
+    render();
+  });
 });
 
+window.buy = function(domain,amount){
+
+  if(paymentInProgress) return;
+  paymentInProgress=true;
+
+  Pi.createPayment({
+    amount,
+    memo:"Domain "+domain,
+    metadata:{domain}
+  },{
+    onReadyForServerApproval: async function(paymentId){
+      await fetch("/api/approve",{
+        method:"POST",
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({paymentId,action:"approve"})
+      });
+    },
+
+    onReadyForServerCompletion: async function(paymentId,txid){
+
+      await setDoc(doc(db,"domains",domain),{
+        sold:true,
+        txid
+      },{merge:true});
+
+      await fetch("/api/approve",{
+        method:"POST",
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({paymentId,action:"complete",txid})
+      });
+
+      paymentInProgress=false;
+      alert("Satın alma tamamlandı");
+      render();
+    },
+
+    onError:(e)=>{
+      paymentInProgress=false;
+      alert("Hata: "+e.message);
+    },
+
+    onCancel:()=>{
+      paymentInProgress=false;
+    }
+  });
 };
 
 </script>
