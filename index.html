@@ -281,377 +281,119 @@
 
 </div>
 
-<script type="module">
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
 
-import {
-    initializeApp
-} from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
+<script>
+    const firebaseConfig = {
+        apiKey: "s3ddhcea9xae0qieikgjy9zw9tduemnraoucjrr9iqe87pduhczmd95kq8n3aai1",
+        authDomain: "web3-domain-gateway.firebaseapp.com",
+        projectId: "web3-domain-gateway",
+        storageBucket: "web3-domain-gateway.firebasestorage.app",
+        messagingSenderId: "315563254318",
+        appId: "1:315563254318:web:12f2f3f340bb69606df5bf"
+    };
 
-import {
-    getFirestore,
-    doc,
-    onSnapshot,
-    updateDoc,
-    collection,
-    setDoc,
-    deleteDoc,
-    getDocs,
-    query,
-    orderBy,
-    limit,
-    where
-} from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
+    const app = firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
 
-const firebaseConfig = {
+    Pi.init({ version: "2.0", sandbox: true });
 
-    apiKey: "s3ddhcea9xae0qieikgjy9zw9tduemnraoucjrr9iqe87pduhczmd95kq8n3aai1",
-    authDomain: "web3-domain-gateway.firebaseapp.com",
-    projectId: "web3-domain-gateway",
-    storageBucket: "web3-domain-gateway.firebasestorage.app",
-    messagingSenderId: "315563254318",
-    appId: "1:315563254318:web:12f2f3f340bb69606df5bf"
+    let isUserAuthenticated = false;
+    let domainData = {};
+    const domains = [
+        { name: 'test-domain', img: 'assets/test.jpeg', price: 10 },
+        { name: 'etstur.pi', img: 'assets/etstur.jpeg', price: 250 },
+        { name: 'eminevim.pi', img: 'assets/eminevim.jpeg', price: 150 },
+        { name: 'fuzulev.pi', img: 'assets/fuzulev.jpeg', price: 300 },
+        { name: 'fibabank.pi', img: 'assets/fibabank.jpeg', price: 500 },
+        { name: 'sekerbank.pi', img: 'assets/sekerbank.jpeg', price: 600 },
+        { name: 'doganay.pi', img: 'assets/doganay.jpeg', price: 150 }
+    ];
 
-};
-
-const app = initializeApp(firebaseConfig);
-
-const db = getFirestore(app);
-
-Pi.init({
-    version:"2.0",
-    sandbox:true
-});
-
-let isUserAuthenticated = false;
-
-let paymentInProgress = false;
-
-let domainData = {};
-
-const domains = [
-
-    {
-        name:'test-domain',
-        img:'assets/test.jpeg',
-        price:10
-    },
-
-    {
-        name:'etstur.pi',
-        img:'assets/etstur.jpeg',
-        price:250
-    },
-
-    {
-        name:'eminevim.pi',
-        img:'assets/eminevim.jpeg',
-        price:150
-    },
-
-    {
-        name:'fuzulev.pi',
-        img:'assets/fuzulev.jpeg',
-        price:300
-    },
-
-    {
-        name:'fibabank.pi',
-        img:'assets/fibabank.jpeg',
-        price:500
-    },
-
-    {
-        name:'sekerbank.pi',
-        img:'assets/sekerbank.jpeg',
-        price:600
-    },
-
-    {
-        name:'doganay.pi',
-        img:'assets/doganay.jpeg',
-        price:150
-    }
-
-];
-
-onSnapshot(collection(db, "online_users"), (snapshot) => {
-
-    const countElement = document.getElementById('online-count');
-
-    if (countElement) {
-
-        const now = Date.now();
-
-        const fiveMinutesAgo = now - (5 * 60 * 1000);
-
-        let activeCount = 0;
-
-        snapshot.forEach((doc) => {
-
-            const data = doc.data();
-
-            if (data.lastSeen) {
-
-                const lastSeenTime =
-                    data.lastSeen.toMillis
-                    ? data.lastSeen.toMillis()
-                    : new Date(data.lastSeen).getTime();
-
-                if (lastSeenTime > fiveMinutesAgo) {
-
-                    activeCount++;
-
-                }
-
+    function render() {
+        const list = document.getElementById('domain-list');
+        if (!list) return;
+        if (!isUserAuthenticated) return;
+        list.innerHTML = '';
+        domains.forEach(d => {
+            const data = domainData[d.name] || { sold: false, price: d.price };
+            const isSold = data.sold === true;
+            const price = data.price !== undefined ? data.price : d.price;
+            const card = document.createElement('div');
+            card.className = 'domain-card';
+            card.innerHTML = `<img src="${d.img}" class="domain-img"><strong>${d.name}</strong><br><span>${isSold ? `SATILDI (${price} Pi)` : price + ' Pi'}</span>`;
+            if (!isSold) {
+                const btn = document.createElement('button');
+                btn.className = 'btn-buy';
+                btn.innerText = 'Satın Al';
+                btn.id = 'buy-btn-' + d.name;
+                btn.addEventListener('click', () => window.startPurchase(d.name, price));
+                card.appendChild(btn);
             }
-
+            list.appendChild(card);
         });
-
-        countElement.innerText =
-            "Aktif Kullanıcı: " + activeCount;
-
     }
 
-});
+    window.startPurchase = async function(domain, amount) {
+        const buyBtn = document.getElementById('buy-btn-' + domain);
+        if (!isUserAuthenticated) { alert("Önce giriş yapın"); return; }
+        if (buyBtn) { buyBtn.disabled = true; buyBtn.innerText = "İşleniyor..."; }
 
-function render() {
-
-    const list = document.getElementById('domain-list');
-
-    if (!list) return;
-
-    if (!isUserAuthenticated) {
-
-        return;
-
-    }
-
-    list.innerHTML = '';
-
-    domains.forEach(d => {
-
-        const data = domainData[d.name] || {
-            sold:false,
-            price:d.price
-        };
-
-        const isSold = data.sold === true;
-
-        const price =
-            data.price !== undefined
-            ? data.price
-            : d.price;
-
-        const card = document.createElement('div');
-
-        card.className = 'domain-card';
-
-        card.innerHTML = `
-
-            <img src="${d.img}" class="domain-img">
-
-            <strong>${d.name}</strong>
-
-            <br>
-
-            <span>
-                ${isSold ? `SATILDI (${price} Pi)` : price + ' Pi'}
-            </span>
-
-        `;
-
-        if (!isSold) {
-            const btn = document.createElement('button');
-            btn.className = 'btn-buy';
-            btn.innerText = 'Satın Al';
-            btn.id = 'buy-btn-' + d.name; // ID ekledik
-            btn.onclick = () => startPurchase(d.name, price);
-            card.appendChild(btn);
-        }
-        
-        list.appendChild(card);
-
-    });
-
-}
-
-domains.forEach(d => {
-
-    onSnapshot(
-
-        doc(db, "domains", d.name),
-
-        (snap) => {
-
-            if (snap.exists()) {
-
-                domainData[d.name] = snap.data();
-
-                render();
-
-            }
-
-        }
-
-    );
-
-});
-
-window.loginWithPi = function() {
-    Pi.authenticate(['username', 'payments'], () => {})
-    .then(async (auth) => {
-        isUserAuthenticated = true;
-        document.getElementById('user-status').innerText = "Bağlı: @" + auth.user.username;
-        document.getElementById('auth-btn').style.display = 'none';
-        render();
-
-        // 1. Giriş kaydını at
-        const now = new Date();
-        const dateStr = now.toLocaleDateString("tr-TR");
-        const timeStr = now.toLocaleTimeString("tr-TR", {hour: '2-digit', minute:'2-digit'});
-        const fullDate = dateStr + " " + timeStr;
-
-        await setDoc(doc(db, "daily_logs", auth.user.username + "_" + dateStr.replace(/\./g, '-')), {
-            username: auth.user.username,
-            date: fullDate,
-            timestamp: Date.now() 
-        });
-
-        // 2. Admin Paneli Listeleme
-        if(auth.user.username === "doganay0808") {
-            document.getElementById('admin-panel').style.display = 'block';
-            
-            const snap = await getDocs(
-                query(collection(db, "daily_logs"), orderBy("timestamp", "desc"), limit(15))
-            );
-
-            let logs = "";
-            snap.forEach(d => {
-                const data = d.data();
-                if (data.date && !data.date.includes("NaN")) {
-                    logs += `
-                        <div style="padding: 8px; border-bottom: 1px solid #334155; display: flex; justify-content: space-between;">
-                            <span style="color: #60a5fa;">${data.date}</span>
-                            <b style="color: #f8fafc;">@${data.username}</b>
-                        </div>
-                    `;
-                }
+        try {
+            Pi.createPayment({
+                amount: Number(amount),
+                memo: "Domain: " + domain,
+                metadata: { domain: domain }
+            }, {
+                onReadyForServerApproval: (id) => handleServerSidePayment(id, 'approve', null),
+                onReadyForServerCompletion: (id, txid) => {
+                    db.collection("domains").doc(domain).update({ sold: true, txid: txid, soldAt: new Date().toISOString() });
+                    handleServerSidePayment(id, 'complete', txid);
+                    Pi.completePayment(id, txid).then(() => alert("✅ Başarılı!"));
+                },
+                onCancel: () => { if (buyBtn) { buyBtn.disabled = false; buyBtn.innerText = "Satın Al"; } },
+                onError: (err) => { alert("Hata: " + err.message); if (buyBtn) { buyBtn.disabled = false; buyBtn.innerText = "Satın Al"; } }
             });
-            document.getElementById('log-list').innerHTML = logs;
-        }
+        } catch (e) { alert("Hata: " + e); }
+    };
 
-        // 3. Online kullanıcı güncelleme
-        setInterval(async () => {
-            if (isUserAuthenticated) {
-                await setDoc(doc(db, "online_users", auth.user.username), { lastSeen: Date.now() }, { merge:true });
-            }
-        }, 30000);
-
-        window.addEventListener("beforeunload", async () => {
-            await deleteDoc(doc(db, "online_users", auth.user.username));
-        });
-    })
-    .catch(err => {
-        alert("Giriş başarısız: " + err);
-    });
-};
-    
-window.startPurchase = async function(domain, amount) {
-    const buyBtn = document.getElementById('buy-btn-' + domain);
-    
-    if (!isUserAuthenticated) {
-        alert("Önce giriş yapın");
-        return;
+    function handleServerSidePayment(paymentId, action, txid) {
+        fetch('/api/approve', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({paymentId, action, txid}) });
     }
 
-    // Butonu anında devre dışı bırakıp geri bildirim verelim
-    if (buyBtn) {
-        buyBtn.disabled = true;
-        buyBtn.innerText = "Bağlanıyor...";
-    }
+    // 1. Giriş Yapma Fonksiyonu
+    window.loginWithPi = function() {
+        Pi.authenticate(['username', 'payments'], () => {}).then(async (auth) => {
+            isUserAuthenticated = true;
+            document.getElementById('user-status').innerText = "Bağlı: @" + auth.user.username;
+            document.getElementById('auth-btn').style.display = 'none';
+            render();
+            
+            // Online durumunu güncelle
+            db.collection("online_users").doc(auth.user.username).set({ lastSeen: Date.now() }, { merge: true });
+        }).catch(err => alert("Giriş başarısız: " + err));
+    };
 
-    try {
-        // Önce yarım kalan bir işlem var mı kontrol et
-        const incomplete = await Pi.getIncompletePayment();
-        if (incomplete) {
-            console.log("Yarım kalan işlem bulundu, temizleniyor...");
-            await Pi.completePayment(incomplete.identifier, incomplete.transaction.txid);
-            alert("Eski işlem temizlendi, lütfen tekrar deneyin.");
-            if (buyBtn) { buyBtn.disabled = false; buyBtn.innerText = "Satın Al"; }
-            return;
-        }
-
-        // Yeni ödeme başlat
-        Pi.createPayment({
-            amount: Number(amount),
-            memo: "Domain: " + domain,
-            metadata: { domain: domain }
-        }, {
-            onReadyForServerApproval: function(paymentId) {
-                handleServerSidePayment(paymentId, 'approve', null);
-            },
-            onReadyForServerCompletion: function(paymentId, txid) {
-                updateDoc(doc(db, "domains", domain), {
-                    sold: true,
-                    txid: txid,
-                    soldAt: new Date().toISOString()
-                });
-                handleServerSidePayment(paymentId, 'complete', txid);
-                Pi.completePayment(paymentId, txid)
-                    .then(() => {
-                        alert("✅ Satın alma başarıyla tamamlandı!");
-                        if (buyBtn) { buyBtn.disabled = false; buyBtn.innerText = "Satın Al"; }
-                    });
-            },
-            onCancel: function() {
-                if (buyBtn) { buyBtn.disabled = false; buyBtn.innerText = "Satın Al"; }
-            },
-            onError: function(err) {
-                if (buyBtn) { buyBtn.disabled = false; buyBtn.innerText = "Satın Al"; }
-                alert("Ödeme hatası: " + err.message);
+    // 2. Domainleri Canlı Takip Etme
+    domains.forEach(d => {
+        db.collection("domains").doc(d.name).onSnapshot((snap) => {
+            if (snap.exists()) {
+                domainData[d.name] = snap.data();
+                render();
             }
         });
-    } catch (e) {
-        console.error("Hata:", e);
-        if (buyBtn) { buyBtn.disabled = false; buyBtn.innerText = "Satın Al"; }
-    }
-};
-function handleServerSidePayment(paymentId, action, txid) {
-
-    fetch('/api/approve', {
-
-        method:'POST',
-
-        headers:{
-            'Content-Type':'application/json'
-        },
-
-        body:JSON.stringify({
-
-            paymentId,
-            action,
-            txid
-
-        })
-
-    })
-
-    .then(res => res.json())
-
-    .then(data => {
-
-        console.log(data);
-
-    })
-
-    .catch(err => {
-
-        console.error(err);
-
     });
 
-}
-
+    // 3. Aktif Kullanıcı Sayısı
+    db.collection("online_users").onSnapshot((snapshot) => {
+        let activeCount = 0;
+        const fiveMinutesAgo = Date.now() - (5 * 60 * 1000);
+        snapshot.forEach((doc) => {
+            if (doc.data().lastSeen > fiveMinutesAgo) activeCount++;
+        });
+        document.getElementById('online-count').innerText = "Aktif Kullanıcı: " + activeCount;
+    });
 </script>
 
 </body>
