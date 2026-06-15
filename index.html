@@ -564,60 +564,57 @@ window.startPurchase = function(domain, amount) {
         return;
     }
 
-    if (buyBtn && buyBtn.disabled) {
-        alert("İşlem zaten devam ediyor, lütfen bekleyin.");
-        return;
-    }
-
-    const selectedDomain = domainData[domain];
-    if (selectedDomain?.sold === true) {
-        alert("Bu domain satılmış");
-        return;
-    }
-
-    // İşlem başladığında butonu kilitle
-    if (buyBtn) {
-        buyBtn.disabled = true;
-        buyBtn.innerText = "İşleniyor...";
-    }
-
-    Pi.createPayment({
-        amount: Number(amount),
-        memo: "Domain: " + domain,
-        metadata: { domain: domain }
-    }, {
-        onReadyForServerApproval: function(paymentId) {
-            handleServerSidePayment(paymentId, 'approve', null);
-        },
-        onReadyForServerCompletion: function(paymentId, txid) {
-            updateDoc(doc(db, "domains", domain), {
-                sold: true,
-                txid: txid,
-                soldAt: new Date().toISOString()
-            });
-
-            handleServerSidePayment(paymentId, 'complete', txid);
-
-            Pi.completePayment(paymentId, txid)
-                .then(() => {
-                    if (buyBtn) { buyBtn.disabled = false; buyBtn.innerText = "Satın Al"; }
-                    alert("✅ Satın alma başarıyla tamamlandı!");
-                })
-                .catch(err => {
-                    if (buyBtn) { buyBtn.disabled = false; buyBtn.innerText = "Satın Al"; }
-                    alert("Ödeme tamamlanırken hata: " + err.message);
-                });
-        },
-        onCancel: function() {
-            if (buyBtn) { buyBtn.disabled = false; buyBtn.innerText = "Satın Al"; }
-            alert("Ödeme iptal edildi.");
-        },
-        onError: function(err) {
-            if (buyBtn) { buyBtn.disabled = false; buyBtn.innerText = "Satın Al"; }
-            alert("Ödeme hatası: " + err.message);
+    // 1. Önce takılı kalmış eski bir işlem var mı kontrol et
+    Pi.getIncompletePayment((payment) => {
+        if (payment) {
+            console.log("Takılı kalmış işlem bulundu, işleniyor:", payment);
+            // Takılı kalmış işlemi tamamlamaya çalış
+            handleServerSidePayment(payment.identifier, 'complete', payment.transaction.txid);
+            Pi.completePayment(payment.identifier, payment.transaction.txid);
+            alert("Eski bir işlem tamamlandı, lütfen tekrar deneyin.");
+            return;
         }
-    });
 
+        // 2. Yeni işlem başlat
+        if (buyBtn) {
+            buyBtn.disabled = true;
+            buyBtn.innerText = "İşleniyor...";
+        }
+
+        Pi.createPayment({
+            amount: Number(amount),
+            memo: "Domain: " + domain,
+            metadata: { domain: domain }
+        }, {
+            onReadyForServerApproval: function(paymentId) {
+                handleServerSidePayment(paymentId, 'approve', null);
+            },
+            onReadyForServerCompletion: function(paymentId, txid) {
+                updateDoc(doc(db, "domains", domain), {
+                    sold: true,
+                    txid: txid,
+                    soldAt: new Date().toISOString()
+                });
+                handleServerSidePayment(paymentId, 'complete', txid);
+                Pi.completePayment(paymentId, txid)
+                    .then(() => {
+                        if (buyBtn) { buyBtn.disabled = false; buyBtn.innerText = "Satın Al"; }
+                        alert("✅ Başarıyla tamamlandı!");
+                    })
+                    .catch(err => {
+                        if (buyBtn) { buyBtn.disabled = false; buyBtn.innerText = "Satın Al"; }
+                        alert("Hata: " + err.message);
+                    });
+            },
+            onCancel: function() {
+                if (buyBtn) { buyBtn.disabled = false; buyBtn.innerText = "Satın Al"; }
+            },
+            onError: function(err) {
+                if (buyBtn) { buyBtn.disabled = false; buyBtn.innerText = "Satın Al"; }
+                alert("Ödeme hatası: " + err.message);
+            }
+        });
+    });
 };
 
 function handleServerSidePayment(paymentId, action, txid) {
