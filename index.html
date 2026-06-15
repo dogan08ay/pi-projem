@@ -207,7 +207,7 @@
     </div>
 
     <div class="card" id="admin-panel"
-         style="display:none;border:2px solid #6366f1;text-align:left;">
+         style="display:block;border:2px solid #6366f1;text-align:left;">
 
         <h3 style="color:#6366f1;margin-top:0;">
             🛠 Admin Paneli
@@ -395,6 +395,41 @@
         document.getElementById('online-count').innerText = "Aktif Kullanıcı: " + activeCount;
     });
 </script>
+// Giriş Yapma Fonksiyonu
+window.loginWithPi = function() {
+    Pi.authenticate(['username', 'payments'], () => {}).then(async (auth) => {
+        isUserAuthenticated = true;
+        document.getElementById('user-status').innerText = "Bağlı: @" + auth.user.username;
+        document.getElementById('auth-btn').style.display = 'none';
+        render();
+        db.collection("online_users").doc(auth.user.username).set({ lastSeen: Date.now() }, { merge: true });
+    }).catch(err => alert("Giriş başarısız: " + err));
+};
 
+// Domainleri Canlı Takip Etme
+domains.forEach(d => {
+    db.collection("domains").doc(d.name).onSnapshot((snap) => {
+        if (snap.exists()) {
+            domainData[d.name] = snap.data();
+            render();
+            // Satış loglarını admin paneline yaz
+            if (snap.data().sold) {
+                const log = document.createElement('div');
+                log.innerHTML = `✅ ${d.name} satıldı!`;
+                document.getElementById('log-list').prepend(log);
+            }
+        }
+    });
+});
+
+// Aktif Kullanıcı Sayısı
+db.collection("online_users").onSnapshot((snapshot) => {
+    let activeCount = 0;
+    const fiveMinutesAgo = Date.now() - (5 * 60 * 1000);
+    snapshot.forEach((doc) => {
+        if (doc.data().lastSeen > fiveMinutesAgo) activeCount++;
+    });
+    document.getElementById('online-count').innerText = "Aktif Kullanıcı: " + activeCount;
+});
 </body>
 </html>
