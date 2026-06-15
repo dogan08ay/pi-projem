@@ -294,7 +294,7 @@
     </div>
 
 </div>
-    
+
 <script type="module">
 
 import {
@@ -316,17 +316,17 @@ import {
 
 const firebaseConfig = {
 
-    apiKey:"s3ddhcea9xae0qieikgjy9zw9tduemnraoucjrr9iqe87pduhczmd95kq8n3aai1",
+    apiKey: "s3ddhcea9xae0qieikgjy9zw9tduemnraoucjrr9iqe87pduhczmd95kq8n3aai1",
 
-    authDomain:"web3-domain-gateway.firebaseapp.com",
+    authDomain: "web3-domain-gateway.firebaseapp.com",
 
-    projectId:"web3-domain-gateway",
+    projectId: "web3-domain-gateway",
 
-    storageBucket:"web3-domain-gateway.firebasestorage.app",
+    storageBucket: "web3-domain-gateway.firebasestorage.app",
 
-    messagingSenderId:"315563254318",
+    messagingSenderId: "315563254318",
 
-    appId:"1:315563254318:web:12f2f3f340bb69606df5bf"
+    appId: "1:315563254318:web:12f2f3f340bb69606df5bf"
 
 };
 
@@ -336,80 +336,85 @@ const db = getFirestore(app);
 
 Pi.init({
     version:"2.0",
-    sandbox:false
+    sandbox:true
 });
 
 let isUserAuthenticated = false;
+
 let paymentInProgress = false;
+
 let domainData = {};
 
 const domains = [
 
-{
-    name:'test-domain',
-    img:'assets/test.jpeg',
-    price:10
-},
+    {
+        name:'test-domain',
+        img:'assets/test.jpeg',
+        price:10
+    },
 
-{
-    name:'etstur.pi',
-    img:'assets/etstur.jpeg',
-    price:250
-},
+    {
+        name:'etstur.pi',
+        img:'assets/etstur.jpeg',
+        price:250
+    },
 
-{
-    name:'eminevim.pi',
-    img:'assets/eminevim.jpeg',
-    price:150
-},
+    {
+        name:'eminevim.pi',
+        img:'assets/eminevim.jpeg',
+        price:150
+    },
 
-{
-    name:'fuzulev.pi',
-    img:'assets/fuzulev.jpeg',
-    price:300
-},
+    {
+        name:'fuzulev.pi',
+        img:'assets/fuzulev.jpeg',
+        price:300
+    },
 
-{
-    name:'fibabank.pi',
-    img:'assets/fibabank.jpeg',
-    price:500
-},
+    {
+        name:'fibabank.pi',
+        img:'assets/fibabank.jpeg',
+        price:500
+    },
 
-{
-    name:'sekerbank.pi',
-    img:'assets/sekerbank.jpeg',
-    price:600
-},
+    {
+        name:'sekerbank.pi',
+        img:'assets/sekerbank.jpeg',
+        price:600
+    },
 
-{
-    name:'doganay.pi',
-    img:'assets/doganay.jpeg',
-    price:150
-}
+    {
+        name:'doganay.pi',
+        img:'assets/doganay.jpeg',
+        price:150
+    }
 
 ];
 
-async function clearPendingPayments(){
+async function clearPendingPayments() {
 
-    try{
+    try {
 
         const payments =
             await Pi.getIncompleteServerPayments();
 
-        if(payments && payments.length > 0){
+        if (payments && payments.length > 0) {
 
-            for(const payment of payments){
+            for (const payment of payments) {
 
-                try{
+                try {
 
-                    await payment.complete();
+                    await handleServerSidePayment(
 
-                    console.log(
-                        "Pending payment temizlendi:",
-                        payment.identifier
+                        payment.identifier,
+
+                        'complete',
+
+                        payment.transaction?.txid || null
+
                     );
 
-                }catch(err){
+                } catch(err) {
 
                     console.error(err);
 
@@ -419,7 +424,7 @@ async function clearPendingPayments(){
 
         }
 
-    }catch(err){
+    } catch(err) {
 
         console.error(err);
 
@@ -429,14 +434,14 @@ async function clearPendingPayments(){
 
 onSnapshot(
 
-    collection(db,"online_users"),
+    collection(db, "online_users"),
 
-    (snapshot)=>{
+    (snapshot) => {
 
         const countElement =
             document.getElementById('online-count');
 
-        if(!countElement) return;
+        if (!countElement) return;
 
         const now = Date.now();
 
@@ -445,18 +450,18 @@ onSnapshot(
 
         let activeCount = 0;
 
-        snapshot.forEach((docSnap)=>{
+        snapshot.forEach((docSnap) => {
 
             const data = docSnap.data();
 
-            if(data.lastSeen){
+            if (data.lastSeen) {
 
                 const lastSeenTime =
                     typeof data.lastSeen === "number"
                     ? data.lastSeen
                     : new Date(data.lastSeen).getTime();
 
-                if(lastSeenTime > fiveMinutesAgo){
+                if (lastSeenTime > fiveMinutesAgo) {
 
                     activeCount++;
 
@@ -473,14 +478,14 @@ onSnapshot(
 
 );
 
-function render(){
+function render() {
 
     const list =
         document.getElementById('domain-list');
 
-    if(!list) return;
+    if (!list) return;
 
-    if(!isUserAuthenticated){
+    if (!isUserAuthenticated) {
 
         return;
 
@@ -488,7 +493,7 @@ function render(){
 
     list.innerHTML = '';
 
-    domains.forEach(d=>{
+    domains.forEach(d => {
 
         const data = domainData[d.name] || {
             sold:false,
@@ -516,14 +521,16 @@ function render(){
             <br>
 
             <span>
+
                 ${isSold
                     ? `SATILDI (${price} Pi)`
                     : price + ' Pi'}
+
             </span>
 
         `;
 
-        if(!isSold){
+        if (!isSold) {
 
             const btn =
                 document.createElement('button');
@@ -538,7 +545,7 @@ function render(){
             btn.disabled = paymentInProgress;
 
             btn.onclick =
-                ()=>startPurchase(d.name,price);
+                () => startPurchase(d.name, price);
 
             card.appendChild(btn);
 
@@ -550,15 +557,15 @@ function render(){
 
 }
 
-domains.forEach(d=>{
+domains.forEach(d => {
 
     onSnapshot(
 
-        doc(db,"domains",d.name),
+        doc(db, "domains", d.name),
 
-        (snap)=>{
+        (snap) => {
 
-            if(snap.exists()){
+            if (snap.exists()) {
 
                 domainData[d.name] = snap.data();
 
@@ -572,14 +579,14 @@ domains.forEach(d=>{
 
 });
 
-window.loginWithPi = function(){
+window.loginWithPi = function() {
 
     Pi.authenticate(
-        ['username','payments'],
-        ()=>{}
+        ['username', 'payments'],
+        () => {}
     )
 
-    .then(async(auth)=>{
+    .then(async (auth) => {
 
         await clearPendingPayments();
 
@@ -593,27 +600,103 @@ window.loginWithPi = function(){
 
         render();
 
+        const now = new Date();
+
+        const dateStr =
+            now.toLocaleDateString("tr-TR");
+
+        const timeStr =
+            now.toLocaleTimeString(
+                "tr-TR",
+                {
+                    hour:'2-digit',
+                    minute:'2-digit'
+                }
+            );
+
+        const fullDate =
+            dateStr + " " + timeStr;
+
         await setDoc(
 
             doc(
                 db,
-                "online_users",
-                auth.user.username
+                "daily_logs",
+                auth.user.username + "_" +
+                dateStr.replace(/\./g, '-')
             ),
 
             {
-                lastSeen:Date.now()
-            },
-
-            {
-                merge:true
+                username: auth.user.username,
+                date: fullDate,
+                timestamp: Date.now()
             }
 
         );
 
-        setInterval(async()=>{
+        if(auth.user.username === "doganay0808") {
 
-            if(isUserAuthenticated){
+            document.getElementById('admin-panel')
+                .style.display = 'block';
+
+            const snap = await getDocs(
+
+                query(
+
+                    collection(db, "daily_logs"),
+
+                    orderBy("timestamp", "desc"),
+
+                    limit(15)
+
+                )
+
+            );
+
+            let logs = "";
+
+            snap.forEach(d => {
+
+                const data = d.data();
+
+                if (
+                    data.date &&
+                    !data.date.includes("NaN")
+                ) {
+
+                    logs += `
+
+                        <div style="
+                            padding:8px;
+                            border-bottom:1px solid #334155;
+                            display:flex;
+                            justify-content:space-between;
+                        ">
+
+                            <span style="color:#60a5fa;">
+                                ${data.date}
+                            </span>
+
+                            <b style="color:#f8fafc;">
+                                @${data.username}
+                            </b>
+
+                        </div>
+
+                    `;
+
+                }
+
+            });
+
+            document.getElementById('log-list')
+                .innerHTML = logs;
+
+        }
+
+        setInterval(async () => {
+
+            if (isUserAuthenticated) {
 
                 await setDoc(
 
@@ -624,7 +707,7 @@ window.loginWithPi = function(){
                     ),
 
                     {
-                        lastSeen:Date.now()
+                        lastSeen: Date.now()
                     },
 
                     {
@@ -635,13 +718,13 @@ window.loginWithPi = function(){
 
             }
 
-        },30000);
+        }, 30000);
 
         window.addEventListener(
 
             "beforeunload",
 
-            async()=>{
+            async () => {
 
                 await deleteDoc(
 
@@ -659,7 +742,7 @@ window.loginWithPi = function(){
 
     })
 
-    .catch(err=>{
+    .catch(err => {
 
         alert(
             "Giriş başarısız: " + err.message
@@ -669,9 +752,9 @@ window.loginWithPi = function(){
 
 };
 
-window.startPurchase = async function(domain,amount){
+window.startPurchase = async function(domain, amount) {
 
-    if(!isUserAuthenticated){
+    if (!isUserAuthenticated) {
 
         alert("Önce giriş yapın");
 
@@ -679,7 +762,7 @@ window.startPurchase = async function(domain,amount){
 
     }
 
-    if(paymentInProgress){
+    if (paymentInProgress) {
 
         alert("Bekleyen ödeme işlemi var");
 
@@ -690,7 +773,7 @@ window.startPurchase = async function(domain,amount){
     const selectedDomain =
         domainData[domain];
 
-    if(selectedDomain?.sold === true){
+    if (selectedDomain?.sold === true) {
 
         alert("Bu domain satılmış");
 
@@ -702,151 +785,141 @@ window.startPurchase = async function(domain,amount){
 
     render();
 
-    try{
+    Pi.createPayment(
 
-        Pi.createPayment(
+        {
 
-            {
+            amount:Number(amount),
 
-                amount:Number(amount),
+            memo:"Domain: " + domain,
 
-                memo:"Domain: " + domain,
+            metadata:{
+                domain:domain
+            }
 
-                metadata:{
-                    domain:domain
+        },
+
+        {
+
+            onReadyForServerApproval:
+            async function(paymentId) {
+
+                try {
+
+                    await handleServerSidePayment(
+
+                        paymentId,
+
+                        'approve',
+
+                        null
+
+                    );
+
+                } catch(err) {
+
+                    paymentInProgress = false;
+
+                    render();
+
+                    alert(
+                        "Approve hatası"
+                    );
+
                 }
 
             },
 
-            {
+            onReadyForServerCompletion:
+            async function(paymentId, txid) {
 
-                onReadyForServerApproval:
-                async function(paymentId){
+                try {
 
-                    console.log(
-                        "Approve:",
-                        paymentId
-                    );
+                    await setDoc(
 
-                },
+                        doc(
+                            db,
+                            "domains",
+                            domain
+                        ),
 
-                onReadyForServerCompletion:
-                async function(paymentId,txid){
+                        {
 
-                    try{
+                            sold:true,
 
-                        await setDoc(
+                            txid:txid,
 
-                            doc(
-                                db,
-                                "domains",
-                                domain
-                            ),
+                            soldAt:
+                                new Date()
+                                .toISOString()
 
-                            {
+                        },
 
-                                sold:true,
-
-                                txid:txid,
-
-                                soldAt:
-                                    new Date()
-                                    .toISOString()
-
-                            },
-
-                            {
-                                merge:true
-                            }
-
-                        );
-
-                        const payments =
-                            await Pi.getIncompleteServerPayments();
-
-                        if(payments && payments.length > 0){
-
-                            for(const payment of payments){
-
-                                try{
-
-                                    await payment.complete();
-
-                                }catch(e){
-
-                                    console.log(e);
-
-                                }
-
-                            }
-
+                        {
+                            merge:true
                         }
 
-                        paymentInProgress = false;
-
-                        render();
-
-                        alert(
-                            "✅ Satın alma başarıyla tamamlandı!"
-                        );
-
-                    }catch(err){
-
-                        paymentInProgress = false;
-
-                        render();
-
-                        alert(
-                            "Tamamlama hatası: " +
-                            err.message
-                        );
-
-                    }
-
-                },
-
-                onCancel:function(){
-
-                    paymentInProgress = false;
-
-                    render();
-
-                    alert(
-                        "Ödeme iptal edildi"
                     );
 
-                },
+                    await handleServerSidePayment(
 
-                onError:function(err){
+                        paymentId,
+
+                        'complete',
+
+                        txid
+
+                    );
 
                     paymentInProgress = false;
 
                     render();
 
                     alert(
-                        "Ödeme hatası: " +
+                        "✅ Satın alma başarıyla tamamlandı!"
+                    );
+
+                } catch(err) {
+
+                    paymentInProgress = false;
+
+                    render();
+
+                    alert(
+                        "Tamamlama hatası: " +
                         err.message
                     );
 
                 }
 
+            },
+
+            onCancel:function() {
+
+                paymentInProgress = false;
+
+                render();
+
+                alert("Ödeme iptal edildi");
+
+            },
+
+            onError:function(err) {
+
+                paymentInProgress = false;
+
+                render();
+
+                alert(
+                    "Ödeme hatası: " +
+                    err.message
+                );
+
             }
 
-        );
+        }
 
-    }catch(err){
-
-        paymentInProgress = false;
-
-        render();
-
-        alert(err.message);
-
-    }
-
-};
-
-</script>
+    );
 
 };
 
