@@ -556,7 +556,7 @@ window.loginWithPi = function() {
     });
 };
     
-window.startPurchase = function(domain, amount) {
+window.startPurchase = async function(domain, amount) {
     const buyBtn = document.getElementById('buy-btn-' + domain);
     
     if (!isUserAuthenticated) {
@@ -564,28 +564,24 @@ window.startPurchase = function(domain, amount) {
         return;
     }
 
-    // Pi SDK'dan tamamlanmamış işlem var mı diye sor
-    Pi.getIncompletePayment((payment) => {
-        if (payment) {
-            console.log("Askıda kalan işlem bulundu:", payment);
-            // Varsa, SDK'ya bu işlemi "resmen tamamla" diyoruz
-            Pi.completePayment(payment.identifier, payment.transaction.txid)
-                .then(() => {
-                    alert("Askıda kalan işlem temizlendi, şimdi tekrar satın almayı deneyin.");
-                    location.reload(); // Sayfayı yenileyerek temiz bir başlangıç yap
-                })
-                .catch(err => {
-                    alert("Eski işlem temizlenemedi, lütfen bir süre bekleyip tekrar deneyin.");
-                });
+    // Butonu anında devre dışı bırakıp geri bildirim verelim
+    if (buyBtn) {
+        buyBtn.disabled = true;
+        buyBtn.innerText = "Bağlanıyor...";
+    }
+
+    try {
+        // Önce yarım kalan bir işlem var mı kontrol et
+        const incomplete = await Pi.getIncompletePayment();
+        if (incomplete) {
+            console.log("Yarım kalan işlem bulundu, temizleniyor...");
+            await Pi.completePayment(incomplete.identifier, incomplete.transaction.txid);
+            alert("Eski işlem temizlendi, lütfen tekrar deneyin.");
+            if (buyBtn) { buyBtn.disabled = false; buyBtn.innerText = "Satın Al"; }
             return;
         }
 
-        // Eğer askıda işlem yoksa normal ödeme başlat
-        if (buyBtn) {
-            buyBtn.disabled = true;
-            buyBtn.innerText = "İşleniyor...";
-        }
-
+        // Yeni ödeme başlat
         Pi.createPayment({
             amount: Number(amount),
             memo: "Domain: " + domain,
@@ -600,17 +596,11 @@ window.startPurchase = function(domain, amount) {
                     txid: txid,
                     soldAt: new Date().toISOString()
                 });
-
                 handleServerSidePayment(paymentId, 'complete', txid);
-
                 Pi.completePayment(paymentId, txid)
                     .then(() => {
-                        if (buyBtn) { buyBtn.disabled = false; buyBtn.innerText = "Satın Al"; }
                         alert("✅ Satın alma başarıyla tamamlandı!");
-                    })
-                    .catch(err => {
                         if (buyBtn) { buyBtn.disabled = false; buyBtn.innerText = "Satın Al"; }
-                        alert("Ödeme tamamlanırken hata: " + err.message);
                     });
             },
             onCancel: function() {
@@ -621,7 +611,10 @@ window.startPurchase = function(domain, amount) {
                 alert("Ödeme hatası: " + err.message);
             }
         });
-    });
+    } catch (e) {
+        console.error("Hata:", e);
+        if (buyBtn) { buyBtn.disabled = false; buyBtn.innerText = "Satın Al"; }
+    }
 };
 function handleServerSidePayment(paymentId, action, txid) {
 
