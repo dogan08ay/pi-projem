@@ -564,18 +564,23 @@ window.startPurchase = function(domain, amount) {
         return;
     }
 
-    // 1. Önce takılı kalmış eski bir işlem var mı kontrol et
+    // Pi SDK'dan tamamlanmamış işlem var mı diye sor
     Pi.getIncompletePayment((payment) => {
         if (payment) {
-            console.log("Takılı kalmış işlem bulundu, işleniyor:", payment);
-            // Takılı kalmış işlemi tamamlamaya çalış
-            handleServerSidePayment(payment.identifier, 'complete', payment.transaction.txid);
-            Pi.completePayment(payment.identifier, payment.transaction.txid);
-            alert("Eski bir işlem tamamlandı, lütfen tekrar deneyin.");
+            console.log("Askıda kalan işlem bulundu:", payment);
+            // Varsa, SDK'ya bu işlemi "resmen tamamla" diyoruz
+            Pi.completePayment(payment.identifier, payment.transaction.txid)
+                .then(() => {
+                    alert("Askıda kalan işlem temizlendi, şimdi tekrar satın almayı deneyin.");
+                    location.reload(); // Sayfayı yenileyerek temiz bir başlangıç yap
+                })
+                .catch(err => {
+                    alert("Eski işlem temizlenemedi, lütfen bir süre bekleyip tekrar deneyin.");
+                });
             return;
         }
 
-        // 2. Yeni işlem başlat
+        // Eğer askıda işlem yoksa normal ödeme başlat
         if (buyBtn) {
             buyBtn.disabled = true;
             buyBtn.innerText = "İşleniyor...";
@@ -595,15 +600,17 @@ window.startPurchase = function(domain, amount) {
                     txid: txid,
                     soldAt: new Date().toISOString()
                 });
+
                 handleServerSidePayment(paymentId, 'complete', txid);
+
                 Pi.completePayment(paymentId, txid)
                     .then(() => {
                         if (buyBtn) { buyBtn.disabled = false; buyBtn.innerText = "Satın Al"; }
-                        alert("✅ Başarıyla tamamlandı!");
+                        alert("✅ Satın alma başarıyla tamamlandı!");
                     })
                     .catch(err => {
                         if (buyBtn) { buyBtn.disabled = false; buyBtn.innerText = "Satın Al"; }
-                        alert("Hata: " + err.message);
+                        alert("Ödeme tamamlanırken hata: " + err.message);
                     });
             },
             onCancel: function() {
@@ -616,7 +623,6 @@ window.startPurchase = function(domain, amount) {
         });
     });
 };
-
 function handleServerSidePayment(paymentId, action, txid) {
 
     fetch('/api/approve', {
