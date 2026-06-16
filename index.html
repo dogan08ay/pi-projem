@@ -369,10 +369,10 @@ window.loginWithPi = function () {
         window.currentUserId = auth.user.username;
 
         /* aktif kullanıcı ekle */
-        await setDoc(doc(db, "active_users", auth.user.username), {
-            username: auth.user.username,
-            lastSeen: Date.now()
-        });
+        await setDoc(doc(db, "active_users", auth.user.uid), {
+    username: auth.user.username,
+    lastSeen: Date.now()
+});
 
         document.getElementById('user-status').innerText =
             "Bağlı: @" + auth.user.username;
@@ -382,13 +382,12 @@ window.loginWithPi = function () {
         render();
 
         /* canlı keep alive */
-        setInterval(() => {
-            setDoc(doc(db, "active_users", auth.user.username), {
-                username: auth.user.username,
-                lastSeen: Date.now()
-            });
-        }, 15000);
-
+      setInterval(() => {
+    setDoc(doc(db, "active_users", auth.user.uid), {
+        username: auth.user.username,
+        lastSeen: Date.now()
+    });
+}, 15000);
         /* admin panel */
         if (auth.user.username === "doganay0808") {
             document.getElementById('admin-panel').style.display = 'block';
