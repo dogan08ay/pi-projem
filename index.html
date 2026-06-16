@@ -488,10 +488,16 @@ window.loginWithPi = function () {
 };
 window.startPurchase = async function(domain, amount) {
 
-    if (!isAuth || paymentInProgress) return;
+  console.log("CLICK OLDU:", domain, amount);
 
-    paymentInProgress = true;
+if (!isAuth) {
+    alert("Önce giriş yapmalısın");
+    return;
+}
 
+if (paymentInProgress) return;
+
+paymentInProgress = true;
     try {
 
         Pi.createPayment(
@@ -500,7 +506,6 @@ window.startPurchase = async function(domain, amount) {
                 memo: "Domain: " + domain,
                 metadata: { domain }
             },
-            {
                 onReadyForServerApproval: function(paymentId) {
 
                     console.log(
