@@ -439,8 +439,8 @@ window.loginWithPi = function () {
 
         document.getElementById("auth-btn").style.display = "none";
 
-        render();
-
+       renderDomains();
+        
         /* HEARTBEAT (ONLINE KEEP) */
         setInterval(() => {
             setDoc(doc(db, "active_users", currentUser), {
