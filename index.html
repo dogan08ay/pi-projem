@@ -363,9 +363,7 @@ window.loginWithPi = function () {
 
     Pi.authenticate(['username','payments'], async (auth) => {
 
-        await clearPendingPayments();
-
-        isUserAuthenticated = true;
+               isUserAuthenticated = true;
         window.currentUserId = auth.user.username;
 
         /* aktif kullanıcı ekle */
