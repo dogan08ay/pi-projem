@@ -510,7 +510,7 @@ window.loginWithPi = function () {
     });
 };
 
- window.startPurchase = async function(domain, amount) {
+window.startPurchase = async function(domain, amount) {
 
     if (!isAuth || paymentInProgress) return;
 
@@ -518,7 +518,9 @@ window.loginWithPi = function () {
 
     try {
 
-        Pi.createPayment(
+        console.log("SATIN AL TIKLANDI:", domain, amount);
+
+        await Pi.createPayment(
             {
                 amount: Number(amount),
                 memo: "Domain: " + domain,
@@ -526,7 +528,7 @@ window.loginWithPi = function () {
             },
             {
                 onReadyForServerApproval: function(paymentId) {
-                    console.log("Approval:", paymentId);
+                    console.log("Approval gerekli:", paymentId);
                 },
 
                 onReadyForServerCompletion: async function(paymentId, txid) {
@@ -554,7 +556,7 @@ window.loginWithPi = function () {
                 onError: function(error) {
                     paymentInProgress = false;
                     console.error(error);
-                    alert("Ödeme hatası oluştu: " + error.message);
+                    alert("Ödeme hatası: " + (error?.message || error));
                 }
             }
         );
@@ -562,64 +564,10 @@ window.loginWithPi = function () {
     } catch (err) {
         paymentInProgress = false;
         console.error(err);
-        alert(err.message);
+        alert("Hata: " + (err?.message || err));
     }
-};           {
-                amount: Number(amount),
-                memo: "Domain: " + domain,
-                metadata: { domain }
-            },
-             {
-                onReadyForServerApproval: function(paymentId) {
-
-                    console.log(
-                        "Approval gerekli:",
-                        paymentId
-                    );
-
-                },
-
-                onReadyForServerCompletion: async function(paymentId, txid) {
-
-                    await setDoc(
-                        doc(db, "domains", domain),
-                        {
-                            sold: true,
-                            txid: txid,
-                            soldAt: new Date().toISOString()
-                        },
-                        { merge: true }
-                    );
-
-                    paymentInProgress = false;
-
-                    alert("Satın alma tamamlandı!");
-
-                },
-
-                onCancel: function() {
-
-                    paymentInProgress = false;
-
-                    alert("İşlem iptal edildi.");
-
-                },
-                 
- onError: function(error) {
-
-   paymentInProgress = false;
-
-   console.error(error);
-
-   try {
-       Pi.cancelCurrentPayment();
-   } catch (e) {}
-
-    alert("Ödeme hatası oluştu.");
-   
-    }
-
 };
+    
 </script>
     
 </body>
