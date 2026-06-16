@@ -394,6 +394,13 @@ window.loginWithPi = function () {
 ========================= */
 function startAdmin(today) {
 
+    const panel = document.getElementById("admin-panel");
+    const logList = document.getElementById("log-list");
+
+    if (!panel || !logList) return;
+
+    panel.style.display = "block";
+
     const ref = doc(db, "daily_stats", today);
 
     onSnapshot(ref, (snap) => {
@@ -401,10 +408,27 @@ function startAdmin(today) {
         const data = snap.data() || {};
         const users = data.users || {};
 
-        const count = Object.keys(users).length;
+        const list = Object.keys(users);
 
-        document.getElementById("log-list").innerHTML =
-            "Bugün giriş yapan farklı kullanıcı: <b>" + count + "</b>";
+        logList.innerHTML = `
+            <div style="padding:10px;">
+                <h4 style="margin:0 0 10px 0;color:#6366f1;">
+                    Bugün giriş yapan farklı kullanıcı
+                </h4>
+
+                <div style="font-size:14px;color:#f8fafc;">
+                    <b>${list.length}</b> kişi
+                </div>
+
+                <hr style="border:1px solid #334155;margin:10px 0;">
+
+                ${list.map(u => `
+                    <div style="padding:6px 0;border-bottom:1px solid #334155;">
+                        👤 @${u}
+                    </div>
+                `).join("")}
+            </div>
+        `;
     });
 }
 
