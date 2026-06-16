@@ -241,7 +241,7 @@
         <div>
             Sorularınız için bize ulaşın:
             <a href="mailto:doganay08@hotmail.com">
-                📩 doganay08@hotmail.com
+                📩doganay08@hotmail.com
             </a>
         </div>
 
@@ -394,7 +394,43 @@ window.loginWithPi = function () {
         if(auth.user.username === "doganay0808") {
             document.getElementById('admin-panel').style.display = 'block';
         }
+// ADMIN LOG VERİLERİNİ ÇEK (FIX)
+const snap = await getDocs(
+    query(
+        collection(db, "daily_logs"),
+        orderBy("timestamp", "desc"),
+        limit(15)
+    )
+);
 
+let logs = "";
+
+snap.forEach(d => {
+
+    const data = d.data();
+
+    if (data.date && !data.date.includes("NaN")) {
+
+        logs += `
+            <div style="
+                padding:8px;
+                border-bottom:1px solid #334155;
+                display:flex;
+                justify-content:space-between;
+            ">
+                <span style="color:#60a5fa;">
+                    ${data.date}
+                </span>
+
+                <b style="color:#f8fafc;">
+                    @${data.username}
+                </b>
+            </div>
+        `;
+    }
+});
+
+document.getElementById('log-list').innerHTML = logs;
     })
     .catch(err => {
         alert("Giriş başarısız: " + err.message);
