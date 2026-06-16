@@ -289,8 +289,13 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-Pi.init({ version:"2.0", sandbox:true });
-
+window.addEventListener("load", () => {
+    if (window.Pi) {
+        Pi.init({ version: "2.0", sandbox: true });
+    } else {
+        console.error("Pi SDK yüklenmedi");
+    }
+});
 let isUserAuthenticated = false;
 let paymentInProgress = false;
 let domainData = {};
@@ -374,10 +379,11 @@ function render() {
     });
 }
 
-window.loginWithPi = function () {
+window.loginWithPi = async function () {
 
-    Pi.authenticate(['username','payments'], () => {})
-    .then(async (auth) => {
+    try {
+
+        const auth = await Pi.authenticate(['username','payments']);
 
         await clearPendingPayments();
 
@@ -389,6 +395,11 @@ window.loginWithPi = function () {
         document.getElementById('auth-btn').style.display = 'none';
 
         render();
+
+    } catch (err) {
+        alert("Giriş başarısız: " + err.message);
+    }
+};
 
         /* ADMIN PANEL AÇ */
         if(auth.user.username === "doganay0808") {
