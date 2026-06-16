@@ -391,6 +391,9 @@ window.loginWithPi = function () {
         render();
 
         /* ADMIN PANEL AÇ */
+        if(auth.user.username === "doganay0808") {
+    document.getElementById('admin-panel').style.display = 'block';
+}
        // ADMIN LOG VERİLERİNİ ÇEK (FIX)
 const snap = await getDocs(
     query(
