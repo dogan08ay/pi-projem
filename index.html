@@ -2,177 +2,85 @@
 <html lang="tr">
 <head>
 
-    <meta charset="UTF-8">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Web3 Domain Gateway</title>
 
-    <meta name="viewport"
-          content="width=device-width, initial-scale=1.0">
+<script src="https://sdk.minepi.com/pi-sdk.js"></script>
 
-    <title>Web3 Domain Gateway</title>
+<style>
 
-    <script src="https://sdk.minepi.com/pi-sdk.js"></script>
+:root {
+    --bg:#0f172a;
+    --card:#1e293b;
+    --accent:#6366f1;
+    --text:#f8fafc;
+}
 
-    <style>
-        :root {
-            --bg:#0f172a;
-            --card:#1e293b;
-            --accent:#6366f1;
-            --text:#f8fafc;
-        }
+body {
+    font-family:'Segoe UI',sans-serif;
+    background:var(--bg);
+    color:var(--text);
+    margin:0;
+    padding:20px;
+    display:flex;
+    justify-content:center;
+}
 
-        body {
-            font-family:'Segoe UI',sans-serif;
-            background:var(--bg);
-            color:var(--text);
-            margin:0;
-            padding:20px;
-            display:flex;
-            justify-content:center;
-        }
+.container {
+    max-width:600px;
+    width:100%;
+    text-align:center;
+}
 
-        .container {
-            max-width:600px;
-            width:100%;
-            text-align:center;
-        }
+.card {
+    background:var(--card);
+    padding:25px;
+    border-radius:20px;
+    margin-bottom:20px;
+}
 
-        .card {
-            background:var(--card);
-            padding:25px;
-            border-radius:20px;
-            box-shadow:0 10px 15px -3px rgba(0,0,0,0.3);
-            margin-bottom:20px;
-        }
+.domain-grid {
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:15px;
+    margin-top:20px;
+}
 
-        .domain-grid {
-            display:grid;
-            grid-template-columns:1fr 1fr;
-            gap:15px;
-            margin-top:20px;
-        }
+.domain-card {
+    background:#334155;
+    padding:20px;
+    border-radius:12px;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+}
 
-        .domain-card {
-            background:#334155;
-            padding:20px;
-            border-radius:12px;
-            border:1px solid #475569;
-            transition:0.3s;
-            display:flex;
-            flex-direction:column;
-            align-items:center;
-        }
+.domain-img {
+    width:100%;
+    height:120px;
+    object-fit:contain;
+    margin-bottom:10px;
+}
 
-        .domain-img {
-            width:100%;
-            height:120px;
-            margin-bottom:10px;
-            border-radius:12px;
-            object-fit:contain;
-            background-color:#334155;
-            padding:5px;
-        }
+.btn-buy {
+    background:var(--accent);
+    color:white;
+    border:none;
+    padding:8px 16px;
+    border-radius:8px;
+    width:100%;
+}
 
-        .btn-buy {
-            background:var(--accent);
-            color:white;
-            border:none;
-            padding:8px 16px;
-            border-radius:8px;
-            cursor:pointer;
-            margin-top:10px;
-            font-weight:bold;
-            width:100%;
-        }
+.pi-btn {
+    background:#0052FF;
+    color:white;
+    padding:12px 30px;
+    border-radius:50px;
+    font-weight:bold;
+}
 
-        .btn-buy:disabled {
-            opacity:0.5;
-            cursor:not-allowed;
-        }
-
-        .pi-btn {
-            background:#0052FF;
-            color:#ffffff;
-            padding:12px 30px;
-            border-radius:50px;
-            font-weight:800;
-            font-size:0.95em;
-            border:1px solid rgba(255,255,255,0.2);
-            cursor:pointer;
-        }
-
-        .section-title-box {
-            background:linear-gradient(135deg,#fef3c7 0%,#fde68a 100%);
-            color:#1e293b;
-            padding:12px 28px;
-            border-radius:16px;
-            border:3px solid #f59e0b;
-            font-size:1.15em;
-            font-weight:800;
-            display:inline-block;
-            margin:5px auto 25px auto;
-            box-shadow:0 6px 16px rgba(245,158,11,0.2);
-        }
-
-        .auth-warning {
-            color:#1e293b;
-            padding:24px;
-            border:4px solid #f59e0b;
-            border-radius:24px;
-            background:linear-gradient(135deg,#fef3c7 0%,#fde68a 100%);
-            text-align:center;
-            box-shadow:0 12px 28px rgba(245,158,11,0.25);
-        }
-
-        .auth-title-box {
-            background:#1e293b;
-            color:#ffffff;
-            padding:26px 20px;
-            border-radius:18px;
-            border:1.5px solid rgba(245,158,11,0.4);
-            display:flex;
-            flex-direction:column;
-            align-items:center;
-            justify-content:center;
-            gap:14px;
-        }
-
-        .lock-message {
-            font-size:1.05em;
-            font-weight:700;
-            line-height:1.8;
-            color:#f8fafc;
-        }
-
-        .inline-btn-highlight {
-            background:#0052ff;
-            color:#ffffff;
-            padding:8px 26px;
-            border-radius:50px;
-            font-weight:800;
-            display:inline-block;
-            margin:10px 0;
-            border:1px solid rgba(255,255,255,0.2);
-        }
-
-        .footer-section {
-            margin-top:30px;
-            padding:20px;
-            color:#94a3b8;
-            font-size:0.9em;
-            text-align:center;
-            border-top:1px solid #334155;
-        }
-
-        .footer-section a {
-            color:#38bdf8;
-            text-decoration:none;
-        }
-
-        .footer-divider {
-            margin:0 10px;
-            color:#475569;
-        }
-
-    </style>
+</style>
 
 </head>
 
@@ -180,225 +88,197 @@
 
 <div class="container">
 
-    <div class="card">
+<div class="card">
 
-        <h1>Web3 Domain</h1>
+<h1>Web3 Domain</h1>
 
-        <p id="online-count"
-           style="color:#60a5fa;font-size:0.9em;margin-bottom:15px;font-weight:600;">
-            Aktif Kullanıcı: 0
-        </p>
+<p id="user-status">Bağlanmadı</p>
 
-        <p id="user-status">
-            Lütfen önce bağlanın.
-        </p>
+<button class="pi-btn" id="auth-btn" onclick="loginWithPi()">
+Pi ile Bağlan
+</button>
 
-        <button id="auth-btn"
-                class="pi-btn"
-                onclick="window.loginWithPi()">
-            Pi ile Bağlan
-        </button>
+</div>
 
-    </div>
+<div class="card">
 
-    <div class="card"
-         id="admin-panel"
-         style="display:none;border:2px solid #6366f1;text-align:left;">
+<div id="domain-list"></div>
 
-        <h3 style="color:#6366f1;margin-top:0;">
-            🛠 Admin Paneli
-        </h3>
-
-        <div id="log-list"
-             style="font-size:0.85em;max-height:150px;overflow-y:auto;">
-        </div>
-
-    </div>
-
-    <div class="card">
-
-        <div class="section-title-box">
-            Satıştaki Domainler
-        </div>
-
-        <div class="domain-grid" id="domain-list">
-
-            <div class="auth-warning" style="grid-column:span 2;">
-                <div class="auth-title-box">
-                    <div class="lock-message">
-                        🔒 Erişim sağlamak için lütfen yukarıdaki
-                        <br>
-                        <span class="inline-btn-highlight">Pi ile Bağlan</span>
-                        <br>
-                        butonunu kullanınız.
-                    </div>
-                </div>
-            </div>
-
-        </div>
-
-    </div>
+</div>
 
 </div>
 
 <script type="module">
 
-import {
-    initializeApp
-} from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
+/* ================= FIREBASE ================= */
 
+import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
 import {
-    getFirestore,
-    doc,
-    onSnapshot,
-    collection,
-    setDoc,
-    deleteDoc,
-    getDocs,
-    query,
-    orderBy,
-    limit
+getFirestore,
+doc,
+onSnapshot,
+setDoc
 } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
 
 const firebaseConfig = {
-    apiKey: "s3ddhcea9xae0qieikgjy9zw9tduemnraoucjrr9iqe87pduhczmd95kq8n3aai1",
-    authDomain: "web3-domain-gateway.firebaseapp.com",
-    projectId: "web3-domain-gateway",
-    storageBucket: "web3-domain-gateway.firebasestorage.app",
-    messagingSenderId: "315563254318",
-    appId: "1:315563254318:web:12f2f3f340bb69606df5bf"
+apiKey: "xxx",
+authDomain: "xxx",
+projectId: "xxx"
 };
 
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-/* ✅ FIX 1 — Pi init güvenli */
+/* ================= PI SAFE WRAPPER ================= */
+
+const PI = () => (typeof Pi !== "undefined" ? Pi : null);
+
 try {
-    Pi.init({ version:"2.0", sandbox:true });
+    PI()?.init({ version:"2.0", sandbox:true });
 } catch(e) {
-    console.log("Pi init error:", e);
+    console.log("Pi init skip");
 }
 
-let isUserAuthenticated = false;
-let paymentInProgress = false;
-let domainData = {};
+/* ================= STATE ================= */
+
+let user = null;
+let paymentLock = false;
+
+/* ================= DOMAINS ================= */
 
 const domains = [
-    { name:'test-domain', img:'assets/test.jpeg', price:10 },
-    { name:'etstur.pi', img:'assets/etstur.jpeg', price:250 },
-    { name:'eminevim.pi', img:'assets/eminevim.jpeg', price:150 },
-    { name:'fuzulev.pi', img:'assets/fuzulev.jpeg', price:300 },
-    { name:'fibabank.pi', img:'assets/fibabank.jpeg', price:500 },
-    { name:'sekerbank.pi', img:'assets/sekerbank.jpeg', price:600 },
-    { name:'doganay.pi', img:'assets/doganay.jpeg', price:150 }
+{ name:"test-domain", price:10, img:"assets/test.jpeg" },
+{ name:"eminevim.pi", price:150, img:"assets/eminevim.jpeg" }
 ];
 
-async function clearPendingPayments() {
-    try {
-        const payments = await Pi.getIncompleteServerPayments();
-        if (payments && payments.length > 0) {
-            for (const payment of payments) {
-                try {
-                    await handleServerSidePayment(
-                        payment.identifier,
-                        'complete',
-                        payment.transaction?.txid || null
-                    );
-                } catch(e) {
-                    console.log("pending fix error:", e);
-                }
-            }
-        }
-    } catch(e) {
-        console.log("clearPendingPayments error:", e);
-    }
+/* ================= RENDER ================= */
+
+function render() {
+
+const list = document.getElementById("domain-list");
+if (!user) return;
+
+list.innerHTML = "";
+
+domains.forEach(d => {
+
+const div = document.createElement("div");
+div.className = "domain-card";
+
+div.innerHTML = `
+<img class="domain-img" src="${d.img}">
+<strong>${d.name}</strong>
+<span>${d.price} Pi</span>
+`;
+
+const btn = document.createElement("button");
+btn.className = "btn-buy";
+btn.innerText = paymentLock ? "Bekleyin" : "Satın Al";
+
+btn.onclick = () => startPurchase(d);
+
+div.appendChild(btn);
+list.appendChild(div);
+
+});
+
 }
 
-window.loginWithPi = function() {
+/* ================= LOGIN ================= */
 
-    Pi.authenticate(['username','payments'], () => {})
+window.loginWithPi = async function() {
 
-    .then(async (auth) => {
+const pi = PI();
+if (!pi) return alert("Pi SDK yok");
 
-        await clearPendingPayments();
+try {
 
-        isUserAuthenticated = true;
+const auth = await pi.authenticate(['username','payments'], () => {});
 
-        document.getElementById('user-status').innerText =
-            "Bağlı: @" + auth.user.username;
+user = auth.user;
+document.getElementById("user-status").innerText = "Bağlı: @" + user.username;
 
-        document.getElementById('auth-btn').style.display = 'none';
+render();
 
-    })
-
-    .catch(err => {
-        alert("Giriş başarısız: " + err.message);
-    });
-};
-
-/* ✅ FIX 2 — Pending payment korumalı startPurchase */
-window.startPurchase = async function(domain, amount) {
-
-    if (!isUserAuthenticated) return alert("Önce giriş yapın");
-    if (paymentInProgress) return alert("Bekleyen ödeme var");
-
-    const pending = await Pi.getIncompleteServerPayments();
-
-    if (pending && pending.length > 0) {
-        paymentInProgress = false;
-        return alert("Önce bekleyen ödeme işlemini tamamlayın.");
-    }
-
-    paymentInProgress = true;
-
-    try {
-
-        Pi.createPayment(
-        {
-            amount:Number(amount),
-            memo:"Domain: " + domain,
-            metadata:{ domain }
-        },
-        {
-            onReadyForServerApproval: async function(paymentId) {
-                await handleServerSidePayment(paymentId,'approve',null);
-            },
-
-            onReadyForServerCompletion: async function(paymentId, txid) {
-                await handleServerSidePayment(paymentId,'complete',txid);
-                paymentInProgress = false;
-            },
-
-            onCancel: function() {
-                paymentInProgress = false;
-            },
-
-            onError: function(err) {
-                paymentInProgress = false;
-                console.log(err);
-            }
-        });
-
-    } catch(e) {
-        paymentInProgress = false;
-        alert("Payment error: " + e.message);
-    }
-};
-
-async function handleServerSidePayment(paymentId, action, txid) {
-
-    const response = await fetch('/api/approve', {
-        method:'POST',
-        headers:{ 'Content-Type':'application/json' },
-        body:JSON.stringify({ paymentId, action, txid })
-    });
-
-    if (!response.ok) {
-        throw new Error("Backend bağlantı hatası");
-    }
-
-    return response.json();
+} catch(e) {
+alert("Login error");
 }
+
+};
+
+/* ================= PAYMENT SAFE FIX ================= */
+
+window.startPurchase = async function(d) {
+
+if (!user) return alert("Login ol");
+if (paymentLock) return;
+
+const pi = PI();
+if (!pi) return;
+
+paymentLock = true;
+render();
+
+try {
+
+/* 🔥 CRITICAL FIX: pending check SAFE */
+const pending = await (pi.getIncompleteServerPayments?.() || []);
+
+if (pending.length > 0) {
+paymentLock = false;
+return alert("Önce pending ödeme bitir");
+}
+
+pi.createPayment(
+{
+amount: d.price,
+memo: d.name,
+metadata: { domain: d.name }
+},
+{
+onReadyForServerApproval: async (id) => {
+await fetch("/api/approve", {
+method:"POST",
+headers:{ "Content-Type":"application/json" },
+body: JSON.stringify({ paymentId:id, action:"approve" })
+});
+},
+
+onReadyForServerCompletion: async (id, txid) => {
+await setDoc(doc(db,"domains",d.name), {
+sold:true,
+txid
+},{ merge:true });
+
+await fetch("/api/approve", {
+method:"POST",
+headers:{ "Content-Type":"application/json" },
+body: JSON.stringify({ paymentId:id, action:"complete", txid })
+});
+
+paymentLock = false;
+render();
+alert("Satın alındı");
+},
+
+onCancel: () => {
+paymentLock = false;
+render();
+},
+
+onError: (e) => {
+paymentLock = false;
+console.log(e);
+}
+}
+);
+
+} catch(e) {
+paymentLock = false;
+console.log(e);
+}
+
+};
 
 </script>
 
