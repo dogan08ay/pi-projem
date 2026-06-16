@@ -359,15 +359,28 @@ function render() {
 }
 
 /* LOGIN */
+   console.log("LOGIN TIKLANDI"); 
 window.loginWithPi = function () {
 
-    Pi.authenticate(['username','payments'], async (auth) => {
+   Pi.authenticate(['username','payments'])
+       console.log(auth);
+.then(async (auth) => {
+
+   console.log(auth);
+
+   // kodlar
+
+})
+.catch(err => {
+   console.error(err);
+   alert(err.message);
+});
 
                isUserAuthenticated = true;
         window.currentUserId = auth.user.username;
 
         /* aktif kullanıcı ekle */
-        await setDoc(doc(db, "active_users", auth.user.uid), {
+      await setDoc(doc(db, "active_users", auth.user.username), { 
     username: auth.user.username,
     lastSeen: Date.now()
 });
@@ -381,7 +394,7 @@ window.loginWithPi = function () {
 
         /* canlı keep alive */
       setInterval(() => {
-    setDoc(doc(db, "active_users", auth.user.uid), {
+    setDoc(doc(db, "active_users", auth.user.username), {
         username: auth.user.username,
         lastSeen: Date.now()
     });
