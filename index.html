@@ -262,229 +262,110 @@
 </div>
 
 <script type="module">
-
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
 import {
     getFirestore,
     doc,
     onSnapshot,
-    collection,
     setDoc,
+    getDoc,
     deleteDoc,
-    getDocs,
-    query,
-    orderBy,
-    limit
+    collection
 } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
 
 const firebaseConfig = {
-    apiKey: "s3ddhcea9xae0qieikgjy9zw9tduemnraoucjrr9iqe87pduhczmd95kq8n3aai1",
+    apiKey: "xxx",
     authDomain: "web3-domain-gateway.firebaseapp.com",
     projectId: "web3-domain-gateway",
-    storageBucket: "web3-domain-gateway.firebasestorage.app",
-    messagingSenderId: "315563254318",
-    appId: "1:315563254318:web:12f2f3f340bb69606df5bf"
 };
 
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-Pi.init({ version:"2.0", sandbox:true });
-
-let isUserAuthenticated = false;
-let paymentInProgress = false;
-let domainData = {};
-let heartbeatInterval = null;
+let currentUser = null;
+let heartbeat = null;
 
 /* =========================
-   ACTIVE USERS (LIVE)
+   DAILY UNIQUE SYSTEM
 ========================= */
-onSnapshot(collection(db, "active_users"), (snap) => {
-
-    const now = Date.now();
-    let count = 0;
-
-    snap.forEach(d => {
-        const data = d.data();
-        if (!data.lastSeen) return;
-
-        if (now - data.lastSeen < 30000) {
-            count++;
-        }
-    });
-
-    document.getElementById("online-count").innerText =
-        "Aktif Kullanıcı: " + count;
-});
-
-
-/* =========================
-   DOMAINS
-========================= */
-const domains = [
-    { name:'test-domain', img:'assets/test.jpeg', price:10 },
-    { name:'etstur.pi', img:'assets/etstur.jpeg', price:250 },
-    { name:'eminevim.pi', img:'assets/eminevim.jpeg', price:150 },
-    { name:'fuzulev.pi', img:'assets/fuzulev.jpeg', price:300 },
-    { name:'fibabank.pi', img:'assets/fibabank.jpeg', price:500 },
-    { name:'sekerbank.pi', img:'assets/sekerbank.jpeg', price:600 },
-    { name:'doganay.pi', img:'assets/doganay.jpeg', price:150 }
-];
-
-domains.forEach(d => {
-    onSnapshot(doc(db, "domains", d.name), (snap) => {
-        domainData[d.name] = snap.exists()
-            ? snap.data()
-            : { sold:false, price:d.price };
-
-        render();
-    });
-});
-
-
-/* =========================
-   RENDER
-========================= */
-function render() {
-
-    const list = document.getElementById('domain-list');
-    if (!list || !isUserAuthenticated) return;
-
-    list.innerHTML = '';
-
-    domains.forEach(d => {
-
-        const data = domainData[d.name] || { sold:false, price:d.price };
-        const isSold = data.sold;
-
-        const card = document.createElement('div');
-        card.className = 'domain-card';
-
-        card.innerHTML = `
-            <img src="${d.img}" class="domain-img">
-            <strong>${d.name}</strong>
-            <br>
-            <span>${isSold ? `SATILDI (${data.price} Pi)` : data.price + ' Pi'}</span>
-        `;
-
-        if (!isSold) {
-            const btn = document.createElement('button');
-            btn.className = 'btn-buy';
-            btn.innerText = paymentInProgress ? 'İşlem...' : 'Satın Al';
-            btn.disabled = paymentInProgress;
-            btn.onclick = () => startPurchase(d.name, d.price);
-            card.appendChild(btn);
-        }
-
-        list.appendChild(card);
-    });
+function getTodayId() {
+    return new Date().toISOString().split("T")[0];
 }
 
-
+/* =========================
+   LOGIN FIX
+========================= */
 window.loginWithPi = function () {
-
-    console.log("LOGIN CLICKED");
 
     Pi.authenticate(['username','payments'])
         .then(async (auth) => {
 
-            console.log(auth);
+            currentUser = auth.user.username;
 
-            isUserAuthenticated = true;
-            window.currentUserId = auth.user.username;
+            const today = getTodayId();
 
-            const now = Date.now();
+            const ref = doc(db, "daily_stats", today);
+            const snap = await getDoc(ref);
 
-            await setDoc(doc(db, "active_users", auth.user.username), {
-                username: auth.user.username,
-                lastSeen: now
-            });
+            let data = snap.exists() ? snap.data() : { users: {} };
 
-            await setDoc(doc(db, "daily_logs", auth.user.username + "_" + Date.now()), {
-                username: auth.user.username,
-                timestamp: now,
-                type: "login"
-            });
+            // kullanıcıyı ekle (duplicate olmaz)
+            data.users[currentUser] = true;
 
-            document.getElementById('user-status').innerText =
-                "Bağlı: @" + auth.user.username;
+            await setDoc(ref, data);
 
-            document.getElementById('auth-btn').style.display = 'none';
+            document.getElementById("user-status").innerText =
+                "Bağlı: @" + currentUser;
 
-            render();
+            document.getElementById("auth-btn").style.display = "none";
 
-            if (heartbeatInterval) clearInterval(heartbeatInterval);
+            startHeartbeat();
 
-            heartbeatInterval = setInterval(() => {
-                setDoc(doc(db, "active_users", window.currentUserId), {
-                    username: window.currentUserId,
-                    lastSeen: Date.now()
-                });
-            }, 15000);
-
-            if (auth.user.username === "doganay0808") {
-                document.getElementById('admin-panel').style.display = 'block';
-            }
+            startAdminListener(today);
 
         })
         .catch(err => {
-            console.error(err);
-            alert("Login error: " + err.message);
+            alert(err.message);
         });
 };
 
 /* =========================
-   PURCHASE
+   HEARTBEAT (online)
 ========================= */
-window.startPurchase = async function(domain, amount) {
+function startHeartbeat() {
 
-    if (!isUserAuthenticated || paymentInProgress) return;
+    if (heartbeat) clearInterval(heartbeat);
 
-    paymentInProgress = true;
-    render();
+    heartbeat = setInterval(() => {
 
-    Pi.createPayment(
-        {
-            amount:Number(amount),
-            memo:"Domain: " + domain,
-            metadata:{ domain }
-        },
-        {
-            onReadyForServerApproval: async (paymentId) => {
-                await fetch('/api/approve', {
-                    method:'POST',
-                    headers:{'Content-Type':'application/json'},
-                    body:JSON.stringify({ paymentId, action:'approve' })
-                });
-            },
+        if (!currentUser) return;
 
-            onReadyForServerCompletion: async (paymentId, txid) => {
+        setDoc(doc(db, "active_users", currentUser), {
+            lastSeen: Date.now()
+        });
 
-                await setDoc(doc(db,"domains",domain),{
-                    sold:true,
-                    txid,
-                    soldAt:Date.now()
-                },{ merge:true });
-
-                paymentInProgress = false;
-                render();
-                alert("Satın alma tamamlandı!");
-            },
-
-            onCancel: () => { paymentInProgress = false; render(); },
-            onError: () => { paymentInProgress = false; render(); }
-        }
-    );
-};
-
+    }, 15000);
+}
 
 /* =========================
-   CLEAN EXIT
+   ADMIN PANEL (BUGÜN UNIQUE COUNT)
 ========================= */
-window.addEventListener("beforeunload", async () => {
-    if (!window.currentUserId) return;
-    await deleteDoc(doc(db, "active_users", window.currentUserId));
-});
+function startAdminListener(today) {
+
+    const ref = doc(db, "daily_stats", today);
+
+    onSnapshot(ref, (snap) => {
+
+        const data = snap.data();
+        const users = data?.users || {};
+
+        const count = Object.keys(users).length;
+
+        document.getElementById("log-list").innerHTML =
+            "Bugün giriş yapan farklı kullanıcı: <b>" + count + "</b>";
+
+    });
+}
 
 </script>
 
