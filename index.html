@@ -407,7 +407,6 @@ const snap = await getDocs(
 
 let logs = "";
 
-// bugün + geçmiş hepsi doğru sıralı
 snap.forEach(d => {
 
     const data = d.data();
@@ -417,7 +416,6 @@ snap.forEach(d => {
     const ts = Number(data.timestamp);
     if (isNaN(ts)) return;
 
-    // 🔥 SADECE GEÇERLİ VERİLER
     const date = new Date(ts);
 
     logs += `
