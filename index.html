@@ -313,6 +313,20 @@ onSnapshot(collection(db, "active_users"), (snap) => {
    LOGIN SYSTEM (FULL FIXED)
 ========================= */
 window.loginWithPi = function () {
+    function render() {
+    const list = document.getElementById("domain-list");
+
+    if (!list) return;
+
+    if (!window.isUserAuthenticated && !window.currentUser) return;
+
+    // şimdilik basit fix (boş kalmasın diye)
+    list.innerHTML = `
+        <div style="color:white;padding:20px;">
+            Sistem aktif ✔
+        </div>
+    `;
+}
 
     if (!window.Pi) {
         alert("Pi SDK yüklenmedi!");
