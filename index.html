@@ -521,12 +521,8 @@ async function handleServerSidePayment(paymentId, action, txid) {
 onSnapshot(collection(db, "active_users"), (snap) => {
     document.getElementById("online-count").innerText =
         "Aktif Kullanıcı: " + snap.size;
-};
-    window.addEventListener("beforeunload", async () => {
-    if (!currentUserId) return;
-
-    await deleteDoc(doc(db, "active_users", currentUserId));
 });
+    
 </script>
 
 </body>
