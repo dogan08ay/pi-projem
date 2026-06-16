@@ -564,27 +564,19 @@ paymentInProgress = true;
                     alert("İşlem iptal edildi.");
 
                 },
+                 
+ onError: function(error) {
 
-                onError: function(error) {
+   paymentInProgress = false;
 
-                    paymentInProgress = false;
+   console.error(error);
 
-                    console.error(error);
+   try {
+       Pi.cancelCurrentPayment();
+   } catch (e) {}
 
-                    alert("Ödeme hatası oluştu.");
-
-                }
-            }
-        );
-
-    } catch (err) {
-
-        paymentInProgress = false;
-
-        console.error(err);
-
-        alert(err.message);
-
+    alert("Ödeme hatası oluştu.");
+   
     }
 
 };
