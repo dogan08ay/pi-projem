@@ -262,230 +262,63 @@
 </div>
 
 <script type="module">
+    // ... importlar buraya ...
 
-import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
-import {
-    getFirestore,
-    doc,
-    onSnapshot,
-    setDoc,
-    getDoc,
-    collection
-} from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
-
-const firebaseConfig = {
-    apiKey: "xxx",
-    authDomain: "web3-domain-gateway.firebaseapp.com",
-    projectId: "web3-domain-gateway",
-    storageBucket: "web3-domain-gateway.firebasestorage.app",
-    messagingSenderId: "315563254318",
-    appId: "1:315563254318:web:12f2f3f340bb69606df5bf"
-
-};
-
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
-    
-    Pi.init({ version:"2.0", sandbox:true });
-    
+    // 1. GLOBAL DEĞİŞKENLERİ EN ÜSTE ALIN
     let isUserAuthenticated = false;
-let paymentInProgress = false;
-let domainData = {};
+    let currentUser = null;
+    let domainData = {};
 
-
-/* =========================
-   STATE
-========================= */
-let currentUser = null;
-let isAuth = false;
-
-/* =========================
-   SAFE PI INIT
-========================= */
-window.addEventListener("load", () => {
-    if (window.Pi) {
-        try {
-            Pi.init({ version: "2.0", sandbox: true });
-        } catch (e) {
-            console.log("Pi init error", e);
-        }
-    }
-});
-
-/* =========================
-   ACTIVE USERS (ONLINE COUNT)
-========================= */
-onSnapshot(collection(db, "active_users"), (snap) => {
-    document.getElementById("online-count").innerText =
-        "Aktif Kullanıcı: " + snap.size;
-});
-
-/* =========================
-   LOGIN SYSTEM (FULL FIXED)
-========================= */
-window.loginWithPi = function () {
+    // 2. RENDER FONKSİYONUNU DIŞARI ÇIKARIN
     function render() {
-    const list = document.getElementById("domain-list");
+        const list = document.getElementById('domain-list');
+        if (!list || !isUserAuthenticated) return;
 
-    if (!list) return;
+        list.innerHTML = '';
+        domains.forEach(d => {
+            const data = domainData[d.name] || { sold: false, price: d.price };
+            const card = document.createElement('div');
+            card.className = 'domain-card';
+            
+            // HATA DÜZELTME: isSold kullanımı
+            card.innerHTML = `
+                <img src="${d.img}" class="domain-img">
+                <strong>${d.name}</strong>
+                <br>
+                <span>${data.sold ? 'SATILDI' : data.price + ' Pi'}</span>
+            `;
 
-    if (!window.isUserAuthenticated && !window.currentUser) return;
-
-    // şimdilik basit fix (boş kalmasın diye)
-    list.innerHTML = `
-        <div style="color:white;padding:20px;">
-            Sistem aktif ✔
-        </div>
-    `;
-}
-
-    if (!window.Pi) {
-        alert("Pi SDK yüklenmedi!");
-        return;
+            if (!data.sold) {
+                const btn = document.createElement('button');
+                btn.className = 'btn-buy';
+                btn.innerText = 'Satın Al';
+                btn.onclick = () => startPurchase(d.name, data.price);
+                card.appendChild(btn);
+            }
+            list.appendChild(card);
+        });
     }
 
-    Pi.authenticate(['username','payments'])
-    .then(async (auth) => {
+    // 3. AUTH İŞLEMİ
+    window.loginWithPi = function () {
+        if (!window.Pi) return alert("Pi SDK yüklenmedi!");
 
-        currentUser = auth.user.username;
-        isAuth = true;
+        Pi.authenticate(['username','payments'])
+        .then(async (auth) => {
+            isUserAuthenticated = true; // GLOBAL DEĞİŞKENİ GÜNCELLE
+            currentUser = auth.user.username;
+            
+            // ... Firebase setDoc işlemleri ...
 
-        const now = Date.now();
-        const today = new Date().toISOString().split("T")[0];
+            document.getElementById("user-status").innerText = "Bağlı: @" + currentUser;
+            document.getElementById("auth-btn").style.display = "none";
+            
+            render(); // GİRİŞ BAŞARILIYSA İLK RENDER'I TETİKLE
+        })
+        .catch(err => console.error(err));
+    };
 
-        /* =========================
-           ACTIVE USERS (ONLINE)
-        ========================= */
-        await setDoc(doc(db, "active_users", currentUser), {
-            username: currentUser,
-            lastSeen: now
-        });
-
-        /* =========================
-           DAILY UNIQUE USERS (NO DUPLICATE)
-        ========================= */
-        const dailyRef = doc(db, "daily_users", today);
-        const snap = await getDoc(dailyRef);
-
-        let data = snap.exists() ? snap.data() : { users: {} };
-
-        // sadece 1 kayıt
-        data.users[currentUser] = now;
-
-        await setDoc(dailyRef, data);
-
-        /* UI */
-        document.getElementById("user-status").innerText =
-            "Bağlı: @" + currentUser;
-
-        document.getElementById("auth-btn").style.display = "none";
-        });
-
-/* DOMAINLER */
-const domains = [
-    { name:'test-domain', img:'assets/test.jpeg', price:10 },
-    { name:'etstur.pi', img:'assets/etstur.jpeg', price:250 },
-    { name:'eminevim.pi', img:'assets/eminevim.jpeg', price:150 },
-    { name:'fuzulev.pi', img:'assets/fuzulev.jpeg', price:300 },
-    { name:'fibabank.pi', img:'assets/fibabank.jpeg', price:500 },
-    { name:'sekerbank.pi', img:'assets/sekerbank.jpeg', price:600 },
-    { name:'doganay.pi', img:'assets/doganay.jpeg', price:150 }
-];
-
-/* snapshot */
-domains.forEach(d => {
-    onSnapshot(doc(db, "domains", d.name), (snap) => {
-        domainData[d.name] = snap.exists()
-            ? snap.data()
-            : { sold:false, price:d.price };
-
-
-        render();
-   });
-});
-
-/* render */
-function render() {
-    const list = document.getElementById('domain-list');
-    if (!list || !isUserAuthenticated) return;
-
-    list.innerHTML = '';
-
-    domains.forEach(d => {
-        const data = domainData[d.name] || { sold:false, price:d.price };
-        const isSold = data.sold;
-        const price = data.price;
-
-        const card = document.createElement('div');
-        card.className = 'domain-card';
-
-        card.innerHTML = `
-            <img src="${d.img}" class="domain-img">
-            <strong>${d.name}</strong>
-            <br>
-            <span>${isSold ? SATILDI (${price} Pi) : price + ' Pi'}</span>
-        `;
-
-        if (!isSold) {
-            const btn = document.createElement('button');
-            btn.className = 'btn-buy';
-            btn.innerText = paymentInProgress ? 'İşlem Bekleniyor' : 'Satın Al';
-            btn.disabled = paymentInProgress;
-            btn.onclick = () => startPurchase(d.name, price);
-            card.appendChild(btn);
-        }
-
-        list.appendChild(card);
-    });
-}
-
-
-        /* HEARTBEAT (ONLINE KEEP) */
-        setInterval(() => {
-            setDoc(doc(db, "active_users", currentUser), {
-                username: currentUser,
-                lastSeen: Date.now()
-            });
-        }, 15000);
-
-        /* =========================
-           ADMIN PANEL
-        ========================= */
-        if (currentUser === "doganay0808") {
-
-            document.getElementById("admin-panel").style.display = "block";
-
-            onSnapshot(doc(db, "daily_users", today), (snap) => {
-
-                const data = snap.data() || {};
-                const users = data.users || {};
-
-                let html = "";
-
-                Object.keys(users).forEach(u => {
-                    const time = new Date(users[u]).toLocaleString("tr-TR");
-
-                    html += `
-                        <div style="padding:8px;border-bottom:1px solid #334155;">
-                            <b>@${u}</b>
-                            <span style="float:right;color:#60a5fa;">
-                                ${time}
-                            </span>
-                        </div>
-                    `;
-                });
-
-                document.getElementById("log-list").innerHTML = html;
-            });
-        }
-
-    })
-    .catch(err => {
-        console.error(err);
-        alert("Login error: " + err.message);
-    });
-};
-
+    // ... Firebase onSnapshot ve diğer kodlar ...
 </script>
     
 </body>
