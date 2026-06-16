@@ -294,11 +294,14 @@ Pi.init({ version:"2.0", sandbox:true });
 let isUserAuthenticated = false;
 let paymentInProgress = false;
 let domainData = {};
+
+/* 🔴 CANLI AKTİF KULLANICI SAYISI */
 onSnapshot(collection(db, "active_users"), (snap) => {
-    const count = snap.size;
     document.getElementById("online-count").innerText =
-        "Aktif Kullanıcı: " + count;
+        "Aktif Kullanıcı: " + snap.size;
 });
+
+/* DOMAİNLER */
 const domains = [
     { name:'test-domain', img:'assets/test.jpeg', price:10 },
     { name:'etstur.pi', img:'assets/etstur.jpeg', price:250 },
@@ -309,51 +312,28 @@ const domains = [
     { name:'doganay.pi', img:'assets/doganay.jpeg', price:150 }
 ];
 
-async function clearPendingPayments() {
-    try {
-        const payments = await Pi.getIncompleteServerPayments();
-        if (!payments) return;
-
-        for (const payment of payments) {
-            try {
-                await handleServerSidePayment(
-                    payment.identifier,
-                    'complete',
-                    payment.transaction?.txid || null
-                );
-            } catch (err) {
-                console.error(err);
-            }
-        }
-    } catch (err) {
-        console.error(err);
-    }
-}
-
-/* snapshot */
+/* FIRESTORE DOMAIN SNAPSHOT */
 domains.forEach(d => {
     onSnapshot(doc(db, "domains", d.name), (snap) => {
-        if (snap.exists()) {
-            domainData[d.name] = snap.data();
-        } else {
-            domainData[d.name] = { sold:false, price:d.price };
-        }
+        domainData[d.name] = snap.exists()
+            ? snap.data()
+            : { sold:false, price:d.price };
+
         render();
     });
 });
 
+/* RENDER */
 function render() {
-
     const list = document.getElementById('domain-list');
     if (!list || !isUserAuthenticated) return;
 
     list.innerHTML = '';
 
     domains.forEach(d => {
-
         const data = domainData[d.name] || { sold:false, price:d.price };
-        const isSold = data.sold === true;
-        const price = data.price ?? d.price;
+        const isSold = data.sold;
+        const price = data.price;
 
         const card = document.createElement('div');
         card.className = 'domain-card';
@@ -378,19 +358,21 @@ function render() {
     });
 }
 
+/* LOGIN */
 window.loginWithPi = function () {
 
-    Pi.authenticate(['username','payments'], () => {})
-    .then(async (auth) => {
-window.currentUserId = auth.user.uid;
+    Pi.authenticate(['username','payments'], async (auth) => {
+
         await clearPendingPayments();
 
         isUserAuthenticated = true;
-        // 🔴 CANLI AKTİF KULLANICI EKLE
-await setDoc(doc(db, "active_users", auth.user.uid), {
-    username: auth.user.username,
-    lastSeen: Date.now()
-});
+        window.currentUserId = auth.user.username;
+
+        /* aktif kullanıcı ekle */
+        await setDoc(doc(db, "active_users", auth.user.username), {
+            username: auth.user.username,
+            lastSeen: Date.now()
+        });
 
         document.getElementById('user-status').innerText =
             "Bağlı: @" + auth.user.username;
@@ -398,105 +380,58 @@ await setDoc(doc(db, "active_users", auth.user.uid), {
         document.getElementById('auth-btn').style.display = 'none';
 
         render();
-        // 🔁 HER 15 SANİYEDE "CANLİ KALDI" GÜNCELLE
-setInterval(() => {
-    if (!auth?.user?.uid) return;
 
-    setDoc(doc(db, "active_users", auth.user.uid), {
-        username: auth.user.username,
-        lastSeen: Date.now()
-    });
-}, 15000);
+        /* canlı keep alive */
+        setInterval(() => {
+            setDoc(doc(db, "active_users", auth.user.username), {
+                username: auth.user.username,
+                lastSeen: Date.now()
+            });
+        }, 15000);
 
-        /* ADMIN PANEL AÇ */
-        if(auth.user.username === "doganay0808") {
-    document.getElementById('admin-panel').style.display = 'block';
-}
-       // ADMIN LOG VERİLERİNİ ÇEK (FIX)
-const now = Date.now();
+        /* admin panel */
+        if (auth.user.username === "doganay0808") {
+            document.getElementById('admin-panel').style.display = 'block';
+        }
 
-const snap = await getDocs(
-    query(
-        collection(db, "daily_logs"),
-        orderBy("timestamp", "desc"),
-        limit(100)
-    )
-);
+        /* 🔴 LOG ÇEK (TEK VE TEMİZ) */
+        const snap = await getDocs(
+            query(
+                collection(db, "daily_logs"),
+                orderBy("timestamp", "desc"),
+                limit(100)
+            )
+        );
 
-let logs = "";
+        let logs = "";
 
-snap.forEach(d => {
+        snap.forEach(d => {
+            const data = d.data();
+            if (!data.timestamp) return;
 
-    const data = d.data();
+            const date = new Date(Number(data.timestamp));
 
-    if (!data.timestamp) return;
+            logs += `
+                <div style="padding:8px;border-bottom:1px solid #334155;display:flex;justify-content:space-between;">
+                    <span style="color:#60a5fa;">
+                        ${date.toLocaleString("tr-TR")}
+                    </span>
+                    <b style="color:#f8fafc;">@${data.username}</b>
+                </div>
+            `;
+        });
 
-    const ts = Number(data.timestamp);
-    if (isNaN(ts)) return;
+        document.getElementById('log-list').innerHTML = logs;
 
-    const date = new Date(ts);
-
-    logs += `
-        <div style="
-            padding:8px;
-            border-bottom:1px solid #334155;
-            display:flex;
-            justify-content:space-between;
-        ">
-            <span style="color:#60a5fa;">
-                ${date.toLocaleString("tr-TR")}
-            </span>
-
-            <b style="color:#f8fafc;">
-                @${data.username}
-            </b>
-        </div>
-    `;
-});
-
-snap.forEach(d => {
-
-    const data = d.data();
-
-    if (!data.timestamp) return;
-
-    const ts = Number(data.timestamp);
-    if (isNaN(ts)) return;
-
-    const date = new Date(ts);
-
-    logs += `
-        <div style="
-            padding:8px;
-            border-bottom:1px solid #334155;
-            display:flex;
-            justify-content:space-between;
-        ">
-            <span style="color:#60a5fa;">
-                ${date.toLocaleString("tr-TR")}
-            </span>
-
-            <b style="color:#f8fafc;">
-                @${data.username}
-            </b>
-        </div>
-    `;
-});
-});
-
-document.getElementById('log-list').innerHTML = logs;
-    })
-    .catch(err => {
+    }).catch(err => {
         alert("Giriş başarısız: " + err.message);
     });
 };
 
+/* SATIN AL */
 window.startPurchase = async function(domain, amount) {
 
     if (!isUserAuthenticated || paymentInProgress) return;
-
-    const selectedDomain = domainData[domain];
-    if (selectedDomain?.sold) return;
 
     paymentInProgress = true;
     render();
@@ -508,11 +443,11 @@ window.startPurchase = async function(domain, amount) {
             metadata:{ domain }
         },
         {
-            onReadyForServerApproval: async function(paymentId) {
+            onReadyForServerApproval: async (paymentId) => {
                 await handleServerSidePayment(paymentId,'approve',null);
             },
 
-            onReadyForServerCompletion: async function(paymentId, txid) {
+            onReadyForServerCompletion: async (paymentId, txid) => {
 
                 await setDoc(doc(db,"domains",domain),{
                     sold:true,
@@ -527,19 +462,13 @@ window.startPurchase = async function(domain, amount) {
                 alert("Satın alma tamamlandı!");
             },
 
-            onCancel: function () {
-                paymentInProgress = false;
-                render();
-            },
-
-            onError: function () {
-                paymentInProgress = false;
-                render();
-            }
+            onCancel: () => { paymentInProgress = false; render(); },
+            onError: () => { paymentInProgress = false; render(); }
         }
     );
 };
 
+/* BACKEND */
 async function handleServerSidePayment(paymentId, action, txid) {
 
     const response = await fetch('/api/approve', {
@@ -552,11 +481,13 @@ async function handleServerSidePayment(paymentId, action, txid) {
 
     return await response.json();
 }
+
+/* çıkışta active user sil */
 window.addEventListener("beforeunload", async () => {
     if (!window.currentUserId) return;
-
     await deleteDoc(doc(db, "active_users", window.currentUserId));
 });
+
 </script>
 
 </body>
