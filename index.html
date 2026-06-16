@@ -3,10 +3,7 @@
 <head>
 
     <meta charset="UTF-8">
-
-    <meta name="viewport"
-          content="width=device-width, initial-scale=1.0">
-
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Web3 Domain Gateway</title>
 
     <script src="https://sdk.minepi.com/pi-sdk.js"></script>
@@ -55,7 +52,6 @@
             padding:20px;
             border-radius:12px;
             border:1px solid #475569;
-            transition:0.3s;
             display:flex;
             flex-direction:column;
             align-items:center;
@@ -83,11 +79,13 @@
             width:100%;
         }
 
-        .btn-buy:disabled { opacity:0.5; cursor:not-allowed; }
+        .btn-buy:disabled {
+            opacity:0.5;
+        }
 
         .pi-btn {
             background:#0052FF;
-            color:#ffffff;
+            color:#fff;
             padding:12px 30px;
             border-radius:50px;
             font-weight:800;
@@ -115,6 +113,12 @@
 
     </div>
 
+    <div class="card">
+
+        <div class="domain-grid" id="domain-list"></div>
+
+    </div>
+
 </div>
 
 <script type="module">
@@ -124,7 +128,12 @@ import {
 } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
 
 import {
-    getFirestore
+    getFirestore,
+    doc,
+    onSnapshot,
+    collection,
+    setDoc,
+    deleteDoc
 } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
 
 const firebaseConfig = {
@@ -139,62 +148,175 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-/* ✅ Pi SAFE INIT */
-function initPiSafe() {
-    if (window.Pi) {
-        Pi.init({
-            version: "2.0",
-            sandbox: true
-        });
-        return true;
-    }
-    return false;
-}
+/* 🔥 KRİTİK FIX: Pi artık garanti global */
+const PiSDK = window.Pi;
 
-/* Pi yüklenene kadar dene */
-let piReady = initPiSafe();
-
-window.addEventListener("load", () => {
-    piReady = initPiSafe();
+PiSDK.init({
+    version: "2.0",
+    sandbox: true
 });
 
-/* STATE */
 let isUserAuthenticated = false;
+let paymentInProgress = false;
 
-/* 🔥 FIXED LOGIN */
+/* ---------------- DOMAIN ---------------- */
+const domains = [
+    { name:'test-domain', img:'assets/test.jpeg', price:10 },
+    { name:'etstur.pi', img:'assets/etstur.jpeg', price:250 }
+];
+
+/* ---------------- PAYMENT FIX CORE ---------------- */
+
+async function handleServerSidePayment(paymentId, action, txid) {
+    try {
+        const response = await fetch('/api/approve', {
+            method:'POST',
+            headers:{ 'Content-Type':'application/json' },
+            body: JSON.stringify({ paymentId, action, txid })
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+            throw new Error(data.error || "Server error");
+        }
+
+        return data;
+
+    } catch (err) {
+        console.error("Server payment error:", err);
+        throw err;
+    }
+}
+
+/* ---------------- LOGIN ---------------- */
+
 window.loginWithPi = function () {
 
-    if (!window.Pi) {
-        alert("Pi SDK yüklenmedi. Sayfayı yenileyin.");
+    PiSDK.authenticate(['username','payments'], async function(){})
+    .then(async (auth) => {
+
+        isUserAuthenticated = true;
+
+        document.getElementById('user-status').innerText =
+            "Bağlı: @" + auth.user.username;
+
+        document.getElementById('auth-btn').style.display = "none";
+
+        render();
+
+    })
+    .catch(err => {
+        alert("Login hata: " + err.message);
+    });
+
+};
+
+/* ---------------- PAYMENT FIXED ---------------- */
+
+window.startPurchase = async function(domain, amount) {
+
+    if (!isUserAuthenticated) {
+        alert("Önce giriş yap");
         return;
     }
 
+    if (paymentInProgress) {
+        alert("Ödeme devam ediyor");
+        return;
+    }
+
+    paymentInProgress = true;
+
     try {
 
-        Pi.authenticate(
-            ['username', 'payments'],
-            () => {}
-        )
-        .then(async (auth) => {
+        PiSDK.createPayment(
+            {
+                amount: Number(amount),
+                memo: "Domain: " + domain,
+                metadata: { domain }
+            },
+            {
 
-            isUserAuthenticated = true;
+                onReadyForServerApproval: async function(paymentId) {
+                    try {
+                        await handleServerSidePayment(paymentId, "approve", null);
+                    } catch (e) {
+                        console.error(e);
+                    }
+                },
 
-            document.getElementById('user-status').innerText =
-                "Bağlı: @" + auth.user.username;
+                onReadyForServerCompletion: async function(paymentId, txid) {
+                    try {
 
-            document.getElementById('auth-btn').style.display = 'none';
+                        await handleServerSidePayment(paymentId, "complete", txid);
 
-        })
-        .catch(err => {
+                        await setDoc(doc(db,"domains",domain), {
+                            sold:true,
+                            txid,
+                            soldAt:new Date().toISOString()
+                        }, { merge:true });
 
-            alert("Giriş başarısız: " + err.message);
+                        alert("Ödeme başarılı!");
 
-        });
+                    } catch (err) {
+                        console.error(err);
+                        alert("Ödeme tamamlanamadı");
+                    } finally {
+                        paymentInProgress = false;
+                        render();
+                    }
+                },
 
-    } catch (e) {
-        alert("Pi hatası: " + e.message);
+                onCancel: function () {
+                    paymentInProgress = false;
+                    alert("İptal edildi");
+                    render();
+                },
+
+                onError: function (err) {
+                    paymentInProgress = false;
+                    alert("Hata: " + err.message);
+                    render();
+                }
+
+            }
+        );
+
+    } catch (err) {
+        paymentInProgress = false;
+        alert("Payment crash: " + err.message);
     }
 };
+
+/* ---------------- UI ---------------- */
+
+function render() {
+    const list = document.getElementById("domain-list");
+    list.innerHTML = "";
+
+    domains.forEach(d => {
+
+        const card = document.createElement("div");
+        card.className = "domain-card";
+
+        card.innerHTML = `
+            <img src="${d.img}" class="domain-img">
+            <strong>${d.name}</strong>
+            <span>${d.price} Pi</span>
+        `;
+
+        const btn = document.createElement("button");
+        btn.className = "btn-buy";
+        btn.innerText = "Satın Al";
+        btn.onclick = () => startPurchase(d.name, d.price);
+
+        card.appendChild(btn);
+        list.appendChild(card);
+    });
+}
+
+render();
 
 </script>
 
