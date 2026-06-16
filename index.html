@@ -268,7 +268,8 @@ import {
     doc,
     onSnapshot,
     setDoc,
-    getDoc
+    getDoc,
+    deleteDoc
 } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
 
 const firebaseConfig = {
@@ -281,90 +282,139 @@ const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
 /* =========================
-   SAFE PI INIT (NO CRASH)
+   PI INIT (SAFE)
 ========================= */
-try {
-    if (window.Pi) {
+if (window.Pi) {
+    try {
         Pi.init({ version: "2.0", sandbox: true });
-        console.log("Pi SDK OK");
+    } catch (e) {
+        console.log("Pi init error", e);
     }
-} catch (e) {
-    console.error("Pi init error:", e);
 }
 
 /* =========================
    STATE
 ========================= */
 let currentUser = null;
+let heartbeat = null;
 
 /* =========================
-   DATE
+   TODAY KEY
 ========================= */
-function getTodayId() {
+function todayKey() {
     return new Date().toISOString().split("T")[0];
 }
 
 /* =========================
-   LOGIN (SAFE VERSION)
+   ACTIVE USERS COUNT (REAL)
 ========================= */
+onSnapshot(doc(db, "meta", "active_users"), (snap) => {
+    const data = snap.data() || {};
+    document.getElementById("online-count").innerText =
+        "Aktif Kullanıcı: " + (data.count || 0);
+});
 
+/* =========================
+   LOGIN
+========================= */
 window.loginWithPi = function () {
 
     if (!window.Pi) {
-        alert("Pi SDK yüklenmedi");
-        return;
-    }
-
-    // SDK hazır mı kontrol
-    if (!Pi.authenticate) {
-        alert("Pi SDK hazır değil, sayfayı yenileyin");
+        alert("Pi SDK yok");
         return;
     }
 
     Pi.authenticate(['username','payments'])
         .then(async (auth) => {
 
-            const currentUser = auth.user.username;
-            const today = new Date().toISOString().split("T")[0];
+            currentUser = auth.user.username;
 
+            const today = todayKey();
+
+            /* =========================
+               UNIQUE DAILY USERS
+            ========================= */
             const ref = doc(db, "daily_stats", today);
             const snap = await getDoc(ref);
 
             let data = snap.exists() ? snap.data() : { users: {} };
 
-            // duplicate engelleme
-            data.users = data.users || {};
             data.users[currentUser] = true;
 
             await setDoc(ref, data);
 
+            /* =========================
+               ACTIVE USERS INCREMENT SAFE
+            ========================= */
+            const metaRef = doc(db, "meta", "active_users");
+            const metaSnap = await getDoc(metaRef);
+
+            let meta = metaSnap.exists() ? metaSnap.data() : { count: 0 };
+
+            meta.count = (meta.count || 0) + 1;
+
+            await setDoc(metaRef, meta);
+
+            /* =========================
+               UI
+            ========================= */
             document.getElementById("user-status").innerText =
                 "Bağlı: @" + currentUser;
 
             document.getElementById("auth-btn").style.display = "none";
 
+            /* =========================
+               HEARTBEAT (keep alive)
+            ========================= */
+            if (heartbeat) clearInterval(heartbeat);
+
+            heartbeat = setInterval(async () => {
+                if (!currentUser) return;
+
+                await setDoc(doc(db, "active_users", currentUser), {
+                    lastSeen: Date.now()
+                }, { merge: true });
+
+            }, 15000);
+
+            /* =========================
+               ADMIN PANEL
+            ========================= */
             startAdmin(today);
 
         })
         .catch(err => {
             console.error(err);
-            alert("Pi Login Error: " + err.message);
+            alert("Login error: " + err.message);
         });
 };
+
 /* =========================
-   ADMIN COUNT
+   ADMIN PANEL (DAILY UNIQUE COUNT)
 ========================= */
 function startAdmin(today) {
 
-    onSnapshot(doc(db, "daily_stats", today), (snap) => {
+    const ref = doc(db, "daily_stats", today);
+
+    onSnapshot(ref, (snap) => {
 
         const data = snap.data() || {};
         const users = data.users || {};
 
+        const count = Object.keys(users).length;
+
         document.getElementById("log-list").innerHTML =
-            "Bugün giriş yapan farklı kullanıcı: <b>" + Object.keys(users).length + "</b>";
+            "Bugün giriş yapan farklı kullanıcı: <b>" + count + "</b>";
     });
 }
+
+/* =========================
+   EXIT CLEAN
+========================= */
+window.addEventListener("beforeunload", async () => {
+    if (!currentUser) return;
+    await deleteDoc(doc(db, "active_users", currentUser));
+});
 </script>
 
 </body>
