@@ -816,128 +816,69 @@ window.startPurchase = async function(domain, amount) {
 
         {
 
-            onReadyForServerApproval:
-            async function(paymentId) {
+           onReadyForServerCompletion:
+async function(paymentId, txid) {
 
-                try {
+    try {
 
-                    await handleServerSidePayment(
+        await handleServerSidePayment(
 
-                        paymentId,
+            paymentId,
 
-                        'approve',
+            "complete",
 
-                        null
+            txid
 
-                    );
+        );
 
-                } catch(err) {
+        await setDoc(
 
-                    paymentInProgress = false;
+            doc(
+                db,
+                "domains",
+                domain
+            ),
 
-                    render();
+            {
 
-                    alert(
-                        "Approve hatası"
-                    );
+                sold:true,
 
-                }
+                txid:txid,
 
-            },
-
-            onReadyForServerCompletion:
-            async function(paymentId, txid) {
-
-                try {
-
-                await handleServerSidePayment(
-
-    paymentId,
-
-    "complete",
-
-    txid
-
-);
-
-await setDoc(
-
-    doc(
-        db,
-        "domains",
-        domain
-    ),
-
-    {
-
-        sold:true,
-
-        txid:txid,
-
-        soldAt:
-            new Date()
-            .toISOString()
-
-    },
-
-    {
-        merge:true
-    }
-
-); 
-                        {
-
-                    paymentInProgress = false;
-
-                    render();
-
-                    alert(
-                        "✅ Satın alma başarıyla tamamlandı!"
-                    );
-
-                } catch(err) {
-
-                    paymentInProgress = false;
-
-                    render();
-
-                    alert(
-                        "Tamamlama hatası: " +
-                        err.message
-                    );
-
-                }
+                soldAt:
+                    new Date()
+                    .toISOString()
 
             },
 
-            onCancel:function() {
-
-                paymentInProgress = false;
-
-                render();
-
-                alert("Ödeme iptal edildi");
-
-            },
-
-            onError:function(err) {
-
-                paymentInProgress = false;
-
-                render();
-
-                alert(
-                    "Ödeme hatası: " +
-                    err.message
-                );
-
+            {
+                merge:true
             }
 
-        }
+        );
 
-    );
+        paymentInProgress = false;
 
-};
+        render();
+
+        alert(
+            "✅ Satın alma başarıyla tamamlandı!"
+        );
+
+    } catch(err) {
+
+        paymentInProgress = false;
+
+        render();
+
+        alert(
+            "Tamamlama hatası: " +
+            err.message
+        );
+
+    }
+
+},
 
 async function handleServerSidePayment(
     paymentId,
