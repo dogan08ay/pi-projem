@@ -276,11 +276,22 @@ import {
 const firebaseConfig = {
     apiKey: "xxx",
     authDomain: "web3-domain-gateway.firebaseapp.com",
-    projectId: "web3-domain-gateway"
+    projectId: "web3-domain-gateway",
+    storageBucket: "web3-domain-gateway.firebasestorage.app",
+    messagingSenderId: "315563254318",
+    appId: "1:315563254318:web:12f2f3f340bb69606df5bf"
+
 };
 
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
+    
+    Pi.init({ version:"2.0", sandbox:true });
+    
+    let isUserAuthenticated = false;
+let paymentInProgress = false;
+let domainData = {};
+
 
 /* =========================
    STATE
@@ -368,8 +379,66 @@ window.loginWithPi = function () {
             "Bağlı: @" + currentUser;
 
         document.getElementById("auth-btn").style.display = "none";
+        });
+
+/* DOMAINLER */
+const domains = [
+    { name:'test-domain', img:'assets/test.jpeg', price:10 },
+    { name:'etstur.pi', img:'assets/etstur.jpeg', price:250 },
+    { name:'eminevim.pi', img:'assets/eminevim.jpeg', price:150 },
+    { name:'fuzulev.pi', img:'assets/fuzulev.jpeg', price:300 },
+    { name:'fibabank.pi', img:'assets/fibabank.jpeg', price:500 },
+    { name:'sekerbank.pi', img:'assets/sekerbank.jpeg', price:600 },
+    { name:'doganay.pi', img:'assets/doganay.jpeg', price:150 }
+];
+
+/* snapshot */
+domains.forEach(d => {
+    onSnapshot(doc(db, "domains", d.name), (snap) => {
+        domainData[d.name] = snap.exists()
+            ? snap.data()
+            : { sold:false, price:d.price };
+
 
         render();
+   });
+});
+
+/* render */
+function render() {
+    const list = document.getElementById('domain-list');
+    if (!list || !isUserAuthenticated) return;
+
+    list.innerHTML = '';
+
+    domains.forEach(d => {
+        const data = domainData[d.name] || { sold:false, price:d.price };
+        const isSold = data.sold;
+        const price = data.price;
+
+        const card = document.createElement('div');
+        card.className = 'domain-card';
+
+        card.innerHTML = `
+            <img src="${d.img}" class="domain-img">
+            <strong>${d.name}</strong>
+            <br>
+            <span>${isSold ? SATILDI (${price} Pi) : price + ' Pi'}</span>
+        `;
+
+        if (!isSold) {
+            const btn = document.createElement('button');
+            btn.className = 'btn-buy';
+            btn.innerText = paymentInProgress ? 'İşlem Bekleniyor' : 'Satın Al';
+            btn.disabled = paymentInProgress;
+            btn.onclick = () => startPurchase(d.name, price);
+            card.appendChild(btn);
+        }
+
+        list.appendChild(card);
+    });
+}
+
 
         /* HEARTBEAT (ONLINE KEEP) */
         setInterval(() => {
