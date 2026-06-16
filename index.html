@@ -270,7 +270,9 @@ import {
     onSnapshot,
     setDoc,
     getDoc,
-    collection
+    collection,
+    getDocs,
+    deleteDoc
 } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
 
 const firebaseConfig = {
@@ -302,31 +304,43 @@ window.addEventListener("load", () => {
 });
 
 /* =========================
-   ACTIVE USERS (ONLINE COUNT)
+   ONLINE COUNT (FIXED LOGIC)
 ========================= */
 onSnapshot(collection(db, "active_users"), (snap) => {
+
+    const now = Date.now();
+    const activeThreshold = 30000; // 30 saniye
+
+    let activeCount = 0;
+
+    snap.forEach(docItem => {
+        const data = docItem.data();
+
+        if (data.lastSeen && (now - data.lastSeen) < activeThreshold) {
+            activeCount++;
+        }
+    });
+
     document.getElementById("online-count").innerText =
-        "Aktif Kullanıcı: " + snap.size;
+        "Aktif Kullanıcı: " + activeCount;
 });
 
 /* =========================
-   LOGIN SYSTEM (FULL FIXED)
+   LOGIN SYSTEM
 ========================= */
 window.loginWithPi = function () {
+
     function render() {
-    const list = document.getElementById("domain-list");
+        const list = document.getElementById("domain-list");
 
-    if (!list) return;
+        if (!list) return;
 
-    if (!window.isUserAuthenticated && !window.currentUser) return;
-
-    // şimdilik basit fix (boş kalmasın diye)
-    list.innerHTML = `
-        <div style="color:white;padding:20px;">
-            Sistem aktif ✔
-        </div>
-    `;
-}
+        list.innerHTML = `
+            <div style="color:white;padding:20px;">
+                Sistem aktif ✔
+            </div>
+        `;
+    }
 
     if (!window.Pi) {
         alert("Pi SDK yüklenmedi!");
@@ -342,23 +356,18 @@ window.loginWithPi = function () {
         const now = Date.now();
         const today = new Date().toISOString().split("T")[0];
 
-        /* =========================
-           ACTIVE USERS (ONLINE)
-        ========================= */
+        /* ACTIVE USERS */
         await setDoc(doc(db, "active_users", currentUser), {
             username: currentUser,
             lastSeen: now
         });
 
-        /* =========================
-           DAILY UNIQUE USERS (NO DUPLICATE)
-        ========================= */
+        /* DAILY USERS */
         const dailyRef = doc(db, "daily_users", today);
         const snap = await getDoc(dailyRef);
 
         let data = snap.exists() ? snap.data() : { users: {} };
 
-        // sadece 1 kayıt
         data.users[currentUser] = now;
 
         await setDoc(dailyRef, data);
@@ -371,7 +380,7 @@ window.loginWithPi = function () {
 
         render();
 
-        /* HEARTBEAT (ONLINE KEEP) */
+        /* HEARTBEAT */
         setInterval(() => {
             setDoc(doc(db, "active_users", currentUser), {
                 username: currentUser,
