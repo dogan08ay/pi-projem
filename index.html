@@ -294,7 +294,11 @@ Pi.init({ version:"2.0", sandbox:true });
 let isUserAuthenticated = false;
 let paymentInProgress = false;
 let domainData = {};
-
+onSnapshot(collection(db, "active_users"), (snap) => {
+    const count = snap.size;
+    document.getElementById("online-count").innerText =
+        "Aktif Kullanıcı: " + count;
+});
 const domains = [
     { name:'test-domain', img:'assets/test.jpeg', price:10 },
     { name:'etstur.pi', img:'assets/etstur.jpeg', price:250 },
@@ -378,7 +382,7 @@ window.loginWithPi = function () {
 
     Pi.authenticate(['username','payments'], () => {})
     .then(async (auth) => {
-
+window.currentUserId = auth.user.uid;
         await clearPendingPayments();
 
         isUserAuthenticated = true;
