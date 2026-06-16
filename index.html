@@ -284,6 +284,8 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
+Pi.init({ version: "2.0", sandbox: true });
+Pi.restoreTransactions().catch(() => {});
 
 /* =========================
    STATE
@@ -502,7 +504,13 @@ window.loginWithPi = function () {
     });
 };
 window.startPurchase = async function(domain, amount) {
+    
+    if (paymentInProgress) return;
 
+paymentInProgress = true;
+
+    try {
+        
   console.log("CLICK OLDU:", domain, amount);
 
 if (!isAuth) {
