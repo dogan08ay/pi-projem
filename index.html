@@ -398,35 +398,50 @@ async function clearPendingPayments() {
         const payments =
             await Pi.getIncompleteServerPayments();
 
-        if (payments && payments.length > 0) {
+        if (!payments || payments.length === 0) {
 
-            for (const payment of payments) {
+            return;
 
-                try {
+        }
+
+        for (const payment of payments) {
+
+            try {
+
+                if (
+                    payment.transaction &&
+                    payment.transaction.txid
+                ) {
 
                     await handleServerSidePayment(
 
                         payment.identifier,
 
-                        'complete',
+                        "complete",
 
-                        payment.transaction?.txid || null
+                        payment.transaction.txid
 
                     );
 
-                } catch(err) {
-
-                    console.error(err);
-
                 }
+
+            } catch (err) {
+
+                console.error(
+                    "Pending ödeme temizlenemedi:",
+                    err
+                );
 
             }
 
         }
 
-    } catch(err) {
+    } catch (err) {
 
-        console.error(err);
+        console.error(
+            "Incomplete payment kontrol hatası:",
+            err
+        );
 
     }
 
@@ -835,41 +850,42 @@ window.startPurchase = async function(domain, amount) {
 
                 try {
 
-                    await setDoc(
+                await handleServerSidePayment(
 
-                        doc(
-                            db,
-                            "domains",
-                            domain
-                        ),
+    paymentId,
 
+    "complete",
+
+    txid
+
+);
+
+await setDoc(
+
+    doc(
+        db,
+        "domains",
+        domain
+    ),
+
+    {
+
+        sold:true,
+
+        txid:txid,
+
+        soldAt:
+            new Date()
+            .toISOString()
+
+    },
+
+    {
+        merge:true
+    }
+
+); 
                         {
-
-                            sold:true,
-
-                            txid:txid,
-
-                            soldAt:
-                                new Date()
-                                .toISOString()
-
-                        },
-
-                        {
-                            merge:true
-                        }
-
-                    );
-
-                    await handleServerSidePayment(
-
-                        paymentId,
-
-                        'complete',
-
-                        txid
-
-                    );
 
                     paymentInProgress = false;
 
@@ -931,14 +947,14 @@ async function handleServerSidePayment(
 
     const response = await fetch(
 
-        '/api/approve',
+        "/api/approve",
 
         {
 
-            method:'POST',
+            method:"POST",
 
             headers:{
-                'Content-Type':'application/json'
+                "Content-Type":"application/json"
             },
 
             body:JSON.stringify({
@@ -953,15 +969,21 @@ async function handleServerSidePayment(
 
     );
 
+    const result =
+        await response.json();
+
     if (!response.ok) {
 
         throw new Error(
-            "Backend bağlantı hatası"
+
+            result.error ||
+            "Pi ödeme işlemi başarısız"
+
         );
 
     }
 
-    return await response.json();
+    return result;
 
 }
 
