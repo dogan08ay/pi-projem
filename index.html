@@ -419,16 +419,10 @@ snap.forEach(d => {
     const date = new Date(ts);
 
     logs += `
-        <div style="
-            padding:8px;
-            border-bottom:1px solid #334155;
-            display:flex;
-            justify-content:space-between;
-        ">
+        <div style="padding:8px;border-bottom:1px solid #334155;display:flex;justify-content:space-between;">
             <span style="color:#60a5fa;">
                 ${date.toLocaleString("tr-TR")}
             </span>
-
             <b style="color:#f8fafc;">
                 @${data.username}
             </b>
@@ -436,22 +430,7 @@ snap.forEach(d => {
     `;
 });
 
- style="
-            padding:8px;
-            border-bottom:1px solid #334155;
-            display:flex;
-            justify-content:space-between;
-        ">
-            <span style="color:#60a5fa;">
-                ${date.toLocaleString("tr-TR")}
-            </span>
-
-            <b style="color:#f8fafc;">
-                @${data.username}
-            </b>
-        </div>
-    `;
-});
+document.getElementById('log-list').innerHTML = logs;
 
 document.getElementById('log-list').innerHTML = logs;
     })
