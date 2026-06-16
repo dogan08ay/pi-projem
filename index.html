@@ -295,10 +295,37 @@ let isUserAuthenticated = false;
 let paymentInProgress = false;
 let domainData = {};
 
-/* 🔴 aktif kullanıcı sayısı */
-onSnapshot(collection(db, "active_users"), (snap) => {
+/* 🔴 CANLI AKTİF KULLANICI SAYISI */
+onSnapshot(collection(db, "active_users"), async (snap) => {
+
+    const now = Date.now();
+    let activeCount = 0;
+
+    const batchDeletes = [];
+
+    snap.forEach((docSnap) => {
+        const data = docSnap.data();
+
+        if (!data.lastSeen) return;
+
+        const diff = now - data.lastSeen;
+
+        // 30 saniyeden eskiyse offline say ve sil
+        if (diff > 30000) {
+            batchDeletes.push(deleteDoc(doc(db, "active_users", docSnap.id)));
+            return;
+        }
+
+        activeCount++;
+    });
+
+    // eski kullanıcıları temizle
+    if (batchDeletes.length > 0) {
+        Promise.all(batchDeletes).catch(() => {});
+    }
+
     document.getElementById("online-count").innerText =
-        "Aktif Kullanıcı: " + snap.size;
+        "Aktif Kullanıcı: " + activeCount;
 });
 
 /* DOMAINLER */
