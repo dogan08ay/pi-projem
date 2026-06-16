@@ -288,6 +288,17 @@ window.addEventListener("load", () => {
     if (window.Pi) {
         try {
             Pi.init({ version: "2.0", sandbox: true });
+            Pi.onIncompletePaymentFound(function(payment) {
+    console.log("Yarım ödeme bulundu:", payment);
+
+    Pi.completePayment(payment.identifier, payment.txid)
+        .then(function(result) {
+            console.log("Yarım ödeme tamamlandı:", result);
+        })
+        .catch(function(err) {
+            console.error("Yarım ödeme çözülemedi:", err);
+        });
+});
         } catch (e) {
             console.log("Pi init error", e);
         }
