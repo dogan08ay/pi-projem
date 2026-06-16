@@ -454,7 +454,19 @@ snap.forEach(d => {
     `;
 });
 
- style="
+snap.forEach(d => {
+
+    const data = d.data();
+
+    if (!data.timestamp) return;
+
+    const ts = Number(data.timestamp);
+    if (isNaN(ts)) return;
+
+    const date = new Date(ts);
+
+    logs += `
+        <div style="
             padding:8px;
             border-bottom:1px solid #334155;
             display:flex;
@@ -469,6 +481,7 @@ snap.forEach(d => {
             </b>
         </div>
     `;
+});
 });
 
 document.getElementById('log-list').innerHTML = logs;
