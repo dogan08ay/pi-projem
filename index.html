@@ -336,8 +336,23 @@ window.addEventListener("load", () => {
 
 });
 onSnapshot(collection(db, "active_users"), (snap) => {
+
+    const now = Date.now();
+    let activeCount = 0;
+
+    snap.forEach(doc => {
+
+        const data = doc.data();
+
+        if (data.lastSeen && (now - data.lastSeen) < 30000) {
+            activeCount++;
+        }
+
+    });
+
     document.getElementById("online-count").innerText =
-        "Aktif Kullanıcı: " + snap.size;
+        "Aktif Kullanıcı: " + activeCount;
+
 });
 
 /* =========================
