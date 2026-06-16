@@ -266,12 +266,12 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebas
 import {
     getFirestore,
     doc,
-    onSnapshot,
-    setDoc,
     getDoc,
-    deleteDoc
+    setDoc,
+    onSnapshot
 } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
 
+/* FIREBASE */
 const firebaseConfig = {
     apiKey: "xxx",
     authDomain: "web3-domain-gateway.firebaseapp.com",
@@ -282,37 +282,26 @@ const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
 /* =========================
-   PI INIT (SAFE)
+   SAFE PI INIT (HATA YOK)
 ========================= */
-if (window.Pi) {
-    try {
-        Pi.init({ version: "2.0", sandbox: true });
-    } catch (e) {
-        console.log("Pi init error", e);
+window.addEventListener("load", () => {
+    if (window.Pi) {
+        try {
+            Pi.init({ version: "2.0", sandbox: true });
+            console.log("Pi init OK");
+        } catch (e) {
+            console.error("Pi init error:", e);
+        }
     }
-}
+});
 
-/* =========================
-   STATE
-========================= */
+/* STATE */
 let currentUser = null;
-let heartbeat = null;
 
-/* =========================
-   TODAY KEY
-========================= */
-function todayKey() {
+/* TODAY KEY */
+function todayId() {
     return new Date().toISOString().split("T")[0];
 }
-
-/* =========================
-   ACTIVE USERS COUNT (REAL)
-========================= */
-onSnapshot(doc(db, "meta", "active_users"), (snap) => {
-    const data = snap.data() || {};
-    document.getElementById("online-count").innerText =
-        "Aktif Kullanıcı: " + (data.count || 0);
-});
 
 /* =========================
    LOGIN
@@ -320,86 +309,47 @@ onSnapshot(doc(db, "meta", "active_users"), (snap) => {
 window.loginWithPi = function () {
 
     if (!window.Pi) {
-        alert("Pi SDK yok");
+        alert("Pi SDK yüklenmedi");
         return;
     }
 
-    Pi.authenticate(['username','payments'])
-        .then(async (auth) => {
+    Pi.authenticate(['username', 'payments'])
+    .then(async (auth) => {
 
-            currentUser = auth.user.username;
+        currentUser = auth.user.username;
 
-            const today = todayKey();
+        const today = todayId();
+        const ref = doc(db, "daily_stats", today);
 
-            /* =========================
-               UNIQUE DAILY USERS
-            ========================= */
-            const ref = doc(db, "daily_stats", today);
-            const snap = await getDoc(ref);
+        const snap = await getDoc(ref);
 
-            let data = snap.exists() ? snap.data() : { users: {} };
+        let data = snap.exists() ? snap.data() : { users: {} };
 
-            data.users[currentUser] = true;
+        // UNIQUE USER ADD (duplicate yok)
+        data.users[currentUser] = true;
 
-            await setDoc(ref, data);
+        await setDoc(ref, data, { merge: true });
 
-            /* =========================
-               ACTIVE USERS INCREMENT SAFE
-            ========================= */
-            const metaRef = doc(db, "meta", "active_users");
-            const metaSnap = await getDoc(metaRef);
+        /* UI */
+        document.getElementById("user-status").innerText =
+            "Bağlı: @" + currentUser;
 
-            let meta = metaSnap.exists() ? metaSnap.data() : { count: 0 };
+        document.getElementById("auth-btn").style.display = "none";
 
-            meta.count = (meta.count || 0) + 1;
+        /* ADMIN PANEL START */
+        startAdmin(today);
 
-            await setDoc(metaRef, meta);
-
-            /* =========================
-               UI
-            ========================= */
-            document.getElementById("user-status").innerText =
-                "Bağlı: @" + currentUser;
-
-            document.getElementById("auth-btn").style.display = "none";
-
-            /* =========================
-               HEARTBEAT (keep alive)
-            ========================= */
-            if (heartbeat) clearInterval(heartbeat);
-
-            heartbeat = setInterval(async () => {
-                if (!currentUser) return;
-
-                await setDoc(doc(db, "active_users", currentUser), {
-                    lastSeen: Date.now()
-                }, { merge: true });
-
-            }, 15000);
-
-            /* =========================
-               ADMIN PANEL
-            ========================= */
-            startAdmin(today);
-
-        })
-        .catch(err => {
-            console.error(err);
-            alert("Login error: " + err.message);
-        });
+    })
+    .catch(err => {
+        console.error(err);
+        alert("Login error: " + err.message);
+    });
 };
 
 /* =========================
-   ADMIN PANEL (DAILY UNIQUE COUNT)
+   ADMIN PANEL (BUGÜN UNIQUE COUNT)
 ========================= */
 function startAdmin(today) {
-
-    const panel = document.getElementById("admin-panel");
-    const logList = document.getElementById("log-list");
-
-    if (!panel || !logList) return;
-
-    panel.style.display = "block";
 
     const ref = doc(db, "daily_stats", today);
 
@@ -408,37 +358,16 @@ function startAdmin(today) {
         const data = snap.data() || {};
         const users = data.users || {};
 
-        const list = Object.keys(users);
+        const count = Object.keys(users).length;
 
-        logList.innerHTML = `
+        document.getElementById("log-list").innerHTML = `
             <div style="padding:10px;">
-                <h4 style="margin:0 0 10px 0;color:#6366f1;">
-                    Bugün giriş yapan farklı kullanıcı
-                </h4>
-
-                <div style="font-size:14px;color:#f8fafc;">
-                    <b>${list.length}</b> kişi
-                </div>
-
-                <hr style="border:1px solid #334155;margin:10px 0;">
-
-                ${list.map(u => `
-                    <div style="padding:6px 0;border-bottom:1px solid #334155;">
-                        👤 @${u}
-                    </div>
-                `).join("")}
+                <b>Bugün giriş yapan farklı kullanıcı:</b>
+                <h2 style="color:#6366f1">${count}</h2>
             </div>
         `;
     });
 }
-
-/* =========================
-   EXIT CLEAN
-========================= */
-window.addEventListener("beforeunload", async () => {
-    if (!currentUser) return;
-    await deleteDoc(doc(db, "active_users", currentUser));
-});
 </script>
 
 </body>
