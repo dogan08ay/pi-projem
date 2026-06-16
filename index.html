@@ -395,13 +395,59 @@ window.loginWithPi = function () {
             document.getElementById('admin-panel').style.display = 'block';
         }
 // ADMIN LOG VERİLERİNİ ÇEK (FIX)
+const now = new Date();
+const startOfToday = new Date(
+    now.getFullYear(),
+    now.getMonth(),
+    now.getDate()
+).getTime();
+
 const snap = await getDocs(
     query(
         collection(db, "daily_logs"),
         orderBy("timestamp", "desc"),
-        limit(15)
+        limit(50)
     )
 );
+
+let logs = "";
+
+snap.forEach(d => {
+
+    const data = d.data();
+
+    // 🔥 BUG FIX: sadece geçerli timestamp + bugünü de göster
+    if (!data.timestamp) return;
+
+    const ts = Number(data.timestamp);
+
+    if (isNaN(ts)) return;
+
+    // (İstersen sadece bugünü göstermek için açabilirsin)
+    // if (ts < startOfToday) return;
+
+    if (data.date && !data.date.includes("NaN")) {
+
+        logs += `
+            <div style="
+                padding:8px;
+                border-bottom:1px solid #334155;
+                display:flex;
+                justify-content:space-between;
+            ">
+                <span style="color:#60a5fa;">
+                    ${data.date}
+                </span>
+
+                <b style="color:#f8fafc;">
+                    @${data.username}
+                </b>
+            </div>
+        `;
+    }
+});
+
+document.getElementById('log-list').innerHTML = logs;
 
 let logs = "";
 
