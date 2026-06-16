@@ -389,7 +389,7 @@ window.loginWithPi = function () {
                     : 'Satın Al';
 
             btn.disabled = paymentInProgress;
-
+            btn.onclick = () => startPurchase(d.name, data.price);
             card.appendChild(btn);
         }
 
@@ -486,7 +486,79 @@ window.loginWithPi = function () {
         alert("Login error: " + err.message);
     });
 };
+window.startPurchase = async function(domain, amount) {
 
+    if (!isAuth || paymentInProgress) return;
+
+    paymentInProgress = true;
+
+    try {
+
+        Pi.createPayment(
+            {
+                amount: Number(amount),
+                memo: "Domain: " + domain,
+                metadata: { domain }
+            },
+            {
+                onReadyForServerApproval: function(paymentId) {
+
+                    console.log(
+                        "Approval gerekli:",
+                        paymentId
+                    );
+
+                },
+
+                onReadyForServerCompletion: async function(paymentId, txid) {
+
+                    await setDoc(
+                        doc(db, "domains", domain),
+                        {
+                            sold: true,
+                            txid: txid,
+                            soldAt: new Date().toISOString()
+                        },
+                        { merge: true }
+                    );
+
+                    paymentInProgress = false;
+
+                    alert("Satın alma tamamlandı!");
+
+                },
+
+                onCancel: function() {
+
+                    paymentInProgress = false;
+
+                    alert("İşlem iptal edildi.");
+
+                },
+
+                onError: function(error) {
+
+                    paymentInProgress = false;
+
+                    console.error(error);
+
+                    alert("Ödeme hatası oluştu.");
+
+                }
+            }
+        );
+
+    } catch (err) {
+
+        paymentInProgress = false;
+
+        console.error(err);
+
+        alert(err.message);
+
+    }
+
+};
 </script>
     
 </body>
