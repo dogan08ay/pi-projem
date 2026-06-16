@@ -307,6 +307,7 @@ function getTodayId() {
 /* =========================
    LOGIN (SAFE VERSION)
 ========================= */
+
 window.loginWithPi = function () {
 
     if (!window.Pi) {
@@ -314,18 +315,25 @@ window.loginWithPi = function () {
         return;
     }
 
+    // SDK hazır mı kontrol
+    if (!Pi.authenticate) {
+        alert("Pi SDK hazır değil, sayfayı yenileyin");
+        return;
+    }
+
     Pi.authenticate(['username','payments'])
         .then(async (auth) => {
 
-            currentUser = auth.user.username;
-
-            const today = getTodayId();
+            const currentUser = auth.user.username;
+            const today = new Date().toISOString().split("T")[0];
 
             const ref = doc(db, "daily_stats", today);
             const snap = await getDoc(ref);
 
             let data = snap.exists() ? snap.data() : { users: {} };
 
+            // duplicate engelleme
+            data.users = data.users || {};
             data.users[currentUser] = true;
 
             await setDoc(ref, data);
@@ -340,10 +348,9 @@ window.loginWithPi = function () {
         })
         .catch(err => {
             console.error(err);
-            alert("Login error: " + err.message);
+            alert("Pi Login Error: " + err.message);
         });
 };
-
 /* =========================
    ADMIN COUNT
 ========================= */
