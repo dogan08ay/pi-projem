@@ -284,9 +284,15 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
-Pi.init({ version: "2.0", sandbox: true });
-Pi.restoreTransactions().catch(() => {});
-
+window.addEventListener("load", () => {
+    if (window.Pi) {
+        try {
+            Pi.init({ version: "2.0", sandbox: true });
+        } catch (e) {
+            console.log("Pi init error", e);
+        }
+    }
+});
 /* =========================
    STATE
 ========================= */
