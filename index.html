@@ -261,8 +261,6 @@
 
 </div>
 
-<script type="module">
-
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
 import {
     getFirestore,
@@ -294,41 +292,43 @@ Pi.init({ version:"2.0", sandbox:true });
 let isUserAuthenticated = false;
 let paymentInProgress = false;
 let domainData = {};
+let heartbeatInterval = null;
 
-/* 🔴 CANLI AKTİF KULLANICI SAYISI */
+/* =========================
+   ACTIVE USERS (REAL TIME)
+========================= */
 onSnapshot(collection(db, "active_users"), async (snap) => {
 
     const now = Date.now();
     let activeCount = 0;
 
-    const batchDeletes = [];
+    const cleanUp = [];
 
     snap.forEach((docSnap) => {
+
         const data = docSnap.data();
 
         if (!data.lastSeen) return;
 
         const diff = now - data.lastSeen;
 
-        // 30 saniyeden eskiyse offline say ve sil
         if (diff > 30000) {
-            batchDeletes.push(deleteDoc(doc(db, "active_users", docSnap.id)));
-            return;
+            cleanUp.push(deleteDoc(doc(db, "active_users", docSnap.id)));
+        } else {
+            activeCount++;
         }
-
-        activeCount++;
     });
 
-    // eski kullanıcıları temizle
-    if (batchDeletes.length > 0) {
-        Promise.all(batchDeletes).catch(() => {});
-    }
+    await Promise.all(cleanUp).catch(()=>{});
 
     document.getElementById("online-count").innerText =
         "Aktif Kullanıcı: " + activeCount;
 });
 
-/* DOMAINLER */
+
+/* =========================
+   DOMAIN SNAPSHOT
+========================= */
 const domains = [
     { name:'test-domain', img:'assets/test.jpeg', price:10 },
     { name:'etstur.pi', img:'assets/etstur.jpeg', price:250 },
@@ -339,7 +339,6 @@ const domains = [
     { name:'doganay.pi', img:'assets/doganay.jpeg', price:150 }
 ];
 
-/* snapshot */
 domains.forEach(d => {
     onSnapshot(doc(db, "domains", d.name), (snap) => {
         domainData[d.name] = snap.exists()
@@ -350,17 +349,21 @@ domains.forEach(d => {
     });
 });
 
-/* render */
+
+/* =========================
+   RENDER
+========================= */
 function render() {
+
     const list = document.getElementById('domain-list');
     if (!list || !isUserAuthenticated) return;
 
     list.innerHTML = '';
 
     domains.forEach(d => {
+
         const data = domainData[d.name] || { sold:false, price:d.price };
         const isSold = data.sold;
-        const price = data.price;
 
         const card = document.createElement('div');
         card.className = 'domain-card';
@@ -369,15 +372,15 @@ function render() {
             <img src="${d.img}" class="domain-img">
             <strong>${d.name}</strong>
             <br>
-            <span>${isSold ? `SATILDI (${price} Pi)` : price + ' Pi'}</span>
+            <span>${isSold ? `SATILDI (${data.price} Pi)` : data.price + ' Pi'}</span>
         `;
 
         if (!isSold) {
             const btn = document.createElement('button');
             btn.className = 'btn-buy';
-            btn.innerText = paymentInProgress ? 'İşlem Bekleniyor' : 'Satın Al';
+            btn.innerText = paymentInProgress ? 'İşlem...' : 'Satın Al';
             btn.disabled = paymentInProgress;
-            btn.onclick = () => startPurchase(d.name, price);
+            btn.onclick = () => startPurchase(d.name, d.price);
             card.appendChild(btn);
         }
 
@@ -385,24 +388,29 @@ function render() {
     });
 }
 
-/* LOGIN - DÜZELTİLDİ */
-window.loginWithPi = function () {
 
-    console.log("LOGIN TIKLANDI");
+/* =========================
+   LOGIN SYSTEM
+========================= */
+window.loginWithPi = function () {
 
     Pi.authenticate(['username','payments'])
     .then(async (auth) => {
 
-        console.log("AUTH:", auth);
-
         isUserAuthenticated = true;
+        window.currentUserId = auth.user.username;
 
-        window.currentUserId = auth.user.uid || auth.user.username;
-
-        /* active user ekle */
-        await setDoc(doc(db, "active_users", window.currentUserId), {
+        /* ACTIVE USER */
+        await setDoc(doc(db, "active_users", auth.user.username), {
             username: auth.user.username,
             lastSeen: Date.now()
+        });
+
+        /* DAILY LOG */
+        await setDoc(doc(db, "daily_logs", auth.user.username + "_" + Date.now()), {
+            username: auth.user.username,
+            timestamp: Date.now(),
+            type: "login"
         });
 
         document.getElementById('user-status').innerText =
@@ -412,20 +420,28 @@ window.loginWithPi = function () {
 
         render();
 
-        /* canlı update */
-        setInterval(() => {
+        /* HEARTBEAT (ONLINE SYSTEM) */
+        if (heartbeatInterval) clearInterval(heartbeatInterval);
+
+        heartbeatInterval = setInterval(() => {
+
+            if (!window.currentUserId) return;
+
             setDoc(doc(db, "active_users", window.currentUserId), {
-                username: auth.user.username,
+                username: window.currentUserId,
                 lastSeen: Date.now()
             });
+
         }, 15000);
 
-        /* admin panel */
+
+        /* ADMIN PANEL */
         if (auth.user.username === "doganay0808") {
             document.getElementById('admin-panel').style.display = 'block';
         }
 
-        /* log çek */
+
+        /* DAILY LOG LOAD */
         const snap = await getDocs(
             query(
                 collection(db, "daily_logs"),
@@ -437,31 +453,32 @@ window.loginWithPi = function () {
         let logs = "";
 
         snap.forEach(d => {
+
             const data = d.data();
             if (!data.timestamp) return;
-
-            const date = new Date(Number(data.timestamp));
 
             logs += `
                 <div style="padding:8px;border-bottom:1px solid #334155;display:flex;justify-content:space-between;">
                     <span style="color:#60a5fa;">
-                        ${date.toLocaleString("tr-TR")}
+                        ${new Date(data.timestamp).toLocaleString("tr-TR")}
                     </span>
                     <b style="color:#f8fafc;">@${data.username}</b>
                 </div>
             `;
         });
 
-        document.getElementById('log-list').innerHTML = logs;
+        document.getElementById("log-list").innerHTML = logs;
 
     })
     .catch(err => {
-        console.error(err);
-        alert("Giriş başarısız: " + err.message);
+        alert("Login error: " + err.message);
     });
 };
 
-/* SATIN AL */
+
+/* =========================
+   PURCHASE
+========================= */
 window.startPurchase = async function(domain, amount) {
 
     if (!isUserAuthenticated || paymentInProgress) return;
@@ -480,7 +497,7 @@ window.startPurchase = async function(domain, amount) {
                 await fetch('/api/approve', {
                     method:'POST',
                     headers:{'Content-Type':'application/json'},
-                    body:JSON.stringify({paymentId, action:'approve'})
+                    body:JSON.stringify({ paymentId, action:'approve' })
                 });
             },
 
@@ -489,13 +506,13 @@ window.startPurchase = async function(domain, amount) {
                 await setDoc(doc(db,"domains",domain),{
                     sold:true,
                     txid,
-                    soldAt:new Date().toISOString()
+                    soldAt:Date.now()
                 },{ merge:true });
 
                 await fetch('/api/approve', {
                     method:'POST',
                     headers:{'Content-Type':'application/json'},
-                    body:JSON.stringify({paymentId, action:'complete', txid})
+                    body:JSON.stringify({ paymentId, action:'complete', txid })
                 });
 
                 paymentInProgress = false;
@@ -508,6 +525,17 @@ window.startPurchase = async function(domain, amount) {
         }
     );
 };
+
+
+/* =========================
+   CLEAN EXIT
+========================= */
+window.addEventListener("beforeunload", async () => {
+
+    if (!window.currentUserId) return;
+
+    await deleteDoc(doc(db, "active_users", window.currentUserId));
+});
 
 </script>
 
