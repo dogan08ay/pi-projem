@@ -509,28 +509,62 @@ window.loginWithPi = function () {
         alert("Login error: " + err.message);
     });
 };
-window.startPurchase = async function(domain, amount) {
-    
-    if (paymentInProgress) return;
 
-paymentInProgress = true;
+ window.startPurchase = async function(domain, amount) {
 
-    try {
-        
-  console.log("CLICK OLDU:", domain, amount);
+    if (!isAuth || paymentInProgress) return;
 
-if (!isAuth) {
-    alert("Önce giriş yapmalısın");
-    return;
-}
+    paymentInProgress = true;
 
-if (paymentInProgress) return;
-
-paymentInProgress = true;
     try {
 
         Pi.createPayment(
             {
+                amount: Number(amount),
+                memo: "Domain: " + domain,
+                metadata: { domain }
+            },
+            {
+                onReadyForServerApproval: function(paymentId) {
+                    console.log("Approval:", paymentId);
+                },
+
+                onReadyForServerCompletion: async function(paymentId, txid) {
+
+                    await setDoc(
+                        doc(db, "domains", domain),
+                        {
+                            sold: true,
+                            txid: txid,
+                            soldAt: new Date().toISOString()
+                        },
+                        { merge: true }
+                    );
+
+                    paymentInProgress = false;
+                    alert("Satın alma tamamlandı!");
+
+                },
+
+                onCancel: function() {
+                    paymentInProgress = false;
+                    alert("İşlem iptal edildi.");
+                },
+
+                onError: function(error) {
+                    paymentInProgress = false;
+                    console.error(error);
+                    alert("Ödeme hatası oluştu: " + error.message);
+                }
+            }
+        );
+
+    } catch (err) {
+        paymentInProgress = false;
+        console.error(err);
+        alert(err.message);
+    }
+};           {
                 amount: Number(amount),
                 memo: "Domain: " + domain,
                 metadata: { domain }
