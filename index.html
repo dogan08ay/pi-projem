@@ -171,6 +171,7 @@
             margin:0 10px;
             color:#475569;
         }
+
     </style>
 
 </head>
@@ -188,21 +189,37 @@
             Aktif Kullanıcı: 0
         </p>
 
-        <p id="user-status">Lütfen önce bağlanın.</p>
+        <p id="user-status">
+            Lütfen önce bağlanın.
+        </p>
 
-        <button id="auth-btn" class="pi-btn" onclick="window.loginWithPi()">
+        <button id="auth-btn"
+                class="pi-btn"
+                onclick="window.loginWithPi()">
             Pi ile Bağlan
         </button>
 
     </div>
 
-    <div class="card" id="admin-panel" style="display:none;border:2px solid #6366f1;text-align:left;">
-        <h3 style="color:#6366f1;margin-top:0;">🛠 Admin Paneli</h3>
-        <div id="log-list" style="font-size:0.85em;max-height:150px;overflow-y:auto;"></div>
+    <div class="card"
+         id="admin-panel"
+         style="display:none;border:2px solid #6366f1;text-align:left;">
+
+        <h3 style="color:#6366f1;margin-top:0;">
+            🛠 Admin Paneli
+        </h3>
+
+        <div id="log-list"
+             style="font-size:0.85em;max-height:150px;overflow-y:auto;">
+        </div>
+
     </div>
 
     <div class="card">
-        <div class="section-title-box">Satıştaki Domainler</div>
+
+        <div class="section-title-box">
+            Satıştaki Domainler
+        </div>
 
         <div class="domain-grid" id="domain-list">
 
@@ -219,6 +236,7 @@
             </div>
 
         </div>
+
     </div>
 
 </div>
@@ -254,7 +272,12 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-Pi.init({ version:"2.0", sandbox:true });
+/* ✅ FIX 1 — Pi init güvenli */
+try {
+    Pi.init({ version:"2.0", sandbox:true });
+} catch(e) {
+    console.log("Pi init error:", e);
+}
 
 let isUserAuthenticated = false;
 let paymentInProgress = false;
@@ -273,80 +296,25 @@ const domains = [
 async function clearPendingPayments() {
     try {
         const payments = await Pi.getIncompleteServerPayments();
-        if (!payments) return;
-
-        for (const payment of payments) {
-            try {
-                await handleServerSidePayment(
-                    payment.identifier,
-                    'complete',
-                    payment.transaction?.txid || null
-                );
-            } catch (err) {
-                console.error(err);
+        if (payments && payments.length > 0) {
+            for (const payment of payments) {
+                try {
+                    await handleServerSidePayment(
+                        payment.identifier,
+                        'complete',
+                        payment.transaction?.txid || null
+                    );
+                } catch(e) {
+                    console.log("pending fix error:", e);
+                }
             }
         }
-    } catch (err) {
-        console.error(err);
+    } catch(e) {
+        console.log("clearPendingPayments error:", e);
     }
 }
 
-/* ✅ FIX 1: snapshot artık DELETE/false durumunu da yansıtıyor */
-domains.forEach(d => {
-
-    onSnapshot(doc(db, "domains", d.name), (snap) => {
-
-        if (snap.exists()) {
-            domainData[d.name] = snap.data();
-        } else {
-            domainData[d.name] = { sold:false, price:d.price };
-        }
-
-        render();
-    });
-
-});
-
-function render() {
-
-    const list = document.getElementById('domain-list');
-    if (!list) return;
-    if (!isUserAuthenticated) return;
-
-    list.innerHTML = '';
-
-    domains.forEach(d => {
-
-        const data = domainData[d.name] || { sold:false, price:d.price };
-        const isSold = data.sold === true;
-        const price = data.price ?? d.price;
-
-        const card = document.createElement('div');
-        card.className = 'domain-card';
-
-        card.innerHTML = `
-            <img src="${d.img}" class="domain-img">
-            <strong>${d.name}</strong>
-            <br>
-            <span>${isSold ? `SATILDI (${price} Pi)` : price + ' Pi'}</span>
-        `;
-
-        if (!isSold) {
-
-            const btn = document.createElement('button');
-            btn.className = 'btn-buy';
-            btn.innerText = paymentInProgress ? 'İşlem Bekleniyor' : 'Satın Al';
-            btn.disabled = paymentInProgress;
-
-            btn.onclick = () => startPurchase(d.name, price);
-            card.appendChild(btn);
-        }
-
-        list.appendChild(card);
-    });
-}
-
-window.loginWithPi = function () {
+window.loginWithPi = function() {
 
     Pi.authenticate(['username','payments'], () => {})
 
@@ -361,8 +329,6 @@ window.loginWithPi = function () {
 
         document.getElementById('auth-btn').style.display = 'none';
 
-        render();
-
     })
 
     .catch(err => {
@@ -370,76 +336,52 @@ window.loginWithPi = function () {
     });
 };
 
-/* ✅ FIX 2: payment state ASLA kilitlenmiyor */
+/* ✅ FIX 2 — Pending payment korumalı startPurchase */
 window.startPurchase = async function(domain, amount) {
 
-    if (!isUserAuthenticated) return;
-    if (paymentInProgress) return;
+    if (!isUserAuthenticated) return alert("Önce giriş yapın");
+    if (paymentInProgress) return alert("Bekleyen ödeme var");
 
-    const selectedDomain = domainData[domain];
-    if (selectedDomain?.sold) return;
+    const pending = await Pi.getIncompleteServerPayments();
+
+    if (pending && pending.length > 0) {
+        paymentInProgress = false;
+        return alert("Önce bekleyen ödeme işlemini tamamlayın.");
+    }
 
     paymentInProgress = true;
-    render();
 
     try {
 
         Pi.createPayment(
-            {
-                amount:Number(amount),
-                memo:"Domain: " + domain,
-                metadata:{ domain }
+        {
+            amount:Number(amount),
+            memo:"Domain: " + domain,
+            metadata:{ domain }
+        },
+        {
+            onReadyForServerApproval: async function(paymentId) {
+                await handleServerSidePayment(paymentId,'approve',null);
             },
-            {
 
-                onReadyForServerApproval: async function(paymentId) {
+            onReadyForServerCompletion: async function(paymentId, txid) {
+                await handleServerSidePayment(paymentId,'complete',txid);
+                paymentInProgress = false;
+            },
 
-                    try {
-                        await handleServerSidePayment(paymentId,'approve',null);
-                    } catch (err) {
-                        paymentInProgress = false;
-                        render();
-                    }
-                },
+            onCancel: function() {
+                paymentInProgress = false;
+            },
 
-                onReadyForServerCompletion: async function(paymentId, txid) {
-
-                    try {
-
-                        await setDoc(doc(db,"domains",domain),{
-                            sold:true,
-                            txid,
-                            soldAt:new Date().toISOString()
-                        },{ merge:true });
-
-                        await handleServerSidePayment(paymentId,'complete',txid);
-
-                        paymentInProgress = false;
-                        render();
-
-                        alert("Satın alma tamamlandı!");
-
-                    } catch (err) {
-                        paymentInProgress = false;
-                        render();
-                    }
-                },
-
-                onCancel: function () {
-                    paymentInProgress = false;
-                    render();
-                },
-
-                onError: function () {
-                    paymentInProgress = false;
-                    render();
-                }
+            onError: function(err) {
+                paymentInProgress = false;
+                console.log(err);
             }
-        );
+        });
 
-    } catch (e) {
+    } catch(e) {
         paymentInProgress = false;
-        render();
+        alert("Payment error: " + e.message);
     }
 };
 
@@ -455,7 +397,7 @@ async function handleServerSidePayment(paymentId, action, txid) {
         throw new Error("Backend bağlantı hatası");
     }
 
-    return await response.json();
+    return response.json();
 }
 
 </script>
