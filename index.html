@@ -531,20 +531,7 @@ window.startPurchase = async function(domain, amount) {
 
     console.log("Approval gerekli:", paymentId);
 
-    const response = await fetch("/api/approve", {
-        method: "POST",
-        headers: {
-            "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-            paymentId,
-            action: "approve"
-        })
-    });
-
-    const result = await response.json();
-
-    console.log("APPROVE:", result);
+    
 },
                 onIncompletePaymentFound: function(payment) {
 
@@ -556,25 +543,69 @@ window.startPurchase = async function(domain, amount) {
         "Bekleyen bir ödeme bulundu. Önce eski işlemi tamamlayın veya iptal edin."
     );
 },
-                const response = await fetch("/api/approve", {
-    method: "POST",
-    headers: {
-        "Content-Type": "application/json"
-    },
-    body: JSON.stringify({
-        paymentId,
-        action: "complete",
-        txid
-    })
-});
-
-const result = await response.json();
-
-console.log("COMPLETE:", result);
-
                 onReadyForServerCompletion: async function(paymentId, txid) {
+                    onReadyForServerCompletion: async function(paymentId, txid) {
 
-                    await setDoc(
+    // 🔵 1. ÖNCE API CALL (BURAYA EKLİYORSUN)
+    const response = await fetch("/api/approve", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+            paymentId,
+            action: "complete",
+            txid
+        })
+    });
+
+    const result = await response.json();
+    console.log("COMPLETE:", result);
+
+    // 🔵 2. FIRESTORE KISMI (ZATEN VAR, KALSIN)
+    await setDoc(
+        doc(db, "domains", domain),
+        {
+            sold: true,
+            txid: txid,
+            soldAt: new Date().toISOString()
+        },
+        { merge: true }
+    );
+
+    paymentInProgress = false;
+    alert("Satın alma tamamlandı!");
+},
+
+    const response = await fetch("/api/approve", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+            paymentId,
+            action: "complete",
+            txid
+        })
+    });
+
+    const result = await response.json();
+
+    console.log("COMPLETE:", result);
+
+    await setDoc(
+        doc(db, "domains", domain),
+        {
+            sold: true,
+            txid: txid,
+            soldAt: new Date().toISOString()
+        },
+        { merge: true }
+    );
+
+    paymentInProgress = false;
+    alert("Satın alma tamamlandı!");
+},
                         doc(db, "domains", domain),
                         {
                             sold: true,
