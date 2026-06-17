@@ -528,9 +528,11 @@ window.startPurchase = async function(domain, amount) {
             {
                 // 1. ADIM: Onay mekanizmasını tetikle (Kritik nokta)
                 onReadyForServerApproval: function(paymentId) {
-                    Pi.approvePayment(paymentId);
-                },
-
+    console.log("Onay bekleniyor, paymentId:", paymentId);
+    // Eğer tarayıcıda popup engelleniyorsa, otomatik tetikleme yerine 
+    // kullanıcıya bir "Ödemeyi Onayla" butonu göstermeniz gerekebilir.
+    Pi.approvePayment(paymentId);
+},
                 // 2. ADIM: Ödeme tamamlandığında SDK'ya bildir
                 onReadyForServerCompletion: async function(paymentId, txid) {
                     try {
