@@ -63,9 +63,7 @@
 
     let paymentInProgress = false;
     let domainData = {};
-    let currentUser = null;
     let isAuth = false;
-
     const domains = [
         { name:'test-domain', img:'assets/test.jpeg', price:10 },
         { name:'etstur.pi', img:'assets/etstur.jpeg', price:250 },
@@ -101,41 +99,49 @@
         });
     };
 
-    window.addEventListener("load", () => {
-        if (window.Pi) { try { Pi.init({ version: "2.0", sandbox: true }); } catch (e) { console.log(e); } }
-        window.renderDomains();
+    // Aktif Kullanıcı Sayacı
+    onSnapshot(collection(db, "active_users"), (snap) => {
+        let activeCount = 0;
+        const now = Date.now();
+        snap.forEach(doc => { if (now - doc.data().lastSeen < 30000) activeCount++; });
+        document.getElementById("online-count").innerText = "Aktif Kullanıcı: " + activeCount;
     });
 
-    // Veri dinleyiciler ve login mantığı...
     window.loginWithPi = function () {
-        if (!window.Pi) { alert("Pi SDK yüklenmedi!"); return; }
+        if (!window.Pi) return alert("Pi SDK yüklenmedi!");
         Pi.authenticate(['username','payments']).then(async (auth) => {
-            currentUser = auth.user.username;
             isAuth = true;
-            document.getElementById("user-status").innerText = "Bağlı: @" + currentUser;
             document.getElementById("auth-btn").style.display = "none";
+            document.getElementById("user-status").innerText = "Bağlı: @" + auth.user.username;
             window.renderDomains();
-            if (currentUser === "doganay0808") document.getElementById("admin-panel").style.display = "block";
-        }).catch(err => { alert("Login error: " + err.message); });
+            
+            // Admin Kontrolü
+            if (auth.user.username === "doganay0808") {
+                document.getElementById("admin-panel").style.display = "block";
+                const today = new Date().toISOString().split("T")[0];
+                onSnapshot(doc(db, "daily_users", today), (snap) => {
+                    const data = snap.data()?.users || {};
+                    let html = "";
+                    Object.keys(data).forEach(u => html += `<div>@${u} - ${new Date(data[u]).toLocaleTimeString()}</div>`);
+                    document.getElementById("log-list").innerHTML = html;
+                });
+            }
+        }).catch(e => alert(e.message));
     };
 
     window.startPurchase = async function(domain, amount) {
         if (paymentInProgress) return;
         paymentInProgress = true;
         window.renderDomains();
-        try {
-            await Pi.createPayment({ amount: Number(amount), memo: "Domain: " + domain, metadata: { domain } }, {
-                onReadyForServerCompletion: async (id, txid) => {
-                    await setDoc(doc(db, "domains", domain), { sold: true, txid: txid }, { merge: true });
-                    paymentInProgress = false;
-                    window.renderDomains();
-                    alert("Satın alma başarılı!");
-                },
-                onCancel: () => { paymentInProgress = false; window.renderDomains(); },
-                onError: (e) => { paymentInProgress = false; window.renderDomains(); },
-                onIncompletePaymentFound: (p) => { paymentInProgress = false; window.renderDomains(); }
-            });
-        } catch (e) { paymentInProgress = false; window.renderDomains(); }
+        Pi.createPayment({ amount, memo: "Domain: " + domain, metadata: { domain } }, {
+            onReadyForServerCompletion: async (id, txid) => {
+                await setDoc(doc(db, "domains", domain), { sold: true, txid }, { merge: true });
+                paymentInProgress = false;
+                window.renderDomains();
+            },
+            onCancel: () => { paymentInProgress = false; window.renderDomains(); },
+            onError: () => { paymentInProgress = false; window.renderDomains(); }
+        });
     };
 </script>
 </body>
