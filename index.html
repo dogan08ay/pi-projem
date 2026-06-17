@@ -27,7 +27,6 @@
     </style>
 </head>
 <body>
-
 <div class="container">
     <div class="card">
         <h1>Web3 Domain</h1>
@@ -35,31 +34,22 @@
         <p id="user-status">Lütfen önce bağlanın.</p>
         <button id="auth-btn" class="pi-btn" onclick="window.loginWithPi()">Pi ile Bağlan</button>
     </div>
-
     <div class="card" id="admin-panel" style="display:none;border:2px solid #6366f1;text-align:left;">
         <h3 style="color:#6366f1;margin-top:0;">🛠 Admin Paneli</h3>
         <div id="log-list" style="font-size:0.85em;max-height:150px;overflow-y:auto;"></div>
     </div>
-
     <div class="card">
         <div class="section-title-box">Satıştaki Domainler</div>
         <div class="domain-grid" id="domain-list">
             <div class="auth-warning" style="grid-column:span 2;">
                 <div class="auth-title-box">
-                    <div class="lock-message">
-                        🔒 Erişim sağlamak için lütfen yukarıdaki <br>
-                        <span class="inline-btn-highlight">Pi ile Bağlan</span> <br>
-                        butonunu kullanınız.
-                    </div>
+                    <div class="lock-message">🔒 Erişim sağlamak için lütfen <br><span class="inline-btn-highlight">Pi ile Bağlan</span> butonunu kullanınız.</div>
                 </div>
             </div>
         </div>
     </div>
-
     <div class="footer-section">
-        <div>Sorularınız için bize ulaşın: <a href="mailto:doganay08@hotmail.com">📩 doganay08@hotmail.com</a></div>
-        <div style="margin-top:8px;"><a href="https://t.me/+5jZi9vrcNMM2NGVk" target="_blank">💬 Telegram Grubumuz</a></div>
-        <div style="margin-top:15px;"><a href="privacy.html">Gizlilik Politikası</a><span class="footer-divider">|</span><a href="terms.html">Kullanım Şartları</a></div>
+        <div>Sorularınız için: <a href="mailto:doganay08@hotmail.com">📩 doganay08@hotmail.com</a></div>
     </div>
 </div>
 
@@ -73,7 +63,6 @@ const db = getFirestore(app);
 
 let paymentInProgress = false;
 let domainData = {};
-let currentUser = null;
 let isAuth = false;
 
 const domains = [
@@ -86,13 +75,7 @@ const domains = [
     { name:'doganay.pi', img:'assets/doganay.jpeg', price:150 }
 ];
 
-window.addEventListener("load", () => {
-    if (window.Pi) {
-        try { Pi.init({ version: "2.0", sandbox: true }); } catch (e) { console.log("Pi init error", e); }
-    }
-});
-
-// Render Fonksiyonunu dışarı aldık
+// Global render fonksiyonu
 window.renderDomains = function() {
     const list = document.getElementById("domain-list");
     if (!list || !isAuth) return;
@@ -101,11 +84,7 @@ window.renderDomains = function() {
         const data = domainData[d.name] || { sold:false, price:d.price };
         const card = document.createElement('div');
         card.className = 'domain-card';
-        card.innerHTML = `
-            <img src="${d.img}" class="domain-img">
-            <strong>${d.name}</strong><br>
-            <span>${data.sold ? `SATILDI (${data.price} Pi)` : `${data.price} Pi`}</span>
-        `;
+        card.innerHTML = `<img src="${d.img}" class="domain-img"><strong>${d.name}</strong><br><span>${data.sold ? `SATILDI (${data.price} Pi)` : `${data.price} Pi`}</span>`;
         if (!data.sold) {
             const btn = document.createElement('button');
             btn.className = 'btn-buy';
@@ -118,6 +97,10 @@ window.renderDomains = function() {
     });
 };
 
+window.addEventListener("load", () => {
+    if (window.Pi) { try { Pi.init({ version: "2.0", sandbox: true }); } catch (e) { console.log(e); } }
+});
+
 domains.forEach(d => {
     onSnapshot(doc(db, "domains", d.name), (snap) => {
         domainData[d.name] = snap.exists() ? snap.data() : { sold:false, price:d.price };
@@ -125,77 +108,35 @@ domains.forEach(d => {
     });
 });
 
-onSnapshot(collection(db, "active_users"), (snap) => {
-    const now = Date.now();
-    let activeCount = 0;
-    snap.forEach(doc => { const data = doc.data(); if (data.lastSeen && (now - data.lastSeen) < 30000) activeCount++; });
-    document.getElementById("online-count").innerText = "Aktif Kullanıcı: " + activeCount;
-});
-
 window.loginWithPi = function () {
-    if (!window.Pi) { alert("Pi SDK yüklenmedi!"); return; }
-    Pi.authenticate(['username','payments'])
-    .then(async (auth) => {
-        currentUser = auth.user.username;
+    Pi.authenticate(['username','payments']).then(async (auth) => {
         isAuth = true;
-        const now = Date.now();
-        const today = new Date().toISOString().split("T")[0];
-        await setDoc(doc(db, "active_users", currentUser), { username: currentUser, lastSeen: now });
-        const dailyRef = doc(db, "daily_users", today);
-        const snap = await getDoc(dailyRef);
-        let data = snap.exists() ? snap.data() : { users: {} };
-        data.users[currentUser] = now;
-        await setDoc(dailyRef, data);
-        document.getElementById("user-status").innerText = "Bağlı: @" + currentUser;
         document.getElementById("auth-btn").style.display = "none";
         window.renderDomains();
-        setInterval(() => { setDoc(doc(db, "active_users", currentUser), { username: currentUser, lastSeen: Date.now() }); }, 15000);
-        if (currentUser === "doganay0808") {
-            document.getElementById("admin-panel").style.display = "block";
-            onSnapshot(doc(db, "daily_users", today), (snap) => {
-                const data = snap.data() || {}; const users = data.users || {};
-                let html = "";
-                Object.keys(users).forEach(u => { const time = new Date(users[u]).toLocaleString("tr-TR"); html += `<div style="padding:8px;border-bottom:1px solid #334155;"><b>@${u}</b><span style="float:right;color:#60a5fa;">${time}</span></div>`; });
-                document.getElementById("log-list").innerHTML = html;
-            });
-        }
-    })
-    .catch(err => { console.error(err); alert("Login error: " + err.message); });
+    }).catch(err => { alert("Login error: " + err.message); });
 };
 
 window.startPurchase = async function(domain, amount) {
-    if (!isAuth || paymentInProgress) return;
+    if (paymentInProgress) return;
     paymentInProgress = true;
     window.renderDomains();
-
     try {
         await Pi.createPayment({
             amount: Number(amount),
             memo: "Domain: " + domain,
             metadata: { domain }
         }, {
-            onReadyForServerApproval: function(paymentId) { console.log("Approval:", paymentId); },
-            onReadyForServerCompletion: async function(paymentId, txid) {
-                await setDoc(doc(db, "domains", domain), { sold: true, txid: txid, soldAt: new Date().toISOString() }, { merge: true });
+            onReadyForServerApproval: (id) => console.log(id),
+            onReadyForServerCompletion: async (id, txid) => {
+                await setDoc(doc(db, "domains", domain), { sold: true, txid: txid }, { merge: true });
                 paymentInProgress = false;
-                alert("Satın alma tamamlandı!");
                 window.renderDomains();
             },
-            onCancel: function() { paymentInProgress = false; window.renderDomains(); alert("İşlem iptal edildi."); },
-            onError: function(error) { paymentInProgress = false; window.renderDomains(); alert("Ödeme hatası: " + (error?.message || error)); },
-            // HATA ÇÖZÜMÜ: Eksik olan fonksiyon eklendi
-            onIncompletePaymentFound: function(payment) {
-                paymentInProgress = false;
-                window.renderDomains();
-                alert("Bekleyen bir ödeme bulundu, lütfen developer ile iletişime geçin.");
-                console.log("Incomplete payment:", payment);
-            }
+            onCancel: () => { paymentInProgress = false; window.renderDomains(); },
+            onError: (e) => { paymentInProgress = false; window.renderDomains(); alert(e.message); },
+            onIncompletePaymentFound: (p) => { paymentInProgress = false; window.renderDomains(); alert("Bekleyen ödeme bulundu."); }
         });
-    } catch (err) {
-        paymentInProgress = false;
-        window.renderDomains();
-        alert("Hata: " + (err?.message || err));
-    }
+    } catch (e) { paymentInProgress = false; window.renderDomains(); }
 };
 </script>
 </body>
