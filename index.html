@@ -13,11 +13,9 @@
         .domain-grid { display:grid; grid-template-columns:1fr 1fr; gap:15px; margin-top:20px; }
         .domain-card { background:#334155; padding:20px; border-radius:12px; border:1px solid #475569; display:flex; flex-direction:column; align-items:center; }
         .domain-img { width:100%; height:120px; margin-bottom:10px; border-radius:12px; object-fit:contain; background-color:#334155; padding:5px; }
-        .btn-buy { background:var(--accent); color:white; border:none; padding:8px 16px; border-radius:8px; cursor:pointer; margin-top:10px; font-weight:bold; width:100%; }
-        .pi-btn { background:#0052FF; color:#ffffff; padding:12px 30px; border-radius:50px; font-weight:800; cursor:pointer; border:1px solid rgba(255,255,255,0.2); }
-        .section-title-box { background:linear-gradient(135deg,#fef3c7 0%,#fde68a 100%); color:#1e293b; padding:12px 28px; border-radius:16px; font-weight:800; display:inline-block; margin:5px auto 25px auto; }
-        .footer-section { margin-top:30px; padding:20px; color:#94a3b8; font-size:0.9em; border-top:1px solid #334155; }
-        .footer-section a { color:#38bdf8; text-decoration:none; }
+        .btn-buy { background:var(--accent); color:white; border:none; padding:10px; border-radius:8px; cursor:pointer; width:100%; font-weight:bold; }
+        .btn-buy:disabled { opacity:0.5; cursor:not-allowed; }
+        .pi-btn { background:#0052FF; color:#ffffff; padding:12px 30px; border-radius:50px; font-weight:800; cursor:pointer; }
     </style>
 </head>
 <body>
@@ -25,24 +23,19 @@
 <div class="container">
     <div class="card">
         <h1>Web3 Domain</h1>
-        <p id="online-count" style="color:#60a5fa; font-weight:600;">Aktif Kullanıcı: 0</p>
-        <p id="user-status">Lütfen önce bağlanın.</p>
-        <button id="auth-btn" class="pi-btn" onclick="window.loginWithPi()">Pi ile Bağlan</button>
+        <p id="online-count">Aktif Kullanıcı: 0</p>
+        <p id="user-status">Lütfen bağlanın.</p>
+        <button id="auth-btn" class="pi-btn" onclick="loginWithPi()">Pi ile Bağlan</button>
     </div>
 
     <div class="card" id="admin-panel" style="display:none; text-align:left;">
-        <h3 style="color:#6366f1;">🛠 Admin Paneli</h3>
-        <div id="log-list" style="font-size:0.85em; max-height:150px; overflow-y:auto;"></div>
+        <h3>🛠 Admin Paneli</h3>
+        <div id="log-list"></div>
     </div>
 
     <div class="card">
-        <div class="section-title-box">Satıştaki Domainler</div>
+        <div style="font-weight:bold; margin-bottom:15px;">Satıştaki Domainler</div>
         <div class="domain-grid" id="domain-list"></div>
-    </div>
-
-    <div class="footer-section">
-        <div>Sorularınız için: <a href="mailto:doganay08@hotmail.com">📩 doganay08@hotmail.com</a></div>
-        <div style="margin-top:8px;"><a href="https://t.me/+5jZi9vrcNMM2NGVk">💬 Telegram Grubumuz</a></div>
     </div>
 </div>
 
@@ -51,76 +44,51 @@
     import { getFirestore, doc, onSnapshot, setDoc, collection } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
 
     const db = getFirestore(initializeApp({ apiKey: "xxx", projectId: "web3-domain-gateway" }));
-    let domainData = {}, isAuth = false, paymentInProgress = false;
+    let isAuth = false;
     const domains = [
-        { name:'test-domain', img:'assets/test.jpeg', price:10 },
-        { name:'etstur.pi', img:'assets/etstur.jpeg', price:250 },
-        { name:'eminevim.pi', img:'assets/eminevim.jpeg', price:150 },
-        { name:'fuzulev.pi', img:'assets/fuzulev.jpeg', price:300 },
-        { name:'fibabank.pi', img:'assets/fibabank.jpeg', price:500 },
-        { name:'sekerbank.pi', img:'assets/sekerbank.jpeg', price:600 },
-        { name:'doganay.pi', img:'assets/doganay.jpeg', price:150 }
+        { name:'test-domain', price:10 }, { name:'etstur.pi', price:250 }, 
+        { name:'eminevim.pi', price:150 }, { name:'fuzulev.pi', price:300 },
+        { name:'fibabank.pi', price:500 }, { name:'sekerbank.pi', price:600 }
     ];
 
-    // Pi Init
-    window.addEventListener("load", () => { if(window.Pi) Pi.init({ version: "2.0", sandbox: true }); });
-
-    // Domainleri Dinle
-    domains.forEach(d => {
-        onSnapshot(doc(db, "domains", d.name), (snap) => {
-            domainData[d.name] = snap.exists() ? snap.data() : { sold:false, price:d.price };
-            window.renderDomains();
-        });
-    });
-
-    // Aktif Kullanıcı Sayacı
-    onSnapshot(collection(db, "active_users"), (snap) => {
-        let count = 0; const now = Date.now();
-        snap.forEach(d => { if (now - d.data().lastSeen < 30000) count++; });
-        document.getElementById("online-count").innerText = "Aktif Kullanıcı: " + count;
-    });
-
-    window.renderDomains = function() {
-        const list = document.getElementById("domain-list");
-        if (!list || !isAuth) return;
-        list.innerHTML = '';
-        domains.forEach(d => {
-            const data = domainData[d.name] || { sold:false, price:d.price };
-            const card = document.createElement('div');
-            card.className = 'domain-card';
-            card.innerHTML = `<img src="${d.img}" class="domain-img"><strong>${d.name}</strong><br><span>${data.sold ? 'SATILDI' : data.price + ' Pi'}</span>`;
-            if (!data.sold) {
-                const btn = document.createElement('button');
-                btn.className = 'btn-buy';
-                btn.innerText = paymentInProgress ? 'İşleniyor...' : 'Satın Al';
-                btn.onclick = () => window.startPurchase(d.name, data.price);
-                card.appendChild(btn);
-            }
-            list.appendChild(card);
-        });
-    };
-
     window.loginWithPi = () => {
-        Pi.authenticate(['username','payments']).then(auth => {
+        Pi.authenticate(['username','payments'], {
+            onIncompletePaymentFound: (payment) => Pi.approvePayment(payment.identifier)
+        }).then(auth => {
             isAuth = true;
             document.getElementById("auth-btn").style.display = "none";
             document.getElementById("user-status").innerText = "Bağlı: @" + auth.user.username;
-            if (auth.user.username === "doganay0808") document.getElementById("admin-panel").style.display = "block";
-            window.renderDomains();
-        }).catch(e => alert("Hata: " + e.message));
+            renderDomains();
+        }).catch(e => alert("Auth Hatası: " + e.message));
     };
 
-    window.startPurchase = (domain, price) => {
-        paymentInProgress = true;
-        Pi.createPayment({ amount: price, memo: "Domain: " + domain }, {
-            onReadyForServerCompletion: (id, txid) => {
-                setDoc(doc(db, "domains", domain), { sold: true, txid }, { merge: true });
-                paymentInProgress = false; alert("Başarılı!");
+    window.startPurchase = (name, price) => {
+        Pi.createPayment({
+            amount: price,
+            memo: "Domain alımı: " + name,
+            metadata: { domain: name }
+        }, {
+            onReadyForServerApproval: (paymentId) => Pi.approvePayment(paymentId),
+            onReadyForServerCompletion: (paymentId, txid) => {
+                Pi.completePayment(paymentId, txid);
+                setDoc(doc(db, "domains", name), { sold: true, txid }, { merge: true });
+                alert("Ödeme onaylandı!");
             },
-            onCancel: () => { paymentInProgress = false; },
-            onError: () => { paymentInProgress = false; }
+            onCancel: () => alert("İşlem iptal edildi."),
+            onError: (e) => alert("Hata oluştu: " + e.message)
         });
     };
+
+    function renderDomains() {
+        const list = document.getElementById("domain-list");
+        list.innerHTML = '';
+        domains.forEach(d => {
+            const card = document.createElement('div');
+            card.className = 'domain-card';
+            card.innerHTML = `<strong>${d.name}</strong><br>${d.price} Pi<br><button class="btn-buy" onclick="startPurchase('${d.name}', ${d.price})">Satın Al</button>`;
+            list.appendChild(card);
+        });
+    }
 </script>
 </body>
 </html>
