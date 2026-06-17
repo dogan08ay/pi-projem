@@ -8,26 +8,75 @@
 <script src="https://sdk.minepi.com/pi-sdk.js"></script>
 
 <style>
-body { font-family: Arial; background:#0f172a; color:white; padding:20px; text-align:center; }
-.card { background:#1e293b; padding:20px; margin:10px; border-radius:15px; }
-.domain-card { background:#334155; padding:10px; margin:10px; border-radius:10px; }
-button { padding:10px; border:none; border-radius:8px; cursor:pointer; }
-.pi-btn { background:#0052FF; color:white; font-weight:bold; }
-.btn-buy { background:#6366f1; color:white; width:100%; margin-top:10px; }
+:root {
+    --bg:#0f172a;
+    --card:#1e293b;
+    --accent:#6366f1;
+    --text:#f8fafc;
+}
+
+body {
+    font-family:'Segoe UI',sans-serif;
+    background:var(--bg);
+    color:var(--text);
+    margin:0;
+    padding:20px;
+    display:flex;
+    justify-content:center;
+}
+
+.container { max-width:600px; width:100%; text-align:center; }
+
+.card {
+    background:var(--card);
+    padding:25px;
+    border-radius:20px;
+    margin-bottom:20px;
+}
+
+.domain-grid {
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:15px;
+}
+
+.domain-card {
+    background:#334155;
+    padding:20px;
+    border-radius:12px;
+}
+
+.btn-buy {
+    background:var(--accent);
+    color:white;
+    border:none;
+    padding:8px;
+    width:100%;
+}
+.pi-btn {
+    background:#0052FF;
+    color:white;
+    padding:12px;
+    border-radius:50px;
+    cursor:pointer;
+}
 </style>
 </head>
 
 <body>
 
+<div class="container">
+
 <div class="card">
-    <h2>Web3 Domain</h2>
+    <h1>Web3 Domain</h1>
     <p id="user-status">Bağlı değil</p>
     <button class="pi-btn" onclick="loginWithPi()">Pi ile Bağlan</button>
 </div>
 
 <div class="card">
-    <h3>Domainler</h3>
-    <div id="domain-list"></div>
+    <div class="domain-grid" id="domain-list"></div>
+</div>
+
 </div>
 
 <script type="module">
@@ -46,10 +95,11 @@ const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
 /* ================= STATE ================= */
-let isAuth = false;
 let currentUser = null;
+let isAuth = false;
 let paymentInProgress = false;
 
+/* ================= DOMAIN DATA ================= */
 const domains = [
   { name:"test-domain", price:10 },
   { name:"etstur.pi", price:250 },
@@ -58,7 +108,7 @@ const domains = [
 
 let domainData = {};
 
-/* ================= DOMAIN RENDER (DOĞRU YER) ================= */
+/* ================= RENDER (GLOBAL FIX) ================= */
 function renderDomains() {
 
     const list = document.getElementById("domain-list");
@@ -90,21 +140,23 @@ function renderDomains() {
     });
 }
 
-/* ================= FIRESTORE LISTEN ================= */
+/* ================= FIRESTORE ================= */
 domains.forEach(d => {
-    onSnapshot(doc(db, "domains", d.name), (snap) => {
+    onSnapshot(doc(db,"domains",d.name),(snap)=>{
         domainData[d.name] = snap.exists() ? snap.data() : { sold:false };
         renderDomains();
     });
 });
 
-/* ================= LOGIN ================= */
+/* ================= PI LOGIN FIX (CRITICAL) ================= */
 window.loginWithPi = function () {
 
     if (!window.Pi) {
-        alert("Pi SDK yok");
+        alert("Pi SDK yüklenmedi (sandbox/preview kontrol et)");
         return;
     }
+
+    Pi.init({ version: "2.0", sandbox: true });
 
     Pi.authenticate(['username','payments'])
     .then(auth => {
@@ -116,13 +168,15 @@ window.loginWithPi = function () {
             "Bağlı: @" + currentUser;
 
         renderDomains();
+
     })
     .catch(err => {
-        alert("Login error: " + err.message);
+        console.error(err);
+        alert("Pi login hatası: " + err.message);
     });
 };
 
-/* ================= PURCHASE (TEMİZ HAL) ================= */
+/* ================= PAYMENT FIX ================= */
 window.startPurchase = async function(domain, amount) {
 
     if (!isAuth || paymentInProgress) return;
@@ -137,8 +191,8 @@ window.startPurchase = async function(domain, amount) {
                 metadata: { domain }
             },
             {
-                onReadyForServerApproval: async function(paymentId) {
 
+                onReadyForServerApproval: async function(paymentId) {
                     await fetch("/api/approve", {
                         method:"POST",
                         headers:{ "Content-Type":"application/json" },
@@ -168,17 +222,17 @@ window.startPurchase = async function(domain, amount) {
                     });
 
                     paymentInProgress = false;
-                    alert("Satın alma başarılı!");
                     renderDomains();
+                    alert("Satın alma başarılı!");
                 },
 
                 onCancel: function() {
                     paymentInProgress = false;
                 },
 
-                onError: function(err) {
+                onError: function(e) {
                     paymentInProgress = false;
-                    alert(err.message);
+                    alert(e.message);
                 }
             }
         );
