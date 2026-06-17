@@ -517,7 +517,6 @@ window.startPurchase = async function(domain, amount) {
     paymentInProgress = true;
 
     try {
-
         console.log("SATIN AL TIKLANDI:", domain, amount);
 
         await Pi.createPayment(
@@ -527,35 +526,44 @@ window.startPurchase = async function(domain, amount) {
                 metadata: { domain }
             },
             {
+                // 1. ADIM: Onay mekanizmasını tetikle (Kritik nokta)
                 onReadyForServerApproval: function(paymentId) {
-                    console.log("Approval gerekli:", paymentId);
+                    Pi.approvePayment(paymentId);
                 },
 
+                // 2. ADIM: Ödeme tamamlandığında SDK'ya bildir
                 onReadyForServerCompletion: async function(paymentId, txid) {
+                    try {
+                        // Sunucu tarafında ödemeyi tamamla
+                        await Pi.completePayment(paymentId, txid);
+                        
+                        // Veritabanını güncelle
+                        await setDoc(
+                            doc(db, "domains", domain),
+                            {
+                                sold: true,
+                                txid: txid,
+                                soldAt: new Date().toISOString()
+                            },
+                            { merge: true }
+                        );
 
-                    await setDoc(
-                        doc(db, "domains", domain),
-                        {
-                            sold: true,
-                            txid: txid,
-                            soldAt: new Date().toISOString()
-                        },
-                        { merge: true }
-                    );
-
-                    paymentInProgress = false;
-                    alert("Satın alma tamamlandı!");
-
+                        paymentInProgress = false;
+                        alert("Satın alma başarıyla tamamlandı!");
+                    } catch (e) {
+                        paymentInProgress = false;
+                        alert("Veritabanı kayıt hatası: " + e.message);
+                    }
                 },
 
-                onCancel: function() {
+                onCancel: function(paymentId) {
                     paymentInProgress = false;
                     alert("İşlem iptal edildi.");
                 },
 
-                onError: function(error) {
+                onError: function(error, payment) {
                     paymentInProgress = false;
-                    console.error(error);
+                    console.error("Ödeme Hatası Detayı:", error);
                     alert("Ödeme hatası: " + (error?.message || error));
                 }
             }
@@ -563,7 +571,7 @@ window.startPurchase = async function(domain, amount) {
 
     } catch (err) {
         paymentInProgress = false;
-        console.error(err);
+        console.error("SDK Başlatma Hatası:", err);
         alert("Hata: " + (err?.message || err));
     }
 };
