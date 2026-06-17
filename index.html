@@ -527,9 +527,50 @@ window.startPurchase = async function(domain, amount) {
                 metadata: { domain }
             },
             {
-                onReadyForServerApproval: function(paymentId) {
-                    console.log("Approval gerekli:", paymentId);
-                },
+                onReadyForServerApproval: async function(paymentId) {
+
+    console.log("Approval gerekli:", paymentId);
+
+    const response = await fetch("/api/approve", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+            paymentId,
+            action: "approve"
+        })
+    });
+
+    const result = await response.json();
+
+    console.log("APPROVE:", result);
+},
+                onIncompletePaymentFound: function(payment) {
+
+    console.log("Bekleyen ödeme bulundu:", payment);
+
+    paymentInProgress = false;
+
+    alert(
+        "Bekleyen bir ödeme bulundu. Önce eski işlemi tamamlayın veya iptal edin."
+    );
+},
+                const response = await fetch("/api/approve", {
+    method: "POST",
+    headers: {
+        "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+        paymentId,
+        action: "complete",
+        txid
+    })
+});
+
+const result = await response.json();
+
+console.log("COMPLETE:", result);
 
                 onReadyForServerCompletion: async function(paymentId, txid) {
 
