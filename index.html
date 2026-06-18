@@ -262,13 +262,43 @@
 </div>
 
 <script type="module">
+
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
-import { getFirestore, doc, onSnapshot, setDoc, getDoc, collection } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
+import {
+    getFirestore,
+    doc,
+    onSnapshot,
+    setDoc,
+    getDoc,
+    collection,
+    getDocs,
+    query,
+    orderBy,
+    limit
+} from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
+const firebaseConfig = {
+    apiKey: "xxx",
+    authDomain: "web3-domain-gateway.firebaseapp.com",
+    projectId: "web3-domain-gateway"
+};
 
-const db = getFirestore(initializeApp({ apiKey: "s3ddhcea9xae0qieikgjy9zw9tduemnraoucjrr9iqe87pduhczmd95kq8n3aai1", authDomain: "web3-domain-gateway.firebaseapp.com", projectId: "web3-domain-gateway" }));
-
-let paymentInProgress = false;
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+window.addEventListener("load", () => {
+    if (window.Pi) {
+        try {
+            Pi.init({ version: "2.0", sandbox: true });
+        } catch (e) {
+            console.log("Pi init error", e);
+        }
+    }
+});
+/* =========================
+   STATE
+========================= */
+    let paymentInProgress = false;
 let domainData = {};
+
 const domains = [
     { name:'test-domain', img:'assets/test.jpeg', price:10 },
     { name:'etstur.pi', img:'assets/etstur.jpeg', price:250 },
@@ -281,77 +311,273 @@ const domains = [
 let currentUser = null;
 let isAuth = false;
 
-// 1. DOMAINLERİ YENİLEME FONKSİYONU (GLOBAL)
-window.renderDomains = function() {
-    const list = document.getElementById("domain-list");
-    if (!list || !isAuth) return;
-    list.innerHTML = '';
+/* =========================
+   SAFE PI INIT
+========================= */
+window.addEventListener("load", () => {
+    if (window.Pi) {
+        try {
+            Pi.init({ version: "2.0", sandbox: true });
+        } catch (e) {
+            console.log("Pi init error", e);
+        }
+    }
+});
+
+/* =========================
+   ACTIVE USERS (ONLINE COUNT)
+========================= */
     domains.forEach(d => {
-        const data = domainData[d.name] || { sold:false, price:d.price };
+
+    onSnapshot(doc(db, "domains", d.name), (snap) => {
+
+        domainData[d.name] = snap.exists()
+            ? snap.data()
+            : {
+                sold:false,
+                price:d.price
+            };
+
+        renderDomains();
+
+    });
+
+});
+onSnapshot(collection(db, "active_users"), (snap) => {
+
+    const now = Date.now();
+    let activeCount = 0;
+
+    snap.forEach(doc => {
+
+        const data = doc.data();
+
+        if (data.lastSeen && (now - data.lastSeen) < 30000) {
+            activeCount++;
+        }
+
+    });
+
+    document.getElementById("online-count").innerText =
+        "Aktif Kullanıcı: " + activeCount;
+
+});
+
+/* =========================
+   LOGIN SYSTEM (FULL FIXED)
+========================= */
+window.loginWithPi = function () {
+   function renderDomains() {
+
+    const list = document.getElementById("domain-list");
+
+    if (!list) return;
+    if (!isAuth) return;
+
+    list.innerHTML = '';
+
+    domains.forEach(d => {
+
+        const data =
+            domainData[d.name] ||
+            {
+                sold:false,
+                price:d.price
+            };
+
         const card = document.createElement('div');
         card.className = 'domain-card';
-        card.innerHTML = `<img src="${d.img}" class="domain-img"><strong>${d.name}</strong><br><span>${data.sold ? `SATILDI (${data.price} Pi)` : `${data.price} Pi`}</span>`;
+
+        card.innerHTML = `
+            <img src="${d.img}" class="domain-img">
+            <strong>${d.name}</strong>
+            <br>
+            <span>
+                ${data.sold
+                    ? `SATILDI (${data.price} Pi)`
+                    : `${data.price} Pi`
+                }
+            </span>
+        `;
+
         if (!data.sold) {
+
             const btn = document.createElement('button');
+
             btn.className = 'btn-buy';
-            btn.innerText = paymentInProgress ? 'İşlem Bekleniyor' : 'Satın Al';
+
+            btn.innerText =
+                paymentInProgress
+                    ? 'İşlem Bekleniyor'
+                    : 'Satın Al';
+
             btn.disabled = paymentInProgress;
-            btn.onclick = () => window.startPurchase(d.name, data.price);
+            btn.onclick = () => startPurchase(d.name, data.price);
             card.appendChild(btn);
         }
+
         list.appendChild(card);
-    });
-};
 
-// 2. SATIN ALMA
-window.startPurchase = async function(domain, amount) {
-    if (!isAuth || paymentInProgress) return;
-    paymentInProgress = true;
-    Pi.createPayment({ amount: Number(amount), memo: "Domain: " + domain, metadata: { domain } }, {
-        onReadyForServerApproval: (paymentId) => {
-            fetch('/api/approve', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ paymentId, action: 'approve' }) });
-        },
-        onReadyForServerCompletion: async (paymentId, txid) => {
-            await setDoc(doc(db, "domains", domain), { sold: true, txid, soldAt: new Date().toISOString() }, { merge: true });
-            paymentInProgress = false;
-            alert("Satın alma başarılı!");
-        },
-        onCancel: () => { paymentInProgress = false; alert("İptal edildi."); },
-        onError: (err) => { paymentInProgress = false; alert("Hata: " + err.message); }
     });
-};
 
-// 3. GİRİŞ
-window.loginWithPi = function () {
-    Pi.authenticate(['username', 'payments'], {
-        onIncompletePaymentFound: (payment) => {
-            fetch('/api/approve', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ paymentId: payment.identifier, action: 'cancel' }) })
-            .then(() => window.location.reload());
-        }
-    }).then(async (auth) => {
+}
+    if (!window.Pi) {
+        alert("Pi SDK yüklenmedi!");
+        return;
+    }
+
+    Pi.authenticate(['username','payments'])
+    .then(async (auth) => {
+
         currentUser = auth.user.username;
         isAuth = true;
-        document.getElementById("user-status").innerText = "Bağlı: @" + currentUser;
+
+        const now = Date.now();
+        const today = new Date().toISOString().split("T")[0];
+
+        /* =========================
+           ACTIVE USERS (ONLINE)
+        ========================= */
+        await setDoc(doc(db, "active_users", currentUser), {
+            username: currentUser,
+            lastSeen: now
+        });
+
+        /* =========================
+           DAILY UNIQUE USERS (NO DUPLICATE)
+        ========================= */
+        const dailyRef = doc(db, "daily_users", today);
+        const snap = await getDoc(dailyRef);
+
+        let data = snap.exists() ? snap.data() : { users: {} };
+
+        // sadece 1 kayıt
+        data.users[currentUser] = now;
+
+        await setDoc(dailyRef, data);
+
+        /* UI */
+        document.getElementById("user-status").innerText =
+            "Bağlı: @" + currentUser;
+
         document.getElementById("auth-btn").style.display = "none";
+
+       renderDomains();
         
-        // Admin Kontrolü
+        /* HEARTBEAT (ONLINE KEEP) */
+        setInterval(() => {
+            setDoc(doc(db, "active_users", currentUser), {
+                username: currentUser,
+                lastSeen: Date.now()
+            });
+        }, 15000);
+
+        /* =========================
+           ADMIN PANEL
+        ========================= */
         if (currentUser === "doganay0808") {
+
             document.getElementById("admin-panel").style.display = "block";
+
+            onSnapshot(doc(db, "daily_users", today), (snap) => {
+
+                const data = snap.data() || {};
+                const users = data.users || {};
+
+                let html = "";
+
+                Object.keys(users).forEach(u => {
+                    const time = new Date(users[u]).toLocaleString("tr-TR");
+
+                    html += `
+                        <div style="padding:8px;border-bottom:1px solid #334155;">
+                            <b>@${u}</b>
+                            <span style="float:right;color:#60a5fa;">
+                                ${time}
+                            </span>
+                        </div>
+                    `;
+                });
+
+                document.getElementById("log-list").innerHTML = html;
+            });
         }
-        window.renderDomains();
+
+    })
+    .catch(err => {
+        console.error(err);
+        alert("Login error: " + err.message);
     });
 };
 
-// 4. BAŞLANGIÇ YÜKLEMELERİ
-window.addEventListener("load", () => {
-    if (window.Pi) Pi.init({ version: "2.0", sandbox: true });
-    domains.forEach(d => {
-        onSnapshot(doc(db, "domains", d.name), (snap) => {
-            domainData[d.name] = snap.exists() ? snap.data() : { sold:false, price:d.price };
-            window.renderDomains();
-        });
-    });
-});
+window.startPurchase = async function(domain, amount) {
+
+    if (!isAuth || paymentInProgress) return;
+
+    paymentInProgress = true;
+
+    try {
+
+        console.log("SATIN AL TIKLANDI:", domain, amount);
+
+        await Pi.createPayment(
+            {
+                amount: Number(amount),
+                memo: "Domain: " + domain,
+                metadata: { domain }
+            },
+            {
+                onReadyForServerApproval: function(paymentId) {
+                    console.log("Approval gerekli:", paymentId);
+                },
+
+                onReadyForServerCompletion: async function(paymentId, txid) {
+
+                    await setDoc(
+                        doc(db, "domains", domain),
+                        {
+                            sold: true,
+                            txid: txid,
+                            soldAt: new Date().toISOString()
+                        },
+                        { merge: true }
+                    );
+
+                    paymentInProgress = false;
+                    alert("Satın alma tamamlandı!");
+
+                },
+
+                onCancel: function() {
+                    paymentInProgress = false;
+                    alert("İşlem iptal edildi.");
+                },
+
+             // index.html içerisindeki onError kısmını bu hale getirin:
+onError: function(error) { 
+    paymentInProgress = false; 
+    console.error("TAM HATA NESNESİ:", error);
+    
+    // Hatanın içinden anlamlı bir mesaj çıkarmaya çalışalım
+    let message = "Bilinmeyen hata";
+    if (typeof error === 'string') message = error;
+    else if (error && error.message) message = error.message;
+    else if (error && error.error) message = error.error;
+    else message = JSON.stringify(error);
+    
+    alert("HATA MESAJI: " + message); 
+    renderDomains(); 
+}
+            }
+        );
+
+    } catch (err) {
+        paymentInProgress = false;
+        console.error(err);
+        alert("Hata: " + (err?.message || err));
+    }
+};
+    
 </script>
     
 </body>
