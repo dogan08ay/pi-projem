@@ -553,11 +553,12 @@ window.startPurchase = async function(domain, amount) {
                     alert("İşlem iptal edildi.");
                 },
 
-                onError: function(error) {
-                    paymentInProgress = false;
-                    console.error(error);
-                    alert("Ödeme hatası: " + (error?.message || error));
-                }
+                onError: function(error) { 
+    paymentInProgress = false; 
+    console.error("TAM HATA:", error);
+    alert("HATA MESAJI: " + JSON.stringify(error)); // Hatayı kutucuk içinde tam okuyalım
+    renderDomains(); 
+}
             }
         );
 
