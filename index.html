@@ -521,7 +521,14 @@ window.loginWithPi = function () {
         alert("Login error: " + err.message);
     });
 };
-
+window.startPurchase = async function(domain, amount) {
+    console.log("Satın alma başlıyor..."); // Burayı görüyorsan fonksiyon çalışıyor
+    
+    // Pi'ye sormadan önce o an SDK'nın durumunu logla
+    console.log("SDK Durumu:", window.Pi ? "Yüklü" : "Yüklenmedi");
+    
+    // ... geri kalan kod
+};
 window.startPurchase = async function(domain, amount) {
 
     if (!isAuth || paymentInProgress) return;
