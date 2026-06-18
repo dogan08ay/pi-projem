@@ -6,16 +6,60 @@
     <title>Web3 Domain Gateway</title>
     <script src="https://sdk.minepi.com/pi-sdk.js"></script>
     <style>
-        :root { --bg:#0f172a; --card:#1e293b; --accent:#6366f1; --text:#f8fafc; --sold:#ef4444; }
+        :root { 
+            --bg:#0f172a; 
+            --card:#1e293b; 
+            --accent:#6366f1; 
+            --text:#f8fafc; 
+            --sold:#ef4444;
+            --price:#fbbf24; /* Belirgin Sarı/Altın rengi */
+        }
         body { font-family:'Segoe UI',sans-serif; background:var(--bg); color:var(--text); margin:0; padding:20px; display:flex; justify-content:center; }
         .container { max-width:600px; width:100%; text-align:center; }
         .card { background:var(--card); padding:25px; border-radius:20px; box-shadow:0 10px 15px -3px rgba(0,0,0,0.3); margin-bottom:20px; }
         .domain-grid { display:grid; grid-template-columns:1fr 1fr; gap:15px; margin-top:20px; }
         .domain-card { background:#334155; padding:20px; border-radius:12px; border:1px solid #475569; transition:0.3s; display:flex; flex-direction:column; align-items:center; }
         .domain-img { width:100%; height:120px; margin-bottom:10px; border-radius:12px; object-fit:contain; background-color:#334155; padding:5px; }
-        .btn-buy { background:var(--accent); color:white; border:none; padding:10px 16px; border-radius:8px; cursor:pointer; margin-top:10px; font-weight:bold; width:100%; font-size: 0.9em; }
-        .btn-buy:disabled { opacity:0.5; cursor:not-allowed; }
-        .btn-sold { background:transparent; color:var(--sold); border:2px solid var(--sold); padding:8px 16px; border-radius:8px; margin-top:10px; font-weight:bold; width:100%; font-size: 0.85em; cursor: default; }
+        
+        .domain-name { font-size: 1.1em; font-weight: bold; margin-bottom: 5px; }
+        
+        .domain-price { 
+            color: var(--price); 
+            font-size: 1.3em; 
+            font-weight: 800; 
+            margin: 5px 0;
+            text-shadow: 0 0 10px rgba(251, 191, 36, 0.2);
+        }
+
+        .btn-buy { 
+            background: var(--accent); 
+            color: white; 
+            border: none; 
+            padding: 10px 16px; 
+            border-radius: 8px; 
+            cursor: pointer; 
+            margin-top: 10px; 
+            font-weight: bold; 
+            width: 100%; 
+            font-size: 0.9em;
+            transition: 0.2s;
+        }
+        .btn-buy:hover { transform: scale(1.03); filter: brightness(1.1); }
+        .btn-buy:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+        
+        .btn-sold { 
+            background: rgba(239, 68, 68, 0.1); 
+            color: var(--sold); 
+            border: 1.5px solid var(--sold); 
+            padding: 8px 16px; 
+            border-radius: 8px; 
+            margin-top: 10px; 
+            font-weight: bold; 
+            width: 100%; 
+            font-size: 0.85em; 
+            cursor: default; 
+        }
+
         .pi-btn { background:#0052FF; color:#ffffff; padding:12px 30px; border-radius:50px; font-weight:800; font-size:0.95em; border:1px solid rgba(255,255,255,0.2); cursor:pointer; }
         .section-title-box { background:linear-gradient(135deg,#fef3c7 0%,#fde68a 100%); color:#1e293b; padding:12px 28px; border-radius:16px; border:3px solid #f59e0b; font-size:1.15em; font-weight:800; display:inline-block; margin:5px auto 25px auto; box-shadow:0 6px 16px rgba(245,158,11,0.2); }
     </style>
@@ -70,31 +114,26 @@ function renderDomains() {
     list.innerHTML = '';
     
     domains.forEach(d => {
-        // Firestore'dan gelen veri veya varsayılan fiyat
         const data = domainData[d.name] || { sold:false, price:d.price };
-        
         const card = document.createElement('div');
         card.className = 'domain-card';
-        
-        // Fiyatı belirle (Firestore'da kayıtlı fiyat yoksa varsayılanı kullan)
         const displayPrice = data.price || d.price;
 
         card.innerHTML = `
             <img src="${d.img}" class="domain-img">
-            <strong>${d.name}</strong>
+            <div class="domain-name">${d.name}</div>
+            <div class="domain-price">${displayPrice} Pi</div>
         `;
 
         if (data.sold) {
-            // SATILDI Durumu (Buton şeklinde tasarım)
             const soldBtn = document.createElement('div');
             soldBtn.className = 'btn-sold';
-            soldBtn.innerText = `SATILDI (${displayPrice} Pi)`;
+            soldBtn.innerText = `SATILDI`;
             card.appendChild(soldBtn);
         } else {
-            // SATIN AL Durumu
             const buyBtn = document.createElement('button');
             buyBtn.className = 'btn-buy';
-            buyBtn.innerText = paymentInProgress ? 'İşlem Bekleniyor...' : `${displayPrice} Pi - Satın Al`;
+            buyBtn.innerText = paymentInProgress ? 'İşlem Bekleniyor...' : 'Satın Al';
             buyBtn.disabled = paymentInProgress;
             buyBtn.onclick = () => window.startPurchase(d.name, displayPrice);
             card.appendChild(buyBtn);
@@ -157,7 +196,6 @@ window.startPurchase = async function(domain, amount) {
             },
             onReadyForServerCompletion: async (paymentId, txid) => {
                 await callServer(paymentId, 'complete', txid);
-                // KRİTİK: Satış fiyatını da Firestore'a kaydediyoruz
                 await setDoc(doc(db, "domains", domain), { 
                     sold: true, 
                     price: amount, 
