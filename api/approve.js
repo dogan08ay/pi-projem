@@ -1,3 +1,5 @@
+// Kodun en üstüne ekle
+const fetch = require('node-fetch'); // Eğer hata alırsan bu satırı aktif et
 // api/approve.js
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: "Method not allowed" });
