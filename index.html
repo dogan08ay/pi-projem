@@ -1,16 +1,10 @@
 <!DOCTYPE html>
 <html lang="tr">
 <head>
-
     <meta charset="UTF-8">
-
-    <meta name="viewport"
-          content="width=device-width, initial-scale=1.0">
-
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Web3 Domain Gateway</title>
-
     <script src="https://sdk.minepi.com/pi-sdk.js"></script>
-
     <style>
         :root {
             --bg:#0f172a;
@@ -171,54 +165,30 @@
             margin:0 10px;
             color:#475569;
         }
-
     </style>
-
 </head>
-
 <body>
 
 <div class="container">
-
-    <!-- AUTH CARD -->
     <div class="card">
-
         <h1>Web3 Domain</h1>
-
-        <p id="online-count"
-           style="color:#60a5fa;font-size:0.9em;margin-bottom:15px;font-weight:600;">
+        <p id="online-count" style="color:#60a5fa;font-size:0.9em;margin-bottom:15px;font-weight:600;">
             Aktif Kullanıcı: 0
         </p>
-
         <p id="user-status">Lütfen önce bağlanın.</p>
-
         <button id="auth-btn" class="pi-btn" onclick="window.loginWithPi()">
             Pi ile Bağlan
         </button>
-
     </div>
 
-    <!-- ✅ ADMIN PANEL (GERİ EKLENDİ) -->
-    <div class="card" id="admin-panel"
-         style="display:none;border:2px solid #6366f1;text-align:left;">
-
-        <h3 style="color:#6366f1;margin-top:0;">
-            🛠 Admin Paneli
-        </h3>
-
-        <div id="log-list"
-             style="font-size:0.85em;max-height:150px;overflow-y:auto;">
-        </div>
-
+    <div class="card" id="admin-panel" style="display:none;border:2px solid #6366f1;text-align:left;">
+        <h3 style="color:#6366f1;margin-top:0;">🛠 Admin Paneli</h3>
+        <div id="log-list" style="font-size:0.85em;max-height:150px;overflow-y:auto;"></div>
     </div>
 
-    <!-- DOMAIN LIST -->
     <div class="card">
-
         <div class="section-title-box">Satıştaki Domainler</div>
-
         <div class="domain-grid" id="domain-list">
-
             <div class="auth-warning" style="grid-column:span 2;">
                 <div class="auth-title-box">
                     <div class="lock-message">
@@ -230,39 +200,26 @@
                     </div>
                 </div>
             </div>
-
         </div>
-
     </div>
 
-    <!-- ✅ FOOTER (GERİ EKLENDİ) -->
     <div class="footer-section">
-
         <div>
             Sorularınız için bize ulaşın:
-            <a href="mailto:doganay08@hotmail.com">
-                📩 doganay08@hotmail.com
-            </a>
+            <a href="mailto:doganay08@hotmail.com">📩 doganay08@hotmail.com</a>
         </div>
-
         <div style="margin-top:8px;">
-            <a href="https://t.me/+5jZi9vrcNMM2NGVk" target="_blank">
-                💬 Telegram Grubumuz
-            </a>
+            <a href="https://t.me/+5jZi9vrcNMM2NGVk" target="_blank">💬 Telegram Grubumuz</a>
         </div>
-
         <div style="margin-top:15px;">
             <a href="privacy.html">Gizlilik Politikası</a>
             <span class="footer-divider">|</span>
             <a href="terms.html">Kullanım Şartları</a>
         </div>
-
     </div>
-
 </div>
 
 <script type="module">
-
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
 import {
     getFirestore,
@@ -276,6 +233,7 @@ import {
     orderBy,
     limit
 } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
+
 const firebaseConfig = {
     apiKey: "xxx",
     authDomain: "web3-domain-gateway.firebaseapp.com",
@@ -284,6 +242,7 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
+
 window.addEventListener("load", () => {
     if (window.Pi) {
         try {
@@ -293,10 +252,11 @@ window.addEventListener("load", () => {
         }
     }
 });
+
 /* =========================
    STATE
 ========================= */
-    let paymentInProgress = false;
+let paymentInProgress = false;
 let domainData = {};
 
 const domains = [
@@ -312,78 +272,40 @@ let currentUser = null;
 let isAuth = false;
 
 /* =========================
-   SAFE PI INIT
-========================= */
-window.addEventListener("load", () => {
-    if (window.Pi) {
-        try {
-            Pi.init({ version: "2.0", sandbox: true });
-        } catch (e) {
-            console.log("Pi init error", e);
-        }
-    }
-});
-
-/* =========================
    ACTIVE USERS (ONLINE COUNT)
 ========================= */
-    domains.forEach(d => {
-
+domains.forEach(d => {
     onSnapshot(doc(db, "domains", d.name), (snap) => {
-
         domainData[d.name] = snap.exists()
             ? snap.data()
             : {
                 sold:false,
                 price:d.price
             };
-
         renderDomains();
-
     });
-
 });
-onSnapshot(collection(db, "active_users"), (snap) => {
 
+onSnapshot(collection(db, "active_users"), (snap) => {
     const now = Date.now();
     let activeCount = 0;
-
     snap.forEach(doc => {
-
         const data = doc.data();
-
         if (data.lastSeen && (now - data.lastSeen) < 30000) {
             activeCount++;
         }
-
     });
-
-    document.getElementById("online-count").innerText =
-        "Aktif Kullanıcı: " + activeCount;
-
+    document.getElementById("online-count").innerText = "Aktif Kullanıcı: " + activeCount;
 });
 
-/* =========================
-   LOGIN SYSTEM (FULL FIXED)
-========================= */
-window.loginWithPi = function () {
-   function renderDomains() {
-
+function renderDomains() {
     const list = document.getElementById("domain-list");
-
     if (!list) return;
     if (!isAuth) return;
 
     list.innerHTML = '';
-
     domains.forEach(d => {
-
-        const data =
-            domainData[d.name] ||
-            {
-                sold:false,
-                price:d.price
-            };
+        const data = domainData[d.name] || { sold:false, price:d.price };
 
         const card = document.createElement('div');
         card.className = 'domain-card';
@@ -393,76 +315,68 @@ window.loginWithPi = function () {
             <strong>${d.name}</strong>
             <br>
             <span>
-                ${data.sold
-                    ? `SATILDI (${data.price} Pi)`
-                    : `${data.price} Pi`
-                }
+                ${data.sold ? `SATILDI (${data.price} Pi)` : `${data.price} Pi`}
             </span>
         `;
 
         if (!data.sold) {
-
             const btn = document.createElement('button');
-
             btn.className = 'btn-buy';
-
-            btn.innerText =
-                paymentInProgress
-                    ? 'İşlem Bekleniyor'
-                    : 'Satın Al';
-
+            btn.innerText = paymentInProgress ? 'İşlem Bekleniyor' : 'Satın Al';
             btn.disabled = paymentInProgress;
             btn.onclick = () => startPurchase(d.name, data.price);
             card.appendChild(btn);
         }
-
         list.appendChild(card);
-
     });
-
 }
+
+/* =========================
+   LOGIN SYSTEM (FIXED HATA)
+========================= */
+window.loginWithPi = function () {
     if (!window.Pi) {
         alert("Pi SDK yüklenmedi!");
         return;
     }
 
-    Pi.authenticate(['username','payments'])
-    .then(async (auth) => {
+    // 📌 DÜZELTİLEN YER: SDK'nın aradığı eksik fonksiyon buraya callback olarak eklendi.
+    const piCallbacks = {
+        onIncompletePaymentFound: function(payment) {
+            console.log("Yarım kalan ödeme tespit edildi:", payment);
+            // İhtiyacınıza göre ödemeyi burada tamamlatabilir veya sadece bilgilendirme yapabilirsiniz.
+            alert("Bekleyen ödemeniz bulundu, lütfen sayfayı yenileyip tekrar deneyin.");
+        },
+        onReady: function() { console.log("Pi SDK Hazır."); },
+        onScopeDetails: function() { console.log("Scope detayları alındı."); }
+    };
 
+    Pi.authenticate(['username','payments'], piCallbacks)
+    .then(async (auth) => {
         currentUser = auth.user.username;
         isAuth = true;
 
         const now = Date.now();
         const today = new Date().toISOString().split("T")[0];
 
-        /* =========================
-           ACTIVE USERS (ONLINE)
-        ========================= */
+        /* ACTIVE USERS (ONLINE) */
         await setDoc(doc(db, "active_users", currentUser), {
             username: currentUser,
             lastSeen: now
         });
 
-        /* =========================
-           DAILY UNIQUE USERS (NO DUPLICATE)
-        ========================= */
+        /* DAILY UNIQUE USERS */
         const dailyRef = doc(db, "daily_users", today);
         const snap = await getDoc(dailyRef);
-
         let data = snap.exists() ? snap.data() : { users: {} };
-
-        // sadece 1 kayıt
         data.users[currentUser] = now;
-
         await setDoc(dailyRef, data);
 
         /* UI */
-        document.getElementById("user-status").innerText =
-            "Bağlı: @" + currentUser;
-
+        document.getElementById("user-status").innerText = "Bağlı: @" + currentUser;
         document.getElementById("auth-btn").style.display = "none";
 
-       renderDomains();
+        renderDomains();
         
         /* HEARTBEAT (ONLINE KEEP) */
         setInterval(() => {
@@ -472,37 +386,26 @@ window.loginWithPi = function () {
             });
         }, 15000);
 
-        /* =========================
-           ADMIN PANEL
-        ========================= */
+        /* ADMIN PANEL */
         if (currentUser === "doganay0808") {
-
             document.getElementById("admin-panel").style.display = "block";
-
             onSnapshot(doc(db, "daily_users", today), (snap) => {
-
                 const data = snap.data() || {};
                 const users = data.users || {};
-
                 let html = "";
 
                 Object.keys(users).forEach(u => {
                     const time = new Date(users[u]).toLocaleString("tr-TR");
-
                     html += `
                         <div style="padding:8px;border-bottom:1px solid #334155;">
                             <b>@${u}</b>
-                            <span style="float:right;color:#60a5fa;">
-                                ${time}
-                            </span>
+                            <span style="float:right;color:#60a5fa;">${time}</span>
                         </div>
                     `;
                 });
-
                 document.getElementById("log-list").innerHTML = html;
             });
         }
-
     })
     .catch(err => {
         console.error(err);
@@ -511,13 +414,12 @@ window.loginWithPi = function () {
 };
 
 window.startPurchase = async function(domain, amount) {
-
     if (!isAuth || paymentInProgress) return;
 
     paymentInProgress = true;
+    renderDomains(); // Butonların durumunu güncelle
 
     try {
-
         console.log("SATIN AL TIKLANDI:", domain, amount);
 
         await Pi.createPayment(
@@ -530,9 +432,7 @@ window.startPurchase = async function(domain, amount) {
                 onReadyForServerApproval: function(paymentId) {
                     console.log("Approval gerekli:", paymentId);
                 },
-
                 onReadyForServerCompletion: async function(paymentId, txid) {
-
                     await setDoc(
                         doc(db, "domains", domain),
                         {
@@ -545,30 +445,28 @@ window.startPurchase = async function(domain, amount) {
 
                     paymentInProgress = false;
                     alert("Satın alma tamamlandı!");
-
+                    renderDomains();
                 },
-
                 onCancel: function() {
                     paymentInProgress = false;
                     alert("İşlem iptal edildi.");
+                    renderDomains();
                 },
-
                 onError: function(error) {
                     paymentInProgress = false;
                     console.error(error);
                     alert("Ödeme hatası: " + (error?.message || error));
+                    renderDomains();
                 }
             }
         );
-
     } catch (err) {
         paymentInProgress = false;
         console.error(err);
         alert("Hata: " + (err?.message || err));
+        renderDomains();
     }
 };
-    
 </script>
-    
 </body>
 </html>
