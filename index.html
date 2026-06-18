@@ -4,37 +4,59 @@
     <meta charset="UTF-8">
     <title>Web3 Domain Gateway</title>
     <script src="https://sdk.minepi.com/pi-sdk.js"></script>
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
-        import { getFirestore, doc, setDoc } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
-
-        const db = getFirestore(initializeApp({ apiKey: "xxx", authDomain: "web3-domain-gateway.firebaseapp.com", projectId: "web3-domain-gateway" }));
-
-        // Pi SDK Başlatma
-        window.addEventListener("load", () => {
-            if (window.Pi) Pi.init({ version: "2.0", sandbox: true });
-        });
-
-        window.authProcess = () => {
-            Pi.authenticate(['username', 'payments'], {
-                onIncompletePaymentFound: (payment) => {
-                    // Kilitli ödemeyi iptal et
-                    fetch('/api/approve', { 
-                        method: 'POST', 
-                        headers: {'Content-Type': 'application/json'}, 
-                        body: JSON.stringify({ paymentId: payment.identifier, action: 'cancel' }) 
-                    }).then(() => {
-                        alert("Eski işlem temizlendi. Lütfen sayfayı yenileyin.");
-                        window.location.reload();
-                    });
-                }
-            }).then(auth => {
-                alert("Bağlanıldı: @" + auth.user.username);
-            }).catch(e => alert("Giriş hatası: " + e.message));
-        };
-    </script>
+    <style>
+        body { background: #0f172a; color: white; text-align: center; font-family: sans-serif; padding: 20px; }
+        #app-ui { display: none; margin-top: 30px; }
+        .btn { background: #0052FF; color: white; padding: 15px 30px; border-radius: 25px; border: none; cursor: pointer; font-size: 16px; }
+    </style>
 </head>
 <body>
-    <button onclick="authProcess()" style="padding: 20px; font-size: 20px;">Pi ile Bağlan</button>
+
+    <button id="login-btn" class="btn" onclick="startApp()">Pi ile Bağlan</button>
+
+    <div id="app-ui">
+        <h2 id="user-display"></h2>
+        <div id="domain-list">
+            <p>Satıştaki Domainler:</p>
+            <button onclick="buyDomain()">test-domain (10 Pi)</button>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
+        import { getFirestore } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
+
+        // Firebase - kendi bilgilerini buraya yaz
+        const db = getFirestore(initializeApp({ apiKey: "xxx", authDomain: "web3-domain-gateway.firebaseapp.com", projectId: "web3-domain-gateway" }));
+
+        // 1. SDK İnit
+        window.addEventListener("load", () => { if(window.Pi) Pi.init({ version: "2.0", sandbox: true }); });
+
+        // 2. ANA MANTIK
+        window.startApp = async () => {
+            try {
+                const auth = await Pi.authenticate(['username', 'payments'], {
+                    onIncompletePaymentFound: (p) => {
+                        fetch('/api/approve', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ paymentId: p.identifier, action: 'cancel' }) });
+                    }
+                });
+
+                // GİRİŞ BAŞARILI İSE:
+                document.getElementById('login-btn').style.display = 'none';
+                document.getElementById('app-ui').style.display = 'block';
+                document.getElementById('user-display').innerText = "Hoş geldin @" + auth.user.username;
+            } catch (e) {
+                alert("Giriş başarısız: " + e.message);
+            }
+        };
+
+        window.buyDomain = async () => {
+            Pi.createPayment({ amount: 10, memo: "test-domain" }, {
+                onReadyForServerApproval: (id) => fetch('/api/approve', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ paymentId: id, action: 'approve' }) }),
+                onReadyForServerCompletion: () => alert("Satın alma tamam!"),
+                onError: (e) => alert("Hata: " + e.message)
+            });
+        };
+    </script>
 </body>
 </html>
