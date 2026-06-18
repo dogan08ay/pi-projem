@@ -527,9 +527,24 @@ window.startPurchase = async function(domain, amount) {
                 metadata: { domain }
             },
             {
-                onReadyForServerApproval: function(paymentId) {
-                    console.log("Approval gerekli:", paymentId);
-                },
+               onReadyForServerApproval: async (paymentId) => {
+    try {
+        const response = await fetch('/api/approve', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ paymentId: paymentId, action: 'approve' })
+        });
+        
+        const text = await response.text(); // JSON yerine text olarak alalım
+        console.log("Sunucudan gelen ham yanıt:", text);
+        
+        if (!response.ok) {
+            alert("Sunucu Hatası: " + response.status + " - " + text);
+        }
+    } catch (err) {
+        alert("Bağlantı Hatası: " + err.message);
+    }
+},
 
                 onReadyForServerCompletion: async function(paymentId, txid) {
 
