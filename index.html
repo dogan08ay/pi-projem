@@ -262,34 +262,14 @@
 </div>
 
 <script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
-import { getFirestore, doc, onSnapshot, setDoc, getDoc, collection } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
+// ... (Firebase import satırların aynı kalacak) ...
 
-const firebaseConfig = {
-    apiKey: "s3ddhcea9xae0qieikgjy9zw9tduemnraoucjrr9iqe87pduhczmd95kq8n3aai1",
-    authDomain: "web3-domain-gateway.firebaseapp.com",
-    projectId: "web3-domain-gateway"
-};
-
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
-
-// STATE
+// ADMIN PANEL ve diğer değişkenler
 let paymentInProgress = false;
 let domainData = {};
-const domains = [
-    { name:'test-domain', img:'assets/test.jpeg', price:10 },
-    { name:'etstur.pi', img:'assets/etstur.jpeg', price:250 },
-    { name:'eminevim.pi', img:'assets/eminevim.jpeg', price:150 },
-    { name:'fuzulev.pi', img:'assets/fuzulev.jpeg', price:300 },
-    { name:'fibabank.pi', img:'assets/fibabank.jpeg', price:500 },
-    { name:'sekerbank.pi', img:'assets/sekerbank.jpeg', price:600 },
-    { name:'doganay.pi', img:'assets/doganay.jpeg', price:150 }
-];
-let currentUser = null;
-let isAuth = false;
+// ... (domains listesi aynı kalsın) ...
 
-// DOMAIN RENDER FONKSİYONU (En dışta tanımlanmalı)
+// DOMAIN RENDER (Admin panelini içerir)
 window.renderDomains = function() {
     const list = document.getElementById("domain-list");
     if (!list || !isAuth) return;
@@ -315,42 +295,7 @@ window.renderDomains = function() {
     });
 };
 
-window.addEventListener("load", () => {
-    if (window.Pi) {
-        try { Pi.init({ version: "2.0", sandbox: true }); } catch (e) { console.log(e); }
-    }
-    // Firestore dinleyicileri
-    domains.forEach(d => {
-        onSnapshot(doc(db, "domains", d.name), (snap) => {
-            domainData[d.name] = snap.exists() ? snap.data() : { sold:false, price:d.price };
-            renderDomains();
-        });
-    });
-});
-
-window.loginWithPi = function () {
-    if (!window.Pi) return alert("Pi SDK yüklenmedi!");
-
-    Pi.authenticate(['username','payments'], {
-        onIncompletePaymentFound: function(payment) {
-            alert("Bekleyen işlem bulundu, iptal ediliyor...");
-            fetch('/api/approve', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ paymentId: payment.identifier, action: 'cancel' })
-            }).then(() => location.reload());
-        }
-    })
-    .then(async (auth) => {
-        currentUser = auth.user.username;
-        isAuth = true;
-        document.getElementById("user-status").innerText = "Bağlı: @" + currentUser;
-        document.getElementById("auth-btn").style.display = "none";
-        renderDomains();
-    })
-    .catch(err => alert("Login error: " + err.message));
-};
-
+// SATIN ALMA İŞLEMİ (APPROVAL KISMI BURADA)
 window.startPurchase = async function(domain, amount) {
     if (!isAuth || paymentInProgress) return;
     paymentInProgress = true;
@@ -360,11 +305,27 @@ window.startPurchase = async function(domain, amount) {
             memo: "Domain: " + domain,
             metadata: { domain }
         }, {
-            onReadyForServerApproval: function(paymentId) {
-                // Burada API approve çağrısı yapmalısın
-                console.log("Approval:", paymentId);
+            // ✅ BURASI EN KRİTİK KISIM: SUNUCU ONAYI
+            onReadyForServerApproval: async function(paymentId) {
+                console.log("Sunucu onayı başlıyor:", paymentId);
+                const res = await fetch('/api/approve', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ paymentId: paymentId, action: 'approve' })
+                });
+                const data = await res.json();
+                if (data.status === 'success' || data.identifier) {
+                    console.log("Onay başarılı!");
+                } else {
+                    alert("Onay hatası: " + JSON.stringify(data));
+                }
             },
             onReadyForServerCompletion: async function(paymentId, txid) {
+                await fetch('/api/approve', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ paymentId: paymentId, action: 'complete', txid: txid })
+                });
                 await setDoc(doc(db, "domains", domain), { sold: true, txid: txid }, { merge: true });
                 paymentInProgress = false;
                 alert("Satın alma tamamlandı!");
@@ -381,6 +342,8 @@ window.startPurchase = async function(domain, amount) {
         alert("Hata: " + err.message);
     }
 };
+
+// ... (Diğer Pi.authenticate ve Admin Panel kodlarını eski dosyanın içinden buraya yapıştır) ...
 </script>
     
 </body>
