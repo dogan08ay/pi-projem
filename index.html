@@ -277,7 +277,7 @@ import {
     limit
 } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
 const firebaseConfig = {
-    apiKey: "s3ddhcea9xae0qieikgjy9zw9tduemnraoucjrr9iqe87pduhczmd95kq8n3aai1",
+    apiKey: "xxx",
     authDomain: "web3-domain-gateway.firebaseapp.com",
     projectId: "web3-domain-gateway"
 };
@@ -511,53 +511,60 @@ window.loginWithPi = function () {
 };
 
 window.startPurchase = async function(domain, amount) {
+
     if (!isAuth || paymentInProgress) return;
+
     paymentInProgress = true;
-    renderDomains();
 
     try {
-        await Pi.createPayment({
-            amount: Number(amount),
-            memo: "Domain: " + domain,
-            metadata: { domain }
-        }, {
-            // ÖNEMLİ: Pi'ye bu ödemeyi sunucu tarafında onayladığımızı söylemeliyiz
-            onReadyForServerApproval: async function(paymentId) {
-                console.log("Sunucuya onay gidiyor:", paymentId);
-                await fetch('/api/approve', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ paymentId: paymentId, action: 'approve' })
-                });
-            },
-            onReadyForServerCompletion: async function(paymentId, txid) {
-                // Ödeme tamamlandı, şimdi sunucuya kaydettiriyoruz
-                await fetch('/api/approve', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ paymentId: paymentId, action: 'complete', txid: txid })
-                });
 
-                await setDoc(doc(db, "domains", domain), {
-                    sold: true, txid: txid, soldAt: new Date().toISOString()
-                }, { merge: true });
+        console.log("SATIN AL TIKLANDI:", domain, amount);
 
-                paymentInProgress = false;
-                alert("Satın alma tamamlandı!");
-                renderDomains();
+        await Pi.createPayment(
+            {
+                amount: Number(amount),
+                memo: "Domain: " + domain,
+                metadata: { domain }
             },
-            onCancel: function() { paymentInProgress = false; renderDomains(); },
-            onError: function(error) { 
-    paymentInProgress = false; 
-    console.error("TAM HATA:", error);
-    alert("HATA MESAJI: " + JSON.stringify(error)); // Hatayı kutucuk içinde tam okuyalım
-    renderDomains(); 
-}
-        });
+            {
+                onReadyForServerApproval: function(paymentId) {
+                    console.log("Approval gerekli:", paymentId);
+                },
+
+                onReadyForServerCompletion: async function(paymentId, txid) {
+
+                    await setDoc(
+                        doc(db, "domains", domain),
+                        {
+                            sold: true,
+                            txid: txid,
+                            soldAt: new Date().toISOString()
+                        },
+                        { merge: true }
+                    );
+
+                    paymentInProgress = false;
+                    alert("Satın alma tamamlandı!");
+
+                },
+
+                onCancel: function() {
+                    paymentInProgress = false;
+                    alert("İşlem iptal edildi.");
+                },
+
+                onError: function(error) {
+                    paymentInProgress = false;
+                    console.error(error);
+                    alert("Ödeme hatası: " + (error?.message || error));
+                }
+            }
+        );
+
     } catch (err) {
         paymentInProgress = false;
-        alert("Hata: " + err.message);
-        renderDomains();
+        console.error(err);
+        alert("Hata: " + (err?.message || err));
     }
 };
     
