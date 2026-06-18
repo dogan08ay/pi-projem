@@ -198,7 +198,7 @@
 
     </div>
 
-    <!-- ✅ ADMIN PANEL (GERİ EKLENDİ) -->
+    <!-- ADMIN PANEL -->
     <div class="card" id="admin-panel"
          style="display:none;border:2px solid #6366f1;text-align:left;">
 
@@ -235,7 +235,7 @@
 
     </div>
 
-    <!-- ✅ FOOTER (GERİ EKLENDİ) -->
+    <!-- FOOTER -->
     <div class="footer-section">
 
         <div>
@@ -276,6 +276,7 @@ import {
     orderBy,
     limit
 } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
+
 const firebaseConfig = {
     apiKey: "s3ddhcea9xae0qieikgjy9zw9tduemnraoucjrr9iqe87pduhczmd95kq8n3aai1",
     authDomain: "web3-domain-gateway.firebaseapp.com",
@@ -284,20 +285,14 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
-window.addEventListener("load", () => {
-    if (window.Pi) {
-        try {
-            Pi.init({ version: "2.0", sandbox: true });
-        } catch (e) {
-            console.log("Pi init error", e);
-        }
-    }
-});
+
 /* =========================
    STATE
 ========================= */
-    let paymentInProgress = false;
+let paymentInProgress = false;
 let domainData = {};
+let currentUser = null;
+let isAuth = false;
 
 const domains = [
     { name:'test-domain', img:'assets/test.jpeg', price:10 },
@@ -308,78 +303,13 @@ const domains = [
     { name:'sekerbank.pi', img:'assets/sekerbank.jpeg', price:600 },
     { name:'doganay.pi', img:'assets/doganay.jpeg', price:150 }
 ];
-let currentUser = null;
-let isAuth = false;
 
 /* =========================
-   SAFE PI INIT
+   DÜZELTME 1: renderDomains GLOBAL SCOPE'TA TANIMLANMALI
+   Eski kodda loginWithPi içine gömülmüştü — bu yüzden
+   onError ve diğer yerlerden çağrıldığında hata veriyordu.
 ========================= */
-window.addEventListener("load", () => {
-    if (window.Pi) {
-        Pi.init({ version: "2.0", sandbox: true });
-        
-        // KRİTİK KISIM: Askıda ödeme varsa burada yakalayıp siliyoruz
-        Pi.authenticate(['username', 'payments'], {
-            onIncompletePaymentFound: function(payment) {
-                console.log("Askıda kalan ödeme tespit edildi:", payment.identifier);
-                
-                // Bu ödemeyi onaylamak veya iptal etmek için kendi sunucuna gönder
-                fetch('/api/approve', { 
-                    method: 'POST', 
-                    headers: {'Content-Type':'application/json'}, 
-                    body: JSON.stringify({ paymentId: payment.identifier, action: 'cancel' }) 
-                }).then(() => {
-                    alert("Eski ödeme temizlendi! Lütfen şimdi tekrar deneyin.");
-                });
-            }
-        });
-    }
-});
-
-/* =========================
-   ACTIVE USERS (ONLINE COUNT)
-========================= */
-    domains.forEach(d => {
-
-    onSnapshot(doc(db, "domains", d.name), (snap) => {
-
-        domainData[d.name] = snap.exists()
-            ? snap.data()
-            : {
-                sold:false,
-                price:d.price
-            };
-
-        renderDomains();
-
-    });
-
-});
-onSnapshot(collection(db, "active_users"), (snap) => {
-
-    const now = Date.now();
-    let activeCount = 0;
-
-    snap.forEach(doc => {
-
-        const data = doc.data();
-
-        if (data.lastSeen && (now - data.lastSeen) < 30000) {
-            activeCount++;
-        }
-
-    });
-
-    document.getElementById("online-count").innerText =
-        "Aktif Kullanıcı: " + activeCount;
-
-});
-
-/* =========================
-   LOGIN SYSTEM (FULL FIXED)
-========================= */
-window.loginWithPi = function () {
-   function renderDomains() {
+function renderDomains() {
 
     const list = document.getElementById("domain-list");
 
@@ -424,7 +354,7 @@ window.loginWithPi = function () {
                     : 'Satın Al';
 
             btn.disabled = paymentInProgress;
-            btn.onclick = () => startPurchase(d.name, data.price);
+            btn.onclick = () => window.startPurchase(d.name, data.price);
             card.appendChild(btn);
         }
 
@@ -433,6 +363,105 @@ window.loginWithPi = function () {
     });
 
 }
+
+/* =========================
+   SAFE PI INIT
+========================= */
+window.addEventListener("load", () => {
+    if (window.Pi) {
+        try {
+            Pi.init({ version: "2.0", sandbox: true });
+        } catch (e) {
+            console.log("Pi init error", e);
+        }
+
+        /* DÜZELTME 2: onIncompletePaymentFound — bekleyen ödemeyi
+           iptal etmek yerine TAMAMLIYORUZ (approve + complete).
+           Pi Network API'sinde "cancel" endpoint'i yoktur;
+           askıda kalan ödeme ancak tamamlanarak kapatılabilir. */
+        Pi.authenticate(['username', 'payments'], {
+            onIncompletePaymentFound: async function(payment) {
+                console.log("Askıda kalan ödeme tespit edildi:", payment.identifier);
+
+                try {
+                    // Önce onayla (approve)
+                    await fetch('/api/approve', {
+                        method: 'POST',
+                        headers: {'Content-Type':'application/json'},
+                        body: JSON.stringify({ paymentId: payment.identifier, action: 'approve' })
+                    });
+
+                    // Sonra tamamla (complete) — txid payment nesnesinden alınır
+                    if (payment.transaction && payment.transaction.txid) {
+                        await fetch('/api/approve', {
+                            method: 'POST',
+                            headers: {'Content-Type':'application/json'},
+                            body: JSON.stringify({
+                                paymentId: payment.identifier,
+                                txid: payment.transaction.txid,
+                                action: 'complete'
+                            })
+                        });
+                    }
+
+                    alert("Önceki bekleyen ödeme işlendi. Şimdi tekrar deneyebilirsiniz.");
+                } catch (err) {
+                    console.error("Bekleyen ödeme işlenirken hata:", err);
+                    alert("Bekleyen ödeme temizlenemedi: " + (err?.message || err));
+                }
+
+                paymentInProgress = false;
+                renderDomains();
+            }
+        });
+    }
+});
+
+/* =========================
+   ACTIVE USERS (ONLINE COUNT)
+========================= */
+domains.forEach(d => {
+
+    onSnapshot(doc(db, "domains", d.name), (snap) => {
+
+        domainData[d.name] = snap.exists()
+            ? snap.data()
+            : {
+                sold:false,
+                price:d.price
+            };
+
+        renderDomains();
+
+    });
+
+});
+
+onSnapshot(collection(db, "active_users"), (snap) => {
+
+    const now = Date.now();
+    let activeCount = 0;
+
+    snap.forEach(doc => {
+
+        const data = doc.data();
+
+        if (data.lastSeen && (now - data.lastSeen) < 30000) {
+            activeCount++;
+        }
+
+    });
+
+    document.getElementById("online-count").innerText =
+        "Aktif Kullanıcı: " + activeCount;
+
+});
+
+/* =========================
+   LOGIN SYSTEM
+========================= */
+window.loginWithPi = function () {
+
     if (!window.Pi) {
         alert("Pi SDK yüklenmedi!");
         return;
@@ -447,25 +476,18 @@ window.loginWithPi = function () {
         const now = Date.now();
         const today = new Date().toISOString().split("T")[0];
 
-        /* =========================
-           ACTIVE USERS (ONLINE)
-        ========================= */
+        /* ACTIVE USERS (ONLINE) */
         await setDoc(doc(db, "active_users", currentUser), {
             username: currentUser,
             lastSeen: now
         });
 
-        /* =========================
-           DAILY UNIQUE USERS (NO DUPLICATE)
-        ========================= */
+        /* DAILY UNIQUE USERS (NO DUPLICATE) */
         const dailyRef = doc(db, "daily_users", today);
         const snap = await getDoc(dailyRef);
 
         let data = snap.exists() ? snap.data() : { users: {} };
-
-        // sadece 1 kayıt
         data.users[currentUser] = now;
-
         await setDoc(dailyRef, data);
 
         /* UI */
@@ -474,8 +496,8 @@ window.loginWithPi = function () {
 
         document.getElementById("auth-btn").style.display = "none";
 
-       renderDomains();
-        
+        renderDomains();
+
         /* HEARTBEAT (ONLINE KEEP) */
         setInterval(() => {
             setDoc(doc(db, "active_users", currentUser), {
@@ -484,9 +506,7 @@ window.loginWithPi = function () {
             });
         }, 15000);
 
-        /* =========================
-           ADMIN PANEL
-        ========================= */
+        /* ADMIN PANEL */
         if (currentUser === "doganay0808") {
 
             document.getElementById("admin-panel").style.display = "block";
@@ -521,19 +541,24 @@ window.loginWithPi = function () {
         alert("Login error: " + err.message);
     });
 };
-window.startPurchase = async function(domain, amount) {
-    console.log("Satın alma başlıyor..."); // Burayı görüyorsan fonksiyon çalışıyor
-    
-    // Pi'ye sormadan önce o an SDK'nın durumunu logla
-    console.log("SDK Durumu:", window.Pi ? "Yüklü" : "Yüklenmedi");
-    
-    // ... geri kalan kod
-};
+
+/* =========================
+   DÜZELTME 3: startPurchase SADECE BİR KEZ TANIMLANMALI
+   Eski kodda iki kez tanımlanmıştı (ilki boş/test, ikincisi gerçek).
+   Çift tanım beklenmedik davranışlara yol açıyordu.
+
+   DÜZELTME 4: onReadyForServerApproval CALLBACK'İ DOLU OLMALI
+   Pi SDK, bu callback'te sunucu onayı bekler. Boş bırakılırsa
+   ödeme "beklemede" kalır ve bir sonraki girişte
+   onIncompletePaymentFound tetiklenir — bu "bekleyen ödeme" hatasının
+   ana nedenidir.
+========================= */
 window.startPurchase = async function(domain, amount) {
 
     if (!isAuth || paymentInProgress) return;
 
     paymentInProgress = true;
+    renderDomains(); // Butonları hemen "İşlem Bekleniyor" yap
 
     try {
 
@@ -546,54 +571,82 @@ window.startPurchase = async function(domain, amount) {
                 metadata: { domain }
             },
             {
-                onReadyForServerApproval: function(paymentId) {
-                    console.log("Approval gerekli:", paymentId);
+                /* KRİTİK: Bu callback DOLU olmak zorunda.
+                   Sunucunuza approve isteği atılmadan Pi SDK
+                   ödemeyi ilerletmez ve ödeme askıda kalır. */
+                onReadyForServerApproval: async function(paymentId) {
+                    console.log("Sunucu onayı gerekli:", paymentId);
+                    try {
+                        await fetch('/api/approve', {
+                            method: 'POST',
+                            headers: {'Content-Type':'application/json'},
+                            body: JSON.stringify({ paymentId: paymentId, action: 'approve' })
+                        });
+                        console.log("Sunucu onayı gönderildi.");
+                    } catch (err) {
+                        console.error("Sunucu onayı gönderilemedi:", err);
+                    }
                 },
 
                 onReadyForServerCompletion: async function(paymentId, txid) {
-    // 1. Önce sunucuna "complete" isteği at (Yukarıdaki güncel API'ni kullan)
-    await fetch('/api/approve', {
-        method: 'POST',
-        headers: {'Content-Type':'application/json'},
-        body: JSON.stringify({ paymentId: paymentId, action: 'complete' }) // action 'complete' olmalı
-    });
+                    console.log("Sunucu tamamlama gerekli:", paymentId, txid);
+                    try {
+                        await fetch('/api/approve', {
+                            method: 'POST',
+                            headers: {'Content-Type':'application/json'},
+                            body: JSON.stringify({ paymentId: paymentId, txid: txid, action: 'complete' })
+                        });
 
-    // 2. Sonra veritabanına kaydet
-    await setDoc(doc(db, "domains", domain), { sold: true, txid: txid });
-    alert("Satın alma tamamlandı!");
-},
+                        // Firestore'a kaydet
+                        await setDoc(doc(db, "domains", domain), {
+                            sold: true,
+                            txid: txid,
+                            buyer: currentUser,
+                            soldAt: Date.now()
+                        });
+
+                        paymentInProgress = false;
+                        renderDomains();
+                        alert("Satın alma tamamlandı! Domain: " + domain);
+                    } catch (err) {
+                        paymentInProgress = false;
+                        renderDomains();
+                        console.error("Tamamlama hatası:", err);
+                        alert("Tamamlama hatası: " + (err?.message || err));
+                    }
+                },
 
                 onCancel: function() {
                     paymentInProgress = false;
+                    renderDomains();
                     alert("İşlem iptal edildi.");
                 },
 
-             // index.html içerisindeki onError kısmını bu hale getirin:
-onError: function(error) { 
-    paymentInProgress = false; 
-    console.error("TAM HATA NESNESİ:", error);
-    
-    // Hatanın içinden anlamlı bir mesaj çıkarmaya çalışalım
-    let message = "Bilinmeyen hata";
-    if (typeof error === 'string') message = error;
-    else if (error && error.message) message = error.message;
-    else if (error && error.error) message = error.error;
-    else message = JSON.stringify(error);
-    
-    alert("HATA MESAJI: " + message); 
-    renderDomains(); 
-}
+                onError: function(error) {
+                    paymentInProgress = false;
+                    console.error("TAM HATA NESNESİ:", error);
+
+                    let message = "Bilinmeyen hata";
+                    if (typeof error === 'string') message = error;
+                    else if (error && error.message) message = error.message;
+                    else if (error && error.error) message = error.error;
+                    else message = JSON.stringify(error);
+
+                    alert("HATA MESAJI: " + message);
+                    renderDomains();
+                }
             }
         );
 
     } catch (err) {
         paymentInProgress = false;
+        renderDomains();
         console.error(err);
         alert("Hata: " + (err?.message || err));
     }
 };
-    
+
 </script>
-    
+
 </body>
 </html>
