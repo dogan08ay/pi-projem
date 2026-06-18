@@ -1,80 +1,29 @@
+// api/approve.js
 export default async function handler(req, res) {
-
-  if (req.method !== 'POST') {
-    return res.status(405).json({
-      error: "Method not allowed"
-    });
-  }
+  if (req.method !== 'POST') return res.status(405).json({ error: "Method not allowed" });
 
   const { paymentId, action, txid } = req.body;
-
-  const APP_SECRET = process.env.APP_SECRET;
+  const APP_SECRET = process.env.APP_SECRET; // Vercel Settings -> Environment Variables'dan ekleyin!
 
   try {
-
-    let piResponse;
-
-    if (action === "approve") {
-
-      piResponse = await fetch(
-        `https://api.minepi.com/v2/payments/${paymentId}/approve`,
-        {
-          method: "POST",
-          headers: {
-            Authorization: `Key ${APP_SECRET}`,
-            "Content-Type": "application/json"
-          }
-        }
-      );
-
-    } else if (action === "complete") {
-
-      piResponse = await fetch(
-        `https://api.minepi.com/v2/payments/${paymentId}/complete`,
-        {
-          method: "POST",
-          headers: {
-            Authorization: `Key ${APP_SECRET}`,
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify({
-            txid
-          })
-        }
-      );
-
-    } else {
-
-      return res.status(400).json({
-        error: "Invalid action"
-      });
-
+    const url = `https://api.minepi.com/v2/payments/${paymentId}/${action}`;
+    const options = {
+      method: "POST",
+      headers: { 
+        "Authorization": `Key ${APP_SECRET}`, 
+        "Content-Type": "application/json" 
+      }
+    };
+    
+    if (action === "complete") {
+      options.body = JSON.stringify({ txid });
     }
 
-    const data = await piResponse.json();
-
-    if (!piResponse.ok) {
-
-      console.error(
-        "PI ERROR:",
-        data
-      );
-
-      return res.status(piResponse.status)
-        .json(data);
-
-    }
-
-    return res.status(200).json(data);
-
+    const response = await fetch(url, options);
+    const data = await response.json();
+    
+    return res.status(response.status).json(data);
   } catch (err) {
-
-    console.error(err);
-
-    return res.status(500).json({
-      error: err.message
-    });
-
+    return res.status(500).json({ error: err.message });
   }
-
 }
