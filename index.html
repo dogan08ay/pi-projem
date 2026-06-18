@@ -366,6 +366,26 @@ onSnapshot(collection(db, "active_users"), (snap) => {
 /* =========================
    LOGIN SYSTEM (FULL FIXED)
 ========================= */
+    function renderDomains() {
+    const list = document.getElementById("domain-list");
+    if (!list) return;
+    list.innerHTML = '';
+    domains.forEach(d => {
+        const data = domainData[d.name] || { sold:false, price:d.price };
+        const card = document.createElement('div');
+        card.className = 'domain-card';
+        card.innerHTML = `<img src="${d.img}" class="domain-img"><strong>${d.name}</strong><br><span>${data.sold ? `SATILDI (${data.price} Pi)` : `${data.price} Pi`}</span>`;
+        if (!data.sold) {
+            const btn = document.createElement('button');
+            btn.className = 'btn-buy';
+            btn.innerText = paymentInProgress ? 'İşlem Bekleniyor' : 'Satın Al';
+            btn.disabled = paymentInProgress;
+            btn.onclick = () => startPurchase(d.name, data.price);
+            card.appendChild(btn);
+        }
+        list.appendChild(card);
+    });
+}
    window.loginWithPi = function () {
     // AŞAĞIDAKİ BLOKU EKLİYORUZ
     Pi.authenticate(['username', 'payments'], {
