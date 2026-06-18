@@ -277,7 +277,7 @@ import {
     limit
 } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
 const firebaseConfig = {
-    apiKey: "xxx",
+    apiKey: "s3ddhcea9xae0qieikgjy9zw9tduemnraoucjrr9iqe87pduhczmd95kq8n3aai1",
     authDomain: "web3-domain-gateway.firebaseapp.com",
     projectId: "web3-domain-gateway"
 };
@@ -548,10 +548,11 @@ window.startPurchase = async function(domain, amount) {
             },
             onCancel: function() { paymentInProgress = false; renderDomains(); },
             onError: function(error) { 
-                paymentInProgress = false; 
-                alert("Ödeme hatası: " + error.message); 
-                renderDomains(); 
-            }
+    paymentInProgress = false; 
+    console.error("TAM HATA:", error);
+    alert("HATA MESAJI: " + JSON.stringify(error)); // Hatayı kutucuk içinde tam okuyalım
+    renderDomains(); 
+}
         });
     } catch (err) {
         paymentInProgress = false;
