@@ -4,7 +4,7 @@ import { getAnalytics } from "firebase/analytics";
 
 // Firebase yapılandırma bilgileri
 const firebaseConfig = {
-  apiKey: "AIzaSyC9r244vRVGbYOcLHyS6EHxKyiygajW7_A",
+  apiKey: "s3ddhcea9xae0qieikgjy9zw9tduemnraoucjrr9iqe87pduhczmd95kq8n3aai1",
   authDomain: "web3-domain-gateway.firebaseapp.com",
   projectId: "web3-domain-gateway",
   storageBucket: "web3-domain-gateway.firebasestorage.app",
