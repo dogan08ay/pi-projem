@@ -553,12 +553,19 @@ window.startPurchase = async function(domain, amount) {
                     alert("İşlem iptal edildi.");
                 },
 
-              onError: function(error) { 
+             // index.html içerisindeki onError kısmını bu hale getirin:
+onError: function(error) { 
     paymentInProgress = false; 
-    console.error("TAM HATA:", error);
-    // Hatanın içindeki message veya error alanını kontrol et
-    const msg = error.message || error.error || JSON.stringify(error);
-    alert("HATA MESAJI: " + msg); 
+    console.error("TAM HATA NESNESİ:", error);
+    
+    // Hatanın içinden anlamlı bir mesaj çıkarmaya çalışalım
+    let message = "Bilinmeyen hata";
+    if (typeof error === 'string') message = error;
+    else if (error && error.message) message = error.message;
+    else if (error && error.error) message = error.error;
+    else message = JSON.stringify(error);
+    
+    alert("HATA MESAJI: " + message); 
     renderDomains(); 
 }
             }
