@@ -6,24 +6,18 @@
     <title>Web3 Domain Gateway</title>
     <script src="https://sdk.minepi.com/pi-sdk.js"></script>
     <style>
-        :root { --bg:#0f172a; --card:#1e293b; --accent:#6366f1; --text:#f8fafc; }
+        :root { --bg:#0f172a; --card:#1e293b; --accent:#6366f1; --text:#f8fafc; --sold:#ef4444; }
         body { font-family:'Segoe UI',sans-serif; background:var(--bg); color:var(--text); margin:0; padding:20px; display:flex; justify-content:center; }
         .container { max-width:600px; width:100%; text-align:center; }
         .card { background:var(--card); padding:25px; border-radius:20px; box-shadow:0 10px 15px -3px rgba(0,0,0,0.3); margin-bottom:20px; }
         .domain-grid { display:grid; grid-template-columns:1fr 1fr; gap:15px; margin-top:20px; }
         .domain-card { background:#334155; padding:20px; border-radius:12px; border:1px solid #475569; transition:0.3s; display:flex; flex-direction:column; align-items:center; }
         .domain-img { width:100%; height:120px; margin-bottom:10px; border-radius:12px; object-fit:contain; background-color:#334155; padding:5px; }
-        .btn-buy { background:var(--accent); color:white; border:none; padding:8px 16px; border-radius:8px; cursor:pointer; margin-top:10px; font-weight:bold; width:100%; }
+        .btn-buy { background:var(--accent); color:white; border:none; padding:10px 16px; border-radius:8px; cursor:pointer; margin-top:10px; font-weight:bold; width:100%; font-size: 0.9em; }
         .btn-buy:disabled { opacity:0.5; cursor:not-allowed; }
+        .btn-sold { background:transparent; color:var(--sold); border:2px solid var(--sold); padding:8px 16px; border-radius:8px; margin-top:10px; font-weight:bold; width:100%; font-size: 0.85em; cursor: default; }
         .pi-btn { background:#0052FF; color:#ffffff; padding:12px 30px; border-radius:50px; font-weight:800; font-size:0.95em; border:1px solid rgba(255,255,255,0.2); cursor:pointer; }
         .section-title-box { background:linear-gradient(135deg,#fef3c7 0%,#fde68a 100%); color:#1e293b; padding:12px 28px; border-radius:16px; border:3px solid #f59e0b; font-size:1.15em; font-weight:800; display:inline-block; margin:5px auto 25px auto; box-shadow:0 6px 16px rgba(245,158,11,0.2); }
-        .auth-warning { color:#1e293b; padding:24px; border:4px solid #f59e0b; border-radius:24px; background:linear-gradient(135deg,#fef3c7 0%,#fde68a 100%); text-align:center; box-shadow:0 12px 28px rgba(245,158,11,0.25); }
-        .auth-title-box { background:#1e293b; color:#ffffff; padding:26px 20px; border-radius:18px; border:1.5px solid rgba(245,158,11,0.4); display:flex; flex-direction:column; align-items:center; justify-content:center; gap:14px; }
-        .lock-message { font-size:1.05em; font-weight:700; line-height:1.8; color:#f8fafc; }
-        .inline-btn-highlight { background:#0052ff; color:#ffffff; padding:8px 26px; border-radius:50px; font-weight:800; display:inline-block; margin:10px 0; border:1px solid rgba(255,255,255,0.2); }
-        .footer-section { margin-top:30px; padding:20px; color:#94a3b8; font-size:0.9em; text-align:center; border-top:1px solid #334155; }
-        .footer-section a { color:#38bdf8; text-decoration:none; }
-        .footer-divider { margin:0 10px; color:#475569; }
     </style>
 </head>
 <body>
@@ -34,30 +28,17 @@
         <p id="user-status">Lütfen önce bağlanın.</p>
         <button id="auth-btn" class="pi-btn" onclick="window.loginWithPi()">Pi ile Bağlan</button>
     </div>
-    <div class="card" id="admin-panel" style="display:none;border:2px solid #6366f1;text-align:left;">
-        <h3 style="color:#6366f1;margin-top:0;">🛠 Admin Paneli</h3>
-        <div id="log-list" style="font-size:0.85em;max-height:150px;overflow-y:auto;"></div>
-    </div>
     <div class="card">
         <div class="section-title-box">Satıştaki Domainler</div>
         <div class="domain-grid" id="domain-list">
-            <div class="auth-warning" style="grid-column:span 2;">
-                <div class="auth-title-box">
-                    <div class="lock-message">🔒 Erişim sağlamak için lütfen yukarıdaki <br><span class="inline-btn-highlight">Pi ile Bağlan</span> <br>butonunu kullanınız.</div>
-                </div>
-            </div>
+            <p>Yükleniyor...</p>
         </div>
-    </div>
-    <div class="footer-section">
-        <div>Sorularınız için bize ulaşın: <a href="mailto:doganay08@hotmail.com">📩 doganay08@hotmail.com</a></div>
-        <div style="margin-top:8px;"><a href="https://t.me/+5jZi9vrcNMM2NGVk" target="_blank">💬 Telegram Grubumuz</a></div>
-        <div style="margin-top:15px;"><a href="privacy.html">Gizlilik Politikası</a> <span class="footer-divider">|</span> <a href="terms.html">Kullanım Şartları</a></div>
     </div>
 </div>
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
-import { getFirestore, doc, onSnapshot, setDoc, getDoc, collection } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
+import { getFirestore, doc, onSnapshot, setDoc, collection } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
 
 const firebaseConfig = {
     apiKey: "s3ddhcea9xae0qieikgjy9zw9tduemnraoucjrr9iqe87pduhczmd95kq8n3aai1",
@@ -83,96 +64,83 @@ const domains = [
     { name:'doganay.pi', img:'assets/doganay.jpeg', price:150 }
 ];
 
-// UI Render
 function renderDomains() {
     const list = document.getElementById("domain-list");
     if (!list || !isAuth) return;
     list.innerHTML = '';
+    
     domains.forEach(d => {
+        // Firestore'dan gelen veri veya varsayılan fiyat
         const data = domainData[d.name] || { sold:false, price:d.price };
+        
         const card = document.createElement('div');
         card.className = 'domain-card';
-        card.innerHTML = `<img src="${d.img}" class="domain-img"><strong>${d.name}</strong><br><span>${data.sold ? `SATILDI (${data.price} Pi)` : `${data.price} Pi`}</span>`;
-        if (!data.sold) {
-            const btn = document.createElement('button');
-            btn.className = 'btn-buy';
-            btn.innerText = paymentInProgress ? 'İşlem Bekleniyor' : 'Satın Al';
-            btn.disabled = paymentInProgress;
-            btn.onclick = () => window.startPurchase(d.name, data.price);
-            card.appendChild(btn);
+        
+        // Fiyatı belirle (Firestore'da kayıtlı fiyat yoksa varsayılanı kullan)
+        const displayPrice = data.price || d.price;
+
+        card.innerHTML = `
+            <img src="${d.img}" class="domain-img">
+            <strong>${d.name}</strong>
+        `;
+
+        if (data.sold) {
+            // SATILDI Durumu (Buton şeklinde tasarım)
+            const soldBtn = document.createElement('div');
+            soldBtn.className = 'btn-sold';
+            soldBtn.innerText = `SATILDI (${displayPrice} Pi)`;
+            card.appendChild(soldBtn);
+        } else {
+            // SATIN AL Durumu
+            const buyBtn = document.createElement('button');
+            buyBtn.className = 'btn-buy';
+            buyBtn.innerText = paymentInProgress ? 'İşlem Bekleniyor...' : `${displayPrice} Pi - Satın Al`;
+            buyBtn.disabled = paymentInProgress;
+            buyBtn.onclick = () => window.startPurchase(d.name, displayPrice);
+            card.appendChild(buyBtn);
         }
+        
         list.appendChild(card);
     });
 }
 
-// Bekleyen Ödeme Temizleme Fonksiyonu
-async function handleIncompletePayment(payment) {
-    console.log("Askıda kalan ödeme temizleniyor:", payment.identifier);
+async function callServer(paymentId, action, txid = null) {
     try {
-        // Önce approve
-        await fetch('/api/approve', {
+        const response = await fetch('/api/approve', {
             method: 'POST',
             headers: {'Content-Type':'application/json'},
-            body: JSON.stringify({ paymentId: payment.identifier, action: 'approve' })
+            body: JSON.stringify({ paymentId, action, txid })
         });
-        // Eğer txid varsa complete
-        if (payment.transaction && payment.transaction.txid) {
-            await fetch('/api/approve', {
-                method: 'POST',
-                headers: {'Content-Type':'application/json'},
-                body: JSON.stringify({ paymentId: payment.identifier, txid: payment.transaction.txid, action: 'complete' })
-            });
-        }
-        console.log("Askıda kalan ödeme başarıyla işlendi.");
+        return await response.json();
     } catch (err) {
-        console.error("Ödeme temizleme hatası:", err);
+        console.error("Sunucu hatası:", err);
+        throw err;
     }
 }
 
-// Pi Init & Auth
+async function onIncompletePaymentFound(payment) {
+    try {
+        await callServer(payment.identifier, 'approve');
+        if (payment.transaction && payment.transaction.txid) {
+            await callServer(payment.identifier, 'complete', payment.transaction.txid);
+        }
+    } catch (err) {}
+}
+
 window.loginWithPi = async function() {
     if (!window.Pi) return alert("Pi SDK yüklenmedi!");
-    
     try {
-        // SDK 2.0 standart: onIncompletePaymentFound doğrudan ikinci parametre içindeki bir fonksiyondur
-        const auth = await Pi.authenticate(['username', 'payments'], handleIncompletePayment);
-        
+        const auth = await Pi.authenticate(['username', 'payments'], onIncompletePaymentFound);
         currentUser = auth.user.username;
         isAuth = true;
-        
-        // UI & Firebase İşlemleri
         document.getElementById("user-status").innerText = "Bağlı: @" + currentUser;
         document.getElementById("auth-btn").style.display = "none";
-        
-        const now = Date.now();
-        const today = new Date().toISOString().split("T")[0];
-        await setDoc(doc(db, "active_users", currentUser), { username: currentUser, lastSeen: now });
-        
         renderDomains();
-        
-        // Heartbeat
-        setInterval(() => {
-            setDoc(doc(db, "active_users", currentUser), { username: currentUser, lastSeen: Date.now() });
-        }, 15000);
-
-        if (currentUser === "doganay0808") {
-            document.getElementById("admin-panel").style.display = "block";
-            onSnapshot(doc(db, "daily_users", today), (snap) => {
-                const users = (snap.data() || {}).users || {};
-                let html = "";
-                Object.keys(users).forEach(u => {
-                    html += `<div style="padding:8px;border-bottom:1px solid #334155;"><b>@${u}</b><span style="float:right;color:#60a5fa;">${new Date(users[u]).toLocaleString("tr-TR")}</span></div>`;
-                });
-                document.getElementById("log-list").innerHTML = html;
-            });
-        }
     } catch (err) {
-        console.error(err);
         alert("Giriş Hatası: " + err.message);
     }
 };
 
-// Satın Alma
 window.startPurchase = async function(domain, amount) {
     if (!isAuth || paymentInProgress) return;
     paymentInProgress = true;
@@ -185,19 +153,18 @@ window.startPurchase = async function(domain, amount) {
             metadata: { domain }
         }, {
             onReadyForServerApproval: async (paymentId) => {
-                await fetch('/api/approve', {
-                    method: 'POST',
-                    headers: {'Content-Type':'application/json'},
-                    body: JSON.stringify({ paymentId: paymentId, action: 'approve' })
-                });
+                await callServer(paymentId, 'approve');
             },
             onReadyForServerCompletion: async (paymentId, txid) => {
-                await fetch('/api/approve', {
-                    method: 'POST',
-                    headers: {'Content-Type':'application/json'},
-                    body: JSON.stringify({ paymentId: paymentId, txid: txid, action: 'complete' })
+                await callServer(paymentId, 'complete', txid);
+                // KRİTİK: Satış fiyatını da Firestore'a kaydediyoruz
+                await setDoc(doc(db, "domains", domain), { 
+                    sold: true, 
+                    price: amount, 
+                    txid: txid, 
+                    buyer: currentUser, 
+                    soldAt: Date.now() 
                 });
-                await setDoc(doc(db, "domains", domain), { sold: true, txid: txid, buyer: currentUser, soldAt: Date.now() });
                 paymentInProgress = false;
                 renderDomains();
                 alert("Satın alma başarılı!");
@@ -206,7 +173,7 @@ window.startPurchase = async function(domain, amount) {
             onError: (error) => {
                 paymentInProgress = false;
                 renderDomains();
-                alert("Ödeme Hatası: " + (error.message || JSON.stringify(error)));
+                alert("Ödeme Hatası: " + (error.message || "Hata oluştu."));
             }
         });
     } catch (err) {
@@ -216,16 +183,13 @@ window.startPurchase = async function(domain, amount) {
     }
 };
 
-// Sayfa Yüklendiğinde Pi Init
 window.addEventListener("load", () => {
     if (window.Pi) {
         Pi.init({ version: "2.0", sandbox: true });
-        // Sayfa açıldığında da bekleyen ödeme kontrolü yap (Opsiyonel ama önerilir)
-        Pi.authenticate(['username', 'payments'], handleIncompletePayment).catch(() => {});
+        Pi.authenticate(['username', 'payments'], onIncompletePaymentFound).catch(() => {});
     }
 });
 
-// Firebase Listeners
 domains.forEach(d => {
     onSnapshot(doc(db, "domains", d.name), (snap) => {
         domainData[d.name] = snap.exists() ? snap.data() : { sold:false, price:d.price };
