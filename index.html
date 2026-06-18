@@ -1,142 +1,574 @@
 <!DOCTYPE html>
 <html lang="tr">
 <head>
+
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1.0">
+
     <title>Web3 Domain Gateway</title>
+
     <script src="https://sdk.minepi.com/pi-sdk.js"></script>
+
     <style>
-        :root { --bg: #0f172a; --card: #1e293b; --accent: #6366f1; --text: #f8fafc; }
-        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 20px; display: flex; justify-content: center; }
-        .container { max-width: 600px; width: 100%; text-align: center; }
-        .card { background: var(--card); padding: 25px; border-radius: 20px; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.3); margin-bottom: 20px; }
-        .domain-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 20px; }
-        .domain-card { background: #334155; padding: 20px; border-radius: 12px; border: 1px solid #475569; transition: 0.3s; display: flex; flex-direction: column; align-items: center; }
-        .domain-img { width: 60px; height: 60px; margin-bottom: 10px; border-radius: 8px; object-fit: cover; }
-        .btn-buy { background: var(--accent); color: white; border: none; padding: 8px 16px; border-radius: 8px; cursor: pointer; margin-top: 10px; font-weight: bold; width: 100%; }
-        #auth-btn { background: var(--accent); color: white; border: none; padding: 12px 25px; border-radius: 50px; font-weight: bold; cursor: pointer; }
+        :root {
+            --bg:#0f172a;
+            --card:#1e293b;
+            --accent:#6366f1;
+            --text:#f8fafc;
+        }
+
+        body {
+            font-family:'Segoe UI',sans-serif;
+            background:var(--bg);
+            color:var(--text);
+            margin:0;
+            padding:20px;
+            display:flex;
+            justify-content:center;
+        }
+
+        .container {
+            max-width:600px;
+            width:100%;
+            text-align:center;
+        }
+
+        .card {
+            background:var(--card);
+            padding:25px;
+            border-radius:20px;
+            box-shadow:0 10px 15px -3px rgba(0,0,0,0.3);
+            margin-bottom:20px;
+        }
+
+        .domain-grid {
+            display:grid;
+            grid-template-columns:1fr 1fr;
+            gap:15px;
+            margin-top:20px;
+        }
+
+        .domain-card {
+            background:#334155;
+            padding:20px;
+            border-radius:12px;
+            border:1px solid #475569;
+            transition:0.3s;
+            display:flex;
+            flex-direction:column;
+            align-items:center;
+        }
+
+        .domain-img {
+            width:100%;
+            height:120px;
+            margin-bottom:10px;
+            border-radius:12px;
+            object-fit:contain;
+            background-color:#334155;
+            padding:5px;
+        }
+
+        .btn-buy {
+            background:var(--accent);
+            color:white;
+            border:none;
+            padding:8px 16px;
+            border-radius:8px;
+            cursor:pointer;
+            margin-top:10px;
+            font-weight:bold;
+            width:100%;
+        }
+
+        .btn-buy:disabled {
+            opacity:0.5;
+            cursor:not-allowed;
+        }
+
+        .pi-btn {
+            background:#0052FF;
+            color:#ffffff;
+            padding:12px 30px;
+            border-radius:50px;
+            font-weight:800;
+            font-size:0.95em;
+            border:1px solid rgba(255,255,255,0.2);
+            cursor:pointer;
+        }
+
+        .section-title-box {
+            background:linear-gradient(135deg,#fef3c7 0%,#fde68a 100%);
+            color:#1e293b;
+            padding:12px 28px;
+            border-radius:16px;
+            border:3px solid #f59e0b;
+            font-size:1.15em;
+            font-weight:800;
+            display:inline-block;
+            margin:5px auto 25px auto;
+            box-shadow:0 6px 16px rgba(245,158,11,0.2);
+        }
+
+        .auth-warning {
+            color:#1e293b;
+            padding:24px;
+            border:4px solid #f59e0b;
+            border-radius:24px;
+            background:linear-gradient(135deg,#fef3c7 0%,#fde68a 100%);
+            text-align:center;
+            box-shadow:0 12px 28px rgba(245,158,11,0.25);
+        }
+
+        .auth-title-box {
+            background:#1e293b;
+            color:#ffffff;
+            padding:26px 20px;
+            border-radius:18px;
+            border:1.5px solid rgba(245,158,11,0.4);
+            display:flex;
+            flex-direction:column;
+            align-items:center;
+            justify-content:center;
+            gap:14px;
+        }
+
+        .lock-message {
+            font-size:1.05em;
+            font-weight:700;
+            line-height:1.8;
+            color:#f8fafc;
+        }
+
+        .inline-btn-highlight {
+            background:#0052ff;
+            color:#ffffff;
+            padding:8px 26px;
+            border-radius:50px;
+            font-weight:800;
+            display:inline-block;
+            margin:10px 0;
+            border:1px solid rgba(255,255,255,0.2);
+        }
+
+        .footer-section {
+            margin-top:30px;
+            padding:20px;
+            color:#94a3b8;
+            font-size:0.9em;
+            text-align:center;
+            border-top:1px solid #334155;
+        }
+
+        .footer-section a {
+            color:#38bdf8;
+            text-decoration:none;
+        }
+
+        .footer-divider {
+            margin:0 10px;
+            color:#475569;
+        }
+
     </style>
+
 </head>
+
 <body>
 
 <div class="container">
+
+    <!-- AUTH CARD -->
     <div class="card">
+
         <h1>Web3 Domain</h1>
+
+        <p id="online-count"
+           style="color:#60a5fa;font-size:0.9em;margin-bottom:15px;font-weight:600;">
+            Aktif Kullanıcı: 0
+        </p>
+
         <p id="user-status">Lütfen önce bağlanın.</p>
-        <button id="auth-btn" onclick="loginWithPi()">Pi ile Bağlan</button>
+
+        <button id="auth-btn" class="pi-btn" onclick="window.loginWithPi()">
+            Pi ile Bağlan
+        </button>
+
     </div>
 
-    <div class="card">
-        <h3>Satıştaki Domainler</h3>
-        <div class="domain-grid" id="domain-list"></div>
+    <!-- ✅ ADMIN PANEL (GERİ EKLENDİ) -->
+    <div class="card" id="admin-panel"
+         style="display:none;border:2px solid #6366f1;text-align:left;">
+
+        <h3 style="color:#6366f1;margin-top:0;">
+            🛠 Admin Paneli
+        </h3>
+
+        <div id="log-list"
+             style="font-size:0.85em;max-height:150px;overflow-y:auto;">
+        </div>
+
     </div>
+
+    <!-- DOMAIN LIST -->
+    <div class="card">
+
+        <div class="section-title-box">Satıştaki Domainler</div>
+
+        <div class="domain-grid" id="domain-list">
+
+            <div class="auth-warning" style="grid-column:span 2;">
+                <div class="auth-title-box">
+                    <div class="lock-message">
+                        🔒 Erişim sağlamak için lütfen yukarıdaki
+                        <br>
+                        <span class="inline-btn-highlight">Pi ile Bağlan</span>
+                        <br>
+                        butonunu kullanınız.
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+    </div>
+
+    <!-- ✅ FOOTER (GERİ EKLENDİ) -->
+    <div class="footer-section">
+
+        <div>
+            Sorularınız için bize ulaşın:
+            <a href="mailto:doganay08@hotmail.com">
+                📩 doganay08@hotmail.com
+            </a>
+        </div>
+
+        <div style="margin-top:8px;">
+            <a href="https://t.me/+5jZi9vrcNMM2NGVk" target="_blank">
+                💬 Telegram Grubumuz
+            </a>
+        </div>
+
+        <div style="margin-top:15px;">
+            <a href="privacy.html">Gizlilik Politikası</a>
+            <span class="footer-divider">|</span>
+            <a href="terms.html">Kullanım Şartları</a>
+        </div>
+
+    </div>
+
 </div>
 
 <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
-    import { getFirestore, doc, onSnapshot, updateDoc } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
 
-    const firebaseConfig = {
-        apiKey: "AIzaSyC9r244vRVGbYOcLHyS6EHxKyiygajW7_A",
-        authDomain: "web3-domain-gateway.firebaseapp.com",
-        projectId: "web3-domain-gateway",
-        storageBucket: "web3-domain-gateway.firebasestorage.app",
-        messagingSenderId: "315563254318",
-        appId: "1:315563254318:web:12f2f3f340bb69606df5bf"
-    };
+import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
+import {
+    getFirestore,
+    doc,
+    onSnapshot,
+    setDoc,
+    getDoc,
+    collection,
+    getDocs,
+    query,
+    orderBy,
+    limit
+} from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
+const firebaseConfig = {
+    apiKey: "xxx",
+    authDomain: "web3-domain-gateway.firebaseapp.com",
+    projectId: "web3-domain-gateway"
+};
 
-    const app = initializeApp(firebaseConfig);
-    const db = getFirestore(app);
-
-    Pi.init({ version: "2.0", sandbox: true });
-
-    const domains = [
-        { name: 'etstur.pi', img: 'assets/etstur.jpeg' },
-        { name: 'eminevim.pi', img: 'assets/eminevim.jpeg' },
-        { name: 'fuzulev.pi', img: 'assets/fuzulev.jpeg' },
-        { name: 'fibabank.pi', img: 'assets/fibabank.jpeg' },
-        { name: 'sekerbank.pi', img: 'assets/sekerbank.jpeg' },
-        { name: 'doganay.pi', img: 'assets/doganay.jpeg' }
-    ];
-
-    let domainData = {};
-
-    function render() {
-        const list = document.getElementById('domain-list');
-        list.innerHTML = '';
-        domains.forEach(d => {
-            const isSold = domainData[d.name] === true;
-            const card = document.createElement('div');
-            card.className = 'domain-card';
-            card.innerHTML = `
-                <img src="${d.img}" class="domain-img" onerror="this.src='https://via.placeholder.com/60'">
-                <strong>${d.name}</strong><br>
-                <span style="font-size: 0.85em; color: #a5b4fc;">${isSold ? 'SATILDI' : '10 Pi'}</span>
-            `;
-            
-            if (!isSold) {
-                const btn = document.createElement('button');
-                btn.className = 'btn-buy';
-                btn.innerText = 'Satın Al';
-                btn.onclick = () => startPurchase(d.name);
-                card.appendChild(btn);
-            }
-            list.appendChild(card);
-        });
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+window.addEventListener("load", () => {
+    if (window.Pi) {
+        try {
+            Pi.init({ version: "2.0", sandbox: true });
+        } catch (e) {
+            console.log("Pi init error", e);
+        }
     }
+});
+/* =========================
+   STATE
+========================= */
+    let paymentInProgress = false;
+let domainData = {};
 
-    // Firebase'i gerçek zamanlı dinle
+const domains = [
+    { name:'test-domain', img:'assets/test.jpeg', price:10 },
+    { name:'etstur.pi', img:'assets/etstur.jpeg', price:250 },
+    { name:'eminevim.pi', img:'assets/eminevim.jpeg', price:150 },
+    { name:'fuzulev.pi', img:'assets/fuzulev.jpeg', price:300 },
+    { name:'fibabank.pi', img:'assets/fibabank.jpeg', price:500 },
+    { name:'sekerbank.pi', img:'assets/sekerbank.jpeg', price:600 },
+    { name:'doganay.pi', img:'assets/doganay.jpeg', price:150 }
+];
+let currentUser = null;
+let isAuth = false;
+
+/* =========================
+   SAFE PI INIT
+========================= */
+window.addEventListener("load", () => {
+    if (window.Pi) {
+        try {
+            Pi.init({ version: "2.0", sandbox: true });
+        } catch (e) {
+            console.log("Pi init error", e);
+        }
+    }
+});
+
+/* =========================
+   ACTIVE USERS (ONLINE COUNT)
+========================= */
     domains.forEach(d => {
-        onSnapshot(doc(db, "domains", d.name), (doc) => {
-            if (doc.exists()) {
-                domainData[d.name] = doc.data().sold;
-                render();
-            }
-        });
+
+    onSnapshot(doc(db, "domains", d.name), (snap) => {
+
+        domainData[d.name] = snap.exists()
+            ? snap.data()
+            : {
+                sold:false,
+                price:d.price
+            };
+
+        renderDomains();
+
     });
 
-    window.loginWithPi = function() {
-        Pi.authenticate(['username', 'payments'], () => {})
-        .then(auth => {
-            document.getElementById('user-status').innerText = "Bağlı: @" + auth.user.username;
-            document.getElementById('auth-btn').style.display = 'none';
-        })
-        .catch(err => alert("Giriş başarısız: " + err));
-    }
+});
+onSnapshot(collection(db, "active_users"), (snap) => {
 
-    window.startPurchase = function(domain) {
-        if(document.getElementById('auth-btn').style.display !== 'none') {
-            alert("Lütfen önce Pi ile bağlanın!");
-            return;
+    const now = Date.now();
+    let activeCount = 0;
+
+    snap.forEach(doc => {
+
+        const data = doc.data();
+
+        if (data.lastSeen && (now - data.lastSeen) < 30000) {
+            activeCount++;
         }
 
-        Pi.createPayment({
-            amount: 10,
-            memo: "Domain: " + domain,
-            metadata: { domain: domain }
-        }, {
-            onReadyForServerApproval: (id) => handleServerSidePayment(id, 'approve', null),
-            onReadyForServerCompletion: (id, txid) => {
-                updateDoc(doc(db, "domains", domain), { sold: true });
-                handleServerSidePayment(id, 'complete', txid);
-            },
-            onCancel: () => alert("Ödeme iptal edildi."),
-            onError: (err) => alert("Ödeme hatası: " + err.message)
-        });
+    });
+
+    document.getElementById("online-count").innerText =
+        "Aktif Kullanıcı: " + activeCount;
+
+});
+
+/* =========================
+   LOGIN SYSTEM (FULL FIXED)
+========================= */
+window.loginWithPi = function () {
+   function renderDomains() {
+
+    const list = document.getElementById("domain-list");
+
+    if (!list) return;
+    if (!isAuth) return;
+
+    list.innerHTML = '';
+
+    domains.forEach(d => {
+
+        const data =
+            domainData[d.name] ||
+            {
+                sold:false,
+                price:d.price
+            };
+
+        const card = document.createElement('div');
+        card.className = 'domain-card';
+
+        card.innerHTML = `
+            <img src="${d.img}" class="domain-img">
+            <strong>${d.name}</strong>
+            <br>
+            <span>
+                ${data.sold
+                    ? `SATILDI (${data.price} Pi)`
+                    : `${data.price} Pi`
+                }
+            </span>
+        `;
+
+        if (!data.sold) {
+
+            const btn = document.createElement('button');
+
+            btn.className = 'btn-buy';
+
+            btn.innerText =
+                paymentInProgress
+                    ? 'İşlem Bekleniyor'
+                    : 'Satın Al';
+
+            btn.disabled = paymentInProgress;
+            btn.onclick = () => startPurchase(d.name, data.price);
+            card.appendChild(btn);
+        }
+
+        list.appendChild(card);
+
+    });
+
+}
+    if (!window.Pi) {
+        alert("Pi SDK yüklenmedi!");
+        return;
     }
 
-    function handleServerSidePayment(paymentId, action, txid) {
-        fetch('/api/approve', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ paymentId, action, txid })
-        })
-        .then(res => res.json())
-        .then(data => {
-            if(action === 'complete') alert("✅ Başarılı! Satın alma tamamlandı.");
-        })
-        .catch(err => console.error("Sunucu Hatası:", err));
+    Pi.authenticate(['username','payments'])
+    .then(async (auth) => {
+
+        currentUser = auth.user.username;
+        isAuth = true;
+
+        const now = Date.now();
+        const today = new Date().toISOString().split("T")[0];
+
+        /* =========================
+           ACTIVE USERS (ONLINE)
+        ========================= */
+        await setDoc(doc(db, "active_users", currentUser), {
+            username: currentUser,
+            lastSeen: now
+        });
+
+        /* =========================
+           DAILY UNIQUE USERS (NO DUPLICATE)
+        ========================= */
+        const dailyRef = doc(db, "daily_users", today);
+        const snap = await getDoc(dailyRef);
+
+        let data = snap.exists() ? snap.data() : { users: {} };
+
+        // sadece 1 kayıt
+        data.users[currentUser] = now;
+
+        await setDoc(dailyRef, data);
+
+        /* UI */
+        document.getElementById("user-status").innerText =
+            "Bağlı: @" + currentUser;
+
+        document.getElementById("auth-btn").style.display = "none";
+
+       renderDomains();
+        
+        /* HEARTBEAT (ONLINE KEEP) */
+        setInterval(() => {
+            setDoc(doc(db, "active_users", currentUser), {
+                username: currentUser,
+                lastSeen: Date.now()
+            });
+        }, 15000);
+
+        /* =========================
+           ADMIN PANEL
+        ========================= */
+        if (currentUser === "doganay0808") {
+
+            document.getElementById("admin-panel").style.display = "block";
+
+            onSnapshot(doc(db, "daily_users", today), (snap) => {
+
+                const data = snap.data() || {};
+                const users = data.users || {};
+
+                let html = "";
+
+                Object.keys(users).forEach(u => {
+                    const time = new Date(users[u]).toLocaleString("tr-TR");
+
+                    html += `
+                        <div style="padding:8px;border-bottom:1px solid #334155;">
+                            <b>@${u}</b>
+                            <span style="float:right;color:#60a5fa;">
+                                ${time}
+                            </span>
+                        </div>
+                    `;
+                });
+
+                document.getElementById("log-list").innerHTML = html;
+            });
+        }
+
+    })
+    .catch(err => {
+        console.error(err);
+        alert("Login error: " + err.message);
+    });
+};
+
+window.startPurchase = async function(domain, amount) {
+
+    if (!isAuth || paymentInProgress) return;
+
+    paymentInProgress = true;
+
+    try {
+
+        console.log("SATIN AL TIKLANDI:", domain, amount);
+
+        await Pi.createPayment(
+            {
+                amount: Number(amount),
+                memo: "Domain: " + domain,
+                metadata: { domain }
+            },
+            {
+                onReadyForServerApproval: function(paymentId) {
+                    console.log("Approval gerekli:", paymentId);
+                },
+
+                onReadyForServerCompletion: async function(paymentId, txid) {
+
+                    await setDoc(
+                        doc(db, "domains", domain),
+                        {
+                            sold: true,
+                            txid: txid,
+                            soldAt: new Date().toISOString()
+                        },
+                        { merge: true }
+                    );
+
+                    paymentInProgress = false;
+                    alert("Satın alma tamamlandı!");
+
+                },
+
+                onCancel: function() {
+                    paymentInProgress = false;
+                    alert("İşlem iptal edildi.");
+                },
+
+                onError: function(error) {
+                    paymentInProgress = false;
+                    console.error(error);
+                    alert("Ödeme hatası: " + (error?.message || error));
+                }
+            }
+        );
+
+    } catch (err) {
+        paymentInProgress = false;
+        console.error(err);
+        alert("Hata: " + (err?.message || err));
     }
+};
+    
 </script>
+    
 </body>
 </html>
