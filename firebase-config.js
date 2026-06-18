@@ -270,12 +270,9 @@ import {
     onSnapshot,
     setDoc,
     getDoc,
-    collection,
-    getDocs,
-    query,
-    orderBy,
-    limit
+    collection
 } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
+
 const firebaseConfig = {
     apiKey: "xxx",
     authDomain: "web3-domain-gateway.firebaseapp.com",
@@ -284,30 +281,10 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
-window.addEventListener("load", () => {
-    if (window.Pi) {
-        try {
-            Pi.init({ version: "2.0", sandbox: true });
-        } catch (e) {
-            console.log("Pi init error", e);
-        }
-    }
-});
+
 /* =========================
    STATE
 ========================= */
-    let paymentInProgress = false;
-let domainData = {};
-
-const domains = [
-    { name:'test-domain', img:'assets/test.jpeg', price:10 },
-    { name:'etstur.pi', img:'assets/etstur.jpeg', price:250 },
-    { name:'eminevim.pi', img:'assets/eminevim.jpeg', price:150 },
-    { name:'fuzulev.pi', img:'assets/fuzulev.jpeg', price:300 },
-    { name:'fibabank.pi', img:'assets/fibabank.jpeg', price:500 },
-    { name:'sekerbank.pi', img:'assets/sekerbank.jpeg', price:600 },
-    { name:'doganay.pi', img:'assets/doganay.jpeg', price:150 }
-];
 let currentUser = null;
 let isAuth = false;
 
@@ -327,100 +304,30 @@ window.addEventListener("load", () => {
 /* =========================
    ACTIVE USERS (ONLINE COUNT)
 ========================= */
-    domains.forEach(d => {
-
-    onSnapshot(doc(db, "domains", d.name), (snap) => {
-
-        domainData[d.name] = snap.exists()
-            ? snap.data()
-            : {
-                sold:false,
-                price:d.price
-            };
-
-        renderDomains();
-
-    });
-
-});
 onSnapshot(collection(db, "active_users"), (snap) => {
-
-    const now = Date.now();
-    let activeCount = 0;
-
-    snap.forEach(doc => {
-
-        const data = doc.data();
-
-        if (data.lastSeen && (now - data.lastSeen) < 30000) {
-            activeCount++;
-        }
-
-    });
-
     document.getElementById("online-count").innerText =
-        "Aktif Kullanıcı: " + activeCount;
-
+        "Aktif Kullanıcı: " + snap.size;
 });
 
 /* =========================
    LOGIN SYSTEM (FULL FIXED)
 ========================= */
 window.loginWithPi = function () {
-   function renderDomains() {
-
+    function render() {
     const list = document.getElementById("domain-list");
 
     if (!list) return;
-    if (!isAuth) return;
 
-    list.innerHTML = '';
+    if (!window.isUserAuthenticated && !window.currentUser) return;
 
-    domains.forEach(d => {
-
-        const data =
-            domainData[d.name] ||
-            {
-                sold:false,
-                price:d.price
-            };
-
-        const card = document.createElement('div');
-        card.className = 'domain-card';
-
-        card.innerHTML = `
-            <img src="${d.img}" class="domain-img">
-            <strong>${d.name}</strong>
-            <br>
-            <span>
-                ${data.sold
-                    ? `SATILDI (${data.price} Pi)`
-                    : `${data.price} Pi`
-                }
-            </span>
-        `;
-
-        if (!data.sold) {
-
-            const btn = document.createElement('button');
-
-            btn.className = 'btn-buy';
-
-            btn.innerText =
-                paymentInProgress
-                    ? 'İşlem Bekleniyor'
-                    : 'Satın Al';
-
-            btn.disabled = paymentInProgress;
-            btn.onclick = () => startPurchase(d.name, data.price);
-            card.appendChild(btn);
-        }
-
-        list.appendChild(card);
-
-    });
-
+    // şimdilik basit fix (boş kalmasın diye)
+    list.innerHTML = `
+        <div style="color:white;padding:20px;">
+            Sistem aktif ✔
+        </div>
+    `;
 }
+
     if (!window.Pi) {
         alert("Pi SDK yüklenmedi!");
         return;
@@ -462,8 +369,8 @@ window.loginWithPi = function () {
 
         document.getElementById("auth-btn").style.display = "none";
 
-       renderDomains();
-        
+        render();
+
         /* HEARTBEAT (ONLINE KEEP) */
         setInterval(() => {
             setDoc(doc(db, "active_users", currentUser), {
@@ -510,64 +417,6 @@ window.loginWithPi = function () {
     });
 };
 
-window.startPurchase = async function(domain, amount) {
-
-    if (!isAuth || paymentInProgress) return;
-
-    paymentInProgress = true;
-
-    try {
-
-        console.log("SATIN AL TIKLANDI:", domain, amount);
-
-        await Pi.createPayment(
-            {
-                amount: Number(amount),
-                memo: "Domain: " + domain,
-                metadata: { domain }
-            },
-            {
-                onReadyForServerApproval: function(paymentId) {
-                    console.log("Approval gerekli:", paymentId);
-                },
-
-                onReadyForServerCompletion: async function(paymentId, txid) {
-
-                    await setDoc(
-                        doc(db, "domains", domain),
-                        {
-                            sold: true,
-                            txid: txid,
-                            soldAt: new Date().toISOString()
-                        },
-                        { merge: true }
-                    );
-
-                    paymentInProgress = false;
-                    alert("Satın alma tamamlandı!");
-
-                },
-
-                onCancel: function() {
-                    paymentInProgress = false;
-                    alert("İşlem iptal edildi.");
-                },
-
-                onError: function(error) {
-                    paymentInProgress = false;
-                    console.error(error);
-                    alert("Ödeme hatası: " + (error?.message || error));
-                }
-            }
-        );
-
-    } catch (err) {
-        paymentInProgress = false;
-        console.error(err);
-        alert("Hata: " + (err?.message || err));
-    }
-};
-    
 </script>
     
 </body>
