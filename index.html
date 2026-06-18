@@ -221,18 +221,7 @@
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
-import {
-    getFirestore,
-    doc,
-    onSnapshot,
-    setDoc,
-    getDoc,
-    collection,
-    getDocs,
-    query,
-    orderBy,
-    limit
-} from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
+import { getFirestore, doc, onSnapshot, setDoc, getDoc, collection } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
 
 const firebaseConfig = {
     apiKey: "xxx",
@@ -245,20 +234,12 @@ const db = getFirestore(app);
 
 window.addEventListener("load", () => {
     if (window.Pi) {
-        try {
-            Pi.init({ version: "2.0", sandbox: true });
-        } catch (e) {
-            console.log("Pi init error", e);
-        }
+        try { Pi.init({ version: "2.0", sandbox: true }); } catch (e) { console.log(e); }
     }
 });
 
-/* =========================
-   STATE
-========================= */
 let paymentInProgress = false;
 let domainData = {};
-
 const domains = [
     { name:'test-domain', img:'assets/test.jpeg', price:10 },
     { name:'etstur.pi', img:'assets/etstur.jpeg', price:250 },
@@ -271,54 +252,22 @@ const domains = [
 let currentUser = null;
 let isAuth = false;
 
-/* =========================
-   ACTIVE USERS (ONLINE COUNT)
-========================= */
 domains.forEach(d => {
     onSnapshot(doc(db, "domains", d.name), (snap) => {
-        domainData[d.name] = snap.exists()
-            ? snap.data()
-            : {
-                sold:false,
-                price:d.price
-            };
+        domainData[d.name] = snap.exists() ? snap.data() : { sold:false, price:d.price };
         renderDomains();
     });
 });
 
-onSnapshot(collection(db, "active_users"), (snap) => {
-    const now = Date.now();
-    let activeCount = 0;
-    snap.forEach(doc => {
-        const data = doc.data();
-        if (data.lastSeen && (now - data.lastSeen) < 30000) {
-            activeCount++;
-        }
-    });
-    document.getElementById("online-count").innerText = "Aktif Kullanıcı: " + activeCount;
-});
-
 function renderDomains() {
     const list = document.getElementById("domain-list");
-    if (!list) return;
-    if (!isAuth) return;
-
+    if (!list || !isAuth) return;
     list.innerHTML = '';
     domains.forEach(d => {
         const data = domainData[d.name] || { sold:false, price:d.price };
-
         const card = document.createElement('div');
         card.className = 'domain-card';
-
-        card.innerHTML = `
-            <img src="${d.img}" class="domain-img">
-            <strong>${d.name}</strong>
-            <br>
-            <span>
-                ${data.sold ? `SATILDI (${data.price} Pi)` : `${data.price} Pi`}
-            </span>
-        `;
-
+        card.innerHTML = `<img src="${d.img}" class="domain-img"><strong>${d.name}</strong><br><span>${data.sold ? `SATILDI (${data.price} Pi)` : `${data.price} Pi`}</span>`;
         if (!data.sold) {
             const btn = document.createElement('button');
             btn.className = 'btn-buy';
@@ -331,141 +280,46 @@ function renderDomains() {
     });
 }
 
-/* =========================
-   LOGIN SYSTEM (FIXED HATA)
-========================= */
 window.loginWithPi = function () {
-    if (!window.Pi) {
-        alert("Pi SDK yüklenmedi!");
-        return;
-    }
-
-    // 📌 DÜZELTİLEN YER: SDK'nın aradığı eksik fonksiyon buraya callback olarak eklendi.
     const piCallbacks = {
         onIncompletePaymentFound: function(payment) {
-            console.log("Yarım kalan ödeme tespit edildi:", payment);
-            // İhtiyacınıza göre ödemeyi burada tamamlatabilir veya sadece bilgilendirme yapabilirsiniz.
-            alert("Bekleyen ödemeniz bulundu, lütfen sayfayı yenileyip tekrar deneyin.");
+            console.log("Eski işlem bulundu, temizleniyor:", payment);
+            Pi.approvePayment(payment.identifier); // Takılı kalan işlemi zorla onayla ve temizle
         },
-        onReady: function() { console.log("Pi SDK Hazır."); },
-        onScopeDetails: function() { console.log("Scope detayları alındı."); }
+        onReady: function() { console.log("Pi SDK Hazır."); }
     };
 
     Pi.authenticate(['username','payments'], piCallbacks)
     .then(async (auth) => {
         currentUser = auth.user.username;
         isAuth = true;
-
-        const now = Date.now();
-        const today = new Date().toISOString().split("T")[0];
-
-        /* ACTIVE USERS (ONLINE) */
-        await setDoc(doc(db, "active_users", currentUser), {
-            username: currentUser,
-            lastSeen: now
-        });
-
-        /* DAILY UNIQUE USERS */
-        const dailyRef = doc(db, "daily_users", today);
-        const snap = await getDoc(dailyRef);
-        let data = snap.exists() ? snap.data() : { users: {} };
-        data.users[currentUser] = now;
-        await setDoc(dailyRef, data);
-
-        /* UI */
         document.getElementById("user-status").innerText = "Bağlı: @" + currentUser;
         document.getElementById("auth-btn").style.display = "none";
-
         renderDomains();
-        
-        /* HEARTBEAT (ONLINE KEEP) */
-        setInterval(() => {
-            setDoc(doc(db, "active_users", currentUser), {
-                username: currentUser,
-                lastSeen: Date.now()
-            });
-        }, 15000);
-
-        /* ADMIN PANEL */
-        if (currentUser === "doganay0808") {
-            document.getElementById("admin-panel").style.display = "block";
-            onSnapshot(doc(db, "daily_users", today), (snap) => {
-                const data = snap.data() || {};
-                const users = data.users || {};
-                let html = "";
-
-                Object.keys(users).forEach(u => {
-                    const time = new Date(users[u]).toLocaleString("tr-TR");
-                    html += `
-                        <div style="padding:8px;border-bottom:1px solid #334155;">
-                            <b>@${u}</b>
-                            <span style="float:right;color:#60a5fa;">${time}</span>
-                        </div>
-                    `;
-                });
-                document.getElementById("log-list").innerHTML = html;
-            });
-        }
     })
-    .catch(err => {
-        console.error(err);
-        alert("Login error: " + err.message);
-    });
+    .catch(err => { alert("Login error: " + err.message); });
 };
 
 window.startPurchase = async function(domain, amount) {
     if (!isAuth || paymentInProgress) return;
-
     paymentInProgress = true;
-    renderDomains(); // Butonların durumunu güncelle
-
+    renderDomains();
     try {
-        console.log("SATIN AL TIKLANDI:", domain, amount);
-
-        await Pi.createPayment(
-            {
-                amount: Number(amount),
-                memo: "Domain: " + domain,
-                metadata: { domain }
+        await Pi.createPayment({
+            amount: Number(amount),
+            memo: "Domain: " + domain,
+            metadata: { domain }
+        }, {
+            onReadyForServerCompletion: async function(paymentId, txid) {
+                await setDoc(doc(db, "domains", domain), { sold: true, txid: txid, soldAt: new Date().toISOString() }, { merge: true });
+                paymentInProgress = false;
+                alert("Satın alma tamamlandı!");
+                renderDomains();
             },
-            {
-                onReadyForServerApproval: function(paymentId) {
-                    console.log("Approval gerekli:", paymentId);
-                },
-                onReadyForServerCompletion: async function(paymentId, txid) {
-                    await setDoc(
-                        doc(db, "domains", domain),
-                        {
-                            sold: true,
-                            txid: txid,
-                            soldAt: new Date().toISOString()
-                        },
-                        { merge: true }
-                    );
-
-                    paymentInProgress = false;
-                    alert("Satın alma tamamlandı!");
-                    renderDomains();
-                },
-                onCancel: function() {
-                    paymentInProgress = false;
-                    alert("İşlem iptal edildi.");
-                    renderDomains();
-                },
-                onError: function(error) {
-                    paymentInProgress = false;
-                    console.error(error);
-                    alert("Ödeme hatası: " + (error?.message || error));
-                    renderDomains();
-                }
-            }
-        );
-    } catch (err) {
-        paymentInProgress = false;
-        console.error(err);
-        alert("Hata: " + (err?.message || err));
-        renderDomains();
-    }
+            onCancel: function() { paymentInProgress = false; renderDomains(); },
+            onError: function(error) { paymentInProgress = false; alert("Ödeme hatası!"); renderDomains(); }
+        });
+    } catch (err) { paymentInProgress = false; renderDomains(); }
 };
 </script>
 </body>
