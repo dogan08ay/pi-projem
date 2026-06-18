@@ -4,67 +4,51 @@
     <meta charset="UTF-8">
     <title>Web3 Domain Gateway</title>
     <script src="https://sdk.minepi.com/pi-sdk.js"></script>
+    <style>
+        body { background: #0f172a; color: white; font-family: sans-serif; text-align: center; padding-top: 50px; }
+        .pi-btn { background: #0052FF; padding: 15px 30px; border-radius: 50px; color: white; border: none; cursor: pointer; font-weight: bold; }
+        #app-content { display: none; margin-top: 20px; }
+    </style>
+</head>
+<body>
+
+    <button id="auth-btn" class="pi-btn" onclick="login()">Pi ile Bağlan</button>
+
+    <div id="app-content">
+        <h2 id="welcome-msg"></h2>
+        <div id="domains">
+            <button onclick="buy('test-domain', 10)">Test Domain Satın Al (10 Pi)</button>
+        </div>
+    </div>
+
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
         import { getFirestore, doc, setDoc } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
 
-        // Firebase Yapılandırmanı Buraya Koy
+        // CONFIG (Burayı kendi bilgilerinle doldur)
         const firebaseConfig = { apiKey: "xxx", authDomain: "web3-domain-gateway.firebaseapp.com", projectId: "web3-domain-gateway" };
         const db = getFirestore(initializeApp(firebaseConfig));
 
-        let isAuth = false;
-
-        // Pi SDK Başlatma
-        window.addEventListener("load", () => {
-            if (window.Pi) Pi.init({ version: "2.0", sandbox: true });
-        });
-
-        // 1. STANDART AUTH (Hata veren this. fonksiyonlarını kaldırdık)
-        window.loginWithPi = function() {
+        window.login = function() {
+            Pi.init({ version: "2.0", sandbox: true });
             Pi.authenticate(['username', 'payments'], {
-                onIncompletePaymentFound: function(payment) {
-                    console.log("Bekleyen ödeme bulundu, iptal ediliyor:", payment.identifier);
-                    fetch('/api/approve', { 
-                        method: 'POST', 
-                        headers: {'Content-Type': 'application/json'}, 
-                        body: JSON.stringify({ paymentId: payment.identifier, action: 'cancel' }) 
-                    }).then(() => location.reload());
+                onIncompletePaymentFound: (p) => {
+                    fetch('/api/approve', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ paymentId: p.identifier, action: 'cancel' }) });
                 }
             }).then(auth => {
-                isAuth = true;
-                alert("Hoş geldin @" + auth.user.username);
-                window.location.reload(); // Temiz bir başlangıç için
-            }).catch(err => {
-                alert("Giriş hatası: " + err.message);
-            });
+                document.getElementById('auth-btn').style.display = 'none';
+                document.getElementById('app-content').style.display = 'block';
+                document.getElementById('welcome-msg').innerText = "Hoş geldin @" + auth.user.username;
+            }).catch(e => alert("Giriş Hatası: " + e.message));
         };
 
-        // 2. GÜVENLİ ÖDEME
-        window.startPurchase = async function(domain, amount) {
-            try {
-                await Pi.createPayment({ 
-                    amount: Number(amount), 
-                    memo: domain, 
-                    metadata: { domain } 
-                }, {
-                    onReadyForServerApproval: async (id) => {
-                        await fetch('/api/approve', { 
-                            method: 'POST', 
-                            headers: {'Content-Type': 'application/json'}, 
-                            body: JSON.stringify({ paymentId: id, action: 'approve' }) 
-                        });
-                    },
-                    onReadyForServerCompletion: async (id, txid) => {
-                        await setDoc(doc(db, "domains", domain), { sold: true, txid }, { merge: true });
-                        alert("Satın alma başarılı!");
-                    },
-                    onError: (err) => { alert("Ödeme Hatası: " + (err.message || err)); }
-                });
-            } catch (err) { alert("Sistem hatası: " + err.message); }
+        window.buy = async function(domain, amount) {
+            Pi.createPayment({ amount, memo: domain }, {
+                onReadyForServerApproval: (id) => fetch('/api/approve', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ paymentId: id, action: 'approve' }) }),
+                onReadyForServerCompletion: (id, txid) => alert("Başarılı! Tx: " + txid),
+                onError: (e) => alert("Hata: " + e.message)
+            });
         };
     </script>
-</head>
-<body>
-    <button class="pi-btn" onclick="window.loginWithPi()">Pi ile Bağlan</button>
 </body>
 </html>
