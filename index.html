@@ -277,7 +277,7 @@ import {
     limit
 } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
 const firebaseConfig = {
-    apiKey: "xxx",
+    apiKey: "s3ddhcea9xae0qieikgjy9zw9tduemnraoucjrr9iqe87pduhczmd95kq8n3aai1",
     authDomain: "web3-domain-gateway.firebaseapp.com",
     projectId: "web3-domain-gateway"
 };
@@ -551,21 +551,17 @@ window.startPurchase = async function(domain, amount) {
                 },
 
                 onReadyForServerCompletion: async function(paymentId, txid) {
+    // 1. Önce sunucuna "complete" isteği at (Yukarıdaki güncel API'ni kullan)
+    await fetch('/api/approve', {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ paymentId: paymentId, action: 'complete' }) // action 'complete' olmalı
+    });
 
-                    await setDoc(
-                        doc(db, "domains", domain),
-                        {
-                            sold: true,
-                            txid: txid,
-                            soldAt: new Date().toISOString()
-                        },
-                        { merge: true }
-                    );
-
-                    paymentInProgress = false;
-                    alert("Satın alma tamamlandı!");
-
-                },
+    // 2. Sonra veritabanına kaydet
+    await setDoc(doc(db, "domains", domain), { sold: true, txid: txid });
+    alert("Satın alma tamamlandı!");
+},
 
                 onCancel: function() {
                     paymentInProgress = false;
