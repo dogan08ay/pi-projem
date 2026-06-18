@@ -511,60 +511,52 @@ window.loginWithPi = function () {
 };
 
 window.startPurchase = async function(domain, amount) {
-
     if (!isAuth || paymentInProgress) return;
-
     paymentInProgress = true;
+    renderDomains();
 
     try {
-
-        console.log("SATIN AL TIKLANDI:", domain, amount);
-
-        await Pi.createPayment(
-            {
-                amount: Number(amount),
-                memo: "Domain: " + domain,
-                metadata: { domain }
+        await Pi.createPayment({
+            amount: Number(amount),
+            memo: "Domain: " + domain,
+            metadata: { domain }
+        }, {
+            // ÖNEMLİ: Pi'ye bu ödemeyi sunucu tarafında onayladığımızı söylemeliyiz
+            onReadyForServerApproval: async function(paymentId) {
+                console.log("Sunucuya onay gidiyor:", paymentId);
+                await fetch('/api/approve', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ paymentId: paymentId, action: 'approve' })
+                });
             },
-            {
-                onReadyForServerApproval: function(paymentId) {
-                    console.log("Approval gerekli:", paymentId);
-                },
+            onReadyForServerCompletion: async function(paymentId, txid) {
+                // Ödeme tamamlandı, şimdi sunucuya kaydettiriyoruz
+                await fetch('/api/approve', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ paymentId: paymentId, action: 'complete', txid: txid })
+                });
 
-                onReadyForServerCompletion: async function(paymentId, txid) {
+                await setDoc(doc(db, "domains", domain), {
+                    sold: true, txid: txid, soldAt: new Date().toISOString()
+                }, { merge: true });
 
-                    await setDoc(
-                        doc(db, "domains", domain),
-                        {
-                            sold: true,
-                            txid: txid,
-                            soldAt: new Date().toISOString()
-                        },
-                        { merge: true }
-                    );
-
-                    paymentInProgress = false;
-                    alert("Satın alma tamamlandı!");
-
-                },
-
-                onCancel: function() {
-                    paymentInProgress = false;
-                    alert("İşlem iptal edildi.");
-                },
-
-                onError: function(error) {
-                    paymentInProgress = false;
-                    console.error(error);
-                    alert("Ödeme hatası: " + (error?.message || error));
-                }
+                paymentInProgress = false;
+                alert("Satın alma tamamlandı!");
+                renderDomains();
+            },
+            onCancel: function() { paymentInProgress = false; renderDomains(); },
+            onError: function(error) { 
+                paymentInProgress = false; 
+                alert("Ödeme hatası: " + error.message); 
+                renderDomains(); 
             }
-        );
-
+        });
     } catch (err) {
         paymentInProgress = false;
-        console.error(err);
-        alert("Hata: " + (err?.message || err));
+        alert("Hata: " + err.message);
+        renderDomains();
     }
 };
     
