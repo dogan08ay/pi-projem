@@ -556,7 +556,9 @@ window.startPurchase = async function(domain, amount) {
               onError: function(error) { 
     paymentInProgress = false; 
     console.error("TAM HATA:", error);
-    alert("HATA MESAJI: " + JSON.stringify(error)); // Hatayı kutucuk içinde tam okuyalım
+    // Hatanın içindeki message veya error alanını kontrol et
+    const msg = error.message || error.error || JSON.stringify(error);
+    alert("HATA MESAJI: " + msg); 
     renderDomains(); 
 }
             }
