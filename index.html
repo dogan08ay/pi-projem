@@ -316,11 +316,23 @@ let isAuth = false;
 ========================= */
 window.addEventListener("load", () => {
     if (window.Pi) {
-        try {
-            Pi.init({ version: "2.0", sandbox: true });
-        } catch (e) {
-            console.log("Pi init error", e);
-        }
+        Pi.init({ version: "2.0", sandbox: true });
+        
+        // KRİTİK KISIM: Askıda ödeme varsa burada yakalayıp siliyoruz
+        Pi.authenticate(['username', 'payments'], {
+            onIncompletePaymentFound: function(payment) {
+                console.log("Askıda kalan ödeme tespit edildi:", payment.identifier);
+                
+                // Bu ödemeyi onaylamak veya iptal etmek için kendi sunucuna gönder
+                fetch('/api/approve', { 
+                    method: 'POST', 
+                    headers: {'Content-Type':'application/json'}, 
+                    body: JSON.stringify({ paymentId: payment.identifier, action: 'cancel' }) 
+                }).then(() => {
+                    alert("Eski ödeme temizlendi! Lütfen şimdi tekrar deneyin.");
+                });
+            }
+        });
     }
 });
 
