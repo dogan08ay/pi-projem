@@ -366,23 +366,22 @@ onSnapshot(collection(db, "active_users"), (snap) => {
 /* =========================
    LOGIN SYSTEM (FULL FIXED)
 ========================= */
-    // loginWithPi fonksiyonunun en başına şunu ekle:
-Pi.authenticate(['username','payments'], {
-    onIncompletePaymentFound: function(payment) {
-        // Bunu ekle ki konsolda ID'yi görelim
-        console.error("!!! KİLİTLİ ÖDEME TESPİT EDİLDİ !!!");
-        console.error("Ödeme ID:", payment.identifier);
-        
-        fetch('/api/approve', { 
-            method: 'POST', 
-            headers: {'Content-Type':'application/json'}, 
-            body: JSON.stringify({ paymentId: payment.identifier, action: 'cancel' }) 
-        }).then(res => res.json()).then(data => {
-            console.log("İptal Yanıtı:", data);
-            alert("İşlem temizlendi! Lütfen tekrar deneyin.");
-        });
-    }
-})
+   window.loginWithPi = function () {
+    // AŞAĞIDAKİ BLOKU EKLİYORUZ
+    Pi.authenticate(['username', 'payments'], {
+        onIncompletePaymentFound: function(payment) {
+            fetch('/api/approve', { 
+                method: 'POST', 
+                headers: {'Content-Type':'application/json'}, 
+                body: JSON.stringify({ paymentId: payment.identifier, action: 'cancel' }) 
+            }).then(() => {
+                alert("Ödeme temizlendi, lütfen sayfayı yenileyin.");
+                window.location.reload();
+            });
+        }
+    })
+    .then(async (auth) => {
+        // Zaten var olan kodun (renderDomains() öncesi kısım) burada devam edecek...
 window.loginWithPi = function () {
    function renderDomains() {
 
