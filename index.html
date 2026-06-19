@@ -47,6 +47,8 @@
         .input-field { background:#0f172a; border:1px solid #475569; color:#fff; padding:12px; border-radius:10px; width:100%; margin:15px 0; font-size:1.1em; text-align:center; box-sizing: border-box; }
         .footer-section { margin-top:5px; padding:10px; color:#94a3b8; font-size:0.8em; text-align:center; border-top:1px solid #334155; }
         .footer-section a { color:#38bdf8; text-decoration:none; font-weight: bold; }
+        
+        .log-item { display: flex; justify-content: space-between; background: #0f172a; padding: 8px 12px; border-radius: 8px; margin-bottom: 5px; font-size: 0.85em; }
     </style>
 </head>
 <body>
@@ -66,7 +68,7 @@
     </div>
 
     <div class="card" id="admin-panel" style="display:none; border:2px solid #6366f1;">
-        <h3 style="color:#6366f1;margin-top:0;font-size: 1em;">🛠 Admin Paneli</h3>
+        <h3 style="color:#6366f1;margin-top:0;font-size: 1em;">🛠 Admin Paneli (Günlük Tekil Girişler)</h3>
         <div id="log-list"></div>
     </div>
 
@@ -114,7 +116,7 @@
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
-import { getFirestore, doc, onSnapshot, setDoc, getDoc, collection } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
+import { getFirestore, doc, onSnapshot, setDoc, getDoc, collection, updateDoc } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
 
 const firebaseConfig = { apiKey: "s3ddhcea9xae0qieikgjy9zw9tduemnraoucjrr9iqe87pduhczmd95kq8n3aai1", authDomain: "web3-domain-gateway.firebaseapp.com", projectId: "web3-domain-gateway" };
 const app = initializeApp(firebaseConfig);
@@ -141,6 +143,12 @@ const domains = [
 async function updateActiveStatus() {
     if (currentUser) {
         await setDoc(doc(db, "active_users", currentUser), { lastSeen: Date.now() }, { merge: true });
+        const today = new Date().toISOString().split("T")[0];
+        const logRef = doc(db, "daily_users", today);
+        const logSnap = await getDoc(logRef);
+        let users = logSnap.exists() ? logSnap.data().users || {} : {};
+        users[currentUser] = Date.now();
+        await setDoc(logRef, { users }, { merge: true });
     }
 }
 
@@ -244,8 +252,12 @@ window.loginWithPi = async function() {
             const today = new Date().toISOString().split("T")[0];
             onSnapshot(doc(db, "daily_users", today), (snap) => {
                 const users = (snap.data() || {}).users || {};
+                // Sıralama: Yeniden eskiye
+                const sortedUsers = Object.keys(users).sort((a, b) => users[b] - users[a]);
                 let html = "";
-                Object.keys(users).forEach(u => { html += `<div class="log-item"><b>@${u}</b><span>${new Date(users[u]).toLocaleString("tr-TR")}</span></div>`; });
+                sortedUsers.forEach(u => { 
+                    html += `<div class="log-item"><b>@${u}</b><span>${new Date(users[u]).toLocaleString("tr-TR")}</span></div>`; 
+                });
                 document.getElementById("log-list").innerHTML = html;
             });
         }
