@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Web3 Domain Gateway - Final Polished</title>
+    <title>Web3 Domain Gateway - Final Perfect</title>
     <script src="https://sdk.minepi.com/pi-sdk.js"></script>
     <style>
         :root { --bg:#0f172a; --card:#1e293b; --accent:#6366f1; --text:#f8fafc; --sold:#ef4444; --price:#fbbf24; --success:#10b981; --info:#38bdf8; }
@@ -13,7 +13,6 @@
         .app-logo { width: 60px; height: 60px; margin-bottom: 3px; border-radius: 50%; box-shadow: 0 0 15px rgba(99, 102, 241, 0.4); border: 2px solid #6366f1; object-fit: cover; }
         .app-title { font-size: 1.3em; font-weight: 900; margin: 0 0 2px 0; background: linear-gradient(to right, #60a5fa, #a855f7); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
         
-        /* Sıkıştırılmış İstatistik Barı */
         .stats-bar { display: flex; justify-content: space-around; background: rgba(99, 102, 241, 0.1); border: 1px solid rgba(99, 102, 241, 0.3); padding: 6px; border-radius: 10px; margin-bottom: 5px; font-size: 0.7em; font-weight: bold; color: #94a3b8; }
         .stats-item span { color: var(--price); margin-left: 2px; }
 
@@ -49,7 +48,7 @@
         
         .trust-badge { background: rgba(16, 185, 129, 0.1); border: 1.5px solid #10b981; color: #10b981; padding: 10px; border-radius: 12px; font-size: 0.85em; margin: 8px 0; line-height: 1.4; max-width: 90%; }
         .modal-overlay { position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.9); display:flex; justify-content:center; align-items:center; z-index:1000; padding: 15px; }
-        .modal-content { background:var(--card); padding:20px; border-radius:20px; border:2px solid var(--accent); width:100%; max-width:380px; }
+        .modal-content { background:var(--card); padding:20px; border-radius:20px; border:2px solid var(--accent); width:100%; max-width:380px; margin: auto; }
         
         @keyframes blinker { 0% { opacity: 1.0; } 50% { opacity: 0.3; } 100% { opacity: 1.0; } }
         .blink-text { animation: blinker 1.2s linear infinite; color: #fbbf24; font-weight: 900; text-decoration: underline; }
@@ -61,7 +60,7 @@
         #sales-notification { position: fixed; top: 20px; right: -300px; background: #10b981; color: white; padding: 10px 15px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.5); z-index: 2000; transition: 0.5s ease-in-out; font-weight: bold; font-size: 0.85em; display: flex; align-items: center; gap: 8px; }
         #sales-notification.show { right: 20px; }
         
-        .toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: #1e293b; color: white; padding: 8px 18px; border-radius: 50px; border: 1px solid #6366f1; z-index: 3000; display: none; font-size: 0.8em; font-weight: bold; }
+        .toast { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); background: #6366f1; color: white; padding: 10px 20px; border-radius: 50px; z-index: 9999; display: none; font-size: 0.85em; font-weight: bold; box-shadow: 0 4px 15px rgba(0,0,0,0.6); }
 
         .my-domain-item { background: #0f172a; padding: 8px 12px; border-radius: 10px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; border: 1px solid #334155; }
         .manage-btn { background: #6366f1; color: white; border: none; padding: 4px 10px; border-radius: 6px; font-size: 0.7em; cursor: pointer; font-weight: bold; text-decoration: none; }
@@ -90,7 +89,7 @@
         
         <div class="stats-bar">
             <div class="stats-item">Satılan: <span id="total-sold">0</span></div>
-            <div class="stats-item">Hacim: <span id="total-volume">0</span> Test Pi</div>
+            <div class="stats-item">Toplam Hacim: <span id="total-volume">0</span> Test Pi</div>
             <div class="stats-item">Aktif Kullanıcı: <span id="online-count">0</span></div>
         </div>
 
@@ -136,22 +135,23 @@
         <div class="domain-grid locked-content" id="domain-list"></div>
     </div>
 
+    <!-- Güven Modal (Eski Metinler Geri Geldi) -->
     <div id="pre-buy-modal" class="modal-overlay" style="display:none;">
         <div class="modal-content" style="border-color: #fbbf24;">
             <div style="font-size: 2.5em; margin-bottom: 8px;">🛡️</div>
             <h2 style="color:#fbbf24;margin-top:0; font-size: 1.3em;">Güvenli Ödeme Onayı</h2>
-            <div style="color:#fff; font-size: 0.95em; line-height: 1.5; text-align: left; background: rgba(0,0,0,0.2); padding: 12px; border-radius: 12px;">
-                <div style="margin-bottom: 8px; border-bottom: 1px solid #475569; padding-bottom: 5px;">
-                    Bir sonraki adımda <span class="blink-text">TEST PI CÜZDANI</span> açılacaktır.
+            <div style="color:#fff; font-size: 1em; line-height: 1.6; text-align: left; background: rgba(0,0,0,0.3); padding: 15px; border-radius: 15px;">
+                <div style="margin-bottom: 10px; border-bottom: 1px solid #475569; padding-bottom: 5px;">
+                    Bir sonraki adımda gerçek cüzdan değil, <span class="blink-text">TEST PI CÜZDANI</span> açılacaktır.
                 </div>
-                <div style="margin-bottom: 4px;"><span class="item-title">İŞLEM:</span> <span class="blink-text">TEST İŞLEMİDİR</span></div>
-                <div style="margin-bottom: 4px;"><span class="item-title">ÖDEME:</span> <span class="blink-text">SADECE TEST PI</span></div>
-                <div style="margin-bottom: 4px;"><span class="item-title">BAKİYE:</span> <span style="color:#ef4444; font-weight:bold;">EKSİLMEZ</span></div>
-                <div><span class="item-title">GÜVENLİK:</span> Şifreniz paylaşılmaz.</div>
+                <div style="margin-bottom: 5px;"><span class="item-title">İŞLEM TÜRÜ:</span> <span class="item-desc">Bu bir <span class="blink-text">TEST İŞLEMİDİR</span>.</span></div>
+                <div style="margin-bottom: 5px;"><span class="item-title">ÖDEME:</span> <span class="item-desc">Sadece <span class="blink-text">TEST PI</span> kullanılır.</span></div>
+                <div style="margin-bottom: 5px;"><span class="item-title">BAKİYE:</span> <span class="item-desc">Gerçek Pi'leriniz <span style="color:#ef4444; font-weight:bold;">EKSİLMEZ</span>.</span></div>
+                <div><span class="item-title">GÜVENLİK:</span> <span class="item-desc">Şifreniz sitemizle paylaşılmaz.</span></div>
             </div>
-            <div style="display: flex; gap: 10px; margin-top: 15px;">
-                <button class="pi-btn" style="background:#475569; flex:1; animation:none; padding: 10px; margin:0; font-size: 0.9em;" onclick="document.getElementById('pre-buy-modal').style.display='none'">Vazgeç</button>
-                <button class="pi-btn" style="flex:1; animation:none; background: #10b981; padding: 10px; margin:0; font-size: 0.9em;" id="confirm-pre-buy-btn">Ödemeye Geç</button>
+            <div style="display: flex; gap: 10px; margin-top: 20px;">
+                <button class="pi-btn" style="background:#475569; flex:1; animation:none; padding: 12px; margin:0;" onclick="document.getElementById('pre-buy-modal').style.display='none'">Vazgeç</button>
+                <button class="pi-btn" style="flex:1; animation:none; background: #10b981; padding: 12px; margin:0;" id="confirm-pre-buy-btn">Ödemeye Geç</button>
             </div>
         </div>
     </div>
@@ -281,13 +281,12 @@ function renderUserPanel() {
     if (!isAuth) { userPanel.style.display = "none"; return; }
     userPanel.style.display = "block";
     
-    // Geçmişi Dinle - Daha sağlam yapı
+    // Geçmişi Dinle - Kesin çözüm
     onSnapshot(collection(db, "user_purchases", currentUser, "history"), (snap) => {
         let html = "";
         if (snap.empty) {
             html = '<p style="font-style:italic; opacity:0.7; font-size:0.85em; text-align:center;">Henüz satın aldığınız domain bulunmuyor.</p>';
         } else {
-            // Tarihe göre sırala (en yeni en üstte)
             const sortedDocs = snap.docs.sort((a, b) => b.data().at - a.data().at);
             sortedDocs.forEach(doc => {
                 const data = doc.data();
@@ -386,7 +385,6 @@ window.startPurchase = async function(domain, amount) {
             onReadyForServerCompletion: async (paymentId, txid) => {
                 await callServer(paymentId, 'complete', txid, { username: currentUser, domainName: domain, amount: amount });
                 
-                // Kayıt işlemlerini garantile
                 const at = Date.now();
                 const purchaseData = { domain: domain, price: amount, txid: txid, at: at, user: currentUser };
                 
