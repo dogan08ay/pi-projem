@@ -3,73 +3,62 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Web3 Domain Gateway - Final Masterpiece</title>
+    <title>Web3 Domain Gateway - Final Point</title>
     <script src="https://sdk.minepi.com/pi-sdk.js"></script>
     <style>
         :root { --bg:#0f172a; --card:#1e293b; --accent:#6366f1; --text:#f8fafc; --sold:#ef4444; --price:#fbbf24; --success:#10b981; --info:#38bdf8; }
         body { font-family:'Segoe UI',sans-serif; background:var(--bg); color:var(--text); margin:0; padding:5px; display:flex; justify-content:center; min-height: 100vh; }
         .container { max-width:600px; width:100%; text-align:center; display: flex; flex-direction: column; }
-        .card { background:var(--card); padding:12px; border-radius:18px; box-shadow:0 8px 12px -3px rgba(0,0,0,0.3); margin-bottom:8px; position: relative; overflow: hidden; }
-        .app-logo { width: 60px; height: 60px; margin-bottom: 3px; border-radius: 50%; box-shadow: 0 0 15px rgba(99, 102, 241, 0.4); border: 2px solid #6366f1; object-fit: cover; }
-        .app-title { font-size: 1.3em; font-weight: 900; margin: 0 0 2px 0; background: linear-gradient(to right, #60a5fa, #a855f7); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .card { background:var(--card); padding:10px; border-radius:18px; box-shadow:0 8px 12px -3px rgba(0,0,0,0.3); margin-bottom:8px; position: relative; overflow: hidden; }
+        .app-logo { width: 55px; height: 55px; margin-bottom: 2px; border-radius: 50%; box-shadow: 0 0 10px rgba(99, 102, 241, 0.4); border: 2px solid #6366f1; object-fit: cover; }
+        .app-title { font-size: 1.2em; font-weight: 900; margin: 0 0 2px 0; background: linear-gradient(to right, #60a5fa, #a855f7); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
         
-        .stats-bar { display: flex; justify-content: space-around; background: rgba(99, 102, 241, 0.1); border: 1px solid rgba(99, 102, 241, 0.3); padding: 6px; border-radius: 10px; margin-bottom: 5px; font-size: 0.7em; font-weight: bold; color: #94a3b8; }
+        .stats-bar { display: flex; justify-content: space-around; background: rgba(99, 102, 241, 0.1); border: 1px solid rgba(99, 102, 241, 0.3); padding: 5px; border-radius: 10px; margin-bottom: 5px; font-size: 0.65em; font-weight: bold; color: #94a3b8; }
         .stats-item span { color: var(--price); margin-left: 2px; }
 
-        .domain-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:8px; position: relative; }
-        .domain-card { background:#334155; padding:10px; border-radius:10px; border:1px solid #475569; display:flex; flex-direction:column; align-items:center; }
-        .domain-img { width:100%; height:70px; margin-bottom:5px; border-radius:8px; object-fit:contain; background-color:#334155; }
-        .domain-name { font-size: 0.9em; font-weight: bold; margin-bottom: 2px; }
-        .domain-price { color: var(--price); font-size: 1em; font-weight: 800; margin: 2px 0; }
-        .btn-buy { background: var(--accent); color: white; border: none; padding: 5px 8px; border-radius: 6px; cursor: pointer; margin-top: 5px; font-weight: bold; width: 100%; font-size: 0.75em; }
-        .btn-sold { background: rgba(239, 68, 68, 0.1); color: var(--sold); border: 1.5px solid var(--sold); padding: 5px 8px; border-radius: 6px; margin-top: 5px; font-weight: bold; width: 100%; font-size: 0.7em; }
+        .domain-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:5px; position: relative; }
+        .domain-card { background:#334155; padding:8px; border-radius:10px; border:1px solid #475569; display:flex; flex-direction:column; align-items:center; }
+        .domain-img { width:100%; height:60px; margin-bottom:4px; border-radius:6px; object-fit:contain; background-color:#334155; }
+        .domain-name { font-size: 0.85em; font-weight: bold; margin-bottom: 2px; }
+        .domain-price { color: var(--price); font-size: 0.95em; font-weight: 800; margin: 1px 0; }
+        .btn-buy { background: var(--accent); color: white; border: none; padding: 5px 8px; border-radius: 6px; cursor: pointer; margin-top: 4px; font-weight: bold; width: 100%; font-size: 0.7em; }
+        .btn-sold { background: rgba(239, 68, 68, 0.1); color: var(--sold); border: 1.5px solid var(--sold); padding: 5px 8px; border-radius: 6px; margin-top: 4px; font-weight: bold; width: 100%; font-size: 0.7em; }
         
-        .pi-btn { 
-            background: linear-gradient(135deg, #0052FF 0%, #3b82f6 100%); 
-            color:#ffffff; padding:12px 35px; border-radius:50px; font-weight:800; font-size:1em; border:none; cursor:pointer; 
-            box-shadow: 0 0 0 0 rgba(0, 82, 255, 0.7);
-            animation: pulse-blue 2s infinite;
-            transition: 0.3s;
-            margin: 10px 0;
-        }
-        @keyframes pulse-blue {
-            0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(0, 82, 255, 0.7); }
-            70% { transform: scale(1); box-shadow: 0 0 0 15px rgba(0, 82, 255, 0); }
-            100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(0, 82, 255, 0); }
-        }
+        .pi-btn { background: linear-gradient(135deg, #0052FF 0%, #3b82f6 100%); color:#ffffff; padding:10px 30px; border-radius:50px; font-weight:800; font-size:0.95em; border:none; cursor:pointer; animation: pulse-blue 2s infinite; transition: 0.3s; margin: 10px 0; }
+        @keyframes pulse-blue { 0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(0, 82, 255, 0.7); } 70% { transform: scale(1); box-shadow: 0 0 0 10px rgba(0, 82, 255, 0); } 100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(0, 82, 255, 0); } }
 
-        .section-title-box { background:linear-gradient(135deg,#fef3c7 0%,#fde68a 100%); color:#1e293b; padding:6px 15px; border-radius:10px; border:2px solid #f59e0b; font-size:0.9em; font-weight:800; display:inline-block; margin-bottom:5px; }
-        .lock-title-box { background:linear-gradient(135deg,#fef3c7 0%,#fde68a 100%); color:#1e293b; padding:6px 12px; border-radius:10px; border:2px solid #f59e0b; font-size:1em; font-weight:900; margin-bottom:8px; display:inline-block; }
+        .section-title-box { background:linear-gradient(135deg,#fef3c7 0%,#fde68a 100%); color:#1e293b; padding:5px 12px; border-radius:10px; border:2px solid #f59e0b; font-size:0.85em; font-weight:800; display:inline-block; margin-bottom:5px; }
+        .lock-title-box { background:linear-gradient(135deg,#fef3c7 0%,#fde68a 100%); color:#1e293b; padding:5px 12px; border-radius:10px; border:2px solid #f59e0b; font-size:0.95em; font-weight:900; margin-bottom:8px; display:inline-block; }
 
         .locked-content { filter: blur(12px); opacity: 0.25; pointer-events: none; }
         .premium-lock-overlay { position: absolute; top: 0; left: 0; right: 0; bottom: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; background: rgba(15, 23, 42, 0.7); backdrop-filter: blur(1px); z-index: 10; padding: 10px; }
-        .lock-icon { font-size: 2.5em; margin-bottom: 2px; animation: pulse 2s infinite; }
+        .lock-icon { font-size: 2em; margin-bottom: 2px; animation: pulse 2s infinite; }
         @keyframes pulse { 0% { transform: scale(1); opacity: 0.8; } 50% { transform: scale(1.1); opacity: 1; } 100% { transform: scale(1); opacity: 0.8; } }
         
-        .trust-badge { background: rgba(16, 185, 129, 0.1); border: 1.5px solid #10b981; color: #10b981; padding: 12px; border-radius: 12px; font-size: 0.85em; margin: 8px 0; line-height: 1.5; max-width: 95%; width: 100%; box-sizing: border-box; }
+        .trust-badge { background: rgba(16, 185, 129, 0.1); border: 1.5px solid #10b981; color: #10b981; padding: 10px; border-radius: 12px; font-size: 0.85em; margin: 5px 0; line-height: 1.4; width: 95%; box-sizing: border-box; }
         
-        .modal-overlay { position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.9); display:flex; justify-content:center; align-items:center; z-index:9999; padding: 15px; }
-        .modal-content { background:var(--card); padding:20px; border-radius:20px; border:2px solid var(--accent); width:90%; max-width:380px; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center; }
+        .modal-overlay { position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.9); display:flex; justify-content:center; align-items:center; z-index:9999; }
+        .modal-content { background:var(--card); padding:15px; border-radius:20px; border:2px solid var(--accent); width:85%; max-width:360px; max-height: 90vh; overflow-y: auto; position: relative; }
         
         @keyframes blinker { 0% { opacity: 1.0; } 50% { opacity: 0.3; } 100% { opacity: 1.0; } }
         .blink-text { animation: blinker 1.2s linear infinite; color: #fbbf24; font-weight: 900; text-decoration: underline; }
-        .warning-red { color: #ef4444; font-weight: 900; text-decoration: underline; font-size: 1.1em; display: block; margin-top: 3px; }
+        .warning-red { color: #ef4444; font-weight: 900; text-decoration: underline; font-size: 1em; display: block; margin-top: 3px; }
         
         .item-title { color: #60a5fa; font-weight: 800; margin-right: 5px; }
         .item-desc { color: #f8fafc; font-weight: 500; }
         
-        #sales-notification { position: fixed; top: 20px; right: -300px; background: #10b981; color: white; padding: 10px 15px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.5); z-index: 2000; transition: 0.5s ease-in-out; font-weight: bold; font-size: 0.85em; display: flex; align-items: center; gap: 8px; }
+        #sales-notification { position: fixed; top: 20px; right: -300px; background: #10b981; color: white; padding: 8px 12px; border-radius: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.5); z-index: 2000; transition: 0.5s ease-in-out; font-weight: bold; font-size: 0.8em; display: flex; align-items: center; gap: 8px; }
         #sales-notification.show { right: 20px; }
         
-        .toast { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); background: #6366f1; color: white; padding: 10px 20px; border-radius: 50px; z-index: 99999; display: none; font-size: 0.85em; font-weight: bold; box-shadow: 0 4px 15px rgba(0,0,0,0.6); }
+        .toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: #6366f1; color: white; padding: 8px 18px; border-radius: 50px; z-index: 99999; display: none; font-size: 0.8em; font-weight: bold; }
 
         .my-domain-item { background: #0f172a; padding: 8px 12px; border-radius: 10px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; border: 1px solid #334155; }
         .manage-btn { background: #6366f1; color: white; border: none; padding: 4px 10px; border-radius: 6px; font-size: 0.7em; cursor: pointer; font-weight: bold; text-decoration: none; }
         .user-info-note { background: rgba(99, 102, 241, 0.1); border: 1px dashed #6366f1; color: #94a3b8; padding: 10px; border-radius: 10px; font-size: 0.75em; line-height: 1.4; margin-bottom: 10px; text-align: left; }
 
-        .footer-section { margin-top:10px; padding:12px; color:#f8fafc; font-size:0.8em; text-align:center; border-top:1px solid #334155; background: rgba(15, 23, 42, 0.6); border-radius: 15px 15px 0 0; }
+        .footer-section { margin-top:10px; padding:10px; color:#f8fafc; font-size:0.75em; text-align:center; border-top:1px solid #334155; background: rgba(15, 23, 42, 0.6); border-radius: 15px 15px 0 0; }
         .footer-section a { color:#38bdf8; text-decoration:none; font-weight: 800; border-bottom: 1px solid #38bdf8; }
-        .footer-section div { margin-bottom: 6px; }
+        .footer-section div { margin-bottom: 5px; }
 
         .log-item { display: flex; justify-content: space-between; background: #0f172a; padding: 8px 12px; border-radius: 8px; margin-bottom: 5px; font-size: 0.8em; }
         .admin-date-picker { background: #0f172a; color: #fff; border: 1.5px solid #6366f1; padding: 6px; border-radius: 8px; font-size: 0.85em; margin-bottom: 10px; width: 100%; box-sizing: border-box; outline: none; }
@@ -100,22 +89,22 @@
     </div>
 
     <div class="card" id="user-panel" style="display:none; border:1.5px solid #10b981;">
-        <h3 style="color:#10b981;margin:0 0 8px 0; font-size: 1em;">👤 Satın Alma Geçmişim</h3>
+        <h3 style="color:#10b981;margin:0 0 8px 0; font-size: 0.95em;">👤 Satın Alma Geçmişim</h3>
         <div class="user-info-note">
-            ℹ️ <b>Bilgi:</b> Bu uygulama Test-Pi ağında deneme amaçlıdır. Satın aldığınız domainler, diğer kullanıcıların da test yapabilmesi için markette tekrar görünebilir. Kayıtlarınız <b style="color:#6366f1;">kalıcıdır</b>.
+            ℹ️ <b>Bilgi:</b> Bu uygulama Test-Pi ağında deneme amaçlıdır. Satın aldığınız domainler, diğer kullanıcıların da test yapabilmesi için markette tekrar görünebilir.
         </div>
         <div id="my-domains-list" style="text-align: left;"></div>
     </div>
 
     <div class="card" id="admin-panel" style="display:none; border:2px solid #6366f1;">
-        <h3 style="color:#6366f1;margin-top:0;font-size: 1em;">🛠 Admin Paneli</h3>
+        <h3 style="color:#6366f1;margin-top:0;font-size: 0.95em;">🛠 Admin Paneli</h3>
         <div style="margin-bottom: 8px; text-align: left;">
             <input type="date" id="admin-date-input" class="admin-date-picker">
         </div>
         <div id="log-list"></div>
     </div>
 
-    <div class="card" style="position: relative; min-height: 380px; padding: 10px; margin-bottom: 5px;">
+    <div class="card" style="position: relative; min-height: 350px; padding: 10px; margin-bottom: 5px;">
         <div id="market-title" class="section-title-box">Satın Alabileceğiniz Domainler</div>
         
         <div id="premium-lock" class="premium-lock-overlay">
@@ -123,11 +112,11 @@
             <div class="lock-title-box">Ayrıcalıklı Web3 Dünyasına Katılın</div>
             
             <div class="trust-badge">
-                <div style="margin-bottom: 5px;">🛡️ <b>Güvenli Bağlantı:</b> Sistemimiz şu anda <br> <span class="blink-text" style="font-size: 1.2em;">TEST-PI</span> <br> ağında çalışmaktadır. <br> <span class="blink-text" style="font-size: 0.9em;">GERÇEK Pİ BAKİYENİZ</span> <br> <span class="warning-red">KESİNLİKLE KULLANILMAZ!</span></div>
+                <div style="margin-bottom: 5px;">🛡️ <b>Güvenli Bağlantı:</b> Sistemimiz şu anda <br> <span class="blink-text" style="font-size: 1.1em;">TEST-PI</span> <br> ağında çalışmaktadır. <br> <span class="blink-text" style="font-size: 0.9em;">GERÇEK Pİ BAKİYENİZ</span> <br> <span class="warning-red">KESİNLİKLE KULLANILMAZ!</span></div>
             </div>
 
-            <p style="font-size: 0.85em; color: #e2e8f0; font-weight: 600; line-height: 1.4; margin: 5px 0; max-width: 85%;">Web3 domain sahibi olmak ve güvenli bağlantı kurmak için;</p>
-            <div style="color: #fbbf24; font-weight: 700; margin-bottom: 5px; font-size: 0.9em;">👇 Aşağıdaki "Pi ile Bağlan" butonunu kullanın.</div>
+            <p style="font-size: 0.8em; color: #e2e8f0; font-weight: 600; line-height: 1.4; margin: 5px 0; max-width: 85%;">Web3 domain sahibi olmak ve güvenli bağlantı kurmak için;</p>
+            <div style="color: #fbbf24; font-weight: 700; margin-bottom: 5px; font-size: 0.85em;">👇 Aşağıdaki "Pi ile Bağlan" butonunu kullanın.</div>
             <button class="pi-btn" id="auth-btn" onclick="window.loginWithPi()">Pi ile Bağlan</button>
         </div>
 
@@ -136,39 +125,39 @@
 
     <div id="pre-buy-modal" class="modal-overlay" style="display:none;">
         <div class="modal-content" style="border-color: #fbbf24;">
-            <div style="font-size: 2.5em; margin-bottom: 8px;">🛡️</div>
-            <h2 style="color:#fbbf24;margin-top:0; font-size: 1.3em;">Güvenli Ödeme Onayı</h2>
-            <div style="color:#fff; font-size: 1em; line-height: 1.6; text-align: left; background: rgba(0,0,0,0.3); padding: 15px; border-radius: 15px;">
-                <div style="margin-bottom: 10px; border-bottom: 1px solid #475569; padding-bottom: 5px; text-align: center;">
+            <div style="font-size: 2em; margin-bottom: 5px;">🛡️</div>
+            <h2 style="color:#fbbf24;margin-top:0; font-size: 1.1em;">Güvenli Ödeme Onayı</h2>
+            <div style="color:#fff; font-size: 0.9em; line-height: 1.5; text-align: left; background: rgba(0,0,0,0.3); padding: 12px; border-radius: 12px;">
+                <div style="margin-bottom: 8px; border-bottom: 1px solid #475569; padding-bottom: 5px; text-align: center;">
                     Bir sonraki adımda gerçek cüzdan değil, <span class="blink-text">TEST PI CÜZDANI</span> açılacaktır.
                 </div>
-                <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
                     <span class="item-title">İŞLEM TÜRÜ:</span> <span class="blink-text">TEST İŞLEMİDİR</span>
                 </div>
-                <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
                     <span class="item-title">ÖDEME:</span> <span class="blink-text">SADECE TEST PI</span>
                 </div>
-                <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
                     <span class="item-title">BAKİYE:</span> <span style="color:#ef4444; font-weight:bold;">EKSİLMEZ</span>
                 </div>
                 <div style="display: flex; justify-content: space-between;">
                     <span class="item-title">GÜVENLİK:</span> <span class="item-desc">Şifreniz paylaşılmaz.</span>
                 </div>
             </div>
-            <div style="display: flex; gap: 10px; margin-top: 20px;">
-                <button class="pi-btn" style="background:#475569; flex:1; animation:none; padding: 12px; margin:0;" onclick="document.getElementById('pre-buy-modal').style.display='none'">Vazgeç</button>
-                <button class="pi-btn" style="flex:1; animation:none; background: #10b981; padding: 12px; margin:0;" id="confirm-pre-buy-btn">Ödemeye Geç</button>
+            <div style="display: flex; gap: 10px; margin-top: 15px;">
+                <button class="pi-btn" style="background:#475569; flex:1; animation:none; padding: 10px; margin:0; font-size: 0.85em;" onclick="document.getElementById('pre-buy-modal').style.display='none'">Vazgeç</button>
+                <button class="pi-btn" style="flex:1; animation:none; background: #10b981; padding: 10px; margin:0; font-size: 0.85em;" id="confirm-pre-buy-btn">Ödemeye Geç</button>
             </div>
         </div>
     </div>
 
     <div id="success-modal" class="modal-overlay" style="display:none;">
         <div class="modal-content" style="border-color: #10b981;">
-            <h2 style="color:#10b981;margin-top:0;">✅ İşlem Başarılı!</h2>
-            <p style="color:#fff; font-size: 1.1em; line-height: 1.5;">Ödemeniz başarılı oldu, satın almanız gerçekleşti. <br><br> <b>Hayırlı olmasını diliyoruz.</b></p>
-            <div style="display: flex; flex-direction: column; gap: 10px; margin-top: 15px;">
-                <button class="pi-btn" style="background:#0088cc; animation:none; padding: 12px; margin:0;" id="share-tg-btn">🚀 Telegram'da Paylaş</button>
-                <button class="pi-btn" style="background:#10b981; animation:none; padding: 12px; margin:0;" onclick="document.getElementById('success-modal').style.display='none'">Harika!</button>
+            <h2 style="color:#10b981;margin-top:0; font-size: 1.2em;">✅ İşlem Başarılı!</h2>
+            <p style="color:#fff; font-size: 1em; line-height: 1.4;">Ödemeniz başarılı oldu, satın almanız gerçekleşti. <br><br> <b>Hayırlı olmasını diliyoruz.</b></p>
+            <div style="display: flex; flex-direction: column; gap: 8px; margin-top: 10px;">
+                <button class="pi-btn" style="background:#0088cc; animation:none; padding: 10px; margin:0; font-size: 0.85em;" id="share-tg-btn">🚀 Telegram'da Paylaş</button>
+                <button class="pi-btn" style="background:#10b981; animation:none; padding: 10px; margin:0; font-size: 0.85em;" onclick="document.getElementById('success-modal').style.display='none'">Harika!</button>
             </div>
         </div>
     </div>
@@ -176,7 +165,7 @@
     <div class="footer-section">
         <div>Sorularınız için: <a href="mailto:doganay08@hotmail.com">📩 doganay08@hotmail.com</a></div>
         <div>Resmi Kanalımız: <a href="https://t.me/+5jZi9vrcNMM2NGVk" target="_blank">💬 Telegram Grubumuz</a></div>
-        <div style="margin-top:8px; font-size: 0.85em;"><a href="privacy.html">Gizlilik Politikası</a> | <a href="terms.html">Kullanım Şartları</a></div>
+        <div style="margin-top:5px; font-size: 0.8em;"><a href="privacy.html">Gizlilik Politikası</a> | <a href="terms.html">Kullanım Şartları</a></div>
     </div>
 </div>
 
@@ -257,8 +246,27 @@ function renderDomains() {
     lockOverlay.style.display = "none";
     list.classList.remove("locked-content");
     list.innerHTML = '';
+    
+    // Satın Alma Geçmişini Buradan Yönetiyoruz (Senkronize)
+    const myList = document.getElementById("my-domains-list");
+    let myHtml = "";
+
     domains.forEach(d => {
         const data = domainData[d.name] || { sold:false, price:d.price };
+        
+        // Eğer domain satılmışsa ve alan kişi "Ben" isem listeme ekle
+        if (data.sold && data.buyer === currentUser) {
+            myHtml += `
+                <div class="my-domain-item">
+                    <div>
+                        <div style="font-weight:bold; font-size:0.9em;">${d.name}</div>
+                        <div style="font-size:0.65em; color:#94a3b8;">${data.price} Pi - Satın Alındı</div>
+                    </div>
+                    <a href="https://minepi.com/blockexplorer/tx/${data.txid}" target="_blank" class="manage-btn" style="background:#10b981;">Doğrula</a>
+                </div>
+            `;
+        }
+
         const card = document.createElement('div');
         card.className = 'domain-card';
         card.innerHTML = `<img src="${d.img}" class="domain-img" onerror="this.src='data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMDAiIGhlaWdodD0iMTAwIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjNDc1NTY5Ii8+PC9zdmc+'"><div class="domain-name">${d.name}</div><div class="domain-price">${data.price || d.price} Pi</div>`;
@@ -270,42 +278,19 @@ function renderDomains() {
         } else {
             const buyBtn = document.createElement('button');
             buyBtn.className = 'btn-buy';
-            buyBtn.innerText = paymentInProgress ? 'Bekleniyor...' : 'Satın Al';
+            buyBtn.innerText = paymentInProgress ? '...' : 'Satın Al';
             buyBtn.disabled = paymentInProgress;
             buyBtn.onclick = () => window.showPreBuyModal(d.name, data.price || d.price);
             card.appendChild(buyBtn);
         }
         list.appendChild(card);
     });
-}
 
-function renderUserPanel() {
-    const myList = document.getElementById("my-domains-list");
-    const userPanel = document.getElementById("user-panel");
-    if (!isAuth) { userPanel.style.display = "none"; return; }
-    userPanel.style.display = "block";
-    
-    onSnapshot(collection(db, "user_purchases", currentUser, "history"), (snap) => {
-        let html = "";
-        if (snap.empty) {
-            html = '<p style="font-style:italic; opacity:0.7; font-size:0.85em; text-align:center;">Henüz satın aldığınız domain bulunmuyor.</p>';
-        } else {
-            const sortedDocs = snap.docs.sort((a, b) => b.data().at - a.data().at);
-            sortedDocs.forEach(doc => {
-                const data = doc.data();
-                html += `
-                    <div class="my-domain-item">
-                        <div>
-                            <div style="font-weight:bold; font-size:0.95em;">${data.domain}</div>
-                            <div style="font-size:0.7em; color:#94a3b8;">${new Date(data.at).toLocaleDateString("tr-TR")} - ${data.price} Pi</div>
-                        </div>
-                        <a href="https://minepi.com/blockexplorer/tx/${data.txid}" target="_blank" class="manage-btn" style="background:#10b981;">Doğrula</a>
-                    </div>
-                `;
-            });
-        }
-        myList.innerHTML = html;
-    });
+    if (myHtml === "") {
+        myList.innerHTML = '<p style="font-style:italic; opacity:0.7; font-size:0.8em; text-align:center;">Satın aldığınız domain bulunmuyor.</p>';
+    } else {
+        myList.innerHTML = myHtml;
+    }
 }
 
 function listenToLogs(date) {
@@ -314,7 +299,7 @@ function listenToLogs(date) {
         const users = (snap.data() || {}).users || {};
         const sortedUsers = Object.keys(users).sort((a, b) => users[b] - users[a]);
         let html = "";
-        if (sortedUsers.length === 0) { html = '<p style="font-style:italic; opacity:0.6; font-size:0.8em;">Bu tarihte giriş kaydı bulunamadı.</p>'; }
+        if (sortedUsers.length === 0) { html = '<p style="font-style:italic; opacity:0.6; font-size:0.8em;">Kayıt bulunamadı.</p>'; }
         else { sortedUsers.forEach(u => { html += `<div class="log-item"><b>@${u}</b><span>${new Date(users[u]).toLocaleString("tr-TR")}</span></div>`; }); }
         document.getElementById("log-list").innerHTML = html;
     });
@@ -364,10 +349,10 @@ window.loginWithPi = async function() {
         isAuth = true;
         document.getElementById("user-status").innerText = "Bağlı: @" + currentUser;
         document.getElementById("user-status-box").style.display = "block";
+        document.getElementById("user-panel").style.display = "block";
         showToast("Giriş Başarılı!");
         updateActiveStatus();
         renderDomains();
-        renderUserPanel();
         if (currentUser === "doganay0808") {
             document.getElementById("admin-panel").style.display = "block";
             const today = new Date().toISOString().split("T")[0];
@@ -389,12 +374,9 @@ window.startPurchase = async function(domain, amount) {
                 await callServer(paymentId, 'complete', txid, { username: currentUser, domainName: domain, amount: amount });
                 
                 const at = Date.now();
-                const purchaseData = { domain: domain, price: amount, txid: txid, at: at, user: currentUser };
-                
                 try {
                     await setDoc(doc(db, "domains", domain), { sold: true, price: amount, txid: txid, buyer: currentUser, soldAt: at });
-                    await setDoc(doc(db, "user_purchases", currentUser, "history", domain), purchaseData);
-                    await setDoc(doc(db, "global_sales", txid), purchaseData);
+                    await setDoc(doc(db, "global_sales", txid), { user: currentUser, domain: domain, price: amount, at: at });
                 } catch (dbErr) { console.error("DB Hatası:", dbErr); }
                 
                 paymentInProgress = false;
