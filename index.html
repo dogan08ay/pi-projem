@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Web3 Domain Gateway - Final Master Fix</title>
+    <title>Web3 Domain Gateway - Final Master</title>
     <script src="https://sdk.minepi.com/pi-sdk.js"></script>
     <style>
         :root { --bg:#0f172a; --card:#1e293b; --accent:#6366f1; --text:#f8fafc; --sold:#ef4444; --price:#fbbf24; --success:#10b981; --info:#38bdf8; }
@@ -379,8 +379,7 @@ window.addEventListener("load", () => {
 });
 
 domains.forEach(d => {
-    // HATA DÜZELTİLDİ: doc(db, "domains", d.name) şeklinde tekil çağrı yapıldı.
-    onSnapshot(doc(db, "domains", d.name), (snap) => {
+    onSnapshot(doc(doc(db, "domains", d.name)), (snap) => {
         domainData[d.name] = snap.exists() ? snap.data() : { sold:false, price:d.price };
         renderDomains();
     });
