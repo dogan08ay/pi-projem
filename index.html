@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Web3 Domain Gateway - Ultimate Fix</title>
+    <title>Web3 Domain Gateway - Final Masterpiece</title>
     <script src="https://sdk.minepi.com/pi-sdk.js"></script>
     <style>
         :root { --bg:#0f172a; --card:#1e293b; --accent:#6366f1; --text:#f8fafc; --sold:#ef4444; --price:#fbbf24; --success:#10b981; --info:#38bdf8; }
@@ -46,8 +46,7 @@
         .lock-icon { font-size: 2.5em; margin-bottom: 2px; animation: pulse 2s infinite; }
         @keyframes pulse { 0% { transform: scale(1); opacity: 0.8; } 50% { transform: scale(1.1); opacity: 1; } 100% { transform: scale(1); opacity: 0.8; } }
         
-        /* Güven Paneli Düzenlemesi */
-        .trust-badge { background: rgba(16, 185, 129, 0.1); border: 1.5px solid #10b981; color: #10b981; padding: 12px; border-radius: 12px; font-size: 0.9em; margin: 8px 0; line-height: 1.5; max-width: 95%; width: 100%; box-sizing: border-box; }
+        .trust-badge { background: rgba(16, 185, 129, 0.1); border: 1.5px solid #10b981; color: #10b981; padding: 12px; border-radius: 12px; font-size: 0.85em; margin: 8px 0; line-height: 1.5; max-width: 95%; width: 100%; box-sizing: border-box; }
         
         .modal-overlay { position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.9); display:flex; justify-content:center; align-items:center; z-index:9999; padding: 15px; }
         .modal-content { background:var(--card); padding:20px; border-radius:20px; border:2px solid var(--accent); width:90%; max-width:380px; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center; }
@@ -90,7 +89,7 @@
         <h1 class="app-title">Web3 Domain Gateway</h1>
         
         <div class="stats-bar">
-            <div class="stats-item">Satılan: <span id="total-sold">0</span></div>
+            <div class="stats-item">Satılan Domain: <span id="total-sold">0</span></div>
             <div class="stats-item">Toplam Hacim: <span id="total-volume">0</span> Test Pi</div>
             <div class="stats-item">Aktif Kullanıcı: <span id="online-count">0</span></div>
         </div>
@@ -123,12 +122,8 @@
             <div class="lock-icon">💎</div>
             <div class="lock-title-box">Ayrıcalıklı Web3 Dünyasına Katılın</div>
             
-            <!-- İstediğiniz Yeni Satır Düzeni -->
             <div class="trust-badge">
-                <div style="font-weight: 800; border-bottom: 1px solid rgba(16,185,129,0.3); padding-bottom: 5px; margin-bottom: 5px;">🛡️ GÜVENLİ BAĞLANTI</div>
-                <div class="blink-text" style="font-size: 1.2em;">TEST-PI</div>
-                <div class="blink-text" style="font-size: 0.9em; margin-top: 2px;">GERÇEK Pİ BAKİYENİZ</div>
-                <div class="warning-red">KESİNLİKLE KULLANILMAZ!</div>
+                <div style="margin-bottom: 5px;">🛡️ <b>Güvenli Bağlantı:</b> Sistemimiz şu anda <br> <span class="blink-text" style="font-size: 1.2em;">TEST-PI</span> <br> ağında çalışmaktadır. <br> <span class="blink-text" style="font-size: 0.9em;">GERÇEK Pİ BAKİYENİZ</span> <br> <span class="warning-red">KESİNLİKLE KULLANILMAZ!</span></div>
             </div>
 
             <p style="font-size: 0.85em; color: #e2e8f0; font-weight: 600; line-height: 1.4; margin: 5px 0; max-width: 85%;">Web3 domain sahibi olmak ve güvenli bağlantı kurmak için;</p>
@@ -139,7 +134,6 @@
         <div class="domain-grid locked-content" id="domain-list"></div>
     </div>
 
-    <!-- Güven Modal (Eski Metinler ve Düzenli Satır/Sütun) -->
     <div id="pre-buy-modal" class="modal-overlay" style="display:none;">
         <div class="modal-content" style="border-color: #fbbf24;">
             <div style="font-size: 2.5em; margin-bottom: 8px;">🛡️</div>
@@ -168,7 +162,6 @@
         </div>
     </div>
 
-    <!-- Başarı Modalı (Tam Ortalanmış) -->
     <div id="success-modal" class="modal-overlay" style="display:none;">
         <div class="modal-content" style="border-color: #10b981;">
             <h2 style="color:#10b981;margin-top:0;">✅ İşlem Başarılı!</h2>
@@ -292,13 +285,13 @@ function renderUserPanel() {
     if (!isAuth) { userPanel.style.display = "none"; return; }
     userPanel.style.display = "block";
     
-    // Geçmişi Dinle - En Basit ve Kesin Yol
     onSnapshot(collection(db, "user_purchases", currentUser, "history"), (snap) => {
         let html = "";
         if (snap.empty) {
             html = '<p style="font-style:italic; opacity:0.7; font-size:0.85em; text-align:center;">Henüz satın aldığınız domain bulunmuyor.</p>';
         } else {
-            snap.forEach(doc => {
+            const sortedDocs = snap.docs.sort((a, b) => b.data().at - a.data().at);
+            sortedDocs.forEach(doc => {
                 const data = doc.data();
                 html += `
                     <div class="my-domain-item">
