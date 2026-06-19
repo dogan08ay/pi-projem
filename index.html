@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Web3 Domain Gateway - Final Master</title>
+    <title>Web3 Domain Gateway - Final Refined</title>
     <script src="https://sdk.minepi.com/pi-sdk.js"></script>
     <style>
         :root { --bg:#0f172a; --card:#1e293b; --accent:#6366f1; --text:#f8fafc; --sold:#ef4444; --price:#fbbf24; --success:#10b981; --info:#38bdf8; }
@@ -62,9 +62,6 @@
 
         .log-item { display: flex; justify-content: space-between; background: #0f172a; padding: 8px 12px; border-radius: 8px; margin-bottom: 5px; font-size: 0.8em; }
         .admin-date-picker { background: #0f172a; color: #fff; border: 1.5px solid #6366f1; padding: 6px; border-radius: 8px; font-size: 0.85em; margin-bottom: 10px; width: 100%; box-sizing: border-box; outline: none; }
-        #log-list { max-height: 250px; overflow-y: auto; padding-right: 5px; }
-        #log-list::-webkit-scrollbar { width: 5px; }
-        #log-list::-webkit-scrollbar-thumb { background: #6366f1; border-radius: 10px; }
     </style>
 </head>
 <body>
@@ -203,6 +200,7 @@ function showSaleNotification(user, domain) {
     setTimeout(() => { notify.classList.remove("show"); }, 5000);
 }
 
+// Son Satış Bildirimi Dinleyicisi
 onSnapshot(query(collection(db, "global_sales"), orderBy("at", "desc"), limit(1)), (snap) => {
     snap.docChanges().forEach(change => {
         if (change.type === "added") {
@@ -236,10 +234,10 @@ function renderDomains() {
     const myList = document.getElementById("my-domains-list");
     let myHtml = "";
 
+    // Dinamik Liste: Sadece Markette Satıldı Görünen ve Sizin Aldığınız Domainler
     domains.forEach(d => {
         const data = domainData[d.name] || { sold:false, price:d.price };
         
-        // Dinamik Liste: Markette Satıldı Görünen ve Sizin Aldığınız Domainler
         if (data.sold && data.buyer === currentUser) {
             myHtml += `
                 <div class="my-domain-item">
@@ -356,7 +354,9 @@ window.startPurchase = async function(domain, amount) {
                 
                 const at = Date.now();
                 try {
+                    // Kalıcı Kayıt (Sayaçlar ve Bildirimler İçin)
                     await setDoc(doc(db, "global_sales", txid || `sale_${at}`), { user: currentUser, domain: domain, price: amount, at: at });
+                    // Market Durumu (Dinamik Liste İçin)
                     await setDoc(doc(db, "domains", domain), { sold: true, price: amount, txid: txid, buyer: currentUser, soldAt: at });
                 } catch (dbErr) { console.error("DB Hatası:", dbErr); }
                 
@@ -379,7 +379,7 @@ window.addEventListener("load", () => {
 });
 
 domains.forEach(d => {
-    onSnapshot(doc(doc(db, "domains", d.name)), (snap) => {
+    onSnapshot(doc(db, "domains", d.name), (snap) => {
         domainData[d.name] = snap.exists() ? snap.data() : { sold:false, price:d.price };
         renderDomains();
     });
