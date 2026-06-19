@@ -6,11 +6,11 @@ export default async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ error: "Sadece POST kabul edilir" });
 
-  const { paymentId, action, txid, username, domainName, amount, step } = req.body;
+  const { paymentId, action, txid, username, domainName, amount } = req.body;
   const PI_API_KEY = process.env.APP_SECRET;
   const TG_BOT_TOKEN = "8540258785:AAFbI0MAUR1RFsvPPsOyGEgnqhx_3ZAYgOU";
-  const TG_CHAT_ID = "850838849"; // Doğan Bey'in ID'si (Sadece size bildirim gelecek)
-  const TG_GROUP_ID = "-1003987952631"; // Grup ID'si (Sadece satış duyurusu için)
+  const TG_CHAT_ID = "850838849"; // Doğan Bey'in ID'si
+  const TG_GROUP_ID = "-1003987952631"; // Grup ID'si
 
   const sendTG = async (chatId, text) => {
     await fetch(`https://api.telegram.org/bot${TG_BOT_TOKEN}/sendMessage`, {
@@ -19,16 +19,6 @@ export default async function handler(req, res) {
       body: JSON.stringify({ chat_id: chatId, text, parse_mode: 'Markdown' })
     });
   };
-
-  // ADIM 1: ŞİFRE TALEBİ (Sadece size bildirim gelir, grupta görünmez)
-  if (step === 'request_code') {
-    const tempCode = Math.floor(1000 + Math.random() * 9000); 
-    const msg = `🔔 *YENİ ONAY KODU TALEBİ*\n\n👤 *Kullanıcı:* @${username}\n🌐 *Domain:* ${domainName}\n🔑 *Üretilen Kod:* \`${tempCode}\`\n\n_Bu kodu kullanıcıya özelden iletebilirsiniz._`;
-    
-    await sendTG(TG_CHAT_ID, msg); // Sadece size gelir
-    
-    return res.status(200).json({ tempCode });
-  }
 
   const url = `https://api.minepi.com/v2/payments/${paymentId}/${action}`;
   try {
@@ -43,7 +33,7 @@ export default async function handler(req, res) {
     if (action === 'complete' && response.ok) {
       const purchaseCode = "WEB3-" + Math.random().toString(36).substr(2, 6).toUpperCase();
       
-      // Gruba Sadece Satış Duyurusu (Şifresiz)
+      // Gruba Sadece Satış Duyurusu
       const groupMsg = `🎉 *YENİ SATIŞ!*\n\n👤 @${username}, *${domainName}* domainini başarıyla satın aldı! 🚀\n\n🌐 Sitemize hoş geldin yeni sahibi!`;
       await sendTG(TG_GROUP_ID, groupMsg);
 
