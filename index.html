@@ -20,7 +20,7 @@
         .card { background:var(--card); padding:20px; border-radius:20px; box-shadow:0 10px 15px -3px rgba(0,0,0,0.3); margin-bottom:15px; position: relative; overflow: hidden; }
         
         /* KOMPAKT ÜST BÖLÜM */
-        .app-logo { width: 90px; height: 90px; margin-bottom: 10px; border-radius: 50%; box-shadow: 0 0 20px rgba(99, 102, 241, 0.4); border: 3px solid #6366f1; object-fit: cover; }
+        .app-logo { width: 85px; height: 85px; margin-bottom: 8px; border-radius: 50%; box-shadow: 0 0 20px rgba(99, 102, 241, 0.4); border: 3px solid #6366f1; object-fit: cover; }
         .app-title { font-size: 1.6em; font-weight: 900; margin: 0 0 5px 0; background: linear-gradient(to right, #60a5fa, #a855f7); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
         .online-status { color:#60a5fa; font-size:0.85em; font-weight:600; margin-bottom: 10px; }
 
@@ -39,7 +39,7 @@
         .section-title-box { background:linear-gradient(135deg,#fef3c7 0%,#fde68a 100%); color:#1e293b; padding:10px 24px; border-radius:14px; border:3px solid #f59e0b; font-size:1.1em; font-weight:800; display:inline-block; margin-bottom:15px; }
 
         /* MIKNATIS ETKİLİ KİLİT EKRANI */
-        .locked-content { filter: blur(10px); opacity: 0.4; pointer-events: none; }
+        .locked-content { filter: blur(12px); opacity: 0.3; pointer-events: none; }
         .premium-lock-overlay {
             position: absolute;
             top: 0; left: 0; right: 0; bottom: 0;
@@ -47,16 +47,17 @@
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            background: rgba(15, 23, 42, 0.6);
+            background: rgba(15, 23, 42, 0.65);
             backdrop-filter: blur(2px);
             z-index: 10;
             padding: 20px;
         }
-        .lock-icon { font-size: 3.5em; margin-bottom: 10px; animation: pulse 2s infinite; }
+        .lock-icon { font-size: 3.2em; margin-bottom: 5px; animation: pulse 2s infinite; }
         @keyframes pulse { 0% { transform: scale(1); opacity: 0.8; } 50% { transform: scale(1.1); opacity: 1; } 100% { transform: scale(1); opacity: 0.8; } }
         
-        .lock-title { font-size: 1.6em; font-weight: 900; color: #fff; margin: 0 0 8px 0; text-shadow: 0 2px 10px rgba(0,0,0,0.5); }
-        .lock-desc { font-size: 1em; color: #e2e8f0; font-weight: 600; line-height: 1.4; margin-bottom: 20px; }
+        .lock-title { font-size: 1.5em; font-weight: 900; color: #fff; margin: 0 0 5px 0; text-shadow: 0 2px 10px rgba(0,0,0,0.5); }
+        .lock-desc { font-size: 0.95em; color: #e2e8f0; font-weight: 600; line-height: 1.5; margin-bottom: 12px; max-width: 90%; }
+        .lock-instruction { font-size: 0.9em; color: #fbbf24; font-weight: 700; margin-bottom: 15px; }
 
         .footer-section { margin-top:20px; padding:15px; color:#94a3b8; font-size:0.85em; text-align:center; border-top:1px solid #334155; }
         .footer-section a { color:#38bdf8; text-decoration:none; }
@@ -72,9 +73,9 @@
         <h1 class="app-title">Web3 Domain Gateway</h1>
         <div class="online-status" id="online-count">Aktif Kullanıcı: 0</div>
         
-        <!-- ÜSTTEKİ GİRİŞ BUTONU (HIZLI ERİŞİM) -->
+        <!-- ÜSTTEKİ GİRİŞ BUTONU -->
         <div id="auth-section">
-            <button id="auth-btn" class="pi-btn" onclick="window.loginWithPi()">Pi ile Hemen Bağlan</button>
+            <button id="auth-btn" class="pi-btn" onclick="window.loginWithPi()">Pi ile Bağlan</button>
             <p id="user-status" style="font-size: 0.9em; margin-top: 10px; color: #94a3b8; display: none;"></p>
         </div>
     </div>
@@ -85,14 +86,15 @@
     </div>
 
     <div class="card" style="position: relative; min-height: 450px; padding-top: 20px;">
-        <div class="section-title-box">Özel Domain Pazarı</div>
+        <div id="market-title" class="section-title-box">Özel Domain Pazarı</div>
         
         <!-- MIKNATIS ETKİLİ KİLİT EKRANI -->
         <div id="premium-lock" class="premium-lock-overlay">
             <div class="lock-icon">💎</div>
-            <h2 class="lock-title">Dijital Geleceğin Kapısını Aralayın</h2>
-            <p class="lock-desc">Nadir Web3 kimliklerini keşfetmek ve <br> ağa katılmak için güvenli bağlantı kurun.</p>
-            <button class="pi-btn" onclick="window.loginWithPi()" style="padding: 10px 25px; font-size: 0.95em;">Pazara Giriş Yap</button>
+            <h2 class="lock-title">Ayrıcalıklı Web3 Dünyasına Katılın</h2>
+            <p class="lock-desc">Kendi Web3 domaininize sahip olmak, bu özel ayrıcalıklardan faydalanmak ve güvenli bağlantı kurmak için;</p>
+            <div class="lock-instruction">👇 Yukarıdaki "Pi ile Bağlan" butonunu kullanın.</div>
+            <button class="pi-btn" onclick="window.loginWithPi()" style="padding: 8px 20px; font-size: 0.9em;">Pi ile Bağlan</button>
         </div>
 
         <!-- DOMAIN LİSTESİ -->
@@ -142,16 +144,19 @@ const domains = [
 function renderDomains() {
     const list = document.getElementById("domain-list");
     const lockOverlay = document.getElementById("premium-lock");
+    const marketTitle = document.getElementById("market-title");
     if (!list) return;
     
     if (!isAuth) {
         lockOverlay.style.display = "flex";
         list.classList.add("locked-content");
+        marketTitle.innerText = "Özel Domain Pazarı";
         return;
     }
 
     lockOverlay.style.display = "none";
     list.classList.remove("locked-content");
+    marketTitle.innerText = "Satın Alabileceğiniz Domainler";
     list.innerHTML = '';
     
     domains.forEach(d => {
