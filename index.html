@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Web3 Domain Gateway - Masterpiece Fix</title>
+    <title>Web3 Domain Gateway - Final Master Fix</title>
     <script src="https://sdk.minepi.com/pi-sdk.js"></script>
     <style>
         :root { --bg:#0f172a; --card:#1e293b; --accent:#6366f1; --text:#f8fafc; --sold:#ef4444; --price:#fbbf24; --success:#10b981; --info:#38bdf8; }
@@ -133,7 +133,7 @@
                 </div>
                 <div style="margin-bottom: 4px;"><span class="item-title">İŞLEM TÜRÜ:</span><span class="blink-text">TEST İŞLEMİDİR</span></div>
                 <div style="margin-bottom: 4px;"><span class="item-title">ÖDEME:</span><span class="blink-text">SADECE TEST PI</span></div>
-                <div style="margin-bottom: 4px;"><span class="item-title">BAKİYE:</span><span style="color:#ef4444; font-weight:bold;">EKSİLMEZ</span></div>
+                <div style="margin-bottom: 4px;"><span class="item-title">BAKİYE:</span><span style="color:#ef4444; font-weight:bold;">GERÇEK Pİ BAKİYE EKSİLMEZ</span></div>
                 <div><span class="item-title">GÜVENLİK:</span><span class="item-desc">Şifreniz paylaşılmaz.</span></div>
             </div>
             <div style="display: flex; gap: 10px; margin-top: 15px;">
@@ -202,7 +202,7 @@ function showSaleNotification(user, domain) {
     setTimeout(() => { notify.classList.remove("show"); }, 5000);
 }
 
-// Kümülatif İstatistik Dinleyicisi (Marketten Bağımsız)
+// Kümülatif İstatistik Dinleyicisi (Sürekli Artan Hacim)
 onSnapshot(collection(db, "global_sales"), (snap) => {
     document.getElementById("total-sold").innerText = snap.size;
     let volume = 0;
@@ -362,8 +362,10 @@ window.startPurchase = async function(domain, amount) {
                 
                 const at = Date.now();
                 try {
-                    await setDoc(doc(db, "domains", domain), { sold: true, price: amount, txid: txid, buyer: currentUser, soldAt: at });
+                    // Kümülatif satış kaydı (Sıfırlanmaz)
                     await setDoc(doc(db, "global_sales", txid), { user: currentUser, domain: domain, price: amount, at: at });
+                    // Market durum kaydı
+                    await setDoc(doc(db, "domains", domain), { sold: true, price: amount, txid: txid, buyer: currentUser, soldAt: at });
                 } catch (dbErr) { console.error("DB Hatası:", dbErr); }
                 
                 paymentInProgress = false;
