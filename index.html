@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Web3 Domain Gateway - Final Master Fix</title>
+    <title>Web3 Domain Gateway - Absolute Final</title>
     <script src="https://sdk.minepi.com/pi-sdk.js"></script>
     <style>
         :root { --bg:#0f172a; --card:#1e293b; --accent:#6366f1; --text:#f8fafc; --sold:#ef4444; --price:#fbbf24; --success:#10b981; --info:#38bdf8; }
@@ -89,7 +89,7 @@
     </div>
 
     <div class="card" id="user-panel" style="display:none; border:1.5px solid #10b981;">
-        <h3 style="color:#10b981;margin:0 0 8px 0; font-size: 0.95em;">👤 Satın Alma Geçmişim</h3>
+        <h3 style="color:#10b981;margin:0 0 8px 0; font-size: 0.95em;">👤 Satın Aldığım Domainler</h3>
         <div class="user-info-note">
             ℹ️ <b>Bilgi:</b> Bu uygulama Test-Pi ağında deneme amaçlıdır. Satın aldığınız domainler, diğer kullanıcıların da test yapabilmesi için markette tekrar görünebilir.
         </div>
@@ -202,7 +202,7 @@ function showSaleNotification(user, domain) {
     setTimeout(() => { notify.classList.remove("show"); }, 5000);
 }
 
-// Kümülatif İstatistik Dinleyicisi (Sürekli Artan Hacim)
+// İstatistik Dinleyicisi (En Sağlam Yapı)
 onSnapshot(collection(db, "global_sales"), (snap) => {
     document.getElementById("total-sold").innerText = snap.size;
     let volume = 0;
@@ -246,6 +246,7 @@ function renderDomains() {
     domains.forEach(d => {
         const data = domainData[d.name] || { sold:false, price:d.price };
         
+        // Satın Alınan Domainler Listesi (Önceki Kod Mantığı)
         if (data.sold && data.buyer === currentUser) {
             myHtml += `
                 <div class="my-domain-item">
@@ -362,9 +363,10 @@ window.startPurchase = async function(domain, amount) {
                 
                 const at = Date.now();
                 try {
-                    // Kümülatif satış kaydı (Sıfırlanmaz)
-                    await setDoc(doc(db, "global_sales", txid), { user: currentUser, domain: domain, price: amount, at: at });
-                    // Market durum kaydı
+                    // İstatistikler için kalıcı kayıt
+                    const saleId = txid || `sale_${at}`;
+                    await setDoc(doc(db, "global_sales", saleId), { user: currentUser, domain: domain, price: amount, at: at });
+                    // Market durumu
                     await setDoc(doc(db, "domains", domain), { sold: true, price: amount, txid: txid, buyer: currentUser, soldAt: at });
                 } catch (dbErr) { console.error("DB Hatası:", dbErr); }
                 
