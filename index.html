@@ -35,8 +35,6 @@
         }
 
         .section-title-box { background:linear-gradient(135deg,#fef3c7 0%,#fde68a 100%); color:#1e293b; padding:8px 20px; border-radius:12px; border:2px solid #f59e0b; font-size:1em; font-weight:800; display:inline-block; margin-bottom:10px; }
-        
-        /* KİLİTLİ ALAN BAŞLIK ÇERÇEVESİ */
         .lock-title-box { background:linear-gradient(135deg,#fef3c7 0%,#fde68a 100%); color:#1e293b; padding:8px 15px; border-radius:12px; border:2px solid #f59e0b; font-size:1.1em; font-weight:900; margin-bottom:10px; display:inline-block; }
 
         .locked-content { filter: blur(12px); opacity: 0.25; pointer-events: none; }
@@ -89,7 +87,8 @@
     <div id="verify-modal" class="modal-overlay" style="display:none;">
         <div class="modal-content">
             <h2 style="color:#fff;margin-top:0;">🔐 Güvenli Onay</h2>
-            <p style="color:#cbd5e1; font-size: 0.9em;">Lütfen <b>@firsat_dogan_bot</b> hesabına özel mesaj atarak size iletilen <b>Onay Şifresini</b> buraya girin.</p>
+            <p style="color:#cbd5e1; font-size: 0.9em;">Lütfen <b>Web3 Domain Gateway Resmi Botu</b> tarafından size özel gönderilen <b>Onay Şifresini</b> buraya girin.</p>
+            <p style="font-size: 0.75em; color: #fbbf24; margin-top: 5px;">*Eğer mesaj gelmediyse lütfen bota bir kez <b>/start</b> yazın.</p>
             <input type="text" id="verify-code-input" class="input-field" placeholder="Şifreyi buraya yazın">
             <div style="display: flex; gap: 10px;">
                 <button class="pi-btn" style="background:#475569; flex:1; animation:none;" onclick="document.getElementById('verify-modal').style.display='none'">İptal</button>
@@ -138,6 +137,12 @@ const domains = [
     { name:'sekerbank.pi', img:'assets/sekerbank.jpeg', price:600 },
     { name:'doganay.pi', img:'assets/doganay.jpeg', price:150 }
 ];
+
+async function updateActiveStatus() {
+    if (currentUser) {
+        await setDoc(doc(db, "active_users", currentUser), { lastSeen: Date.now() }, { merge: true });
+    }
+}
 
 function renderDomains() {
     const list = document.getElementById("domain-list");
@@ -231,6 +236,7 @@ window.loginWithPi = async function() {
         isAuth = true;
         document.getElementById("user-status").innerText = "Bağlı: @" + currentUser;
         document.getElementById("user-status-box").style.display = "block";
+        updateActiveStatus();
         renderDomains();
         renderUserPanel();
         if (currentUser === "doganay0808") {
@@ -270,6 +276,7 @@ window.addEventListener("load", () => {
         Pi.init({ version: "2.0", sandbox: true });
         Pi.authenticate(['username', 'payments'], onIncompletePaymentFound).catch(() => {});
     }
+    setInterval(updateActiveStatus, 15000);
 });
 
 domains.forEach(d => {
