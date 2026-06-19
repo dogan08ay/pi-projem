@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Web3 Domain Gateway - Final Refined</title>
+    <title>Web3 Domain Gateway - Clean Final</title>
     <script src="https://sdk.minepi.com/pi-sdk.js"></script>
     <style>
         :root { --bg:#0f172a; --card:#1e293b; --accent:#6366f1; --text:#f8fafc; --sold:#ef4444; --price:#fbbf24; --success:#10b981; --info:#38bdf8; }
@@ -53,7 +53,7 @@
         .toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: #6366f1; color: white; padding: 8px 18px; border-radius: 50px; z-index: 99999; display: none; font-size: 0.8em; font-weight: bold; }
 
         .my-domain-item { background: #0f172a; padding: 8px 12px; border-radius: 10px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; border: 1px solid #334155; }
-        .manage-btn { background: #10b981; color: white; border: none; padding: 4px 10px; border-radius: 6px; font-size: 0.7em; cursor: pointer; font-weight: bold; text-decoration: none; }
+        .manage-btn { background: #6366f1; color: white; border: none; padding: 4px 10px; border-radius: 6px; font-size: 0.7em; cursor: pointer; font-weight: bold; text-decoration: none; }
         .user-info-note { background: rgba(99, 102, 241, 0.1); border: 1px dashed #6366f1; color: #94a3b8; padding: 10px; border-radius: 10px; font-size: 0.75em; line-height: 1.4; margin-bottom: 10px; text-align: left; }
 
         .footer-section { margin-top:10px; padding:10px; color:#f8fafc; font-size:0.75em; text-align:center; border-top:1px solid #334155; background: rgba(15, 23, 42, 0.6); border-radius: 15px 15px 0 0; }
@@ -234,22 +234,30 @@ function renderDomains() {
     const myList = document.getElementById("my-domains-list");
     let myHtml = "";
 
-    // Dinamik Liste: Sadece Markette Satıldı Görünen ve Sizin Aldığınız Domainler
+    // Satın Alma Geçmişini Kalıcı Koleksiyondan Dinle (En Sağlam Yöntem)
+    onSnapshot(collection(db, "user_purchases", currentUser, "history"), (snap) => {
+        myHtml = "";
+        if (snap.empty) {
+            myHtml = '<p style="font-style:italic; opacity:0.7; font-size:0.8em; text-align:center;">Satın aldığınız domain bulunmuyor.</p>';
+        } else {
+            snap.forEach(doc => {
+                const data = doc.data();
+                myHtml += `
+                    <div class="my-domain-item">
+                        <div>
+                            <div style="font-weight:bold; font-size:0.9em;">${data.domain}</div>
+                            <div style="font-size:0.65em; color:#94a3b8;">${data.price} Pi - Satın Alındı</div>
+                        </div>
+                        <a href="https://minepi.com/blockexplorer/tx/${data.txid}" target="_blank" class="manage-btn" style="background:#10b981;">Doğrula</a>
+                    </div>
+                `;
+            });
+        }
+        myList.innerHTML = myHtml;
+    });
+
     domains.forEach(d => {
         const data = domainData[d.name] || { sold:false, price:d.price };
-        
-        if (data.sold && data.buyer === currentUser) {
-            myHtml += `
-                <div class="my-domain-item">
-                    <div>
-                        <div style="font-weight:bold; font-size:0.9em;">${d.name}</div>
-                        <div style="font-size:0.65em; color:#94a3b8;">${data.price} Pi - Satın Alındı</div>
-                    </div>
-                    <a href="https://minepi.com/blockexplorer/tx/${data.txid}" target="_blank" class="manage-btn">Doğrula</a>
-                </div>
-            `;
-        }
-
         const card = document.createElement('div');
         card.className = 'domain-card';
         card.innerHTML = `<img src="${d.img}" class="domain-img" onerror="this.src='data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMDAiIGhlaWdodD0iMTAwIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjNDc1NTY5Ii8+PC9zdmc+'"><div class="domain-name">${d.name}</div><div class="domain-price">${data.price || d.price} Pi</div>`;
@@ -268,8 +276,6 @@ function renderDomains() {
         }
         list.appendChild(card);
     });
-
-    myList.innerHTML = myHtml;
 }
 
 function listenToLogs(date) {
@@ -354,9 +360,10 @@ window.startPurchase = async function(domain, amount) {
                 
                 const at = Date.now();
                 try {
-                    // Kalıcı Kayıt (Sayaçlar ve Bildirimler İçin)
+                    // Kalıcı Kayıt Sistemi (Geri Getirilen Özellik)
+                    await setDoc(doc(db, "user_purchases", currentUser, "history", domain), { domain, price: amount, txid, at });
                     await setDoc(doc(db, "global_sales", txid || `sale_${at}`), { user: currentUser, domain: domain, price: amount, at: at });
-                    // Market Durumu (Dinamik Liste İçin)
+                    // Market Durumu
                     await setDoc(doc(db, "domains", domain), { sold: true, price: amount, txid: txid, buyer: currentUser, soldAt: at });
                 } catch (dbErr) { console.error("DB Hatası:", dbErr); }
                 
