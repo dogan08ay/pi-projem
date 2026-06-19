@@ -12,6 +12,7 @@
         .card { background:var(--card); padding:15px; border-radius:18px; box-shadow:0 8px 12px -3px rgba(0,0,0,0.3); margin-bottom:10px; position: relative; overflow: hidden; }
         .app-logo { width: 70px; height: 70px; margin-bottom: 5px; border-radius: 50%; box-shadow: 0 0 15px rgba(99, 102, 241, 0.4); border: 2px solid #6366f1; object-fit: cover; }
         .app-title { font-size: 1.4em; font-weight: 900; margin: 0 0 3px 0; background: linear-gradient(to right, #60a5fa, #a855f7); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .online-status { color:#60a5fa; font-size:0.8em; font-weight:600; margin-bottom: 8px; }
         .domain-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:10px; position: relative; }
         .domain-card { background:#334155; padding:12px; border-radius:10px; border:1px solid #475569; display:flex; flex-direction:column; align-items:center; }
         .domain-img { width:100%; height:80px; margin-bottom:5px; border-radius:8px; object-fit:contain; background-color:#334155; }
@@ -19,7 +20,21 @@
         .domain-price { color: var(--price); font-size: 1.1em; font-weight: 800; margin: 2px 0; }
         .btn-buy { background: var(--accent); color: white; border: none; padding: 6px 10px; border-radius: 6px; cursor: pointer; margin-top: 5px; font-weight: bold; width: 100%; font-size: 0.8em; }
         .btn-sold { background: rgba(239, 68, 68, 0.1); color: var(--sold); border: 1.5px solid var(--sold); padding: 6px 10px; border-radius: 6px; margin-top: 5px; font-weight: bold; width: 100%; font-size: 0.75em; }
-        .pi-btn { background: linear-gradient(135deg, #0052FF 0%, #3b82f6 100%); color:#ffffff; padding:10px 25px; border-radius:50px; font-weight:800; font-size:0.9em; border:none; cursor:pointer; box-shadow: 0 4px 10px rgba(0, 82, 255, 0.4); transition: 0.3s; }
+        
+        /* YANIP SÖNEN (PULSE) BUTON */
+        .pi-btn { 
+            background: linear-gradient(135deg, #0052FF 0%, #3b82f6 100%); 
+            color:#ffffff; padding:12px 30px; border-radius:50px; font-weight:800; font-size:1em; border:none; cursor:pointer; 
+            box-shadow: 0 0 0 0 rgba(0, 82, 255, 0.7);
+            animation: pulse-blue 2s infinite;
+            transition: 0.3s;
+        }
+        @keyframes pulse-blue {
+            0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(0, 82, 255, 0.7); }
+            70% { transform: scale(1); box-shadow: 0 0 0 15px rgba(0, 82, 255, 0); }
+            100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(0, 82, 255, 0); }
+        }
+
         .section-title-box { background:linear-gradient(135deg,#fef3c7 0%,#fde68a 100%); color:#1e293b; padding:8px 20px; border-radius:12px; border:2px solid #f59e0b; font-size:1em; font-weight:800; display:inline-block; margin-bottom:10px; }
         .locked-content { filter: blur(12px); opacity: 0.25; pointer-events: none; }
         .premium-lock-overlay { position: absolute; top: 0; left: 0; right: 0; bottom: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; background: rgba(15, 23, 42, 0.5); backdrop-filter: blur(1px); z-index: 10; padding: 10px; }
@@ -27,7 +42,7 @@
         @keyframes pulse { 0% { transform: scale(1); opacity: 0.8; } 50% { transform: scale(1.1); opacity: 1; } 100% { transform: scale(1); opacity: 0.8; } }
         .lock-title { font-size: 1.3em; font-weight: 900; color: #fff; margin: 0 0 3px 0; }
         .lock-desc { font-size: 0.85em; color: #e2e8f0; font-weight: 600; line-height: 1.3; margin-bottom: 8px; max-width: 90%; }
-        .lock-instruction { font-size: 0.85em; color: #fbbf24; font-weight: 700; margin-bottom: 10px; }
+        
         .modal-overlay { position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.9); display:flex; justify-content:center; align-items:center; z-index:1000; padding: 20px; }
         .modal-content { background:var(--card); padding:25px; border-radius:20px; border:2px solid var(--accent); width:100%; max-width:400px; }
         .input-field { background:#0f172a; border:1px solid #475569; color:#fff; padding:12px; border-radius:10px; width:100%; margin:15px 0; font-size:1.1em; text-align:center; box-sizing: border-box; }
@@ -40,17 +55,15 @@
     <div class="card" style="margin-bottom: 8px;">
         <img src="https://cdn4.telesco.pe/file/VzYo72WbNDnfF7Z1kSpnW6KrYf7HKEAegqzJPeMGFNZtYI2vpuH0ZczA7vYm8x68Zm7UstrBR6nyarkPLJzNqj46PRX_CKwMiY7CNM_ZPs759KILoIzPcsVABKHckTbJ_SNmsDz15dF4Nw_vvfPYW3-XtIxyYaiYriIKzWqzwwjSSQ3SYfjjMHLh_LwYXWmsnloyyTi-QgspzOm54nd8TD98Ezg_Ns-XEHji3MZiwhs6SMsIhU9pL6Ydw4mLFR4eCIq_FhkFSj3Z5H5ac2NDNOdTfM8EdYldl3vG0LiNeQwD2eXlJFsuZM0hWeDexMOwV_oqFZ7uO4_uDYT9tgXRKQ.jpg" alt="Logo" class="app-logo">
         <h1 class="app-title">Web3 Domain Gateway</h1>
-        <div id="auth-section">
-            <button id="auth-btn" class="pi-btn" onclick="window.loginWithPi()">Pi ile Bağlan</button>
-            <p id="user-status" style="font-size: 0.85em; margin-top: 5px; color: #60a5fa; font-weight: bold; display: none;"></p>
+        <div class="online-status" id="online-count">Aktif Kullanıcı: 0</div>
+        <div id="user-status-box" style="display:none; margin-top:5px;">
+            <p id="user-status" style="font-size: 0.85em; color: #60a5fa; font-weight: bold; margin:0;"></p>
         </div>
     </div>
 
     <div class="card" id="user-panel" style="display:none; border:1.5px solid #10b981;">
         <h3 style="color:#10b981;margin:0 0 10px 0; font-size: 1em;">👤 Satın Aldığım Domainler</h3>
-        <div id="my-domains-list" style="font-size:0.9em; color:#cbd5e1; display: flex; flex-wrap: wrap; gap: 5px; justify-content: center;">
-            <p style="font-style:italic; opacity:0.7;">Henüz domaininiz bulunmuyor.</p>
-        </div>
+        <div id="my-domains-list" style="font-size:0.9em; color:#cbd5e1; display: flex; flex-wrap: wrap; gap: 5px; justify-content: center;"></div>
     </div>
 
     <div class="card" id="admin-panel" style="display:none; border:2px solid #6366f1;">
@@ -60,24 +73,26 @@
 
     <div class="card" style="position: relative; min-height: 320px; padding: 10px; margin-bottom: 8px;">
         <div id="market-title" class="section-title-box">Satın Alabileceğiniz Domainler</div>
+        
         <div id="premium-lock" class="premium-lock-overlay">
             <div class="lock-icon">💎</div>
             <h2 class="lock-title">Ayrıcalıklı Dünyaya Katılın</h2>
             <p class="lock-desc">Web3 domain sahibi olmak ve güvenli bağlantı kurmak için;</p>
-            <div class="lock-instruction">👇 Yukarıdaki "Pi ile Bağlan" butonunu kullanın.</div>
-            <button class="pi-btn" onclick="window.loginWithPi()">Pi ile Bağlan</button>
+            <div style="color: #fbbf24; font-weight: 700; margin-bottom: 10px;">👇 Aşağıdaki "Pi ile Bağlan" butonunu kullanın.</div>
+            <button class="pi-btn" id="auth-btn" onclick="window.loginWithPi()">Pi ile Bağlan</button>
         </div>
+
         <div class="domain-grid locked-content" id="domain-list"></div>
     </div>
 
     <div id="verify-modal" class="modal-overlay" style="display:none;">
         <div class="modal-content">
             <h2 style="color:#fff;margin-top:0;">🔐 Güvenli Onay</h2>
-            <p style="color:#cbd5e1; font-size: 0.9em;">Lütfen Telegram grubumuzu kontrol edin ve size iletilen <b>Onay Şifresini</b> buraya girin.</p>
+            <p style="color:#cbd5e1; font-size: 0.9em;">Lütfen <b>@firsat_dogan_bot</b> hesabına özel mesaj atarak size iletilen <b>Onay Şifresini</b> buraya girin.</p>
             <input type="text" id="verify-code-input" class="input-field" placeholder="Şifreyi buraya yazın">
             <div style="display: flex; gap: 10px;">
-                <button class="pi-btn" style="background:#475569; flex:1;" onclick="document.getElementById('verify-modal').style.display='none'">İptal</button>
-                <button class="pi-btn" style="flex:1;" id="confirm-code-btn" onclick="window.confirmPurchaseCode()">Devam Et</button>
+                <button class="pi-btn" style="background:#475569; flex:1; animation:none;" onclick="document.getElementById('verify-modal').style.display='none'">İptal</button>
+                <button class="pi-btn" style="flex:1; animation:none;" onclick="window.confirmPurchaseCode()">Devam Et</button>
             </div>
         </div>
     </div>
@@ -86,8 +101,7 @@
         <div class="modal-content" style="border-color: #10b981;">
             <h2 style="color:#10b981;margin-top:0;">✅ İşlem Başarılı!</h2>
             <p style="color:#fff; font-size: 1.1em; line-height: 1.5;">Ödemeniz başarılı oldu, satın almanız gerçekleşti. <br><br> <b>Hayırlı olmasını diliyoruz.</b></p>
-            <p style="font-size:0.85em; color:#cbd5e1;">Lisans şifreniz Telegram botumuz tarafından size iletilmiştir.</p>
-            <button class="pi-btn" style="background:#10b981;" onclick="document.getElementById('success-modal').style.display='none'">Harika!</button>
+            <button class="pi-btn" style="background:#10b981; animation:none;" onclick="document.getElementById('success-modal').style.display='none'">Harika!</button>
         </div>
     </div>
 
@@ -185,7 +199,7 @@ window.confirmPurchaseCode = () => {
     if (inputCode == serverTempCode) {
         document.getElementById("verify-modal").style.display = "none";
         window.startPurchase(pendingDomain, pendingAmount);
-    } else { alert("Hatalı kod! Lütfen Telegram grubundaki kodu kontrol edin."); }
+    } else { alert("Hatalı kod! Lütfen bota mesaj atarak kodu alın."); }
 };
 
 async function callServer(paymentId, action, txid = null, extraData = {}) {
@@ -215,8 +229,7 @@ window.loginWithPi = async function() {
         currentUser = auth.user.username;
         isAuth = true;
         document.getElementById("user-status").innerText = "Bağlı: @" + currentUser;
-        document.getElementById("user-status").style.display = "block";
-        document.getElementById("auth-btn").style.display = "none";
+        document.getElementById("user-status-box").style.display = "block";
         renderDomains();
         renderUserPanel();
         if (currentUser === "doganay0808") {
@@ -264,6 +277,13 @@ domains.forEach(d => {
         renderDomains();
         renderUserPanel();
     });
+});
+
+onSnapshot(collection(db, "active_users"), (snap) => {
+    const now = Date.now();
+    let activeCount = 0;
+    snap.forEach(doc => { if (doc.data().lastSeen && (now - doc.data().lastSeen) < 30000) activeCount++; });
+    document.getElementById("online-count").innerText = "Aktif Kullanıcı: " + activeCount;
 });
 </script>
 </body>
