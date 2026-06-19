@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Web3 Domain Gateway - Final Perfect</title>
+    <title>Web3 Domain Gateway - Ultimate Fix</title>
     <script src="https://sdk.minepi.com/pi-sdk.js"></script>
     <style>
         :root { --bg:#0f172a; --card:#1e293b; --accent:#6366f1; --text:#f8fafc; --sold:#ef4444; --price:#fbbf24; --success:#10b981; --info:#38bdf8; }
@@ -46,13 +46,15 @@
         .lock-icon { font-size: 2.5em; margin-bottom: 2px; animation: pulse 2s infinite; }
         @keyframes pulse { 0% { transform: scale(1); opacity: 0.8; } 50% { transform: scale(1.1); opacity: 1; } 100% { transform: scale(1); opacity: 0.8; } }
         
-        .trust-badge { background: rgba(16, 185, 129, 0.1); border: 1.5px solid #10b981; color: #10b981; padding: 10px; border-radius: 12px; font-size: 0.85em; margin: 8px 0; line-height: 1.4; max-width: 90%; }
-        .modal-overlay { position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.9); display:flex; justify-content:center; align-items:center; z-index:1000; padding: 15px; }
-        .modal-content { background:var(--card); padding:20px; border-radius:20px; border:2px solid var(--accent); width:100%; max-width:380px; margin: auto; }
+        /* Güven Paneli Düzenlemesi */
+        .trust-badge { background: rgba(16, 185, 129, 0.1); border: 1.5px solid #10b981; color: #10b981; padding: 12px; border-radius: 12px; font-size: 0.9em; margin: 8px 0; line-height: 1.5; max-width: 95%; width: 100%; box-sizing: border-box; }
+        
+        .modal-overlay { position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.9); display:flex; justify-content:center; align-items:center; z-index:9999; padding: 15px; }
+        .modal-content { background:var(--card); padding:20px; border-radius:20px; border:2px solid var(--accent); width:90%; max-width:380px; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center; }
         
         @keyframes blinker { 0% { opacity: 1.0; } 50% { opacity: 0.3; } 100% { opacity: 1.0; } }
         .blink-text { animation: blinker 1.2s linear infinite; color: #fbbf24; font-weight: 900; text-decoration: underline; }
-        .warning-red { color: #ef4444; font-weight: 900; text-decoration: underline; font-size: 1em; display: block; margin-top: 3px; }
+        .warning-red { color: #ef4444; font-weight: 900; text-decoration: underline; font-size: 1.1em; display: block; margin-top: 3px; }
         
         .item-title { color: #60a5fa; font-weight: 800; margin-right: 5px; }
         .item-desc { color: #f8fafc; font-weight: 500; }
@@ -60,7 +62,7 @@
         #sales-notification { position: fixed; top: 20px; right: -300px; background: #10b981; color: white; padding: 10px 15px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.5); z-index: 2000; transition: 0.5s ease-in-out; font-weight: bold; font-size: 0.85em; display: flex; align-items: center; gap: 8px; }
         #sales-notification.show { right: 20px; }
         
-        .toast { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); background: #6366f1; color: white; padding: 10px 20px; border-radius: 50px; z-index: 9999; display: none; font-size: 0.85em; font-weight: bold; box-shadow: 0 4px 15px rgba(0,0,0,0.6); }
+        .toast { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); background: #6366f1; color: white; padding: 10px 20px; border-radius: 50px; z-index: 99999; display: none; font-size: 0.85em; font-weight: bold; box-shadow: 0 4px 15px rgba(0,0,0,0.6); }
 
         .my-domain-item { background: #0f172a; padding: 8px 12px; border-radius: 10px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; border: 1px solid #334155; }
         .manage-btn { background: #6366f1; color: white; border: none; padding: 4px 10px; border-radius: 6px; font-size: 0.7em; cursor: pointer; font-weight: bold; text-decoration: none; }
@@ -121,10 +123,12 @@
             <div class="lock-icon">💎</div>
             <div class="lock-title-box">Ayrıcalıklı Web3 Dünyasına Katılın</div>
             
+            <!-- İstediğiniz Yeni Satır Düzeni -->
             <div class="trust-badge">
-                🛡️ <b>Güvenli Bağlantı:</b> Sistemimiz şu anda <span class="blink-text">TEST-PI</span> ağında çalışmaktadır. <br>
-                <span class="blink-text">GERÇEK Pİ BAKİYENİZ</span> 
-                <span class="warning-red">KESİNLİKLE KULLANILMAZ!</span>
+                <div style="font-weight: 800; border-bottom: 1px solid rgba(16,185,129,0.3); padding-bottom: 5px; margin-bottom: 5px;">🛡️ GÜVENLİ BAĞLANTI</div>
+                <div class="blink-text" style="font-size: 1.2em;">TEST-PI</div>
+                <div class="blink-text" style="font-size: 0.9em; margin-top: 2px;">GERÇEK Pİ BAKİYENİZ</div>
+                <div class="warning-red">KESİNLİKLE KULLANILMAZ!</div>
             </div>
 
             <p style="font-size: 0.85em; color: #e2e8f0; font-weight: 600; line-height: 1.4; margin: 5px 0; max-width: 85%;">Web3 domain sahibi olmak ve güvenli bağlantı kurmak için;</p>
@@ -135,19 +139,27 @@
         <div class="domain-grid locked-content" id="domain-list"></div>
     </div>
 
-    <!-- Güven Modal (Eski Metinler Geri Geldi) -->
+    <!-- Güven Modal (Eski Metinler ve Düzenli Satır/Sütun) -->
     <div id="pre-buy-modal" class="modal-overlay" style="display:none;">
         <div class="modal-content" style="border-color: #fbbf24;">
             <div style="font-size: 2.5em; margin-bottom: 8px;">🛡️</div>
             <h2 style="color:#fbbf24;margin-top:0; font-size: 1.3em;">Güvenli Ödeme Onayı</h2>
             <div style="color:#fff; font-size: 1em; line-height: 1.6; text-align: left; background: rgba(0,0,0,0.3); padding: 15px; border-radius: 15px;">
-                <div style="margin-bottom: 10px; border-bottom: 1px solid #475569; padding-bottom: 5px;">
+                <div style="margin-bottom: 10px; border-bottom: 1px solid #475569; padding-bottom: 5px; text-align: center;">
                     Bir sonraki adımda gerçek cüzdan değil, <span class="blink-text">TEST PI CÜZDANI</span> açılacaktır.
                 </div>
-                <div style="margin-bottom: 5px;"><span class="item-title">İŞLEM TÜRÜ:</span> <span class="item-desc">Bu bir <span class="blink-text">TEST İŞLEMİDİR</span>.</span></div>
-                <div style="margin-bottom: 5px;"><span class="item-title">ÖDEME:</span> <span class="item-desc">Sadece <span class="blink-text">TEST PI</span> kullanılır.</span></div>
-                <div style="margin-bottom: 5px;"><span class="item-title">BAKİYE:</span> <span class="item-desc">Gerçek Pi'leriniz <span style="color:#ef4444; font-weight:bold;">EKSİLMEZ</span>.</span></div>
-                <div><span class="item-title">GÜVENLİK:</span> <span class="item-desc">Şifreniz sitemizle paylaşılmaz.</span></div>
+                <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                    <span class="item-title">İŞLEM TÜRÜ:</span> <span class="blink-text">TEST İŞLEMİDİR</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                    <span class="item-title">ÖDEME:</span> <span class="blink-text">SADECE TEST PI</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                    <span class="item-title">BAKİYE:</span> <span style="color:#ef4444; font-weight:bold;">EKSİLMEZ</span>
+                </div>
+                <div style="display: flex; justify-content: space-between;">
+                    <span class="item-title">GÜVENLİK:</span> <span class="item-desc">Şifreniz paylaşılmaz.</span>
+                </div>
             </div>
             <div style="display: flex; gap: 10px; margin-top: 20px;">
                 <button class="pi-btn" style="background:#475569; flex:1; animation:none; padding: 12px; margin:0;" onclick="document.getElementById('pre-buy-modal').style.display='none'">Vazgeç</button>
@@ -156,6 +168,7 @@
         </div>
     </div>
 
+    <!-- Başarı Modalı (Tam Ortalanmış) -->
     <div id="success-modal" class="modal-overlay" style="display:none;">
         <div class="modal-content" style="border-color: #10b981;">
             <h2 style="color:#10b981;margin-top:0;">✅ İşlem Başarılı!</h2>
@@ -215,7 +228,6 @@ function showSaleNotification(user, domain) {
     setTimeout(() => { notify.classList.remove("show"); }, 5000);
 }
 
-// İstatistikleri Dinle
 onSnapshot(collection(db, "global_sales"), (snap) => {
     document.getElementById("total-sold").innerText = snap.size;
     let volume = 0;
@@ -223,7 +235,6 @@ onSnapshot(collection(db, "global_sales"), (snap) => {
     document.getElementById("total-volume").innerText = volume;
 });
 
-// Canlı Satış Dinleyicisi
 onSnapshot(query(collection(db, "global_sales"), orderBy("at", "desc"), limit(1)), (snap) => {
     snap.docChanges().forEach(change => {
         if (change.type === "added") {
@@ -281,14 +292,13 @@ function renderUserPanel() {
     if (!isAuth) { userPanel.style.display = "none"; return; }
     userPanel.style.display = "block";
     
-    // Geçmişi Dinle - Kesin çözüm
+    // Geçmişi Dinle - En Basit ve Kesin Yol
     onSnapshot(collection(db, "user_purchases", currentUser, "history"), (snap) => {
         let html = "";
         if (snap.empty) {
             html = '<p style="font-style:italic; opacity:0.7; font-size:0.85em; text-align:center;">Henüz satın aldığınız domain bulunmuyor.</p>';
         } else {
-            const sortedDocs = snap.docs.sort((a, b) => b.data().at - a.data().at);
-            sortedDocs.forEach(doc => {
+            snap.forEach(doc => {
                 const data = doc.data();
                 html += `
                     <div class="my-domain-item">
