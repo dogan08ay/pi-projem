@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Web3 Domain Gateway - Clean Final</title>
+    <title>Web3 Domain Gateway - Absolute Final</title>
     <script src="https://sdk.minepi.com/pi-sdk.js"></script>
     <style>
         :root { --bg:#0f172a; --card:#1e293b; --accent:#6366f1; --text:#f8fafc; --sold:#ef4444; --price:#fbbf24; --success:#10b981; --info:#38bdf8; }
@@ -13,8 +13,8 @@
         .app-logo { width: 55px; height: 55px; margin-bottom: 2px; border-radius: 50%; box-shadow: 0 0 10px rgba(99, 102, 241, 0.4); border: 2px solid #6366f1; object-fit: cover; }
         .app-title { font-size: 1.2em; font-weight: 900; margin: 0 0 2px 0; background: linear-gradient(to right, #60a5fa, #a855f7); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
         
-        .stats-bar { display: flex; justify-content: center; background: rgba(99, 102, 241, 0.1); border: 1px solid rgba(99, 102, 241, 0.3); padding: 5px; border-radius: 10px; margin-bottom: 5px; font-size: 0.75em; font-weight: bold; color: #94a3b8; }
-        .stats-item span { color: var(--success); margin-left: 4px; }
+        .stats-bar { display: flex; justify-content: space-around; background: rgba(99, 102, 241, 0.1); border: 1px solid rgba(99, 102, 241, 0.3); padding: 5px; border-radius: 10px; margin-bottom: 5px; font-size: 0.65em; font-weight: bold; color: #94a3b8; }
+        .stats-item span { color: var(--price); margin-left: 2px; }
 
         .domain-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:5px; position: relative; }
         .domain-card { background:#334155; padding:8px; border-radius:10px; border:1px solid #475569; display:flex; flex-direction:column; align-items:center; }
@@ -78,6 +78,8 @@
         <h1 class="app-title">Web3 Domain Gateway</h1>
         
         <div class="stats-bar">
+            <div class="stats-item">Satılan Domain: <span id="total-sold">0</span></div>
+            <div class="stats-item">Toplam Hacim: <span id="total-volume">0</span> Test Pi</div>
             <div class="stats-item">Aktif Kullanıcı: <span id="online-count">0</span></div>
         </div>
 
@@ -200,7 +202,14 @@ function showSaleNotification(user, domain) {
     setTimeout(() => { notify.classList.remove("show"); }, 5000);
 }
 
-// Son Satış Bildirimi Dinleyicisi
+// İstatistik Dinleyicisi (En Sağlam Yapı)
+onSnapshot(collection(db, "global_sales"), (snap) => {
+    document.getElementById("total-sold").innerText = snap.size;
+    let volume = 0;
+    snap.forEach(doc => { volume += Number(doc.data().price || 0); });
+    document.getElementById("total-volume").innerText = volume;
+});
+
 onSnapshot(query(collection(db, "global_sales"), orderBy("at", "desc"), limit(1)), (snap) => {
     snap.docChanges().forEach(change => {
         if (change.type === "added") {
@@ -234,30 +243,22 @@ function renderDomains() {
     const myList = document.getElementById("my-domains-list");
     let myHtml = "";
 
-    // Satın Alma Geçmişini Kalıcı Koleksiyondan Dinle (En Sağlam Yöntem)
-    onSnapshot(collection(db, "user_purchases", currentUser, "history"), (snap) => {
-        myHtml = "";
-        if (snap.empty) {
-            myHtml = '<p style="font-style:italic; opacity:0.7; font-size:0.8em; text-align:center;">Satın aldığınız domain bulunmuyor.</p>';
-        } else {
-            snap.forEach(doc => {
-                const data = doc.data();
-                myHtml += `
-                    <div class="my-domain-item">
-                        <div>
-                            <div style="font-weight:bold; font-size:0.9em;">${data.domain}</div>
-                            <div style="font-size:0.65em; color:#94a3b8;">${data.price} Pi - Satın Alındı</div>
-                        </div>
-                        <a href="https://minepi.com/blockexplorer/tx/${data.txid}" target="_blank" class="manage-btn" style="background:#10b981;">Doğrula</a>
-                    </div>
-                `;
-            });
-        }
-        myList.innerHTML = myHtml;
-    });
-
     domains.forEach(d => {
         const data = domainData[d.name] || { sold:false, price:d.price };
+        
+        // Satın Alınan Domainler Listesi (Önceki Kod Mantığı)
+        if (data.sold && data.buyer === currentUser) {
+            myHtml += `
+                <div class="my-domain-item">
+                    <div>
+                        <div style="font-weight:bold; font-size:0.9em;">${d.name}</div>
+                        <div style="font-size:0.65em; color:#94a3b8;">${data.price} Pi - Satın Alındı</div>
+                    </div>
+                    <a href="https://minepi.com/blockexplorer/tx/${data.txid}" target="_blank" class="manage-btn" style="background:#10b981;">Doğrula</a>
+                </div>
+            `;
+        }
+
         const card = document.createElement('div');
         card.className = 'domain-card';
         card.innerHTML = `<img src="${d.img}" class="domain-img" onerror="this.src='data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMDAiIGhlaWdodD0iMTAwIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjNDc1NTY5Ii8+PC9zdmc+'"><div class="domain-name">${d.name}</div><div class="domain-price">${data.price || d.price} Pi</div>`;
@@ -276,6 +277,8 @@ function renderDomains() {
         }
         list.appendChild(card);
     });
+
+    myList.innerHTML = myHtml === "" ? '<p style="font-style:italic; opacity:0.7; font-size:0.8em; text-align:center;">Satın aldığınız domain bulunmuyor.</p>' : myHtml;
 }
 
 function listenToLogs(date) {
@@ -360,10 +363,10 @@ window.startPurchase = async function(domain, amount) {
                 
                 const at = Date.now();
                 try {
-                    // Kalıcı Kayıt Sistemi (Geri Getirilen Özellik)
-                    await setDoc(doc(db, "user_purchases", currentUser, "history", domain), { domain, price: amount, txid, at });
-                    await setDoc(doc(db, "global_sales", txid || `sale_${at}`), { user: currentUser, domain: domain, price: amount, at: at });
-                    // Market Durumu
+                    // İstatistikler için kalıcı kayıt
+                    const saleId = txid || `sale_${at}`;
+                    await setDoc(doc(db, "global_sales", saleId), { user: currentUser, domain: domain, price: amount, at: at });
+                    // Market durumu
                     await setDoc(doc(db, "domains", domain), { sold: true, price: amount, txid: txid, buyer: currentUser, soldAt: at });
                 } catch (dbErr) { console.error("DB Hatası:", dbErr); }
                 
