@@ -86,19 +86,6 @@
         <div class="domain-grid locked-content" id="domain-list"></div>
     </div>
 
-    <div id="verify-modal" class="modal-overlay" style="display:none;">
-        <div class="modal-content">
-            <h2 style="color:#fff;margin-top:0;">🔐 Güvenli Onay</h2>
-            <p style="color:#cbd5e1; font-size: 0.9em;">Lütfen <b>Web3 Domain Gateway Resmi Botu</b> tarafından size özel gönderilen <b>Onay Şifresini</b> buraya girin.</p>
-            <p style="font-size: 0.75em; color: #fbbf24; margin-top: 5px;">*Eğer mesaj gelmediyse lütfen bota bir kez <b>/start</b> yazın.</p>
-            <input type="text" id="verify-code-input" class="input-field" placeholder="Şifreyi buraya yazın">
-            <div style="display: flex; gap: 10px;">
-                <button class="pi-btn" style="background:#475569; flex:1; animation:none;" onclick="document.getElementById('verify-modal').style.display='none'">İptal</button>
-                <button class="pi-btn" style="flex:1; animation:none;" onclick="window.confirmPurchaseCode()">Devam Et</button>
-            </div>
-        </div>
-    </div>
-
     <div id="success-modal" class="modal-overlay" style="display:none;">
         <div class="modal-content" style="border-color: #10b981;">
             <h2 style="color:#10b981;margin-top:0;">✅ İşlem Başarılı!</h2>
@@ -126,9 +113,6 @@ let paymentInProgress = false;
 let domainData = {};
 let currentUser = null;
 let isAuth = false;
-let pendingDomain = null;
-let pendingAmount = 0;
-let serverTempCode = null;
 
 const domains = [
     { name:'test-domain', img:'assets/test.jpeg', price:10 },
@@ -175,7 +159,7 @@ function renderDomains() {
             buyBtn.className = 'btn-buy';
             buyBtn.innerText = paymentInProgress ? 'Bekleniyor...' : 'Satın Al';
             buyBtn.disabled = paymentInProgress;
-            buyBtn.onclick = () => window.requestPurchaseCode(d.name, data.price || d.price);
+            buyBtn.onclick = () => window.startPurchase(d.name, data.price || d.price);
             card.appendChild(buyBtn);
         }
         list.appendChild(card);
@@ -192,29 +176,6 @@ function renderUserPanel() {
     if (myDomains.length > 0) { myList.innerHTML = myDomains.map(d => `<span style="background:#10b981; color:#fff; padding:4px 10px; border-radius:50px; font-weight:bold;">${d}</span>`).join(''); }
     else { myList.innerHTML = '<p style="font-style:italic; opacity:0.7;">Henüz domaininiz bulunmuyor.</p>'; }
 }
-
-window.requestPurchaseCode = async (name, price) => {
-    pendingDomain = name;
-    pendingAmount = price;
-    try {
-        const res = await fetch('/api/approve', {
-            method: 'POST',
-            headers: {'Content-Type':'application/json'},
-            body: JSON.stringify({ step: 'request_code', username: currentUser, domainName: name, amount: price })
-        });
-        const data = await res.json();
-        serverTempCode = data.tempCode;
-        document.getElementById("verify-modal").style.display = "flex";
-    } catch (err) { alert("Hata: Kod talebi gönderilemedi."); }
-};
-
-window.confirmPurchaseCode = () => {
-    const inputCode = document.getElementById("verify-code-input").value;
-    if (inputCode == serverTempCode) {
-        document.getElementById("verify-modal").style.display = "none";
-        window.startPurchase(pendingDomain, pendingAmount);
-    } else { alert("Hatalı kod! Lütfen bota mesaj atarak kodu alın."); }
-};
 
 async function callServer(paymentId, action, txid = null, extraData = {}) {
     try {
@@ -252,7 +213,6 @@ window.loginWithPi = async function() {
             const today = new Date().toISOString().split("T")[0];
             onSnapshot(doc(db, "daily_users", today), (snap) => {
                 const users = (snap.data() || {}).users || {};
-                // Sıralama: Yeniden eskiye
                 const sortedUsers = Object.keys(users).sort((a, b) => users[b] - users[a]);
                 let html = "";
                 sortedUsers.forEach(u => { 
