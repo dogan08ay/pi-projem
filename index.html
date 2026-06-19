@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Web3 Domain Gateway - Pro</title>
+    <title>Web3 Domain Gateway - Pro Final</title>
     <script src="https://sdk.minepi.com/pi-sdk.js"></script>
     <style>
         :root { --bg:#0f172a; --card:#1e293b; --accent:#6366f1; --text:#f8fafc; --sold:#ef4444; --price:#fbbf24; --success:#10b981; }
@@ -53,14 +53,15 @@
         .item-title { color: #60a5fa; font-weight: 800; margin-right: 5px; }
         .item-desc { color: #f8fafc; font-weight: 500; }
         
-        /* Satış Bildirimi Stili */
         #sales-notification { position: fixed; top: 20px; right: -300px; background: #10b981; color: white; padding: 12px 20px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.5); z-index: 2000; transition: 0.5s ease-in-out; font-weight: bold; display: flex; align-items: center; gap: 10px; }
         #sales-notification.show { right: 20px; }
 
-        /* Kullanıcı Paneli Domain Listesi */
         .my-domain-item { background: #0f172a; padding: 8px 12px; border-radius: 10px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; border: 1px solid #334155; }
         .manage-btn { background: #6366f1; color: white; border: none; padding: 4px 10px; border-radius: 6px; font-size: 0.75em; cursor: pointer; font-weight: bold; }
         
+        /* Kullanıcı Paneli Bilgi Notu */
+        .user-info-note { background: rgba(99, 102, 241, 0.1); border: 1px dashed #6366f1; color: #94a3b8; padding: 10px; border-radius: 10px; font-size: 0.75em; line-height: 1.4; margin-bottom: 15px; text-align: left; }
+
         .log-item { display: flex; justify-content: space-between; background: #0f172a; padding: 8px 12px; border-radius: 8px; margin-bottom: 5px; font-size: 0.85em; }
         .admin-date-picker { background: #0f172a; color: #fff; border: 1.5px solid #6366f1; padding: 8px; border-radius: 10px; font-size: 0.9em; margin-bottom: 15px; width: 100%; box-sizing: border-box; outline: none; }
     </style>
@@ -81,9 +82,14 @@
         </div>
     </div>
 
-    <!-- Profesyonel Kullanıcı Paneli -->
     <div class="card" id="user-panel" style="display:none; border:1.5px solid #10b981;">
         <h3 style="color:#10b981;margin:0 0 10px 0; font-size: 1em;">👤 Satın Alma Geçmişim</h3>
+        
+        <!-- Yeni Bilgilendirme Notu -->
+        <div class="user-info-note">
+            ℹ️ <b>Bilgi:</b> Bu uygulama Test-Pi ağında deneme amaçlıdır. Satın aldığınız domainler, diğer kullanıcıların da test yapabilmesi için markette tekrar görünebilir. Satın alma kayıtlarınız bu listede <b style="color:#6366f1;">kalıcıdır</b>.
+        </div>
+
         <div id="my-domains-list" style="text-align: left;"></div>
     </div>
 
@@ -176,7 +182,6 @@ const domains = [
     { name:'doganay.pi', img:'assets/doganay.jpeg', price:150 }
 ];
 
-// Satış Bildirimi Göster
 function showSaleNotification(user, domain) {
     const notify = document.getElementById("sales-notification");
     const text = document.getElementById("sales-text");
@@ -185,12 +190,11 @@ function showSaleNotification(user, domain) {
     setTimeout(() => { notify.classList.remove("show"); }, 5000);
 }
 
-// Global Satış Dinleyicisi (Sosyal Kanıt)
 onSnapshot(query(collection(db, "global_sales"), orderBy("at", "desc"), limit(1)), (snap) => {
     snap.docChanges().forEach(change => {
         if (change.type === "added") {
             const data = change.doc.data();
-            if (Date.now() - data.at < 30000) { // Sadece son 30 saniyedeki satışları göster
+            if (Date.now() - data.at < 30000) {
                 showSaleNotification(data.user, data.domain);
             }
         }
@@ -245,7 +249,6 @@ function renderUserPanel() {
     if (!isAuth) { userPanel.style.display = "none"; return; }
     userPanel.style.display = "block";
     
-    // Kullanıcının özel satın alma geçmişini dinle
     onSnapshot(collection(db, "user_purchases", currentUser, "history"), (snap) => {
         if (snap.empty) {
             myList.innerHTML = '<p style="font-style:italic; opacity:0.7; font-size:0.85em; text-align:center;">Henüz satın aldığınız domain bulunmuyor.</p>';
@@ -341,16 +344,9 @@ window.startPurchase = async function(domain, amount) {
             onReadyForServerApproval: async (paymentId) => { await callServer(paymentId, 'approve'); },
             onReadyForServerCompletion: async (paymentId, txid) => {
                 await callServer(paymentId, 'complete', txid, { username: currentUser, domainName: domain, amount: amount });
-                
-                // 1. Market Verisini Güncelle
                 await setDoc(doc(db, "domains", domain), { sold: true, price: amount, txid: txid, buyer: currentUser, soldAt: Date.now() });
-                
-                // 2. Kalıcı Sahiplik (Kullanıcı Geçmişine Kaydet)
                 await setDoc(doc(db, "user_purchases", currentUser, "history", domain), { domain: domain, price: amount, txid: txid, at: Date.now() });
-                
-                // 3. Global Satış Bildirimi Tetikle
                 await setDoc(doc(db, "global_sales", txid), { user: currentUser, domain: domain, at: Date.now() });
-
                 paymentInProgress = false;
                 renderDomains();
                 document.getElementById("success-modal").style.display = "flex";
