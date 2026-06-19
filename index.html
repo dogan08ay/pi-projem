@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Web3 Domain Gateway - Final Point</title>
+    <title>Web3 Domain Gateway - Masterpiece Fix</title>
     <script src="https://sdk.minepi.com/pi-sdk.js"></script>
     <style>
         :root { --bg:#0f172a; --card:#1e293b; --accent:#6366f1; --text:#f8fafc; --sold:#ef4444; --price:#fbbf24; --success:#10b981; --info:#38bdf8; }
@@ -44,7 +44,7 @@
         .blink-text { animation: blinker 1.2s linear infinite; color: #fbbf24; font-weight: 900; text-decoration: underline; }
         .warning-red { color: #ef4444; font-weight: 900; text-decoration: underline; font-size: 1em; display: block; margin-top: 3px; }
         
-        .item-title { color: #60a5fa; font-weight: 800; margin-right: 5px; }
+        .item-title { color: #60a5fa; font-weight: 800; min-width: 90px; display: inline-block; }
         .item-desc { color: #f8fafc; font-weight: 500; }
         
         #sales-notification { position: fixed; top: 20px; right: -300px; background: #10b981; color: white; padding: 8px 12px; border-radius: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.5); z-index: 2000; transition: 0.5s ease-in-out; font-weight: bold; font-size: 0.8em; display: flex; align-items: center; gap: 8px; }
@@ -127,22 +127,14 @@
         <div class="modal-content" style="border-color: #fbbf24;">
             <div style="font-size: 2em; margin-bottom: 5px;">🛡️</div>
             <h2 style="color:#fbbf24;margin-top:0; font-size: 1.1em;">Güvenli Ödeme Onayı</h2>
-            <div style="color:#fff; font-size: 0.9em; line-height: 1.5; text-align: left; background: rgba(0,0,0,0.3); padding: 12px; border-radius: 12px;">
+            <div style="color:#fff; font-size: 0.9em; line-height: 1.6; text-align: left; background: rgba(0,0,0,0.3); padding: 15px; border-radius: 15px;">
                 <div style="margin-bottom: 8px; border-bottom: 1px solid #475569; padding-bottom: 5px; text-align: center;">
                     Bir sonraki adımda gerçek cüzdan değil, <span class="blink-text">TEST PI CÜZDANI</span> açılacaktır.
                 </div>
-                <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
-                    <span class="item-title">İŞLEM TÜRÜ:</span> <span class="blink-text">TEST İŞLEMİDİR</span>
-                </div>
-                <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
-                    <span class="item-title">ÖDEME:</span> <span class="blink-text">SADECE TEST PI</span>
-                </div>
-                <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
-                    <span class="item-title">BAKİYE:</span> <span style="color:#ef4444; font-weight:bold;">EKSİLMEZ</span>
-                </div>
-                <div style="display: flex; justify-content: space-between;">
-                    <span class="item-title">GÜVENLİK:</span> <span class="item-desc">Şifreniz paylaşılmaz.</span>
-                </div>
+                <div style="margin-bottom: 4px;"><span class="item-title">İŞLEM TÜRÜ:</span><span class="blink-text">TEST İŞLEMİDİR</span></div>
+                <div style="margin-bottom: 4px;"><span class="item-title">ÖDEME:</span><span class="blink-text">SADECE TEST PI</span></div>
+                <div style="margin-bottom: 4px;"><span class="item-title">BAKİYE:</span><span style="color:#ef4444; font-weight:bold;">EKSİLMEZ</span></div>
+                <div><span class="item-title">GÜVENLİK:</span><span class="item-desc">Şifreniz paylaşılmaz.</span></div>
             </div>
             <div style="display: flex; gap: 10px; margin-top: 15px;">
                 <button class="pi-btn" style="background:#475569; flex:1; animation:none; padding: 10px; margin:0; font-size: 0.85em;" onclick="document.getElementById('pre-buy-modal').style.display='none'">Vazgeç</button>
@@ -210,6 +202,7 @@ function showSaleNotification(user, domain) {
     setTimeout(() => { notify.classList.remove("show"); }, 5000);
 }
 
+// Kümülatif İstatistik Dinleyicisi (Marketten Bağımsız)
 onSnapshot(collection(db, "global_sales"), (snap) => {
     document.getElementById("total-sold").innerText = snap.size;
     let volume = 0;
@@ -247,14 +240,12 @@ function renderDomains() {
     list.classList.remove("locked-content");
     list.innerHTML = '';
     
-    // Satın Alma Geçmişini Buradan Yönetiyoruz (Senkronize)
     const myList = document.getElementById("my-domains-list");
     let myHtml = "";
 
     domains.forEach(d => {
         const data = domainData[d.name] || { sold:false, price:d.price };
         
-        // Eğer domain satılmışsa ve alan kişi "Ben" isem listeme ekle
         if (data.sold && data.buyer === currentUser) {
             myHtml += `
                 <div class="my-domain-item">
@@ -286,11 +277,7 @@ function renderDomains() {
         list.appendChild(card);
     });
 
-    if (myHtml === "") {
-        myList.innerHTML = '<p style="font-style:italic; opacity:0.7; font-size:0.8em; text-align:center;">Satın aldığınız domain bulunmuyor.</p>';
-    } else {
-        myList.innerHTML = myHtml;
-    }
+    myList.innerHTML = myHtml === "" ? '<p style="font-style:italic; opacity:0.7; font-size:0.8em; text-align:center;">Satın aldığınız domain bulunmuyor.</p>' : myHtml;
 }
 
 function listenToLogs(date) {
