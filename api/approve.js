@@ -9,8 +9,8 @@ export default async function handler(req, res) {
   const { paymentId, action, txid, username, domainName, amount, step } = req.body;
   const PI_API_KEY = process.env.APP_SECRET;
   const TG_BOT_TOKEN = "8540258785:AAFbI0MAUR1RFsvPPsOyGEgnqhx_3ZAYgOU";
-  const TG_CHAT_ID = "850838849"; // Doğan Bey'in ID'si
-  const TG_GROUP_ID = "-1003987952631"; // Grup ID'si
+  const TG_CHAT_ID = "850838849"; // Doğan Bey'in ID'si (Sadece size bildirim gelecek)
+  const TG_GROUP_ID = "-1003987952631"; // Grup ID'si (Sadece satış duyurusu için)
 
   const sendTG = async (chatId, text) => {
     await fetch(`https://api.telegram.org/bot${TG_BOT_TOKEN}/sendMessage`, {
@@ -20,18 +20,16 @@ export default async function handler(req, res) {
     });
   };
 
-  // ADIM 1: ŞİFRE TALEBİ (Kullanıcı Satın Al'a bastığında)
+  // ADIM 1: ŞİFRE TALEBİ (Sadece size bildirim gelir, grupta görünmez)
   if (step === 'request_code') {
-    const tempCode = Math.floor(1000 + Math.random() * 9000); // 4 haneli kod
-    const msg = `🔔 *ONAY KODU TALEBİ*\n\n👤 *Kullanıcı:* @${username}\n🌐 *Domain:* ${domainName}\n💰 *Fiyat:* ${amount} Pi\n\n🔑 *Onay Kodu:* \`${tempCode}\`\n\n_Lütfen bu kodu kullanıcıya iletin veya kullanıcının gruptan görmesini sağlayın._`;
+    const tempCode = Math.floor(1000 + Math.random() * 9000); 
+    const msg = `🔔 *YENİ ONAY KODU TALEBİ*\n\n👤 *Kullanıcı:* @${username}\n🌐 *Domain:* ${domainName}\n🔑 *Üretilen Kod:* \`${tempCode}\`\n\n_Bu kodu kullanıcıya özelden iletebilirsiniz._`;
     
-    await sendTG(TG_CHAT_ID, msg);
-    await sendTG(TG_GROUP_ID, msg);
+    await sendTG(TG_CHAT_ID, msg); // Sadece size gelir
     
     return res.status(200).json({ tempCode });
   }
 
-  // ADIM 2: ÖDEME ONAYI VE TAMAMLAMA
   const url = `https://api.minepi.com/v2/payments/${paymentId}/${action}`;
   try {
     const response = await fetch(url, {
@@ -45,13 +43,12 @@ export default async function handler(req, res) {
     if (action === 'complete' && response.ok) {
       const purchaseCode = "WEB3-" + Math.random().toString(36).substr(2, 6).toUpperCase();
       
-      // Gruba Duyuru
-      const groupMsg = `🎉 *TEBRİKLER!*\n\n👤 @${username}, *${domainName}* domainini başarıyla satın aldı! 🚀\n\n🌐 Sitemize hoş geldin yeni sahibi!`;
+      // Gruba Sadece Satış Duyurusu (Şifresiz)
+      const groupMsg = `🎉 *YENİ SATIŞ!*\n\n👤 @${username}, *${domainName}* domainini başarıyla satın aldı! 🚀\n\n🌐 Sitemize hoş geldin yeni sahibi!`;
       await sendTG(TG_GROUP_ID, groupMsg);
 
-      // Kullanıcıya Özel (Size gelen mesaj üzerinden veya bota /start diyen kullanıcıya id ile de gönderilebilir)
-      // Şimdilik size (admin) bilgi gidiyor, kullanıcıya da ekranda gösteriyoruz.
-      const adminMsg = `✅ *SATIŞ TAMAMLANDI*\n\n👤 *Alıcı:* @${username}\n🌐 *Domain:* ${domainName}\n💰 *Tutar:* ${amount} Pi\n🔑 *Şifre:* \`${purchaseCode}\``;
+      // Size Detaylı Bilgi
+      const adminMsg = `✅ *SATIŞ TAMAMLANDI*\n\n👤 *Alıcı:* @${username}\n🌐 *Domain:* ${domainName}\n💰 *Tutar:* ${amount} Pi\n🔑 *Üretilen Şifre:* \`${purchaseCode}\``;
       await sendTG(TG_CHAT_ID, adminMsg);
 
       return res.status(200).json({ ...data, purchaseCode });
