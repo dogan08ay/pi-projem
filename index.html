@@ -48,23 +48,15 @@
         .footer-section { margin-top:5px; padding:10px; color:#94a3b8; font-size:0.8em; text-align:center; border-top:1px solid #334155; }
         .footer-section a { color:#38bdf8; text-decoration:none; font-weight: bold; }
         
-        /* Yanıp Sönme Efekti */
-        @keyframes blinker {
-            0% { opacity: 1.0; }
-            50% { opacity: 0.3; }
-            100% { opacity: 1.0; }
-        }
-        .blink-text {
-            animation: blinker 1.2s linear infinite;
-            color: #fbbf24;
-            font-weight: 900;
-            text-decoration: underline;
-        }
-
+        @keyframes blinker { 0% { opacity: 1.0; } 50% { opacity: 0.3; } 100% { opacity: 1.0; } }
+        .blink-text { animation: blinker 1.2s linear infinite; color: #fbbf24; font-weight: 900; text-decoration: underline; }
         .highlight-yellow { color: #fbbf24; font-weight: 900; text-decoration: underline; font-size: 1.1em; }
         .item-title { color: #60a5fa; font-weight: 800; margin-right: 5px; }
         .item-desc { color: #f8fafc; font-weight: 500; }
         .log-item { display: flex; justify-content: space-between; background: #0f172a; padding: 8px 12px; border-radius: 8px; margin-bottom: 5px; font-size: 0.85em; }
+        
+        /* Admin Tarih Seçici Stili */
+        .admin-date-picker { background: #0f172a; color: #fff; border: 1.5px solid #6366f1; padding: 8px; border-radius: 10px; font-size: 0.9em; margin-bottom: 15px; width: 100%; box-sizing: border-box; outline: none; }
     </style>
 </head>
 <body>
@@ -83,8 +75,13 @@
         <div id="my-domains-list" style="font-size:0.9em; color:#cbd5e1; display: flex; flex-wrap: wrap; gap: 5px; justify-content: center;"></div>
     </div>
 
+    <!-- Admin Paneli Güncellendi -->
     <div class="card" id="admin-panel" style="display:none; border:2px solid #6366f1;">
-        <h3 style="color:#6366f1;margin-top:0;font-size: 1em;">🛠 Admin Paneli (Günlük Tekil Girişler)</h3>
+        <h3 style="color:#6366f1;margin-top:0;font-size: 1em;">🛠 Admin Paneli (Giriş Kayıtları)</h3>
+        <div style="margin-bottom: 10px; text-align: left;">
+            <label style="font-size: 0.8em; color: #94a3b8; margin-left: 5px;">Tarih Seçin:</label>
+            <input type="date" id="admin-date-input" class="admin-date-picker">
+        </div>
         <div id="log-list"></div>
     </div>
 
@@ -107,7 +104,6 @@
         <div class="domain-grid locked-content" id="domain-list"></div>
     </div>
 
-    <!-- Ödeme Öncesi Yanıp Sönen Güven Modalı -->
     <div id="pre-buy-modal" class="modal-overlay" style="display:none;">
         <div class="modal-content" style="border-color: #fbbf24;">
             <div style="font-size: 3em; margin-bottom: 10px;">🛡️</div>
@@ -155,6 +151,7 @@ let currentUser = null;
 let isAuth = false;
 let pendingDomain = null;
 let pendingAmount = 0;
+let adminLogUnsubscribe = null; // Aktif dinlemeyi durdurmak için
 
 const domains = [
     { name:'test-domain', img:'assets/test.jpeg', price:10 },
@@ -205,6 +202,25 @@ function renderDomains() {
             card.appendChild(buyBtn);
         }
         list.appendChild(card);
+    });
+}
+
+// Admin Log Dinleme Fonksiyonu
+function listenToLogs(date) {
+    if (adminLogUnsubscribe) adminLogUnsubscribe(); // Eski dinlemeyi kapat
+    
+    adminLogUnsubscribe = onSnapshot(doc(db, "daily_users", date), (snap) => {
+        const users = (snap.data() || {}).users || {};
+        const sortedUsers = Object.keys(users).sort((a, b) => users[b] - users[a]);
+        let html = "";
+        if (sortedUsers.length === 0) {
+            html = '<p style="font-style:italic; opacity:0.6; font-size:0.85em;">Bu tarihte giriş kaydı bulunamadı.</p>';
+        } else {
+            sortedUsers.forEach(u => { 
+                html += `<div class="log-item"><b>@${u}</b><span>${new Date(users[u]).toLocaleString("tr-TR")}</span></div>`; 
+            });
+        }
+        document.getElementById("log-list").innerHTML = html;
     });
 }
 
@@ -261,18 +277,20 @@ window.loginWithPi = async function() {
         updateActiveStatus();
         renderDomains();
         renderUserPanel();
+        
         if (currentUser === "doganay0808") {
             document.getElementById("admin-panel").style.display = "block";
             const today = new Date().toISOString().split("T")[0];
-            onSnapshot(doc(db, "daily_users", today), (snap) => {
-                const users = (snap.data() || {}).users || {};
-                const sortedUsers = Object.keys(users).sort((a, b) => users[b] - users[a]);
-                let html = "";
-                sortedUsers.forEach(u => { 
-                    html += `<div class="log-item"><b>@${u}</b><span>${new Date(users[u]).toLocaleString("tr-TR")}</span></div>`; 
-                });
-                document.getElementById("log-list").innerHTML = html;
-            });
+            const dateInput = document.getElementById("admin-date-input");
+            dateInput.value = today;
+            
+            // İlk açılışta bugünü dinle
+            listenToLogs(today);
+            
+            // Tarih değiştiğinde yeni tarihi dinle
+            dateInput.onchange = (e) => {
+                listenToLogs(e.target.value);
+            };
         }
     } catch (err) { alert("Giriş Hatası: " + err.message); }
 };
