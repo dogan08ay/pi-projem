@@ -157,7 +157,6 @@
     </div>
 </div>
 
-<!-- SATIN ALMA BAŞARILI MESAJI (MODAL) -->
 <div id="success-modal" class="modal-overlay" style="display:none;">
     <div class="modal-content" style="border-color: #10b981; text-align: center;">
         <h2 style="color:#10b981;margin-top:0; font-size: 1.3em; font-weight: 900;">✅ İŞLEM BAŞARILI!</h2>
@@ -279,18 +278,24 @@ document.getElementById("confirm-buy-btn").onclick = async () => {
     document.getElementById('pre-buy-modal').style.display='none';
     try {
         await Pi.createPayment({ amount: Number(pendingPrice), memo: "Domain: " + pendingDomain, metadata: { domain: pendingDomain } }, {
-            onReadyForServerApproval: async (id) => { await fetch('/api/approve', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({paymentId:id, action:'approve'}) }); },
+            onReadyForServerApproval: async (id) => { 
+                await fetch('/api/approve', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({paymentId:id, action:'approve'}) }); 
+            },
             onReadyForServerCompletion: async (id, txid) => {
-                await fetch('/api/approve', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({paymentId:id, action:'complete', txid, username:currentUser, domainName:pendingDomain, amount:pendingPrice}) });
+                const res = await fetch('/api/approve', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({paymentId:id, action:'complete', txid, username:currentUser, domainName:pendingDomain, amount:pendingPrice}) });
+                const resData = await res.json();
+                
                 await setDoc(doc(db, "domains", pendingDomain), { sold: true, price: pendingPrice, txid: txid, buyer: currentUser, at: Date.now() });
                 await setDoc(doc(db, "global_sales", txid), { user: currentUser, domain: pendingDomain, price: pendingPrice, at: Date.now() });
                 
-                // BAŞARILI MODALINI GÖSTER
-                document.getElementById("success-modal").style.display = "flex";
-                render();
+                // KESİN TETİKLEME: Modalın görünmesi için
+                setTimeout(() => {
+                    document.getElementById("success-modal").style.display = "flex";
+                    render();
+                }, 500);
             },
             onCancel: () => {},
-            onError: (e) => { alert("HATA!"); }
+            onError: (e) => { alert("ÖDEME HATASI!"); }
         });
     } catch (e) { console.error(e); }
 };
