@@ -58,8 +58,14 @@
         .footer-section a { color:#38bdf8; text-decoration:none; font-weight: 800; border-bottom: 1px solid #38bdf8; }
         .footer-section div { margin-bottom: 8px; }
 
-        #log-list { max-height: 95px; overflow-y: auto; }
+        /* GÜNCELLEMİ: 2 kişiden sonra kayar hale getirildi */
+        #log-list { max-height: 85px; overflow-y: auto; }
+        #log-list::-webkit-scrollbar { width: 5px; }
+        #log-list::-webkit-scrollbar-track { background: #0f172a; border-radius: 10px; }
+        #log-list::-webkit-scrollbar-thumb { background: #6366f1; border-radius: 10px; }
+
         .log-item { display: flex; justify-content: space-between; background: #0f172a; padding: 8px 12px; border-radius: 8px; margin-bottom: 5px; font-size: 0.8em; }
+        .admin-date-picker { background: #0f172a; color: #fff; border: 1.5px solid #6366f1; padding: 6px; border-radius: 8px; font-size: 0.85em; margin-bottom: 10px; width: 100%; box-sizing: border-box; outline: none; }
     </style>
 </head>
 <body>
@@ -94,6 +100,9 @@
 
     <div class="card" id="admin-panel" style="display:none; border:2px solid #6366f1;">
         <h3 style="color:#6366f1;margin-top:0;font-size: 0.95em;">🛠 Admin Paneli</h3>
+        <div style="margin-bottom: 8px; text-align: left;">
+            <input type="date" id="admin-date-input" class="admin-date-picker">
+        </div>
         <div id="log-list"></div>
     </div>
 
@@ -121,7 +130,6 @@
         <div class="domain-grid locked-content" id="domain-list"></div>
     </div>
 
-    <!-- FOOTER GERİ GETİRİLDİ -->
     <div class="footer-section">
         <div>SORULARINIZ İÇİN: <a href="mailto:doganay08@hotmail.com">📩 doganay08@hotmail.com</a></div>
         <div>RESMİ KANALIMIZ: <a href="https://t.me/+5jZi9vrcNMM2NGVk" target="_blank">💬 TELEGRAM GRUBUMUZ</a></div>
@@ -151,6 +159,17 @@
     </div>
 </div>
 
+<div id="success-modal" class="modal-overlay" style="display:none;">
+    <div class="modal-content" style="border-color: #10b981; text-align: center;">
+        <h2 style="color:#10b981;margin-top:0; font-size: 1.3em; font-weight: 900;">✅ İŞLEM BAŞARILI!</h2>
+        <p style="color:#fff; font-size: 1.1em; line-height: 1.5; font-weight: bold;">ÖDEMENİZ BAŞARILI OLDU, SATIN ALMANIZ GERÇEKLEŞTİ. <br><br> HAYIRLI OLMASINI DİLİYORUZ.</p>
+        <div style="display: flex; flex-direction: column; gap: 10px; margin-top: 15px;">
+            <button class="pi-btn" style="background:#0088cc; animation:none; padding: 12px; margin:0; font-size: 0.95em;" id="share-tg-btn">🚀 TELEGRAM'DA PAYLAŞ</button>
+            <button class="pi-btn" style="background:#10b981; animation:none; padding: 12px; margin:0; font-size: 0.95em;" onclick="document.getElementById('success-modal').style.display='none'">HARİKA!</button>
+        </div>
+    </div>
+</div>
+
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
 import { getFirestore, doc, onSnapshot, setDoc, getDoc, collection, query, where, limit, orderBy, getDocs } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
@@ -164,6 +183,7 @@ let isAuth = false;
 let domainData = {};
 let pendingDomain = null;
 let pendingPrice = 0;
+let adminLogUnsubscribe = null;
 
 const domains = [
     { name:'test-domain', img:'assets/test.jpeg', price:10 },
@@ -204,8 +224,8 @@ async function render() {
         if (data.sold && data.buyer === currentUser) {
             myHtml += `
                 <div class="my-domain-item">
-                    <div><b>${d.name}</b><br><small>${data.price} Pİ</small></div>
-                    <a href="https://blockexplorer.minepi.com/testnet/tx/${data.txid}" target="_blank" class="manage-btn">DOĞRULA</a>
+                    <div><b>${d.name}</b><br><small style="color:#fbbf24; font-weight:800;">${data.price} Pİ ALINDI</small></div>
+                    <a href="https://minepi.com/blockexplorer/tx/${data.txid}?network=testnet" target="_blank" class="manage-btn">DOĞRULA</a>
                 </div>
             `;
         }
@@ -222,9 +242,20 @@ async function render() {
         }
         list.appendChild(card);
     });
+    if (document.getElementById("my-domains-list")) document.getElementById("my-domains-list").innerHTML = myHtml || '<p style="font-size:0.75em; opacity:0.5; text-align:center;">AKTİF DOMAİNİNİZ YOK.</p>';
+    if (document.getElementById("my-history-list")) document.getElementById("my-history-list").innerHTML = historyHtml || '<p style="font-size:0.75em; opacity:0.5; text-align:center;">GEÇMİŞ KAYDINIZ YOK.</p>';
+}
 
-    if (document.getElementById("my-domains-list")) document.getElementById("my-domains-list").innerHTML = myHtml || '<p style="font-size:0.7em; opacity:0.5; text-align:center;">AKTİF DOMAİNİNİZ YOK.</p>';
-    if (document.getElementById("my-history-list")) document.getElementById("my-history-list").innerHTML = historyHtml || '<p style="font-size:0.7em; opacity:0.5; text-align:center;">GEÇMİŞ KAYDINIZ YOK.</p>';
+function listenToLogs(date) {
+    if (adminLogUnsubscribe) adminLogUnsubscribe();
+    adminLogUnsubscribe = onSnapshot(doc(db, "daily_users", date), (snap) => {
+        const users = (snap.data() || {}).users || {};
+        const sortedUsers = Object.keys(users).sort((a, b) => users[b] - users[a]);
+        let html = "";
+        if (sortedUsers.length === 0) { html = '<p style="font-style:italic; opacity:0.6; font-size:0.8em;">KAYIT BULUNAMADI.</p>'; }
+        else { sortedUsers.forEach(u => { html += `<div class="log-item"><b>@${u}</b><span>${new Date(users[u]).toLocaleTimeString()}</span></div>`; }); }
+        document.getElementById("log-list").innerHTML = html;
+    });
 }
 
 window.loginWithPi = async function() {
@@ -238,12 +269,11 @@ window.loginWithPi = async function() {
         render();
         if (currentUser === "doganay0808") {
             document.getElementById("admin-panel").style.display = "block";
-            onSnapshot(doc(db, "daily_users", new Date().toISOString().split("T")[0]), (snap) => {
-                const users = (snap.data() || {}).users || {};
-                let html = "";
-                Object.keys(users).forEach(u => { html += `<div class="log-item"><b>@${u}</b><span>${new Date(users[u]).toLocaleTimeString()}</span></div>`; });
-                document.getElementById("log-list").innerHTML = html;
-            });
+            const today = new Date().toISOString().split("T")[0];
+            const dateInput = document.getElementById("admin-date-input");
+            dateInput.value = today;
+            listenToLogs(today);
+            dateInput.onchange = (e) => { listenToLogs(e.target.value); };
         }
     } catch (e) { alert("GİRİŞ HATASI!"); }
 };
@@ -255,16 +285,20 @@ document.getElementById("confirm-buy-btn").onclick = async () => {
             onReadyForServerApproval: async (id) => { await fetch('/api/approve', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({paymentId:id, action:'approve'}) }); },
             onReadyForServerCompletion: async (id, txid) => {
                 await fetch('/api/approve', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({paymentId:id, action:'complete', txid, username:currentUser, domainName:pendingDomain, amount:pendingPrice}) });
-                const at = Date.now();
-                await setDoc(doc(db, "domains", pendingDomain), { sold: true, price: pendingPrice, txid: txid, buyer: currentUser, at: at });
-                await setDoc(doc(db, "global_sales", txid), { user: currentUser, domain: pendingDomain, price: pendingPrice, at: at });
-                alert("TEBRİKLER! SATIN ALINDI.");
+                await setDoc(doc(db, "domains", pendingDomain), { sold: true, price: pendingPrice, txid: txid, buyer: currentUser, at: Date.now() });
+                await setDoc(doc(db, "global_sales", txid), { user: currentUser, domain: pendingDomain, price: pendingPrice, at: Date.now() });
+                document.getElementById("success-modal").style.display = "flex";
                 render();
             },
             onCancel: () => {},
             onError: (e) => { alert("HATA!"); }
         });
     } catch (e) { console.error(e); }
+};
+
+document.getElementById("share-tg-btn").onclick = () => {
+    const text = `🚀 Web3 Domain Gateway üzerinden ${pendingDomain} domainini satın aldım! Siz de Test-Pİ ile Web3 dünyasına katılın.`;
+    window.open(`https://t.me/share/url?url=${encodeURIComponent(window.location.href)}&text=${encodeURIComponent(text)}`, '_blank');
 };
 
 domains.forEach(d => {
