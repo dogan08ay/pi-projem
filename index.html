@@ -51,14 +51,12 @@
         .item-red-val-small { color: #ef4444; font-weight: 900; flex: 1; white-space: nowrap; font-size: 0.88em; }
         
         .my-domain-item { background: #0f172a; padding: 10px; border-radius: 12px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; border: 1px solid #334155; }
-        .history-item { background: rgba(15, 23, 42, 0.5); padding: 8px 12px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px; border-left: 3px solid #6366f1; font-size: 0.75em; }
         .manage-btn { background: #6366f1; color: white; border: none; padding: 5px 10px; border-radius: 6px; font-size: 0.7em; cursor: pointer; font-weight: bold; text-decoration: none; }
         
         .footer-section { margin-top: auto; padding: 15px 10px; color:#f8fafc; font-size:0.75em; text-align:center; border-top:1px solid #334155; background: rgba(15, 23, 42, 0.8); border-radius: 20px 20px 0 0; }
         .footer-section a { color:#38bdf8; text-decoration:none; font-weight: 800; border-bottom: 1px solid #38bdf8; }
         .footer-section div { margin-bottom: 8px; }
 
-        /* GÜNCELLEMİ: 2 kişiden sonra kayar hale getirildi */
         #log-list { max-height: 85px; overflow-y: auto; }
         #log-list::-webkit-scrollbar { width: 5px; }
         #log-list::-webkit-scrollbar-track { background: #0f172a; border-radius: 10px; }
@@ -66,6 +64,9 @@
 
         .log-item { display: flex; justify-content: space-between; background: #0f172a; padding: 8px 12px; border-radius: 8px; margin-bottom: 5px; font-size: 0.8em; }
         .admin-date-picker { background: #0f172a; color: #fff; border: 1.5px solid #6366f1; padding: 6px; border-radius: 8px; font-size: 0.85em; margin-bottom: 10px; width: 100%; box-sizing: border-box; outline: none; }
+        
+        .user-info-note { background: rgba(99, 102, 241, 0.1); border: 1px dashed #6366f1; color: #94a3b8; padding: 10px; border-radius: 10px; font-size: 0.75em; line-height: 1.4; margin-bottom: 10px; text-align: left; }
+        .btn-fake-buy { background: var(--accent); color: white; padding: 1px 4px; border-radius: 3px; font-weight: 900; }
     </style>
 </head>
 <body>
@@ -88,14 +89,10 @@
 
     <div class="card" id="user-panel" style="display:none; border:1.5px solid #10b981;">
         <h3 style="color:#10b981;margin:0 0 8px 0; font-size: 0.95em;">👤 Satın Alma Geçmişim</h3>
-        <div id="active-domains-box">
-            <p style="font-size: 0.7em; color: #10b981; font-weight: 800; text-align: left; margin-bottom: 5px;">✅ AKTİF DOMAİNLERİM</p>
-            <div id="my-domains-list" style="text-align: left; margin-bottom: 15px;"></div>
+        <div class="user-info-note">
+            ℹ️ <b>Bilgi:</b> Bu uygulama Test-Pi ağında deneme amaçlıdır. Satın aldığınız domainler, diğer kullanıcıların da test yapabilmesi için markette tekrar <span class="btn-fake-buy">SATIN AL</span> olarak görünebilir <b>ve satın alma geçmişinizden silinebilir.</b>
         </div>
-        <div id="history-domains-box">
-            <p style="font-size: 0.7em; color: #94a3b8; font-weight: 800; text-align: left; margin-bottom: 5px;">📜 TÜM İŞLEM GEÇMİŞİM</p>
-            <div id="my-history-list" style="text-align: left;"></div>
-        </div>
+        <div id="my-domains-list" style="text-align: left;"></div>
     </div>
 
     <div class="card" id="admin-panel" style="display:none; border:2px solid #6366f1;">
@@ -124,6 +121,7 @@
             </div>
 
             <p style="font-size: 0.8em; color: #e2e8f0; font-weight: 600; line-height: 1.4; margin: 5px 0; max-width: 85%;">Web3 domain sahibi olmak ve güvenli bağlantı kurmak için;</p>
+            <div style="color: #fbbf24; font-weight: 700; margin-bottom: 5px; font-size: 0.85em;">👇 Aşağıdaki "Pi ile Bağlan" butonunu kullanın.</div>
             <button class="pi-btn" onclick="window.loginWithPi()">Pi ile Bağlan</button>
         </div>
 
@@ -195,7 +193,7 @@ const domains = [
     { name:'doganay.pi', img:'assets/doganay.jpeg', price:150 }
 ];
 
-async function render() {
+function render() {
     const list = document.getElementById("domain-list");
     const lock = document.getElementById("premium-lock");
     if (!list) return;
@@ -205,19 +203,6 @@ async function render() {
 
     list.innerHTML = '';
     let myHtml = "";
-    let historyHtml = "";
-
-    if (currentUser) {
-        try {
-            const snap = await getDocs(collection(db, "global_sales"));
-            let userSales = [];
-            snap.forEach(doc => { if (doc.data().user === currentUser) userSales.push(doc.data()); });
-            userSales.sort((a, b) => b.at - a.at);
-            userSales.forEach(s => {
-                historyHtml += `<div class="history-item"><span><b>${s.domain}</b> - ${s.price} Pİ</span><span>${new Date(s.at).toLocaleDateString("tr-TR")}</span></div>`;
-            });
-        } catch (e) { console.error(e); }
-    }
 
     domains.forEach(d => {
         const data = domainData[d.name] || { sold:false, price:d.price };
@@ -243,7 +228,6 @@ async function render() {
         list.appendChild(card);
     });
     if (document.getElementById("my-domains-list")) document.getElementById("my-domains-list").innerHTML = myHtml || '<p style="font-size:0.75em; opacity:0.5; text-align:center;">AKTİF DOMAİNİNİZ YOK.</p>';
-    if (document.getElementById("my-history-list")) document.getElementById("my-history-list").innerHTML = historyHtml || '<p style="font-size:0.75em; opacity:0.5; text-align:center;">GEÇMİŞ KAYDINIZ YOK.</p>';
 }
 
 function listenToLogs(date) {
@@ -253,8 +237,11 @@ function listenToLogs(date) {
         const sortedUsers = Object.keys(users).sort((a, b) => users[b] - users[a]);
         let html = "";
         if (sortedUsers.length === 0) { html = '<p style="font-style:italic; opacity:0.6; font-size:0.8em;">KAYIT BULUNAMADI.</p>'; }
-        else { sortedUsers.forEach(u => { html += `<div class="log-item"><b>@${u}</b><span>${new Date(users[u]).toLocaleTimeString()}</span></div>`; }); }
+        else { 
+            sortedUsers.forEach(u => { html += `<div class="log-item"><b>@${u}</b><span>${new Date(users[u]).toLocaleTimeString()}</span></div>`; }); 
+        }
         document.getElementById("log-list").innerHTML = html;
+        document.getElementById("online-count").innerText = sortedUsers.length;
     });
 }
 
@@ -266,14 +253,23 @@ window.loginWithPi = async function() {
         document.getElementById("user-status").innerText = "BAĞLI: @" + currentUser;
         document.getElementById("user-status-box").style.display = "block";
         document.getElementById("user-panel").style.display = "block";
+        
+        const today = new Date().toISOString().split("T")[0];
+        const userDocRef = doc(db, "daily_users", today);
+        const userSnap = await getDoc(userDocRef);
+        let currentUsers = userSnap.exists() ? userSnap.data().users || {} : {};
+        currentUsers[currentUser] = Date.now();
+        await setDoc(userDocRef, { users: currentUsers }, { merge: true });
+
         render();
         if (currentUser === "doganay0808") {
             document.getElementById("admin-panel").style.display = "block";
-            const today = new Date().toISOString().split("T")[0];
             const dateInput = document.getElementById("admin-date-input");
             dateInput.value = today;
             listenToLogs(today);
             dateInput.onchange = (e) => { listenToLogs(e.target.value); };
+        } else {
+            listenToLogs(today);
         }
     } catch (e) { alert("GİRİŞ HATASI!"); }
 };
