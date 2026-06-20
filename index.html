@@ -101,7 +101,6 @@
         </div>
     </div>
 
-    <!-- GÜNCELLEMİ: Sıralama Değişti (Admin ve Kullanıcı Paneli Üstte) -->
     <div class="card" id="user-panel" style="display:none; border:1.5px solid #10b981;">
         <h3 style="color:#10b981;margin:0 0 8px 0; font-size: 0.95em;">👤 Satın Alma Geçmişim</h3>
         <div class="user-info-note">
@@ -127,7 +126,7 @@
         <div id="log-list"></div>
     </div>
 
-    <!-- GÜNCELLEMİ: Market Tekrar En Alta Alındı -->
+    <!-- MARKET BÖLÜMÜ - GÜNCELLEMİ: Artık her zaman görünür ve en altta -->
     <div class="card" style="position: relative; min-height: 380px; padding: 10px; margin-bottom: 5px;">
         <div id="market-title" class="section-title-box">Satın Alabileceğiniz Domainler</div>
         
@@ -280,16 +279,23 @@ async function renderDomains() {
     const list = document.getElementById("domain-list");
     const lockOverlay = document.getElementById("premium-lock");
     if (!list) return;
-    if (!isAuth) { lockOverlay.style.display = "flex"; list.classList.add("locked-content"); return; }
-    lockOverlay.style.display = "none";
-    list.classList.remove("locked-content");
-    list.innerHTML = '';
     
+    // GÜNCELLEMİ: Market listesi her zaman render edilir
+    if (!isAuth) { 
+        lockOverlay.style.display = "flex"; 
+        list.classList.add("locked-content"); 
+    } else {
+        lockOverlay.style.display = "none";
+        list.classList.remove("locked-content");
+    }
+
+    list.innerHTML = '';
     const myList = document.getElementById("my-domains-list");
     const myHistoryList = document.getElementById("my-history-list");
     let myHtml = "";
     let historyHtml = "";
 
+    // GÜNCELLEMİ: Tüm geçmişi Firebase'den çek
     if (currentUser) {
         const q = query(collection(db, "global_sales"), where("user", "==", currentUser), orderBy("at", "desc"));
         const querySnapshot = await getDocs(q);
@@ -308,7 +314,6 @@ async function renderDomains() {
     domains.forEach(d => {
         const data = domainData[d.name] || { sold:false, price:d.price };
         
-        // GÜNCELLEMİ: Sadece şu anki sahibi kullanıcı ise aktif listede görünecek
         if (data.sold && data.buyer === currentUser) {
             myHtml += `
                 <div class="my-domain-item">
@@ -340,8 +345,8 @@ async function renderDomains() {
         list.appendChild(card);
     });
 
-    myList.innerHTML = myHtml === "" ? '<p style="font-style:italic; opacity:0.7; font-size:0.8em; text-align:center;">AKTİF DOMAİNİNİZ BULUNMUYOR.</p>' : myHtml;
-    myHistoryList.innerHTML = historyHtml === "" ? '<p style="font-style:italic; opacity:0.7; font-size:0.8em; text-align:center;">GEÇMİŞ KAYDINIZ BULUNMUYOR.</p>' : historyHtml;
+    if (myList) myList.innerHTML = myHtml === "" ? '<p style="font-style:italic; opacity:0.7; font-size:0.8em; text-align:center;">AKTİF DOMAİNİNİZ BULUNMUYOR.</p>' : myHtml;
+    if (myHistoryList) myHistoryList.innerHTML = historyHtml === "" ? '<p style="font-style:italic; opacity:0.7; font-size:0.8em; text-align:center;">GEÇMİŞ KAYDINIZ BULUNMUYOR.</p>' : historyHtml;
 }
 
 function listenToLogs(date) {
