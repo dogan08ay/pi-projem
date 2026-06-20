@@ -32,7 +32,6 @@
         .lock-title-box { background:linear-gradient(135deg,#fef3c7 0%,#fde68a 100%); color:#1e293b; padding:5px 12px; border-radius:10px; border:2px solid #f59e0b; font-size:0.95em; font-weight:900; margin-bottom:8px; display:inline-block; }
 
         .locked-content { filter: blur(12px); opacity: 0.25; pointer-events: none; }
-        /* GÜNCELLEMİ: Boşluklar daraltıldı */
         .premium-lock-overlay { position: absolute; top: 0; left: 0; right: 0; bottom: 0; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; background: rgba(15, 23, 42, 0.7); backdrop-filter: blur(1px); z-index: 10; padding: 10px; }
         
         .secure-badge { background: #0d2a2a; border: 2px solid #10b981; border-radius: 14px; padding: 14px 18px; width: 88%; box-sizing: border-box; margin: 5px 0; text-align: center; }
@@ -54,7 +53,6 @@
         .user-info-note { background: rgba(99, 102, 241, 0.1); border: 1px dashed #6366f1; color: #94a3b8; padding: 10px; border-radius: 10px; font-size: 0.75em; line-height: 1.4; margin-bottom: 10px; text-align: left; }
         .btn-fake-buy { background: var(--accent); color: white; padding: 1px 4px; border-radius: 3px; font-weight: 900; }
 
-        /* GÜNCELLEMİ: Alt panel boşlukları daraltıldı */
         .footer-section { margin-top: auto; padding: 10px; color:#f8fafc; font-size:0.75em; text-align:center; border-top:1px solid #334155; background: rgba(15, 23, 42, 0.6); border-radius: 15px 15px 0 0; }
         .footer-section a { color:#38bdf8; text-decoration:none; font-weight: 800; }
         .footer-section div { margin-bottom: 5px; }
@@ -146,13 +144,14 @@
     </div>
 </div>
 
+<!-- GÜNCELLEMİ: Orijinal Başarı Metni Modal (İlk Koddan Alındı) -->
 <div id="success-modal" class="modal-overlay" style="display:none;">
     <div class="modal-content" style="border-color: #10b981; text-align: center;">
-        <h2 style="color:#10b981;margin-top:0; font-size: 1.3em; font-weight: 900;">✅ İŞLEM BAŞARILI!</h2>
-        <p style="color:#fff; font-size: 1.1em; line-height: 1.5; font-weight: bold;">ÖDEMENİZ BAŞARILI OLDU, SATIN ALMANIZ GERÇEKLEŞTİ. <br><br> HAYIRLI OLMASINI DİLİYORUZ.</p>
-        <div style="display: flex; flex-direction: column; gap: 10px; margin-top: 15px;">
-            <button class="pi-btn" style="background:#0088cc; animation:none; padding: 12px; margin:0; font-size: 0.95em;" id="share-tg-btn">🚀 TELEGRAM'DA PAYLAŞ</button>
-            <button class="pi-btn" style="background:#10b981; animation:none; padding: 12px; margin:0; font-size: 0.95em;" onclick="document.getElementById('success-modal').style.display='none'">HARİKA!</button>
+        <h2 style="color:#10b981;margin-top:0; font-size: 1.2em; font-weight: 900;">✅ İŞLEM BAŞARILI!</h2>
+        <p style="color:#fff; font-size: 1em; line-height: 1.4; font-weight: bold;">ÖDEMENİZ BAŞARILI OLDU, SATIN ALMANIZ GERÇEKLEŞTİ. <br><br> <b>HAYIRLI OLMASINI DİLİYORUZ.</b></p>
+        <div style="display: flex; flex-direction: column; gap: 8px; margin-top: 10px;">
+            <button class="pi-btn" style="background:#0088cc; animation:none; padding: 10px; margin:0; font-size: 0.85em;" id="share-tg-btn">🚀 TELEGRAM'DA PAYLAŞ</button>
+            <button class="pi-btn" style="background:#10b981; animation:none; padding: 10px; margin:0; font-size: 0.85em;" onclick="document.getElementById('success-modal').style.display='none'">HARİKA!</button>
         </div>
     </div>
 </div>
