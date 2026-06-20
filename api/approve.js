@@ -13,15 +13,11 @@ export default async function handler(req, res) {
   const TG_GROUP_ID = "-1003987952631"; // Grup ID'si
 
   const sendTG = async (chatId, text) => {
-    try {
-      await fetch(`https://api.telegram.org/bot${TG_BOT_TOKEN}/sendMessage`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ chat_id: chatId, text, parse_mode: 'Markdown' })
-      });
-    } catch (tgErr) {
-      console.error("Telegram Hatası:", tgErr);
-    }
+    await fetch(`https://api.telegram.org/bot${TG_BOT_TOKEN}/sendMessage`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ chat_id: chatId, text, parse_mode: 'Markdown' })
+    });
   };
 
   const url = `https://api.minepi.com/v2/payments/${paymentId}/${action}`;
@@ -42,7 +38,7 @@ export default async function handler(req, res) {
       await sendTG(TG_GROUP_ID, groupMsg);
 
       // Size Detaylı Bilgi
-      const adminMsg = `✅ *SATIŞ TAMAMLANDI*\n\n👤 *Alıcı:* @${username}\n🌐 *Domain:* ${domainName}\n💰 *Tutar:* ${amount} Pi\n🔑 *Üretilen Şifre:* \`${purchaseCode}\`\n🔗 *TXID:* [Doğrula](https://minepi.com/blockexplorer-testnet/tx/${txid})`;
+      const adminMsg = `✅ *SATIŞ TAMAMLANDI*\n\n👤 *Alıcı:* @${username}\n🌐 *Domain:* ${domainName}\n💰 *Tutar:* ${amount} Pi\n🔑 *Üretilen Şifre:* \`${purchaseCode}\``;
       await sendTG(TG_CHAT_ID, adminMsg);
 
       return res.status(200).json({ ...data, purchaseCode });
