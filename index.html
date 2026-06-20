@@ -3,18 +3,18 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Web3 Domain Gateway - Masterpiece Final</title>
+    <title>Web3 Domain Gateway</title>
     <script src="https://sdk.minepi.com/pi-sdk.js"></script>
     <style>
-        :root { --bg:#0f172a; --card:#1e293b; --accent:#6366f1; --text:#f8fafc; --sold:#ef4444; --price:#fbbf24; --success:#10b981; --info:#38bdf8; }
-        body { font-family:'Segoe UI',sans-serif; background:var(--bg); color:var(--text); margin:0; padding:5px; display:flex; justify-content:center; min-height: 100vh; }
+        :root { --bg:#0f172a; --card:#1e293b; --accent:#6366f1; --text:#f8fafc; --sold:#ef4444; --price:#fbbf24; --success:#10b981; }
+        body { font-family:'Segoe UI',sans-serif; background:var(--bg); color:var(--text); margin:0; padding:5px; display:flex; justify-content:center; min-height: 100vh; overflow-x: hidden; }
         .container { max-width:600px; width:100%; text-align:center; display: flex; flex-direction: column; }
         .card { background:var(--card); padding:10px; border-radius:18px; box-shadow:0 8px 12px -3px rgba(0,0,0,0.3); margin-bottom:8px; position: relative; overflow: hidden; }
         
-        .app-logo { width: 80px; height: 80px; margin-bottom: 5px; border-radius: 50%; box-shadow: 0 0 15px rgba(99, 102, 241, 0.5); border: 2px solid #6366f1; object-fit: cover; }
-        .app-title { font-size: 1.5em; font-weight: 900; margin: 0 0 5px 0; background: linear-gradient(to right, #60a5fa, #a855f7); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .app-logo { width: 85px; height: 85px; margin-bottom: 8px; border-radius: 50%; box-shadow: 0 0 20px rgba(99, 102, 241, 0.6); border: 3px solid #6366f1; object-fit: cover; }
+        .app-title { font-size: 1.7em; font-weight: 900; margin: 0 0 8px 0; background: linear-gradient(to right, #60a5fa, #a855f7); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
         
-        .stats-bar { display: flex; justify-content: space-around; background: rgba(99, 102, 241, 0.1); border: 1px solid rgba(99, 102, 241, 0.3); padding: 5px; border-radius: 10px; margin-bottom: 5px; font-size: 0.65em; font-weight: bold; color: #94a3b8; }
+        .stats-bar { display: flex; justify-content: space-around; background: rgba(99, 102, 241, 0.1); border: 1px solid rgba(99, 102, 241, 0.3); padding: 6px; border-radius: 12px; margin-bottom: 8px; font-size: 0.65em; font-weight: bold; color: #94a3b8; }
         .stats-item span { color: var(--price); margin-left: 2px; }
 
         .domain-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:5px; position: relative; }
@@ -25,67 +25,47 @@
         .btn-buy { background: var(--accent); color: white; border: none; padding: 6px 8px; border-radius: 6px; cursor: pointer; margin-top: 4px; font-weight: bold; width: 100%; font-size: 0.75em; }
         .btn-sold { background: rgba(239, 68, 68, 0.1); color: var(--sold); border: 1.5px solid var(--sold); padding: 5px 8px; border-radius: 6px; margin-top: 4px; font-weight: bold; width: 100%; font-size: 0.7em; }
         
-        .pi-btn { background: linear-gradient(135deg, #0052FF 0%, #3b82f6 100%); color:#ffffff; padding:10px 30px; border-radius:50px; font-weight:800; font-size:0.95em; border:none; cursor:pointer; animation: pulse-blue 2s infinite; transition: 0.3s; margin: 10px 0; }
+        .pi-btn { background: linear-gradient(135deg, #0052FF 0%, #3b82f6 100%); color:#ffffff; padding:12px 30px; border-radius:50px; font-weight:800; font-size:0.95em; border:none; cursor:pointer; animation: pulse-blue 2s infinite; transition: 0.3s; margin: 10px 0; }
         @keyframes pulse-blue { 0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(0, 82, 255, 0.7); } 70% { transform: scale(1); box-shadow: 0 0 0 10px rgba(0, 82, 255, 0); } 100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(0, 82, 255, 0); } }
 
         .section-title-box { background:linear-gradient(135deg,#fef3c7 0%,#fde68a 100%); color:#1e293b; padding:5px 12px; border-radius:10px; border:2px solid #f59e0b; font-size:0.85em; font-weight:800; display:inline-block; margin-bottom:5px; }
-        .lock-title-box { background:linear-gradient(135deg,#fef3c7 0%,#fde68a 100%); color:#1e293b; padding:6px 15px; border-radius:10px; border:2px solid #f59e0b; font-size:0.95em; font-weight:900; margin-bottom:10px; display:inline-block; }
+        .lock-title-box { background:linear-gradient(135deg,#fef3c7 0%,#fde68a 100%); color:#1e293b; padding:6px 15px; border-radius:10px; border:2px solid #f59e0b; font-size:0.95em; font-weight:900; margin-bottom:8px; display:inline-block; }
 
-        .locked-content { filter: blur(12px); opacity: 0.25; pointer-events: none; }
-        .premium-lock-overlay { position: absolute; top: 0; left: 0; right: 0; bottom: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; background: rgba(15, 23, 42, 0.7); backdrop-filter: blur(1px); z-index: 10; padding: 5px; }
-        .lock-icon { font-size: 2em; margin-bottom: 2px; animation: pulse 2s infinite; }
-        @keyframes pulse { 0% { transform: scale(1); opacity: 0.8; } 50% { transform: scale(1.1); opacity: 1; } 100% { transform: scale(1); opacity: 0.8; } }
+        .locked-content { filter: blur(15px); opacity: 0.2; pointer-events: none; }
+        .premium-lock-overlay { position: absolute; top: 0; left: 0; right: 0; bottom: 0; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; background: rgba(15, 23, 42, 0.75); backdrop-filter: blur(2px); z-index: 100; padding-top: 20px; text-align: center; }
+        
+        .secure-badge { background: #0d2a2a; border: 2px solid #10b981; border-radius: 14px; padding: 15px; width: 92%; box-sizing: border-box; margin: 5px 0; }
+        .secure-badge-title { color: #10b981; font-size: 1em; font-weight: 800; margin-bottom: 8px; border-bottom: 1px solid rgba(16,185,129,0.3); padding-bottom: 6px; }
+        .secure-badge-body { color: #e2e8f0; font-size: 0.85em; line-height: 1.5; margin-bottom: 8px; border-bottom: 1px solid rgba(16,185,129,0.3); padding-bottom: 8px; }
+        .secure-badge-warning { color: #fbbf24; font-size: 0.95em; font-weight: 900; line-height: 1.4; text-transform: uppercase; }
 
-        .secure-badge { background: #0d2a2a; border: 2px solid #10b981; border-radius: 14px; padding: 14px 18px; width: 88%; box-sizing: border-box; margin: 5px 0; text-align: center; }
-        .secure-badge-title { color: #10b981; font-size: 1em; font-weight: 800; margin-bottom: 10px; border-bottom: 1px solid rgba(16,185,129,0.3); padding-bottom: 8px; }
-        .secure-badge-body { color: #e2e8f0; font-size: 0.9em; line-height: 1.6; margin-bottom: 10px; border-bottom: 1px solid rgba(16,185,129,0.3); padding-bottom: 10px; }
-        .secure-badge-warning { color: #fbbf24; font-size: 1em; font-weight: 900; line-height: 1.4; text-transform: uppercase; }
-
-        @keyframes blinker { 0% { opacity: 1.0; } 50% { opacity: 0.2; } 100% { opacity: 1.0; } }
+        @keyframes blinker { 0% { opacity: 1.0; } 50% { opacity: 0.3; } 100% { opacity: 1.0; } }
         .blink-yellow { animation: blinker 2s linear infinite; color: #fbbf24; font-weight: 900; }
         .blink-red { animation: blinker 2s linear infinite; color: #ef4444; font-weight: 900; }
         
-        .modal-overlay { position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.9); display:flex; justify-content:center; align-items:center; z-index:9999; }
-        .modal-content { background:var(--card); padding:15px; border-radius:20px; border:2px solid #fbbf24; width:88%; max-width:380px; max-height: 90vh; overflow-y: auto; position: relative; }
+        .modal-overlay { position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.92); display:flex; justify-content:center; align-items:center; z-index:9999; }
+        .modal-content { background:var(--card); padding:15px; border-radius:20px; border:2px solid #fbbf24; width:90%; max-width:380px; }
         
         .item-row { display: flex; align-items: center; margin-bottom: 8px; text-align: left; }
-        .item-title { color: #60a5fa; font-weight: 800; width: 105px; flex-shrink: 0; display: inline-block; }
-        .item-red-val-small { color: #ef4444; font-weight: 900; display: inline-block; flex: 1; white-space: nowrap; font-size: 0.88em; }
+        .item-title { color: #60a5fa; font-weight: 800; width: 105px; flex-shrink: 0; font-size: 0.85em; }
+        .item-red-val-small { color: #ef4444; font-weight: 900; flex: 1; white-space: nowrap; font-size: 0.88em; }
         
-        #sales-notification { position: fixed; top: 20px; right: -300px; background: #10b981; color: white; padding: 8px 12px; border-radius: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.5); z-index: 2000; transition: 0.5s ease-in-out; font-weight: bold; font-size: 0.8em; display: flex; align-items: center; gap: 8px; }
-        #sales-notification.show { right: 20px; }
-        
-        .toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: #6366f1; color: white; padding: 8px 18px; border-radius: 50px; z-index: 99999; display: none; font-size: 0.8em; font-weight: bold; }
-
-        .my-domain-item { background: #0f172a; padding: 8px 12px; border-radius: 10px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; border: 1px solid #334155; }
+        .my-domain-item { background: #0f172a; padding: 10px; border-radius: 12px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; border: 1px solid #334155; }
         .history-item { background: rgba(15, 23, 42, 0.5); padding: 8px 12px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px; border-left: 3px solid #6366f1; font-size: 0.75em; }
-        .manage-btn { background: #6366f1; color: white; border: none; padding: 4px 10px; border-radius: 6px; font-size: 0.7em; cursor: pointer; font-weight: bold; text-decoration: none; }
-        .user-info-note { background: rgba(99, 102, 241, 0.1); border: 1px dashed #6366f1; color: #94a3b8; padding: 10px; border-radius: 10px; font-size: 0.75em; line-height: 1.4; margin-bottom: 10px; text-align: left; }
-        .btn-fake-buy { background: var(--accent); color: white; padding: 2px 5px; border-radius: 4px; font-weight: 900; font-size: 0.9em; display: inline-block; }
+        .manage-btn { background: #6366f1; color: white; border: none; padding: 5px 10px; border-radius: 6px; font-size: 0.7em; cursor: pointer; font-weight: bold; text-decoration: none; }
+        
+        .footer-section { margin-top: auto; padding: 15px 10px; color:#f8fafc; font-size:0.75em; text-align:center; border-top:1px solid #334155; background: rgba(15, 23, 42, 0.8); border-radius: 20px 20px 0 0; }
+        .footer-section a { color:#38bdf8; text-decoration:none; font-weight: 800; border-bottom: 1px solid #38bdf8; }
+        .footer-section div { margin-bottom: 8px; }
 
-        .footer-section { margin-top:10px; padding:10px; color:#f8fafc; font-size:0.75em; text-align:center; border-top:1px solid #334155; background: rgba(15, 23, 42, 0.6); border-radius: 15px 15px 0 0; }
-        .footer-section a { color:#38bdf8; text-decoration:none; font-weight: 800; }
-        .footer-section div { margin-bottom: 5px; }
-
-        .log-item { display: flex; justify-content: space-between; background: #0f172a; padding: 8px 12px; border-radius: 8px; margin-bottom: 5px; font-size: 0.8em; }
         #log-list { max-height: 95px; overflow-y: auto; }
-        #log-list::-webkit-scrollbar { width: 5px; }
-        #log-list::-webkit-scrollbar-track { background: #0f172a; }
-        #log-list::-webkit-scrollbar-thumb { background: #6366f1; border-radius: 10px; }
-
-        .admin-date-picker { background: #0f172a; color: #fff; border: 1.5px solid #6366f1; padding: 6px; border-radius: 8px; font-size: 0.85em; margin-bottom: 10px; width: 100%; box-sizing: border-box; outline: none; }
+        .log-item { display: flex; justify-content: space-between; background: #0f172a; padding: 8px 12px; border-radius: 8px; margin-bottom: 5px; font-size: 0.8em; }
     </style>
 </head>
 <body>
 
-<div id="sales-notification">
-    <span>🚀</span> <span id="sales-text">@user az önce domain aldı!</span>
-</div>
-
-<div id="toast-msg" class="toast"></div>
-
 <div class="container">
-    <div class="card" style="margin-bottom: 5px;">
+    <div class="card">
         <img src="assets/logo.jpeg" alt="Logo" class="app-logo">
         <h1 class="app-title">Web3 Domain Gateway</h1>
         
@@ -102,15 +82,10 @@
 
     <div class="card" id="user-panel" style="display:none; border:1.5px solid #10b981;">
         <h3 style="color:#10b981;margin:0 0 8px 0; font-size: 0.95em;">👤 Satın Alma Geçmişim</h3>
-        <div class="user-info-note">
-            ℹ️ <b>Bilgi:</b> Bu uygulama Test-Pİ ağında deneme amaçlıdır. Satın aldığınız domainler, diğer kullanıcıların da test yapabilmesi için markette tekrar <span class="btn-fake-buy">SATIN AL</span> olarak görünebilir.
-        </div>
-        
         <div id="active-domains-box">
             <p style="font-size: 0.7em; color: #10b981; font-weight: 800; text-align: left; margin-bottom: 5px;">✅ AKTİF DOMAİNLERİM</p>
             <div id="my-domains-list" style="text-align: left; margin-bottom: 15px;"></div>
         </div>
-
         <div id="history-domains-box">
             <p style="font-size: 0.7em; color: #94a3b8; font-weight: 800; text-align: left; margin-bottom: 5px;">📜 TÜM İŞLEM GEÇMİŞİM</p>
             <div id="my-history-list" style="text-align: left;"></div>
@@ -119,17 +94,14 @@
 
     <div class="card" id="admin-panel" style="display:none; border:2px solid #6366f1;">
         <h3 style="color:#6366f1;margin-top:0;font-size: 0.95em;">🛠 Admin Paneli</h3>
-        <div style="margin-bottom: 8px; text-align: left;">
-            <input type="date" id="admin-date-input" class="admin-date-picker">
-        </div>
         <div id="log-list"></div>
     </div>
 
-    <div class="card" style="position: relative; min-height: 350px; padding: 10px; margin-bottom: 5px;">
+    <div class="card" style="position: relative; min-height: 380px; padding: 10px; margin-bottom: 5px;">
         <div id="market-title" class="section-title-box">Satın Alabileceğiniz Domainler</div>
         
         <div id="premium-lock" class="premium-lock-overlay">
-            <div class="lock-icon">💎</div>
+            <div style="font-size: 2.5em; margin-bottom: 5px;">💎</div>
             <div class="lock-title-box">Ayrıcalıklı Web3 Dünyasına Katılın</div>
             
             <div class="secure-badge">
@@ -143,64 +115,39 @@
             </div>
 
             <p style="font-size: 0.8em; color: #e2e8f0; font-weight: 600; line-height: 1.4; margin: 5px 0; max-width: 85%;">Web3 domain sahibi olmak ve güvenli bağlantı kurmak için;</p>
-            <div style="color: #fbbf24; font-weight: 700; margin-bottom: 5px; font-size: 0.85em;">👇 Aşağıdaki "Pi ile Bağlan" butonunu kullanın.</div>
-            <button class="pi-btn" id="auth-btn" onclick="window.loginWithPi()">Pi ile Bağlan</button>
+            <button class="pi-btn" onclick="window.loginWithPi()">Pi ile Bağlan</button>
         </div>
 
         <div class="domain-grid locked-content" id="domain-list"></div>
     </div>
 
-    <div id="pre-buy-modal" class="modal-overlay" style="display:none;">
-        <div class="modal-content">
-            <div style="font-size: 2.2em; margin-bottom: 5px; text-align: center;">🛡️</div>
-            <h2 style="color:#fbbf24;margin:0 0 12px 0; font-size: 1.15em; font-weight: 900; text-align: center;">GÜVENLİ ÖDEME ONAYI</h2>
-            
-            <div style="color:#fff; font-size: 0.82em; line-height: 1.6; text-align: left; background: rgba(0,0,0,0.3); padding: 12px; border-radius: 15px;">
-                <div style="margin-bottom: 12px; border-bottom: 1px solid #475569; padding-bottom: 10px; text-align: center; font-weight: 800;">
-                    BİR SONRAKİ ADIMDA GERÇEK CÜZDAN DEĞİL,<br>
-                    <span class="blink-yellow" style="text-decoration: underline; font-size: 1.1em;">TEST Pİ CÜZDANI</span> AÇILACAKTIR.
-                </div>
-                
-                <div class="item-row">
-                    <span class="item-title">İŞLEM TÜRÜ:</span>
-                    <span class="item-red-val-small blink-red">TEST İŞLEMİDİR</span>
-                </div>
-                <div class="item-row">
-                    <span class="item-title">ÖDEME:</span>
-                    <span class="item-red-val-small blink-red">SADECE TEST Pİ KULLANILIR</span>
-                </div>
-                <div class="item-row">
-                    <span class="item-title">BAKİYE:</span>
-                    <span class="item-red-val-small blink-red">GERÇEK Pİ BAKİYENİZ AZALMAZ</span>
-                </div>
-                <div class="item-row">
-                    <span class="item-title">ŞİFRENİZ:</span>
-                    <span class="item-red-val-small blink-red">SİZDEN BAŞKASI BİLEMEZ.</span>
-                </div>
-            </div>
-            
-            <div style="display: flex; gap: 10px; margin-top: 15px;">
-                <button class="pi-btn" style="background:#475569; flex:1; animation:none; padding: 10px; margin:0; font-size: 0.85em;" onclick="document.getElementById('pre-buy-modal').style.display='none'">VAZGEÇ</button>
-                <button class="pi-btn" style="flex:1; animation:none; background: #10b981; padding: 10px; margin:0; font-size: 0.85em;" id="confirm-pre-buy-btn">ÖDEMEYE GEÇ</button>
-            </div>
-        </div>
-    </div>
-
-    <div id="success-modal" class="modal-overlay" style="display:none;">
-        <div class="modal-content" style="border-color: #10b981;">
-            <h2 style="color:#10b981;margin-top:0; font-size: 1.2em;">✅ İŞLEM BAŞARILI!</h2>
-            <p style="color:#fff; font-size: 1em; line-height: 1.4;">ÖDEMENİZ BAŞARILI OLDU, SATIN ALMANIZ GERÇEKLEŞTİ. <br><br> <b>HAYIRLI OLMASINI DİLİYORUZ.</b></p>
-            <div style="display: flex; flex-direction: column; gap: 8px; margin-top: 10px;">
-                <button class="pi-btn" style="background:#0088cc; animation:none; padding: 10px; margin:0; font-size: 0.85em;" id="share-tg-btn">🚀 TELEGRAM'DA PAYLAŞ</button>
-                <button class="pi-btn" style="background:#10b981; animation:none; padding: 10px; margin:0; font-size: 0.85em;" onclick="document.getElementById('success-modal').style.display='none'">HARİKA!</button>
-            </div>
-        </div>
-    </div>
-
+    <!-- FOOTER GERİ GETİRİLDİ -->
     <div class="footer-section">
         <div>SORULARINIZ İÇİN: <a href="mailto:doganay08@hotmail.com">📩 doganay08@hotmail.com</a></div>
         <div>RESMİ KANALIMIZ: <a href="https://t.me/+5jZi9vrcNMM2NGVk" target="_blank">💬 TELEGRAM GRUBUMUZ</a></div>
-        <div style="margin-top:5px; font-size: 0.8em;"><a href="privacy.html">GİZLİLİK POLİTİKASI</a> | <a href="terms.html">KULLANIM ŞARTLARI</a></div>
+        <div style="margin-top:5px; font-size: 0.8em;">
+            <a href="privacy.html">GİZLİLİK POLİTİKASI</a> | <a href="terms.html">KULLANIM ŞARTLARI</a>
+        </div>
+    </div>
+</div>
+
+<div id="pre-buy-modal" class="modal-overlay" style="display:none;">
+    <div class="modal-content">
+        <h2 style="color:#fbbf24;margin:0 0 12px 0; font-size: 1.15em; font-weight: 900; text-align: center;">🛡️ GÜVENLİ ÖDEME ONAYI</h2>
+        <div style="color:#fff; font-size: 0.82em; line-height: 1.6; text-align: left; background: rgba(0,0,0,0.3); padding: 12px; border-radius: 15px;">
+            <div style="margin-bottom: 12px; border-bottom: 1px solid #475569; padding-bottom: 10px; text-align: center; font-weight: 800;">
+                BİR SONRAKİ ADIMDA GERÇEK CÜZDAN DEĞİL,<br>
+                <span class="blink-yellow" style="text-decoration: underline; font-size: 1.1em;">TEST Pİ CÜZDANI</span> AÇILACAKTIR.
+            </div>
+            <div class="item-row"><span class="item-title">İŞLEM TÜRÜ:</span><span class="item-red-val-small blink-red">TEST İŞLEMİDİR</span></div>
+            <div class="item-row"><span class="item-title">ÖDEME:</span><span class="item-red-val-small blink-red">SADECE TEST Pİ KULLANILIR</span></div>
+            <div class="item-row"><span class="item-title">BAKİYE:</span><span class="item-red-val-small blink-red">GERÇEK Pİ BAKİYENİZ AZALMAZ</span></div>
+            <div class="item-row"><span class="item-title">ŞİFRENİZ:</span><span class="item-red-val-small blink-red">SİZDEN BAŞKASI BİLEMEZ.</span></div>
+        </div>
+        <div style="display: flex; gap: 10px; margin-top: 15px;">
+            <button class="pi-btn" style="background:#475569; flex:1; animation:none; padding: 10px; margin:0;" onclick="document.getElementById('pre-buy-modal').style.display='none'">VAZGEÇ</button>
+            <button class="pi-btn" style="flex:1; animation:none; background: #10b981; padding: 10px; margin:0;" id="confirm-buy-btn">ÖDEMEYE GEÇ</button>
+        </div>
     </div>
 </div>
 
@@ -212,13 +159,11 @@ const firebaseConfig = { apiKey: "s3ddhcea9xae0qieikgjy9zw9tduemnraoucjrr9iqe87p
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-let paymentInProgress = false;
-let domainData = {};
 let currentUser = null;
 let isAuth = false;
+let domainData = {};
 let pendingDomain = null;
-let pendingAmount = 0;
-let adminLogUnsubscribe = null;
+let pendingPrice = 0;
 
 const domains = [
     { name:'test-domain', img:'assets/test.jpeg', price:10 },
@@ -230,247 +175,112 @@ const domains = [
     { name:'doganay.pi', img:'assets/doganay.jpeg', price:150 }
 ];
 
-function showToast(msg) {
-    const toast = document.getElementById("toast-msg");
-    toast.innerText = msg;
-    toast.style.display = "block";
-    setTimeout(() => { toast.style.display = "none"; }, 3000);
-}
-
-function showSaleNotification(user, domain) {
-    const notify = document.getElementById("sales-notification");
-    const text = document.getElementById("sales-text");
-    text.innerText = `@${user} az önce ${domain} satın aldı!`;
-    notify.classList.add("show");
-    setTimeout(() => { notify.classList.remove("show"); }, 5000);
-}
-
-onSnapshot(collection(db, "global_sales"), (snap) => {
-    document.getElementById("total-sold").innerText = snap.size;
-    let volume = 0;
-    snap.forEach(doc => { volume += Number(doc.data().price || 0); });
-    document.getElementById("total-volume").innerText = volume;
-});
-
-onSnapshot(query(collection(db, "global_sales"), orderBy("at", "desc"), limit(1)), (snap) => {
-    snap.docChanges().forEach(change => {
-        if (change.type === "added") {
-            const data = change.doc.data();
-            if (Date.now() - data.at < 30000) showSaleNotification(data.user, data.domain);
-        }
-    });
-});
-
-async function updateActiveStatus() {
-    if (currentUser) {
-        await setDoc(doc(db, "active_users", currentUser), { lastSeen: Date.now() }, { merge: true });
-        const today = new Date().toISOString().split("T")[0];
-        const logRef = doc(db, "daily_users", today);
-        const logSnap = await getDoc(logRef);
-        let users = logSnap.exists() ? logSnap.data().users || {} : {};
-        users[currentUser] = Date.now();
-        await setDoc(logRef, { users }, { merge: true });
-    }
-}
-
-async function renderDomains() {
+async function render() {
     const list = document.getElementById("domain-list");
-    const lockOverlay = document.getElementById("premium-lock");
+    const lock = document.getElementById("premium-lock");
     if (!list) return;
-    
-    if (!isAuth) { 
-        lockOverlay.style.display = "flex"; 
-        list.classList.add("locked-content"); 
-    } else {
-        lockOverlay.style.display = "none";
-        list.classList.remove("locked-content");
-    }
+
+    if (!isAuth) { lock.style.display = "flex"; list.classList.add("locked-content"); }
+    else { lock.style.display = "none"; list.classList.remove("locked-content"); }
 
     list.innerHTML = '';
-    const myList = document.getElementById("my-domains-list");
-    const myHistoryList = document.getElementById("my-history-list");
     let myHtml = "";
     let historyHtml = "";
 
-    // GÜNCELLEMİ: İşlem geçmişi sorgusu KESİN ÇÖZÜM (Tüm verileri çekip kod tarafında filtreleme)
     if (currentUser) {
         try {
-            const q = collection(db, "global_sales");
-            const querySnapshot = await getDocs(q);
+            const snap = await getDocs(collection(db, "global_sales"));
             let userSales = [];
-            querySnapshot.forEach((doc) => {
-                const data = doc.data();
-                if (data.user === currentUser) userSales.push(data);
-            });
+            snap.forEach(doc => { if (doc.data().user === currentUser) userSales.push(doc.data()); });
             userSales.sort((a, b) => b.at - a.at);
-            userSales.forEach(data => {
-                const dateStr = new Date(data.at).toLocaleDateString("tr-TR");
-                historyHtml += `
-                    <div class="history-item">
-                        <span><b>${data.domain}</b> - ${data.price} Pİ</span>
-                        <span style="color:#94a3b8;">${dateStr}</span>
-                    </div>
-                `;
+            userSales.forEach(s => {
+                historyHtml += `<div class="history-item"><span><b>${s.domain}</b> - ${s.price} Pİ</span><span>${new Date(s.at).toLocaleDateString("tr-TR")}</span></div>`;
             });
-        } catch (e) { console.error("History fetch error:", e); }
+        } catch (e) { console.error(e); }
     }
 
     domains.forEach(d => {
         const data = domainData[d.name] || { sold:false, price:d.price };
-        
         if (data.sold && data.buyer === currentUser) {
             myHtml += `
                 <div class="my-domain-item">
-                    <div>
-                        <div style="font-weight:bold; font-size:0.9em;">${d.name}</div>
-                        <div style="font-size:0.65em; color:#94a3b8;">${data.price} Pİ - SATIN ALINDI</div>
-                    </div>
-                    <!-- GÜNCELLEMİ: Doğrula Butonu Kesin Çözüm (Resmi Testnet Explorer Linki) -->
-                    <a href="https://minepi.com/blockexplorer/tx/${data.txid}?network=testnet" target="_blank" class="manage-btn" style="background:#10b981;">DOĞRULA</a>
+                    <div><b>${d.name}</b><br><small>${data.price} Pİ</small></div>
+                    <a href="https://blockexplorer.minepi.com/testnet/tx/${data.txid}" target="_blank" class="manage-btn">DOĞRULA</a>
                 </div>
             `;
         }
-
         const card = document.createElement('div');
         card.className = 'domain-card';
-        card.innerHTML = `<img src="${d.img}" class="domain-img" onerror="this.src='data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMDAiIGhlaWdodD0iMTAwIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjNDc1NTY5Ii8+PC9zdmc+'"><div class="domain-name">${d.name}</div><div class="domain-price">${data.price || d.price} Pİ</div>`;
-        if (data.sold) {
-            const soldBtn = document.createElement('div');
-            soldBtn.className = 'btn-sold';
-            soldBtn.innerText = `SATILDI`;
-            card.appendChild(soldBtn);
-        } else {
-            const buyBtn = document.createElement('button');
-            buyBtn.className = 'btn-buy';
-            buyBtn.innerText = paymentInProgress ? '...' : 'SATIN AL';
-            buyBtn.disabled = paymentInProgress;
-            buyBtn.onclick = () => window.showPreBuyModal(d.name, data.price || d.price);
-            card.appendChild(buyBtn);
+        card.innerHTML = `<img src="${d.img}" class="domain-img" onerror="this.src='data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMDAiIGhlaWdodD0iMTAwIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjNDc1NTY5Ii8+PC9zdmc+'"><div class="domain-name">${d.name}</div><div class="domain-price">${data.price} Pİ</div>`;
+        if (data.sold) { card.innerHTML += `<div class="btn-sold">SATILDI</div>`; } 
+        else {
+            const btn = document.createElement('button');
+            btn.className = 'btn-buy';
+            btn.innerText = 'SATIN AL';
+            btn.onclick = () => { pendingDomain = d.name; pendingPrice = data.price; document.getElementById('pre-buy-modal').style.display='flex'; };
+            card.appendChild(btn);
         }
         list.appendChild(card);
     });
 
-    if (myList) myList.innerHTML = myHtml === "" ? '<p style="font-style:italic; opacity:0.7; font-size:0.8em; text-align:center;">AKTİF DOMAİNİNİZ BULUNMUYOR.</p>' : myHtml;
-    if (myHistoryList) myHistoryList.innerHTML = historyHtml === "" ? '<p style="font-style:italic; opacity:0.7; font-size:0.8em; text-align:center;">GEÇMİŞ KAYDINIZ BULUNMUYOR.</p>' : historyHtml;
-}
-
-function listenToLogs(date) {
-    if (adminLogUnsubscribe) adminLogUnsubscribe();
-    adminLogUnsubscribe = onSnapshot(doc(db, "daily_users", date), (snap) => {
-        const users = (snap.data() || {}).users || {};
-        const sortedUsers = Object.keys(users).sort((a, b) => users[b] - users[a]);
-        let html = "";
-        if (sortedUsers.length === 0) { html = '<p style="font-style:italic; opacity:0.6; font-size:0.8em;">KAYIT BULUNAMADI.</p>'; }
-        else { sortedUsers.forEach(u => { html += `<div class="log-item"><b>@${u}</b><span>${new Date(users[u]).toLocaleString("tr-TR")}</span></div>`; }); }
-        document.getElementById("log-list").innerHTML = html;
-    });
-}
-
-window.showPreBuyModal = (name, price) => {
-    pendingDomain = name;
-    pendingAmount = price;
-    document.getElementById("pre-buy-modal").style.display = "flex";
-};
-
-document.getElementById("confirm-pre-buy-btn").onclick = () => {
-    document.getElementById("pre-buy-modal").style.display = "none";
-    window.startPurchase(pendingDomain, pendingAmount);
-};
-
-document.getElementById("share-tg-btn").onclick = () => {
-    const text = `🚀 Web3 Domain Gateway üzerinden ${pendingDomain} domainini satın aldım! Siz de Test-Pİ ile Web3 dünyasına katılın.`;
-    window.open(`https://t.me/share/url?url=${encodeURIComponent(window.location.href)}&text=${encodeURIComponent(text)}`, '_blank');
-};
-
-async function callServer(paymentId, action, txid = null, extraData = {}) {
-    try {
-        const response = await fetch('/api/approve', {
-            method: 'POST',
-            headers: {'Content-Type':'application/json'},
-            body: JSON.stringify({ paymentId, action, txid, ...extraData })
-        });
-        return await response.json();
-    } catch (err) { throw err; }
-}
-
-async function onIncompletePaymentFound(payment) {
-    try {
-        await callServer(payment.identifier, 'approve');
-        if (payment.transaction && payment.transaction.txid) {
-            await callServer(payment.identifier, 'complete', payment.transaction.txid);
-        }
-    } catch (err) {}
+    if (document.getElementById("my-domains-list")) document.getElementById("my-domains-list").innerHTML = myHtml || '<p style="font-size:0.7em; opacity:0.5; text-align:center;">AKTİF DOMAİNİNİZ YOK.</p>';
+    if (document.getElementById("my-history-list")) document.getElementById("my-history-list").innerHTML = historyHtml || '<p style="font-size:0.7em; opacity:0.5; text-align:center;">GEÇMİŞ KAYDINIZ YOK.</p>';
 }
 
 window.loginWithPi = async function() {
-    if (!window.Pi) return alert("Pİ SDK YÜKLENMEDİ!");
     try {
-        const auth = await Pi.authenticate(['username', 'payments'], onIncompletePaymentFound);
+        const auth = await Pi.authenticate(['username', 'payments'], async (p) => {});
         currentUser = auth.user.username;
         isAuth = true;
         document.getElementById("user-status").innerText = "BAĞLI: @" + currentUser;
         document.getElementById("user-status-box").style.display = "block";
         document.getElementById("user-panel").style.display = "block";
-        showToast("GİRİŞ BAŞARILI!");
-        updateActiveStatus();
-        renderDomains();
+        render();
         if (currentUser === "doganay0808") {
             document.getElementById("admin-panel").style.display = "block";
-            const today = new Date().toISOString().split("T")[0];
-            const dateInput = document.getElementById("admin-date-input");
-            dateInput.value = today;
-            listenToLogs(today);
-            dateInput.onchange = (e) => { listenToLogs(e.target.value); };
+            onSnapshot(doc(db, "daily_users", new Date().toISOString().split("T")[0]), (snap) => {
+                const users = (snap.data() || {}).users || {};
+                let html = "";
+                Object.keys(users).forEach(u => { html += `<div class="log-item"><b>@${u}</b><span>${new Date(users[u]).toLocaleTimeString()}</span></div>`; });
+                document.getElementById("log-list").innerHTML = html;
+            });
         }
-    } catch (err) { showToast("GİRİŞ HATASI!"); }
+    } catch (e) { alert("GİRİŞ HATASI!"); }
 };
 
-window.startPurchase = async function(domain, amount) {
-    paymentInProgress = true;
-    renderDomains();
+document.getElementById("confirm-buy-btn").onclick = async () => {
+    document.getElementById('pre-buy-modal').style.display='none';
     try {
-        await Pi.createPayment({ amount: Number(amount), memo: "Domain: " + domain, metadata: { domain } }, {
-            onReadyForServerApproval: async (paymentId) => { await callServer(paymentId, 'approve'); },
-            onReadyForServerCompletion: async (paymentId, txid) => {
-                await callServer(paymentId, 'complete', txid, { username: currentUser, domainName: domain, amount: amount });
-                
+        await Pi.createPayment({ amount: Number(pendingPrice), memo: "Domain: " + pendingDomain, metadata: { domain: pendingDomain } }, {
+            onReadyForServerApproval: async (id) => { await fetch('/api/approve', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({paymentId:id, action:'approve'}) }); },
+            onReadyForServerCompletion: async (id, txid) => {
+                await fetch('/api/approve', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({paymentId:id, action:'complete', txid, username:currentUser, domainName:pendingDomain, amount:pendingPrice}) });
                 const at = Date.now();
-                try {
-                    await setDoc(doc(db, "domains", domain), { sold: true, price: amount, txid: txid, buyer: currentUser, soldAt: at });
-                    await setDoc(doc(db, "global_sales", txid), { user: currentUser, domain: domain, price: amount, at: at });
-                } catch (dbErr) { console.error("DB HATASI:", dbErr); }
-                
-                paymentInProgress = false;
-                renderDomains();
-                document.getElementById("success-modal").style.display = "flex";
+                await setDoc(doc(db, "domains", pendingDomain), { sold: true, price: pendingPrice, txid: txid, buyer: currentUser, at: at });
+                await setDoc(doc(db, "global_sales", txid), { user: currentUser, domain: pendingDomain, price: pendingPrice, at: at });
+                alert("TEBRİKLER! SATIN ALINDI.");
+                render();
             },
-            onCancel: () => { paymentInProgress = false; renderDomains(); },
-            onError: (error) => { paymentInProgress = false; renderDomains(); showToast("ÖDEME İPTAL EDİLDİ!"); }
+            onCancel: () => {},
+            onError: (e) => { alert("HATA!"); }
         });
-    } catch (err) { paymentInProgress = false; renderDomains(); showToast("HATA OLUŞTU!"); }
+    } catch (e) { console.error(e); }
 };
-
-window.addEventListener("load", () => {
-    if (window.Pi) {
-        Pi.init({ version: "2.0", sandbox: true });
-        Pi.authenticate(['username', 'payments'], onIncompletePaymentFound).catch(() => {});
-    }
-    setInterval(updateActiveStatus, 15000);
-});
 
 domains.forEach(d => {
     onSnapshot(doc(db, "domains", d.name), (snap) => {
         domainData[d.name] = snap.exists() ? snap.data() : { sold:false, price:d.price };
-        renderDomains();
+        render();
     });
 });
 
-onSnapshot(collection(db, "active_users"), (snap) => {
-    const now = Date.now();
-    let activeCount = 0;
-    snap.forEach(doc => { if (doc.data().lastSeen && (now - doc.data().lastSeen) < 30000) activeCount++; });
-    document.getElementById("online-count").innerText = activeCount;
+onSnapshot(collection(db, "global_sales"), (snap) => {
+    document.getElementById("total-sold").innerText = snap.size;
+    let vol = 0; snap.forEach(d => vol += Number(d.data().price || 0));
+    document.getElementById("total-volume").innerText = vol;
 });
+
+window.addEventListener("load", () => { if (window.Pi) Pi.init({ version: "2.0", sandbox: true }); });
 </script>
 </body>
 </html>
