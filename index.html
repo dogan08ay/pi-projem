@@ -32,7 +32,8 @@
         .lock-title-box { background:linear-gradient(135deg,#fef3c7 0%,#fde68a 100%); color:#1e293b; padding:6px 15px; border-radius:10px; border:2px solid #f59e0b; font-size:0.95em; font-weight:900; margin-bottom:10px; display:inline-block; }
 
         .locked-content { filter: blur(12px); opacity: 0.25; pointer-events: none; }
-        .premium-lock-overlay { position: absolute; top: 0; left: 0; right: 0; bottom: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; background: rgba(15, 23, 42, 0.7); backdrop-filter: blur(1px); z-index: 10; padding: 10px; }
+        /* GÜNCELLEMİ: Elmas üstündeki boşluk kaldırıldı */
+        .premium-lock-overlay { position: absolute; top: 0; left: 0; right: 0; bottom: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; background: rgba(15, 23, 42, 0.7); backdrop-filter: blur(1px); z-index: 10; padding: 5px; }
         .lock-icon { font-size: 2em; margin-bottom: 2px; animation: pulse 2s infinite; }
         @keyframes pulse { 0% { transform: scale(1); opacity: 0.8; } 50% { transform: scale(1.1); opacity: 1; } 100% { transform: scale(1); opacity: 0.8; } }
 
@@ -48,7 +49,7 @@
         .modal-overlay { position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.9); display:flex; justify-content:center; align-items:center; z-index:9999; }
         .modal-content { background:var(--card); padding:15px; border-radius:20px; border:2px solid #fbbf24; width:88%; max-width:380px; max-height: 90vh; overflow-y: auto; position: relative; }
         
-        .item-row { display: flex; align-items: flex-start; margin-bottom: 8px; text-align: left; }
+        .item-row { display: flex; align-items: center; margin-bottom: 8px; text-align: left; }
         .item-title { color: #60a5fa; font-weight: 800; width: 105px; flex-shrink: 0; display: inline-block; }
         .item-red-val-small { color: #ef4444; font-weight: 900; display: inline-block; flex: 1; white-space: nowrap; font-size: 0.88em; }
         
@@ -125,7 +126,6 @@
         <div id="log-list"></div>
     </div>
 
-    <!-- MARKET BÖLÜMÜ - ESKİ HALİNE DÖNDÜRÜLDÜ -->
     <div class="card" style="position: relative; min-height: 350px; padding: 10px; margin-bottom: 5px;">
         <div id="market-title" class="section-title-box">Satın Alabileceğiniz Domainler</div>
         
@@ -293,12 +293,18 @@ async function renderDomains() {
     let myHtml = "";
     let historyHtml = "";
 
+    // GÜNCELLEMİ: İşlem geçmişi sorgusu basitleştirildi (Composite index hatasını önlemek için)
     if (currentUser) {
         try {
-            const q = query(collection(db, "global_sales"), where("user", "==", currentUser), orderBy("at", "desc"));
+            const q = collection(db, "global_sales");
             const querySnapshot = await getDocs(q);
+            let userSales = [];
             querySnapshot.forEach((doc) => {
                 const data = doc.data();
+                if (data.user === currentUser) userSales.push(data);
+            });
+            userSales.sort((a, b) => b.at - a.at);
+            userSales.forEach(data => {
                 const dateStr = new Date(data.at).toLocaleDateString("tr-TR");
                 historyHtml += `
                     <div class="history-item">
@@ -320,6 +326,7 @@ async function renderDomains() {
                         <div style="font-weight:bold; font-size:0.9em;">${d.name}</div>
                         <div style="font-size:0.65em; color:#94a3b8;">${data.price} Pİ - SATIN ALINDI</div>
                     </div>
+                    <!-- GÜNCELLEMİ: Doğrula Butonu Kesin Çözüm -->
                     <a href="https://minepi.com/blockexplorer/tx/${data.txid}?network=testnet" target="_blank" class="manage-btn" style="background:#10b981;">DOĞRULA</a>
                 </div>
             `;
