@@ -62,6 +62,12 @@
 
         .log-item { display: flex; justify-content: space-between; background: #0f172a; padding: 8px 12px; border-radius: 8px; margin-bottom: 5px; font-size: 0.8em; }
         .admin-date-picker { background: #0f172a; color: #fff; border: 1.5px solid #6366f1; padding: 6px; border-radius: 8px; font-size: 0.85em; margin-bottom: 10px; width: 100%; box-sizing: border-box; outline: none; }
+        
+        /* Admin Paneli Kaydırma (Madde 6) */
+        #log-list { max-height: 200px; overflow-y: auto; padding-right: 5px; }
+        #log-list::-webkit-scrollbar { width: 4px; }
+        #log-list::-webkit-scrollbar-track { background: transparent; }
+        #log-list::-webkit-scrollbar-thumb { background: #6366f1; border-radius: 10px; }
     </style>
 </head>
 <body>
@@ -74,11 +80,13 @@
 
 <div class="container">
     <div class="card" style="margin-bottom: 5px;">
-        <img src="https://cdn4.telesco.pe/file/VzYo72WbNDnfF7Z1kSpnW6KrYf7HKEAegqzJPeMGFNZtYI2vpuH0ZczA7vYm8x68Zm7UstrBR6nyarkPLJzNqj46PRX_CKwMiY7CNM_ZPs759KILoIzPcsVABKHckTbJ_SNmsDz15dF4Nw_vvfPYW3-XtIxyYaiYriIKzWqzwwjSSQ3SYfjjMHLh_LwYXWmsnloyyTi-QgspzOm54nd8TD98Ezg_Ns-XEHji3MZiwhs6SMsIhU9pL6Ydw4mLFR4eCIq_FhkFSj3Z5H5ac2NDNOdTfM8EdYldl3vG0LiNeQwD2eXlJFsuZM0hWeDexMOwV_oqFZ7uO4_uDYT9tgXRKQ.jpg" alt="Logo" class="app-logo">
+        <!-- Madde 1: Assets içindeki Pi logo -->
+        <img src="assets/pi-logo.png" alt="Logo" class="app-logo" onerror="this.src='https://cdn4.telesco.pe/file/VzYo72WbNDnfF7Z1kSpnW6KrYf7HKEAegqzJPeMGFNZtYI2vpuH0ZczA7vYm8x68Zm7UstrBR6nyarkPLJzNqj46PRX_CKwMiY7CNM_ZPs759KILoIzPcsVABKHckTbJ_SNmsDz15dF4Nw_vvfPYW3-XtIxyYaiYriIKzWqzwwjSSQ3SYfjjMHLh_LwYXWmsnloyyTi-QgspzOm54nd8TD98Ezg_Ns-XEHji3MZiwhs6SMsIhU9pL6Ydw4mLFR4eCIq_FhkFSj3Z5H5ac2NDNOdTfM8EdYldl3vG0LiNeQwD2eXlJFsuZM0hWeDexMOwV_oqFZ7uO4_uDYT9tgXRKQ.jpg'">
         <h1 class="app-title">Web3 Domain Gateway</h1>
         
+        <!-- Madde 4: Satılan Domain Sayısı kelimesi eklendi -->
         <div class="stats-bar">
-            <div class="stats-item">Satılan Domain: <span id="total-sold">0</span></div>
+            <div class="stats-item">Satılan Domain Sayısı: <span id="total-sold">0</span></div>
             <div class="stats-item">Toplam Hacim: <span id="total-volume">0</span> Test Pi</div>
             <div class="stats-item">Aktif Kullanıcı: <span id="online-count">0</span></div>
         </div>
@@ -111,8 +119,27 @@
             <div class="lock-icon">💎</div>
             <div class="lock-title-box">Ayrıcalıklı Web3 Dünyasına Katılın</div>
             
+            <!-- Madde 2: Satır sütun düzeni iyileştirildi -->
             <div class="trust-badge">
-                <div style="margin-bottom: 5px;">🛡️ <b>Güvenli Bağlantı:</b> Sistemimiz şu anda <br> <span class="blink-text" style="font-size: 1.1em;">TEST-PI</span> <br> ağında çalışmaktadır. <br> <span class="blink-text" style="font-size: 0.9em;">GERÇEK Pİ BAKİYENİZ</span> <br> <span class="warning-red">KESİNLİKLE KULLANILMAZ!</span></div>
+                <table style="width: 100%; border-collapse: collapse; text-align: center;">
+                    <tr>
+                        <td style="padding: 5px; border-bottom: 1px solid rgba(16, 185, 129, 0.2);">
+                            🛡️ <b>Güvenli Bağlantı</b>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 8px;">
+                            Sistemimiz şu anda <br> 
+                            <span class="blink-text" style="font-size: 1.1em;">TEST-PI</span> ağında çalışmaktadır.
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 8px; border-top: 1px solid rgba(16, 185, 129, 0.2);">
+                            <span class="blink-text" style="font-size: 0.9em;">GERÇEK Pİ BAKİYENİZ</span> <br> 
+                            <span class="warning-red">KESİNLİKLE KULLANILMAZ!</span>
+                        </td>
+                    </tr>
+                </table>
             </div>
 
             <p style="font-size: 0.8em; color: #e2e8f0; font-weight: 600; line-height: 1.4; margin: 5px 0; max-width: 85%;">Web3 domain sahibi olmak ve güvenli bağlantı kurmak için;</p>
@@ -133,7 +160,8 @@
                 </div>
                 <div style="margin-bottom: 4px;"><span class="item-title">İŞLEM TÜRÜ:</span><span class="blink-text">TEST İŞLEMİDİR</span></div>
                 <div style="margin-bottom: 4px;"><span class="item-title">ÖDEME:</span><span class="blink-text">SADECE TEST PI</span></div>
-                <div style="margin-bottom: 4px;"><span class="item-title">BAKİYE:</span><span style="color:#ef4444; font-weight:bold;">EKSİLMEZ</span></div>
+                <!-- Madde 3: Bakiye karşısı güncellendi -->
+                <div style="margin-bottom: 4px;"><span class="item-title">BAKİYE:</span><span style="color:#ef4444; font-weight:bold;">GERÇEK Pİ BAKİYENİZ EKSİLMEZ</span></div>
                 <div><span class="item-title">GÜVENLİK:</span><span class="item-desc">Şifreniz paylaşılmaz.</span></div>
             </div>
             <div style="display: flex; gap: 10px; margin-top: 15px;">
@@ -202,7 +230,7 @@ function showSaleNotification(user, domain) {
     setTimeout(() => { notify.classList.remove("show"); }, 5000);
 }
 
-// Kümülatif İstatistik Dinleyicisi (Marketten Bağımsız)
+// Madde 4: Kümülatif İstatistik Dinleyicisi (Sürekli artarak devam eder)
 onSnapshot(collection(db, "global_sales"), (snap) => {
     document.getElementById("total-sold").innerText = snap.size;
     let volume = 0;
@@ -253,7 +281,8 @@ function renderDomains() {
                         <div style="font-weight:bold; font-size:0.9em;">${d.name}</div>
                         <div style="font-size:0.65em; color:#94a3b8;">${data.price} Pi - Satın Alındı</div>
                     </div>
-                    <a href="https://minepi.com/blockexplorer/tx/${data.txid}" target="_blank" class="manage-btn" style="background:#10b981;">Doğrula</a>
+                    <!-- Madde 5: Mainnet hatası düzeltildi (Testnet linkine yönlendirildi) -->
+                    <a href="https://minepi.com/blockexplorer-testnet/tx/${data.txid}" target="_blank" class="manage-btn" style="background:#10b981;">Doğrula</a>
                 </div>
             `;
         }
