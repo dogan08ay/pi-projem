@@ -81,10 +81,11 @@
         .modal-overlay { position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.9); display:flex; justify-content:center; align-items:center; z-index:9999; }
         .modal-content { background:var(--card); padding:15px; border-radius:20px; border:2px solid #fbbf24; width:88%; max-width:380px; max-height: 90vh; overflow-y: auto; position: relative; }
         
-        /* GÜNCELLEMİ: Başlıklar sabit genişlikte, açıklamalar hemen yanından başlıyor */
         .item-row { display: flex; align-items: flex-start; margin-bottom: 8px; text-align: left; }
         .item-title { color: #60a5fa; font-weight: 800; width: 105px; flex-shrink: 0; display: inline-block; }
-        .item-red-val { color: #ef4444; font-weight: 900; display: inline-block; flex: 1; }
+        /* GÜNCELLEMİ: Bakiye satırı sığması için font ayarı ve nowrap eklendi */
+        .item-red-val { color: #ef4444; font-weight: 900; display: inline-block; flex: 1; white-space: nowrap; }
+        .item-red-val-small { color: #ef4444; font-weight: 900; display: inline-block; flex: 1; white-space: nowrap; font-size: 0.88em; }
         
         #sales-notification { position: fixed; top: 20px; right: -300px; background: #10b981; color: white; padding: 8px 12px; border-radius: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.5); z-index: 2000; transition: 0.5s ease-in-out; font-weight: bold; font-size: 0.8em; display: flex; align-items: center; gap: 8px; }
         #sales-notification.show { right: 20px; }
@@ -184,7 +185,6 @@
                     <span class="blink-yellow" style="text-decoration: underline; font-size: 1.1em;">TEST Pİ CÜZDANI</span> AÇILACAKTIR.
                 </div>
                 
-                <!-- GÜNCELLEMİ: Kırmızı yazılar artık başlığın hemen yanında (Hizalı) -->
                 <div class="item-row">
                     <span class="item-title">İŞLEM TÜRÜ:</span>
                     <span class="item-red-val blink-red">TEST İŞLEMİDİR</span>
@@ -195,7 +195,8 @@
                 </div>
                 <div class="item-row">
                     <span class="item-title">BAKİYE:</span>
-                    <span class="item-red-val blink-red">GERÇEK Pİ BAKİYENİZ AZALMAZ</span>
+                    <!-- GÜNCELLEMİ: Tek satıra sığması için font küçültüldü ve nowrap eklendi -->
+                    <span class="item-red-val-small blink-red">GERÇEK Pİ BAKİYENİZ AZALMAZ</span>
                 </div>
                 <div class="item-row">
                     <span class="item-title">ŞİFRENİZ:</span>
@@ -319,7 +320,7 @@ function renderDomains() {
                         <div style="font-weight:bold; font-size:0.9em;">${d.name}</div>
                         <div style="font-size:0.65em; color:#94a3b8;">${data.price} Pİ - SATIN ALINDI</div>
                     </div>
-                    <a href="https://minepi.com/blockexplorer/tx/${data.txid}" target="_blank" class="manage-btn" style="background:#10b981;">DOĞRULA</a>
+                    <a href="https://minepi.com/blockexplorer/tx/${data.txid}?network=testnet" target="_blank" class="manage-btn" style="background:#10b981;">DOĞRULA</a>
                 </div>
             `;
         }
