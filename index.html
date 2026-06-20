@@ -79,11 +79,12 @@
         .trust-badge { background: rgba(16, 185, 129, 0.1); border: 1.5px solid #10b981; color: #10b981; padding: 10px; border-radius: 12px; font-size: 0.85em; margin: 5px 0; line-height: 1.4; width: 95%; box-sizing: border-box; }
         
         .modal-overlay { position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.9); display:flex; justify-content:center; align-items:center; z-index:9999; }
-        /* GÜNCELLEMİ: Panel Çevresi Sarı Çerçeve */
         .modal-content { background:var(--card); padding:15px; border-radius:20px; border:2px solid #fbbf24; width:88%; max-width:380px; max-height: 90vh; overflow-y: auto; position: relative; }
         
-        .item-title { color: #60a5fa; font-weight: 800; min-width: 105px; display: inline-block; text-align: left; }
-        .item-desc { color: #f8fafc; font-weight: 500; }
+        /* GÜNCELLEMİ: Başlıklar sabit genişlikte, açıklamalar hemen yanından başlıyor */
+        .item-row { display: flex; align-items: flex-start; margin-bottom: 8px; text-align: left; }
+        .item-title { color: #60a5fa; font-weight: 800; width: 105px; flex-shrink: 0; display: inline-block; }
+        .item-red-val { color: #ef4444; font-weight: 900; display: inline-block; flex: 1; }
         
         #sales-notification { position: fixed; top: 20px; right: -300px; background: #10b981; color: white; padding: 8px 12px; border-radius: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.5); z-index: 2000; transition: 0.5s ease-in-out; font-weight: bold; font-size: 0.8em; display: flex; align-items: center; gap: 8px; }
         #sales-notification.show { right: 20px; }
@@ -172,10 +173,8 @@
         <div class="domain-grid locked-content" id="domain-list"></div>
     </div>
 
-    <!-- GÜNCELLEMİ: Güvenli Ödeme Onayı Paneli Tam Revizyon -->
     <div id="pre-buy-modal" class="modal-overlay" style="display:none;">
         <div class="modal-content">
-            <!-- Kalkan Simgesi En Üst Ortada -->
             <div style="font-size: 2.2em; margin-bottom: 5px; text-align: center;">🛡️</div>
             <h2 style="color:#fbbf24;margin:0 0 12px 0; font-size: 1.15em; font-weight: 900; text-align: center;">GÜVENLİ ÖDEME ONAYI</h2>
             
@@ -185,24 +184,22 @@
                     <span class="blink-yellow" style="text-decoration: underline; font-size: 1.1em;">TEST Pİ CÜZDANI</span> AÇILACAKTIR.
                 </div>
                 
-                <!-- Liste Düzeni: Mavi Başlıklar Solda, Kırmızı Açıklamalar Sağda (Hizalı) -->
-                <div style="display: flex; flex-direction: column; gap: 8px;">
-                    <div style="display: flex; justify-content: space-between; align-items: center;">
-                        <span class="item-title">İŞLEM TÜRÜ:</span>
-                        <span class="blink-red">TEST İŞLEMİDİR</span>
-                    </div>
-                    <div style="display: flex; justify-content: space-between; align-items: center;">
-                        <span class="item-title">ÖDEME:</span>
-                        <span class="blink-red">SADECE TEST Pİ KULLANILIR</span>
-                    </div>
-                    <div style="display: flex; justify-content: space-between; align-items: flex-start;">
-                        <span class="item-title">BAKİYE:</span>
-                        <span class="blink-red" style="text-align: right; flex: 1;">GERÇEK Pİ BAKİYENİZ AZALMAZ</span>
-                    </div>
-                    <div style="display: flex; justify-content: space-between; align-items: center;">
-                        <span class="item-title">ŞİFRENİZ:</span>
-                        <span class="blink-red">SİZDEN BAŞKASI BİLEMEZ.</span>
-                    </div>
+                <!-- GÜNCELLEMİ: Kırmızı yazılar artık başlığın hemen yanında (Hizalı) -->
+                <div class="item-row">
+                    <span class="item-title">İŞLEM TÜRÜ:</span>
+                    <span class="item-red-val blink-red">TEST İŞLEMİDİR</span>
+                </div>
+                <div class="item-row">
+                    <span class="item-title">ÖDEME:</span>
+                    <span class="item-red-val blink-red">SADECE TEST Pİ KULLANILIR</span>
+                </div>
+                <div class="item-row">
+                    <span class="item-title">BAKİYE:</span>
+                    <span class="item-red-val blink-red">GERÇEK Pİ BAKİYENİZ AZALMAZ</span>
+                </div>
+                <div class="item-row">
+                    <span class="item-title">ŞİFRENİZ:</span>
+                    <span class="item-red-val blink-red">SİZDEN BAŞKASI BİLEMEZ.</span>
                 </div>
             </div>
             
