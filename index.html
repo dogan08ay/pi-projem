@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Web3 Domain Gateway - Masterpiece Fix</title>
+    <title>Web3 Domain Gateway - Masterpiece Final</title>
     <script src="https://sdk.minepi.com/pi-sdk.js"></script>
     <style>
         :root { --bg:#0f172a; --card:#1e293b; --accent:#6366f1; --text:#f8fafc; --sold:#ef4444; --price:#fbbf24; --success:#10b981; --info:#38bdf8; }
@@ -32,7 +32,6 @@
         .lock-title-box { background:linear-gradient(135deg,#fef3c7 0%,#fde68a 100%); color:#1e293b; padding:6px 15px; border-radius:10px; border:2px solid #f59e0b; font-size:0.95em; font-weight:900; margin-bottom:10px; display:inline-block; }
 
         .locked-content { filter: blur(12px); opacity: 0.25; pointer-events: none; }
-        /* GÜNCELLEMİ: Elmas üstündeki boşluk kaldırıldı */
         .premium-lock-overlay { position: absolute; top: 0; left: 0; right: 0; bottom: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; background: rgba(15, 23, 42, 0.7); backdrop-filter: blur(1px); z-index: 10; padding: 5px; }
         .lock-icon { font-size: 2em; margin-bottom: 2px; animation: pulse 2s infinite; }
         @keyframes pulse { 0% { transform: scale(1); opacity: 0.8; } 50% { transform: scale(1.1); opacity: 1; } 100% { transform: scale(1); opacity: 0.8; } }
@@ -65,7 +64,7 @@
         .btn-fake-buy { background: var(--accent); color: white; padding: 2px 5px; border-radius: 4px; font-weight: 900; font-size: 0.9em; display: inline-block; }
 
         .footer-section { margin-top:10px; padding:10px; color:#f8fafc; font-size:0.75em; text-align:center; border-top:1px solid #334155; background: rgba(15, 23, 42, 0.6); border-radius: 15px 15px 0 0; }
-        .footer-section a { color:#38bdf8; text-decoration:none; font-weight: 800; border-bottom: 1px solid #38bdf8; }
+        .footer-section a { color:#38bdf8; text-decoration:none; font-weight: 800; }
         .footer-section div { margin-bottom: 5px; }
 
         .log-item { display: flex; justify-content: space-between; background: #0f172a; padding: 8px 12px; border-radius: 8px; margin-bottom: 5px; font-size: 0.8em; }
@@ -293,7 +292,7 @@ async function renderDomains() {
     let myHtml = "";
     let historyHtml = "";
 
-    // GÜNCELLEMİ: İşlem geçmişi sorgusu basitleştirildi (Composite index hatasını önlemek için)
+    // GÜNCELLEMİ: İşlem geçmişi sorgusu KESİN ÇÖZÜM (Tüm verileri çekip kod tarafında filtreleme)
     if (currentUser) {
         try {
             const q = collection(db, "global_sales");
@@ -326,7 +325,7 @@ async function renderDomains() {
                         <div style="font-weight:bold; font-size:0.9em;">${d.name}</div>
                         <div style="font-size:0.65em; color:#94a3b8;">${data.price} Pİ - SATIN ALINDI</div>
                     </div>
-                    <!-- GÜNCELLEMİ: Doğrula Butonu Kesin Çözüm -->
+                    <!-- GÜNCELLEMİ: Doğrula Butonu Kesin Çözüm (Resmi Testnet Explorer Linki) -->
                     <a href="https://minepi.com/blockexplorer/tx/${data.txid}?network=testnet" target="_blank" class="manage-btn" style="background:#10b981;">DOĞRULA</a>
                 </div>
             `;
