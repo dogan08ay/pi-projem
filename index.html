@@ -241,8 +241,21 @@ function listenToLogs(date) {
             sortedUsers.forEach(u => { html += `<div class="log-item"><b>@${u}</b><span>${new Date(users[u]).toLocaleTimeString()}</span></div>`; }); 
         }
         document.getElementById("log-list").innerHTML = html;
-        document.getElementById("online-count").innerText = sortedUsers.length;
     });
+}
+
+// AKTİF KULLANICI SAYACI (KESİN ÇÖZÜM)
+onSnapshot(collection(db, "active_users"), (snap) => {
+    const now = Date.now();
+    let activeCount = 0;
+    snap.forEach(doc => { if (doc.data().lastSeen && (now - doc.data().lastSeen) < 30000) activeCount++; });
+    document.getElementById("online-count").innerText = activeCount;
+});
+
+async function updateActiveStatus() {
+    if (currentUser) {
+        await setDoc(doc(db, "active_users", currentUser), { lastSeen: Date.now() }, { merge: true });
+    }
 }
 
 window.loginWithPi = async function() {
@@ -261,6 +274,7 @@ window.loginWithPi = async function() {
         currentUsers[currentUser] = Date.now();
         await setDoc(userDocRef, { users: currentUsers }, { merge: true });
 
+        updateActiveStatus();
         render();
         if (currentUser === "doganay0808") {
             document.getElementById("admin-panel").style.display = "block";
@@ -282,11 +296,13 @@ document.getElementById("confirm-buy-btn").onclick = async () => {
                 await fetch('/api/approve', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({paymentId:id, action:'approve'}) }); 
             },
             onReadyForServerCompletion: async (id, txid) => {
+                // BAŞARI MESAJINI ÖNCE GÖSTER (KESİN ÇÖZÜM)
+                document.getElementById("success-modal").style.display = "flex";
+                
                 await fetch('/api/approve', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({paymentId:id, action:'complete', txid, username:currentUser, domainName:pendingDomain, amount:pendingPrice}) });
                 await setDoc(doc(db, "domains", pendingDomain), { sold: true, price: pendingPrice, txid: txid, buyer: currentUser, at: Date.now() });
                 await setDoc(doc(db, "global_sales", txid), { user: currentUser, domain: pendingDomain, price: pendingPrice, at: Date.now() });
                 
-                document.getElementById("success-modal").style.display = "flex";
                 render();
             },
             onCancel: () => {},
@@ -313,7 +329,12 @@ onSnapshot(collection(db, "global_sales"), (snap) => {
     document.getElementById("total-volume").innerText = vol;
 });
 
-window.addEventListener("load", () => { if (window.Pi) Pi.init({ version: "2.0", sandbox: true }); });
+window.addEventListener("load", () => { 
+    if (window.Pi) {
+        Pi.init({ version: "2.0", sandbox: true }); 
+    }
+    setInterval(updateActiveStatus, 15000);
+});
 </script>
 </body>
 </html>
