@@ -282,17 +282,12 @@ document.getElementById("confirm-buy-btn").onclick = async () => {
                 await fetch('/api/approve', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({paymentId:id, action:'approve'}) }); 
             },
             onReadyForServerCompletion: async (id, txid) => {
-                const res = await fetch('/api/approve', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({paymentId:id, action:'complete', txid, username:currentUser, domainName:pendingDomain, amount:pendingPrice}) });
-                const resData = await res.json();
-                
+                await fetch('/api/approve', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({paymentId:id, action:'complete', txid, username:currentUser, domainName:pendingDomain, amount:pendingPrice}) });
                 await setDoc(doc(db, "domains", pendingDomain), { sold: true, price: pendingPrice, txid: txid, buyer: currentUser, at: Date.now() });
                 await setDoc(doc(db, "global_sales", txid), { user: currentUser, domain: pendingDomain, price: pendingPrice, at: Date.now() });
                 
-                // KESİN TETİKLEME: Modalın görünmesi için
-                setTimeout(() => {
-                    document.getElementById("success-modal").style.display = "flex";
-                    render();
-                }, 500);
+                document.getElementById("success-modal").style.display = "flex";
+                render();
             },
             onCancel: () => {},
             onError: (e) => { alert("ÖDEME HATASI!"); }
