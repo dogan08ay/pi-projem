@@ -69,9 +69,12 @@
             text-transform: uppercase;
         }
 
+        /* GÜNCELLEMİ: Yanıp sönme hızı 2 saniyeye (sakin) çekildi */
         @keyframes blinker { 0% { opacity: 1.0; } 50% { opacity: 0.2; } 100% { opacity: 1.0; } }
-        .blink-text { animation: blinker 1.2s linear infinite; color: #fbbf24; font-weight: 900; text-decoration: underline; }
-        .blink-yellow { animation: blinker 1s linear infinite; color: #fbbf24; font-weight: 900; }
+        .blink-text { animation: blinker 2s linear infinite; color: #ef4444; font-weight: 900; text-decoration: underline; }
+        .blink-yellow { animation: blinker 2s linear infinite; color: #fbbf24; font-weight: 900; }
+        .blink-red { animation: blinker 2s linear infinite; color: #ef4444; font-weight: 900; }
+        
         .warning-red { color: #ef4444; font-weight: 900; text-decoration: underline; font-size: 1em; display: block; margin-top: 3px; }
         
         .trust-badge { background: rgba(16, 185, 129, 0.1); border: 1.5px solid #10b981; color: #10b981; padding: 10px; border-radius: 12px; font-size: 0.85em; margin: 5px 0; line-height: 1.4; width: 95%; box-sizing: border-box; }
@@ -96,7 +99,6 @@
         .footer-section div { margin-bottom: 5px; }
 
         .log-item { display: flex; justify-content: space-between; background: #0f172a; padding: 8px 12px; border-radius: 8px; margin-bottom: 5px; font-size: 0.8em; }
-        /* GÜNCELLEMİ: 2 kişiden sonra kayar pencere devreye girsin (yaklaşık 85-90px) */
         #log-list { max-height: 95px; overflow-y: auto; }
         #log-list::-webkit-scrollbar { width: 5px; }
         #log-list::-webkit-scrollbar-track { background: #0f172a; border-radius: 10px; }
@@ -170,20 +172,32 @@
         <div class="domain-grid locked-content" id="domain-list"></div>
     </div>
 
+    <!-- GÜNCELLEMİ: Güvenli Ödeme Onayı Paneli Revize Edildi -->
     <div id="pre-buy-modal" class="modal-overlay" style="display:none;">
-        <div class="modal-content" style="border-color: #fbbf24;">
+        <div class="modal-content" style="border-color: #fbbf24; width: 90%; max-width: 380px;">
             <div style="font-size: 2em; margin-bottom: 5px;">🛡️</div>
             <h2 style="color:#fbbf24;margin-top:0; font-size: 1.1em;">Güvenli Ödeme Onayı</h2>
-            <div style="color:#fff; font-size: 0.9em; line-height: 1.6; text-align: left; background: rgba(0,0,0,0.3); padding: 15px; border-radius: 15px;">
-                <div style="margin-bottom: 8px; border-bottom: 1px solid #475569; padding-bottom: 5px; text-align: center;">
-                    Bir sonraki adımda gerçek cüzdan değil, <span class="blink-text">TEST PI CÜZDANI</span> açılacaktır.
+            <div style="color:#fff; font-size: 0.85em; line-height: 1.6; text-align: left; background: rgba(0,0,0,0.3); padding: 12px; border-radius: 15px;">
+                <div style="margin-bottom: 10px; border-bottom: 1px solid #475569; padding-bottom: 8px; text-align: center;">
+                    Bir sonraki adımda gerçek cüzdan değil, <span class="blink-red">TEST PI CÜZDANI</span> açılacaktır.
                 </div>
-                <div style="margin-bottom: 4px;"><span class="item-title">İŞLEM TÜRÜ:</span><span class="blink-text">TEST İŞLEMİDİR</span></div>
-                <div style="margin-bottom: 4px;"><span class="item-title">ÖDEME:</span><span class="blink-text">SADECE TEST PI</span></div>
-                <!-- GÜNCELLEMİ: EKSİLMEZ silindi, uyarı tek satıra sığacak şekilde düzenlendi -->
-                <div style="margin-bottom: 4px; display: flex; align-items: center; flex-wrap: nowrap; gap: 6px;"><span class="item-title">BAKİYE:</span><span style="color:#fbbf24; font-weight:800; font-size:0.85em; white-space:nowrap;">GERÇEK Pİ KESİNLİKLE KULLANILMAZ</span></div>
-                <!-- GÜNCELLEMİ: Güvenlik açıklaması Pi Güvencesi olarak güncellendi -->
-                <div><span class="item-title">GÜVENLİK:</span><span class="item-desc">Pi Güvencesi Altındadır.</span></div>
+                <!-- Başlıklar Mavi, Karşılar Kırmızı ve 2sn yanıp söner -->
+                <div style="margin-bottom: 6px; display: flex; align-items: center; justify-content: space-between;">
+                    <span class="item-title">İŞLEM TÜRÜ:</span>
+                    <span class="blink-red">TEST İŞLEMİDİR</span>
+                </div>
+                <div style="margin-bottom: 6px; display: flex; align-items: center; justify-content: space-between;">
+                    <span class="item-title">ÖDEME:</span>
+                    <span class="blink-red">SADECE TEST PI KULLANILIR</span>
+                </div>
+                <div style="margin-bottom: 6px; display: flex; flex-direction: column; gap: 2px;">
+                    <span class="item-title">BAKİYE:</span>
+                    <span class="blink-red" style="font-size: 0.82em; text-align: right; width: 100%;">GERÇEK Pİ KESİNLİKLE KULLANILMAZ</span>
+                </div>
+                <div style="margin-bottom: 2px; display: flex; align-items: center; justify-content: space-between;">
+                    <span class="item-title">ŞİFRENİZ:</span>
+                    <span class="blink-red">Sizden başkası bilemez.</span>
+                </div>
             </div>
             <div style="display: flex; gap: 10px; margin-top: 15px;">
                 <button class="pi-btn" style="background:#475569; flex:1; animation:none; padding: 10px; margin:0; font-size: 0.85em;" onclick="document.getElementById('pre-buy-modal').style.display='none'">Vazgeç</button>
