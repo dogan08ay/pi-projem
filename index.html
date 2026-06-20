@@ -57,14 +57,6 @@
         .footer-section a { color:#38bdf8; text-decoration:none; font-weight: 800; }
         .footer-section div { margin-bottom: 5px; }
 
-        .log-item { display: flex; justify-content: space-between; background: #0f172a; padding: 8px 12px; border-radius: 8px; margin-bottom: 5px; font-size: 0.8em; }
-        #log-list { max-height: 95px; overflow-y: auto; }
-        #log-list::-webkit-scrollbar { width: 5px; }
-        #log-list::-webkit-scrollbar-track { background: #0f172a; border-radius: 10px; }
-        #log-list::-webkit-scrollbar-thumb { background: #6366f1; border-radius: 10px; }
-
-        .admin-date-picker { background: #0f172a; color: #fff; border: 1.5px solid #6366f1; padding: 6px; border-radius: 8px; font-size: 0.85em; margin-bottom: 10px; width: 100%; box-sizing: border-box; outline: none; }
-        
         .my-domain-item { background: #0f172a; padding: 8px 12px; border-radius: 10px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px; border: 1px solid #334155; text-align: left; }
         .manage-btn { background: #6366f1; color: white; border: none; padding: 5px 10px; border-radius: 6px; font-size: 0.7em; font-weight: bold; text-decoration: none; }
     </style>
@@ -95,10 +87,7 @@
 
     <div class="card" id="admin-panel" style="display:none; border:2px solid #6366f1;">
         <h3 style="color:#6366f1;margin-top:0;font-size: 0.95em;">🛠 Admin Paneli</h3>
-        <div style="margin-bottom: 8px; text-align: left;">
-            <input type="date" id="admin-date-input" class="admin-date-picker">
-        </div>
-        <div id="log-list"></div>
+        <div id="log-list" style="max-height: 95px; overflow-y: auto;"></div>
     </div>
 
     <div class="card" style="position: relative; min-height: 350px; padding: 10px; margin-bottom: 5px;">
@@ -160,7 +149,7 @@
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
-import { getFirestore, doc, onSnapshot, setDoc, getDoc, collection, query, where, limit, orderBy } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
+import { getFirestore, doc, onSnapshot, setDoc, getDoc, collection } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
 
 const firebaseConfig = { apiKey: "s3ddhcea9xae0qieikgjy9zw9tduemnraoucjrr9iqe87pduhczmd95kq8n3aai1", authDomain: "web3-domain-gateway.firebaseapp.com", projectId: "web3-domain-gateway" };
 const app = initializeApp(firebaseConfig);
@@ -171,7 +160,6 @@ let isAuth = false;
 let domainData = {};
 let pendingDomain = null;
 let pendingPrice = 0;
-let adminLogUnsubscribe = null;
 
 const domains = [
     { name:'test-domain', img:'assets/test.jpeg', price:10 },
@@ -215,18 +203,6 @@ function render() {
     if (document.getElementById("my-domains-list")) document.getElementById("my-domains-list").innerHTML = myHtml || '<p style="font-size:0.75em; opacity:0.5; text-align:center;">AKTİF DOMAİNİNİZ YOK.</p>';
 }
 
-function listenToLogs(date) {
-    if (adminLogUnsubscribe) adminLogUnsubscribe();
-    adminLogUnsubscribe = onSnapshot(doc(db, "daily_users", date), (snap) => {
-        const users = (snap.data() || {}).users || {};
-        const sortedUsers = Object.keys(users).sort((a, b) => users[b] - users[a]);
-        let html = "";
-        if (sortedUsers.length === 0) { html = '<p style="font-style:italic; opacity:0.6; font-size:0.8em;">KAYIT BULUNAMADI.</p>'; }
-        else { sortedUsers.forEach(u => { html += `<div class="log-item"><b>@${u}</b><span>${new Date(users[u]).toLocaleTimeString()}</span></div>`; }); }
-        document.getElementById("log-list").innerHTML = html;
-    });
-}
-
 window.loginWithPi = async function() {
     try {
         const auth = await Pi.authenticate(['username', 'payments'], async (p) => {});
@@ -238,11 +214,12 @@ window.loginWithPi = async function() {
         render();
         if (currentUser === "doganay0808") {
             document.getElementById("admin-panel").style.display = "block";
-            const today = new Date().toISOString().split("T")[0];
-            const dateInput = document.getElementById("admin-date-input");
-            dateInput.value = today;
-            listenToLogs(today);
-            dateInput.onchange = (e) => { listenToLogs(e.target.value); };
+            onSnapshot(doc(db, "daily_users", new Date().toISOString().split("T")[0]), (snap) => {
+                const users = (snap.data() || {}).users || {};
+                let html = "";
+                Object.keys(users).forEach(u => { html += `<div class="log-item"><b>@${u}</b><span>${new Date(users[u]).toLocaleTimeString()}</span></div>`; });
+                document.getElementById("log-list").innerHTML = html;
+            });
         }
     } catch (e) { alert("GİRİŞ HATASI!"); }
 };
@@ -267,7 +244,7 @@ document.getElementById("confirm-buy-btn").onclick = async () => {
 
 document.getElementById("share-tg-btn").onclick = () => {
     const text = `🚀 Web3 Domain Gateway üzerinden ${pendingDomain} domainini satın aldım! Siz de Test-Pİ ile Web3 dünyasına katılın.`;
-    window.open(`https://t.me/share/url?url=${encodeURIComponent(window.location.href)}&text=${encodeURIComponent(text)}`, '_blank');
+    window.open(`https://t.me/share/url?url=${encodeURIComponent(window.location.href)}&text=${encodeURIComponent(text)}&text=${encodeURIComponent(text)}`, '_blank');
 };
 
 domains.forEach(d => {
