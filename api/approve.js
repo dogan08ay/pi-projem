@@ -9,15 +9,17 @@ export default async function handler(req, res) {
   const { paymentId, action, txid, username, domainName, amount } = req.body;
   const PI_API_KEY = process.env.APP_SECRET;
   const TG_BOT_TOKEN = "8540258785:AAFbI0MAUR1RFsvPPsOyGEgnqhx_3ZAYgOU";
-  const TG_CHAT_ID = "850838849"; // Doğan Bey'in ID'si
-  const TG_GROUP_ID = "-1003987952631"; // Grup ID'si
+  const TG_CHAT_ID = "850838849"; 
+  const TG_GROUP_ID = "-1003987952631"; 
 
   const sendTG = async (chatId, text) => {
-    await fetch(`https://api.telegram.org/bot${TG_BOT_TOKEN}/sendMessage`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ chat_id: chatId, text, parse_mode: 'Markdown' })
-    });
+    try {
+      await fetch(`https://api.telegram.org/bot${TG_BOT_TOKEN}/sendMessage`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ chat_id: chatId, text, parse_mode: 'Markdown' })
+      });
+    } catch (e) { console.error("TG Error:", e); }
   };
 
   const url = `https://api.minepi.com/v2/payments/${paymentId}/${action}`;
@@ -33,15 +35,13 @@ export default async function handler(req, res) {
     if (action === 'complete' && response.ok) {
       const purchaseCode = "WEB3-" + Math.random().toString(36).substr(2, 6).toUpperCase();
       
-      // Gruba Sadece Satış Duyurusu
       const groupMsg = `🎉 *YENİ SATIŞ!*\n\n👤 @${username}, *${domainName}* domainini başarıyla satın aldı! 🚀\n\n🌐 Sitemize hoş geldin yeni sahibi!`;
       await sendTG(TG_GROUP_ID, groupMsg);
 
-      // Size Detaylı Bilgi
       const adminMsg = `✅ *SATIŞ TAMAMLANDI*\n\n👤 *Alıcı:* @${username}\n🌐 *Domain:* ${domainName}\n💰 *Tutar:* ${amount} Pi\n🔑 *Üretilen Şifre:* \`${purchaseCode}\``;
       await sendTG(TG_CHAT_ID, adminMsg);
 
-      return res.status(200).json({ ...data, purchaseCode });
+      return res.status(200).json({ ...data, purchaseCode, success: true });
     }
 
     return res.status(200).json(data);
