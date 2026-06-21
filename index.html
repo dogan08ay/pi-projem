@@ -7,17 +7,8 @@
     <script src="https://sdk.minepi.com/pi-sdk.js"></script>
     <style>
         :root { --bg:#0f172a; --card:#1e293b; --accent:#6366f1; --text:#f8fafc; --sold:#ef4444; --price:#fbbf24; --success:#10b981; }
-       body { 
-    font-family:'Segoe UI',sans-serif; background:var(--bg); color:var(--text); 
-    margin:0; padding:5px; display:flex; justify-content:center; 
-    height: 100vh; /* Ekran boyuna sabitle */
-    overflow: hidden; /* Dışa taşmayı engelle */
-}
-.container { 
-    max-width:600px; width:100%; text-align:center; 
-    display: flex; flex-direction: column; 
-    height: 100vh; /* Konteyneri ekran boyunda tut */
-}
+        body { font-family:'Segoe UI',sans-serif; background:var(--bg); color:var(--text); margin:0; padding:5px; display:flex; justify-content:center; min-height: 100vh; overflow-x: hidden; }
+        .container { max-width:600px; width:100%; text-align:center; display: flex; flex-direction: column; }
         .card { background:var(--card); padding:10px; border-radius:18px; box-shadow:0 8px 12px -3px rgba(0,0,0,0.3); margin-bottom:8px; position: relative; overflow: hidden; }
         
         .app-logo { width: 75px; height: 75px; margin-bottom: 6px; border-radius: 50%; box-shadow: 0 0 20px rgba(99, 102, 241, 0.6); border: 3px solid #6366f1; object-fit: cover; }
@@ -41,7 +32,7 @@
         .lock-title-box { background:linear-gradient(135deg,#fef3c7 0%,#fde68a 100%); color:#1e293b; padding:5px 12px; border-radius:10px; border:2px solid #f59e0b; font-size:0.9em; font-weight:900; margin-bottom:6px; display:inline-block; }
 
         .locked-content { filter: blur(15px); opacity: 0.2; pointer-events: none; }
-        .premium-lock-overlay { position: absolute; top: 0; left: 0; right: 0; bottom: 0; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; background: rgba(15, 23, 42, 0.75); backdrop-filter: blur(2px); z-index: 100; padding-top: 15px; text-align: center; }
+        .premium-lock-overlay { position: absolute; top: 0; left: 0; right: 0; bottom: 0; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; background: rgba(15, 23, 42, 0.75); backdrop-filter: blur(2px); z-index: 100; padding-top: 5px; text-align: center; }
         
         .secure-badge { background: #0d2a2a; border: 2px solid #10b981; border-radius: 14px; padding: 12px; width: 92%; box-sizing: border-box; margin: 4px 0; }
         .secure-badge-title { color: #10b981; font-size: 0.9em; font-weight: 800; margin-bottom: 6px; border-bottom: 1px solid rgba(16,185,129,0.3); padding-bottom: 4px; }
@@ -62,7 +53,7 @@
         .my-domain-item { background: #0f172a; padding: 10px; border-radius: 12px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; border: 1px solid #334155; }
         .manage-btn { background: #6366f1; color: white; border: none; padding: 5px 10px; border-radius: 6px; font-size: 0.7em; cursor: pointer; font-weight: bold; text-decoration: none; }
         
-        .footer-section { margin-top: auto; padding: 12px 10px; color:#f8fafc; font-size:0.7em; text-align:center; border-top:1px solid #334155; background: rgba(15, 23, 42, 0.8); border-radius: 20px 20px 0 0; }
+        .footer-section { margin-top: 0px; padding: 12px 10px; color:#f8fafc; font-size:0.7em; text-align:center; border-top:1px solid #334155; background: rgba(15, 23, 42, 0.8); border-radius: 20px 20px 0 0; }
         .footer-section a { color:#38bdf8; text-decoration:none; font-weight: 800; border-bottom: 1px solid #38bdf8; }
         .footer-section div { margin-bottom: 6px; }
 
@@ -96,7 +87,7 @@
         </div>
     </div>
 
-   <div class="card" id="admin-panel" style="display:none; border:2px solid #6366f1;">
+    <div class="card" id="user-panel" style="display:none; border:1.5px solid #10b981;">
         <h3 style="color:#10b981;margin:0 0 8px 0; font-size: 0.95em;">👤 Satın Alma Geçmişim</h3>
         <div class="user-info-note">
             ℹ️ <b>Bilgi:</b> Bu uygulama Test-Pi ağında deneme amaçlıdır. Satın aldığınız domainler, diğer kullanıcıların da test yapabilmesi için markette tekrar <span class="btn-fake-buy">SATIN AL</span> olarak görünebilir <b>ve satın alma geçmişinizden silinebilir.</b>
@@ -112,7 +103,7 @@
         <div id="log-list"></div>
     </div>
 
-    <div class="card" style="position: relative; flex-grow: 1; padding: 10px; margin-bottom: 5px; overflow-y: auto;">
+    <div class="card" style="position: relative; min-height: 300px; padding: 10px; margin-bottom: 5px;">
         <div id="market-title" class="section-title-box">Satın Alabileceğiniz Domainler</div>
         
         <div id="premium-lock" class="premium-lock-overlay">
@@ -131,7 +122,7 @@
 
             <p style="font-size: 0.75em; color: #e2e8f0; font-weight: 600; line-height: 1.3; margin: 4px 0; max-width: 90%;">Web3 domain sahibi olmak ve güvenli bağlantı kurmak için;</p>
             <div style="color: #fbbf24; font-weight: 700; margin-bottom: 4px; font-size: 0.8em;">👇 Aşağıdaki "Pi ile Bağlan" butonunu kullanın.</div>
-            <button class="pi-btn" onclick="window.loginWithPi()">Pi ile Bağlan</button>
+            <button class="pi-btn" style="margin-top: 0px; margin-bottom: 5px;" onclick="window.loginWithPi()">Pi ile Bağlan</button>
         </div>
 
         <div class="domain-grid locked-content" id="domain-list"></div>
