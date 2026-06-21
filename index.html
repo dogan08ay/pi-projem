@@ -25,7 +25,7 @@
         .btn-buy { background: var(--accent); color: white; border: none; padding: 6px 8px; border-radius: 6px; cursor: pointer; margin-top: 4px; font-weight: bold; width: 100%; font-size: 0.75em; }
         .btn-sold { background: rgba(239, 68, 68, 0.1); color: var(--sold); border: 1.5px solid var(--sold); padding: 5px 8px; border-radius: 6px; margin-top: 4px; font-weight: bold; width: 100%; font-size: 0.7em; }
         
-        .pi-btn { background: linear-gradient(135deg, #0052FF 0%, #3b82f6 100%); color:#ffffff; padding:12px 30px; border-radius:50px; font-weight:800; font-size:0.95em; border:none; cursor:pointer; animation: pulse-blue 2s infinite; transition: 0.3s; margin: 10px 0; }
+        .pi-btn { background: linear-gradient(135deg, #0052FF 0%, #3b82f6 100%); color:#ffffff; padding:12px 30px; border-radius:50px; font-weight:800; font-size:0.95em; border:none; cursor:pointer; animation: pulse-blue 2s infinite; transition: 0.3s; margin: 5px 0; }
         @keyframes pulse-blue { 0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(0, 82, 255, 0.7); } 70% { transform: scale(1); box-shadow: 0 0 0 10px rgba(0, 82, 255, 0); } 100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(0, 82, 255, 0); } }
 
         .section-title-box { background:linear-gradient(135deg,#fef3c7 0%,#fde68a 100%); color:#1e293b; padding:5px 12px; border-radius:10px; border:2px solid #f59e0b; font-size:0.85em; font-weight:800; display:inline-block; margin-bottom:5px; }
@@ -53,9 +53,9 @@
         .my-domain-item { background: #0f172a; padding: 10px; border-radius: 12px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; border: 1px solid #334155; }
         .manage-btn { background: #6366f1; color: white; border: none; padding: 5px 10px; border-radius: 6px; font-size: 0.7em; cursor: pointer; font-weight: bold; text-decoration: none; }
         
-        .footer-section { margin-top: auto; padding: 15px 10px; color:#f8fafc; font-size:0.75em; text-align:center; border-top:1px solid #334155; background: rgba(15, 23, 42, 0.8); border-radius: 20px 20px 0 0; }
+        .footer-section { margin-top: 0; padding: 10px; color:#f8fafc; font-size:0.75em; text-align:center; border-top:1px solid #334155; background: rgba(15, 23, 42, 0.8); border-radius: 20px 20px 0 0; }
         .footer-section a { color:#38bdf8; text-decoration:none; font-weight: 800; border-bottom: 1px solid #38bdf8; }
-        .footer-section div { margin-bottom: 8px; }
+        .footer-section div { margin-bottom: 5px; }
 
         #log-list { max-height: 85px; overflow-y: auto; }
         #log-list::-webkit-scrollbar { width: 5px; }
@@ -244,7 +244,6 @@ function listenToLogs(date) {
     });
 }
 
-// AKTİF KULLANICI SAYACI (KESİN ÇÖZÜM)
 onSnapshot(collection(db, "active_users"), (snap) => {
     const now = Date.now();
     let activeCount = 0;
@@ -296,13 +295,10 @@ document.getElementById("confirm-buy-btn").onclick = async () => {
                 await fetch('/api/approve', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({paymentId:id, action:'approve'}) }); 
             },
             onReadyForServerCompletion: async (id, txid) => {
-                // BAŞARI MESAJINI ÖNCE GÖSTER (KESİN ÇÖZÜM)
                 document.getElementById("success-modal").style.display = "flex";
-                
                 await fetch('/api/approve', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({paymentId:id, action:'complete', txid, username:currentUser, domainName:pendingDomain, amount:pendingPrice}) });
                 await setDoc(doc(db, "domains", pendingDomain), { sold: true, price: pendingPrice, txid: txid, buyer: currentUser, at: Date.now() });
                 await setDoc(doc(db, "global_sales", txid), { user: currentUser, domain: pendingDomain, price: pendingPrice, at: Date.now() });
-                
                 render();
             },
             onCancel: () => {},
