@@ -31,13 +31,13 @@
         .section-title-box { background:linear-gradient(135deg,#fef3c7 0%,#fde68a 100%); color:#1e293b; padding:4px 10px; border-radius:10px; border:2px solid #f59e0b; font-size:0.8em; font-weight:800; display:inline-block; margin-bottom:5px; }
         .lock-title-box { background:linear-gradient(135deg,#fef3c7 0%,#fde68a 100%); color:#1e293b; padding:5px 12px; border-radius:10px; border:2px solid #f59e0b; font-size:0.9em; font-weight:900; margin-bottom:6px; display:inline-block; }
 
-        .locked-content { filter: blur(15px); opacity: 0.2; pointer-events: none; }
-        .premium-lock-overlay { position: absolute; top: 0; left: 0; right: 0; bottom: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; background: rgba(15, 23, 42, 0.85); backdrop-filter: blur(4px); z-index: 100; padding: 10px; text-align: center; box-sizing: border-box; }
+.locked-content { }
+        .premium-lock-overlay { display: flex; flex-direction: column; align-items: center; justify-content: flex-start; z-index: 100; padding-top: 15px; text-align: center; margin-bottom: 15px; }
         
-        .secure-badge { background: #0d2a2a; border: 2px solid #10b981; border-radius: 12px; padding: 8px; width: 95%; box-sizing: border-box; margin: 5px 0; }
-        .secure-badge-title { color: #10b981; font-size: 0.85em; font-weight: 800; margin-bottom: 4px; border-bottom: 1px solid rgba(16,185,129,0.3); padding-bottom: 2px; }
-        .secure-badge-body { color: #e2e8f0; font-size: 0.75em; line-height: 1.3; margin-bottom: 4px; border-bottom: 1px solid rgba(16,185,129,0.3); padding-bottom: 4px; }
-        .secure-badge-warning { color: #fbbf24; font-size: 0.75em; font-weight: 900; line-height: 1.2; text-transform: uppercase; }
+        .secure-badge { background: #0d2a2a; border: 2px solid #10b981; border-radius: 14px; padding: 12px; width: 92%; box-sizing: border-box; margin: 4px 0; }
+        .secure-badge-title { color: #10b981; font-size: 0.9em; font-weight: 800; margin-bottom: 6px; border-bottom: 1px solid rgba(16,185,129,0.3); padding-bottom: 4px; }
+        .secure-badge-body { color: #e2e8f0; font-size: 0.8em; line-height: 1.4; margin-bottom: 6px; border-bottom: 1px solid rgba(16,185,129,0.3); padding-bottom: 6px; }
+        .secure-badge-warning { color: #fbbf24; font-size: 0.85em; font-weight: 900; line-height: 1.3; text-transform: uppercase; }
 
         @keyframes blinker { 0% { opacity: 1.0; } 50% { opacity: 0.3; } 100% { opacity: 1.0; } }
         .blink-yellow { animation: blinker 2s linear infinite; color: #fbbf24; font-weight: 900; }
@@ -82,6 +82,10 @@
             <div class="stats-item">Aktif Kullanıcı: <span id="online-count">0</span></div>
         </div>
 
+        <div id="login-section">
+            <button id="main-login-btn" class="pi-btn" onclick="window.loginWithPi()">Pi ile Bağlan</button>
+        </div>
+
         <div id="user-status-box" style="display:none; margin-top:2px;">
             <p id="user-status" style="font-size: 0.8em; color: #60a5fa; font-weight: bold; margin:0;"></p>
         </div>
@@ -105,27 +109,7 @@
 
     <div class="card" style="position: relative; min-height: 300px; padding: 10px; margin-bottom: 5px;">
         <div id="market-title" class="section-title-box">Satın Alabileceğiniz Domainler</div>
-        
-        <div id="premium-lock" class="premium-lock-overlay">
-            <div style="font-size: 1.5em; margin-bottom: 2px;">💎</div>
-            <div class="lock-title-box" style="padding: 4px 10px; font-size: 0.85em; margin-bottom: 4px;">Ayrıcalıklı Web3 Dünyasına Katılın</div>
-            
-            <div class="secure-badge">
-                <div class="secure-badge-title">🛡️ Güvenli Bağlantı</div>
-                <div class="secure-badge-body">
-                    Sistemimiz şu anda <span class="blink-yellow">TEST-Pİ</span> ağında çalışmaktadır.
-                </div>
-                <div class="secure-badge-warning">
-                    <span class="blink-yellow">GERÇEK Pİ BAKİYENİZ KESİNLİKLE<br>KULLANILMAZ!</span>
-                </div>
-            </div>
-
-            <p style="font-size: 0.7em; color: #e2e8f0; font-weight: 600; line-height: 1.2; margin: 3px 0; max-width: 95%;">Web3 domain sahibi olmak ve güvenli bağlantı kurmak için;</p>
-            <div style="color: #fbbf24; font-weight: 700; margin-bottom: 2px; font-size: 0.75em;">👇 Aşağıdaki "Pi ile Bağlan" butonunu kullanın.</div>
-            <button class="pi-btn" style="margin: 5px 0; padding: 8px 20px;" onclick="window.loginWithPi()">Pi ile Bağlan</button>
-        </div>
-
-        <div class="domain-grid locked-content" id="domain-list"></div>
+        <div class="domain-grid" id="domain-list"></div>
     </div>
 
     <div class="footer-section">
@@ -195,11 +179,12 @@ const domains = [
 
 function render() {
     const list = document.getElementById("domain-list");
-    const lock = document.getElementById("premium-lock");
+    const loginBtn = document.getElementById("main-login-btn");
     if (!list) return;
 
-    if (!isAuth) { lock.style.display = "flex"; list.classList.add("locked-content"); }
-    else { lock.style.display = "none"; list.classList.remove("locked-content"); }
+    if (loginBtn) {
+        loginBtn.style.display = isAuth ? "none" : "inline-block";
+    }
 
     list.innerHTML = '';
     let myHtml = "";
