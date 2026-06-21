@@ -6,238 +6,56 @@
     <title>Web3 Domain Gateway</title>
     <script src="https://sdk.minepi.com/pi-sdk.js"></script>
     <style>
-       :root {
-    --bg:#0f172a;
-    --card:#1e293b;
-    --accent:#6366f1;
-    --text:#f8fafc;
-    --sold:#ef4444;
-    --price:#fbbf24;
-    --success:#10b981;
-}
+        :root { --bg:#0f172a; --card:#1e293b; --accent:#6366f1; --text:#f8fafc; --sold:#ef4444; --price:#fbbf24; --success:#10b981; }
+        body { font-family:'Segoe UI',sans-serif; background:var(--bg); color:var(--text); margin:0; padding:5px; display:flex; justify-content:center; min-height: 100vh; overflow-x: hidden; }
+        .container { max-width:600px; width:100%; text-align:center; display: flex; flex-direction: column; }
+        .card { background:var(--card); padding:10px; border-radius:18px; box-shadow:0 8px 12px -3px rgba(0,0,0,0.3); margin-bottom:8px; position: relative; overflow: hidden; }
+        
+        .app-logo { width: 75px; height: 75px; margin-bottom: 6px; border-radius: 50%; box-shadow: 0 0 20px rgba(99, 102, 241, 0.6); border: 3px solid #6366f1; object-fit: cover; }
+        .app-title { font-size: 1.5em; font-weight: 900; margin: 0 0 6px 0; background: linear-gradient(to right, #60a5fa, #a855f7); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        
+        .stats-bar { display: flex; justify-content: space-around; background: rgba(99, 102, 241, 0.1); border: 1px solid rgba(99, 102, 241, 0.3); padding: 5px; border-radius: 12px; margin-bottom: 6px; font-size: 0.6em; font-weight: bold; color: #94a3b8; }
+        .stats-item span { color: var(--price); margin-left: 2px; }
 
-/* GLOBAL FIX (MOBİL SAFE) */
-* {
-    box-sizing: border-box;
-}
+        .domain-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:5px; position: relative; }
+        .domain-card { background:#334155; padding:8px; border-radius:10px; border:1px solid #475569; display:flex; flex-direction:column; align-items:center; }
+        .domain-img { width:100%; height:60px; margin-bottom:4px; border-radius:6px; object-fit:contain; background-color:#334155; }
+        .domain-name { font-size: 0.85em; font-weight: bold; margin-bottom: 2px; }
+        .domain-price { color: var(--price); font-size: 0.95em; font-weight: 800; margin: 1px 0; }
+        .btn-buy { background: var(--accent); color: white; border: none; padding: 6px 8px; border-radius: 6px; cursor: pointer; margin-top: 4px; font-weight: bold; width: 100%; font-size: 0.75em; }
+        .btn-sold { background: rgba(239, 68, 68, 0.1); color: var(--sold); border: 1.5px solid var(--sold); padding: 5px 8px; border-radius: 6px; margin-top: 4px; font-weight: bold; width: 100%; font-size: 0.7em; }
+        
+        .pi-btn { background: linear-gradient(135deg, #0052FF 0%, #3b82f6 100%); color:#ffffff; padding:10px 25px; border-radius:50px; font-weight:800; font-size:0.9em; border:none; cursor:pointer; animation: pulse-blue 2s infinite; transition: 0.3s; margin: 8px 0; }
+        @keyframes pulse-blue { 0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(0, 82, 255, 0.7); } 70% { transform: scale(1); box-shadow: 0 0 0 10px rgba(0, 82, 255, 0); } 100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(0, 82, 255, 0); } }
 
-html, body {
-    height: 100%;
-    margin: 0;
-    padding: 0;
-    overflow-x: hidden;
-}
+        .section-title-box { background:linear-gradient(135deg,#fef3c7 0%,#fde68a 100%); color:#1e293b; padding:4px 10px; border-radius:10px; border:2px solid #f59e0b; font-size:0.8em; font-weight:800; display:inline-block; margin-bottom:5px; }
+        .lock-title-box { background:linear-gradient(135deg,#fef3c7 0%,#fde68a 100%); color:#1e293b; padding:5px 12px; border-radius:10px; border:2px solid #f59e0b; font-size:0.9em; font-weight:900; margin-bottom:6px; display:inline-block; }
 
-body {
-    font-family:'Segoe UI',sans-serif;
-    background:var(--bg);
-    color:var(--text);
-    display:flex;
-    justify-content:center;
-    min-height: 100dvh; /* mobil fix */
-    overflow-y:auto;
-    padding:4px;
-}
+        .locked-content { filter: blur(15px); opacity: 0.2; pointer-events: none; }
+        .premium-lock-overlay { position: absolute; top: 0; left: 0; right: 0; bottom: 0; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; background: rgba(15, 23, 42, 0.75); backdrop-filter: blur(2px); z-index: 100; padding-top: 15px; text-align: center; }
+        
+        .secure-badge { background: #0d2a2a; border: 2px solid #10b981; border-radius: 14px; padding: 12px; width: 92%; box-sizing: border-box; margin: 4px 0; }
+        .secure-badge-title { color: #10b981; font-size: 0.9em; font-weight: 800; margin-bottom: 6px; border-bottom: 1px solid rgba(16,185,129,0.3); padding-bottom: 4px; }
+        .secure-badge-body { color: #e2e8f0; font-size: 0.8em; line-height: 1.4; margin-bottom: 6px; border-bottom: 1px solid rgba(16,185,129,0.3); padding-bottom: 6px; }
+        .secure-badge-warning { color: #fbbf24; font-size: 0.85em; font-weight: 900; line-height: 1.3; text-transform: uppercase; }
 
-/* CONTAINER */
-.container {
-    max-width:600px;
-    width:100%;
-    display:flex;
-    flex-direction:column;
-    text-align:center;
-    gap:6px;
-}
-
-/* CARD */
-.card {
-    background:var(--card);
-    padding:8px;
-    border-radius:18px;
-    box-shadow:0 8px 12px -3px rgba(0,0,0,0.3);
-    margin-bottom:6px;
-    position:relative;
-    overflow:hidden;
-}
-
-/* LOGO */
-.app-logo {
-    width:75px;
-    height:75px;
-    margin-bottom:6px;
-    border-radius:50%;
-    box-shadow:0 0 20px rgba(99, 102, 241, 0.6);
-    border:3px solid #6366f1;
-    object-fit:cover;
-}
-
-/* TITLE */
-.app-title {
-    font-size:1.5em;
-    font-weight:900;
-    margin:0 0 6px 0;
-    background:linear-gradient(to right,#60a5fa,#a855f7);
-    -webkit-background-clip:text;
-    -webkit-text-fill-color:transparent;
-}
-
-/* STATS */
-.stats-bar {
-    display:flex;
-    justify-content:space-around;
-    background:rgba(99, 102, 241, 0.1);
-    border:1px solid rgba(99, 102, 241, 0.3);
-    padding:5px;
-    border-radius:12px;
-    font-size:0.6em;
-    font-weight:bold;
-    color:#94a3b8;
-}
-
-/* GRID */
-.domain-grid {
-    display:grid;
-    grid-template-columns:1fr 1fr;
-    gap:8px;
-    margin-top:5px;
-}
-
-/* MOBILE GRID FIX */
-@media (max-width: 420px) {
-    .domain-grid {
-        grid-template-columns: 1fr;
-    }
-}
-
-/* DOMAIN CARD */
-.domain-card {
-    background:#334155;
-    padding:8px;
-    border-radius:10px;
-    border:1px solid #475569;
-    display:flex;
-    flex-direction:column;
-    align-items:center;
-}
-
-.domain-img {
-    width:100%;
-    height:60px;
-    margin-bottom:4px;
-    border-radius:6px;
-    object-fit:contain;
-    background-color:#334155;
-}
-
-.domain-name {
-    font-size:0.85em;
-    font-weight:bold;
-    margin-bottom:2px;
-}
-
-.domain-price {
-    color:var(--price);
-    font-size:0.95em;
-    font-weight:800;
-    margin:1px 0;
-}
-
-.btn-buy {
-    background:var(--accent);
-    color:white;
-    border:none;
-    padding:6px 8px;
-    border-radius:6px;
-    cursor:pointer;
-    margin-top:4px;
-    font-weight:bold;
-    width:100%;
-    font-size:0.75em;
-}
-
-.btn-sold {
-    background:rgba(239, 68, 68, 0.1);
-    color:var(--sold);
-    border:1.5px solid var(--sold);
-    padding:5px 8px;
-    border-radius:6px;
-    margin-top:4px;
-    font-weight:bold;
-    width:100%;
-    font-size:0.7em;
-}
-
-/* PI BUTTON */
-.pi-btn {
-    background: linear-gradient(135deg, #0052FF 0%, #3b82f6 100%);
-    color:#fff;
-    padding:10px 25px;
-    border-radius:50px;
-    font-weight:800;
-    font-size:0.9em;
-    border:none;
-    cursor:pointer;
-    animation: pulse-blue 2s infinite;
-    margin:8px 0;
-}
-
-@keyframes pulse-blue {
-    0% { transform:scale(0.95); box-shadow:0 0 0 0 rgba(0,82,255,0.7); }
-    70% { transform:scale(1); box-shadow:0 0 0 10px rgba(0,82,255,0); }
-    100% { transform:scale(0.95); box-shadow:0 0 0 0 rgba(0,82,255,0); }
-}
-
-/* LOCK SCREEN */
-.premium-lock-overlay {
-    position:absolute;
-    inset:0;
-    display:flex;
-    flex-direction:column;
-    align-items:center;
-    justify-content:flex-start;
-    background:rgba(15,23,42,0.75);
-    backdrop-filter:blur(2px);
-    z-index:100;
-    padding:10px;
-    text-align:center;
-    overflow-y:auto;
-}
-
-/* LOCK CONTENT */
-.locked-content {
-    filter:blur(15px);
-    opacity:0.2;
-    pointer-events:none;
-}
-
-/* MODAL */
-.modal-overlay {
-    position:fixed;
-    inset:0;
-    background:rgba(0,0,0,0.92);
-    display:flex;
-    justify-content:center;
-    align-items:center;
-    z-index:9999;
-}
-
-/* FOOTER */
-.footer-section {
-    margin-top:10px;
-    padding:12px 10px;
-    font-size:0.7em;
-    text-align:center;
-    border-top:1px solid #334155;
-    background:rgba(15,23,42,0.8);
-    border-radius:20px 20px 0 0;
-}
-
-.footer-section a {
-    color:#38bdf8;
-    text-decoration:none;
-    font-weight:800;
-    border-bottom:1px solid #38bdf8;
-}
+        @keyframes blinker { 0% { opacity: 1.0; } 50% { opacity: 0.3; } 100% { opacity: 1.0; } }
+        .blink-yellow { animation: blinker 2s linear infinite; color: #fbbf24; font-weight: 900; }
+        .blink-red { animation: blinker 2s linear infinite; color: #ef4444; font-weight: 900; }
+        
+        .modal-overlay { position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.92); display:flex; justify-content:center; align-items:center; z-index:9999; }
+        .modal-content { background:var(--card); padding:15px; border-radius:20px; border:2px solid #fbbf24; width:90%; max-width:380px; }
+        
+        .item-row { display: flex; align-items: center; margin-bottom: 8px; text-align: left; }
+        .item-title { color: #60a5fa; font-weight: 800; width: 105px; flex-shrink: 0; font-size: 0.85em; }
+        .item-red-val-small { color: #ef4444; font-weight: 900; flex: 1; white-space: nowrap; font-size: 0.88em; }
+        
+        .my-domain-item { background: #0f172a; padding: 10px; border-radius: 12px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; border: 1px solid #334155; }
+        .manage-btn { background: #6366f1; color: white; border: none; padding: 5px 10px; border-radius: 6px; font-size: 0.7em; cursor: pointer; font-weight: bold; text-decoration: none; }
+        
+        .footer-section { margin-top: auto; padding: 12px 10px; color:#f8fafc; font-size:0.7em; text-align:center; border-top:1px solid #334155; background: rgba(15, 23, 42, 0.8); border-radius: 20px 20px 0 0; }
+        .footer-section a { color:#38bdf8; text-decoration:none; font-weight: 800; border-bottom: 1px solid #38bdf8; }
+        .footer-section div { margin-bottom: 6px; }
 
         #log-list { max-height: 85px; overflow-y: auto; }
         #log-list::-webkit-scrollbar { width: 5px; }
@@ -374,83 +192,42 @@ const domains = [
     { name:'sekerbank.pi', img:'assets/sekerbank.jpeg', price:600 },
     { name:'doganay.pi', img:'assets/doganay.jpeg', price:150 }
 ];
-    
-let renderTimeout;
 
 function render() {
-    clearTimeout(renderTimeout);
+    const list = document.getElementById("domain-list");
+    const lock = document.getElementById("premium-lock");
+    if (!list) return;
 
-    renderTimeout = setTimeout(() => {
+    if (!isAuth) { lock.style.display = "flex"; list.classList.add("locked-content"); }
+    else { lock.style.display = "none"; list.classList.remove("locked-content"); }
 
-        const list = document.getElementById("domain-list");
-        const lock = document.getElementById("premium-lock");
-        const myList = document.getElementById("my-domains-list");
+    list.innerHTML = '';
+    let myHtml = "";
 
-        if (!list || !lock) return;
-
-        if (!isAuth) {
-            lock.style.display = "flex";
-            list.classList.add("locked-content");
-        } else {
-            lock.style.display = "none";
-            list.classList.remove("locked-content");
-        }
-
-        list.innerHTML = '';
-        let myHtml = "";
-
-        domains.forEach(d => {
-            const data = domainData[d.name] || { sold: false, price: d.price };
-
-            if (data.sold && data.buyer === currentUser) {
-                myHtml += `
-                    <div class="my-domain-item">
-                        <div>
-                            <b>${d.name}</b><br>
-                            <small style="color:#fbbf24; font-weight:800;">
-                                ${data.price} Pİ ALINDI
-                            </small>
-                        </div>
-                        <a href="https://blockexplorer.minepi.com/testnet/tx/${data.txid}" target="_blank" class="manage-btn">
-                            DOĞRULA
-                        </a>
-                    </div>
-                `;
-            }
-
-            const card = document.createElement('div');
-            card.className = 'domain-card';
-
-            card.innerHTML = `
-                <img src="${d.img}" class="domain-img"
-                onerror="this.src='data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMDAiIGhlaWdodD0iMTAwIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjNDc1NTY5Ii8+PC9zdmc+'">
-
-                <div class="domain-name">${d.name}</div>
-                <div class="domain-price">${data.price} Pİ</div>
+    domains.forEach(d => {
+        const data = domainData[d.name] || { sold:false, price:d.price };
+        if (data.sold && data.buyer === currentUser) {
+            myHtml += `
+                <div class="my-domain-item">
+                    <div><b>${d.name}</b><br><small style="color:#fbbf24; font-weight:800;">${data.price} Pİ ALINDI</small></div>
+                    <a href="https://blockexplorer.minepi.com/testnet/tx/${data.txid}" target="_blank" class="manage-btn">DOĞRULA</a>
+                </div>
             `;
-
-            if (data.sold) {
-                card.innerHTML += `<div class="btn-sold">SATILDI</div>`;
-            } else {
-                const btn = document.createElement('button');
-                btn.className = 'btn-buy';
-                btn.innerText = 'SATIN AL';
-                btn.onclick = () => {
-                    pendingDomain = d.name;
-                    pendingPrice = data.price;
-                    document.getElementById('pre-buy-modal').style.display = 'flex';
-                };
-                card.appendChild(btn);
-            }
-
-            list.appendChild(card);
-        });
-
-        if (myList) {
-            myList.innerHTML = myHtml || '<p style="font-size:0.75em; opacity:0.5; text-align:center;">AKTİF DOMAİNİNİZ YOK.</p>';
         }
-
-    }, 50);
+        const card = document.createElement('div');
+        card.className = 'domain-card';
+        card.innerHTML = `<img src="${d.img}" class="domain-img" onerror="this.src='data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMDAiIGhlaWdodD0iMTAwIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjNDc1NTY5Ii8+PC9zdmc+'"><div class="domain-name">${d.name}</div><div class="domain-price">${data.price} Pİ</div>`;
+        if (data.sold) { card.innerHTML += `<div class="btn-sold">SATILDI</div>`; } 
+        else {
+            const btn = document.createElement('button');
+            btn.className = 'btn-buy';
+            btn.innerText = 'SATIN AL';
+            btn.onclick = () => { pendingDomain = d.name; pendingPrice = data.price; document.getElementById('pre-buy-modal').style.display='flex'; };
+            card.appendChild(btn);
+        }
+        list.appendChild(card);
+    });
+    if (document.getElementById("my-domains-list")) document.getElementById("my-domains-list").innerHTML = myHtml || '<p style="font-size:0.75em; opacity:0.5; text-align:center;">AKTİF DOMAİNİNİZ YOK.</p>';
 }
 
 function listenToLogs(date) {
