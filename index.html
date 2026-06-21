@@ -455,10 +455,8 @@ function setupAdminLogs() {
     const fetchLogs = (dateStr) => {
         if (adminLogUnsubscribe) adminLogUnsubscribe();
         
-        const start = new Date(dateStr);
-        start.setHours(0,0,0,0);
-        const end = new Date(dateStr);
-        end.setHours(23,59,59,999);
+        const start = new Date(dateStr + "T00:00:00");
+const end = new Date(dateStr + "T23:59:59");
 
         const q = query(collection(db, "logs"), 
             where("timestamp", ">=", start), 
