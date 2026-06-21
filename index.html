@@ -302,6 +302,7 @@ document.getElementById("confirm-buy-btn").onclick = async () => {
                 await fetch('/api/approve', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({paymentId:id, action:'complete', txid, username:currentUser, domainName:pendingDomain, amount:pendingPrice}) });
                 await setDoc(doc(db, "domains", pendingDomain), { sold: true, price: pendingPrice, txid: txid, buyer: currentUser, at: Date.now() });
                 await setDoc(doc(db, "global_sales", txid), { user: currentUser, domain: pendingDomain, price: pendingPrice, at: Date.now() });
+                await setDoc(doc(db, "all_time_sales", txid), { user: currentUser, domain: pendingDomain, price: pendingPrice, at: Date.now() });
                 
                 render();
             },
@@ -323,17 +324,14 @@ domains.forEach(d => {
     });
 });
 
-onSnapshot(collection(db, "domains"), (snapshot) => {
+onSnapshot(collection(db, "all_time_sales"), (snapshot) => {
     let totalSold = 0;
     let totalVolume = 0;
 
     snapshot.forEach(docSnap => {
         const data = docSnap.data();
-
-        if (data.sold === true) {
-            totalSold++;
-            totalVolume += Number(data.price || 0);
-        }
+        totalSold++;
+        totalVolume += Number(data.price || 0);
     });
 
     document.getElementById("total-sold").innerText = totalSold;
