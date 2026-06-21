@@ -7,66 +7,66 @@
     <script src="https://sdk.minepi.com/pi-sdk.js"></script>
     <style>
         :root { --bg:#0f172a; --card:#1e293b; --accent:#6366f1; --text:#f8fafc; --sold:#ef4444; --price:#fbbf24; --success:#10b981; }
-        body { font-family:'Segoe UI',sans-serif; background:var(--bg); color:var(--text); margin:0; padding:5px; display:flex; justify-content:center; min-height: 100vh; overflow-x: hidden; }
-        .container { max-width:600px; width:100%; text-align:center; display: flex; flex-direction: column; }
-        .card { background:var(--card); padding:10px; border-radius:18px; box-shadow:0 8px 12px -3px rgba(0,0,0,0.3); margin-bottom:8px; position: relative; overflow: hidden; }
+        body { font-family:'Segoe UI',sans-serif; background:var(--bg); color:var(--text); margin:0; padding:3px; display:flex; justify-content:center; min-height: 100vh; overflow-x: hidden; }
+        .container { max-width:600px; width:100%; text-align:center; display: flex; flex-direction: column; height:100vh; box-sizing:border-box; }
+        .card { background:var(--card); padding:8px; border-radius:15px; box-shadow:0 8px 12px -3px rgba(0,0,0,0.3); margin-bottom:4px; position: relative; overflow: hidden; flex-shrink:0; }
         
-        .app-logo { width: 75px; height: 75px; margin-bottom: 6px; border-radius: 50%; box-shadow: 0 0 20px rgba(99, 102, 241, 0.6); border: 3px solid #6366f1; object-fit: cover; }
-        .app-title { font-size: 1.5em; font-weight: 900; margin: 0 0 6px 0; background: linear-gradient(to right, #60a5fa, #a855f7); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .app-logo { width: 60px; height: 60px; margin-bottom: 4px; border-radius: 50%; box-shadow: 0 0 20px rgba(99, 102, 241, 0.6); border: 2px solid #6366f1; object-fit: cover; }
+        .app-title { font-size: 1.2em; font-weight: 900; margin: 0 0 3px 0; background: linear-gradient(to right, #60a5fa, #a855f7); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
         
-        .stats-bar { display: flex; justify-content: space-around; background: rgba(99, 102, 241, 0.1); border: 1px solid rgba(99, 102, 241, 0.3); padding: 5px; border-radius: 12px; margin-bottom: 6px; font-size: 0.6em; font-weight: bold; color: #94a3b8; }
-        .stats-item span { color: var(--price); margin-left: 2px; }
+        .stats-bar { display: flex; justify-content: space-around; background: rgba(99, 102, 241, 0.1); border: 1px solid rgba(99, 102, 241, 0.3); padding: 4px; border-radius: 10px; margin-bottom: 4px; font-size: 0.55em; font-weight: bold; color: #94a3b8; }
+        .stats-item span { color: var(--price); margin-left: 1px; }
 
-        .domain-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:5px; position: relative; }
-        .domain-card { background:#334155; padding:8px; border-radius:10px; border:1px solid #475569; display:flex; flex-direction:column; align-items:center; }
-        .domain-img { width:100%; height:60px; margin-bottom:4px; border-radius:6px; object-fit:contain; background-color:#334155; }
-        .domain-name { font-size: 0.85em; font-weight: bold; margin-bottom: 2px; }
-        .domain-price { color: var(--price); font-size: 0.95em; font-weight: 800; margin: 1px 0; }
-        .btn-buy { background: var(--accent); color: white; border: none; padding: 6px 8px; border-radius: 6px; cursor: pointer; margin-top: 4px; font-weight: bold; width: 100%; font-size: 0.75em; }
-        .btn-sold { background: rgba(239, 68, 68, 0.1); color: var(--sold); border: 1.5px solid var(--sold); padding: 5px 8px; border-radius: 6px; margin-top: 4px; font-weight: bold; width: 100%; font-size: 0.7em; }
+        .domain-grid { display:grid; grid-template-columns:1fr 1fr; gap:6px; margin-top:3px; position: relative; }
+        .domain-card { background:#334155; padding:6px; border-radius:8px; border:1px solid #475569; display:flex; flex-direction:column; align-items:center; }
+        .domain-img { width:100%; height:50px; margin-bottom:2px; border-radius:5px; object-fit:contain; background-color:#334155; }
+        .domain-name { font-size: 0.75em; font-weight: bold; margin-bottom: 1px; }
+        .domain-price { color: var(--price); font-size: 0.85em; font-weight: 800; margin: 0px; }
+        .btn-buy { background: var(--accent); color: white; border: none; padding: 4px 6px; border-radius: 5px; cursor: pointer; margin-top: 2px; font-weight: bold; width: 100%; font-size: 0.65em; }
+        .btn-sold { background: rgba(239, 68, 68, 0.1); color: var(--sold); border: 1.5px solid var(--sold); padding: 3px 6px; border-radius: 5px; margin-top: 2px; font-weight: bold; width: 100%; font-size: 0.6em; }
         
-        .pi-btn { background: linear-gradient(135deg, #0052FF 0%, #3b82f6 100%); color:#ffffff; padding:10px 25px; border-radius:50px; font-weight:800; font-size:0.9em; border:none; cursor:pointer; animation: pulse-blue 2s infinite; transition: 0.3s; margin: 8px 0; }
+        .pi-btn { background: linear-gradient(135deg, #0052FF 0%, #3b82f6 100%); color:#ffffff; padding:8px 20px; border-radius:50px; font-weight:800; font-size:0.8em; border:none; cursor:pointer; animation: pulse-blue 2s infinite; transition: 0.3s; margin: 5px 0; }
         @keyframes pulse-blue { 0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(0, 82, 255, 0.7); } 70% { transform: scale(1); box-shadow: 0 0 0 10px rgba(0, 82, 255, 0); } 100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(0, 82, 255, 0); } }
 
-        .section-title-box { background:linear-gradient(135deg,#fef3c7 0%,#fde68a 100%); color:#1e293b; padding:4px 10px; border-radius:10px; border:2px solid #f59e0b; font-size:0.8em; font-weight:800; display:inline-block; margin-bottom:5px; }
-        .lock-title-box { background:linear-gradient(135deg,#fef3c7 0%,#fde68a 100%); color:#1e293b; padding:5px 12px; border-radius:10px; border:2px solid #f59e0b; font-size:0.9em; font-weight:900; margin-bottom:6px; display:inline-block; }
+        .section-title-box { background:linear-gradient(135deg,#fef3c7 0%,#fde68a 100%); color:#1e293b; padding:3px 8px; border-radius:8px; border:1.5px solid #f59e0b; font-size:0.7em; font-weight:800; display:inline-block; margin-bottom:3px; }
+        .lock-title-box { background:linear-gradient(135deg,#fef3c7 0%,#fde68a 100%); color:#1e293b; padding:4px 10px; border-radius:8px; border:1.5px solid #f59e0b; font-size:0.8em; font-weight:900; margin-bottom:4px; display:inline-block; }
 
         .locked-content { filter: blur(15px); opacity: 0.2; pointer-events: none; }
-        .premium-lock-overlay { position: absolute; top: 0; left: 0; right: 0; bottom: 0; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; background: rgba(15, 23, 42, 0.75); backdrop-filter: blur(2px); z-index: 100; padding-top: 15px; text-align: center; }
+        .premium-lock-overlay { position: absolute; top: 0; left: 0; right: 0; bottom: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; background: rgba(15, 23, 42, 0.75); backdrop-filter: blur(2px); z-index: 100; padding: 8px; text-align: center; }
         
-        .secure-badge { background: #0d2a2a; border: 2px solid #10b981; border-radius: 14px; padding: 12px; width: 92%; box-sizing: border-box; margin: 4px 0; }
-        .secure-badge-title { color: #10b981; font-size: 0.9em; font-weight: 800; margin-bottom: 6px; border-bottom: 1px solid rgba(16,185,129,0.3); padding-bottom: 4px; }
-        .secure-badge-body { color: #e2e8f0; font-size: 0.8em; line-height: 1.4; margin-bottom: 6px; border-bottom: 1px solid rgba(16,185,129,0.3); padding-bottom: 6px; }
-        .secure-badge-warning { color: #fbbf24; font-size: 0.85em; font-weight: 900; line-height: 1.3; text-transform: uppercase; }
+        .secure-badge { background: #0d2a2a; border: 2px solid #10b981; border-radius: 12px; padding: 8px; width: 92%; box-sizing: border-box; margin: 3px 0; }
+        .secure-badge-title { color: #10b981; font-size: 0.8em; font-weight: 800; margin-bottom: 3px; border-bottom: 1px solid rgba(16,185,129,0.3); padding-bottom: 2px; }
+        .secure-badge-body { color: #e2e8f0; font-size: 0.7em; line-height: 1.3; margin-bottom: 3px; border-bottom: 1px solid rgba(16,185,129,0.3); padding-bottom: 3px; }
+        .secure-badge-warning { color: #fbbf24; font-size: 0.75em; font-weight: 900; line-height: 1.2; text-transform: uppercase; }
 
         @keyframes blinker { 0% { opacity: 1.0; } 50% { opacity: 0.3; } 100% { opacity: 1.0; } }
         .blink-yellow { animation: blinker 2s linear infinite; color: #fbbf24; font-weight: 900; }
         .blink-red { animation: blinker 2s linear infinite; color: #ef4444; font-weight: 900; }
         
         .modal-overlay { position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.92); display:flex; justify-content:center; align-items:center; z-index:9999; }
-        .modal-content { background:var(--card); padding:15px; border-radius:20px; border:2px solid #fbbf24; width:90%; max-width:380px; }
+        .modal-content { background:var(--card); padding:12px; border-radius:18px; border:2px solid #fbbf24; width:90%; max-width:360px; }
         
-        .item-row { display: flex; align-items: center; margin-bottom: 8px; text-align: left; }
-        .item-title { color: #60a5fa; font-weight: 800; width: 105px; flex-shrink: 0; font-size: 0.85em; }
-        .item-red-val-small { color: #ef4444; font-weight: 900; flex: 1; white-space: nowrap; font-size: 0.88em; }
+        .item-row { display: flex; align-items: center; margin-bottom: 6px; text-align: left; }
+        .item-title { color: #60a5fa; font-weight: 800; width: 100px; flex-shrink: 0; font-size: 0.8em; }
+        .item-red-val-small { color: #ef4444; font-weight: 900; flex: 1; white-space: nowrap; font-size: 0.8em; }
         
-        .my-domain-item { background: #0f172a; padding: 10px; border-radius: 12px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; border: 1px solid #334155; }
-        .manage-btn { background: #6366f1; color: white; border: none; padding: 5px 10px; border-radius: 6px; font-size: 0.7em; cursor: pointer; font-weight: bold; text-decoration: none; }
+        .my-domain-item { background: #0f172a; padding: 8px; border-radius: 10px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; border: 1px solid #334155; }
+        .manage-btn { background: #6366f1; color: white; border: none; padding: 4px 8px; border-radius: 5px; font-size: 0.65em; cursor: pointer; font-weight: bold; text-decoration: none; }
         
-        .footer-section { margin-top: auto; padding: 12px 10px; color:#f8fafc; font-size:0.7em; text-align:center; border-top:1px solid #334155; background: rgba(15, 23, 42, 0.8); border-radius: 20px 20px 0 0; }
+        .footer-section { margin-top: auto; padding: 8px 8px; color:#f8fafc; font-size:0.65em; text-align:center; border-top:1px solid #334155; background: rgba(15, 23, 42, 0.8); border-radius: 15px 15px 0 0; flex-shrink:0; }
         .footer-section a { color:#38bdf8; text-decoration:none; font-weight: 800; border-bottom: 1px solid #38bdf8; }
-        .footer-section div { margin-bottom: 6px; }
+        .footer-section div { margin-bottom: 3px; }
 
-        #log-list { max-height: 85px; overflow-y: auto; }
-        #log-list::-webkit-scrollbar { width: 5px; }
-        #log-list::-webkit-scrollbar-track { background: #0f172a; border-radius: 10px; }
-        #log-list::-webkit-scrollbar-thumb { background: #6366f1; border-radius: 10px; }
+        #log-list { max-height: 70px; overflow-y: auto; }
+        #log-list::-webkit-scrollbar { width: 4px; }
+        #log-list::-webkit-scrollbar-track { background: #0f172a; border-radius: 8px; }
+        #log-list::-webkit-scrollbar-thumb { background: #6366f1; border-radius: 8px; }
 
-        .log-item { display: flex; justify-content: space-between; background: #0f172a; padding: 8px 12px; border-radius: 8px; margin-bottom: 5px; font-size: 0.8em; }
-        .admin-date-picker { background: #0f172a; color: #fff; border: 1.5px solid #6366f1; padding: 6px; border-radius: 8px; font-size: 0.85em; margin-bottom: 10px; width: 100%; box-sizing: border-box; outline: none; }
+        .log-item { display: flex; justify-content: space-between; background: #0f172a; padding: 6px 10px; border-radius: 6px; margin-bottom: 3px; font-size: 0.7em; }
+        .admin-date-picker { background: #0f172a; color: #fff; border: 1.5px solid #6366f1; padding: 5px; border-radius: 6px; font-size: 0.8em; margin-bottom: 8px; width: 100%; box-sizing: border-box; outline: none; }
         
-        .user-info-note { background: rgba(99, 102, 241, 0.1); border: 1px dashed #6366f1; color: #94a3b8; padding: 10px; border-radius: 10px; font-size: 0.75em; line-height: 1.4; margin-bottom: 10px; text-align: left; }
-        .btn-fake-buy { background: var(--accent); color: white; padding: 1px 4px; border-radius: 3px; font-weight: 900; }
+        .user-info-note { background: rgba(99, 102, 241, 0.1); border: 1px dashed #6366f1; color: #94a3b8; padding: 8px; border-radius: 8px; font-size: 0.7em; line-height: 1.3; margin-bottom: 8px; text-align: left; }
+        .btn-fake-buy { background: var(--accent); color: white; padding: 1px 3px; border-radius: 2px; font-weight: 900; }
     </style>
 </head>
 <body>
@@ -77,37 +77,37 @@
         <h1 class="app-title">Web3 Domain Gateway</h1>
         
         <div class="stats-bar">
-            <div class="stats-item">Satılan Domain: <span id="total-sold">0</span></div>
-            <div class="stats-item">Toplam Hacim: <span id="total-volume">0</span> Test Pİ</div>
-            <div class="stats-item">Aktif Kullanıcı: <span id="online-count">0</span></div>
+            <div class="stats-item">Satılan: <span id="total-sold">0</span></div>
+            <div class="stats-item">Hacim: <span id="total-volume">0</span> Test Pİ</div>
+            <div class="stats-item">Aktif: <span id="online-count">0</span></div>
         </div>
 
-        <div id="user-status-box" style="display:none; margin-top:2px;">
-            <p id="user-status" style="font-size: 0.8em; color: #60a5fa; font-weight: bold; margin:0;"></p>
+        <div id="user-status-box" style="display:none; margin-top:1px;">
+            <p id="user-status" style="font-size: 0.75em; color: #60a5fa; font-weight: bold; margin:0;"></p>
         </div>
     </div>
 
     <div class="card" id="user-panel" style="display:none; border:1.5px solid #10b981;">
-        <h3 style="color:#10b981;margin:0 0 8px 0; font-size: 0.95em;">👤 Satın Alma Geçmişim</h3>
+        <h3 style="color:#10b981;margin:0 0 6px 0; font-size: 0.9em;">👤 Satın Alma Geçmişim</h3>
         <div class="user-info-note">
-            ℹ️ <b>Bilgi:</b> Bu uygulama Test-Pi ağında deneme amaçlıdır. Satın aldığınız domainler, diğer kullanıcıların da test yapabilmesi için markette tekrar <span class="btn-fake-buy">SATIN AL</span> olarak görünebilir <b>ve satın alma geçmişinizden silinebilir.</b>
+            ℹ️ <b>Bilgi:</b> Bu uygulama Test-Pi ağında deneme amaçlıdır. Satın aldığınız domainler, diğer kullanıcıların da test yapabilmesi için markette tekrar <span class="btn-fake-buy">SATIN AL</span> olarak görünebilir.
         </div>
-        <div id="my-domains-list" style="text-align: left;"></div>
+        <div id="my-domains-list" style="text-align: left; font-size:0.8em;"></div>
     </div>
 
     <div class="card" id="admin-panel" style="display:none; border:2px solid #6366f1;">
-        <h3 style="color:#6366f1;margin-top:0;font-size: 0.95em;">🛠 Admin Paneli</h3>
-        <div style="margin-bottom: 8px; text-align: left;">
+        <h3 style="color:#6366f1;margin-top:0;font-size: 0.9em;">🛠 Admin Paneli</h3>
+        <div style="margin-bottom: 6px; text-align: left;">
             <input type="date" id="admin-date-input" class="admin-date-picker">
         </div>
         <div id="log-list"></div>
     </div>
 
-    <div class="card" style="position: relative; min-height: 300px; padding: 10px; margin-bottom: 5px;">
+    <div class="card" style="position: relative; flex: 1; min-height: 0; padding: 8px; margin-bottom: 3px; display:flex; flex-direction:column;">
         <div id="market-title" class="section-title-box">Satın Alabileceğiniz Domainler</div>
         
         <div id="premium-lock" class="premium-lock-overlay">
-            <div style="font-size: 2em; margin-bottom: 4px;">💎</div>
+            <div style="font-size: 1.5em; margin-bottom: 3px;">💎</div>
             <div class="lock-title-box">Ayrıcalıklı Web3 Dünyasına Katılın</div>
             
             <div class="secure-badge">
@@ -116,54 +116,54 @@
                     Sistemimiz şu anda <span class="blink-yellow">TEST-Pİ</span> ağında çalışmaktadır.
                 </div>
                 <div class="secure-badge-warning">
-                    <span class="blink-yellow">GERÇEK Pİ BAKİYENİZ KESİNLİKLE<br>KULLANILMAZ!</span>
+                    <span class="blink-yellow">GERÇEK Pİ BAKİYENİZ<br>KULLANILMAZ!</span>
                 </div>
             </div>
 
-            <p style="font-size: 0.75em; color: #e2e8f0; font-weight: 600; line-height: 1.3; margin: 4px 0; max-width: 90%;">Web3 domain sahibi olmak ve güvenli bağlantı kurmak için;</p>
-            <div style="color: #fbbf24; font-weight: 700; margin-bottom: 4px; font-size: 0.8em;">👇 Aşağıdaki "Pi ile Bağlan" butonunu kullanın.</div>
+            <p style="font-size: 0.7em; color: #e2e8f0; font-weight: 600; line-height: 1.2; margin: 3px 0; max-width: 90%;">Web3 domain sahibi olmak için;</p>
+            <div style="color: #fbbf24; font-weight: 700; margin-bottom: 3px; font-size: 0.75em;">👇 "Pi ile Bağlan" butonunu kullanın.</div>
             <button class="pi-btn" onclick="window.loginWithPi()">Pi ile Bağlan</button>
         </div>
 
-        <div class="domain-grid locked-content" id="domain-list"></div>
+        <div class="domain-grid locked-content" id="domain-list" style="flex:1; overflow-y:auto;"></div>
     </div>
 
     <div class="footer-section">
-        <div>SORULARINIZ İÇİN: <a href="mailto:doganay08@hotmail.com">📩 doganay08@hotmail.com</a></div>
-        <div>RESMİ KANALIMIZ: <a href="https://t.me/+5jZi9vrcNMM2NGVk" target="_blank">💬 TELEGRAM GRUBUMUZ</a></div>
-        <div style="margin-top:5px; font-size: 0.8em;">
-            <a href="privacy.html">GİZLİLİK POLİTİKASI</a> | <a href="terms.html">KULLANIM ŞARTLARI</a>
+        <div>SORULARINIZ: <a href="mailto:doganay08@hotmail.com">📩 doganay08@hotmail.com</a></div>
+        <div>RESMİ KANAL: <a href="https://t.me/+5jZi9vrcNMM2NGVk" target="_blank">💬 TELEGRAM</a></div>
+        <div style="margin-top:3px; font-size: 0.6em;">
+            <a href="privacy.html">GİZLİLİK</a> | <a href="terms.html">ŞARTLAR</a>
         </div>
     </div>
 </div>
 
 <div id="pre-buy-modal" class="modal-overlay" style="display:none;">
     <div class="modal-content">
-        <h2 style="color:#fbbf24;margin:0 0 12px 0; font-size: 1.15em; font-weight: 900; text-align: center;">🛡️ GÜVENLİ ÖDEME ONAYI</h2>
-        <div style="color:#fff; font-size: 0.82em; line-height: 1.6; text-align: left; background: rgba(0,0,0,0.3); padding: 12px; border-radius: 15px;">
-            <div style="margin-bottom: 12px; border-bottom: 1px solid #475569; padding-bottom: 10px; text-align: center; font-weight: 800;">
+        <h2 style="color:#fbbf24;margin:0 0 10px 0; font-size: 1.1em; font-weight: 900; text-align: center;">🛡️ GÜVENLİ ÖDEME ONAYI</h2>
+        <div style="color:#fff; font-size: 0.8em; line-height: 1.5; text-align: left; background: rgba(0,0,0,0.3); padding: 10px; border-radius: 12px;">
+            <div style="margin-bottom: 10px; border-bottom: 1px solid #475569; padding-bottom: 8px; text-align: center; font-weight: 800;">
                 BİR SONRAKİ ADIMDA GERÇEK CÜZDAN DEĞİL,<br>
-                <span class="blink-yellow" style="text-decoration: underline; font-size: 1.1em;">TEST Pİ CÜZDANI</span> AÇILACAKTIR.
+                <span class="blink-yellow" style="text-decoration: underline; font-size: 1em;">TEST Pİ CÜZDANI</span> AÇILACAKTIR.
             </div>
-            <div class="item-row"><span class="item-title">İŞLEM TÜRÜ:</span><span class="item-red-val-small blink-red">TEST İŞLEMİDİR</span></div>
-            <div class="item-row"><span class="item-title">ÖDEME:</span><span class="item-red-val-small blink-red">SADECE TEST Pİ KULLANILIR</span></div>
-            <div class="item-row"><span class="item-title">BAKİYE:</span><span class="item-red-val-small blink-red">GERÇEK Pİ BAKİYENİZ AZALMAZ</span></div>
-            <div class="item-row"><span class="item-title">ŞİFRENİZ:</span><span class="item-red-val-small blink-red">SİZDEN BAŞKASI BİLEMEZ.</span></div>
+            <div class="item-row"><span class="item-title">İŞLEM TÜRÜ:</span><span class="item-red-val-small blink-red">TEST</span></div>
+            <div class="item-row"><span class="item-title">ÖDEME:</span><span class="item-red-val-small blink-red">SADECE TEST Pİ</span></div>
+            <div class="item-row"><span class="item-title">BAKİYE:</span><span class="item-red-val-small blink-red">AZALMAZ</span></div>
+            <div class="item-row"><span class="item-title">ŞİFRE:</span><span class="item-red-val-small blink-red">GÜVENLİ</span></div>
         </div>
-        <div style="display: flex; gap: 10px; margin-top: 15px;">
-            <button class="pi-btn" style="background:#475569; flex:1; animation:none; padding: 10px; margin:0;" onclick="document.getElementById('pre-buy-modal').style.display='none'">VAZGEÇ</button>
-            <button class="pi-btn" style="flex:1; animation:none; background: #10b981; padding: 10px; margin:0;" id="confirm-buy-btn">ÖDEMEYE GEÇ</button>
+        <div style="display: flex; gap: 8px; margin-top: 12px;">
+            <button class="pi-btn" style="background:#475569; flex:1; animation:none; padding: 8px; margin:0; font-size:0.75em;" onclick="document.getElementById('pre-buy-modal').style.display='none'">VAZGEÇ</button>
+            <button class="pi-btn" style="flex:1; animation:none; background: #10b981; padding: 8px; margin:0; font-size:0.75em;" id="confirm-buy-btn">ÖDEMEYE GEÇ</button>
         </div>
     </div>
 </div>
 
 <div id="success-modal" class="modal-overlay" style="display:none;">
     <div class="modal-content" style="border-color: #10b981; text-align: center;">
-        <h2 style="color:#10b981;margin-top:0; font-size: 1.3em; font-weight: 900;">✅ İŞLEM BAŞARILI!</h2>
-        <p style="color:#fff; font-size: 1.1em; line-height: 1.5; font-weight: bold;">ÖDEMENİZ BAŞARILI OLDU, SATIN ALMANIZ GERÇEKLEŞTİ. <br><br> HAYIRLI OLMASINI DİLİYORUZ.</p>
-        <div style="display: flex; flex-direction: column; gap: 10px; margin-top: 15px;">
-            <button class="pi-btn" style="background:#0088cc; animation:none; padding: 12px; margin:0; font-size: 0.95em;" id="share-tg-btn">🚀 TELEGRAM'DA PAYLAŞ</button>
-            <button class="pi-btn" style="background:#10b981; animation:none; padding: 12px; margin:0; font-size: 0.95em;" onclick="document.getElementById('success-modal').style.display='none'">HARİKA!</button>
+        <h2 style="color:#10b981;margin-top:0; font-size: 1.2em; font-weight: 900;">✅ İŞLEM BAŞARILI!</h2>
+        <p style="color:#fff; font-size: 1em; line-height: 1.4; font-weight: bold;">ÖDEMENİZ BAŞARILI OLDU!<br>HAYIRLI OLMASINI DİLİYORUZ.</p>
+        <div style="display: flex; flex-direction: column; gap: 8px; margin-top: 12px;">
+            <button class="pi-btn" style="background:#0088cc; animation:none; padding: 10px; margin:0; font-size: 0.9em;" id="share-tg-btn">🚀 TELEGRAM'DA PAYLAŞ</button>
+            <button class="pi-btn" style="background:#10b981; animation:none; padding: 10px; margin:0; font-size: 0.9em;" onclick="document.getElementById('success-modal').style.display='none'">HARİKA!</button>
         </div>
     </div>
 </div>
@@ -244,7 +244,7 @@ function listenToLogs(date) {
     });
 }
 
-// AKTİF KULLANICI SAYACI (KESİN ÇÖZÜM)
+// AKTİF KULLANICI SAYACI
 onSnapshot(collection(db, "active_users"), (snap) => {
     const now = Date.now();
     let activeCount = 0;
@@ -296,7 +296,6 @@ document.getElementById("confirm-buy-btn").onclick = async () => {
                 await fetch('/api/approve', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({paymentId:id, action:'approve'}) }); 
             },
             onReadyForServerCompletion: async (id, txid) => {
-                // BAŞARI MESAJINI ÖNCE GÖSTER (KESİN ÇÖZÜM)
                 document.getElementById("success-modal").style.display = "flex";
                 
                 await fetch('/api/approve', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({paymentId:id, action:'complete', txid, username:currentUser, domainName:pendingDomain, amount:pendingPrice}) });
@@ -323,6 +322,7 @@ domains.forEach(d => {
     });
 });
 
+// SATILAN DOMAIN VE TOPLAM HACİM SAYACI
 onSnapshot(collection(db, "global_sales"), (snap) => {
     document.getElementById("total-sold").innerText = snap.size;
     let vol = 0; snap.forEach(d => vol += Number(d.data().price || 0));
