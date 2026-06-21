@@ -7,9 +7,14 @@
     <script src="https://sdk.minepi.com/pi-sdk.js"></script>
     <style>
         :root { --bg:#0f172a; --card:#1e293b; --accent:#6366f1; --text:#f8fafc; --sold:#ef4444; --price:#fbbf24; --success:#10b981; }
-        html, body { height: 100%; margin: 0; overflow: hidden; }
+        html, body {
+    height: auto;
+    margin: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+}
         body { font-family:'Segoe UI',sans-serif; background:var(--bg); color:var(--text); display:flex; justify-content:center; }
-        .container { max-width:600px; width:100%; height: 100vh; text-align:center; display: flex; flex-direction: column; padding: 5px; box-sizing: border-box; }
+        .container { max-width:600px; width:100%; min-height: 100vh; text-align:center; display: flex; flex-direction: column; padding: 5px; box-sizing: border-box; }
         .card { background:var(--card); padding:10px; border-radius:18px; box-shadow:0 8px 12px -3px rgba(0,0,0,0.3); margin-bottom:8px; position: relative; overflow: hidden; flex-shrink: 0; }
         
         .app-logo { width: 80px; height: 80px; margin-bottom: 5px; border-radius: 50%; box-shadow: 0 0 20px rgba(99, 102, 241, 0.6); border: 3px solid #6366f1; object-fit: cover; }
@@ -104,7 +109,7 @@
         <div id="log-list"></div>
     </div>
 
-    <div class="card" style="position: relative; flex: 1; min-height: 0; padding: 10px; margin-bottom: 5px;">
+    <div class="card" style="position: relative; min-height: 300px; padding: 10px; margin-bottom: 5px;">
         <div id="market-title" class="section-title-box">Satın Alabileceğiniz Domainler</div>
         
         <div id="premium-lock" class="premium-lock-overlay">
@@ -228,7 +233,18 @@ function render() {
 }
 
 // Initialize Pi SDK
-window.Pi.init({ version: "2.0", sandbox: true });
+window.addEventListener("load", () => {
+
+    if (window.Pi) {
+
+        Pi.init({
+            version: "2.0",
+            sandbox: true
+        });
+
+    }
+
+});
 
 // Login function
 async function loginWithPi() {
@@ -332,15 +348,49 @@ document.getElementById('confirm-buy-btn').onclick = async () => {
             metadata: { domainName: pendingDomain }
         };
         const callbacks = {
-            onReadyForServerApproval: (paymentId) => {
-                console.log("Payment ready for approval:", paymentId);
+
+    onReadyForServerApproval: async (paymentId) => {
+
+        await fetch('/api/approve', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
             },
-            onReadyForServerCompletion: (paymentId, txid) => {
-                completePurchase(pendingDomain, pendingPrice, txid);
+            body: JSON.stringify({
+                paymentId,
+                action: 'approve'
+            })
+        });
+
+    },
+
+    onReadyForServerCompletion: async (paymentId, txid) => {
+
+        await fetch('/api/approve', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
             },
-            onCancel: (paymentId) => console.log("Payment cancelled"),
-            onError: (error, payment) => console.error("Payment error", error)
-        };
+            body: JSON.stringify({
+                paymentId,
+                action: 'complete',
+                txid
+            })
+        });
+
+        await completePurchase(
+            pendingDomain,
+            pendingPrice,
+            txid
+        );
+    },
+
+    onCancel: () => {},
+
+    onError: (error) => {
+        console.error(error);
+    }
+};
         await window.Pi.createPayment(paymentData, callbacks);
     } catch (err) {
         console.error(err);
@@ -438,8 +488,23 @@ function onIncompletePaymentFound(payment) {
 }
 
 // Real-time active users counter
-onSnapshot(collection(db, "active_users"), (snapshot) => {
-    document.getElementById("online-count").innerText = snapshot.size;
+onSnapshot(collection(db, "active_users"), (snap) => {
+    const now = Date.now();
+    let activeCount = 0;
+
+    snap.forEach(doc => {
+        const data = doc.data();
+
+        if (
+            data.lastSeen &&
+            data.lastSeen.toMillis &&
+            (now - data.lastSeen.toMillis()) < 30000
+        ) {
+            activeCount++;
+        }
+    });
+
+    document.getElementById("online-count").innerText = activeCount;
 });
 
 // Initial state sync for domains
