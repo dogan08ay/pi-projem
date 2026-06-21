@@ -227,7 +227,7 @@ function render() {
 </div>
                 ${isSold 
                     ? `<button class="btn-sold" disabled>${isMine ? '✅ SAHİBİYİM' : '❌ SATILDI'}</button>`
-                    : `<button class="btn-buy" onclick="window.preBuy('${d.name}', ${d.price})">SATIN AL</button>`
+                    : `<button class="btn-buy" onclick="window.preBuy('${d.name}', ${domainData[d.name]?.price || d.price})">SATIN AL</button>`
                 }
             </div>
         `;
