@@ -222,7 +222,9 @@ function render() {
             <div class="domain-card">
                 <img src="${d.img}" class="domain-img" onerror="this.src='https://via.placeholder.com/150x60/334155/6366f1?text=${d.name}'">
                 <div class="domain-name">${d.name}</div>
-                <div class="domain-price">${d.price} Test Pi</div>
+               <div class="domain-price">
+    ${domainData[d.name]?.price || d.price} Test Pi
+</div>
                 ${isSold 
                     ? `<button class="btn-sold" disabled>${isMine ? '✅ SAHİBİYİM' : '❌ SATILDI'}</button>`
                     : `<button class="btn-buy" onclick="window.preBuy('${d.name}', ${d.price})">SATIN AL</button>`
