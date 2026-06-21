@@ -131,7 +131,9 @@
             <button class="pi-btn" id="pi-login-btn">Pi ile Bağlan</button>
         </div>
 
-        <div class="domain-grid locked-content" id="domain-list"></div>
+        <div class="domain-price">
+${domainData[d.name]?.price || d.price} Test Pi
+</div>
     </div>
 
     <div class="footer-section">
@@ -274,7 +276,7 @@ async function loginWithPi() {
         document.getElementById("user-status").innerText = `Hoş geldin, ${currentUser.username}`;
         document.getElementById("user-panel").style.display = "block";
         
-        if (currentUser.username === 'admin_username') {
+        if (currentUser.username === 'admin_username')
             document.getElementById("admin-panel").style.display = "block";
             setupAdminLogs();
         }
