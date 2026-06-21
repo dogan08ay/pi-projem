@@ -2,19 +2,20 @@
 <html lang="tr">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Web3 Domain Gateway</title>
     <script src="https://sdk.minepi.com/pi-sdk.js"></script>
     <style>
         :root { --bg:#0f172a; --card:#1e293b; --accent:#6366f1; --text:#f8fafc; --sold:#ef4444; --price:#fbbf24; --success:#10b981; }
-        body { font-family:'Segoe UI',sans-serif; background:var(--bg); color:var(--text); margin:0; padding:5px; display:flex; justify-content:center; min-height: 100vh; overflow-x: hidden; }
-        .container { max-width:600px; width:100%; text-align:center; display: flex; flex-direction: column; }
-        .card { background:var(--card); padding:10px; border-radius:18px; box-shadow:0 8px 12px -3px rgba(0,0,0,0.3); margin-bottom:8px; position: relative; overflow: hidden; }
+        html, body { height: 100%; margin: 0; overflow: hidden; }
+        body { font-family:'Segoe UI',sans-serif; background:var(--bg); color:var(--text); display:flex; justify-content:center; }
+        .container { max-width:600px; width:100%; height: 100vh; text-align:center; display: flex; flex-direction: column; padding: 5px; box-sizing: border-box; }
+        .card { background:var(--card); padding:10px; border-radius:18px; box-shadow:0 8px 12px -3px rgba(0,0,0,0.3); margin-bottom:8px; position: relative; overflow: hidden; flex-shrink: 0; }
         
-        .app-logo { width: 75px; height: 75px; margin-bottom: 6px; border-radius: 50%; box-shadow: 0 0 20px rgba(99, 102, 241, 0.6); border: 3px solid #6366f1; object-fit: cover; }
-        .app-title { font-size: 1.5em; font-weight: 900; margin: 0 0 6px 0; background: linear-gradient(to right, #60a5fa, #a855f7); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .app-logo { width: 80px; height: 80px; margin-bottom: 5px; border-radius: 50%; box-shadow: 0 0 20px rgba(99, 102, 241, 0.6); border: 3px solid #6366f1; object-fit: cover; }
+        .app-title { font-size: 1.5em; font-weight: 900; margin: 0 0 5px 0; background: linear-gradient(to right, #60a5fa, #a855f7); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
         
-        .stats-bar { display: flex; justify-content: space-around; background: rgba(99, 102, 241, 0.1); border: 1px solid rgba(99, 102, 241, 0.3); padding: 5px; border-radius: 12px; margin-bottom: 6px; font-size: 0.6em; font-weight: bold; color: #94a3b8; }
+        .stats-bar { display: flex; justify-content: space-around; background: rgba(99, 102, 241, 0.1); border: 1px solid rgba(99, 102, 241, 0.3); padding: 6px; border-radius: 12px; margin-bottom: 5px; font-size: 0.6em; font-weight: bold; color: #94a3b8; }
         .stats-item span { color: var(--price); margin-left: 2px; }
 
         .domain-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:5px; position: relative; }
@@ -29,14 +30,14 @@
         @keyframes pulse-blue { 0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(0, 82, 255, 0.7); } 70% { transform: scale(1); box-shadow: 0 0 0 10px rgba(0, 82, 255, 0); } 100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(0, 82, 255, 0); } }
 
         .section-title-box { background:linear-gradient(135deg,#fef3c7 0%,#fde68a 100%); color:#1e293b; padding:4px 10px; border-radius:10px; border:2px solid #f59e0b; font-size:0.8em; font-weight:800; display:inline-block; margin-bottom:5px; }
-        .lock-title-box { background:linear-gradient(135deg,#fef3c7 0%,#fde68a 100%); color:#1e293b; padding:5px 12px; border-radius:10px; border:2px solid #f59e0b; font-size:0.9em; font-weight:900; margin-bottom:6px; display:inline-block; }
+        .lock-title-box { background:linear-gradient(135deg,#fef3c7 0%,#fde68a 100%); color:#1e293b; padding:5px 12px; border-radius:10px; border:2px solid #f59e0b; font-size:0.9em; font-weight:900; margin-bottom:5px; display:inline-block; }
 
-.locked-content { }
-        .premium-lock-overlay { display: flex; flex-direction: column; align-items: center; justify-content: flex-start; z-index: 100; padding-top: 15px; text-align: center; margin-bottom: 15px; }
+        .locked-content { filter: blur(15px); opacity: 0.2; pointer-events: none; }
+        .premium-lock-overlay { position: absolute; top: 0; left: 0; right: 0; bottom: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; background: rgba(15, 23, 42, 0.75); backdrop-filter: blur(2px); z-index: 100; padding: 10px; text-align: center; }
         
-        .secure-badge { background: #0d2a2a; border: 2px solid #10b981; border-radius: 14px; padding: 12px; width: 92%; box-sizing: border-box; margin: 4px 0; }
-        .secure-badge-title { color: #10b981; font-size: 0.9em; font-weight: 800; margin-bottom: 6px; border-bottom: 1px solid rgba(16,185,129,0.3); padding-bottom: 4px; }
-        .secure-badge-body { color: #e2e8f0; font-size: 0.8em; line-height: 1.4; margin-bottom: 6px; border-bottom: 1px solid rgba(16,185,129,0.3); padding-bottom: 6px; }
+        .secure-badge { background: #0d2a2a; border: 2px solid #10b981; border-radius: 14px; padding: 10px; width: 95%; box-sizing: border-box; margin: 5px 0; }
+        .secure-badge-title { color: #10b981; font-size: 0.9em; font-weight: 800; margin-bottom: 5px; border-bottom: 1px solid rgba(16,185,129,0.3); padding-bottom: 4px; }
+        .secure-badge-body { color: #e2e8f0; font-size: 0.8em; line-height: 1.4; margin-bottom: 5px; border-bottom: 1px solid rgba(16,185,129,0.3); padding-bottom: 5px; }
         .secure-badge-warning { color: #fbbf24; font-size: 0.85em; font-weight: 900; line-height: 1.3; text-transform: uppercase; }
 
         @keyframes blinker { 0% { opacity: 1.0; } 50% { opacity: 0.3; } 100% { opacity: 1.0; } }
@@ -53,9 +54,9 @@
         .my-domain-item { background: #0f172a; padding: 10px; border-radius: 12px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; border: 1px solid #334155; }
         .manage-btn { background: #6366f1; color: white; border: none; padding: 5px 10px; border-radius: 6px; font-size: 0.7em; cursor: pointer; font-weight: bold; text-decoration: none; }
         
-        .footer-section { margin-top: auto; padding: 12px 10px; color:#f8fafc; font-size:0.7em; text-align:center; border-top:1px solid #334155; background: rgba(15, 23, 42, 0.8); border-radius: 20px 20px 0 0; }
+        .footer-section { margin-top: auto; padding: 10px; color:#f8fafc; font-size:0.7em; text-align:center; border-top:1px solid #334155; background: rgba(15, 23, 42, 0.8); border-radius: 20px 20px 0 0; flex-shrink: 0; }
         .footer-section a { color:#38bdf8; text-decoration:none; font-weight: 800; border-bottom: 1px solid #38bdf8; }
-        .footer-section div { margin-bottom: 6px; }
+        .footer-section div { margin-bottom: 5px; }
 
         #log-list { max-height: 85px; overflow-y: auto; }
         #log-list::-webkit-scrollbar { width: 5px; }
@@ -82,10 +83,6 @@
             <div class="stats-item">Aktif Kullanıcı: <span id="online-count">0</span></div>
         </div>
 
-        <div id="login-section">
-            <button id="main-login-btn" class="pi-btn" onclick="window.loginWithPi()">Pi ile Bağlan</button>
-        </div>
-
         <div id="user-status-box" style="display:none; margin-top:2px;">
             <p id="user-status" style="font-size: 0.8em; color: #60a5fa; font-weight: bold; margin:0;"></p>
         </div>
@@ -107,9 +104,29 @@
         <div id="log-list"></div>
     </div>
 
-    <div class="card" style="position: relative; min-height: 300px; padding: 10px; margin-bottom: 5px;">
+    <div class="card" style="position: relative; flex: 1; min-height: 0; padding: 10px; margin-bottom: 5px;">
         <div id="market-title" class="section-title-box">Satın Alabileceğiniz Domainler</div>
-        <div class="domain-grid" id="domain-list"></div>
+        
+        <div id="premium-lock" class="premium-lock-overlay">
+            <div style="font-size: 2em; margin-bottom: 5px;">💎</div>
+            <div class="lock-title-box">Ayrıcalıklı Web3 Dünyasına Katılın</div>
+            
+            <div class="secure-badge">
+                <div class="secure-badge-title">🛡️ Güvenli Bağlantı</div>
+                <div class="secure-badge-body">
+                    Sistemimiz şu anda <span class="blink-yellow">TEST-Pİ</span> ağında çalışmaktadır.
+                </div>
+                <div class="secure-badge-warning">
+                    <span class="blink-yellow">GERÇEK Pİ BAKİYENİZ KESİNLİKLE<br>KULLANILMAZ!</span>
+                </div>
+            </div>
+
+            <p style="font-size: 0.75em; color: #e2e8f0; font-weight: 600; line-height: 1.3; margin: 5px 0; max-width: 90%;">Web3 domain sahibi olmak ve güvenli bağlantı kurmak için;</p>
+            <div style="color: #fbbf24; font-weight: 700; margin-bottom: 5px; font-size: 0.8em;">👇 Aşağıdaki "Pi ile Bağlan" butonunu kullanın.</div>
+            <button class="pi-btn" id="pi-login-btn">Pi ile Bağlan</button>
+        </div>
+
+        <div class="domain-grid locked-content" id="domain-list"></div>
     </div>
 
     <div class="footer-section">
@@ -154,7 +171,7 @@
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
-import { getFirestore, doc, onSnapshot, setDoc, getDoc, collection, query, where, limit, orderBy, getDocs } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
+import { getFirestore, doc, onSnapshot, setDoc, getDoc, collection, query, where, limit, orderBy, getDocs, updateDoc, deleteDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
 
 const firebaseConfig = { apiKey: "s3ddhcea9xae0qieikgjy9zw9tduemnraoucjrr9iqe87pduhczmd95kq8n3aai1", authDomain: "web3-domain-gateway.firebaseapp.com", projectId: "web3-domain-gateway" };
 const app = initializeApp(firebaseConfig);
@@ -166,6 +183,7 @@ let domainData = {};
 let pendingDomain = null;
 let pendingPrice = 0;
 let adminLogUnsubscribe = null;
+let currentUserSessionId = null;
 
 const domains = [
     { name:'test-domain', img:'assets/test.jpeg', price:10 },
@@ -179,147 +197,269 @@ const domains = [
 
 function render() {
     const list = document.getElementById("domain-list");
-    const loginBtn = document.getElementById("main-login-btn");
+    const lock = document.getElementById("premium-lock");
     if (!list) return;
 
-    if (loginBtn) {
-        loginBtn.style.display = isAuth ? "none" : "inline-block";
+    if (!isAuth) {
+        lock.style.display = "flex";
+        list.classList.add("locked-content");
+    } else {
+        lock.style.display = "none";
+        list.classList.remove("locked-content");
     }
 
-    list.innerHTML = '';
-    let myHtml = "";
-
-    domains.forEach(d => {
-        const data = domainData[d.name] || { sold:false, price:d.price };
-        if (data.sold && data.buyer === currentUser) {
-            myHtml += `
-                <div class="my-domain-item">
-                    <div><b>${d.name}</b><br><small style="color:#fbbf24; font-weight:800;">${data.price} Pİ ALINDI</small></div>
-                    <a href="https://blockexplorer.minepi.com/testnet/tx/${data.txid}" target="_blank" class="manage-btn">DOĞRULA</a>
-                </div>
-            `;
-        }
-        const card = document.createElement('div');
-        card.className = 'domain-card';
-        card.innerHTML = `<img src="${d.img}" class="domain-img" onerror="this.src='data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMDAiIGhlaWdodD0iMTAwIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjNDc1NTY5Ii8+PC9zdmc+'"><div class="domain-name">${d.name}</div><div class="domain-price">${data.price} Pİ</div>`;
-        if (data.sold) { card.innerHTML += `<div class="btn-sold">SATILDI</div>`; } 
-        else {
-            const btn = document.createElement('button');
-            btn.className = 'btn-buy';
-            btn.innerText = 'SATIN AL';
-            btn.onclick = () => { pendingDomain = d.name; pendingPrice = data.price; document.getElementById('pre-buy-modal').style.display='flex'; };
-            card.appendChild(btn);
-        }
-        list.appendChild(card);
-    });
-    if (document.getElementById("my-domains-list")) document.getElementById("my-domains-list").innerHTML = myHtml || '<p style="font-size:0.75em; opacity:0.5; text-align:center;">AKTİF DOMAİNİNİZ YOK.</p>';
+    list.innerHTML = domains.map(d => {
+        const isSold = domainData[d.name]?.sold;
+        const owner = domainData[d.name]?.owner;
+        const isMine = isAuth && currentUser && owner === currentUser.uid;
+        
+        return `
+            <div class="domain-card">
+                <img src="${d.img}" class="domain-img" onerror="this.src='https://via.placeholder.com/150x60/334155/6366f1?text=${d.name}'">
+                <div class="domain-name">${d.name}</div>
+                <div class="domain-price">${d.price} Test Pi</div>
+                ${isSold 
+                    ? `<button class="btn-sold" disabled>${isMine ? '✅ SAHİBİYİM' : '❌ SATILDI'}</button>`
+                    : `<button class="btn-buy" onclick="window.preBuy('${d.name}', ${d.price})">SATIN AL</button>`
+                }
+            </div>
+        `;
+    }).join('');
 }
 
-function listenToLogs(date) {
-    if (adminLogUnsubscribe) adminLogUnsubscribe();
-    adminLogUnsubscribe = onSnapshot(doc(db, "daily_users", date), (snap) => {
-        const users = (snap.data() || {}).users || {};
-        const sortedUsers = Object.keys(users).sort((a, b) => users[b] - users[a]);
-        let html = "";
-        if (sortedUsers.length === 0) { html = '<p style="font-style:italic; opacity:0.6; font-size:0.8em;">KAYIT BULUNAMADI.</p>'; }
-        else { 
-            sortedUsers.forEach(u => { html += `<div class="log-item"><b>@${u}</b><span>${new Date(users[u]).toLocaleTimeString()}</span></div>`; }); 
-        }
-        document.getElementById("log-list").innerHTML = html;
-    });
-}
+// Initialize Pi SDK
+window.Pi.init({ version: "2.0", sandbox: true });
 
-// AKTİF KULLANICI SAYACI (KESİN ÇÖZÜM)
-onSnapshot(collection(db, "active_users"), (snap) => {
-    const now = Date.now();
-    let activeCount = 0;
-    snap.forEach(doc => { if (doc.data().lastSeen && (now - doc.data().lastSeen) < 30000) activeCount++; });
-    document.getElementById("online-count").innerText = activeCount;
-});
-
-async function updateActiveStatus() {
-    if (currentUser) {
-        await setDoc(doc(db, "active_users", currentUser), { lastSeen: Date.now() }, { merge: true });
-    }
-}
-
-window.loginWithPi = async function() {
+// Login function
+async function loginWithPi() {
     try {
-        const auth = await Pi.authenticate(['username', 'payments'], async (p) => {});
-        currentUser = auth.user.username;
+        const scopes = ['username', 'payments'];
+        const auth = await window.Pi.authenticate(scopes, onIncompletePaymentFound);
+        currentUser = auth.user;
         isAuth = true;
-        document.getElementById("user-status").innerText = "BAĞLI: @" + currentUser;
+        
+        // Create session ID for this user
+        currentUserSessionId = `${currentUser.uid}_${Date.now()}`;
+        
+        // Add user to active users
+        const userSessionRef = doc(collection(db, "active_users"));
+        await setDoc(userSessionRef, {
+            uid: currentUser.uid,
+            username: currentUser.username,
+            sessionId: currentUserSessionId,
+            loginTime: serverTimestamp(),
+            lastSeen: serverTimestamp()
+        });
+        
+        // Store session doc ID for later deletion
+        currentUser.sessionDocId = userSessionRef.id;
+        
         document.getElementById("user-status-box").style.display = "block";
+        document.getElementById("user-status").innerText = `Hoş geldin, ${currentUser.username}`;
         document.getElementById("user-panel").style.display = "block";
         
-        const today = new Date().toISOString().split("T")[0];
-        const userDocRef = doc(db, "daily_users", today);
-        const userSnap = await getDoc(userDocRef);
-        let currentUsers = userSnap.exists() ? userSnap.data().users || {} : {};
-        currentUsers[currentUser] = Date.now();
-        await setDoc(userDocRef, { users: currentUsers }, { merge: true });
-
-        updateActiveStatus();
-        render();
-        if (currentUser === "doganay0808") {
+        if (currentUser.username === 'admin_username') {
             document.getElementById("admin-panel").style.display = "block";
-            const dateInput = document.getElementById("admin-date-input");
-            dateInput.value = today;
-            listenToLogs(today);
-            dateInput.onchange = (e) => { listenToLogs(e.target.value); };
-        } else {
-            listenToLogs(today);
+            setupAdminLogs();
         }
-    } catch (e) { alert("GİRİŞ HATASI!"); }
-};
-
-document.getElementById("confirm-buy-btn").onclick = async () => {
-    document.getElementById('pre-buy-modal').style.display='none';
-    try {
-        await Pi.createPayment({ amount: Number(pendingPrice), memo: "Domain: " + pendingDomain, metadata: { domain: pendingDomain } }, {
-            onReadyForServerApproval: async (id) => { 
-                await fetch('/api/approve', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({paymentId:id, action:'approve'}) }); 
-            },
-            onReadyForServerCompletion: async (id, txid) => {
-                // BAŞARI MESAJINI ÖNCE GÖSTER (KESİN ÇÖZÜM)
-                document.getElementById("success-modal").style.display = "flex";
-                
-                await fetch('/api/approve', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({paymentId:id, action:'complete', txid, username:currentUser, domainName:pendingDomain, amount:pendingPrice}) });
-                await setDoc(doc(db, "domains", pendingDomain), { sold: true, price: pendingPrice, txid: txid, buyer: currentUser, at: Date.now() });
-                await setDoc(doc(db, "global_sales", txid), { user: currentUser, domain: pendingDomain, price: pendingPrice, at: Date.now() });
-                
-                render();
-            },
-            onCancel: () => {},
-            onError: (e) => { alert("ÖDEME HATASI!"); }
-        });
-    } catch (e) { console.error(e); }
-};
-
-document.getElementById("share-tg-btn").onclick = () => {
-    const text = `🚀 Web3 Domain Gateway üzerinden ${pendingDomain} domainini satın aldım! Siz de Test-Pİ ile Web3 dünyasına katılın.`;
-    window.open(`https://t.me/share/url?url=${encodeURIComponent(window.location.href)}&text=${encodeURIComponent(text)}`, '_blank');
-};
-
-domains.forEach(d => {
-    onSnapshot(doc(db, "domains", d.name), (snap) => {
-        domainData[d.name] = snap.exists() ? snap.data() : { sold:false, price:d.price };
+        
+        updateMyDomains();
         render();
-    });
-});
-
-onSnapshot(collection(db, "global_sales"), (snap) => {
-    document.getElementById("total-sold").innerText = snap.size;
-    let vol = 0; snap.forEach(d => vol += Number(d.data().price || 0));
-    document.getElementById("total-volume").innerText = vol;
-});
-
-window.addEventListener("load", () => { 
-    if (window.Pi) {
-        Pi.init({ version: "2.0", sandbox: true }); 
+        
+        // Update last seen periodically
+        setInterval(async () => {
+            if (currentUser && currentUser.sessionDocId) {
+                try {
+                    await updateDoc(doc(db, "active_users", currentUser.sessionDocId), {
+                        lastSeen: serverTimestamp()
+                    });
+                } catch (err) {
+                    console.error("Error updating last seen:", err);
+                }
+            }
+        }, 30000);
+        
+    } catch (err) {
+        console.error("Login error:", err);
+        alert("Pi ile bağlanırken hata oluştu. Lütfen tekrar deneyin.");
     }
-    setInterval(updateActiveStatus, 15000);
+}
+
+// Logout function
+async function logoutUser() {
+    if (currentUser && currentUser.sessionDocId) {
+        try {
+            await deleteDoc(doc(db, "active_users", currentUser.sessionDocId));
+        } catch (err) {
+            console.error("Error removing user session:", err);
+        }
+    }
+    currentUser = null;
+    isAuth = false;
+    currentUserSessionId = null;
+    document.getElementById("user-status-box").style.display = "none";
+    document.getElementById("user-panel").style.display = "none";
+    document.getElementById("admin-panel").style.display = "none";
+    render();
+}
+
+// Attach login button
+document.getElementById("pi-login-btn").addEventListener("click", loginWithPi);
+
+// Handle page unload - remove user session
+window.addEventListener("beforeunload", async () => {
+    if (currentUser && currentUser.sessionDocId) {
+        try {
+            await deleteDoc(doc(db, "active_users", currentUser.sessionDocId));
+        } catch (err) {
+            console.error("Error on unload:", err);
+        }
+    }
 });
+
+window.preBuy = (name, price) => {
+    pendingDomain = name;
+    pendingPrice = price;
+    document.getElementById('pre-buy-modal').style.display = 'flex';
+};
+
+document.getElementById('confirm-buy-btn').onclick = async () => {
+    document.getElementById('pre-buy-modal').style.display = 'none';
+    try {
+        const paymentData = {
+            amount: pendingPrice,
+            memo: `${pendingDomain} satın alımı`,
+            metadata: { domainName: pendingDomain }
+        };
+        const callbacks = {
+            onReadyForServerApproval: (paymentId) => {
+                console.log("Payment ready for approval:", paymentId);
+            },
+            onReadyForServerCompletion: (paymentId, txid) => {
+                completePurchase(pendingDomain, pendingPrice, txid);
+            },
+            onCancel: (paymentId) => console.log("Payment cancelled"),
+            onError: (error, payment) => console.error("Payment error", error)
+        };
+        await window.Pi.createPayment(paymentData, callbacks);
+    } catch (err) {
+        console.error(err);
+    }
+};
+
+async function completePurchase(name, price, txid) {
+    const domainRef = doc(db, "domains", name);
+    await setDoc(domainRef, {
+        sold: true,
+        owner: currentUser.uid,
+        username: currentUser.username,
+        price: price,
+        txid: txid,
+        timestamp: serverTimestamp()
+    });
+    
+    const logRef = doc(collection(db, "logs"));
+    await setDoc(logRef, {
+        type: 'purchase',
+        username: currentUser.username,
+        domain: name,
+        price: price,
+        timestamp: serverTimestamp()
+    });
+
+    document.getElementById('success-modal').style.display = 'flex';
+    document.getElementById('share-tg-btn').onclick = () => {
+        const text = `🚀 Web3 Domain Gateway üzerinden '${name}' domainini ${price} Test Pi'ye satın aldım!`;
+        window.open(`https://t.me/share/url?url=${encodeURIComponent(window.location.href)}&text=${encodeURIComponent(text)}`);
+    };
+    updateMyDomains();
+}
+
+async function updateMyDomains() {
+    if (!currentUser) return;
+    const q = query(collection(db, "domains"), where("owner", "==", currentUser.uid));
+    const querySnapshot = await getDocs(q);
+    const list = document.getElementById("my-domains-list");
+    if (querySnapshot.empty) {
+        list.innerHTML = "<p style='font-size:0.8em; color:#94a3b8;'>Henüz bir domaininiz yok.</p>";
+    } else {
+        list.innerHTML = querySnapshot.docs.map(doc => {
+            const data = doc.data();
+            return `
+                <div class="my-domain-item">
+                    <span style="color:#fff; font-size:0.85em; font-weight:bold;">${doc.id}</span>
+                    <button class="manage-btn">YÖNET</button>
+                </div>
+            `;
+        }).join('');
+    }
+}
+
+function setupAdminLogs() {
+    const dateInput = document.getElementById("admin-date-input");
+    const today = new Date().toISOString().split('T')[0];
+    dateInput.value = today;
+
+    const fetchLogs = (dateStr) => {
+        if (adminLogUnsubscribe) adminLogUnsubscribe();
+        
+        const start = new Date(dateStr);
+        start.setHours(0,0,0,0);
+        const end = new Date(dateStr);
+        end.setHours(23,59,59,999);
+
+        const q = query(collection(db, "logs"), 
+            where("timestamp", ">=", start), 
+            where("timestamp", "<=", end),
+            orderBy("timestamp", "desc"));
+
+        adminLogUnsubscribe = onSnapshot(q, (snapshot) => {
+            const logList = document.getElementById("log-list");
+            logList.innerHTML = snapshot.docs.map(doc => {
+                const data = doc.data();
+                const time = data.timestamp.toDate().toLocaleTimeString('tr-TR', {hour:'2d', minute:'2d'});
+                return `
+                    <div class="log-item">
+                        <span style="color:#60a5fa;">${data.username}</span>
+                        <span style="color:#fff;">${data.domain}</span>
+                        <span style="color:#94a3b8;">${time}</span>
+                    </div>
+                `;
+            }).join('');
+        });
+    };
+
+    dateInput.onchange = (e) => fetchLogs(e.target.value);
+    fetchLogs(today);
+}
+
+function onIncompletePaymentFound(payment) {
+    console.log("Incomplete payment found", payment);
+}
+
+// Real-time active users counter
+onSnapshot(collection(db, "active_users"), (snapshot) => {
+    document.getElementById("online-count").innerText = snapshot.size;
+});
+
+// Initial state sync for domains
+onSnapshot(collection(db, "domains"), (snapshot) => {
+    domainData = {};
+    let totalSold = 0;
+    let totalVolume = 0;
+    snapshot.forEach(doc => {
+        domainData[doc.id] = doc.data();
+        if (domainData[doc.id].sold) {
+            totalSold++;
+            totalVolume += domainData[doc.id].price;
+        }
+    });
+    document.getElementById("total-sold").innerText = totalSold;
+    document.getElementById("total-volume").innerText = totalVolume;
+    render();
+});
+
+render();
 </script>
 </body>
 </html>
