@@ -323,10 +323,21 @@ domains.forEach(d => {
     });
 });
 
-onSnapshot(collection(db, "global_sales"), (snap) => {
-    document.getElementById("total-sold").innerText = snap.size;
-    let vol = 0; snap.forEach(d => vol += Number(d.data().price || 0));
-    document.getElementById("total-volume").innerText = vol;
+onSnapshot(collection(db, "domains"), (snapshot) => {
+    let totalSold = 0;
+    let totalVolume = 0;
+
+    snapshot.forEach(docSnap => {
+        const data = docSnap.data();
+
+        if (data.sold === true) {
+            totalSold++;
+            totalVolume += Number(data.price || 0);
+        }
+    });
+
+    document.getElementById("total-sold").innerText = totalSold;
+    document.getElementById("total-volume").innerText = totalVolume;
 });
 
 window.addEventListener("load", () => { 
