@@ -194,50 +194,82 @@ const domains = [
 ];
     
 let renderTimeout;
-    
+
 function render() {
     clearTimeout(renderTimeout);
 
     renderTimeout = setTimeout(() => {
-        
-    const list = document.getElementById("domain-list");
-    const lock = document.getElementById("premium-lock");
-    if (!list) return;
 
-    if (!isAuth) { lock.style.display = "flex"; list.classList.add("locked-content"); }
-    else { lock.style.display = "none"; list.classList.remove("locked-content"); }
+        const list = document.getElementById("domain-list");
+        const lock = document.getElementById("premium-lock");
+        const myList = document.getElementById("my-domains-list");
 
-    list.innerHTML = '';
-    let myHtml = "";
+        if (!list || !lock) return;
 
-    domains.forEach(d => {
-        const data = domainData[d.name] || { sold:false, price:d.price };
-        if (data.sold && data.buyer === currentUser) {
-            myHtml += `
-                <div class="my-domain-item">
-                    <div><b>${d.name}</b><br><small style="color:#fbbf24; font-weight:800;">${data.price} Pİ ALINDI</small></div>
-                    <a href="https://blockexplorer.minepi.com/testnet/tx/${data.txid}" target="_blank" class="manage-btn">DOĞRULA</a>
-                </div>
+        if (!isAuth) {
+            lock.style.display = "flex";
+            list.classList.add("locked-content");
+        } else {
+            lock.style.display = "none";
+            list.classList.remove("locked-content");
+        }
+
+        list.innerHTML = '';
+        let myHtml = "";
+
+        domains.forEach(d => {
+            const data = domainData[d.name] || { sold: false, price: d.price };
+
+            if (data.sold && data.buyer === currentUser) {
+                myHtml += `
+                    <div class="my-domain-item">
+                        <div>
+                            <b>${d.name}</b><br>
+                            <small style="color:#fbbf24; font-weight:800;">
+                                ${data.price} Pİ ALINDI
+                            </small>
+                        </div>
+                        <a href="https://blockexplorer.minepi.com/testnet/tx/${data.txid}" target="_blank" class="manage-btn">
+                            DOĞRULA
+                        </a>
+                    </div>
+                `;
+            }
+
+            const card = document.createElement('div');
+            card.className = 'domain-card';
+
+            card.innerHTML = `
+                <img src="${d.img}" class="domain-img"
+                onerror="this.src='data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMDAiIGhlaWdodD0iMTAwIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjNDc1NTY5Ii8+PC9zdmc+'">
+
+                <div class="domain-name">${d.name}</div>
+                <div class="domain-price">${data.price} Pİ</div>
             `;
+
+            if (data.sold) {
+                card.innerHTML += `<div class="btn-sold">SATILDI</div>`;
+            } else {
+                const btn = document.createElement('button');
+                btn.className = 'btn-buy';
+                btn.innerText = 'SATIN AL';
+                btn.onclick = () => {
+                    pendingDomain = d.name;
+                    pendingPrice = data.price;
+                    document.getElementById('pre-buy-modal').style.display = 'flex';
+                };
+                card.appendChild(btn);
+            }
+
+            list.appendChild(card);
+        });
+
+        if (myList) {
+            myList.innerHTML = myHtml || '<p style="font-size:0.75em; opacity:0.5; text-align:center;">AKTİF DOMAİNİNİZ YOK.</p>';
         }
-        const card = document.createElement('div');
-        card.className = 'domain-card';
-        card.innerHTML = `<img src="${d.img}" class="domain-img" onerror="this.src='data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMDAiIGhlaWdodD0iMTAwIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjNDc1NTY5Ii8+PC9zdmc+'"><div class="domain-name">${d.name}</div><div class="domain-price">${data.price} Pİ</div>`;
-        if (data.sold) { card.innerHTML += `<div class="btn-sold">SATILDI</div>`; } 
-        else {
-            const btn = document.createElement('button');
-            btn.className = 'btn-buy';
-            btn.innerText = 'SATIN AL';
-            btn.onclick = () => { pendingDomain = d.name; pendingPrice = data.price; document.getElementById('pre-buy-modal').style.display='flex'; };
-            card.appendChild(btn);
-        }
-        list.appendChild(card);
-    });
-    if (document.getElementById("my-domains-list")) document.getElementById("my-domains-list").innerHTML = myHtml || '<p style="font-size:0.75em; opacity:0.5; text-align:center;">AKTİF DOMAİNİNİZ YOK.</p>';
+
+    }, 50);
 }
-                               
-   }, 50);
-}                               
 
 function listenToLogs(date) {
     if (adminLogUnsubscribe) adminLogUnsubscribe();
