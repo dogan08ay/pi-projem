@@ -41,27 +41,17 @@
 
         @keyframes blinker { 0% { opacity: 1.0; } 50% { opacity: 0.3; } 100% { opacity: 1.0; } }
         .blink-yellow { animation: blinker 2s linear infinite; color: #fbbf24; font-weight: 900; }
-        .blink-red { animation: blinker 2s linear infinite; color: #ef4444; font-weight: 900; }
         
         .modal-overlay { position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.92); display:flex; justify-content:center; align-items:center; z-index:9999; }
         .modal-content { background:var(--card); padding:15px; border-radius:20px; border:2px solid #fbbf24; width:90%; max-width:380px; }
-        
-        .item-row { display: flex; align-items: center; margin-bottom: 8px; text-align: left; }
-        .item-title { color: #60a5fa; font-weight: 800; width: 105px; flex-shrink: 0; font-size: 0.85em; }
-        .item-red-val-small { color: #ef4444; font-weight: 900; flex: 1; white-space: nowrap; font-size: 0.88em; }
         
         .my-domain-item { background: #0f172a; padding: 8px; border-radius: 12px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; border: 1px solid #334155; }
         .manage-btn { background: #6366f1; color: white; border: none; padding: 5px 10px; border-radius: 6px; font-size: 0.7em; cursor: pointer; font-weight: bold; text-decoration: none; }
         
         .footer-section { margin-top: 0; padding: 10px; color:#f8fafc; font-size:0.75em; text-align:center; border-top:1px solid #334155; background: rgba(15, 23, 42, 0.8); border-radius: 20px 20px 0 0; }
         .footer-section a { color:#38bdf8; text-decoration:none; font-weight: 800; }
-        .footer-section div { margin-bottom: 5px; }
-
+        
         #log-list { max-height: 85px; overflow-y: auto; }
-        #log-list::-webkit-scrollbar { width: 5px; }
-        #log-list::-webkit-scrollbar-track { background: #0f172a; border-radius: 10px; }
-        #log-list::-webkit-scrollbar-thumb { background: #6366f1; border-radius: 10px; }
-
         .log-item { display: flex; justify-content: space-between; background: #0f172a; padding: 8px 12px; border-radius: 8px; margin-bottom: 5px; font-size: 0.8em; }
         .admin-date-picker { background: #0f172a; color: #fff; border: 1.5px solid #6366f1; padding: 6px; border-radius: 8px; font-size: 0.85em; margin-bottom: 8px; width: 100%; box-sizing: border-box; outline: none; }
         
@@ -89,7 +79,7 @@
     <div class="card" id="user-panel" style="display:none; border:1.5px solid #10b981;">
         <h3 style="color:#10b981;margin:0 0 5px 0; font-size: 0.9em;">👤 Satın Alma Geçmişim</h3>
         <div class="user-info-note">
-            ℹ️ <b>Bilgi:</b> Bu uygulama Test-Pi ağında deneme amaçlıdır. Satın aldığınız domainler, markette tekrar <b style="color:var(--accent)">SATIN AL</b> olarak görünebilir ve geçmişinizden silinebilir.
+            ℹ️ <b>Bilgi:</b> Bu uygulama Test-Pi ağında deneme amaçlıdır. Satın aldığınız domainler, markette tekrar <b style="color:var(--accent)">SATIN AL</b> görünebilir ve geçmişinizden silinebilir.
         </div>
         <div id="my-domains-list" style="text-align: left;"></div>
     </div>
@@ -113,7 +103,7 @@
                 <div class="secure-badge-warning"><span class="blink-yellow">GERÇEK Pİ BAKİYENİZ KESİNLİKLE KULLANILMAZ!</span></div>
             </div>
 
-            <p style="font-size: 0.8em; color: #e2e8f0; font-weight: 600; margin: 5px 0;">Web3 domain sahibi olmak için;</p>
+            <p style="font-size: 0.8em; color: #e2e8f0; font-weight: 600; margin: 5px 0;">Web3 domain sahibi olmak ve güvenli bağlantı kurmak için;</p>
             <div style="color: #fbbf24; font-weight: 700; margin-bottom: 5px; font-size: 0.85em;">👇 Aşağıdaki "Pi ile Bağlan" butonunu kullanın.</div>
             <button class="pi-btn" onclick="window.loginWithPi()">Pi ile Bağlan</button>
         </div>
@@ -130,17 +120,6 @@
     </div>
 </div>
 
-<div id="success-modal" class="modal-overlay" style="display:none;">
-    <div class="modal-content" style="border-color: #10b981; text-align: center;">
-        <h2 style="color:#10b981;margin-top:0; font-size: 1.3em; font-weight: 900;">✅ İŞLEM BAŞARILI!</h2>
-        <p style="color:#fff; font-size: 1.1em; line-height: 1.5; font-weight: bold;">ÖDEMENİZ BAŞARILI OLDU, SATIN ALMANIZ GERÇEKLEŞTİ. <br><br> HAYIRLI OLMASINI DİLİYORUZ.</p>
-        <div style="display: flex; flex-direction: column; gap: 10px; margin-top: 15px;">
-            <button class="pi-btn" style="background:#0088cc; animation:none; padding: 12px; margin:0; font-size: 0.95em;" id="share-tg-btn">🚀 TELEGRAM'DA PAYLAŞ</button>
-            <button class="pi-btn" style="background:#10b981; animation:none; padding: 12px; margin:0; font-size: 0.95em;" onclick="document.getElementById('success-modal').style.display='none'">HARİKA!</button>
-        </div>
-    </div>
-</div>
-
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
 import { getFirestore, doc, onSnapshot, setDoc, getDoc, collection, query, where, limit, orderBy, getDocs } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
@@ -152,8 +131,6 @@ const db = getFirestore(app);
 let currentUser = null;
 let isAuth = false;
 let domainData = {};
-let pendingDomain = null;
-let pendingPrice = 0;
 let adminLogUnsubscribe = null;
 
 const domains = [
@@ -167,7 +144,16 @@ const domains = [
 ];
 
 function render() {
+    const list = document.getElementById("domain-list");
+    const lock = document.getElementById("premium-lock");
+    if (!list) return;
+
+    if (!isAuth) { lock.style.display = "flex"; list.classList.add("locked-content"); }
+    else { lock.style.display = "none"; list.classList.remove("locked-content"); }
+
+    list.innerHTML = '';
     let myHtml = "";
+
     domains.forEach(d => {
         const data = domainData[d.name] || { sold:false, price:d.price };
         if (data.sold && data.buyer === currentUser) {
@@ -178,6 +164,18 @@ function render() {
                 </div>
             `;
         }
+        const card = document.createElement('div');
+        card.className = 'domain-card';
+        card.innerHTML = `<img src="${d.img}" class="domain-img"><div class="domain-name">${d.name}</div><div class="domain-price">${data.price} Pİ</div>`;
+        if (data.sold) { card.innerHTML += `<div class="btn-sold">SATILDI</div>`; } 
+        else {
+            const btn = document.createElement('button');
+            btn.className = 'btn-buy';
+            btn.innerText = 'SATIN AL';
+            btn.onclick = () => { /* Satın alma fonksiyonu */ };
+            card.appendChild(btn);
+        }
+        list.appendChild(card);
     });
     if (document.getElementById("my-domains-list")) document.getElementById("my-domains-list").innerHTML = myHtml || '<p style="font-size:0.75em; opacity:0.5; text-align:center;">AKTİF DOMAİNİNİZ YOK.</p>';
 }
@@ -189,7 +187,7 @@ function listenToLogs(date) {
         const sortedUsers = Object.keys(users).sort((a, b) => users[b] - users[a]);
         let html = "";
         sortedUsers.forEach(u => { html += `<div class="log-item"><b>@${u}</b><span>${new Date(users[u]).toLocaleTimeString()}</span></div>`; });
-        document.getElementById("log-list").innerHTML = html || '<p style="font-size:0.75em;opacity:0.5;">KAYIT YOK.</p>';
+        document.getElementById("log-list").innerHTML = html || '<p style="font-size:0.7em;opacity:0.5;">KAYIT YOK.</p>';
     });
 }
 
@@ -230,11 +228,6 @@ window.loginWithPi = async function() {
             dateInput.onchange = (e) => { listenToLogs(e.target.value); };
         }
     } catch (e) { alert("GİRİŞ HATASI!"); }
-};
-
-document.getElementById("share-tg-btn").onclick = () => {
-    const text = `🚀 Web3 Domain Gateway üzerinden satın alım yaptım!`;
-    window.open(`https://t.me/share/url?url=${encodeURIComponent(window.location.href)}&text=${encodeURIComponent(text)}`, '_blank');
 };
 
 domains.forEach(d => {
