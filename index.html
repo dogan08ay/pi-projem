@@ -192,8 +192,14 @@ const domains = [
     { name:'sekerbank.pi', img:'assets/sekerbank.jpeg', price:600 },
     { name:'doganay.pi', img:'assets/doganay.jpeg', price:150 }
 ];
-
+    
+let renderTimeout;
+    
 function render() {
+    clearTimeout(renderTimeout);
+
+    renderTimeout = setTimeout(() => {
+        
     const list = document.getElementById("domain-list");
     const lock = document.getElementById("premium-lock");
     if (!list) return;
@@ -229,6 +235,9 @@ function render() {
     });
     if (document.getElementById("my-domains-list")) document.getElementById("my-domains-list").innerHTML = myHtml || '<p style="font-size:0.75em; opacity:0.5; text-align:center;">AKTİF DOMAİNİNİZ YOK.</p>';
 }
+                               
+   }, 50);
+}                               
 
 function listenToLogs(date) {
     if (adminLogUnsubscribe) adminLogUnsubscribe();
