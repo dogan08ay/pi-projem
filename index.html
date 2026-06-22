@@ -274,8 +274,9 @@ window.loginWithPi = async function() {
     try {
         const auth = await Pi.authenticate(['username', 'payments'], {
             onIncompletePaymentFound: async (payment) => {
-                // YARIM KALAN ÖDEME YAKALANDI - BURASI HATAYI ÇÖZER
+                console.log("Eksik ödeme bulundu, temizleniyor...", payment);
                 try {
+                    // Backend'e gönderip zorla tamamla
                     await fetch('/api/approve', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
@@ -284,15 +285,32 @@ window.loginWithPi = async function() {
                             action: 'complete', 
                             txid: payment.transaction.txid, 
                             username: auth.user.username, 
-                            domainName: payment.metadata.domain, 
+                            domainName: payment.metadata.domain || "Bilinmeyen Domain", 
                             amount: payment.amount 
                         })
                     });
+                    
                     // Veritabanını güncelle
-                    await setDoc(doc(db, "domains", payment.metadata.domain), { sold: true, price: payment.amount, txid: payment.transaction.txid, buyer: auth.user.username, at: Date.now() });
-                    await setDoc(doc(db, "global_sales", payment.transaction.txid), { user: auth.user.username, domain: payment.metadata.domain, price: payment.amount, at: Date.now() });
+                    if (payment.metadata && payment.metadata.domain) {
+                        await setDoc(doc(db, "domains", payment.metadata.domain), { 
+                            sold: true, 
+                            price: payment.amount, 
+                            txid: payment.transaction.txid, 
+                            buyer: auth.user.username, 
+                            at: Date.now() 
+                        });
+                        await setDoc(doc(db, "global_sales", payment.transaction.txid), { 
+                            user: auth.user.username, 
+                            domain: payment.metadata.domain, 
+                            price: payment.amount, 
+                            at: Date.now() 
+                        });
+                    }
                     render();
-                } catch (e) { console.error("Incomplete Payment Error:", e); }
+                } catch (e) { 
+                    console.error("Incomplete Payment Error:", e);
+                    // Hata olsa bile kullanıcıyı içeri almayı dene
+                }
             }
         });
         
@@ -320,7 +338,10 @@ window.loginWithPi = async function() {
         } else {
             listenToLogs(today);
         }
-    } catch (e) { alert("GİRİŞ HATASI!"); }
+    } catch (e) { 
+        console.error("Auth Error:", e);
+        alert("GİRİŞ HATASI!"); 
+    }
 };
 
 document.getElementById("confirm-buy-btn").onclick = async () => {
@@ -338,7 +359,10 @@ document.getElementById("confirm-buy-btn").onclick = async () => {
                 render();
             },
             onCancel: () => {},
-            onError: (e) => { alert("ÖDEME HATASI!"); }
+            onError: (e) => { 
+                console.error("Payment Error:", e);
+                alert("ÖDEME HATASI!"); 
+            }
         });
     } catch (e) { console.error(e); }
 };
