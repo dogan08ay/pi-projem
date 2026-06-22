@@ -32,7 +32,13 @@ export default async function handler(req, res) {
     
     const data = await response.json();
 
-    if (action === 'complete' && response.ok) {
+    // Pi API hata döndüyse ama ödeme zaten tamamlanmışsa (200 OK değilse bile)
+    // "Payment already completed" hatasını başarı olarak kabul edebiliriz
+    if (!response.ok && data.message !== "Payment already completed") {
+       return res.status(response.status).json(data);
+    }
+
+    if (action === 'complete') {
       const purchaseCode = "WEB3-" + Math.random().toString(36).substr(2, 6).toUpperCase();
       
       const groupMsg = `🎉 *YENİ SATIŞ!*\n\n👤 @${username}, *${domainName}* domainini başarıyla satın aldı! 🚀\n\n🌐 Sitemize hoş geldin yeni sahibi!`;
