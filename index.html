@@ -32,12 +32,19 @@
         .lock-title-box { background:linear-gradient(135deg,#fef3c7 0%,#fde68a 100%); color:#1e293b; padding:5px 12px; border-radius:10px; border:2px solid #f59e0b; font-size:0.9em; font-weight:900; margin-bottom:6px; display:inline-block; }
 
         .locked-content { filter: blur(15px); opacity: 0.2; pointer-events: none; }
-        .premium-lock-overlay { position: absolute; top: 0; left: 0; right: 0; bottom: 0; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; background: rgba(15, 23, 42, 0.75); backdrop-filter: blur(2px); z-index: 100; padding-top: 15px; text-align: center; }
         
-        .secure-badge { background: #0d2a2a; border: 2px solid #10b981; border-radius: 14px; padding: 12px; width: 92%; box-sizing: border-box; margin: 4px 0; }
-        .secure-badge-title { color: #10b981; font-size: 0.9em; font-weight: 800; margin-bottom: 6px; border-bottom: 1px solid rgba(16,185,129,0.3); padding-bottom: 4px; }
-        .secure-badge-body { color: #e2e8f0; font-size: 0.8em; line-height: 1.4; margin-bottom: 6px; border-bottom: 1px solid rgba(16,185,129,0.3); padding-bottom: 6px; }
-        .secure-badge-warning { color: #fbbf24; font-size: 0.85em; font-weight: 900; line-height: 1.3; text-transform: uppercase; }
+        /* DÜZENLENEN PANEL: Daha büyük ve ortalanmış */
+        .premium-lock-overlay { position: absolute; top: 0; left: 0; right: 0; bottom: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; background: rgba(15, 23, 42, 0.8); backdrop-filter: blur(2px); z-index: 100; padding: 20px; text-align: center; }
+        
+        /* DÖNEN ELMAS EFEKTİ */
+        .diamond-spin { font-size: 3em; margin-bottom: 10px; display: inline-block; animation: spin-diamond 4s linear infinite, glow-diamond 2s ease-in-out infinite alternate; }
+        @keyframes spin-diamond { from { transform: rotateY(0deg); } to { transform: rotateY(360deg); } }
+        @keyframes glow-diamond { from { filter: drop-shadow(0 0 5px #6366f1); } to { filter: drop-shadow(0 0 20px #a855f7); } }
+
+        .secure-badge { background: #0d2a2a; border: 2px solid #10b981; border-radius: 14px; padding: 12px; width: 95%; box-sizing: border-box; margin: 8px 0; }
+        .secure-badge-title { color: #10b981; font-size: 0.95em; font-weight: 800; margin-bottom: 6px; border-bottom: 1px solid rgba(16,185,129,0.3); padding-bottom: 4px; }
+        .secure-badge-body { color: #e2e8f0; font-size: 0.85em; line-height: 1.4; margin-bottom: 6px; border-bottom: 1px solid rgba(16,185,129,0.3); padding-bottom: 6px; }
+        .secure-badge-warning { color: #fbbf24; font-size: 0.9em; font-weight: 900; line-height: 1.3; text-transform: uppercase; }
 
         @keyframes blinker { 0% { opacity: 1.0; } 50% { opacity: 0.3; } 100% { opacity: 1.0; } }
         .blink-yellow { animation: blinker 2s linear infinite; color: #fbbf24; font-weight: 900; }
@@ -76,7 +83,8 @@
         <img src="assets/logo.jpeg" alt="Logo" class="app-logo">
         <h1 class="app-title">Web3 Domain Gateway</h1>
         
-        <div class="stats-bar">
+        <!-- YERLEŞİM: Girişte gizlendi, giriş sonrası görünür olacak -->
+        <div class="stats-bar" id="stats-panel" style="display:none;">
             <div class="stats-item">Satılan Domain: <span id="total-sold">0</span></div>
             <div class="stats-item">Toplam Hacim: <span id="total-volume">0</span> Test Pİ</div>
             <div class="stats-item">Aktif Kullanıcı: <span id="online-count">0</span></div>
@@ -103,11 +111,11 @@
         <div id="log-list"></div>
     </div>
 
-    <div class="card" style="position: relative; min-height: 300px; padding: 10px; margin-bottom: 5px;">
+    <div class="card" style="position: relative; min-height: 320px; padding: 10px; margin-bottom: 5px;">
         <div id="market-title" class="section-title-box">Satın Alabileceğiniz Domainler</div>
         
         <div id="premium-lock" class="premium-lock-overlay">
-            <div style="font-size: 2em; margin-bottom: 4px;">💎</div>
+            <div class="diamond-spin">💎</div>
             <div class="lock-title-box">Ayrıcalıklı Web3 Dünyasına Katılın</div>
             
             <div class="secure-badge">
@@ -120,15 +128,16 @@
                 </div>
             </div>
 
-            <p style="font-size: 0.75em; color: #e2e8f0; font-weight: 600; line-height: 1.3; margin: 4px 0; max-width: 90%;">Web3 domain sahibi olmak ve güvenli bağlantı kurmak için;</p>
-            <div style="color: #fbbf24; font-weight: 700; margin-bottom: 4px; font-size: 0.8em;">👇 Aşağıdaki "Pi ile Bağlan" butonunu kullanın.</div>
+            <p style="font-size: 0.8em; color: #e2e8f0; font-weight: 600; line-height: 1.3; margin: 6px 0; max-width: 90%;">Web3 domain sahibi olmak ve güvenli bağlantı kurmak için;</p>
+            <div style="color: #fbbf24; font-weight: 700; margin-bottom: 6px; font-size: 0.85em;">👇 Aşağıdaki "Pi ile Bağlan" butonunu kullanın.</div>
             <button class="pi-btn" onclick="window.loginWithPi()">Pi ile Bağlan</button>
         </div>
 
         <div class="domain-grid locked-content" id="domain-list"></div>
     </div>
 
-    <div class="footer-section">
+    <!-- YERLEŞİM: Girişte gizlendi, giriş sonrası görünür olacak -->
+    <div class="footer-section" id="footer-panel" style="display:none;">
         <div>SORULARINIZ İÇİN: <a href="mailto:doganay08@hotmail.com">📩 doganay08@hotmail.com</a></div>
         <div>RESMİ KANALIMIZ: <a href="https://t.me/+5jZi9vrcNMM2NGVk" target="_blank">💬 TELEGRAM GRUBUMUZ</a></div>
         <div style="margin-top:5px; font-size: 0.8em;">
@@ -196,10 +205,21 @@ const domains = [
 function render() {
     const list = document.getElementById("domain-list");
     const lock = document.getElementById("premium-lock");
+    const stats = document.getElementById("stats-panel");
+    const footer = document.getElementById("footer-panel");
     if (!list) return;
 
-    if (!isAuth) { lock.style.display = "flex"; list.classList.add("locked-content"); }
-    else { lock.style.display = "none"; list.classList.remove("locked-content"); }
+    if (!isAuth) { 
+        lock.style.display = "flex"; 
+        list.classList.add("locked-content");
+        stats.style.display = "none"; // Girişte gizle
+        footer.style.display = "none"; // Girişte gizle
+    } else { 
+        lock.style.display = "none"; 
+        list.classList.remove("locked-content");
+        stats.style.display = "flex"; // Giriş sonrası göster
+        footer.style.display = "block"; // Giriş sonrası göster
+    }
 
     list.innerHTML = '';
     let myHtml = "";
@@ -244,7 +264,7 @@ function listenToLogs(date) {
     });
 }
 
-// AKTİF KULLANICI SAYACI (KESİN ÇÖZÜM)
+// AKTİF KULLANICI SAYACI
 onSnapshot(collection(db, "active_users"), (snap) => {
     const now = Date.now();
     let activeCount = 0;
@@ -296,13 +316,10 @@ document.getElementById("confirm-buy-btn").onclick = async () => {
                 await fetch('/api/approve', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({paymentId:id, action:'approve'}) }); 
             },
             onReadyForServerCompletion: async (id, txid) => {
-                // BAŞARI MESAJINI ÖNCE GÖSTER (KESİN ÇÖZÜM)
                 document.getElementById("success-modal").style.display = "flex";
-                
                 await fetch('/api/approve', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({paymentId:id, action:'complete', txid, username:currentUser, domainName:pendingDomain, amount:pendingPrice}) });
                 await setDoc(doc(db, "domains", pendingDomain), { sold: true, price: pendingPrice, txid: txid, buyer: currentUser, at: Date.now() });
                 await setDoc(doc(db, "global_sales", txid), { user: currentUser, domain: pendingDomain, price: pendingPrice, at: Date.now() });
-                
                 render();
             },
             onCancel: () => {},
@@ -326,16 +343,13 @@ domains.forEach(d => {
 onSnapshot(collection(db, "domains"), (snapshot) => {
     let totalSold = 0;
     let totalVolume = 0;
-
     snapshot.forEach(docSnap => {
         const data = docSnap.data();
-
         if (data.sold === true) {
             totalSold++;
             totalVolume += Number(data.price || 0);
         }
     });
-
     document.getElementById("total-sold").innerText = totalSold;
     document.getElementById("total-volume").innerText = totalVolume;
 });
