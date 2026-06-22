@@ -8,7 +8,7 @@
     <style>
         :root { --bg:#0f172a; --card:#1e293b; --accent:#6366f1; --text:#f8fafc; --sold:#ef4444; --price:#fbbf24; --success:#10b981; }
         
-        /* Body height ayarı ve kaydırma engeli */
+        /* Ekranın dışına taşmayı önleyen ve içeriği sığdıran temel yapı */
         body { 
             font-family:'Segoe UI',sans-serif; 
             background:var(--bg); 
@@ -18,41 +18,39 @@
             display:flex; 
             justify-content:center; 
             height: 100vh; 
-            height: -webkit-fill-available; 
+            height: -webkit-fill-available;
             overflow: hidden; 
         }
 
         .container { 
-            max-width:600px; 
+            max-width:500px; 
             width:100%; 
-            text-align:center; 
             display: flex; 
             flex-direction: column; 
             height: 100%;
-            padding: 5px;
+            padding: 8px;
             box-sizing: border-box;
         }
 
-        /* Card boşlukları daraltıldı */
+        /* Kartlar arasındaki boşluklar minimuma indirildi */
         .card { 
             background:var(--card); 
             padding:10px; 
             border-radius:18px; 
             box-shadow:0 8px 12px -3px rgba(0,0,0,0.3); 
-            margin-bottom:6px; 
+            margin-bottom:8px; 
             position: relative; 
-            overflow: hidden; 
+            overflow: hidden;
             flex-shrink: 0;
         }
         
-        /* Görsel öğeler küçültüldü */
-        .app-logo { width: 65px; height: 65px; margin-bottom: 4px; border-radius: 50%; box-shadow: 0 0 20px rgba(99, 102, 241, 0.6); border: 3px solid #6366f1; object-fit: cover; }
-        .app-title { font-size: 1.3em; font-weight: 900; margin: 0 0 4px 0; background: linear-gradient(to right, #60a5fa, #a855f7); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .app-logo { width: 70px; height: 70px; margin-bottom: 4px; border-radius: 50%; box-shadow: 0 0 20px rgba(99, 102, 241, 0.6); border: 3px solid #6366f1; object-fit: cover; }
+        .app-title { font-size: 1.4em; font-weight: 900; margin: 0 0 4px 0; background: linear-gradient(to right, #60a5fa, #a855f7); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
         
-        .stats-bar { display: flex; justify-content: space-around; background: rgba(99, 102, 241, 0.1); border: 1px solid rgba(99, 102, 241, 0.3); padding: 4px; border-radius: 12px; margin-bottom: 2px; font-size: 0.6em; font-weight: bold; color: #94a3b8; }
+        .stats-bar { display: flex; justify-content: space-around; background: rgba(99, 102, 241, 0.1); border: 1px solid rgba(99, 102, 241, 0.3); padding: 5px; border-radius: 12px; margin-bottom: 2px; font-size: 0.6em; font-weight: bold; color: #94a3b8; }
         .stats-item span { color: var(--price); margin-left: 2px; }
 
-        .domain-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:5px; position: relative; }
+        .domain-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:5px; }
         .domain-card { background:#334155; padding:8px; border-radius:10px; border:1px solid #475569; display:flex; flex-direction:column; align-items:center; }
         .domain-img { width:100%; height:60px; margin-bottom:4px; border-radius:6px; object-fit:contain; background-color:#334155; }
         .domain-name { font-size: 0.85em; font-weight: bold; margin-bottom: 2px; }
@@ -68,10 +66,10 @@
 
         .locked-content { filter: blur(15px); opacity: 0.2; pointer-events: none; }
         
-        /* Overlay içeriği daha yukarı çekildi */
+        /* Kilit ekranı içeriği merkeze çekildi ve boşluklar daraltıldı */
         .premium-lock-overlay { position: absolute; top: 0; left: 0; right: 0; bottom: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; background: rgba(15, 23, 42, 0.75); backdrop-filter: blur(2px); z-index: 100; padding: 10px; text-align: center; }
         
-        .secure-badge { background: #0d2a2a; border: 2px solid #10b981; border-radius: 14px; padding: 10px; width: 92%; box-sizing: border-box; margin: 4px 0; }
+        .secure-badge { background: #0d2a2a; border: 2px solid #10b981; border-radius: 14px; padding: 10px; width: 95%; box-sizing: border-box; margin: 4px 0; }
         .secure-badge-title { color: #10b981; font-size: 0.9em; font-weight: 800; margin-bottom: 4px; border-bottom: 1px solid rgba(16,185,129,0.3); padding-bottom: 4px; }
         .secure-badge-body { color: #e2e8f0; font-size: 0.8em; line-height: 1.4; margin-bottom: 4px; border-bottom: 1px solid rgba(16,185,129,0.3); padding-bottom: 4px; }
         .secure-badge-warning { color: #fbbf24; font-size: 0.85em; font-weight: 900; line-height: 1.3; text-transform: uppercase; }
@@ -90,25 +88,26 @@
         .my-domain-item { background: #0f172a; padding: 10px; border-radius: 12px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; border: 1px solid #334155; }
         .manage-btn { background: #6366f1; color: white; border: none; padding: 5px 10px; border-radius: 6px; font-size: 0.7em; cursor: pointer; font-weight: bold; text-decoration: none; }
         
-        /* Footer ayarları */
-        .footer-section { margin-top: auto; padding: 10px; color:#f8fafc; font-size:0.7em; text-align:center; border-top:1px solid #334155; background: rgba(15, 23, 42, 0.8); border-radius: 20px 20px 0 0; flex-shrink: 0; }
+        /* Footer en alta sabitlendi ve kaybolması engellendi */
+        .footer-section { margin-top: auto; padding: 12px 10px; color:#f8fafc; font-size:0.7em; text-align:center; border-top:1px solid #334155; background: rgba(15, 23, 42, 0.8); border-radius: 20px 20px 0 0; flex-shrink: 0; }
         .footer-section a { color:#38bdf8; text-decoration:none; font-weight: 800; border-bottom: 1px solid #38bdf8; }
         .footer-section div { margin-bottom: 4px; }
 
-        #log-list { max-height: 85px; overflow-y: auto; }
-        #log-list::-webkit-scrollbar { width: 5px; }
-        #log-list::-webkit-scrollbar-track { background: #0f172a; border-radius: 10px; }
-        #log-list::-webkit-scrollbar-thumb { background: #6366f1; border-radius: 10px; }
+        /* Market Kartı ve Kaydırma Alanı */
+        #market-card { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+        #domain-list-container { flex: 1; overflow-y: auto; padding: 5px 0; }
+        
+        /* Scrollbar güzelleştirme */
+        #domain-list-container::-webkit-scrollbar { width: 5px; }
+        #domain-list-container::-webkit-scrollbar-track { background: transparent; }
+        #domain-list-container::-webkit-scrollbar-thumb { background: #6366f1; border-radius: 10px; }
 
+        #log-list { max-height: 85px; overflow-y: auto; }
         .log-item { display: flex; justify-content: space-between; background: #0f172a; padding: 8px 12px; border-radius: 8px; margin-bottom: 5px; font-size: 0.8em; }
         .admin-date-picker { background: #0f172a; color: #fff; border: 1.5px solid #6366f1; padding: 6px; border-radius: 8px; font-size: 0.85em; margin-bottom: 10px; width: 100%; box-sizing: border-box; outline: none; }
         
         .user-info-note { background: rgba(99, 102, 241, 0.1); border: 1px dashed #6366f1; color: #94a3b8; padding: 10px; border-radius: 10px; font-size: 0.75em; line-height: 1.4; margin-bottom: 10px; text-align: left; }
         .btn-fake-buy { background: var(--accent); color: white; padding: 1px 4px; border-radius: 3px; font-weight: 900; }
-        
-        /* Market kartı esnek yapıldı ve kaydırma eklendi */
-        #market-card { position: relative; flex: 1; min-height: 0; display: flex; flex-direction: column; }
-        #domain-list-container { flex: 1; overflow-y: auto; padding-bottom: 5px; }
     </style>
 </head>
 <body>
@@ -129,6 +128,7 @@
         </div>
     </div>
 
+    <!-- Giriş sonrası kullanıcı paneli -->
     <div class="card" id="user-panel" style="display:none; border:1.5px solid #10b981;">
         <h3 style="color:#10b981;margin:0 0 8px 0; font-size: 0.95em;">👤 Satın Alma Geçmişim</h3>
         <div class="user-info-note">
@@ -137,6 +137,7 @@
         <div id="my-domains-list" style="text-align: left;"></div>
     </div>
 
+    <!-- Admin paneli -->
     <div class="card" id="admin-panel" style="display:none; border:2px solid #6366f1;">
         <h3 style="color:#6366f1;margin-top:0;font-size: 0.95em;">🛠 Admin Paneli</h3>
         <div style="margin-bottom: 8px; text-align: left;">
@@ -145,9 +146,11 @@
         <div id="log-list"></div>
     </div>
 
+    <!-- Market Kartı - Esnek yükseklik ve iç kaydırma -->
     <div class="card" id="market-card">
         <div id="market-title" class="section-title-box">Satın Alabileceğiniz Domainler</div>
         
+        <!-- Kilit Overlay -->
         <div id="premium-lock" class="premium-lock-overlay">
             <div style="font-size: 2em; margin-bottom: 4px;">💎</div>
             <div class="lock-title-box">Ayrıcalıklı Web3 Dünyasına Katılın</div>
@@ -167,11 +170,13 @@
             <button class="pi-btn" onclick="window.loginWithPi()">Pi ile Bağlan</button>
         </div>
 
+        <!-- Kaydırılabilir Domain Listesi -->
         <div id="domain-list-container">
             <div class="domain-grid locked-content" id="domain-list"></div>
         </div>
     </div>
 
+    <!-- Footer - Her zaman en altta -->
     <div class="footer-section">
         <div>SORULARINIZ İÇİN: <a href="mailto:doganay08@hotmail.com">📩 doganay08@hotmail.com</a></div>
         <div>RESMİ KANALIMIZ: <a href="https://t.me/+5jZi9vrcNMM2NGVk" target="_blank">💬 TELEGRAM GRUBUMUZ</a></div>
