@@ -76,7 +76,8 @@
         <img src="assets/logo.jpeg" alt="Logo" class="app-logo">
         <h1 class="app-title">Web3 Domain Gateway</h1>
         
-        <div class="stats-bar">
+        <!-- YERLEŞİM DÜZENLEMESİ: Girişte gizlendi, login sonrası açılacak -->
+        <div class="stats-bar" id="stats-panel" style="display:none;">
             <div class="stats-item">Satılan Domain: <span id="total-sold">0</span></div>
             <div class="stats-item">Toplam Hacim: <span id="total-volume">0</span> Test Pİ</div>
             <div class="stats-item">Aktif Kullanıcı: <span id="online-count">0</span></div>
@@ -196,10 +197,18 @@ const domains = [
 function render() {
     const list = document.getElementById("domain-list");
     const lock = document.getElementById("premium-lock");
+    const stats = document.getElementById("stats-panel");
     if (!list) return;
 
-    if (!isAuth) { lock.style.display = "flex"; list.classList.add("locked-content"); }
-    else { lock.style.display = "none"; list.classList.remove("locked-content"); }
+    if (!isAuth) { 
+        lock.style.display = "flex"; 
+        list.classList.add("locked-content");
+        stats.style.display = "none"; // Girişte gizle
+    } else { 
+        lock.style.display = "none"; 
+        list.classList.remove("locked-content");
+        stats.style.display = "flex"; // Giriş sonrası göster
+    }
 
     list.innerHTML = '';
     let myHtml = "";
@@ -296,13 +305,10 @@ document.getElementById("confirm-buy-btn").onclick = async () => {
                 await fetch('/api/approve', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({paymentId:id, action:'approve'}) }); 
             },
             onReadyForServerCompletion: async (id, txid) => {
-                // BAŞARI MESAJINI ÖNCE GÖSTER (KESİN ÇÖZÜM)
                 document.getElementById("success-modal").style.display = "flex";
-                
                 await fetch('/api/approve', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({paymentId:id, action:'complete', txid, username:currentUser, domainName:pendingDomain, amount:pendingPrice}) });
                 await setDoc(doc(db, "domains", pendingDomain), { sold: true, price: pendingPrice, txid: txid, buyer: currentUser, at: Date.now() });
                 await setDoc(doc(db, "global_sales", txid), { user: currentUser, domain: pendingDomain, price: pendingPrice, at: Date.now() });
-                
                 render();
             },
             onCancel: () => {},
@@ -326,16 +332,13 @@ domains.forEach(d => {
 onSnapshot(collection(db, "domains"), (snapshot) => {
     let totalSold = 0;
     let totalVolume = 0;
-
     snapshot.forEach(docSnap => {
         const data = docSnap.data();
-
         if (data.sold === true) {
             totalSold++;
             totalVolume += Number(data.price || 0);
         }
     });
-
     document.getElementById("total-sold").innerText = totalSold;
     document.getElementById("total-volume").innerText = totalVolume;
 });
