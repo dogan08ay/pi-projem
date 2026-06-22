@@ -7,11 +7,9 @@
     <script src="https://sdk.minepi.com/pi-sdk.js"></script>
     <style>
         :root { --bg:#0f172a; --card:#1e293b; --accent:#6366f1; --text:#f8fafc; --sold:#ef4444; --price:#fbbf24; --success:#10b981; }
-        /* HATA 2 DÜZELTMESİ: overflow: hidden kaldırıldı, scrolling aktif edildi */
-        html, body { min-height: 100%; margin: 0; overflow-x: hidden; overflow-y: auto; }
+        html, body { height: 100%; margin: 0; overflow: hidden; }
         body { font-family:'Segoe UI',sans-serif; background:var(--bg); color:var(--text); display:flex; justify-content:center; }
-        /* HATA 2 DÜZELTMESİ: height: 100vh -> min-height: 100vh yapıldı */
-        .container { max-width:600px; width:100%; min-height: 100vh; text-align:center; display: flex; flex-direction: column; padding: 5px; box-sizing: border-box; }
+        .container { max-width:600px; width:100%; height: 100vh; text-align:center; display: flex; flex-direction: column; padding: 5px; box-sizing: border-box; }
         .card { background:var(--card); padding:10px; border-radius:18px; box-shadow:0 8px 12px -3px rgba(0,0,0,0.3); margin-bottom:8px; position: relative; overflow: hidden; flex-shrink: 0; }
         
         .app-logo { width: 80px; height: 80px; margin-bottom: 5px; border-radius: 50%; box-shadow: 0 0 20px rgba(99, 102, 241, 0.6); border: 3px solid #6366f1; object-fit: cover; }
@@ -173,7 +171,7 @@
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
-import { getFirestore, doc, onSnapshot, setDoc, getDoc, collection, query, where, limit, orderBy, getDocs, updateDoc, deleteDoc, serverTimestamp, Timestamp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
+import { getFirestore, doc, onSnapshot, setDoc, getDoc, collection, query, where, limit, orderBy, getDocs, updateDoc, deleteDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
 
 const firebaseConfig = { apiKey: "s3ddhcea9xae0qieikgjy9zw9tduemnraoucjrr9iqe87pduhczmd95kq8n3aai1", authDomain: "web3-domain-gateway.firebaseapp.com", projectId: "web3-domain-gateway" };
 const app = initializeApp(firebaseConfig);
@@ -268,7 +266,7 @@ async function loginWithPi() {
         updateMyDomains();
         render();
         
-        // Update last seen periodically (Heartbeat)
+        // Update last seen periodically
         setInterval(async () => {
             if (currentUser && currentUser.sessionDocId) {
                 try {
@@ -279,7 +277,7 @@ async function loginWithPi() {
                     console.error("Error updating last seen:", err);
                 }
             }
-        }, 20000);
+        }, 30000);
         
     } catch (err) {
         console.error("Login error:", err);
@@ -309,10 +307,13 @@ async function logoutUser() {
 document.getElementById("pi-login-btn").addEventListener("click", loginWithPi);
 
 // Handle page unload - remove user session
-window.addEventListener("beforeunload", () => {
+window.addEventListener("beforeunload", async () => {
     if (currentUser && currentUser.sessionDocId) {
-        // Use deleteDoc but note it might not finish on some browsers
-        deleteDoc(doc(db, "active_users", currentUser.sessionDocId));
+        try {
+            await deleteDoc(doc(db, "active_users", currentUser.sessionDocId));
+        } catch (err) {
+            console.error("Error on unload:", err);
+        }
     }
 });
 
@@ -322,7 +323,6 @@ window.preBuy = (name, price) => {
     document.getElementById('pre-buy-modal').style.display = 'flex';
 };
 
-// HATA 3 DÜZELTMESİ: Cüzdan bağlantısı ve saniye sayma sorunu için onReadyForServerApproval eklendi
 document.getElementById('confirm-buy-btn').onclick = async () => {
     document.getElementById('pre-buy-modal').style.display = 'none';
     try {
@@ -332,24 +332,18 @@ document.getElementById('confirm-buy-btn').onclick = async () => {
             metadata: { domainName: pendingDomain }
         };
         const callbacks = {
-            onReadyForServerApproval: async (paymentId) => {
+            onReadyForServerApproval: (paymentId) => {
                 console.log("Payment ready for approval:", paymentId);
-                // NOT: Gerçek ödemelerde burada kendi sunucunuza paymentId gönderip approve etmelisiniz.
-                // Sandbox modunda cüzdanın açılması için bu callback'in tanımlı olması şarttır.
             },
             onReadyForServerCompletion: (paymentId, txid) => {
                 completePurchase(pendingDomain, pendingPrice, txid);
             },
             onCancel: (paymentId) => console.log("Payment cancelled"),
-            onError: (error, payment) => {
-                console.error("Payment error", error);
-                alert("Ödeme başlatılamadı: " + (error.message || "Bilinmeyen hata"));
-            }
+            onError: (error, payment) => console.error("Payment error", error)
         };
-        // Cüzdanın açılmasını tetikle
         await window.Pi.createPayment(paymentData, callbacks);
     } catch (err) {
-        console.error("Create payment error:", err);
+        console.error(err);
     }
 };
 
@@ -441,26 +435,11 @@ function setupAdminLogs() {
 
 function onIncompletePaymentFound(payment) {
     console.log("Incomplete payment found", payment);
-    // Yarım kalan ödemeleri burada temizleyebilir veya tamamlayabilirsiniz
 }
 
-// HATA 1 DÜZELTMESİ: Aktif kullanıcı sayısı sadece son 1 dakika içinde aktif olan Pi kullanıcılarını sayar
-const activeUsersRef = collection(db, "active_users");
-onSnapshot(activeUsersRef, (snapshot) => {
-    const now = Date.now();
-    let activeCount = 0;
-    snapshot.forEach(doc => {
-        const data = doc.data();
-        if (data.lastSeen) {
-            // lastSeen Firestore Timestamp ise ms'ye çevir
-            const lastSeenMs = data.lastSeen.toMillis ? data.lastSeen.toMillis() : (data.lastSeen.seconds * 1000);
-            // Son 60 saniye içinde sinyal vermişse aktif say
-            if (now - lastSeenMs < 60000) {
-                activeCount++;
-            }
-        }
-    });
-    document.getElementById("online-count").innerText = activeCount;
+// Real-time active users counter
+onSnapshot(collection(db, "active_users"), (snapshot) => {
+    document.getElementById("online-count").innerText = snapshot.size;
 });
 
 // Initial state sync for domains
