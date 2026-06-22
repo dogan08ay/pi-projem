@@ -272,7 +272,30 @@ window.addEventListener('beforeunload', async () => {
 
 window.loginWithPi = async function() {
     try {
-        const auth = await Pi.authenticate(['username', 'payments'], async (p) => {});
+        const auth = await Pi.authenticate(['username', 'payments'], {
+            onIncompletePaymentFound: async (payment) => {
+                // YARIM KALAN ÖDEME YAKALANDI - BURASI HATAYI ÇÖZER
+                try {
+                    await fetch('/api/approve', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ 
+                            paymentId: payment.identifier, 
+                            action: 'complete', 
+                            txid: payment.transaction.txid, 
+                            username: auth.user.username, 
+                            domainName: payment.metadata.domain, 
+                            amount: payment.amount 
+                        })
+                    });
+                    // Veritabanını güncelle
+                    await setDoc(doc(db, "domains", payment.metadata.domain), { sold: true, price: payment.amount, txid: payment.transaction.txid, buyer: auth.user.username, at: Date.now() });
+                    await setDoc(doc(db, "global_sales", payment.transaction.txid), { user: auth.user.username, domain: payment.metadata.domain, price: payment.amount, at: Date.now() });
+                    render();
+                } catch (e) { console.error("Incomplete Payment Error:", e); }
+            }
+        });
+        
         currentUser = auth.user.username;
         isAuth = true;
         document.getElementById("user-status").innerText = "BAĞLI: @" + currentUser;
