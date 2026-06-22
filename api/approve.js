@@ -22,7 +22,6 @@ export default async function handler(req, res) {
     } catch (e) { console.error("TG Error:", e); }
   };
 
-  // İPTAL (CANCEL) DESTEĞİ EKLENDİ
   const url = `https://api.minepi.com/v2/payments/${paymentId}/${action}`;
   try {
     const response = await fetch(url, {
@@ -33,11 +32,10 @@ export default async function handler(req, res) {
     
     const data = await response.json();
 
-    // KURTARMA MANTIĞI: Pi API'den gelen hataları yut ve frontend'i serbest bırak
+    // ACİL KURTARMA: Hata ne olursa olsun 200 dön ve frontend'i serbest bırak
     if (!response.ok) {
-        console.log("Recovery Mode API Response:", data);
-        // Eğer ödeme zaten iptal edilmiş, tamamlanmış veya onaylanmışsa başarılı say
-        return res.status(200).json({ success: true, message: "Handled by recovery mode" });
+        console.log("Emergency API Bypass:", data);
+        return res.status(200).json({ success: true, bypassed: true, pi_error: data });
     }
 
     if (action === 'complete') {
@@ -54,6 +52,6 @@ export default async function handler(req, res) {
 
     return res.status(200).json(data);
   } catch (e) {
-    return res.status(200).json({ success: true, error_ignored: true });
+    return res.status(200).json({ success: true, server_error: true });
   }
 }
