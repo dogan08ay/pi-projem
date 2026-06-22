@@ -32,15 +32,14 @@ export default async function handler(req, res) {
     
     const data = await response.json();
 
-    // ÇOK ÖNEMLİ: Eğer ödeme zaten tamamlanmışsa veya hata varsa bile 
-    // kullanıcıyı engellememek için 200 dönüyoruz.
+    // HATA TOLERANSI: Pi API ne derse desin, eğer ödeme sistemde bir şekilde 
+    // ilerlemişse başarılı sayıyoruz.
     if (!response.ok) {
-        console.log("Pi API Response Not OK:", data);
-        // Eğer ödeme zaten onaylanmış veya tamamlanmışsa, başarı kabul et
-        if (data.message && (data.message.includes("already") || data.message.includes("completed"))) {
-            return res.status(200).json({ ...data, success: true, note: "Already processed" });
+        // Eğer ödeme zaten yapılmışsa veya onaylanmışsa, başarı dön
+        if (data.message && (data.message.includes("already") || data.message.includes("completed") || data.message.includes("approved"))) {
+            return res.status(200).json({ success: true, alreadyProcessed: true });
         }
-        // Diğer hataları da 200 ile dönerek frontend'in takılmasını engelle
+        // Diğer hatalarda da frontend'i kitlememek için 200 dönüyoruz ama hata bilgisini ekliyoruz
         return res.status(200).json({ ...data, error: true });
     }
 
@@ -58,7 +57,6 @@ export default async function handler(req, res) {
 
     return res.status(200).json(data);
   } catch (e) {
-    console.error("Internal Error:", e);
     return res.status(200).json({ error: e.message, success: false });
   }
 }
