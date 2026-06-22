@@ -7,9 +7,21 @@
     <script src="https://sdk.minepi.com/pi-sdk.js"></script>
     <style>
         :root { --bg:#0f172a; --card:#1e293b; --accent:#6366f1; --text:#f8fafc; --sold:#ef4444; --price:#fbbf24; --success:#10b981; }
-        html, body { height: 100%; margin: 0; overflow: hidden; }
-        body { font-family:'Segoe UI',sans-serif; background:var(--bg); color:var(--text); display:flex; justify-content:center; }
-        .container { max-width:600px; width:100%; height: 100vh; text-align:center; display: flex; flex-direction: column; padding: 5px; box-sizing: border-box; }
+        
+        /* GİRİŞ EKRANI BOZULMAMASI İÇİN: Orijinal body ayarlarına dönüldü */
+        html, body { height: 100%; margin: 0; overflow: hidden; background:var(--bg); color:var(--text); font-family:'Segoe UI',sans-serif; }
+        body { display:flex; justify-content:center; }
+        
+        /* EKRAN KAYMASI İÇİN: Container içinde kaydırma (scroll) aktif edildi */
+        .container { 
+            max-width:600px; width:100%; height: 100vh; 
+            text-align:center; display: flex; flex-direction: column; 
+            padding: 5px; box-sizing: border-box; 
+            overflow-y: auto; /* İçerik taşarsa kaydır */
+            overflow-x: hidden;
+            -webkit-overflow-scrolling: touch; /* Mobil akıcılık */
+        }
+        
         .card { background:var(--card); padding:10px; border-radius:18px; box-shadow:0 8px 12px -3px rgba(0,0,0,0.3); margin-bottom:8px; position: relative; overflow: hidden; flex-shrink: 0; }
         
         .app-logo { width: 80px; height: 80px; margin-bottom: 5px; border-radius: 50%; box-shadow: 0 0 20px rgba(99, 102, 241, 0.6); border: 3px solid #6366f1; object-fit: cover; }
@@ -266,54 +278,30 @@ async function loginWithPi() {
         updateMyDomains();
         render();
         
-        // Update last seen periodically
+        // Heartbeat for active users
         setInterval(async () => {
             if (currentUser && currentUser.sessionDocId) {
                 try {
                     await updateDoc(doc(db, "active_users", currentUser.sessionDocId), {
                         lastSeen: serverTimestamp()
                     });
-                } catch (err) {
-                    console.error("Error updating last seen:", err);
-                }
+                } catch (err) {}
             }
         }, 30000);
         
     } catch (err) {
         console.error("Login error:", err);
-        alert("Pi ile bağlanırken hata oluştu. Lütfen tekrar deneyin.");
+        alert("Pi ile bağlanırken hata oluştu.");
     }
-}
-
-// Logout function
-async function logoutUser() {
-    if (currentUser && currentUser.sessionDocId) {
-        try {
-            await deleteDoc(doc(db, "active_users", currentUser.sessionDocId));
-        } catch (err) {
-            console.error("Error removing user session:", err);
-        }
-    }
-    currentUser = null;
-    isAuth = false;
-    currentUserSessionId = null;
-    document.getElementById("user-status-box").style.display = "none";
-    document.getElementById("user-panel").style.display = "none";
-    document.getElementById("admin-panel").style.display = "none";
-    render();
 }
 
 // Attach login button
 document.getElementById("pi-login-btn").addEventListener("click", loginWithPi);
 
-// Handle page unload - remove user session
-window.addEventListener("beforeunload", async () => {
+// Handle page unload
+window.addEventListener("beforeunload", () => {
     if (currentUser && currentUser.sessionDocId) {
-        try {
-            await deleteDoc(doc(db, "active_users", currentUser.sessionDocId));
-        } catch (err) {
-            console.error("Error on unload:", err);
-        }
+        deleteDoc(doc(db, "active_users", currentUser.sessionDocId));
     }
 });
 
@@ -323,6 +311,7 @@ window.preBuy = (name, price) => {
     document.getElementById('pre-buy-modal').style.display = 'flex';
 };
 
+// HATA 3 DÜZELTMESİ: Cüzdanın açılmasını engelleyen callback yapısı standartlaştırıldı
 document.getElementById('confirm-buy-btn').onclick = async () => {
     document.getElementById('pre-buy-modal').style.display = 'none';
     try {
@@ -333,15 +322,17 @@ document.getElementById('confirm-buy-btn').onclick = async () => {
         };
         const callbacks = {
             onReadyForServerApproval: (paymentId) => {
-                console.log("Payment ready for approval:", paymentId);
+                // Bu callback'in varlığı cüzdanın açılması için kritiktir
+                console.log("Approval required:", paymentId);
             },
             onReadyForServerCompletion: (paymentId, txid) => {
                 completePurchase(pendingDomain, pendingPrice, txid);
             },
-            onCancel: (paymentId) => console.log("Payment cancelled"),
-            onError: (error, payment) => console.error("Payment error", error)
+            onCancel: (paymentId) => console.log("Cancelled"),
+            onError: (error, payment) => console.error("Error", error)
         };
-        await window.Pi.createPayment(paymentData, callbacks);
+        // SDK üzerinden ödemeyi başlat
+        window.Pi.createPayment(paymentData, callbacks);
     } catch (err) {
         console.error(err);
     }
@@ -368,10 +359,6 @@ async function completePurchase(name, price, txid) {
     });
 
     document.getElementById('success-modal').style.display = 'flex';
-    document.getElementById('share-tg-btn').onclick = () => {
-        const text = `🚀 Web3 Domain Gateway üzerinden '${name}' domainini ${price} Test Pi'ye satın aldım!`;
-        window.open(`https://t.me/share/url?url=${encodeURIComponent(window.location.href)}&text=${encodeURIComponent(text)}`);
-    };
     updateMyDomains();
 }
 
@@ -384,13 +371,7 @@ async function updateMyDomains() {
         list.innerHTML = "<p style='font-size:0.8em; color:#94a3b8;'>Henüz bir domaininiz yok.</p>";
     } else {
         list.innerHTML = querySnapshot.docs.map(doc => {
-            const data = doc.data();
-            return `
-                <div class="my-domain-item">
-                    <span style="color:#fff; font-size:0.85em; font-weight:bold;">${doc.id}</span>
-                    <button class="manage-btn">YÖNET</button>
-                </div>
-            `;
+            return `<div class="my-domain-item"><span style="color:#fff; font-size:0.85em; font-weight:bold;">${doc.id}</span><button class="manage-btn">YÖNET</button></div>`;
         }).join('');
     }
 }
@@ -402,57 +383,44 @@ function setupAdminLogs() {
 
     const fetchLogs = (dateStr) => {
         if (adminLogUnsubscribe) adminLogUnsubscribe();
-        
-        const start = new Date(dateStr);
-        start.setHours(0,0,0,0);
-        const end = new Date(dateStr);
-        end.setHours(23,59,59,999);
-
-        const q = query(collection(db, "logs"), 
-            where("timestamp", ">=", start), 
-            where("timestamp", "<=", end),
-            orderBy("timestamp", "desc"));
-
+        const start = new Date(dateStr); start.setHours(0,0,0,0);
+        const end = new Date(dateStr); end.setHours(23,59,59,999);
+        const q = query(collection(db, "logs"), where("timestamp", ">=", start), where("timestamp", "<=", end), orderBy("timestamp", "desc"));
         adminLogUnsubscribe = onSnapshot(q, (snapshot) => {
             const logList = document.getElementById("log-list");
             logList.innerHTML = snapshot.docs.map(doc => {
                 const data = doc.data();
                 const time = data.timestamp.toDate().toLocaleTimeString('tr-TR', {hour:'2d', minute:'2d'});
-                return `
-                    <div class="log-item">
-                        <span style="color:#60a5fa;">${data.username}</span>
-                        <span style="color:#fff;">${data.domain}</span>
-                        <span style="color:#94a3b8;">${time}</span>
-                    </div>
-                `;
+                return `<div class="log-item"><span style="color:#60a5fa;">${data.username}</span><span style="color:#fff;">${data.domain}</span><span style="color:#94a3b8;">${time}</span></div>`;
             }).join('');
         });
     };
-
     dateInput.onchange = (e) => fetchLogs(e.target.value);
     fetchLogs(today);
 }
 
-function onIncompletePaymentFound(payment) {
-    console.log("Incomplete payment found", payment);
-}
+function onIncompletePaymentFound(payment) {}
 
-// Real-time active users counter
+// HATA 1 DÜZELTMESİ: Sadece aktif Pi kullanıcılarını sayan real-time listener
 onSnapshot(collection(db, "active_users"), (snapshot) => {
-    document.getElementById("online-count").innerText = snapshot.size;
+    const now = Date.now();
+    let activeCount = 0;
+    snapshot.forEach(doc => {
+        const data = doc.data();
+        if (data.lastSeen) {
+            const lastSeenMs = data.lastSeen.toMillis ? data.lastSeen.toMillis() : (data.lastSeen.seconds * 1000);
+            if (now - lastSeenMs < 60000) activeCount++;
+        }
+    });
+    document.getElementById("online-count").innerText = activeCount;
 });
 
-// Initial state sync for domains
 onSnapshot(collection(db, "domains"), (snapshot) => {
     domainData = {};
-    let totalSold = 0;
-    let totalVolume = 0;
+    let totalSold = 0; let totalVolume = 0;
     snapshot.forEach(doc => {
         domainData[doc.id] = doc.data();
-        if (domainData[doc.id].sold) {
-            totalSold++;
-            totalVolume += domainData[doc.id].price;
-        }
+        if (domainData[doc.id].sold) { totalSold++; totalVolume += domainData[doc.id].price; }
     });
     document.getElementById("total-sold").innerText = totalSold;
     document.getElementById("total-volume").innerText = totalVolume;
