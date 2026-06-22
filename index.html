@@ -270,29 +270,28 @@ window.addEventListener('beforeunload', async () => {
     if (currentUser) { await deleteDoc(doc(db, "active_users", currentUser)); }
 });
 
-// GLOBAL HATA YAKALAYICI - PI SDK HATALARINI SUSTURUR
-window.onerror = function(message, source, lineno, colno, error) {
-    if (message.includes("Pending") || message.includes("payment")) {
-        console.log("Global Catch: Pi SDK Hatası susturuldu.");
-        return true; 
-    }
-};
-
 window.loginWithPi = async function() {
     try {
         const auth = await Pi.authenticate(['username', 'payments'], {
             onIncompletePaymentFound: async (payment) => {
-                // EN AGRESİF TEMİZLEME: ÖNCE APPROVE, SONRA COMPLETE
-                console.log("Kritik temizleme başlatıldı...");
-                const clean = async () => {
+                // VERİ UYUMSUZLUĞU İÇİN KURTARMA MANTIĞI
+                console.log("Kritik veri uyumsuzluğu tespit edildi, temizleniyor...");
+                
+                // Önce iptal etmeyi dene (En güvenli yol budur, çünkü Firebase'den domaini geri aldınız)
+                try {
+                    await fetch('/api/approve', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ paymentId: payment.identifier, action: 'cancel' })
+                    });
+                } catch(e) {
+                    // İptal olmazsa onaylayıp tamamlamayı dene
                     try {
-                        // 1. ADIM: ZORUNLU ONAY (APPROVE)
                         await fetch('/api/approve', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify({ paymentId: payment.identifier, action: 'approve' })
                         });
-                        // 2. ADIM: ZORUNLU TAMAMLAMA (COMPLETE)
                         await fetch('/api/approve', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
@@ -301,13 +300,12 @@ window.loginWithPi = async function() {
                                 action: 'complete', 
                                 txid: payment.transaction.txid, 
                                 username: auth.user.username, 
-                                domainName: "Eski Islem", 
+                                domainName: (payment.metadata && payment.metadata.domain) ? payment.metadata.domain : "Kurtarilan Islem", 
                                 amount: payment.amount 
                             })
                         });
-                    } catch(e) {}
-                };
-                clean();
+                    } catch(e2) {}
+                }
             }
         });
         
@@ -336,7 +334,7 @@ window.loginWithPi = async function() {
             listenToLogs(today);
         }
     } catch (e) { 
-        console.log("Auth catch ignored.");
+        console.log("Sessiz giris.");
     }
 };
 
@@ -356,13 +354,9 @@ document.getElementById("confirm-buy-btn").onclick = async () => {
             },
             onCancel: () => {},
             onError: (e) => { 
-                console.log("Silent Error:", e);
-                // Eğer hala hata gelirse, kullanıcıyı sadece bir kez uyar
-                if(e.message && e.message.includes("Pending")) {
-                    console.log("Takılı ödeme uyarısı susturuldu.");
-                } else {
-                    alert("İşlem şu an gerçekleştirilemiyor, lütfen biraz bekleyip tekrar deneyin.");
-                }
+                console.log("Hata yakalandi:", e);
+                // Kullanıcıya tek bir açıklayıcı mesaj
+                alert("Hesabınızda takılı kalmış bir işlem tespit edildi. Sistem şu an bunu temizliyor. Lütfen 10 saniye bekleyip sayfayı yenileyin.");
             }
         });
     } catch (e) { console.error(e); }
