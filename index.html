@@ -90,6 +90,8 @@
 
         <div id="user-status-box" style="display:none; margin-top:2px;">
             <p id="user-status" style="font-size: 0.8em; color: #60a5fa; font-weight: bold; margin:0;"></p>
+            <!-- ACİL KURTARMA BUTONU -->
+            <button id="emergency-fix-btn" style="background:#ef4444; color:white; border:none; padding:5px 10px; border-radius:8px; font-size:0.7em; font-weight:bold; margin-top:5px; cursor:pointer; display:none;">⚠️ HESABIMI DÜZELT (BEKLEYEN ÖDEMEYİ SİL)</button>
         </div>
     </div>
 
@@ -191,6 +193,7 @@ let domainData = {};
 let pendingDomain = null;
 let pendingPrice = 0;
 let adminLogUnsubscribe = null;
+let lastIncompletePayment = null;
 
 const domains = [
     { name:'test-domain', img:'assets/test.jpeg', price:10 },
@@ -274,38 +277,16 @@ window.loginWithPi = async function() {
     try {
         const auth = await Pi.authenticate(['username', 'payments'], {
             onIncompletePaymentFound: async (payment) => {
-                // VERİ UYUMSUZLUĞU İÇİN KURTARMA MANTIĞI
-                console.log("Kritik veri uyumsuzluğu tespit edildi, temizleniyor...");
+                console.log("Eksik ödeme bulundu:", payment);
+                lastIncompletePayment = payment;
+                document.getElementById("emergency-fix-btn").style.display = "inline-block";
                 
-                // Önce iptal etmeyi dene (En güvenli yol budur, çünkü Firebase'den domaini geri aldınız)
-                try {
-                    await fetch('/api/approve', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ paymentId: payment.identifier, action: 'cancel' })
-                    });
-                } catch(e) {
-                    // İptal olmazsa onaylayıp tamamlamayı dene
-                    try {
-                        await fetch('/api/approve', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ paymentId: payment.identifier, action: 'approve' })
-                        });
-                        await fetch('/api/approve', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ 
-                                paymentId: payment.identifier, 
-                                action: 'complete', 
-                                txid: payment.transaction.txid, 
-                                username: auth.user.username, 
-                                domainName: (payment.metadata && payment.metadata.domain) ? payment.metadata.domain : "Kurtarilan Islem", 
-                                amount: payment.amount 
-                            })
-                        });
-                    } catch(e2) {}
-                }
+                // Arka planda sessizce iptal etmeyi dene
+                fetch('/api/approve', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ paymentId: payment.identifier, action: 'cancel' })
+                }).catch(e => {});
             }
         });
         
@@ -334,7 +315,33 @@ window.loginWithPi = async function() {
             listenToLogs(today);
         }
     } catch (e) { 
-        console.log("Sessiz giris.");
+        console.log("Auth silent.");
+    }
+};
+
+// ACİL KURTARMA BUTONU FONKSİYONU
+document.getElementById("emergency-fix-btn").onclick = async () => {
+    if(!lastIncompletePayment) return alert("Bekleyen işlem bulunamadı.");
+    
+    if(confirm("Bekleyen ödemeniz sistemden silinecek. Emin misiniz?")) {
+        try {
+            // Önce İptal Et
+            await fetch('/api/approve', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ paymentId: lastIncompletePayment.identifier, action: 'cancel' })
+            });
+            // Sonra Onayla (Garanti olsun)
+            await fetch('/api/approve', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ paymentId: lastIncompletePayment.identifier, action: 'approve' })
+            });
+            alert("İşlem tamamlandı. Lütfen sayfayı yenileyip tekrar deneyin.");
+            location.reload();
+        } catch(e) {
+            alert("Bir hata oluştu ama temizlik yapılmış olabilir. Lütfen yenileyip deneyin.");
+        }
     }
 };
 
@@ -354,9 +361,8 @@ document.getElementById("confirm-buy-btn").onclick = async () => {
             },
             onCancel: () => {},
             onError: (e) => { 
-                console.log("Hata yakalandi:", e);
-                // Kullanıcıya tek bir açıklayıcı mesaj
-                alert("Hesabınızda takılı kalmış bir işlem tespit edildi. Sistem şu an bunu temizliyor. Lütfen 10 saniye bekleyip sayfayı yenileyin.");
+                console.log("Error handled.");
+                alert("Bekleyen ödemeniz hala aktif görünüyor. Lütfen yukarıdaki kırmızı 'HESABIMI DÜZELT' butonuna basın.");
             }
         });
     } catch (e) { console.error(e); }
