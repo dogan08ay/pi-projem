@@ -49,7 +49,7 @@
         .blink-yellow { animation: blinker 2s linear infinite; color: #fbbf24; font-weight: 900; }
         .blink-red { animation: blinker 2s linear infinite; color: #ef4444; font-weight: 900; }
         
-        /* MODAL VE PANEL DÜZELTMELERİ: Sığma sorunu ve simge konumu */
+        /* MODAL VE PANEL DÜZELTMELERİ */
         .modal-overlay { position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.92); display:flex; justify-content:center; align-items:center; z-index:9999; padding: 15px; box-sizing: border-box; }
         .modal-content { background:var(--card); padding:20px; border-radius:20px; border:2px solid #fbbf24; width:100%; max-width:380px; box-sizing: border-box; text-align: center; }
         
@@ -69,7 +69,6 @@
         .admin-date-picker { background: #0f172a; color: #fff; border: 1.5px solid #6366f1; padding: 6px; border-radius: 8px; font-size: 0.85em; margin-bottom: 10px; width: 100%; box-sizing: border-box; outline: none; }
         
         .user-info-note { background: rgba(99, 102, 241, 0.1); border: 1px dashed #6366f1; color: #94a3b8; padding: 10px; border-radius: 10px; font-size: 0.75em; line-height: 1.4; margin-bottom: 10px; text-align: left; }
-        .btn-fake-buy { background: var(--accent); color: white; padding: 1px 4px; border-radius: 3px; font-weight: 900; }
     </style>
 </head>
 <body>
@@ -301,11 +300,11 @@ document.getElementById("confirm-buy-btn").onclick = async () => {
     try {
         await Pi.createPayment({ amount: Number(pendingPrice), memo: "Domain: " + pendingDomain, metadata: { domain: pendingDomain } }, {
             onReadyForServerApproval: async (id) => { 
-                // Sunucu onayını simüle et veya Firebase'e kaydet
-                console.log("Payment approved:", id);
+                await fetch('/api/approve', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({paymentId:id, action:'approve'}) }); 
             },
             onReadyForServerCompletion: async (id, txid) => {
                 document.getElementById("success-modal").style.display = "flex";
+                await fetch('/api/approve', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({paymentId:id, action:'complete', txid, username:currentUser, domainName:pendingDomain, amount:pendingPrice}) });
                 await setDoc(doc(db, "domains", pendingDomain), { sold: true, price: pendingPrice, txid: txid, buyer: currentUser, at: Date.now() });
                 await setDoc(doc(db, "global_sales", txid), { user: currentUser, domain: pendingDomain, price: pendingPrice, at: Date.now() });
                 render();
