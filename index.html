@@ -3,32 +3,32 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PI ÖDEME TAMİR PANELİ</title>
+    <title>PI ÖDEME TAMİR PANELİ V2</title>
     <script src="https://sdk.minepi.com/pi-sdk.js"></script>
     <style>
         body { font-family:sans-serif; background:#0f172a; color:white; text-align:center; padding:20px; }
         .panel { background:#1e293b; padding:20px; border-radius:15px; border:2px solid #ef4444; max-width:400px; margin:auto; }
-        .status { margin:20px 0; padding:10px; background:#000; border-radius:10px; font-family:monospace; font-size:0.9em; text-align:left; min-height:100px; overflow-y:auto; }
+        .status { margin:20px 0; padding:10px; background:#000; border-radius:10px; font-family:monospace; font-size:0.8em; text-align:left; min-height:150px; overflow-y:auto; white-space: pre-wrap; }
         .btn { background:#ef4444; color:white; border:none; padding:12px 20px; border-radius:10px; font-weight:bold; cursor:pointer; width:100%; margin-top:10px; }
         .btn-blue { background:#3b82f6; }
-        .id-box { color:#fbbf24; font-weight:bold; border:1px dashed #fbbf24; padding:5px; margin-top:10px; display:none; }
+        .id-box { color:#fbbf24; font-weight:bold; border:1px dashed #fbbf24; padding:10px; margin-top:10px; display:none; background:rgba(251,191,36,0.1); }
     </style>
 </head>
 <body>
 
 <div class="panel">
-    <h2>🛠 ARIZA TESPİT PANELİ</h2>
-    <p style="font-size:0.8em; color:#94a3b8;">Bu panel hesabınızdaki "hayalet" ödemeyi bulup silmek için tasarlanmıştır.</p>
+    <h2>🛠 TAMİR PANELİ V2</h2>
+    <p style="font-size:0.8em; color:#94a3b8;">Bu sürüm SDK yükleme hatalarını gidermek için 3 saniye gecikmeli başlar.</p>
     
-    <div class="status" id="status-log">Sistem hazır. Lütfen "TARA" butonuna basın...</div>
+    <div class="status" id="status-log">Sistem hazır. Lütfen bekleyin...</div>
     
     <div id="found-id-box" class="id-box">
-        TESPİT EDİLEN ID:<br>
-        <span id="payment-id-display">---</span>
+        ⚠️ TAKILI ÖDEME BULUNDU:<br>
+        <span id="payment-id-display" style="word-break: break-all;">---</span>
     </div>
 
-    <button class="btn btn-blue" onclick="startScan()">1. ADIM: ARIZAYI TARA</button>
-    <button id="fix-btn" class="btn" onclick="fixPayment()" style="display:none;">2. ADIM: BU ÖDEMEYİ SİL</button>
+    <button id="scan-btn" class="btn btn-blue" onclick="startScan()" disabled>LÜTFEN BEKLEYİN (3s)...</button>
+    <button id="fix-btn" class="btn" onclick="fixPayment()" style="display:none;">BU ÖDEMEYİ ŞİMDİ SİL</button>
 </div>
 
 <script>
@@ -36,44 +36,57 @@
     const idBox = document.getElementById("found-id-box");
     const idDisplay = document.getElementById("payment-id-display");
     const fixBtn = document.getElementById("fix-btn");
+    const scanBtn = document.getElementById("scan-btn");
     let detectedId = null;
 
     function log(msg) {
-        logBox.innerHTML += "<br>> " + msg;
+        logBox.innerHTML += "\n> " + msg;
         logBox.scrollTop = logBox.scrollHeight;
     }
 
-    async function startScan() {
-        log("Tarama başlatılıyor...");
-        try {
-            if (!window.Pi) return log("HATA: Pi SDK yüklenemedi!");
-            
-            Pi.init({ version: "2.0", sandbox: true });
-            log("SDK Başlatıldı.");
+    // SDK Yükleme Garantisi
+    window.onload = () => {
+        log("SDK kontrol ediliyor...");
+        setTimeout(() => {
+            if (window.Pi) {
+                log("SDK Yüklendi. Başlatılıyor...");
+                Pi.init({ version: "2.0", sandbox: true });
+                log("SDK Hazır. TARA butonuna basabilirsiniz.");
+                scanBtn.disabled = false;
+                scanBtn.innerText = "ŞİMDİ ARIZAYI TARA";
+            } else {
+                log("HATA: SDK bulunamadı. Lütfen sayfayı yenileyin.");
+            }
+        }, 3000);
+    };
 
+    async function startScan() {
+        log("Tarama başlatıldı...");
+        try {
             await Pi.authenticate(['username', 'payments'], {
                 onIncompletePaymentFound: (payment) => {
-                    log("BİNGO! Takılı ödeme bulundu.");
+                    log("!!! BİNGO !!!");
+                    log("Eksik işlem yakalandı.");
                     detectedId = payment.identifier;
                     idDisplay.innerText = detectedId;
                     idBox.style.display = "block";
                     fixBtn.style.display = "block";
-                    log("ID: " + detectedId);
                 }
             });
             
+            log("Kullanıcı doğrulandı.");
             setTimeout(() => {
-                if(!detectedId) log("Bekleyen ödeme bulunamadı. SDK temiz görünüyor.");
-            }, 3000);
+                if(!detectedId) log("Sonuç: Bekleyen ödeme yakalanamadı.");
+            }, 2000);
 
         } catch (e) {
-            log("HATA: " + e.message);
+            log("SDK HATASI: " + e.message);
         }
     }
 
     async function fixPayment() {
         if(!detectedId) return;
-        log("Silme komutu gönderiliyor...");
+        log("İptal komutu gönderiliyor...");
         try {
             const res = await fetch('/api/approve', {
                 method: 'POST',
@@ -81,8 +94,8 @@
                 body: JSON.stringify({ action: 'cancel', paymentId: detectedId })
             });
             const data = await res.json();
-            log("Sunucu Yanıtı: " + (data.success ? "BAŞARILI" : "HATA"));
-            log("Lütfen şimdi orijinal uygulamanıza dönüp giriş yapmayı deneyin.");
+            log("API Yanıtı: " + JSON.stringify(data));
+            log("İŞLEM TAMAMLANDI. Lütfen şimdi ana uygulamanızı açın.");
         } catch (e) {
             log("Bağlantı hatası!");
         }
