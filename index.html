@@ -38,7 +38,7 @@
         .locked-content { filter: blur(4px); opacity: 0.7; pointer-events: none; }
         .premium-lock-overlay { position: absolute; top: 0; left: 0; right: 0; bottom: 0; display: none; flex-direction: column; align-items: center; justify-content: flex-start; background: rgba(15, 23, 42, 0.35); backdrop-filter: blur(1px); z-index: 100; padding-top: 10px; text-align: center; overflow-y: auto; }
 
-        .diamond-spin { font-size: 1.6em; margin-bottom: 3px; display: inline-block; animation: diamond-rotate 4s linear infinite; filter: drop-shadow(0 0 10px #6366f1); }
+        .diamond-spin { margin-bottom: 3px; display: inline-block; animation: diamond-rotate 4s linear infinite; filter: drop-shadow(0 0 12px #6366f1); }
         @keyframes diamond-rotate { from { transform: rotateY(0deg); } to { transform: rotateY(360deg); } }
 
         .secure-badge { background: #0d2a2a; border: 2px solid #10b981; border-radius: 14px; padding: 16px; width: 92%; box-sizing: border-box; margin: 6px 0; }
@@ -119,7 +119,25 @@
         <div id="market-title" class="section-title-box">Satın Alabileceğiniz Domainler</div>
 
         <div id="premium-lock" class="premium-lock-overlay">
-            <div class="diamond-spin">💎</div>
+            <svg class="diamond-spin" width="56" height="56" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+                <defs>
+                    <linearGradient id="diamondGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                        <stop offset="0%" stop-color="#a5b4fc"/>
+                        <stop offset="45%" stop-color="#6366f1"/>
+                        <stop offset="100%" stop-color="#4338ca"/>
+                    </linearGradient>
+                    <linearGradient id="diamondShine" x1="0%" y1="0%" x2="100%" y2="100%">
+                        <stop offset="0%" stop-color="#ffffff" stop-opacity="0.9"/>
+                        <stop offset="100%" stop-color="#ffffff" stop-opacity="0"/>
+                    </linearGradient>
+                </defs>
+                <polygon points="50,5 78,30 50,95 22,30" fill="url(#diamondGrad)" stroke="#c7d2fe" stroke-width="1.5"/>
+                <polygon points="22,30 50,5 38,30" fill="url(#diamondShine)"/>
+                <polygon points="50,5 78,30 62,30" fill="#818cf8" opacity="0.5"/>
+                <polyline points="22,30 78,30" stroke="#e0e7ff" stroke-width="1" opacity="0.6"/>
+                <polyline points="38,30 50,95" stroke="#e0e7ff" stroke-width="0.8" opacity="0.4"/>
+                <polyline points="62,30 50,95" stroke="#e0e7ff" stroke-width="0.8" opacity="0.4"/>
+            </svg>
             <div class="lock-title-box">Ayrıcalıklı Web3 Dünyasına Katılın</div>
 
             <div class="secure-badge">
