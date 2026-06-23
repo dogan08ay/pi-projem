@@ -17,7 +17,7 @@ function getDb() {
 // Frontend'den gelen 'amount' değerine güvenilmiyor; bu, fiyat manipülasyonunu
 // (örn. kullanıcının tarayıcı konsolundan sahte düşük fiyat göndermesini) önler.
 const DOMAIN_PRICES = {
-  'test-domain': 10,
+  'test-domain': 0,1,
   'etstur.pi': 250,
   'eminevim.pi': 150,
   'fuzulev.pi': 300,
