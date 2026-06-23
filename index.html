@@ -38,8 +38,12 @@
         .locked-content { filter: blur(4px); opacity: 0.7; pointer-events: none; }
         .premium-lock-overlay { position: absolute; top: 0; left: 0; right: 0; bottom: 0; display: none; flex-direction: column; align-items: center; justify-content: flex-start; background: rgba(15, 23, 42, 0.35); backdrop-filter: blur(1px); z-index: 100; padding-top: 10px; text-align: center; overflow-y: auto; }
 
-        .diamond-spin { margin-bottom: 3px; display: inline-block; animation: diamond-rotate 4s linear infinite; filter: drop-shadow(0 0 12px #6366f1); }
-        @keyframes diamond-rotate { from { transform: rotateY(0deg); } to { transform: rotateY(360deg); } }
+        .diamond-spin { margin-bottom: 3px; display: inline-block; animation: diamond-rotate 5s ease-in-out infinite; filter: drop-shadow(0 0 14px #818cf8); }
+        @keyframes diamond-rotate { 0%, 100% { transform: rotateY(0deg) scale(1); } 50% { transform: rotateY(180deg) scale(1.06); } }
+        .diamond-sparkle { opacity: 0; transform-origin: center; animation: sparkle-twinkle 2.2s ease-in-out infinite; }
+        .diamond-sparkle-1 { animation-delay: 0.2s; }
+        .diamond-sparkle-2 { animation-delay: 1.3s; }
+        @keyframes sparkle-twinkle { 0%, 100% { opacity: 0; transform: scale(0.4) rotate(0deg); } 50% { opacity: 1; transform: scale(1) rotate(20deg); } }
 
         .secure-badge { background: #0d2a2a; border: 2px solid #10b981; border-radius: 14px; padding: 16px; width: 92%; box-sizing: border-box; margin: 6px 0; }
         .secure-badge-title { color: #10b981; font-size: 1em; font-weight: 800; margin-bottom: 8px; border-bottom: 1px solid rgba(16,185,129,0.3); padding-bottom: 6px; }
@@ -101,7 +105,8 @@
     <div class="card" id="user-panel" style="display:none; border:1.5px solid #10b981;">
         <h3 style="color:#10b981;margin:0 0 8px 0; font-size: 0.95em;">👤 Satın Alma Geçmişim</h3>
         <div class="user-info-note">
-            ℹ️ <b>Bilgi:</b> Bu uygulama Test-Pi ağında deneme amaçlıdır. Satın aldığınız domainler, diğer kullanıcıların da test yapabilmesi için markette tekrar <span class="btn-fake-buy">SATIN AL</span> olarak görünebilir <b>ve satın alma geçmişinizden silinebilir.</b>
+            <div style="display:inline-block; background:#6366f1; color:#fff; font-weight:900; font-size:0.85em; padding:3px 10px; border-radius:8px; margin-bottom:6px; letter-spacing:0.3px;">ℹ️ BİLGİ</div>
+            <div>Bu uygulama Test-Pi ağında deneme amaçlıdır. Satın aldığınız domainler, diğer kullanıcıların da test yapabilmesi için markette tekrar <span class="btn-fake-buy">SATIN AL</span> olarak görünebilir <b>ve satın alma geçmişinizden silinebilir.</b></div>
         </div>
         <div id="my-domains-list" style="text-align: left;"></div>
     </div>
@@ -129,29 +134,68 @@
         <div id="market-title" class="section-title-box">Satın Alabileceğiniz Domainler</div>
 
         <div id="premium-lock" class="premium-lock-overlay">
-            <svg class="diamond-spin" width="56" height="56" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+            <svg class="diamond-spin" width="64" height="64" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
                 <defs>
-                    <linearGradient id="diamondGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <linearGradient id="diamondTable" x1="0%" y1="0%" x2="100%" y2="100%">
+                        <stop offset="0%" stop-color="#e0e7ff"/>
+                        <stop offset="100%" stop-color="#a5b4fc"/>
+                    </linearGradient>
+                    <linearGradient id="diamondLeft" x1="0%" y1="0%" x2="100%" y2="100%">
+                        <stop offset="0%" stop-color="#818cf8"/>
+                        <stop offset="100%" stop-color="#4f46e5"/>
+                    </linearGradient>
+                    <linearGradient id="diamondRight" x1="0%" y1="0%" x2="100%" y2="100%">
                         <stop offset="0%" stop-color="#a5b4fc"/>
-                        <stop offset="45%" stop-color="#6366f1"/>
-                        <stop offset="100%" stop-color="#4338ca"/>
+                        <stop offset="100%" stop-color="#6366f1"/>
                     </linearGradient>
-                    <linearGradient id="diamondShine" x1="0%" y1="0%" x2="100%" y2="100%">
-                        <stop offset="0%" stop-color="#ffffff" stop-opacity="0.9"/>
+                    <linearGradient id="diamondPavilion" x1="0%" y1="0%" x2="0%" y2="100%">
+                        <stop offset="0%" stop-color="#4338ca"/>
+                        <stop offset="100%" stop-color="#312e81"/>
+                    </linearGradient>
+                    <radialGradient id="diamondGlow" cx="50%" cy="30%" r="60%">
+                        <stop offset="0%" stop-color="#ffffff" stop-opacity="0.95"/>
                         <stop offset="100%" stop-color="#ffffff" stop-opacity="0"/>
-                    </linearGradient>
+                    </radialGradient>
                 </defs>
-                <polygon points="50,5 78,30 50,95 22,30" fill="url(#diamondGrad)" stroke="#c7d2fe" stroke-width="1.5"/>
-                <polygon points="22,30 50,5 38,30" fill="url(#diamondShine)"/>
-                <polygon points="50,5 78,30 62,30" fill="#818cf8" opacity="0.5"/>
-                <polyline points="22,30 78,30" stroke="#e0e7ff" stroke-width="1" opacity="0.6"/>
-                <polyline points="38,30 50,95" stroke="#e0e7ff" stroke-width="0.8" opacity="0.4"/>
-                <polyline points="62,30 50,95" stroke="#e0e7ff" stroke-width="0.8" opacity="0.4"/>
+
+                <!-- Üst taç (crown) facet'leri -->
+                <polygon points="50,8 68,22 50,30 32,22" fill="url(#diamondTable)" stroke="#f5f3ff" stroke-width="0.8"/>
+                <polygon points="32,22 50,30 50,8 18,28" fill="url(#diamondLeft)" stroke="#4338ca" stroke-width="0.6" opacity="0.9"/>
+                <polygon points="68,22 82,28 50,30 50,8" fill="url(#diamondRight)" stroke="#4338ca" stroke-width="0.6" opacity="0.9"/>
+                <polygon points="18,28 50,30 32,22" fill="#c7d2fe" opacity="0.55"/>
+                <polygon points="82,28 50,30 68,22" fill="#818cf8" opacity="0.55"/>
+
+                <!-- Gövde (girdle) -->
+                <polygon points="18,28 82,28 50,30" fill="#a5b4fc" opacity="0.35"/>
+
+                <!-- Alt sivri uç (pavilion) facet'leri -->
+                <polygon points="18,28 50,30 50,92" fill="url(#diamondPavilion)" stroke="#312e81" stroke-width="0.6"/>
+                <polygon points="82,28 50,30 50,92" fill="url(#diamondRight)" stroke="#312e81" stroke-width="0.6"/>
+                <polygon points="18,28 50,92 35,40" fill="#3730a3" opacity="0.6"/>
+                <polygon points="82,28 50,92 65,40" fill="#6366f1" opacity="0.45"/>
+
+                <!-- Ana parlama (üst tabloda) -->
+                <ellipse cx="42" cy="16" rx="13" ry="6" fill="url(#diamondGlow)"/>
+
+                <!-- Facet çizgileri -->
+                <polyline points="18,28 82,28" stroke="#ffffff" stroke-width="0.7" opacity="0.5"/>
+                <polyline points="32,22 50,30" stroke="#ffffff" stroke-width="0.5" opacity="0.5"/>
+                <polyline points="68,22 50,30" stroke="#ffffff" stroke-width="0.5" opacity="0.5"/>
+                <polyline points="50,30 50,92" stroke="#ffffff" stroke-width="0.5" opacity="0.35"/>
+
+                <!-- Dönerken parlayan yıldız sparkle'lar -->
+                <g class="diamond-sparkle diamond-sparkle-1">
+                    <path d="M 22 18 L 24 23 L 29 25 L 24 27 L 22 32 L 20 27 L 15 25 L 20 23 Z" fill="#ffffff"/>
+                </g>
+                <g class="diamond-sparkle diamond-sparkle-2">
+                    <path d="M 76 34 L 77.5 37.5 L 81 39 L 77.5 40.5 L 76 44 L 74.5 40.5 L 71 39 L 74.5 37.5 Z" fill="#ffffff"/>
+                </g>
             </svg>
             <div class="lock-title-box">Ayrıcalıklı Web3 Dünyasına Katılın</div>
 
             <div class="secure-badge">
-                <div class="secure-badge-title">🛡️ Güvenli Bağlantı</div>
+                <div style="font-size:1.8em; text-align:center; margin-bottom:4px; filter: drop-shadow(0 0 6px rgba(16,185,129,0.6));">🛡️</div>
+                <div class="secure-badge-title" style="text-align:center;">Güvenli Bağlantı</div>
                 <div class="secure-badge-body">
                     Sistemimiz şu anda <span class="blink-yellow">TEST-Pİ</span> ağında çalışmaktadır.
                 </div>
@@ -275,7 +319,20 @@ function render() {
         const card = document.createElement('div');
         card.className = 'domain-card';
         card.innerHTML = `<img src="${d.img}" class="domain-img" onerror="this.src='data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMDAiIGhlaWdodD0iMTAwIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjNDc1NTY5Ii8+PC9zdmc+'"><div class="domain-name">${d.name}</div><div class="domain-price">${data.price} Pİ</div>`;
-        if (data.sold) { card.innerHTML += `<div class="btn-sold">SATILDI</div>`; }
+        if (data.sold) {
+            card.innerHTML += `<div class="btn-sold">SATILDI</div>`;
+            // Sadece admin (doganay0808) bu butonu görür - diğer kullanıcılar için
+            // satılmış domain her zamanki gibi sadece "SATILDI" gösterir.
+            if (isAuth && currentUser === "doganay0808") {
+                const relistBtn = document.createElement('button');
+                relistBtn.className = 'btn-buy';
+                relistBtn.style.background = '#f59e0b';
+                relistBtn.style.marginTop = '4px';
+                relistBtn.innerText = '↺ Tekrar Satılık Yap';
+                relistBtn.onclick = () => handleRelist(d.name);
+                card.appendChild(relistBtn);
+            }
+        }
         else {
             const btn = document.createElement('button');
             btn.className = 'btn-buy';
@@ -386,6 +443,36 @@ async function handleIncompletePayment(payment) {
         }
     } catch (e) {
         console.error("Bekleyen ödeme kapatılırken hata:", e);
+    }
+}
+
+// Admin bir domain'i "tekrar satılık" yapmak istediğinde çağrılır.
+// Gerçek işlem (Firestore yazma, istatistik düşürme) backend'de (api/approve.js)
+// yapılır - frontend'in domains koleksiyonuna yazma yetkisi yok (Firestore kuralı).
+// Backend ayrıca kullanıcı adının gerçekten admin olduğunu da kontrol eder.
+async function handleRelist(domainName) {
+    if (!confirm(`"${domainName}" domainini tekrar satılık yapmak istediğinize emin misiniz?\n\nBu işlem, satış istatistiklerinden bu domain'in fiyatını düşürecek.`)) {
+        return;
+    }
+    try {
+        const response = await fetch('/api/approve', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                action: 'relist',
+                domainName: domainName,
+                adminUsername: currentUser
+            })
+        });
+        const result = await response.json();
+        if (!response.ok || !result.success) {
+            alert('Tekrar satılık yapma işlemi başarısız: ' + (result.error || 'Bilinmeyen hata'));
+        }
+        // Başarılıysa, domains koleksiyonundaki onSnapshot dinleyicisi
+        // backend'in yazdığı yeni veriyi otomatik alıp ekranı güncelleyecek.
+    } catch (e) {
+        console.error("Relist hatası:", e);
+        alert('Bir hata oluştu, tekrar deneyin.');
     }
 }
 
