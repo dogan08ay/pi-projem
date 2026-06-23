@@ -115,7 +115,7 @@
         <div id="log-list"></div>
     </div>
 
-    <div class="card" style="position: relative; padding: 8px; margin-bottom: 4px; overflow: visible;">
+    <div class="card" id="market-card" style="position: relative; padding: 8px; margin-bottom: 4px; overflow: visible;">
         <div id="market-title" class="section-title-box">Satın Alabileceğiniz Domainler</div>
 
         <div id="premium-lock" class="premium-lock-overlay">
@@ -213,8 +213,17 @@ function render() {
     const lock = document.getElementById("premium-lock");
     if (!list) return;
 
-    if (!isAuth) { lock.style.display = "flex"; list.classList.add("locked-content"); }
-    else { lock.style.display = "none"; list.classList.remove("locked-content"); }
+    if (!isAuth) {
+        // Kilitliyken overlay normal akışta dursun (absolute değil) ki kart
+        // sadece kilit kutusunun gerçek yüksekliğini alsın, altta boşluk kalmasın.
+        // Arkadaki domain-grid zaten display:none ile tamamen gizleniyor.
+        lock.style.position = "relative";
+        lock.style.display = "flex";
+        list.style.display = "none";
+    } else {
+        lock.style.display = "none";
+        list.style.display = "grid";
+    }
 
     list.innerHTML = '';
     let myHtml = "";
