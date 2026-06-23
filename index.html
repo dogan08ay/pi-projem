@@ -36,15 +36,15 @@
         .lock-title-box { background:linear-gradient(135deg,#fef3c7 0%,#fde68a 100%); color:#1e293b; padding:4px 10px; border-radius:10px; border:2px solid #f59e0b; font-size:0.8em; font-weight:900; margin-bottom:4px; display:inline-block; }
 
         .locked-content { filter: blur(4px); opacity: 0.7; pointer-events: none; }
-        .premium-lock-overlay { position: absolute; top: 0; left: 0; right: 0; bottom: 0; display: none; flex-direction: column; align-items: center; justify-content: flex-start; background: rgba(15, 23, 42, 0.75); backdrop-filter: blur(2px); z-index: 100; padding-top: 10px; text-align: center; overflow-y: auto; }
+        .premium-lock-overlay { position: absolute; top: 0; left: 0; right: 0; bottom: 0; display: none; flex-direction: column; align-items: center; justify-content: flex-start; background: rgba(15, 23, 42, 0.35); backdrop-filter: blur(1px); z-index: 100; padding-top: 10px; text-align: center; overflow-y: auto; }
 
         .diamond-spin { font-size: 1.6em; margin-bottom: 3px; display: inline-block; animation: diamond-rotate 4s linear infinite; filter: drop-shadow(0 0 10px #6366f1); }
         @keyframes diamond-rotate { from { transform: rotateY(0deg); } to { transform: rotateY(360deg); } }
 
-        .secure-badge { background: #0d2a2a; border: 2px solid #10b981; border-radius: 12px; padding: 8px; width: 92%; box-sizing: border-box; margin: 3px 0; }
-        .secure-badge-title { color: #10b981; font-size: 0.78em; font-weight: 800; margin-bottom: 4px; border-bottom: 1px solid rgba(16,185,129,0.3); padding-bottom: 3px; }
-        .secure-badge-body { color: #e2e8f0; font-size: 0.68em; line-height: 1.3; margin-bottom: 4px; border-bottom: 1px solid rgba(16,185,129,0.3); padding-bottom: 4px; }
-        .secure-badge-warning { color: #fbbf24; font-size: 0.72em; font-weight: 900; line-height: 1.25; text-transform: uppercase; }
+        .secure-badge { background: #0d2a2a; border: 2px solid #10b981; border-radius: 14px; padding: 16px; width: 92%; box-sizing: border-box; margin: 6px 0; }
+        .secure-badge-title { color: #10b981; font-size: 1em; font-weight: 800; margin-bottom: 8px; border-bottom: 1px solid rgba(16,185,129,0.3); padding-bottom: 6px; }
+        .secure-badge-body { color: #e2e8f0; font-size: 0.85em; line-height: 1.5; margin-bottom: 8px; border-bottom: 1px solid rgba(16,185,129,0.3); padding-bottom: 8px; }
+        .secure-badge-warning { color: #fbbf24; font-size: 0.9em; font-weight: 900; line-height: 1.4; text-transform: uppercase; }
 
         @keyframes blinker { 0% { opacity: 1.0; } 50% { opacity: 0.3; } 100% { opacity: 1.0; } }
         .blink-yellow { animation: blinker 2s linear infinite; color: #fbbf24; font-weight: 900; }
@@ -358,15 +358,11 @@ window.loginWithPi = async function() {
         document.getElementById("user-status-box").style.display = "block";
         document.getElementById("user-panel").style.display = "block";
 
-        const today = new Date().toISOString().split("T")[0];
-        const userDocRef = doc(db, "daily_users", today);
-        const userSnap = await getDoc(userDocRef);
-        let currentUsers = userSnap.exists() ? userSnap.data().users || {} : {};
-        currentUsers[currentUser] = Date.now();
-        await setDoc(userDocRef, { users: currentUsers }, { merge: true });
-
-        updateActiveStatus();
+        // Ekranı hemen güncelle - Firestore işlemlerini beklemeden.
+        // Eski (kilitli) görünümün bir an bile görünüp kaybolmasını önler.
         render();
+
+        const today = new Date().toISOString().split("T")[0];
         if (currentUser === "doganay0808") {
             document.getElementById("admin-panel").style.display = "block";
             const dateInput = document.getElementById("admin-date-input");
@@ -376,6 +372,15 @@ window.loginWithPi = async function() {
         } else {
             listenToLogs(today);
         }
+
+        // Günlük kullanıcı kaydı ve aktiflik bilgisi arka planda devam edebilir,
+        // ekranın hemen görünmesini engellemesin.
+        const userDocRef = doc(db, "daily_users", today);
+        const userSnap = await getDoc(userDocRef);
+        let currentUsers = userSnap.exists() ? userSnap.data().users || {} : {};
+        currentUsers[currentUser] = Date.now();
+        await setDoc(userDocRef, { users: currentUsers }, { merge: true });
+        updateActiveStatus();
     } catch (e) {
         console.error("Giriş hatası:", e);
         alert("GİRİŞ HATASI!");
