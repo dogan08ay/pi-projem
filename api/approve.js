@@ -1,3 +1,31 @@
+import { initializeApp, getApps, cert } from 'firebase-admin/app';
+import { getFirestore, FieldValue } from 'firebase-admin/firestore';
+
+// --- Firebase Admin SDK kurulumu ---
+// FIREBASE_SERVICE_ACCOUNT env variable'ı, Firebase Console > Project Settings >
+// Service Accounts > Generate new private key ile indirilen JSON dosyasının
+// TAMAMININ (tek satır JSON string olarak) içeriğidir.
+function getDb() {
+  if (getApps().length === 0) {
+    const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
+    initializeApp({ credential: cert(serviceAccount) });
+  }
+  return getFirestore();
+}
+
+// Gerçek domain fiyatları SADECE burada, sunucu tarafında tanımlı.
+// Frontend'den gelen 'amount' değerine güvenilmiyor; bu, fiyat manipülasyonunu
+// (örn. kullanıcının tarayıcı konsolundan sahte düşük fiyat göndermesini) önler.
+const DOMAIN_PRICES = {
+  'test-domain': 10,
+  'etstur.pi': 250,
+  'eminevim.pi': 150,
+  'fuzulev.pi': 300,
+  'fibabank.pi': 500,
+  'sekerbank.pi': 600,
+  'doganay.pi': 150
+};
+
 export default async function handler(req, res) {
   // --- CORS: artık '*' değil, izin verilen origin'den geliyor ---
   // Vercel panelinden bir ortam değişkeni ekleyin:
@@ -11,9 +39,6 @@ export default async function handler(req, res) {
 
   const requestOrigin = req.headers.origin;
   if (allowedOrigins.length === 0) {
-    // ALLOWED_ORIGIN henüz ayarlanmadıysa eski davranışa düşmeyelim,
-    // ama site çalışmaya devam etsin diye gelen origin'i yansıtıyoruz.
-    // Bunu fark eder etmez Vercel'de ALLOWED_ORIGIN'i tanımlayın.
     if (requestOrigin) res.setHeader('Access-Control-Allow-Origin', requestOrigin);
   } else if (requestOrigin && allowedOrigins.includes(requestOrigin)) {
     res.setHeader('Access-Control-Allow-Origin', requestOrigin);
@@ -25,14 +50,12 @@ export default async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ error: "Sadece POST kabul edilir" });
 
-  const { paymentId, action, txid, username, domainName, amount } = req.body;
+  const { paymentId, action, txid, username, domainName } = req.body;
 
   if (!paymentId || !action) {
     return res.status(400).json({ error: "paymentId ve action zorunludur" });
   }
 
-  // İzin verilen action'lar dışında bir şey gelirse reddet
-  // (Pi Platform API'sinin gerçek endpoint'leri: approve, complete, cancel)
   const allowedActions = ['approve', 'complete', 'cancel'];
   if (!allowedActions.includes(action)) {
     return res.status(400).json({ error: "Geçersiz action" });
@@ -79,14 +102,52 @@ export default async function handler(req, res) {
     }
 
     if (action === 'complete') {
-      const purchaseCode = "WEB3-" + Math.random().toString(36).substr(2, 6).toUpperCase();
+      // --- Domain satışını Firestore'a SADECE burada (backend'de) yazıyoruz. ---
+      // Frontend artık 'domains' koleksiyonuna doğrudan yazamıyor (Firestore
+      // kuralında kapatıldı). Fiyat da client'tan gelen 'amount' ile değil,
+      // sunucudaki DOMAIN_PRICES listesinden alınıyor - bu, fiyat manipülasyonunu
+      // tamamen engeller.
+      let purchaseCode = null;
+      if (domainName && username && DOMAIN_PRICES.hasOwnProperty(domainName)) {
+        const realPrice = DOMAIN_PRICES[domainName];
+        purchaseCode = "WEB3-" + Math.random().toString(36).substr(2, 6).toUpperCase();
 
-      if (domainName && username) {
-        const groupMsg = `🎉 *YENİ SATIŞ!*\n\n👤 @${username}, *${domainName}* domainini başarıyla satın aldı! 🚀\n\n🌐 Sitemize hoş geldin yeni sahibi!`;
-        await sendTG(TG_GROUP_ID, groupMsg);
+        try {
+          const db = getDb();
+          const domainRef = db.collection('domains').doc(domainName);
+          const domainSnap = await domainRef.get();
 
-        const adminMsg = `✅ *SATIŞ TAMAMLANDI*\n\n👤 *Alıcı:* @${username}\n🌐 *Domain:* ${domainName}\n💰 *Tutar:* ${amount} Pi\n🔑 *Üretilen Şifre:* \`${purchaseCode}\``;
-        await sendTG(TG_CHAT_ID, adminMsg);
+          // Domain zaten satılmışsa (başka biri araya girmişse) ikinci kez satma
+          if (!domainSnap.exists || domainSnap.data().sold !== true) {
+            await domainRef.set({
+              sold: true,
+              price: realPrice,
+              txid: txid || null,
+              buyer: username,
+              at: Date.now()
+            }, { merge: true });
+
+            await db.collection('global_sales').doc(txid || paymentId).set({
+              user: username,
+              domain: domainName,
+              price: realPrice,
+              at: Date.now()
+            });
+
+            const groupMsg = `🎉 *YENİ SATIŞ!*\n\n👤 @${username}, *${domainName}* domainini başarıyla satın aldı! 🚀\n\n🌐 Sitemize hoş geldin yeni sahibi!`;
+            await sendTG(TG_GROUP_ID, groupMsg);
+
+            const adminMsg = `✅ *SATIŞ TAMAMLANDI*\n\n👤 *Alıcı:* @${username}\n🌐 *Domain:* ${domainName}\n💰 *Tutar:* ${realPrice} Pi\n🔑 *Üretilen Şifre:* \`${purchaseCode}\``;
+            await sendTG(TG_CHAT_ID, adminMsg);
+          } else {
+            console.warn("Domain zaten satılmış, tekrar yazılmadı:", domainName);
+          }
+        } catch (firestoreErr) {
+          console.error("Firestore yazma hatası:", firestoreErr);
+          // Ödeme Pi tarafında tamamlandı ama Firestore yazımı başarısız oldu.
+          // Bunu mutlaka loglayıp manuel kontrol edin (admin Telegram'a da bildirelim).
+          await sendTG(TG_CHAT_ID, `⚠️ *DİKKAT:* Ödeme tamamlandı (txid: ${txid}) ama Firestore'a yazılamadı. Domain: ${domainName}, Kullanıcı: @${username}. Manuel kontrol edin.`);
+        }
       }
 
       return res.status(200).json({ ...data, purchaseCode, success: true });
