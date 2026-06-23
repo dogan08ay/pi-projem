@@ -112,6 +112,16 @@
         <div style="margin-bottom: 8px; text-align: left;">
             <input type="date" id="admin-date-input" class="admin-date-picker">
         </div>
+        <div id="daily-stats-box" style="display:flex; gap:8px; margin-bottom:10px;">
+            <div style="flex:1; background:#0f172a; border:1px solid #6366f1; border-radius:10px; padding:8px; text-align:center;">
+                <div style="font-size:0.65em; color:#94a3b8; font-weight:bold;">SATIŞ ADEDİ</div>
+                <div id="daily-stat-count" style="font-size:1.2em; color:#fbbf24; font-weight:900;">0</div>
+            </div>
+            <div style="flex:1; background:#0f172a; border:1px solid #6366f1; border-radius:10px; padding:8px; text-align:center;">
+                <div style="font-size:0.65em; color:#94a3b8; font-weight:bold;">HACİM (Pİ)</div>
+                <div id="daily-stat-volume" style="font-size:1.2em; color:#fbbf24; font-weight:900;">0</div>
+            </div>
+        </div>
         <div id="log-list"></div>
     </div>
 
@@ -296,6 +306,8 @@ function render() {
     });
 }
 
+let adminStatsUnsubscribe = null;
+
 function listenToLogs(date) {
     if (adminLogUnsubscribe) adminLogUnsubscribe();
     adminLogUnsubscribe = onSnapshot(doc(db, "daily_users", date), (snap) => {
@@ -307,6 +319,16 @@ function listenToLogs(date) {
             sortedUsers.forEach(u => { html += `<div class="log-item"><b>@${u}</b><span>${new Date(users[u]).toLocaleTimeString()}</span></div>`; });
         }
         document.getElementById("log-list").innerHTML = html;
+    });
+
+    // Seçilen güne ait satış adedi ve hacmini gösteriyoruz.
+    // Bu veri backend (api/approve.js) tarafından her satış sonrası
+    // 'daily_stats' koleksiyonuna increment() ile yazılıyor.
+    if (adminStatsUnsubscribe) adminStatsUnsubscribe();
+    adminStatsUnsubscribe = onSnapshot(doc(db, "daily_stats", date), (snap) => {
+        const data = snap.data() || {};
+        document.getElementById("daily-stat-count").innerText = data.count || 0;
+        document.getElementById("daily-stat-volume").innerText = data.volume || 0;
     });
 }
 
