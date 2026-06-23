@@ -13,18 +13,46 @@ function getDb() {
   return getFirestore();
 }
 
-// Gerçek domain fiyatları SADECE burada, sunucu tarafında tanımlı.
-// Frontend'den gelen 'amount' değerine güvenilmiyor; bu, fiyat manipülasyonunu
-// (örn. kullanıcının tarayıcı konsolundan sahte düşük fiyat göndermesini) önler.
-const DOMAIN_PRICES = {
-  'test-domain': 0.1,
-  'etstur.pi': 250,
-  'eminevim.pi': 150,
-  'fuzulev.pi': 300,
-  'fibabank.pi': 500,
-  'sekerbank.pi': 600,
-  'doganay.pi': 150
-};
+// Domain fiyatları artık burada sabit DEĞİL. Firestore'daki 'domains'
+// koleksiyonunun her belgesindeki 'price' alanından okunuyor. Bu sayede
+// admin panelinden fiyat güncellendiğinde kod değişmeden yansır.
+// Yeni bir domain için minimum varsayılan değerler (sadece domain hiç
+// Firestore'da yoksa, ilk defa admin panelinden ekleninceye kadar kullanılır):
+const KNOWN_DOMAIN_NAMES = [
+  'test-domain', 'etstur.pi', 'eminevim.pi', 'fuzulev.pi',
+  'fibabank.pi', 'sekerbank.pi', 'doganay.pi'
+];
+
+// Firestore'dan bir domain'in güncel/gerçek fiyatını okur.
+// Domain Firestore'da yoksa null döner (geçersiz domain anlamına gelir).
+async function getRealPrice(db, domainName) {
+  const snap = await db.collection('domains').doc(domainName).get();
+  if (!snap.exists) return null;
+  const price = snap.data().price;
+  return typeof price === 'number' ? price : null;
+}
+
+// --- GERÇEK admin doğrulaması ---
+// Frontend'in gönderdiği bir 'adminUsername' string'ine güvenmek güvensizdir
+// (sahte istekle taklit edilebilir). Bunun yerine, Pi.authenticate()'ten gelen
+// accessToken'ı Pi'nin kendi /v2/me endpoint'ine soruyoruz. Pi, token geçerliyse
+// gerçek kullanıcı adını döner; token sahteyse 401 ile reddeder. Böylece
+// "doganay0808" olduğunu iddia eden biri, gerçekten o hesaba ait geçerli bir
+// Pi access token'ı olmadan asla admin işlemi yapamaz.
+async function verifyAdmin(accessToken) {
+  if (!accessToken) return false;
+  try {
+    const response = await fetch('https://api.minepi.com/v2/me', {
+      headers: { 'Authorization': `Bearer ${accessToken}` }
+    });
+    if (!response.ok) return false;
+    const userDto = await response.json();
+    return userDto.username === 'doganay0808';
+  } catch (e) {
+    console.error("Pi /v2/me doğrulama hatası:", e);
+    return false;
+  }
+}
 
 export default async function handler(req, res) {
   // --- CORS: artık '*' değil, izin verilen origin'den geliyor ---
@@ -50,7 +78,7 @@ export default async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ error: "Sadece POST kabul edilir" });
 
-  const { paymentId, action, txid, username, domainName, adminUsername } = req.body;
+  const { paymentId, action, txid, username, domainName, accessToken } = req.body;
 
   if (!action) {
     return res.status(400).json({ error: "action zorunludur" });
@@ -60,11 +88,12 @@ export default async function handler(req, res) {
   // ayrı çalışır - paymentId gerektirmez, Pi API'sine hiç gitmez. Sadece
   // Firestore üzerinde işlem yapar ve SADECE admin tarafından çağrılabilir.
   if (action === 'relist') {
-    if (adminUsername !== 'doganay0808') {
-      console.warn("Yetkisiz relist denemesi:", adminUsername, domainName);
+    const isAdmin = await verifyAdmin(accessToken);
+    if (!isAdmin) {
+      console.warn("Yetkisiz relist denemesi, domain:", domainName);
       return res.status(403).json({ error: "Bu işlem için yetkiniz yok" });
     }
-    if (!domainName || !DOMAIN_PRICES.hasOwnProperty(domainName)) {
+    if (!domainName) {
       return res.status(400).json({ error: "Geçersiz domain adı" });
     }
 
@@ -78,17 +107,18 @@ export default async function handler(req, res) {
       }
 
       const soldData = domainSnap.data();
-      const soldPrice = Number(soldData.price || DOMAIN_PRICES[domainName]);
+      const soldPrice = Number(soldData.price || 0);
       const soldAt = soldData.at;
 
-      // Domain'i tekrar satılık yap (sold:false), satış bilgilerini temizle
+      // Domain'i tekrar satılık yap (sold:false), fiyatı OLDUĞU GİBİ bırak
+      // (admin daha sonra ayrıca fiyat güncelleme formundan değiştirebilir),
+      // satış bilgilerini temizle.
       await domainRef.set({
         sold: false,
-        price: DOMAIN_PRICES[domainName],
         txid: null,
         buyer: null,
         at: null
-      });
+      }, { merge: true });
 
       // Not: Sayfanın üstündeki "Satılan Domain" ve "Toplam Hacim" (stats-bar)
       // zaten domains koleksiyonundan canlı olarak hesaplanıyor (sold:true olan
@@ -107,10 +137,77 @@ export default async function handler(req, res) {
         }
       }
 
-      console.log(`Domain tekrar satılık yapıldı: ${domainName} (admin: ${adminUsername})`);
+      console.log(`Domain tekrar satılık yapıldı: ${domainName}`);
       return res.status(200).json({ success: true });
     } catch (e) {
       console.error("Relist hatası:", e);
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  // --- 'update_price': Admin bir domain'in fiyatını güncellemek istediğinde.
+  // Pi ödeme akışıyla ilgisi yok, sadece Firestore'da fiyatı değiştirir.
+  if (action === 'update_price') {
+    const { domainName: dName, newPrice } = req.body;
+    const isAdminUP = await verifyAdmin(accessToken);
+    if (!isAdminUP) {
+      console.warn("Yetkisiz fiyat güncelleme denemesi, domain:", dName);
+      return res.status(403).json({ error: "Bu işlem için yetkiniz yok" });
+    }
+    const priceNum = Number(newPrice);
+    if (!dName || !priceNum || priceNum <= 0) {
+      return res.status(400).json({ error: "Geçersiz domain adı veya fiyat" });
+    }
+    try {
+      const db = getDb();
+      const domainRef = db.collection('domains').doc(dName);
+      const domainSnap = await domainRef.get();
+      if (!domainSnap.exists) {
+        return res.status(404).json({ error: "Domain bulunamadı" });
+      }
+      if (domainSnap.data().sold === true) {
+        return res.status(400).json({ error: "Satılmış bir domain'in fiyatı değiştirilemez. Önce tekrar satılık yapın." });
+      }
+      await domainRef.set({ price: priceNum }, { merge: true });
+      console.log(`Fiyat güncellendi: ${dName} -> ${priceNum} Pi`);
+      return res.status(200).json({ success: true });
+    } catch (e) {
+      console.error("Fiyat güncelleme hatası:", e);
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  // --- 'add_domain': Admin yeni bir domain eklemek istediğinde.
+  if (action === 'add_domain') {
+    const { domainName: newName, newPrice: newP, imgPath } = req.body;
+    const isAdminAD = await verifyAdmin(accessToken);
+    if (!isAdminAD) {
+      console.warn("Yetkisiz domain ekleme denemesi, domain:", newName);
+      return res.status(403).json({ error: "Bu işlem için yetkiniz yok" });
+    }
+    const priceNum2 = Number(newP);
+    if (!newName || !priceNum2 || priceNum2 <= 0) {
+      return res.status(400).json({ error: "Geçersiz domain adı veya fiyat" });
+    }
+    try {
+      const db = getDb();
+      const domainRef = db.collection('domains').doc(newName);
+      const existing = await domainRef.get();
+      if (existing.exists) {
+        return res.status(400).json({ error: "Bu domain adı zaten kayıtlı" });
+      }
+      await domainRef.set({
+        sold: false,
+        price: priceNum2,
+        img: imgPath || 'assets/default.jpeg',
+        txid: null,
+        buyer: null,
+        at: null
+      });
+      console.log(`Yeni domain eklendi: ${newName} (${priceNum2} Pi)`);
+      return res.status(200).json({ success: true });
+    } catch (e) {
+      console.error("Domain ekleme hatası:", e);
       return res.status(500).json({ error: e.message });
     }
   }
@@ -168,20 +265,26 @@ export default async function handler(req, res) {
       // --- Domain satışını Firestore'a SADECE burada (backend'de) yazıyoruz. ---
       // Frontend artık 'domains' koleksiyonuna doğrudan yazamıyor (Firestore
       // kuralında kapatıldı). Fiyat da client'tan gelen 'amount' ile değil,
-      // sunucudaki DOMAIN_PRICES listesinden alınıyor - bu, fiyat manipülasyonunu
-      // tamamen engeller.
+      // Firestore'daki domain belgesinin GÜNCEL 'price' alanından okunuyor.
+      // Bu, fiyat manipülasyonunu engellerken admin'in fiyatları Firestore
+      // üzerinden (admin panelinden) güncelleyebilmesini de sağlar.
       let purchaseCode = null;
-      if (domainName && username && DOMAIN_PRICES.hasOwnProperty(domainName)) {
-        const realPrice = DOMAIN_PRICES[domainName];
-        purchaseCode = "WEB3-" + Math.random().toString(36).substr(2, 6).toUpperCase();
-
+      if (domainName && username) {
         try {
           const db = getDb();
           const domainRef = db.collection('domains').doc(domainName);
           const domainSnap = await domainRef.get();
+          const realPrice = domainSnap.exists ? domainSnap.data().price : null;
+
+          if (typeof realPrice !== 'number') {
+            console.error("Domain Firestore'da bulunamadı veya fiyatı geçersiz:", domainName);
+            return res.status(400).json({ error: "Geçersiz domain" });
+          }
+
+          purchaseCode = "WEB3-" + Math.random().toString(36).substr(2, 6).toUpperCase();
 
           // Domain zaten satılmışsa (başka biri araya girmişse) ikinci kez satma
-          if (!domainSnap.exists || domainSnap.data().sold !== true) {
+          if (domainSnap.data().sold !== true) {
             await domainRef.set({
               sold: true,
               price: realPrice,
