@@ -50,10 +50,73 @@ export default async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ error: "Sadece POST kabul edilir" });
 
-  const { paymentId, action, txid, username, domainName } = req.body;
+  const { paymentId, action, txid, username, domainName, adminUsername } = req.body;
 
-  if (!paymentId || !action) {
-    return res.status(400).json({ error: "paymentId ve action zorunludur" });
+  if (!action) {
+    return res.status(400).json({ error: "action zorunludur" });
+  }
+
+  // --- 'relist' (tekrar satılık yapma) action'ı, Pi ödeme akışından tamamen
+  // ayrı çalışır - paymentId gerektirmez, Pi API'sine hiç gitmez. Sadece
+  // Firestore üzerinde işlem yapar ve SADECE admin tarafından çağrılabilir.
+  if (action === 'relist') {
+    if (adminUsername !== 'doganay0808') {
+      console.warn("Yetkisiz relist denemesi:", adminUsername, domainName);
+      return res.status(403).json({ error: "Bu işlem için yetkiniz yok" });
+    }
+    if (!domainName || !DOMAIN_PRICES.hasOwnProperty(domainName)) {
+      return res.status(400).json({ error: "Geçersiz domain adı" });
+    }
+
+    try {
+      const db = getDb();
+      const domainRef = db.collection('domains').doc(domainName);
+      const domainSnap = await domainRef.get();
+
+      if (!domainSnap.exists || domainSnap.data().sold !== true) {
+        return res.status(400).json({ error: "Bu domain zaten satılık durumda" });
+      }
+
+      const soldData = domainSnap.data();
+      const soldPrice = Number(soldData.price || DOMAIN_PRICES[domainName]);
+      const soldAt = soldData.at;
+
+      // Domain'i tekrar satılık yap (sold:false), satış bilgilerini temizle
+      await domainRef.set({
+        sold: false,
+        price: DOMAIN_PRICES[domainName],
+        txid: null,
+        buyer: null,
+        at: null
+      });
+
+      // Not: Sayfanın üstündeki "Satılan Domain" ve "Toplam Hacim" (stats-bar)
+      // zaten domains koleksiyonundan canlı olarak hesaplanıyor (sold:true olan
+      // domainleri sayıp topluyor). Domain'i sold:false yapmak bu toplamı
+      // otomatik olarak düşürür, ekstra bir işlem gerekmez.
+
+      // Eğer domain BUGÜN satılmışsa, günlük istatistikten de düş
+      if (soldAt) {
+        const soldDate = new Date(soldAt).toISOString().split('T')[0];
+        const today = new Date().toISOString().split('T')[0];
+        if (soldDate === today) {
+          await db.collection('daily_stats').doc(today).set({
+            count: FieldValue.increment(-1),
+            volume: FieldValue.increment(-soldPrice)
+          }, { merge: true });
+        }
+      }
+
+      console.log(`Domain tekrar satılık yapıldı: ${domainName} (admin: ${adminUsername})`);
+      return res.status(200).json({ success: true });
+    } catch (e) {
+      console.error("Relist hatası:", e);
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  if (!paymentId) {
+    return res.status(400).json({ error: "paymentId zorunludur" });
   }
 
   const allowedActions = ['approve', 'complete', 'cancel'];
