@@ -460,21 +460,60 @@ function renderAdminPriceList() {
     if (!container) return;
     let html = "";
     domains.forEach(d => {
-        const data = domainData[d.name] || { price: d.price };
+        const data = domainData[d.name] || { price: d.price, sold: false };
+        const isSold = data.sold === true;
+        // Satılmış domainler silinemez (backend de bunu reddeder), bu yüzden
+        // Sil butonu sadece henüz satılmamış domainler için gösteriliyor.
+        const deleteBtn = isSold
+            ? ''
+            : `<button onclick="handleDeleteDomain('${d.name}')" style="background:#ef4444; color:#fff; border:none; padding:5px 8px; border-radius:6px; font-size:0.7em; font-weight:bold; cursor:pointer;">Sil</button>`;
         html += `
             <div style="display:flex; align-items:center; gap:6px; margin-bottom:6px; background:#0f172a; padding:6px 8px; border-radius:8px;">
-                <span style="flex:1; font-size:0.8em; font-weight:bold; color:#e2e8f0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${d.name}</span>
-                <input type="number" id="price-input-${d.name}" value="${data.price}" style="width:70px; background:#1e293b; border:1px solid #6366f1; color:#fff; border-radius:6px; padding:4px 6px; font-size:0.8em;">
-                <button onclick="handlePriceUpdate('${d.name}')" style="background:#6366f1; color:#fff; border:none; padding:5px 8px; border-radius:6px; font-size:0.7em; font-weight:bold; cursor:pointer;">Güncelle</button>
+                <span style="flex:1; font-size:0.8em; font-weight:bold; color:#e2e8f0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${d.name}${isSold ? ' 🔒' : ''}</span>
+                <input type="number" id="price-input-${d.name}" value="${data.price}" ${isSold ? 'disabled' : ''} style="width:70px; background:#1e293b; border:1px solid #6366f1; color:#fff; border-radius:6px; padding:4px 6px; font-size:0.8em;">
+                <button onclick="handlePriceUpdate('${d.name}')" ${isSold ? 'disabled' : ''} style="background:#6366f1; color:#fff; border:none; padding:5px 8px; border-radius:6px; font-size:0.7em; font-weight:bold; cursor:pointer; opacity:${isSold ? '0.4' : '1'};">Güncelle</button>
+                ${deleteBtn}
             </div>
         `;
     });
     container.innerHTML = html;
 }
 
+// Admin bir domain'i silmek istediğinde çağrılır. Backend, sadece henüz
+// satılmamış domainlerin silinmesine izin verir.
+window.handleDeleteDomain = async function(domainName) {
+    if (!confirm(`"${domainName}" domainini KALICI OLARAK silmek istediğinize emin misiniz?\n\nBu işlem geri alınamaz.`)) {
+        return;
+    }
+    try {
+        const response = await fetch('/api/approve', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                action: 'delete_domain',
+                domainName: domainName,
+                accessToken: piAccessToken
+            })
+        });
+        const result = await response.json();
+        if (!response.ok || !result.success) {
+            alert('Domain silme başarısız: ' + (result.error || 'Bilinmeyen hata'));
+        } else {
+            alert(`"${domainName}" domaini silindi.`);
+            // domains dizisinden de çıkar ki ekranda hemen kaybolsun
+            domains = domains.filter(d => d.name !== domainName);
+            delete domainData[domainName];
+            render();
+        }
+    } catch (e) {
+        console.error("Domain silme hatası:", e);
+        alert('Bir hata oluştu, tekrar deneyin.');
+    }
+}
+
 // Admin bir domain'in fiyatını güncellediğinde çağrılır. Backend'de admin
 // kontrolünden geçer, Firestore'a sadece backend (Admin SDK) yazar.
-async function handlePriceUpdate(domainName) {
+window.handlePriceUpdate = async function(domainName) {
     const input = document.getElementById(`price-input-${domainName}`);
     const newPrice = Number(input.value);
     if (!newPrice || newPrice <= 0) {
