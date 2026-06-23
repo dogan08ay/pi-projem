@@ -134,6 +134,16 @@ export default async function handler(req, res) {
               at: Date.now()
             });
 
+            // Admin panelinde "bugün X domain satıldı, Y Pi hacim" gösterebilmek
+            // için günlük istatistikleri biriktiriyoruz. increment() kullanmak,
+            // aynı anda birden fazla satış olsa bile sayının doğru toplanmasını
+            // garanti eder (race condition oluşmaz).
+            const today = new Date().toISOString().split('T')[0];
+            await db.collection('daily_stats').doc(today).set({
+              count: FieldValue.increment(1),
+              volume: FieldValue.increment(realPrice)
+            }, { merge: true });
+
             const groupMsg = `🎉 *YENİ SATIŞ!*\n\n👤 @${username}, *${domainName}* domainini başarıyla satın aldı! 🚀\n\n🌐 Sitemize hoş geldin yeni sahibi!`;
             await sendTG(TG_GROUP_ID, groupMsg);
 
