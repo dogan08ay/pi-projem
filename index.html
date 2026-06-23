@@ -413,11 +413,15 @@ document.getElementById("confirm-buy-btn").onclick = async () => {
                 await fetch('/api/approve', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({paymentId:id, action:'approve'}) });
             },
             onReadyForServerCompletion: async (id, txid) => {
+                // Domain satışını artık Firestore'a BURADAN yazmıyoruz.
+                // Bu yazma işlemi backend'de (api/approve.js), Pi ödemesi
+                // gerçekten doğrulandıktan sonra, gerçek fiyatla yapılıyor.
+                // Frontend'in Firestore'a yazma yetkisi Firestore kuralında kapatıldı.
+                await fetch('/api/approve', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({paymentId:id, action:'complete', txid, username:currentUser, domainName:pendingDomain}) });
                 document.getElementById("success-modal").style.display = "flex";
-                await fetch('/api/approve', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({paymentId:id, action:'complete', txid, username:currentUser, domainName:pendingDomain, amount:pendingPrice}) });
-                await setDoc(doc(db, "domains", pendingDomain), { sold: true, price: pendingPrice, txid: txid, buyer: currentUser, at: Date.now() });
-                await setDoc(doc(db, "global_sales", txid), { user: currentUser, domain: pendingDomain, price: pendingPrice, at: Date.now() });
-                render();
+                // render() çağırmaya gerek yok: domains koleksiyonundaki onSnapshot
+                // dinleyicisi, backend'in yazdığı yeni veriyi otomatik olarak alıp
+                // ekranı zaten güncelleyecek.
             },
             onCancel: async (id) => {
                 // Kullanıcı iptal ettiğinde sunucuya da bildir, askıda kalmasın
