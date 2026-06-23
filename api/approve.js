@@ -212,6 +212,39 @@ export default async function handler(req, res) {
     }
   }
 
+  // --- 'delete_domain': Admin bir domain'i silmek istediğinde.
+  // Güvenlik için sadece HENÜZ SATILMAMIŞ domainler silinebilir - satılmış
+  // bir domain'i silmek, o domain'i satın almış kullanıcının "Satın Alma
+  // Geçmişi" görünümünü ve global_sales kaydını bozar, bu yüzden engellendi.
+  if (action === 'delete_domain') {
+    const { domainName: delName } = req.body;
+    const isAdminDel = await verifyAdmin(accessToken);
+    if (!isAdminDel) {
+      console.warn("Yetkisiz domain silme denemesi, domain:", delName);
+      return res.status(403).json({ error: "Bu işlem için yetkiniz yok" });
+    }
+    if (!delName) {
+      return res.status(400).json({ error: "Geçersiz domain adı" });
+    }
+    try {
+      const db = getDb();
+      const domainRef = db.collection('domains').doc(delName);
+      const domainSnap = await domainRef.get();
+      if (!domainSnap.exists) {
+        return res.status(404).json({ error: "Domain bulunamadı" });
+      }
+      if (domainSnap.data().sold === true) {
+        return res.status(400).json({ error: "Satılmış bir domain silinemez. Önce tekrar satılık yapın." });
+      }
+      await domainRef.delete();
+      console.log(`Domain silindi: ${delName}`);
+      return res.status(200).json({ success: true });
+    } catch (e) {
+      console.error("Domain silme hatası:", e);
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
   if (!paymentId) {
     return res.status(400).json({ error: "paymentId zorunludur" });
   }
