@@ -202,7 +202,8 @@ export default async function handler(req, res) {
         img: imgPath || 'assets/default.jpeg',
         txid: null,
         buyer: null,
-        at: null
+        at: null,
+        createdAt: Date.now()
       });
       console.log(`Yeni domain eklendi: ${newName} (${priceNum2} Pi)`);
       return res.status(200).json({ success: true });
@@ -343,7 +344,7 @@ export default async function handler(req, res) {
               volume: FieldValue.increment(realPrice)
             }, { merge: true });
 
-            const groupMsg = `🎉 *YENİ SATIŞ!*\n\n👤 @${username}, *${domainName}* domainini başarıyla satın aldı! 🚀\n\n🌐 Sitemize hoş geldin yeni sahibi!`;
+            const groupMsg = `🎉 *YENİ SATIŞ!*\n\n👤 @${username}, *${domainName}* domainini başarıyla satın aldı! 🚀\n\n🌐 Web3 Domain Gateway Topluluğuna Hoşgeldin!`;
             await sendTG(TG_GROUP_ID, groupMsg);
 
             const adminMsg = `✅ *SATIŞ TAMAMLANDI*\n\n👤 *Alıcı:* @${username}\n🌐 *Domain:* ${domainName}\n💰 *Tutar:* ${realPrice} Pi\n🔑 *Üretilen Şifre:* \`${purchaseCode}\``;
