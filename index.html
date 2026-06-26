@@ -490,7 +490,7 @@ window.handleDeleteDomain = async function(domainName) {
             alert(`"${domainName}" domaini silindi.`);
             domains = domains.filter(d => d.name !== domainName);
             delete domainData[domainName];
-            render();
+            debouncedRender();
         }
     } catch (e) {
         console.error("Domain silme hatası:", e);
@@ -579,7 +579,7 @@ window.loginWithPi = async function() {
         document.getElementById("user-status-box").style.display = "block";
         document.getElementById("user-panel").style.display = "block";
 
-        render();
+        debouncedRender();
 
         const today = new Date().toISOString().split("T")[0];
         if (currentUser === "doganay0808") {
@@ -635,6 +635,16 @@ document.getElementById("share-tg-btn").onclick = () => {
     window.open(`https://t.me/share/url?url=${encodeURIComponent(window.location.href)}&text=${encodeURIComponent(text)}`, '_blank');
 };
 
+// ✅ DÜZELTİLDİ: Firestore'dan art arda gelen güncellemelerde render()
+// defalarca tetiklenmesin diye debounce eklendi. 50ms içinde gelen
+// tüm render isteklerini birleştirip tek seferde çalıştırır.
+// Bu sayede sayfa açılışındaki yanıp sönme tamamen ortadan kalkar.
+let renderTimeout = null;
+function debouncedRender() {
+    clearTimeout(renderTimeout);
+    renderTimeout = setTimeout(render, 50);
+}
+
 onSnapshot(collection(db, "domains"), (snapshot) => {
     snapshot.forEach(docSnap => {
         const name = docSnap.id;
@@ -651,7 +661,7 @@ onSnapshot(collection(db, "domains"), (snapshot) => {
             renderAdminPriceList();
         }
     });
-    render();
+    debouncedRender();
 
     let totalSold = 0;
     let totalVolume = 0;
@@ -667,10 +677,13 @@ onSnapshot(collection(db, "domains"), (snapshot) => {
     document.getElementById("total-volume").innerText = roundedVolume;
 });
 
-domains.forEach(d => { if (!domainData[d.name]) domainData[d.name] = { sold:false, price:d.price }; });
-render();
+// ✅ DÜZELTİLDİ: İlk render DOM hazır olduğunda yapılıyor,
+// Firestore verisi beklenmeden sayfa hemen dolu görünür.
+document.addEventListener("DOMContentLoaded", () => {
+    domains.forEach(d => { if (!domainData[d.name]) domainData[d.name] = { sold:false, price:d.price }; });
+    render();
+});
 
-// ✅ DÜZELTİLDİ: window.load'dan Pi.init kaldırıldı, sadece interval kaldı
 window.addEventListener("load", () => {
     setInterval(updateActiveStatus, 15000);
 });
