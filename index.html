@@ -75,7 +75,6 @@
         .footer-section a { color:#38bdf8; text-decoration:none; font-weight: 800; border-bottom: 1px solid #38bdf8; }
         .footer-section div { margin-bottom: 4px; }
 
-        /* ADMIN PANEL STİLLERİ */
         #log-list { max-height: 85px; overflow-y: auto; }
         #log-list::-webkit-scrollbar { width: 5px; }
         #log-list::-webkit-scrollbar-track { background: #0f172a; border-radius: 10px; }
@@ -86,7 +85,6 @@
         .user-info-note { background: rgba(99, 102, 241, 0.1); border: 1px dashed #6366f1; color: #94a3b8; padding: 10px; border-radius: 10px; font-size: 0.75em; line-height: 1.55; margin-bottom: 10px; text-align: left; }
         .btn-fake-buy { background: var(--accent); color: white; padding: 1px 4px; border-radius: 3px; font-weight: 900; font-size: 0.85em; }
 
-        /* Ana sayfanın ilk açılışta tek ekrana sığması için kaydırılabilir gövde */
         .main-scroll { flex: 1 1 auto; overflow-y: auto; display: flex; flex-direction: column; min-height: 0; }
     </style>
 </head>
@@ -118,7 +116,6 @@
         <div id="my-domains-list" style="text-align: left;"></div>
     </div>
 
-    <!-- ADMIN PANELİ GERİ GETİRİLDİ -->
     <div class="card" id="admin-panel" style="display:none; border:2px solid #6366f1;">
         <h3 style="font-size: 0.95em; font-weight:900; margin-top:0; margin-bottom:8px; color:#fbbf24; text-shadow:0 0 8px rgba(251,191,36,0.4); display:flex; align-items:center; justify-content:center; gap:6px;">🛠 Admin Paneli</h3>
         <div style="margin-bottom: 8px; text-align: left;">
@@ -238,12 +235,18 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
 import { getFirestore, doc, onSnapshot, setDoc, getDoc, collection, query, where, limit, orderBy, getDocs, deleteDoc } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
 
-const firebaseConfig = { apiKey: "s3ddhcea9xae0qieikgjy9zw9tduemnraoucjrr9iqe87pduhczmd95kq8n3aai1", authDomain: "web3-domain-gateway.firebaseapp.com", projectId: "web3-domain-gateway" };
+const firebaseConfig = {
+  apiKey: "AIzaSyC9r244vRVGbYOcLHyS6EHxKyiygajW7_A",
+  authDomain: "web3-domain-gateway.firebaseapp.com",
+  projectId: "web3-domain-gateway",
+  storageBucket: "web3-domain-gateway.firebasestorage.app",
+  messagingSenderId: "315563254318",
+  appId: "1:315563254318:web:12f2f3f340bb69606df5bf"
+};
+
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-// ✅ DÜZELTİLDİ: Pi.init script'in en başında çağrılıyor,
-// window.load beklenmeden SDK hemen hazır hale getiriliyor.
 Pi.init({ version: "2.0", sandbox: true });
 
 let currentUser = null;
@@ -322,8 +325,7 @@ function render() {
                 relistBtn.onclick = () => handleRelist(d.name);
                 card.appendChild(relistBtn);
             }
-        }
-        else {
+        } else {
             const btn = document.createElement('button');
             btn.className = 'btn-buy';
             btn.innerText = 'SATIN AL';
@@ -611,7 +613,6 @@ document.getElementById("confirm-buy-btn").onclick = async () => {
     document.getElementById('pre-buy-modal').style.display='none';
     try {
         await Pi.createPayment({ amount: Number(pendingPrice), memo: "Domain: " + pendingDomain, metadata: { domain: pendingDomain } }, {
-            // ✅ DÜZELTİLDİ: accessToken approve isteğine eklendi
             onReadyForServerApproval: async (id) => {
                 await fetch('/api/approve', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({paymentId:id, action:'approve', accessToken:piAccessToken}) });
             },
@@ -643,8 +644,6 @@ function debouncedRender() {
     renderTimeout = setTimeout(render, 50);
 }
 
-// Sayfa açılır açılmaz kilitli görünümü hemen çiz.
-// type="module" script DOM hazır olduktan sonra çalışır, direkt çağır.
 domains.forEach(d => { if (!domainData[d.name]) domainData[d.name] = { sold:false, price:d.price }; });
 render();
 
@@ -665,7 +664,6 @@ onSnapshot(collection(db, "domains"), (snapshot) => {
         }
     });
 
-    // Stats barı her zaman güncelle
     let totalSold = 0;
     let totalVolume = 0;
     snapshot.forEach(docSnap => {
@@ -679,8 +677,6 @@ onSnapshot(collection(db, "domains"), (snapshot) => {
     const roundedVolume = Math.round(totalVolume * 100) / 100;
     document.getElementById("total-volume").innerText = roundedVolume;
 
-    // Kilitli ekranda render() çağırma — yanıp sönmeyi önler.
-    // Giriş yapıldıktan sonra (isAuth=true) normal güncelleme devam eder.
     if (isAuth) {
         debouncedRender();
     }
