@@ -3,7 +3,6 @@
   "outputDirectory": ".",
   "functions": {
     "api/approve.js": {
-      "memory": 512,
       "maxDuration": 10
     }
   }
