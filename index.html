@@ -635,15 +635,16 @@ document.getElementById("share-tg-btn").onclick = () => {
     window.open(`https://t.me/share/url?url=${encodeURIComponent(window.location.href)}&text=${encodeURIComponent(text)}`, '_blank');
 };
 
-// ✅ DÜZELTİLDİ: Firestore'dan art arda gelen güncellemelerde render()
-// defalarca tetiklenmesin diye debounce eklendi. 50ms içinde gelen
-// tüm render isteklerini birleştirip tek seferde çalıştırır.
-// Bu sayede sayfa açılışındaki yanıp sönme tamamen ortadan kalkar.
 let renderTimeout = null;
 function debouncedRender() {
     clearTimeout(renderTimeout);
     renderTimeout = setTimeout(render, 50);
 }
+
+// Sayfa açılır açılmaz kilitli görünümü hemen çiz.
+// type="module" script DOM hazır olduktan sonra çalışır, direkt çağır.
+domains.forEach(d => { if (!domainData[d.name]) domainData[d.name] = { sold:false, price:d.price }; });
+render();
 
 onSnapshot(collection(db, "domains"), (snapshot) => {
     snapshot.forEach(docSnap => {
@@ -661,8 +662,8 @@ onSnapshot(collection(db, "domains"), (snapshot) => {
             renderAdminPriceList();
         }
     });
-    debouncedRender();
 
+    // Stats barı her zaman güncelle
     let totalSold = 0;
     let totalVolume = 0;
     snapshot.forEach(docSnap => {
@@ -675,13 +676,12 @@ onSnapshot(collection(db, "domains"), (snapshot) => {
     document.getElementById("total-sold").innerText = totalSold;
     const roundedVolume = Math.round(totalVolume * 100) / 100;
     document.getElementById("total-volume").innerText = roundedVolume;
-});
 
-// ✅ DÜZELTİLDİ: İlk render DOM hazır olduğunda yapılıyor,
-// Firestore verisi beklenmeden sayfa hemen dolu görünür.
-document.addEventListener("DOMContentLoaded", () => {
-    domains.forEach(d => { if (!domainData[d.name]) domainData[d.name] = { sold:false, price:d.price }; });
-    render();
+    // Kilitli ekranda render() çağırma — yanıp sönmeyi önler.
+    // Giriş yapıldıktan sonra (isAuth=true) normal güncelleme devam eder.
+    if (isAuth) {
+        debouncedRender();
+    }
 });
 
 window.addEventListener("load", () => {
