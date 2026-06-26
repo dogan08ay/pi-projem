@@ -2,6 +2,10 @@
   "name": "pi-projem",
   "version": "1.0.0",
   "type": "module",
+  "scripts": {
+    "build": "echo 'No build step'",
+    "start": "node api/approve.js"
+  },
   "dependencies": {
     "firebase-admin": "^12.7.0"
   }
