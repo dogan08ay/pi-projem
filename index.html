@@ -34,8 +34,9 @@
         .pi-btn { background: linear-gradient(135deg, #0052FF 0%, #3b82f6 100%); color:#ffffff; padding:8px 20px; border-radius:50px; font-weight:800; font-size:0.85em; border:none; cursor:pointer; animation: pulse-blue 2s infinite; transition: 0.3s; margin: 6px 0; }
         @keyframes pulse-blue { 0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(0, 82, 255, 0.7); } 70% { transform: scale(1); box-shadow: 0 0 0 10px rgba(0, 82, 255, 0); } 100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(0, 82, 255, 0); } }
 
-        .section-title-box { background:linear-gradient(135deg,#fef3c7 0%,#fde68a 100%); color:#1e293b; padding:5px 12px; border-radius:10px; border:2px solid #f59e0b; font-size:0.92em; font-weight:900; display:inline-block; margin-bottom:6px; box-shadow:0 0 14px rgba(245,158,11,0.35), 0 0 28px rgba(245,158,11,0.2); animation: title-glow 2.5s ease-in-out infinite; position:relative; }
-        @keyframes title-glow { 0%, 100% { box-shadow: 0 0 10px rgba(245,158,11,0.4), 0 0 20px rgba(245,158,11,0.2); border-color: #f59e0b; } 50% { box-shadow: 0 0 18px rgba(245,158,11,0.8), 0 0 36px rgba(251,191,36,0.4), 0 0 54px rgba(251,191,36,0.15); border-color: #fbbf24; } }
+        .section-title-box { background: linear-gradient(90deg, #fef3c7 0%, #fde68a 40%, #ffffff 50%, #fde68a 60%, #fef3c7 100%); background-size: 200% auto; color:#1e293b; padding:5px 16px; border-radius:10px; border:2px solid #f59e0b; font-size:0.92em; font-weight:900; display:inline-block; margin-bottom:6px; animation: title-glow 2.5s ease-in-out infinite, section-shimmer 3s linear infinite; position:relative; letter-spacing:0.3px; }
+        @keyframes title-glow { 0%, 100% { box-shadow: 0 0 10px rgba(245,158,11,0.5), 0 0 22px rgba(245,158,11,0.25); border-color: #f59e0b; } 50% { box-shadow: 0 0 20px rgba(251,191,36,0.9), 0 0 40px rgba(251,191,36,0.45), 0 0 60px rgba(251,191,36,0.2); border-color: #fcd34d; } }
+        @keyframes section-shimmer { 0% { background-position: 200% center; } 100% { background-position: -200% center; } }
         .lock-title-box { background:linear-gradient(135deg,#fef3c7 0%,#fde68a 100%); color:#1e293b; padding:4px 10px; border-radius:10px; border:2px solid #f59e0b; font-size:0.8em; font-weight:900; margin-bottom:4px; display:inline-block; }
 
         .locked-content { filter: blur(4px); opacity: 0.7; pointer-events: none; }
@@ -119,7 +120,7 @@
 
     <!-- ADMIN PANELİ GERİ GETİRİLDİ -->
     <div class="card" id="admin-panel" style="display:none; border:2px solid #6366f1;">
-        <h3 style="font-size: 0.95em; font-weight:900; margin-top:0; margin-bottom:8px; background: linear-gradient(to right, #60a5fa, #a855f7, #60a5fa); background-size: 200% auto; -webkit-background-clip: text; -webkit-text-fill-color: transparent; animation: title-shine 4s linear infinite; filter: drop-shadow(0 0 10px rgba(139,92,246,0.5)); text-align:center;">🛠 Admin Paneli</h3>
+        <h3 style="font-size: 0.95em; font-weight:900; margin-top:0; margin-bottom:8px; color:#fbbf24; text-shadow:0 0 8px rgba(251,191,36,0.4); display:flex; align-items:center; justify-content:center; gap:6px;">🛠 Admin Paneli</h3>
         <div style="margin-bottom: 8px; text-align: left;">
             <input type="date" id="admin-date-input" class="admin-date-picker">
         </div>
