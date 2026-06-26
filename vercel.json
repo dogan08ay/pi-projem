@@ -1,8 +1,10 @@
 {
-  "name": "pi-projem",
-  "version": "1.0.0",
-  "type": "module",
-  "dependencies": {
-    "firebase-admin": "^12.7.0"
+  "buildCommand": null,
+  "outputDirectory": ".",
+  "functions": {
+    "api/approve.js": {
+      "memory": 512,
+      "maxDuration": 10
+    }
   }
 }
