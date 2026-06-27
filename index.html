@@ -124,8 +124,22 @@
         <h3 style="font-size: 0.95em; font-weight:900; margin-top:0; margin-bottom:8px; color:#fbbf24; text-shadow:0 0 8px rgba(251,191,36,0.4); display:flex; align-items:center; justify-content:center; gap:6px;">🛠 Admin Paneli</h3>
 
         <!-- BENZERSIZ KULLANICI BUTONU -->
-        <button onclick="openUniqueUsersModal()" style="background:linear-gradient(135deg,#6366f1,#818cf8); color:#fff; border:none; padding:7px 16px; border-radius:20px; font-weight:800; font-size:0.78em; cursor:pointer; margin-bottom:10px; box-shadow:0 0 12px rgba(99,102,241,0.4); width:100%;">
-            👥 Toplam Benzersiz Kullanıcı
+        <button onclick="openUniqueUsersModal()" id="unique-users-btn" style="width:100%; background:#0f172a; border:2px solid #6366f1; border-radius:14px; padding:10px 14px; cursor:pointer; margin-bottom:10px; display:flex; align-items:center; justify-content:space-between; transition:all 0.2s ease; box-shadow:0 0 14px rgba(99,102,241,0.25);"
+            onmouseover="this.style.borderColor='#818cf8';this.style.boxShadow='0 0 22px rgba(99,102,241,0.55)';"
+            onmouseout="this.style.borderColor='#6366f1';this.style.boxShadow='0 0 14px rgba(99,102,241,0.25)';"
+            onmousedown="this.style.transform='scale(0.97)'"
+            onmouseup="this.style.transform='scale(1)'">
+            <div style="display:flex; align-items:center; gap:8px;">
+                <span style="font-size:1.4em;">👥</span>
+                <div style="text-align:left;">
+                    <div style="font-size:0.6em; color:#94a3b8; font-weight:700; letter-spacing:0.5px; text-transform:uppercase;">Bugüne Kadar Giriş Yapan</div>
+                    <div style="font-size:0.82em; color:#e2e8f0; font-weight:800;">Toplam Farklı Kullanıcı</div>
+                </div>
+            </div>
+            <div style="display:flex; align-items:center; gap:6px;">
+                <span id="unique-users-badge" style="font-size:1.5em; font-weight:900; color:#818cf8;">—</span>
+                <span style="font-size:0.85em; color:#6366f1;">›</span>
+            </div>
         </button>
 
         <div style="margin-bottom: 8px; text-align: left;">
@@ -450,6 +464,19 @@ async function loadUniqueUsers() {
     }
 }
 
+async function loadUniqueBadgeCount() {
+    try {
+        const snapshot = await getDocs(collection(db, "daily_users"));
+        const allUsers = new Set();
+        snapshot.forEach(docSnap => {
+            const users = docSnap.data().users || {};
+            Object.keys(users).forEach(u => allUsers.add(u));
+        });
+        const badge = document.getElementById("unique-users-badge");
+        if (badge) badge.innerText = allUsers.size;
+    } catch(e) { console.error(e); }
+}
+
 window.openUniqueUsersModal = function() {
     document.getElementById('unique-users-modal').style.display = 'flex';
     loadUniqueUsers();
@@ -665,6 +692,7 @@ window.loginWithPi = async function() {
         if (currentUser === "doganay0808") {
             document.getElementById("admin-panel").style.display = "block";
             document.getElementById("admin-tools-panel").style.display = "block";
+            loadUniqueBadgeCount();
             const dateInput = document.getElementById("admin-date-input");
             dateInput.value = today;
             listenToLogs(today);
