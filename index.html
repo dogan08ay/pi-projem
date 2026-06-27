@@ -86,6 +86,10 @@
         .btn-fake-buy { background: var(--accent); color: white; padding: 1px 4px; border-radius: 3px; font-weight: 900; font-size: 0.85em; }
 
         .main-scroll { flex: 1 1 auto; overflow-y: auto; display: flex; flex-direction: column; min-height: 0; }
+
+        #unique-user-list::-webkit-scrollbar { width: 5px; }
+        #unique-user-list::-webkit-scrollbar-track { background: #0f172a; border-radius: 10px; }
+        #unique-user-list::-webkit-scrollbar-thumb { background: #6366f1; border-radius: 10px; }
     </style>
 </head>
 <body>
@@ -118,6 +122,12 @@
 
     <div class="card" id="admin-panel" style="display:none; border:2px solid #6366f1;">
         <h3 style="font-size: 0.95em; font-weight:900; margin-top:0; margin-bottom:8px; color:#fbbf24; text-shadow:0 0 8px rgba(251,191,36,0.4); display:flex; align-items:center; justify-content:center; gap:6px;">🛠 Admin Paneli</h3>
+
+        <!-- BENZERSIZ KULLANICI BUTONU -->
+        <button onclick="openUniqueUsersModal()" style="background:linear-gradient(135deg,#6366f1,#818cf8); color:#fff; border:none; padding:7px 16px; border-radius:20px; font-weight:800; font-size:0.78em; cursor:pointer; margin-bottom:10px; box-shadow:0 0 12px rgba(99,102,241,0.4); width:100%;">
+            👥 Toplam Benzersiz Kullanıcı
+        </button>
+
         <div style="margin-bottom: 8px; text-align: left;">
             <input type="date" id="admin-date-input" class="admin-date-picker">
         </div>
@@ -198,6 +208,7 @@
     </div>
 </div>
 
+<!-- PRE-BUY MODAL -->
 <div id="pre-buy-modal" class="modal-overlay" style="display:none;">
     <div class="modal-content">
         <div style="font-size: 2.5em; margin-bottom: 10px;">🛡️</div>
@@ -219,6 +230,7 @@
     </div>
 </div>
 
+<!-- SUCCESS MODAL -->
 <div id="success-modal" class="modal-overlay" style="display:none;">
     <div class="modal-content" style="border-color: #10b981; text-align: center;">
         <div style="font-size: 2.5em; margin-bottom: 10px;">✅</div>
@@ -228,6 +240,19 @@
             <button class="pi-btn" style="background:#0088cc; animation:none; padding: 12px; margin:0; font-size: 0.95em;" id="share-tg-btn">🚀 TELEGRAM'DA PAYLAŞ</button>
             <button class="pi-btn" style="background:#10b981; animation:none; padding: 12px; margin:0; font-size: 0.95em;" onclick="document.getElementById('success-modal').style.display='none'">HARİKA!</button>
         </div>
+    </div>
+</div>
+
+<!-- BENZERSIZ KULLANICI MODAL -->
+<div id="unique-users-modal" class="modal-overlay" style="display:none;">
+    <div class="modal-content" style="border-color:#6366f1; max-height:85vh;">
+        <div style="font-size:2em; margin-bottom:8px;">👥</div>
+        <h2 style="color:#818cf8; margin:0 0 4px 0; font-size:1.05em; font-weight:900;">TOPLAM BENZERSİZ KULLANICI</h2>
+        <div id="unique-user-total" style="font-size:2.5em; font-weight:900; color:#fbbf24; margin:8px 0 6px 0;">—</div>
+        <div style="font-size:0.7em; color:#94a3b8; margin-bottom:12px;">Bugüne kadar giriş yapmış toplam kullanıcı sayısı</div>
+        <div id="unique-user-list" style="max-height:300px; overflow-y:auto; text-align:left; margin-bottom:12px;"></div>
+        <button class="pi-btn" style="background:#6366f1; animation:none; padding:10px; margin:0; width:100%;"
+            onclick="document.getElementById('unique-users-modal').style.display='none'">KAPAT</button>
     </div>
 </div>
 
@@ -378,6 +403,57 @@ function listenToLogs(date) {
         document.getElementById("daily-stat-volume").innerText = roundedDailyVolume;
     });
 }
+
+// BENZERSIZ KULLANICI FONKSİYONU
+async function loadUniqueUsers() {
+    const listEl = document.getElementById("unique-user-list");
+    const totalEl = document.getElementById("unique-user-total");
+    if (!listEl || !totalEl) return;
+
+    listEl.innerHTML = '<p style="font-size:0.8em; opacity:0.5; text-align:center;">⏳ Yükleniyor...</p>';
+    totalEl.innerText = '...';
+
+    try {
+        const snapshot = await getDocs(collection(db, "daily_users"));
+        const allUsers = {};
+
+        snapshot.forEach(docSnap => {
+            const users = docSnap.data().users || {};
+            const date = docSnap.id;
+            Object.keys(users).forEach(username => {
+                if (!allUsers[username] || users[username] > allUsers[username].lastSeen) {
+                    allUsers[username] = { lastSeen: users[username], date };
+                }
+            });
+        });
+
+        const sorted = Object.entries(allUsers).sort((a, b) => b[1].lastSeen - a[1].lastSeen);
+        totalEl.innerText = sorted.length;
+
+        if (sorted.length === 0) {
+            listEl.innerHTML = '<p style="font-size:0.8em; opacity:0.5; text-align:center;">Kayıt bulunamadı.</p>';
+            return;
+        }
+
+        listEl.innerHTML = sorted.map(([username, info]) => {
+            const dateStr = new Date(info.lastSeen).toLocaleDateString('tr-TR', { day:'2-digit', month:'2-digit', year:'numeric' });
+            return `
+                <div class="log-item">
+                    <b>@${username}</b>
+                    <span style="color:#94a3b8; font-size:0.85em;">Son: ${dateStr}</span>
+                </div>`;
+        }).join('');
+    } catch (e) {
+        console.error("Benzersiz kullanıcı yüklenirken hata:", e);
+        listEl.innerHTML = '<p style="font-size:0.8em; color:#ef4444; text-align:center;">Hata oluştu, tekrar deneyin.</p>';
+        totalEl.innerText = '—';
+    }
+}
+
+window.openUniqueUsersModal = function() {
+    document.getElementById('unique-users-modal').style.display = 'flex';
+    loadUniqueUsers();
+};
 
 onSnapshot(collection(db, "active_users"), (snap) => {
     const now = Date.now();
