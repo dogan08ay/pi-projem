@@ -54,6 +54,24 @@ async function verifyAdmin(accessToken) {
   }
 }
 
+// Herhangi bir geçerli Pi kullanıcısının gerçek kullanıcı adını döner (admin
+// olması gerekmez). Domain satış önerisi göndermek için kullanılır - sahte
+// bir kullanıcı adı iddiası yerine token'dan gerçek kimliği doğrular.
+async function getRealUsername(accessToken) {
+  if (!accessToken) return null;
+  try {
+    const response = await fetch('https://api.minepi.com/v2/me', {
+      headers: { 'Authorization': `Bearer ${accessToken}` }
+    });
+    if (!response.ok) return null;
+    const userDto = await response.json();
+    return userDto.username || null;
+  } catch (e) {
+    console.error("Pi /v2/me kullanıcı doğrulama hatası:", e);
+    return null;
+  }
+}
+
 export default async function handler(req, res) {
   // --- CORS: artık '*' değil, izin verilen origin'den geliyor ---
   // Vercel panelinden bir ortam değişkeni ekleyin:
@@ -242,6 +260,116 @@ export default async function handler(req, res) {
       return res.status(200).json({ success: true });
     } catch (e) {
       console.error("Domain silme hatası:", e);
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  // --- 'submit_sell_request': Herhangi bir Pi kullanıcısı kendi domainini
+  // satışa çıkarmak istediğinde. Admin yetkisi gerekmez, ama gerçekten geçerli
+  // bir Pi hesabına ait olunduğu accessToken ile doğrulanır (sahte kullanıcı
+  // adı iddiası kabul edilmez).
+  if (action === 'submit_sell_request') {
+    const { domainName: reqDomainName, price: reqPrice, domainType, imgPath: reqImgPath, sellerWallet } = req.body;
+    const realUsername = await getRealUsername(accessToken);
+    if (!realUsername) {
+      return res.status(403).json({ error: "Geçerli bir Pi oturumu bulunamadı. Lütfen tekrar giriş yapın." });
+    }
+    const priceNum = Number(reqPrice);
+    if (!reqDomainName || !priceNum || priceNum <= 0) {
+      return res.status(400).json({ error: "Geçersiz domain adı veya fiyat" });
+    }
+    try {
+      const db = getDb();
+      // Aynı isimde zaten satışta olan bir domain varsa öneri reddedilir
+      const existingDomain = await db.collection('domains').doc(reqDomainName).get();
+      if (existingDomain.exists) {
+        return res.status(400).json({ error: "Bu domain adı zaten markette mevcut" });
+      }
+      const requestRef = db.collection('sell_requests').doc();
+      await requestRef.set({
+        domainName: reqDomainName,
+        price: priceNum,
+        domainType: domainType || 'genel',
+        img: reqImgPath || 'assets/default.jpeg',
+        sellerWallet: sellerWallet || null,
+        submittedBy: realUsername,
+        status: 'pending',
+        submittedAt: Date.now()
+      });
+      console.log(`Yeni satış önerisi: ${reqDomainName} (gönderen: ${realUsername})`);
+      return res.status(200).json({ success: true });
+    } catch (e) {
+      console.error("Satış önerisi gönderme hatası:", e);
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  // --- 'approve_sell_request': Admin bir domain önerisini onaylayıp markette
+  // listelediğinde. domains koleksiyonuna gerçek domain olarak yazılır.
+  if (action === 'approve_sell_request') {
+    const { requestId } = req.body;
+    const isAdminAppr = await verifyAdmin(accessToken);
+    if (!isAdminAppr) {
+      return res.status(403).json({ error: "Bu işlem için yetkiniz yok" });
+    }
+    if (!requestId) {
+      return res.status(400).json({ error: "Geçersiz istek ID" });
+    }
+    try {
+      const db = getDb();
+      const requestRef = db.collection('sell_requests').doc(requestId);
+      const requestSnap = await requestRef.get();
+      if (!requestSnap.exists) {
+        return res.status(404).json({ error: "Öneri bulunamadı" });
+      }
+      const reqData = requestSnap.data();
+      if (reqData.status !== 'pending') {
+        return res.status(400).json({ error: "Bu öneri zaten işlenmiş" });
+      }
+      const domainRef = db.collection('domains').doc(reqData.domainName);
+      const existingDomain = await domainRef.get();
+      if (existingDomain.exists) {
+        return res.status(400).json({ error: "Bu domain adı zaten markette mevcut" });
+      }
+      await domainRef.set({
+        sold: false,
+        price: reqData.price,
+        img: reqData.img,
+        type: reqData.domainType,
+        sellerUsername: reqData.submittedBy,
+        sellerWallet: reqData.sellerWallet,
+        txid: null,
+        buyer: null,
+        at: null,
+        createdAt: Date.now()
+      });
+      await requestRef.set({ status: 'approved', resolvedAt: Date.now() }, { merge: true });
+      console.log(`Satış önerisi onaylandı: ${reqData.domainName}`);
+      return res.status(200).json({ success: true });
+    } catch (e) {
+      console.error("Öneri onaylama hatası:", e);
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  // --- 'reject_sell_request': Admin bir domain önerisini reddettiğinde.
+  if (action === 'reject_sell_request') {
+    const { requestId } = req.body;
+    const isAdminRej = await verifyAdmin(accessToken);
+    if (!isAdminRej) {
+      return res.status(403).json({ error: "Bu işlem için yetkiniz yok" });
+    }
+    if (!requestId) {
+      return res.status(400).json({ error: "Geçersiz istek ID" });
+    }
+    try {
+      const db = getDb();
+      const requestRef = db.collection('sell_requests').doc(requestId);
+      await requestRef.set({ status: 'rejected', resolvedAt: Date.now() }, { merge: true });
+      console.log(`Satış önerisi reddedildi: ${requestId}`);
+      return res.status(200).json({ success: true });
+    } catch (e) {
+      console.error("Öneri reddetme hatası:", e);
       return res.status(500).json({ error: e.message });
     }
   }
