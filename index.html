@@ -69,6 +69,93 @@
         .item-red-val-small { color: #ef4444; font-weight: 900; flex: 1; white-space: nowrap; font-size: 0.88em; }
 
         .my-domain-item { background: #0f172a; padding: 10px; border-radius: 12px; display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px; border: 1px solid #334155; gap: 8px; }
+
+        /* --- DOĞRULA BUTONU --- */
+        .verify-btn {
+            background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%);
+            color: #ffffff;
+            border: none;
+            padding: 7px 13px;
+            border-radius: 8px;
+            font-size: 0.72em;
+            cursor: pointer;
+            font-weight: 800;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            box-shadow: 0 2px 8px rgba(14,165,233,0.45), 0 0 0 1.5px rgba(56,189,248,0.5);
+            transition: transform 0.15s ease, box-shadow 0.15s ease;
+            white-space: nowrap;
+            letter-spacing: 0.3px;
+            flex-shrink: 0;
+        }
+        .verify-btn:hover, .verify-btn:active {
+            transform: translateY(-2px) scale(1.04);
+            box-shadow: 0 5px 16px rgba(14,165,233,0.65), 0 0 0 2px rgba(56,189,248,0.8);
+        }
+        .verify-btn-disabled {
+            background: rgba(71, 85, 105, 0.45);
+            color: #475569;
+            border: 1.5px solid #334155;
+            padding: 7px 13px;
+            border-radius: 8px;
+            font-size: 0.72em;
+            font-weight: 700;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            cursor: not-allowed;
+            white-space: nowrap;
+            flex-shrink: 0;
+            opacity: 0.6;
+        }
+
+        /* --- BİLGİ BADGE (daha görünür efekt) --- */
+        .info-badge-header {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: linear-gradient(135deg, #312e81 0%, #4c1d95 50%, #312e81 100%);
+            background-size: 200% auto;
+            color: #c4b5fd;
+            font-weight: 900;
+            font-size: 0.82em;
+            padding: 5px 14px;
+            border-radius: 10px;
+            margin-bottom: 8px;
+            letter-spacing: 0.5px;
+            border: 1.5px solid #7c3aed;
+            animation: info-badge-glow 2.5s ease-in-out infinite, info-badge-shine 4s linear infinite;
+            box-shadow: 0 0 12px rgba(124,58,237,0.5), 0 0 24px rgba(124,58,237,0.2), inset 0 1px 0 rgba(196,181,253,0.15);
+            position: relative;
+            overflow: hidden;
+        }
+        .info-badge-header::before {
+            content: '';
+            position: absolute;
+            top: 0; left: -100%;
+            width: 60%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(196,181,253,0.28), transparent);
+            animation: info-badge-sweep 3s ease-in-out infinite;
+        }
+        @keyframes info-badge-glow {
+            0%, 100% { box-shadow: 0 0 10px rgba(124,58,237,0.5), 0 0 20px rgba(124,58,237,0.2); border-color: #7c3aed; }
+            50% { box-shadow: 0 0 20px rgba(167,139,250,0.9), 0 0 38px rgba(124,58,237,0.45), 0 0 55px rgba(124,58,237,0.18); border-color: #a78bfa; }
+        }
+        @keyframes info-badge-shine { to { background-position: 200% center; } }
+        @keyframes info-badge-sweep { 0% { left: -100%; } 60%, 100% { left: 160%; } }
+        .info-badge-icon {
+            font-size: 1.05em;
+            animation: info-icon-pulse 2s ease-in-out infinite;
+            filter: drop-shadow(0 0 5px rgba(196,181,253,0.8));
+        }
+        @keyframes info-icon-pulse {
+            0%, 100% { transform: scale(1); filter: drop-shadow(0 0 4px rgba(196,181,253,0.6)); }
+            50% { transform: scale(1.25); filter: drop-shadow(0 0 12px rgba(196,181,253,1)); }
+        }
+
         .manage-btn { background: #6366f1; color: white; border: none; padding: 5px 10px; border-radius: 6px; font-size: 0.7em; cursor: pointer; font-weight: bold; text-decoration: none; }
 
         .footer-section { margin-top: auto; padding: 8px 10px; color:#f8fafc; font-size:0.62em; text-align:center; border-top:1px solid #334155; background: rgba(15, 23, 42, 0.8); border-radius: 16px 16px 0 0; }
@@ -117,14 +204,19 @@
     <div class="card" id="user-panel" style="display:none; border:2.5px solid #10b981; box-shadow:0 0 18px rgba(16,185,129,0.25);">
         <h3 style="color:#10b981; margin:0 0 8px 0; font-size:0.95em; display:flex; align-items:center; justify-content:center; gap:6px; text-shadow:0 0 10px rgba(16,185,129,0.5);">👤 Satın Alma Geçmişim</h3>
         <div class="user-info-note">
-            <div style="display:inline-block; background:#6366f1; color:#fff; font-weight:900; font-size:0.85em; padding:3px 10px; border-radius:8px; margin-bottom:6px; letter-spacing:0.3px;">ℹ️ BİLGİ</div>
+            <!-- BİLGİ başlığı: görünür efektli -->
+            <div class="info-badge-header">
+                <span class="info-badge-icon">ℹ️</span>
+                <span>BİLGİ</span>
+            </div>
             <div>Bu uygulama Test-Pi ağında deneme amaçlıdır. Satın aldığınız domainler, diğer kullanıcıların da test yapabilmesi için markette tekrar <span class="btn-fake-buy">SATIN AL</span> olarak görünebilir <b>ve satın alma geçmişinizden silinebilir.</b></div>
         </div>
         <!-- SATINALMA LİSTESİ ÇERÇEVE -->
         <div style="background:#061612; border:2px solid #059669; border-radius:12px; padding:10px; box-shadow:0 0 14px rgba(5,150,105,0.25), inset 0 1px 0 rgba(16,185,129,0.1);">
             <div style="display:flex; align-items:center; justify-content:center; gap:6px; margin-bottom:8px; padding-bottom:7px; border-bottom:1px solid #064e3b;">
                 <span style="font-size:1em; animation:icon-pulse-green 2s ease-in-out infinite;">🛒</span>
-                <span style="font-size:0.72em; color:#34d399; font-weight:800; letter-spacing:0.5px; text-transform:uppercase; text-shadow:0 0 8px rgba(52,211,153,0.5);">Alınan Domainler</span>
+                <!-- BAŞLIK: "Alınan Domainler" → "Satın Alınan Domainler" -->
+                <span style="font-size:0.72em; color:#34d399; font-weight:800; letter-spacing:0.5px; text-transform:uppercase; text-shadow:0 0 8px rgba(52,211,153,0.5);">Satın Alınan Domainler</span>
             </div>
             <div id="my-domains-list" style="text-align:left;"></div>
         </div>
@@ -358,9 +450,10 @@ function render() {
         const data = domainData[d.name] || { sold:false, price:d.price };
         if (data.sold && data.buyer === currentUser) {
             const alinmaTarihi = data.at ? new Date(data.at).toLocaleDateString('tr-TR', { day: '2-digit', month: '2-digit', year: 'numeric' }) + ' ' + new Date(data.at).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }) : '-';
+            // DOĞRULA: tıklanabilir buton görünümü
             const dogrulaBtn = data.txid
-                ? `<a href="https://blockexplorer.minepi.com/testnet/tx/${data.txid}" target="_blank" class="manage-btn">DOĞRULA</a>`
-                : `<span class="manage-btn" style="opacity:0.5; cursor:not-allowed;">DOĞRULA</span>`;
+                ? `<a href="https://blockexplorer.minepi.com/testnet/tx/${data.txid}" target="_blank" class="verify-btn">🔍 DOĞRULA</a>`
+                : `<span class="verify-btn-disabled">🔒 DOĞRULA</span>`;
             myHtml += `
                 <div class="my-domain-item">
                     <div>
@@ -441,7 +534,6 @@ function listenToLogs(date) {
     });
 }
 
-// BENZERSIZ KULLANICI FONKSİYONU
 let cachedUniqueUsers = null;
 
 async function fetchUniqueUsers() {
