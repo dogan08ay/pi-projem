@@ -90,6 +90,8 @@
         #unique-user-list::-webkit-scrollbar { width: 5px; }
         #unique-user-list::-webkit-scrollbar-track { background: #0f172a; border-radius: 10px; }
         #unique-user-list::-webkit-scrollbar-thumb { background: #6366f1; border-radius: 10px; }
+        @keyframes icon-pulse-btn { 0%,100%{filter:drop-shadow(0 0 4px rgba(99,102,241,0.6));transform:scale(1);} 50%{filter:drop-shadow(0 0 10px rgba(165,180,252,0.9));transform:scale(1.12);} }
+        @keyframes icon-pulse-chart { 0%,100%{filter:drop-shadow(0 0 4px rgba(74,222,128,0.5));transform:scale(1);} 50%{filter:drop-shadow(0 0 10px rgba(74,222,128,0.9));transform:scale(1.12);} }
     </style>
 </head>
 <body>
@@ -125,47 +127,51 @@
 
         <!-- BENZERSIZ KULLANICI BUTONU -->
         <button onclick="openUniqueUsersModal()" id="unique-users-btn"
-            style="width:100%; background:linear-gradient(135deg,#1e1b4b 0%,#1e293b 100%); border:2px solid #6366f1; border-radius:14px; padding:12px 14px; cursor:pointer; margin-bottom:10px; display:flex; align-items:center; justify-content:space-between; transition:transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease, background 0.15s ease; box-shadow:0 4px 18px rgba(99,102,241,0.35), inset 0 1px 0 rgba(129,140,248,0.15); -webkit-tap-highlight-color:transparent;"
-            onmouseover="this.style.borderColor='#818cf8';this.style.boxShadow='0 6px 28px rgba(99,102,241,0.6), inset 0 1px 0 rgba(129,140,248,0.2)';this.style.background='linear-gradient(135deg,#2e1f6e 0%,#263352 100%)';"
-            onmouseout="this.style.borderColor='#6366f1';this.style.boxShadow='0 4px 18px rgba(99,102,241,0.35), inset 0 1px 0 rgba(129,140,248,0.15)';this.style.background='linear-gradient(135deg,#1e1b4b 0%,#1e293b 100%)';"
-            onmousedown="this.style.transform='scale(0.96) translateY(1px)';this.style.boxShadow='0 2px 8px rgba(99,102,241,0.3)';"
-            onmouseup="this.style.transform='scale(1) translateY(0)';this.style.boxShadow='0 4px 18px rgba(99,102,241,0.35), inset 0 1px 0 rgba(129,140,248,0.15)';">
+            style="width:100%; box-sizing:border-box; background:linear-gradient(135deg,#1e1b4b 0%,#1e293b 100%); border:2px solid #6366f1; border-radius:14px; padding:12px 14px; cursor:pointer; margin-bottom:10px; display:flex; align-items:center; justify-content:space-between; transition:transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease; box-shadow:0 4px 18px rgba(99,102,241,0.4), inset 0 1px 0 rgba(129,140,248,0.15), inset 0 -2px 0 rgba(0,0,0,0.3); -webkit-tap-highlight-color:transparent; position:relative; overflow:hidden;"
+            onmouseover="this.style.borderColor='#a5b4fc';this.style.boxShadow='0 6px 28px rgba(99,102,241,0.7), inset 0 1px 0 rgba(165,180,252,0.25), inset 0 -2px 0 rgba(0,0,0,0.3)';"
+            onmouseout="this.style.borderColor='#6366f1';this.style.boxShadow='0 4px 18px rgba(99,102,241,0.4), inset 0 1px 0 rgba(129,140,248,0.15), inset 0 -2px 0 rgba(0,0,0,0.3)';"
+            onmousedown="this.style.transform='scale(0.97) translateY(2px)';this.style.boxShadow='0 1px 6px rgba(99,102,241,0.3), inset 0 2px 4px rgba(0,0,0,0.4)';"
+            onmouseup="this.style.transform='scale(1) translateY(0)';this.style.boxShadow='0 4px 18px rgba(99,102,241,0.4), inset 0 1px 0 rgba(129,140,248,0.15), inset 0 -2px 0 rgba(0,0,0,0.3)';"
+            ontouchstart="this.style.transform='scale(0.97) translateY(2px)';this.style.boxShadow='0 1px 6px rgba(99,102,241,0.3)';"
+            ontouchend="this.style.transform='scale(1)';this.style.boxShadow='0 4px 18px rgba(99,102,241,0.4), inset 0 1px 0 rgba(129,140,248,0.15), inset 0 -2px 0 rgba(0,0,0,0.3)';">
             <div style="display:flex; align-items:center; gap:10px;">
-                <div style="background:rgba(99,102,241,0.2); border:1.5px solid #6366f1; border-radius:10px; width:36px; height:36px; display:flex; align-items:center; justify-content:center; font-size:1.2em; flex-shrink:0;">👥</div>
+                <div style="background:rgba(99,102,241,0.25); border:1.5px solid #818cf8; border-radius:10px; width:38px; height:38px; display:flex; align-items:center; justify-content:center; font-size:1.3em; flex-shrink:0; box-shadow:0 0 10px rgba(99,102,241,0.4); animation:icon-pulse-btn 2.5s ease-in-out infinite;">👥</div>
                 <div style="text-align:left;">
-                    <div style="font-size:0.58em; color:#818cf8; font-weight:700; letter-spacing:0.6px; text-transform:uppercase; margin-bottom:2px;">Bugüne Kadar Giriş Yapan</div>
-                    <div style="font-size:0.82em; color:#e2e8f0; font-weight:900; letter-spacing:0.2px;">Toplam Farklı Kullanıcı</div>
+                    <div style="font-size:0.58em; color:#a5b4fc; font-weight:700; letter-spacing:0.7px; text-transform:uppercase; margin-bottom:2px;">Bugüne Kadar Giriş Yapan</div>
+                    <div style="font-size:0.84em; color:#f1f5f9; font-weight:900; letter-spacing:0.2px;">Toplam Farklı Kullanıcı</div>
                 </div>
             </div>
-            <div style="display:flex; align-items:center; gap:6px; flex-shrink:0;">
-                <span id="unique-users-badge" style="font-size:1.7em; font-weight:900; color:#a5b4fc; line-height:1;">—</span>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6366f1" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+            <div style="display:flex; align-items:center; gap:5px; flex-shrink:0;">
+                <span id="unique-users-badge" style="font-size:1.8em; font-weight:900; color:#a5b4fc; line-height:1; text-shadow:0 0 12px rgba(165,180,252,0.6);">—</span>
+                <div style="background:rgba(99,102,241,0.3); border:1px solid #6366f1; border-radius:6px; padding:3px 5px; display:flex; align-items:center;">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#a5b4fc" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+                </div>
             </div>
         </button>
 
-        <!-- GÜNLÜK GİRİŞ GRUBU -->
-        <div style="background:#0a0f1e; border:1.5px solid #334155; border-radius:12px; padding:10px; margin-bottom:10px;">
-            <div style="font-size:0.65em; color:#64748b; font-weight:700; letter-spacing:0.6px; text-transform:uppercase; margin-bottom:8px; display:flex; align-items:center; gap:5px;">
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-                Günlük Giriş Kaydı
+        <!-- GÜNLÜK GİRİŞ KAYDI GRUBU -->
+        <div style="background:#0a0f1e; border:2px solid #3b4f70; border-radius:12px; padding:10px; margin-bottom:10px; box-shadow:0 2px 12px rgba(0,0,0,0.3);">
+            <div style="display:flex; align-items:center; justify-content:center; gap:6px; margin-bottom:8px; padding-bottom:7px; border-bottom:1px solid #1e3a5f;">
+                <span style="font-size:1em; animation:icon-pulse-btn 2s ease-in-out infinite;">📋</span>
+                <span style="font-size:0.72em; color:#60a5fa; font-weight:800; letter-spacing:0.5px; text-transform:uppercase; text-shadow:0 0 8px rgba(96,165,250,0.4);">Günlük Giriş Kaydı</span>
             </div>
             <input type="date" id="admin-date-input" class="admin-date-picker" style="margin-bottom:8px;">
             <div id="log-list"></div>
         </div>
 
         <!-- GÜNLÜK SATIŞ İSTATİSTİKLERİ -->
-        <div style="background:#0a0f1e; border:1.5px solid #334155; border-radius:12px; padding:10px;">
-            <div style="font-size:0.65em; color:#64748b; font-weight:700; letter-spacing:0.6px; text-transform:uppercase; margin-bottom:8px; display:flex; align-items:center; gap:5px;">
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M7 14l4-4 3 3 5-6"/></svg>
-                Günlük Satış İstatistikleri
+        <div style="background:#0a0f1e; border:2px solid #374832; border-radius:12px; padding:10px; box-shadow:0 2px 12px rgba(0,0,0,0.3);">
+            <div style="display:flex; align-items:center; justify-content:center; gap:6px; margin-bottom:8px; padding-bottom:7px; border-bottom:1px solid #1e3a1e;">
+                <span style="font-size:1em; animation:icon-pulse-chart 2s ease-in-out infinite;">📈</span>
+                <span style="font-size:0.72em; color:#4ade80; font-weight:800; letter-spacing:0.5px; text-transform:uppercase; text-shadow:0 0 8px rgba(74,222,128,0.4);">Günlük Satış İstatistikleri</span>
             </div>
             <div id="daily-stats-box" style="display:flex; gap:8px;">
-                <div style="flex:1; background:#1e293b; border:1px solid #475569; border-radius:10px; padding:8px; text-align:center;">
-                    <div style="font-size:0.62em; color:#94a3b8; font-weight:bold; margin-bottom:2px;">SATIŞ ADEDİ</div>
+                <div style="flex:1; background:#1e293b; border:1px solid #4ade80; border-radius:10px; padding:8px; text-align:center; box-shadow:0 0 8px rgba(74,222,128,0.1);">
+                    <div style="font-size:0.62em; color:#86efac; font-weight:bold; margin-bottom:2px;">SATIŞ ADEDİ</div>
                     <div id="daily-stat-count" style="font-size:1.2em; color:#fbbf24; font-weight:900;">0</div>
                 </div>
-                <div style="flex:1; background:#1e293b; border:1px solid #475569; border-radius:10px; padding:8px; text-align:center;">
-                    <div style="font-size:0.62em; color:#94a3b8; font-weight:bold; margin-bottom:2px;">HACİM (Pİ)</div>
+                <div style="flex:1; background:#1e293b; border:1px solid #4ade80; border-radius:10px; padding:8px; text-align:center; box-shadow:0 0 8px rgba(74,222,128,0.1);">
+                    <div style="font-size:0.62em; color:#86efac; font-weight:bold; margin-bottom:2px;">HACİM (Pİ)</div>
                     <div id="daily-stat-volume" style="font-size:1.2em; color:#fbbf24; font-weight:900;">0</div>
                 </div>
             </div>
@@ -428,67 +434,67 @@ function listenToLogs(date) {
 }
 
 // BENZERSIZ KULLANICI FONKSİYONU
-async function loadUniqueUsers() {
+let cachedUniqueUsers = null;
+
+async function fetchUniqueUsers() {
+    const snapshot = await getDocs(collection(db, "daily_users"));
+    const allUsers = {};
+    snapshot.forEach(docSnap => {
+        const users = docSnap.data().users || {};
+        const date = docSnap.id;
+        Object.keys(users).forEach(username => {
+            if (!allUsers[username] || users[username] > allUsers[username].lastSeen) {
+                allUsers[username] = { lastSeen: users[username], date };
+            }
+        });
+    });
+    cachedUniqueUsers = Object.entries(allUsers).sort((a, b) => b[1].lastSeen - a[1].lastSeen);
+    return cachedUniqueUsers;
+}
+
+function renderUniqueUsersList(sorted) {
     const listEl = document.getElementById("unique-user-list");
     const totalEl = document.getElementById("unique-user-total");
     if (!listEl || !totalEl) return;
-
-    listEl.innerHTML = '<p style="font-size:0.8em; opacity:0.5; text-align:center;">⏳ Yükleniyor...</p>';
-    totalEl.innerText = '...';
-
-    try {
-        const snapshot = await getDocs(collection(db, "daily_users"));
-        const allUsers = {};
-
-        snapshot.forEach(docSnap => {
-            const users = docSnap.data().users || {};
-            const date = docSnap.id;
-            Object.keys(users).forEach(username => {
-                if (!allUsers[username] || users[username] > allUsers[username].lastSeen) {
-                    allUsers[username] = { lastSeen: users[username], date };
-                }
-            });
-        });
-
-        const sorted = Object.entries(allUsers).sort((a, b) => b[1].lastSeen - a[1].lastSeen);
-        totalEl.innerText = sorted.length;
-
-        if (sorted.length === 0) {
-            listEl.innerHTML = '<p style="font-size:0.8em; opacity:0.5; text-align:center;">Kayıt bulunamadı.</p>';
-            return;
-        }
-
-        listEl.innerHTML = sorted.map(([username, info]) => {
-            const dateStr = new Date(info.lastSeen).toLocaleDateString('tr-TR', { day:'2-digit', month:'2-digit', year:'numeric' });
-            return `
-                <div class="log-item">
-                    <b>@${username}</b>
-                    <span style="color:#94a3b8; font-size:0.85em;">Son: ${dateStr}</span>
-                </div>`;
-        }).join('');
-    } catch (e) {
-        console.error("Benzersiz kullanıcı yüklenirken hata:", e);
-        listEl.innerHTML = '<p style="font-size:0.8em; color:#ef4444; text-align:center;">Hata oluştu, tekrar deneyin.</p>';
-        totalEl.innerText = '—';
+    totalEl.innerText = sorted.length;
+    const badge = document.getElementById("unique-users-badge");
+    if (badge) badge.innerText = sorted.length;
+    if (sorted.length === 0) {
+        listEl.innerHTML = '<p style="font-size:0.8em; opacity:0.5; text-align:center;">Kayıt bulunamadı.</p>';
+        return;
     }
+    listEl.innerHTML = sorted.map(([username, info]) => {
+        const dateStr = new Date(info.lastSeen).toLocaleDateString('tr-TR', { day:'2-digit', month:'2-digit', year:'numeric' });
+        return `<div class="log-item"><b>@${username}</b><span style="color:#94a3b8; font-size:0.85em;">Son: ${dateStr}</span></div>`;
+    }).join('');
 }
 
 async function loadUniqueBadgeCount() {
     try {
-        const snapshot = await getDocs(collection(db, "daily_users"));
-        const allUsers = new Set();
-        snapshot.forEach(docSnap => {
-            const users = docSnap.data().users || {};
-            Object.keys(users).forEach(u => allUsers.add(u));
-        });
+        const sorted = await fetchUniqueUsers();
         const badge = document.getElementById("unique-users-badge");
-        if (badge) badge.innerText = allUsers.size;
+        if (badge) badge.innerText = sorted.length;
     } catch(e) { console.error(e); }
 }
 
-window.openUniqueUsersModal = function() {
-    document.getElementById('unique-users-modal').style.display = 'flex';
-    loadUniqueUsers();
+window.openUniqueUsersModal = async function() {
+    const modal = document.getElementById('unique-users-modal');
+    modal.style.display = 'flex';
+    if (cachedUniqueUsers) {
+        renderUniqueUsersList(cachedUniqueUsers);
+    } else {
+        const listEl = document.getElementById("unique-user-list");
+        const totalEl = document.getElementById("unique-user-total");
+        if (listEl) listEl.innerHTML = '';
+        if (totalEl) totalEl.innerText = '—';
+        try {
+            const sorted = await fetchUniqueUsers();
+            renderUniqueUsersList(sorted);
+        } catch(e) {
+            console.error(e);
+            if (listEl) listEl.innerHTML = '<p style="font-size:0.8em; color:#ef4444; text-align:center;">Hata oluştu.</p>';
+        }
+    }
 };
 
 onSnapshot(collection(db, "active_users"), (snap) => {
