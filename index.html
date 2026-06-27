@@ -92,6 +92,7 @@
         #unique-user-list::-webkit-scrollbar-thumb { background: #6366f1; border-radius: 10px; }
         @keyframes icon-pulse-btn { 0%,100%{filter:drop-shadow(0 0 4px rgba(99,102,241,0.6));transform:scale(1);} 50%{filter:drop-shadow(0 0 10px rgba(165,180,252,0.9));transform:scale(1.12);} }
         @keyframes icon-pulse-chart { 0%,100%{filter:drop-shadow(0 0 4px rgba(74,222,128,0.5));transform:scale(1);} 50%{filter:drop-shadow(0 0 10px rgba(74,222,128,0.9));transform:scale(1.12);} }
+        @keyframes icon-pulse-green { 0%,100%{filter:drop-shadow(0 0 4px rgba(52,211,153,0.5));transform:scale(1);} 50%{filter:drop-shadow(0 0 10px rgba(52,211,153,0.9));transform:scale(1.12);} }
     </style>
 </head>
 <body>
@@ -113,13 +114,20 @@
         </div>
     </div>
 
-    <div class="card" id="user-panel" style="display:none; border:1.5px solid #10b981;">
-        <h3 style="color:#10b981;margin:0 0 8px 0; font-size: 0.95em;">👤 Satın Alma Geçmişim</h3>
+    <div class="card" id="user-panel" style="display:none; border:2.5px solid #10b981; box-shadow:0 0 18px rgba(16,185,129,0.25);">
+        <h3 style="color:#10b981; margin:0 0 8px 0; font-size:0.95em; display:flex; align-items:center; justify-content:center; gap:6px; text-shadow:0 0 10px rgba(16,185,129,0.5);">👤 Satın Alma Geçmişim</h3>
         <div class="user-info-note">
             <div style="display:inline-block; background:#6366f1; color:#fff; font-weight:900; font-size:0.85em; padding:3px 10px; border-radius:8px; margin-bottom:6px; letter-spacing:0.3px;">ℹ️ BİLGİ</div>
             <div>Bu uygulama Test-Pi ağında deneme amaçlıdır. Satın aldığınız domainler, diğer kullanıcıların da test yapabilmesi için markette tekrar <span class="btn-fake-buy">SATIN AL</span> olarak görünebilir <b>ve satın alma geçmişinizden silinebilir.</b></div>
         </div>
-        <div id="my-domains-list" style="text-align: left;"></div>
+        <!-- SATINALMA LİSTESİ ÇERÇEVE -->
+        <div style="background:#061612; border:2px solid #059669; border-radius:12px; padding:10px; box-shadow:0 0 14px rgba(5,150,105,0.25), inset 0 1px 0 rgba(16,185,129,0.1);">
+            <div style="display:flex; align-items:center; justify-content:center; gap:6px; margin-bottom:8px; padding-bottom:7px; border-bottom:1px solid #064e3b;">
+                <span style="font-size:1em; animation:icon-pulse-green 2s ease-in-out infinite;">🛒</span>
+                <span style="font-size:0.72em; color:#34d399; font-weight:800; letter-spacing:0.5px; text-transform:uppercase; text-shadow:0 0 8px rgba(52,211,153,0.5);">Alınan Domainler</span>
+            </div>
+            <div id="my-domains-list" style="text-align:left;"></div>
+        </div>
     </div>
 
     <div class="card" id="admin-panel" style="display:none; border:2px solid #6366f1;">
@@ -150,8 +158,8 @@
         </button>
 
         <!-- GÜNLÜK GİRİŞ KAYDI GRUBU -->
-        <div style="background:#0a0f1e; border:2px solid #3b4f70; border-radius:12px; padding:10px; margin-bottom:10px; box-shadow:0 2px 12px rgba(0,0,0,0.3);">
-            <div style="display:flex; align-items:center; justify-content:center; gap:6px; margin-bottom:8px; padding-bottom:7px; border-bottom:1px solid #1e3a5f;">
+        <div style="background:#060d1f; border:2.5px solid #3b82f6; border-radius:12px; padding:10px; margin-bottom:10px; box-shadow:0 0 16px rgba(59,130,246,0.35), inset 0 1px 0 rgba(96,165,250,0.1);">
+            <div style="display:flex; align-items:center; justify-content:center; gap:6px; margin-bottom:8px; padding-bottom:7px; border-bottom:1px solid #1e3a8a;">
                 <span style="font-size:1em; animation:icon-pulse-btn 2s ease-in-out infinite;">📋</span>
                 <span style="font-size:0.72em; color:#60a5fa; font-weight:800; letter-spacing:0.5px; text-transform:uppercase; text-shadow:0 0 8px rgba(96,165,250,0.4);">Günlük Giriş Kaydı</span>
             </div>
@@ -160,8 +168,8 @@
         </div>
 
         <!-- GÜNLÜK SATIŞ İSTATİSTİKLERİ -->
-        <div style="background:#0a0f1e; border:2px solid #374832; border-radius:12px; padding:10px; box-shadow:0 2px 12px rgba(0,0,0,0.3);">
-            <div style="display:flex; align-items:center; justify-content:center; gap:6px; margin-bottom:8px; padding-bottom:7px; border-bottom:1px solid #1e3a1e;">
+        <div style="background:#061a0d; border:2.5px solid #16a34a; border-radius:12px; padding:10px; box-shadow:0 0 16px rgba(22,163,74,0.35), inset 0 1px 0 rgba(74,222,128,0.1);">
+            <div style="display:flex; align-items:center; justify-content:center; gap:6px; margin-bottom:8px; padding-bottom:7px; border-bottom:1px solid #14532d;">
                 <span style="font-size:1em; animation:icon-pulse-chart 2s ease-in-out infinite;">📈</span>
                 <span style="font-size:0.72em; color:#4ade80; font-weight:800; letter-spacing:0.5px; text-transform:uppercase; text-shadow:0 0 8px rgba(74,222,128,0.4);">Günlük Satış İstatistikleri</span>
             </div>
