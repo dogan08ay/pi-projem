@@ -499,15 +499,22 @@
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
-import { getFirestore, doc, onSnapshot, setDoc, getDoc, collection, query, where, limit, orderBy, getDocs, deleteDoc } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
+// Firestore: sadece okuma (onSnapshot, getDocs) — tüm yazmalar api/approve.js üzerinden
+import { getFirestore, doc, onSnapshot, collection, getDocs } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
 
+// Firebase client config — bu değerler public olabilir ÇÜNKÜ:
+// 1. Firestore Security Rules tüm doğrudan client yazmalarını engeller
+// 2. Firebase Console'da Authorized Domains kısıtlanmıştır
+// 3. Kritik işlemler sunucu tarafında (api/approve.js) yapılır
+// Yine de bu değerleri Next.js env variables üzerinden besleyin:
+// NEXT_PUBLIC_FIREBASE_* → process.env.NEXT_PUBLIC_FIREBASE_*
 const firebaseConfig = {
-  apiKey: "AIzaSyC9r244vRVGbYOcLHyS6EHxKyiygajW7_A",
-  authDomain: "web3-domain-gateway.firebaseapp.com",
-  projectId: "web3-domain-gateway",
-  storageBucket: "web3-domain-gateway.firebasestorage.app",
-  messagingSenderId: "315563254318",
-  appId: "1:315563254318:web:12f2f3f340bb69606df5bf"
+  apiKey:            process.env.NEXT_PUBLIC_FIREBASE_API_KEY            || "AIzaSyC9r244vRVGbYOcLHyS6EHxKyiygajW7_A",
+  authDomain:        process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN        || "web3-domain-gateway.firebaseapp.com",
+  projectId:         process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID         || "web3-domain-gateway",
+  storageBucket:     process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET     || "web3-domain-gateway.firebasestorage.app",
+  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID|| "315563254318",
+  appId:             process.env.NEXT_PUBLIC_FIREBASE_APP_ID             || "1:315563254318:web:12f2f3f340bb69606df5bf",
 };
 
 const app = initializeApp(firebaseConfig);
@@ -901,8 +908,13 @@ window.setLang = function(lang) {
 //  App State
 // =============================================
 let currentUser = null;
-let piAccessToken = null;
 let isAuth = false;
+// _piAccessToken: Pi SDK token - SADECE JS memory'de, localStorage/cookie'ye yazılmaz
+let _
+function getPiToken() { return _piAccessToken; }
+function clearPiToken() { _ }
+// _isAdmin: sunucu yanıtından set edilir, client'ta username karşılaştırması YAPILMAZ
+let _isAdmin = false;
 let domainData = {};
 let pendingDomain = null;
 let pendingPrice = 0;
@@ -996,10 +1008,16 @@ window.openProfileModal = function() {
 
 // === LOGOUT ===
 window.handleLogout = async function() {
-    if (currentUser) {
-        try { await deleteDoc(doc(db, "active_users", currentUser)); } catch(e) {}
+    if (currentUser && getPiToken()) {
+        try {
+            await fetch('/api/approve', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'logout', accessToken: getPiToken() })
+            });
+        } catch(e) {}
     }
-    currentUser = null; piAccessToken = null; isAuth = false; userFirstSeen = null;
+    currentUser = null; clearPiToken(); isAuth = false; _isAdmin = false; userFirstSeen = null;
     document.getElementById("user-status-box").style.display = "none";
     document.getElementById("user-panel").style.display = "none";
     document.getElementById("admin-panel").style.display = "none";
@@ -1037,7 +1055,7 @@ window.handleSubmitSellRequest = async function() {
     try {
         const response = await fetch('/api/approve', {
             method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ action: 'submit_sell_request', domainName: name, price, domainType: type, imgPath: img, sellerWallet: wallet, accessToken: piAccessToken })
+            body: JSON.stringify({ action: 'submit_sell_request', domainName: name, price, domainType: type, imgPath: img, sellerWallet: wallet, accessToken: getPiToken() })
         });
         const result = await response.json();
         if (!response.ok || !result.success) {
@@ -1090,7 +1108,7 @@ window.handleApproveSellRequest = async function(requestId) {
     try {
         const response = await fetch('/api/approve', {
             method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ action: 'approve_sell_request', requestId, accessToken: piAccessToken })
+            body: JSON.stringify({ action: 'approve_sell_request', requestId, accessToken: getPiToken() })
         });
         const result = await response.json();
         if (!response.ok || !result.success) alert(t('approveFail') + (result.error || ''));
@@ -1102,7 +1120,7 @@ window.handleRejectSellRequest = async function(requestId) {
     try {
         const response = await fetch('/api/approve', {
             method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ action: 'reject_sell_request', requestId, accessToken: piAccessToken })
+            body: JSON.stringify({ action: 'reject_sell_request', requestId, accessToken: getPiToken() })
         });
         const result = await response.json();
         if (!response.ok || !result.success) alert(t('rejectFail') + (result.error || ''));
@@ -1165,7 +1183,7 @@ function render() {
         card.innerHTML = `<img src="${d.img}" class="domain-img" onerror="this.src='data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMDAiIGhlaWdodD0iMTAwIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjNDc1NTY5Ii8+PC9zdmc+'">${tTag}<div class="domain-name">${d.name}</div><div class="domain-price">${data.price} PI</div>`;
         if (data.sold) {
             card.innerHTML += `<div class="btn-sold">${t('sold')}</div>`;
-            if (isAuth && currentUser === "doganay0808") {
+            if (isAuth && _isAdmin) {
                 const relistBtn = document.createElement('button');
                 relistBtn.className = 'btn-buy'; relistBtn.style.background = '#f59e0b'; relistBtn.style.marginTop = '4px';
                 relistBtn.innerText = t('relistBtn');
@@ -1185,7 +1203,7 @@ function render() {
     if (document.getElementById("my-domains-list"))
         document.getElementById("my-domains-list").innerHTML = myHtml || `<p style="font-size:0.75em; opacity:0.5; text-align:center;">${t('noDomains')}</p>`;
 
-    if (isAuth && currentUser === "doganay0808") renderAdminPriceList();
+    if (isAuth && _isAdmin) renderAdminPriceList();
     if (isAuth) updateSideMenuProfile();
 
     requestAnimationFrame(() => {
@@ -1282,18 +1300,41 @@ window.openUniqueUsersModal = async function() {
     } catch(e) { console.error(e); if (listEl) listEl.innerHTML = `<p style="font-size:0.8em; color:#ef4444; text-align:center;">${t('usersError')}</p>`; }
 };
 
-onSnapshot(collection(db, "active_users"), (snap) => {
-    const now = Date.now(); let activeCount = 0;
-    snap.forEach(doc => { if (doc.data().lastSeen && (now - doc.data().lastSeen) < 30000) activeCount++; });
-    document.getElementById("online-count").innerText = activeCount;
-});
+// Active users count: sunucudan polling (Firestore direct read rules'u kapalı)
+async function fetchActiveCount() {
+    try {
+        const res = await fetch('/api/approve', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'active_count' })
+        });
+        const data = await res.json();
+        if (data.count !== undefined)
+            document.getElementById("online-count").innerText = data.count;
+    } catch(e) {}
+}
+fetchActiveCount();
+setInterval(fetchActiveCount, 20000);
 
 async function updateActiveStatus() {
-    if (currentUser) await setDoc(doc(db, "active_users", currentUser), { lastSeen: Date.now() }, { merge: true });
+    if (!currentUser || !getPiToken()) return;
+    try {
+        // Direkt Firestore değil — sunucu üzerinden (token doğrulama ile)
+        await fetch('/api/approve', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'heartbeat', accessToken: getPiToken() })
+        });
+    } catch(e) { /* sessizce devam */ }
 }
 
-window.addEventListener('beforeunload', async () => {
-    if (currentUser) { await deleteDoc(doc(db, "active_users", currentUser)); }
+window.addEventListener('beforeunload', () => {
+    // Beacon API — sayfa kapanırken güvenilir gönderim
+    if (currentUser && getPiToken()) {
+        const data = JSON.stringify({ action: 'logout', accessToken: getPiToken() });
+        navigator.sendBeacon('/api/approve', new Blob([data], { type: 'application/json' }));
+    }
+    clearPiToken();
 });
 
 async function handleIncompletePayment(payment) {
@@ -1309,7 +1350,7 @@ async function handleIncompletePayment(payment) {
 async function handleRelist(domainName) {
     if (!confirm(t('relistConfirm')(domainName))) return;
     try {
-        const response = await fetch('/api/approve', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ action:'relist', domainName, accessToken:piAccessToken }) });
+        const response = await fetch('/api/approve', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ action:'relist', domainName, accessToken:getPiToken() }) });
         const result = await response.json();
         if (!response.ok || !result.success) alert(t('relistFail') + (result.error || ''));
     } catch(e) { console.error(e); alert(t('relistError')); }
@@ -1338,7 +1379,7 @@ function renderAdminPriceList() {
 window.handleDeleteDomain = async function(domainName) {
     if (!confirm(t('deleteConfirm')(domainName))) return;
     try {
-        const response = await fetch('/api/approve', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ action:'delete_domain', domainName, accessToken:piAccessToken }) });
+        const response = await fetch('/api/approve', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ action:'delete_domain', domainName, accessToken:getPiToken() }) });
         const result = await response.json();
         if (!response.ok || !result.success) { alert(t('deleteFail') + (result.error || '')); }
         else {
@@ -1355,7 +1396,7 @@ window.handlePriceUpdate = async function(domainName) {
     const newPrice = Number(input.value);
     if (!newPrice || newPrice <= 0) { alert(t('validPrice')); return; }
     try {
-        const response = await fetch('/api/approve', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ action:'update_price', domainName, newPrice, accessToken:piAccessToken }) });
+        const response = await fetch('/api/approve', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ action:'update_price', domainName, newPrice, accessToken:getPiToken() }) });
         const result = await response.json();
         if (!response.ok || !result.success) { alert(t('priceUpdateFail') + (result.error || '')); }
         else { alert(t('priceUpdateSuccess')(domainName, newPrice)); }
@@ -1371,7 +1412,7 @@ window.handleAddDomain = async function() {
     const img = imgInput.value.trim() || 'assets/default.jpeg';
     if (!name || !price || price <= 0) { alert(t('domainNamePriceRequired')); return; }
     try {
-        const response = await fetch('/api/approve', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ action:'add_domain', domainName:name, newPrice:price, imgPath:img, accessToken:piAccessToken }) });
+        const response = await fetch('/api/approve', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ action:'add_domain', domainName:name, newPrice:price, imgPath:img, accessToken:getPiToken() }) });
         const result = await response.json();
         if (!response.ok || !result.success) { alert(t('addDomainFail') + (result.error || '')); }
         else {
@@ -1385,15 +1426,34 @@ window.loginWithPi = async function() {
     try {
         const auth = await Pi.authenticate(['username', 'payments'], handleIncompletePayment);
         currentUser = auth.user.username;
-        piAccessToken = auth.accessToken;
+        _piAccessToken = auth.accessToken;
         isAuth = true;
+
+        // ── Sunucuya token gönder: kimliği doğrula + admin kontrolü ──
+        // Admin durumu client'ta değil, sunucuda belirlenir.
+        let loginResult = {};
+        try {
+            const loginRes = await fetch('/api/approve', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'login', accessToken: getPiToken() })
+            });
+            loginResult = await loginRes.json();
+            if (!loginResult.success) throw new Error(loginResult.error || 'Login doğrulama başarısız');
+            _isAdmin = loginResult.isAdmin === true;
+        } catch(e) {
+            console.error('Sunucu login doğrulama hatası:', e);
+            // Sunucu erişilemezse güvenli tarafta kal
+            _isAdmin = false;
+        }
+
         document.getElementById("user-status").innerHTML = '<span class="online-dot"></span>' + t('connectedPrefix') + currentUser;
         document.getElementById("user-status-box").style.display = "block";
         document.getElementById("user-panel").style.display = "block";
         debouncedRender();
 
         const today = new Date().toISOString().split("T")[0];
-        if (currentUser === "doganay0808") {
+        if (_isAdmin) {
             document.getElementById("admin-panel").style.display = "block";
             loadUniqueBadgeCount();
             listenToPendingDomains();
@@ -1401,27 +1461,22 @@ window.loginWithPi = async function() {
             dateInput.value = today;
             listenToLogs(today);
             dateInput.onchange = (e) => listenToLogs(e.target.value);
-        } else {
-            listenToLogs(today);
         }
 
-        const userDocRef = doc(db, "daily_users", today);
-        const userSnap = await getDoc(userDocRef);
-        let currentUsers = userSnap.exists() ? userSnap.data().users || {} : {};
-        currentUsers[currentUser] = Date.now();
-        await setDoc(userDocRef, { users: currentUsers }, { merge: true });
+        // Login log ve first-seen: sunucu tarafına taşındı
+        try {
+            const logRes = await fetch('/api/approve', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'log_login', accessToken: getPiToken() })
+            });
+            const logData = await logRes.json();
+            if (logData.firstSeen) userFirstSeen = logData.firstSeen;
+            updateSideMenuProfile();
+        } catch(e) { console.error('Login log hatası:', e); }
+
         updateActiveStatus();
 
-        try {
-            const allDaily = await getDocs(collection(db, "daily_users"));
-            let earliest = Date.now();
-            allDaily.forEach(d => {
-                const u = d.data().users || {};
-                if (u[currentUser] && u[currentUser] < earliest) earliest = u[currentUser];
-            });
-            userFirstSeen = earliest;
-            updateSideMenuProfile();
-        } catch(e) { console.error(e); }
     } catch(e) { console.error("Login error:", e); alert(t('loginError')); }
 };
 
@@ -1430,7 +1485,7 @@ document.getElementById("confirm-buy-btn").onclick = async () => {
     try {
         await Pi.createPayment({ amount: Number(pendingPrice), memo: "Domain: " + pendingDomain, metadata: { domain: pendingDomain } }, {
             onReadyForServerApproval: async (id) => {
-                await fetch('/api/approve', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ paymentId:id, action:'approve', accessToken:piAccessToken }) });
+                await fetch('/api/approve', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ paymentId:id, action:'approve', accessToken:getPiToken() }) });
             },
             onReadyForServerCompletion: async (id, txid) => {
                 await fetch('/api/approve', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ paymentId:id, action:'complete', txid, username:currentUser, domainName:pendingDomain }) });
@@ -1469,7 +1524,7 @@ onSnapshot(collection(db, "domains"), (snapshot) => {
         domainData[name] = docData.sold !== undefined ? docData : { sold:false, price: defaultDomain ? defaultDomain.price : (docData.price || 0) };
         if (!defaultDomain) {
             domains.unshift({ name, img: docData.img || 'assets/default.jpeg', price: docData.price || 0, type: docData.type || 'genel' });
-            if (isAuth && currentUser === "doganay0808") renderAdminPriceList();
+            if (isAuth && _isAdmin) renderAdminPriceList();
         }
     });
     let totalSold = 0, totalVolume = 0;
