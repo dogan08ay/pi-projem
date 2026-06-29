@@ -247,6 +247,20 @@ export default async function handler(req, res) {
 
       await domainRef.set({ sold: false, txid: null, buyer: null, at: null }, { merge: true });
 
+      // FIX: global_sales kaydını sil — toplam harcama düşsün
+      if (soldData.txid) {
+        try { await db.collection('global_sales').doc(soldData.txid).delete(); } catch(e) {}
+      }
+
+      // FIX: Alıcının puanını düşür
+      if (prevBuyer) {
+        try {
+          const db2 = getDb();
+          const profileRef = db2.collection('user_profiles').doc(prevBuyer);
+          await profileRef.set({ points: FieldValue.increment(-soldPrice) }, { merge: true });
+        } catch(e) {}
+      }
+
       if (soldAt) {
         const soldDate = new Date(soldAt).toISOString().split('T')[0];
         const today = new Date().toISOString().split('T')[0];
@@ -477,8 +491,46 @@ export default async function handler(req, res) {
     }
   }
 
-  // ── Kullanıcı Profili Getir ───────────────────────────────────────────
+// FIX: active_users güvenlik — kullanıcı sadece kendi kaydını yazabilsin
+// Firestore rules'da bunu enforce etmek için backend üzerinden yazıyoruz
+// Frontend direct write yerine backend'e istek at
+if (action === 'update_active_status') {
+    if (!checkRateLimit(clientIp, 'update_active_status', 5, 15000))
+      return res.status(429).json({ error: "Rate limit" });
+    const realUsername = await getRealUsername(accessToken);
+    if (!realUsername) return res.status(403).json({ error: "Geçersiz oturum" });
+    try {
+      const db = getDb();
+      await db.collection('active_users').doc(realUsername).set({ lastSeen: Date.now() }, { merge: true });
+      return res.status(200).json({ success: true });
+    } catch(e) {
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  // FIX: daily_users güvenlik — kullanıcı sadece kendi kaydını yazabilsin
+  if (action === 'log_daily_user') {
+    if (!checkRateLimit(clientIp, 'log_daily_user', 3, 60000))
+      return res.status(429).json({ error: "Rate limit" });
+    const realUsername = await getRealUsername(accessToken);
+    if (!realUsername) return res.status(403).json({ error: "Geçersiz oturum" });
+    try {
+      const db = getDb();
+      const today = new Date().toISOString().split('T')[0];
+      const userDocRef = db.collection('daily_users').doc(today);
+      const userSnap = await userDocRef.get();
+      const currentUsers = userSnap.exists ? userSnap.data().users || {} : {};
+      currentUsers[realUsername] = Date.now();
+      await userDocRef.set({ users: currentUsers }, { merge: true });
+      return res.status(200).json({ success: true });
+    } catch(e) {
+      return res.status(500).json({ error: e.message });
+    }
+  }
   if (action === 'get_user_profile') {
+    if (!checkRateLimit(clientIp, 'get_user_profile', 10, 60000))
+      return res.status(429).json({ error: "Çok fazla istek." });
+
     const realUsername = await getRealUsername(accessToken);
     if (!realUsername) return res.status(403).json({ error: "Geçersiz oturum" });
     try {
@@ -486,19 +538,31 @@ export default async function handler(req, res) {
       const profileSnap = await db.collection('user_profiles').doc(realUsername).get();
       const profileData = profileSnap.exists ? profileSnap.data() : { points: 0, badge: null };
 
-      // Satın alınan domainler
-      const salesSnap = await db.collection('global_sales').where('user', '==', realUsername).get();
+      // FIX: Toplam harcama — domains koleksiyonundan gerçek zamanlı oku
+      // global_sales yerine domains'den oku; relist sonrası sold:false olunca buradan düşer
+      const boughtDomainsSnap = await db.collection('domains')
+        .where('buyer', '==', realUsername)
+        .where('sold', '==', true)
+        .get();
       const purchases = [];
       let totalSpent = 0;
-      salesSnap.forEach(d => {
-        purchases.push(d.data());
+      boughtDomainsSnap.forEach(d => {
+        purchases.push({ domain: d.id, ...d.data() });
         totalSpent += Number(d.data().price || 0);
       });
 
-      // Satışa sunulan domainler
-      const sellReqSnap = await db.collection('sell_requests').where('submittedBy', '==', realUsername).get();
+      // Satışa sunulan domainler — cüzdan adresini gizle (güvenlik)
+      const sellReqSnap = await db.collection('sell_requests')
+        .where('submittedBy', '==', realUsername).get();
       const sellRequests = [];
-      sellReqSnap.forEach(d => sellRequests.push({ id: d.id, ...d.data() }));
+      sellReqSnap.forEach(d => {
+        const data = d.data();
+        // Cüzdan adresini sadece kısmen göster
+        const wallet = data.sellerWallet
+          ? data.sellerWallet.substring(0, 6) + '...' + data.sellerWallet.slice(-4)
+          : null;
+        sellRequests.push({ id: d.id, ...data, sellerWallet: wallet });
+      });
 
       // Satılan domainlerden gelir
       const domainsSnap = await db.collection('domains')
