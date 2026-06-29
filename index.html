@@ -104,7 +104,8 @@
         #log-list::-webkit-scrollbar{width:5px;}
         #log-list::-webkit-scrollbar-thumb{background:#6366f1;border-radius:10px;}
         .log-item{display:flex;justify-content:space-between;background:#0f172a;padding:8px 12px;border-radius:8px;margin-bottom:5px;font-size:0.8em;}
-        .user-info-note{background:rgba(99,102,241,0.1);border:1px dashed #6366f1;color:#94a3b8;padding:10px;border-radius:10px;font-size:0.75em;line-height:1.55;margin-bottom:10px;text-align:left;box-sizing:border-box;width:100%;}
+        .user-info-note{background:rgba(99,102,241,0.1);border:1px dashed #6366f1;color:#94a3b8;padding:10px;border-radius:10px;font-size:0.75em;line-height:1.6;margin-bottom:10px;text-align:left;box-sizing:border-box;width:100%;max-width:100%;overflow-wrap:break-word;word-break:break-word;hyphens:auto;}
+        .user-info-note-text{display:block;white-space:normal;text-align:left;}
         .btn-fake-buy{background:var(--accent);color:white;padding:1px 4px;border-radius:3px;font-weight:900;font-size:0.85em;}
         .income-box{background:linear-gradient(135deg,#064e3b 0%,#065f46 100%);border:2px solid #10b981;border-radius:12px;padding:12px;margin-bottom:8px;text-align:center;}
         .income-value{font-size:1.8em;font-weight:900;color:#34d399;}
@@ -240,6 +241,10 @@
             <option value="eticaret" data-i18n="typeEcommerce"></option>
             <option value="kisisel" data-i18n="typePersonal"></option>
             <option value="teknoloji" data-i18n="typeTechnology"></option>
+            <option value="turizm" data-i18n="typeTourism"></option>
+            <option value="saglik" data-i18n="typeHealth"></option>
+            <option value="egitim" data-i18n="typeEducation"></option>
+            <option value="gayrimenkul" data-i18n="typeRealEstate"></option>
             <option value="diger" data-i18n="typeOther"></option>
         </select>
         <label style="font-size:0.72em;color:#cbd5e1;font-weight:700;" data-i18n="descriptionLabel"></label>
@@ -367,7 +372,7 @@
         <div class="user-tab-panel active" id="utab-overview">
             <div class="user-info-note">
                 <div class="info-badge-header"><span class="info-badge-icon">ℹ️</span><span data-i18n="info"></span></div>
-                <div data-i18n="testNetNote"></div>
+                <div class="user-info-note-text" data-i18n="testNetNote"></div>
             </div>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;">
                 <div style="background:#0f172a;border:1px solid #334155;border-radius:10px;padding:10px;text-align:center;"><div style="font-size:0.6em;color:#94a3b8;font-weight:700;margin-bottom:4px;" data-i18n="purchasedDomainLabel"></div><div id="up-domain-count" style="font-size:1.5em;font-weight:900;color:#fbbf24;">0</div></div>
@@ -405,6 +410,7 @@
             <button class="admin-tab-btn" data-tab="tab-pending" onclick="switchAdminTab('tab-pending')">🏷️ <span data-i18n="pendingApprovals"></span><span class="pending-badge" id="pending-count-badge" style="display:none;">0</span></button>
             <button class="admin-tab-btn" data-tab="tab-prices" onclick="switchAdminTab('tab-prices')">💰 <span data-i18n="priceManagement"></span></button>
             <button class="admin-tab-btn" data-tab="tab-add" onclick="switchAdminTab('tab-add')">➕ <span data-i18n="addDomain"></span></button>
+            <button class="admin-tab-btn" data-tab="tab-earnings" onclick="switchAdminTab('tab-earnings')">🏦 <span data-i18n="earningsTab"></span></button>
         </div>
         <div class="admin-tab-panel active" id="tab-users">
             <button onclick="openUniqueUsersModal()" style="width:100%;box-sizing:border-box;background:linear-gradient(135deg,#1e1b4b 0%,#1e293b 100%);border:2px solid #6366f1;border-radius:14px;padding:12px 14px;cursor:pointer;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;box-shadow:0 4px 18px rgba(99,102,241,0.4);">
@@ -428,7 +434,13 @@
             </div>
         </div>
         <div class="admin-tab-panel" id="tab-pending"><div id="pending-domains-list" style="text-align:left;"><p style="font-size:0.75em;opacity:0.5;text-align:center;" data-i18n="noPendingDomains"></p></div></div>
-        <div class="admin-tab-panel" id="tab-prices"><div id="admin-price-list" style="text-align:left;"></div></div>
+        <div class="admin-tab-panel" id="tab-prices">
+            <div id="admin-price-list" style="text-align:left;"></div>
+            <div id="admin-deleted-section" style="margin-top:14px;display:none;">
+                <div style="font-size:0.68em;color:#f87171;font-weight:800;text-transform:uppercase;margin-bottom:6px;border-top:1px solid #334155;padding-top:10px;" data-i18n="deletedDomainsTitle"></div>
+                <div id="admin-deleted-list" style="text-align:left;"></div>
+            </div>
+        </div>
         <div class="admin-tab-panel" id="tab-add">
             <div style="display:flex;flex-direction:column;gap:6px;">
                 <input type="text" id="new-domain-name" data-i18n-placeholder="newDomainPlaceholder" class="admin-date-picker" style="margin-bottom:0;">
@@ -437,11 +449,31 @@
                 <select id="new-domain-type" class="admin-date-picker" style="margin-bottom:0;">
                     <option value="genel" data-i18n="typeGeneral"></option><option value="finans" data-i18n="typeFinance"></option>
                     <option value="eticaret" data-i18n="typeEcommerce"></option><option value="kisisel" data-i18n="typePersonal"></option>
-                    <option value="teknoloji" data-i18n="typeTechnology"></option><option value="diger" data-i18n="typeOther"></option>
+                    <option value="teknoloji" data-i18n="typeTechnology"></option><option value="turizm" data-i18n="typeTourism"></option>
+                    <option value="saglik" data-i18n="typeHealth"></option><option value="egitim" data-i18n="typeEducation"></option>
+                    <option value="gayrimenkul" data-i18n="typeRealEstate"></option><option value="diger" data-i18n="typeOther"></option>
                 </select>
                 <textarea id="new-domain-desc" data-i18n-placeholder="descriptionPlaceholder" class="admin-date-picker" rows="2" style="resize:none;margin-bottom:0;"></textarea>
                 <button class="pi-btn" style="margin:4px 0 0 0;animation:none;background:#10b981;padding:8px;" onclick="handleAddDomain()" data-i18n="addDomainBtn"></button>
             </div>
+        </div>
+        <div class="admin-tab-panel" id="tab-earnings">
+            <div class="income-box" style="border-color:#6366f1;background:linear-gradient(135deg,#1e1b4b 0%,#312e81 100%);">
+                <div style="font-size:0.7em;color:#c7d2fe;font-weight:800;margin-bottom:4px;" data-i18n="platformWalletTitle"></div>
+                <div class="income-value" id="admin-platform-earnings" style="color:#a5b4fc;">0 Pi</div>
+                <div style="font-size:0.65em;color:#94a3b8;margin-top:6px;" data-i18n="platformWalletNote"></div>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;">
+                <div style="background:#0f172a;border:1px solid #334155;border-radius:10px;padding:10px;text-align:center;">
+                    <div style="font-size:0.6em;color:#94a3b8;font-weight:700;margin-bottom:4px;" data-i18n="totalVolumeAll"></div>
+                    <div id="admin-total-volume" style="font-size:1.3em;font-weight:900;color:#fbbf24;">0 Pi</div>
+                </div>
+                <div style="background:#0f172a;border:1px solid #334155;border-radius:10px;padding:10px;text-align:center;">
+                    <div style="font-size:0.6em;color:#94a3b8;font-weight:700;margin-bottom:4px;" data-i18n="userOwnedVolume"></div>
+                    <div id="admin-user-volume" style="font-size:1.3em;font-weight:900;color:#34d399;">0 Pi</div>
+                </div>
+            </div>
+            <button class="pi-btn" style="background:#6366f1;animation:none;padding:8px;width:100%;font-size:0.8em;" onclick="loadAdminEarnings()" data-i18n="refreshBtn"></button>
         </div>
     </div>
 
@@ -455,6 +487,10 @@
             <button class="filter-chip" data-filter="eticaret" onclick="setDomainFilter('eticaret')" data-i18n="typeEcommerce"></button>
             <button class="filter-chip" data-filter="kisisel" onclick="setDomainFilter('kisisel')" data-i18n="typePersonal"></button>
             <button class="filter-chip" data-filter="teknoloji" onclick="setDomainFilter('teknoloji')" data-i18n="typeTechnology"></button>
+            <button class="filter-chip" data-filter="turizm" onclick="setDomainFilter('turizm')" data-i18n="typeTourism"></button>
+            <button class="filter-chip" data-filter="saglik" onclick="setDomainFilter('saglik')" data-i18n="typeHealth"></button>
+            <button class="filter-chip" data-filter="egitim" onclick="setDomainFilter('egitim')" data-i18n="typeEducation"></button>
+            <button class="filter-chip" data-filter="gayrimenkul" onclick="setDomainFilter('gayrimenkul')" data-i18n="typeRealEstate"></button>
         </div>
         <div id="premium-lock" class="premium-lock-overlay">
             <div style="position:relative;display:inline-block;"><div class="diamond-spin" style="font-size:1.8em;">💎</div>
@@ -484,7 +520,6 @@
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
 import { getFirestore, doc, onSnapshot, setDoc, getDoc, collection, getDocs, deleteDoc } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
-import { getDatabase, ref as rtdbRef, onValue, off } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-database.js";
 
 const firebaseConfig = {
     apiKey: "AIzaSyC9r244vRVGbYOcLHyS6EHxKyiygajW7_A",
@@ -497,7 +532,6 @@ const firebaseConfig = {
 };
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
-const rtdb = getDatabase(app);
 
 // FIX 1: Pi SDK hazır olana kadar bekle — "giriş hatası" bug'ı
 let piReady = false;
@@ -526,20 +560,23 @@ const i18n = {
     walletLabel:"Pi Cüzdan Adresin",walletPlaceholder:"G... ile başlayan cüzdan adresin",
     walletNote:"ℹ️ Ödeme transferi ileride aktif olacak özellik için şimdiden alınıyor.",
     cancel:"VAZGEÇ",sendForApproval:"ONAYA GÖNDER",
-    typeGeneral:"Genel",typeFinance:"Finans / Bankacılık",typeEcommerce:"E-Ticaret",
+    typeGeneral:"Genel",typeFinance:"Faizsiz Finansal Hizmetler",typeEcommerce:"E-Ticaret",
     typePersonal:"Kişisel İsim",typeTechnology:"Teknoloji",typeOther:"Diğer",
+    typeTourism:"Turizm ve Seyahat",typeHealth:"Sağlık",typeEducation:"Eğitim",typeRealEstate:"Gayrimenkul",
     soldDomains:"Satılan Domain",totalVolume:"Toplam Hacim",activeUsers:"Aktif Kullanıcı",
     overview:"Genel",myPurchases:"Alımlarım",myListings:"İlanlarım",myIncome:"Gelirim",
     totalSpent:"Toplam Harcama",myListingsCount:"İlan Sayım",
     myListingsTitle:"Satış İlanlarım",listNewDomain:"+ Yeni İlan Ver",
     totalEarned:"TOPLAM GELİR",earnedNote:"Satışa sunduğunuz ve satılan domainlerden elde edilen gelir.",
-    info:"BİLGİ",testNetNote:"Bu uygulama Test-Pi ağında deneme amaçlıdır. Satın aldığınız domainler, diğer kullanıcıların da test yapabilmesi için markette tekrar <span class=\"btn-fake-buy\">SATIN AL</span> olarak görünebilir <b>ve satın alma geçmişinizden silinebilir.</b>",
+    info:"BİLGİ",
+    testNetNote:"Bu uygulama Test-Pi ağında deneme amaçlıdır. Satın aldığınız domainler, diğer kullanıcıların da test yapabilmesi için markette tekrar SATIN AL olarak görünebilir ve satın alma geçmişinizden silinebilir.",
     purchasedDomains:"Satın Alınan Domainler",
     noDomains:"Henüz satın alma geçmişiniz bulunmuyor.",
     noListings:"Henüz satışa sunduğunuz bir domain yok.",
     noSoldDomains:"Henüz satılan bir domaininiz yok.",
+    noActiveListings:"Şu anda satışta bekleyen domaininiz yok.",
     users:"Kullanıcılar",salesStats:"Satış İstatistikleri",pendingApprovals:"Bekleyen Onaylar",
-    priceManagement:"Fiyat Yönetimi",addDomain:"Domain Ekle",
+    priceManagement:"Fiyat Yönetimi",addDomain:"Domain Ekle",earningsTab:"Kazanç",
     totalLoggedInUsers:"Bugüne Kadar Giriş Yapan",uniqueUsers:"Toplam Farklı Kullanıcı",
     dailyLoginLog:"Günlük Giriş Kaydı",dailySalesStats:"Günlük Satış İstatistikleri",
     salesCount:"SATIŞ ADEDİ",volumePi:"HACİM (Pİ)",noPendingDomains:"Bekleyen domain önerisi yok.",
@@ -581,7 +618,7 @@ const i18n = {
     validPrice:"Geçerli bir fiyat girin.",
     priceUpdateFail:"Fiyat güncelleme başarısız: ",priceUpdateError:"Bir hata oluştu.",
     priceUpdateSuccess:(n,p)=>`"${n}" fiyatı ${p} Pİ olarak güncellendi.`,
-    deleteConfirm:(n)=>`"${n}" domainini KALICI OLARAK silmek istediğinize emin misiniz?`,
+    deleteConfirm:(n)=>`"${n}" domainini silmek istediğinize emin misiniz? (Geçmiş veriler korunur, gerekirse geri eklenebilir.)`,
     deleteFail:"Domain silme başarısız: ",deleteError:"Bir hata oluştu.",
     deleteSuccess:(n)=>`"${n}" domaini silindi.`,
     addDomainFail:"Domain ekleme başarısız: ",addDomainError:"Bir hata oluştu.",
@@ -596,6 +633,19 @@ const i18n = {
     statusPending:"⏳ Onay Bekliyor",statusApproved:"✅ Onaylandı",statusRejected:"❌ Reddedildi",
     domainOnSale:"Satışta",domainSold:"Satıldı",sellerLabel:"Satıcı:",descriptionEmpty:"Açıklama girilmemiş.",
     imageUploading:"Görsel yükleniyor...",imageUploadFailed:"Görsel yüklenemedi.",
+    myActiveListings:"Satıştaki Domainleriniz",mySoldDomainsLabel:"Satılan Domainleriniz",
+    walletBalanceLabel:"Domain Satışı Geliriniz",
+    platformWalletTitle:"PLATFORM CÜZDANI (TOPLAM KAZANÇ)",
+    platformWalletNote:"Sahibi belirtilmemiş (sistem) domainlerin satışından elde edilen toplam gelir.",
+    totalVolumeAll:"Toplam Satış Hacmi",userOwnedVolume:"Kullanıcı Domain Geliri",
+    refreshBtn:"🔄 Yenile",
+    detailFieldDomain:"Domain Adı",detailFieldPrice:"Fiyat",detailFieldType:"Tür",
+    detailFieldSeller:"Gönderen Kullanıcı",detailFieldWallet:"Cüzdan Adresi",
+    detailFieldDate:"Gönderim Tarihi",detailFieldDesc:"Açıklama",
+    deletedDomainsTitle:"🗑️ Silinmiş Domainler",noDeletedDomains:"Silinmiş domain yok.",
+    restoreBtn:"↩ Geri Getir",restoreConfirm:(n)=>`"${n}" domainini geri getirmek istediğinize emin misiniz? Eski verileri (açıklama, görsel, satıcı bilgisi) korunarak yeniden satışa eklenecek.`,
+    restoreFail:"Geri getirme başarısız: ",restoreSuccess:(n)=>`"${n}" domaini geri getirildi.`,
+    deletedAtLabel:"Silinme tarihi:",
   },
   en: {
     menu:"Menu",account:"Account",preferences:"Preferences",connected:"Connected",
@@ -614,18 +664,21 @@ const i18n = {
     walletLabel:"Your Pi Wallet Address",walletPlaceholder:"Your wallet address starting with G...",
     walletNote:"ℹ️ Payment transfer will be activated in the future.",
     cancel:"CANCEL",sendForApproval:"SEND FOR APPROVAL",
-    typeGeneral:"General",typeFinance:"Finance / Banking",typeEcommerce:"E-Commerce",
+    typeGeneral:"General",typeFinance:"Interest-Free Financial Services",typeEcommerce:"E-Commerce",
     typePersonal:"Personal Name",typeTechnology:"Technology",typeOther:"Other",
+    typeTourism:"Tourism & Travel",typeHealth:"Health",typeEducation:"Education",typeRealEstate:"Real Estate",
     soldDomains:"Sold Domains",totalVolume:"Total Volume",activeUsers:"Active Users",
     overview:"Overview",myPurchases:"My Purchases",myListings:"My Listings",myIncome:"My Income",
     totalSpent:"Total Spent",myListingsCount:"My Listings",
     myListingsTitle:"My Domain Listings",listNewDomain:"+ New Listing",
     totalEarned:"TOTAL EARNINGS",earnedNote:"Total earnings from your listed and sold domains.",
-    info:"INFO",testNetNote:"This app runs on Test-Pi for demo purposes. Purchased domains may reappear as <span class=\"btn-fake-buy\">BUY</span> <b>and may be removed from your history.</b>",
+    info:"INFO",
+    testNetNote:"This app runs on Test-Pi for demo purposes. Purchased domains may reappear as BUY in the market so other users can also test, and may be removed from your history.",
     purchasedDomains:"Purchased Domains",noDomains:"No purchase history found yet.",
     noListings:"You haven't listed any domains yet.",noSoldDomains:"None of your domains have been sold yet.",
+    noActiveListings:"You have no domains currently on sale.",
     users:"Users",salesStats:"Sales Statistics",pendingApprovals:"Pending Approvals",
-    priceManagement:"Price Management",addDomain:"Add Domain",
+    priceManagement:"Price Management",addDomain:"Add Domain",earningsTab:"Earnings",
     totalLoggedInUsers:"All-time logged-in users",uniqueUsers:"Total Unique Users",
     dailyLoginLog:"Daily Login Log",dailySalesStats:"Daily Sales Statistics",
     salesCount:"SALES COUNT",volumePi:"VOLUME (PI)",noPendingDomains:"No pending domain submissions.",
@@ -666,7 +719,7 @@ const i18n = {
     validPrice:"Please enter a valid price.",
     priceUpdateFail:"Price update failed: ",priceUpdateError:"An error occurred.",
     priceUpdateSuccess:(n,p)=>`"${n}" price updated to ${p} PI.`,
-    deleteConfirm:(n)=>`Are you sure you want to PERMANENTLY delete "${n}"?`,
+    deleteConfirm:(n)=>`Are you sure you want to delete "${n}"? (Historical data is preserved and it can be re-added later.)`,
     deleteFail:"Domain deletion failed: ",deleteError:"An error occurred.",
     deleteSuccess:(n)=>`"${n}" has been deleted.`,
     addDomainFail:"Failed to add domain: ",addDomainError:"An error occurred.",
@@ -681,6 +734,19 @@ const i18n = {
     statusPending:"⏳ Pending Approval",statusApproved:"✅ Approved",statusRejected:"❌ Rejected",
     domainOnSale:"On Sale",domainSold:"Sold",sellerLabel:"Seller:",descriptionEmpty:"No description provided.",
     imageUploading:"Uploading image...",imageUploadFailed:"Image upload failed.",
+    myActiveListings:"Domains Currently on Sale",mySoldDomainsLabel:"Your Sold Domains",
+    walletBalanceLabel:"Your Domain Sales Earnings",
+    platformWalletTitle:"PLATFORM WALLET (TOTAL EARNINGS)",
+    platformWalletNote:"Total income from sales of domains with no listed owner (system domains).",
+    totalVolumeAll:"Total Sales Volume",userOwnedVolume:"User-Owned Domain Income",
+    refreshBtn:"🔄 Refresh",
+    detailFieldDomain:"Domain Name",detailFieldPrice:"Price",detailFieldType:"Type",
+    detailFieldSeller:"Submitted By",detailFieldWallet:"Wallet Address",
+    detailFieldDate:"Submission Date",detailFieldDesc:"Description",
+    deletedDomainsTitle:"🗑️ Deleted Domains",noDeletedDomains:"No deleted domains.",
+    restoreBtn:"↩ Restore",restoreConfirm:(n)=>`Are you sure you want to restore "${n}"? Its previous data (description, image, seller info) will be preserved and it will be relisted for sale.`,
+    restoreFail:"Restore failed: ",restoreSuccess:(n)=>`"${n}" has been restored.`,
+    deletedAtLabel:"Deleted on:",
   }
 };
 let currentLang = localStorage.getItem('w3dg_lang') || 'tr';
@@ -699,23 +765,24 @@ window.setLang=function(lang){ currentLang=lang; localStorage.setItem('w3dg_lang
 let currentUser=null,piAccessToken=null,isAuth=false;
 let domainData={},pendingDomain=null,pendingPrice=0;
 let adminLogUnsubscribe=null,adminStatsUnsubscribe=null,pendingDomainsUnsubscribe=null;
-let notifUnsubRef=null,notifHandler=null;
+let notifPollInterval=null;
 let currentFilter='hepsi',userFirstSeen=null;
 let userProfile={points:0,badge:null};
-let userSellRequests=[],userSoldDomains=[],userTotalSpent=0,userTotalEarned=0;
+let userSellRequests=[],userSoldDomains=[],userActiveListings=[],userTotalSpent=0,userTotalEarned=0;
 let selectedImageBase64=null,selectedImageMime=null,selectedImageName=null;
+let cachedNotifications=[];
 
 let domains=[
     {name:'test-domain',img:'assets/test.jpeg',price:10,type:'genel',description:''},
-    {name:'etstur.pi',img:'assets/etstur.jpeg',price:250,type:'eticaret',description:''},
-    {name:'eminevim.pi',img:'assets/eminevim.jpeg',price:150,type:'genel',description:''},
-    {name:'fuzulev.pi',img:'assets/fuzulev.jpeg',price:300,type:'eticaret',description:''},
+    {name:'etstur.pi',img:'assets/etstur.jpeg',price:250,type:'turizm',description:''},
+    {name:'eminevim.pi',img:'assets/eminevim.jpeg',price:150,type:'finans',description:''},
+    {name:'fuzulev.pi',img:'assets/fuzulev.jpeg',price:300,type:'finans',description:''},
     {name:'fibabank.pi',img:'assets/fibabank.jpeg',price:500,type:'finans',description:''},
     {name:'sekerbank.pi',img:'assets/sekerbank.jpeg',price:600,type:'finans',description:''},
     {name:'doganay.pi',img:'assets/doganay.jpeg',price:150,type:'kisisel',description:''}
 ];
 
-const typeKeys={genel:'typeGeneral',finans:'typeFinance',eticaret:'typeEcommerce',kisisel:'typePersonal',teknoloji:'typeTechnology',diger:'typeOther'};
+const typeKeys={genel:'typeGeneral',finans:'typeFinance',eticaret:'typeEcommerce',kisisel:'typePersonal',teknoloji:'typeTechnology',turizm:'typeTourism',saglik:'typeHealth',egitim:'typeEducation',gayrimenkul:'typeRealEstate',diger:'typeOther'};
 function typeLabel(type){return t(typeKeys[type]||'typeGeneral');}
 const badgeInfo={bronze:{label:()=>t('badgeBronze'),color:'#cd7f32'},silver:{label:()=>t('badgeSilver'),color:'#94a3b8'},gold:{label:()=>t('badgeGold'),color:'#fbbf24'},diamond:{label:()=>t('badgeDiamond'),color:'#818cf8'}};
 function badgeHTML(badge){if(!badge||!badgeInfo[badge])return '';return `<span style="color:${badgeInfo[badge].color};font-weight:900;">${badgeInfo[badge].label()}</span>`;}
@@ -740,7 +807,6 @@ function updateSideMenuProfile(){
         document.getElementById('side-menu-badge-display').innerHTML=badgeHTML(userProfile.badge);
         const myCount=domains.filter(d=>domainData[d.name]?.sold&&domainData[d.name]?.buyer===currentUser).length;
         document.getElementById('side-menu-domain-count').innerText=myCount;
-        // FIX: İlk giriş tarihi
         const locale=currentLang==='en'?'en-GB':'tr-TR';
         document.getElementById('side-menu-first-seen').innerText=userFirstSeen&&userFirstSeen<Date.now()
             ?new Date(userFirstSeen).toLocaleDateString(locale,{day:'2-digit',month:'2-digit',year:'numeric'}):'—';
@@ -771,9 +837,10 @@ window.openProfileModal=function(){
 // LOGOUT
 window.handleLogout=async function(){
     if(currentUser) try{await deleteDoc(doc(db,"active_users",currentUser));}catch(e){}
-    if(notifUnsubRef&&notifHandler){off(notifUnsubRef,'value',notifHandler);notifUnsubRef=null;notifHandler=null;}
+    stopNotifPolling();
     currentUser=null;piAccessToken=null;isAuth=false;userFirstSeen=null;
-    userProfile={points:0,badge:null};userSellRequests=[];userSoldDomains=[];userTotalSpent=0;userTotalEarned=0;
+    userProfile={points:0,badge:null};userSellRequests=[];userSoldDomains=[];userActiveListings=[];userTotalSpent=0;userTotalEarned=0;
+    cachedNotifications=[];
     document.getElementById("user-status-box").style.display="none";
     document.getElementById("user-panel").style.display="none";
     document.getElementById("admin-panel").style.display="none";
@@ -785,6 +852,7 @@ window.handleLogout=async function(){
 window.switchAdminTab=function(tabId){
     document.querySelectorAll('.admin-tab-btn').forEach(b=>b.classList.toggle('active',b.dataset.tab===tabId));
     document.querySelectorAll('.admin-tab-panel').forEach(p=>p.classList.toggle('active',p.id===tabId));
+    if(tabId==='tab-earnings') loadAdminEarnings();
 };
 window.switchUserTab=function(tabId){
     document.querySelectorAll('.user-tab-btn').forEach(b=>b.classList.toggle('active',b.dataset.utab===tabId));
@@ -850,23 +918,33 @@ window.handleSubmitSellRequest=async function(){
         await loadUserProfile(); debouncedRender();
     }catch(e){alert(t('sellSubmitError'));}
 };
-// BİLDİRİMLER
-function listenToNotifications(username){
-    if(notifUnsubRef&&notifHandler){off(notifUnsubRef,'value',notifHandler);}
-    const nRef=rtdbRef(rtdb,`notifications/${username}`);
-    notifUnsubRef=nRef;
-    notifHandler=(snap)=>{
-        const data=snap.val()||{};
-        const notifs=Object.entries(data).map(([id,v])=>({id,...v})).sort((a,b)=>b.ts-a.ts);
-        const unread=notifs.filter(n=>!n.read).length;
-        const badge=document.getElementById('notif-badge');
-        const btn=document.getElementById('notif-btn');
-        btn.style.display='flex';
+
+// ─── BİLDİRİMLER (Backend Proxy ile — RTDB rules kapalı olduğu için
+//     client doğrudan okuyamaz; bu yüzden /api/approve üzerinden polling
+//     yapıyoruz. 15 saniyede bir tazeleniyor; modal açıldığında da anında
+//     tazelenir.) ────────────────────────────────────────────────────────
+async function fetchNotifications(silent){
+    if(!piAccessToken) return;
+    try{
+        const r=await fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},
+            body:JSON.stringify({action:'get_notifications',accessToken:piAccessToken})});
+        const result=await r.json();
+        if(result.success){
+            cachedNotifications=result.notifications||[];
+            renderNotifBadgeAndList();
+        }
+    }catch(e){if(!silent) console.error("Bildirimler alınamadı:",e);}
+}
+function renderNotifBadgeAndList(){
+    const unread=cachedNotifications.filter(n=>!n.read).length;
+    const badge=document.getElementById('notif-badge');
+    const btn=document.getElementById('notif-btn');
+    if(btn) btn.style.display='flex';
+    if(badge){
         if(unread>0){badge.style.display='block';badge.textContent=unread>99?'99+':unread;}
         else{badge.style.display='none';}
-        renderNotifList(notifs);
-    };
-    onValue(nRef,notifHandler);
+    }
+    renderNotifList(cachedNotifications);
 }
 function renderNotifList(notifs){
     const list=document.getElementById('notif-list'); if(!list) return;
@@ -875,10 +953,25 @@ function renderNotifList(notifs){
         ?`<p style="font-size:0.8em;opacity:0.5;text-align:center;">${t('noNotifications')}</p>`
         :notifs.map(n=>`<div class="notif-item ${n.read?'':'unread'}"><div class="notif-dot ${n.read?'read':''}"></div><div style="flex:1;"><div style="font-size:0.82em;font-weight:800;color:#f1f5f9;margin-bottom:2px;">${n.title||''}</div><div style="font-size:0.72em;color:#94a3b8;line-height:1.4;">${n.body||''}</div><div style="font-size:0.62em;color:#475569;margin-top:4px;">${new Date(n.ts).toLocaleString(locale,{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})}</div></div></div>`).join('');
 }
-window.openNotifModal=function(){document.getElementById('notif-modal').style.display='flex';};
+function startNotifPolling(){
+    stopNotifPolling();
+    fetchNotifications();
+    notifPollInterval=setInterval(()=>fetchNotifications(true),15000);
+}
+function stopNotifPolling(){
+    if(notifPollInterval){clearInterval(notifPollInterval);notifPollInterval=null;}
+}
+window.openNotifModal=function(){
+    document.getElementById('notif-modal').style.display='flex';
+    fetchNotifications(); // modal açılınca anında tazele
+};
 window.markAllNotifRead=async function(){
     if(!piAccessToken) return;
-    try{await fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'mark_notifications_read',accessToken:piAccessToken})});}catch(e){}
+    try{
+        await fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'mark_notifications_read',accessToken:piAccessToken})});
+        cachedNotifications=cachedNotifications.map(n=>({...n,read:true}));
+        renderNotifBadgeAndList();
+    }catch(e){}
 };
 
 // DOMAIN DETAY
@@ -900,25 +993,38 @@ window.openDomainDetail=function(domainName){
     document.getElementById('domain-detail-modal').style.display='flex';
 };
 
-// SATIŞ ÖNERİSİ DETAY (Admin)
+// SATIŞ ÖNERİSİ DETAY (Admin) — başlık/açıklama formatında sıralı gösterim
 window.openSellRequestDetail=function(requestId,dataStr){
     let p; try{p=JSON.parse(dataStr);}catch(e){return;}
     const locale=currentLang==='en'?'en-GB':'tr-TR';
-    document.getElementById('sell-request-detail-content').innerHTML=`
-        <img src="${p.img||'assets/default.jpeg'}" style="width:100%;max-height:100px;object-fit:contain;border-radius:8px;margin-bottom:10px;background:#334155;">
-        <div style="display:flex;flex-direction:column;gap:6px;font-size:0.82em;">
-            <div style="display:flex;justify-content:space-between;"><span style="color:#94a3b8;font-weight:700;">🌐 Domain</span><b style="color:#fbbf24;">${p.domainName}</b></div>
-            <div style="display:flex;justify-content:space-between;"><span style="color:#94a3b8;font-weight:700;">💰 Fiyat</span><b style="color:#fbbf24;">${p.price} Pi</b></div>
-            <div style="display:flex;justify-content:space-between;"><span style="color:#94a3b8;font-weight:700;">🏷️ Tür</span><span>${typeLabel(p.domainType)}</span></div>
-            <div style="display:flex;justify-content:space-between;"><span style="color:#94a3b8;font-weight:700;">👤 Gönderen</span><span>@${p.submittedBy}</span></div>
-            <div style="display:flex;justify-content:space-between;"><span style="color:#94a3b8;font-weight:700;">💳 Cüzdan</span><span style="font-size:0.85em;word-break:break-all;">${p.sellerWallet||t('pendingWalletUnspecified')}</span></div>
-            <div style="display:flex;justify-content:space-between;"><span style="color:#94a3b8;font-weight:700;">📅 Tarih</span><span>${p.submittedAt?new Date(p.submittedAt).toLocaleDateString(locale):'-'}</span></div>
-            ${p.description?`<div style="margin-top:6px;background:#0f172a;padding:8px;border-radius:8px;color:#94a3b8;line-height:1.5;">📝 ${p.description}</div>`:''}
-        </div>
-        <div style="display:flex;gap:8px;margin-top:12px;">
-            <button onclick="handleApproveSellRequest('${requestId}');document.getElementById('sell-request-detail-modal').style.display='none';" style="flex:1;background:#10b981;color:#fff;border:none;padding:9px;border-radius:8px;font-size:0.8em;font-weight:800;cursor:pointer;">${t('approveBtn')}</button>
-            <button onclick="handleRejectSellRequest('${requestId}');document.getElementById('sell-request-detail-modal').style.display='none';" style="flex:1;background:#ef4444;color:#fff;border:none;padding:9px;border-radius:8px;font-size:0.8em;font-weight:800;cursor:pointer;">${t('rejectBtn')}</button>
+    const rows=[
+        {label:t('detailFieldDomain'), value:p.domainName, icon:'🌐'},
+        {label:t('detailFieldPrice'), value:`${p.price} Pi`, icon:'💰'},
+        {label:t('detailFieldType'), value:typeLabel(p.domainType), icon:'🏷️'},
+        {label:t('detailFieldSeller'), value:'@'+p.submittedBy, icon:'👤'},
+        {label:t('detailFieldWallet'), value:p.sellerWallet||t('pendingWalletUnspecified'), icon:'💳'},
+        {label:t('detailFieldDate'), value:p.submittedAt?new Date(p.submittedAt).toLocaleDateString(locale):'-', icon:'📅'},
+    ];
+    let html=`<img src="${p.img||'assets/default.jpeg'}" style="width:100%;max-height:110px;object-fit:contain;border-radius:8px;margin-bottom:12px;background:#334155;">`;
+    html+=`<div style="display:flex;flex-direction:column;gap:10px;">`;
+    rows.forEach(row=>{
+        html+=`<div style="background:#0f172a;border-radius:8px;padding:8px 10px;">
+            <div style="font-size:0.65em;color:#94a3b8;font-weight:800;text-transform:uppercase;margin-bottom:3px;">${row.icon} ${row.label}</div>
+            <div style="font-size:0.88em;color:#f1f5f9;font-weight:700;word-break:break-all;">${row.value}</div>
         </div>`;
+    });
+    if(p.description){
+        html+=`<div style="background:#0f172a;border-radius:8px;padding:8px 10px;">
+            <div style="font-size:0.65em;color:#94a3b8;font-weight:800;text-transform:uppercase;margin-bottom:3px;">📝 ${t('detailFieldDesc')}</div>
+            <div style="font-size:0.82em;color:#cbd5e1;line-height:1.5;">${p.description}</div>
+        </div>`;
+    }
+    html+=`</div>`;
+    html+=`<div style="display:flex;gap:8px;margin-top:14px;">
+        <button onclick="handleApproveSellRequest('${requestId}');document.getElementById('sell-request-detail-modal').style.display='none';" style="flex:1;background:#10b981;color:#fff;border:none;padding:9px;border-radius:8px;font-size:0.8em;font-weight:800;cursor:pointer;">${t('approveBtn')}</button>
+        <button onclick="handleRejectSellRequest('${requestId}');document.getElementById('sell-request-detail-modal').style.display='none';" style="flex:1;background:#ef4444;color:#fff;border:none;padding:9px;border-radius:8px;font-size:0.8em;font-weight:800;cursor:pointer;">${t('rejectBtn')}</button>
+    </div>`;
+    document.getElementById('sell-request-detail-content').innerHTML=html;
     document.getElementById('sell-request-detail-modal').style.display='flex';
 };
 
@@ -957,10 +1063,14 @@ window.handleRejectSellRequest=async function(requestId){
     const r=await fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'reject_sell_request',requestId,accessToken:piAccessToken})});
     const result=await r.json(); if(!r.ok||!result.success) alert(t('rejectFail')+(result.error||''));
 };
-// ADMIN PRICE LIST — FIX: Firestore fiyatları
+// ADMIN PRICE LIST
 function renderAdminPriceList(){
     const container=document.getElementById("admin-price-list"); if(!container) return;
-    container.innerHTML=domains.map(d=>{
+    // FIX: deleted===true olan domainler fiyat yönetimi listesinde
+    // gösterilmez (zaten satışta değiller) — bunlar ayrı "Silinmiş
+    // Domainler" bölümünde, geri getirme butonuyla listelenir.
+    const activeDomains=domains.filter(d=>!domainData[d.name]?.deleted);
+    container.innerHTML=activeDomains.map(d=>{
         const data=domainData[d.name]||{price:d.price,sold:false};
         const isSold=data.sold===true;
         return `<div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;background:#0f172a;padding:6px 8px;border-radius:8px;">
@@ -969,7 +1079,38 @@ function renderAdminPriceList(){
             <button onclick="handlePriceUpdate('${d.name}')" ${isSold?'disabled':''} style="background:#6366f1;color:#fff;border:none;padding:5px 8px;border-radius:6px;font-size:0.7em;font-weight:bold;cursor:pointer;opacity:${isSold?'0.4':'1'};">${t('updateBtn')}</button>
             ${!isSold?`<button onclick="handleDeleteDomain('${d.name}')" style="background:#ef4444;color:#fff;border:none;padding:5px 8px;border-radius:6px;font-size:0.7em;font-weight:bold;cursor:pointer;">${t('deleteBtn')}</button>`:''}
         </div>`;}).join('');
+
+    // Silinmiş domainler bölümü
+    const deletedDomains=domains.filter(d=>domainData[d.name]?.deleted===true);
+    const deletedSection=document.getElementById('admin-deleted-section');
+    const deletedList=document.getElementById('admin-deleted-list');
+    if(deletedSection&&deletedList){
+        if(deletedDomains.length===0){
+            deletedSection.style.display='none';
+        } else {
+            deletedSection.style.display='block';
+            const locale=currentLang==='en'?'en-GB':'tr-TR';
+            deletedList.innerHTML=deletedDomains.map(d=>{
+                const data=domainData[d.name]||{};
+                const delDate=data.deletedAt?new Date(data.deletedAt).toLocaleDateString(locale,{day:'2-digit',month:'2-digit',year:'numeric'}):'-';
+                return `<div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;background:#1c1917;border:1px solid #7f1d1d;padding:6px 8px;border-radius:8px;">
+                    <div style="flex:1;overflow:hidden;">
+                        <div style="font-size:0.8em;font-weight:bold;color:#fca5a5;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${d.name}</div>
+                        <div style="font-size:0.62em;color:#94a3b8;">${t('deletedAtLabel')} ${delDate}</div>
+                    </div>
+                    <button onclick="handleRestoreDomain('${d.name}')" style="background:#10b981;color:#fff;border:none;padding:5px 8px;border-radius:6px;font-size:0.7em;font-weight:bold;cursor:pointer;flex-shrink:0;">${t('restoreBtn')}</button>
+                </div>`;
+            }).join('');
+        }
+    }
 }
+window.handleRestoreDomain=async function(domainName){
+    if(!confirm(t('restoreConfirm')(domainName))) return;
+    const r=await fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'restore_domain',domainName,accessToken:piAccessToken})});
+    const result=await r.json();
+    if(!r.ok||!result.success) alert(t('restoreFail')+(result.error||''));
+    else alert(t('restoreSuccess')(domainName));
+};
 window.handlePriceUpdate=async function(domainName){
     const newPrice=Number(document.getElementById(`price-input-${domainName}`)?.value);
     if(!newPrice||newPrice<=0){alert(t('validPrice'));return;}
@@ -982,8 +1123,14 @@ window.handleDeleteDomain=async function(domainName){
     if(!confirm(t('deleteConfirm')(domainName))) return;
     const r=await fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'delete_domain',domainName,accessToken:piAccessToken})});
     const result=await r.json();
-    if(!r.ok||!result.success) alert(t('deleteFail')+(result.error||''));
-    else{domains=domains.filter(d=>d.name!==domainName);delete domainData[domainName];alert(t('deleteSuccess')(domainName));debouncedRender();}
+    if(!r.ok||!result.success){alert(t('deleteFail')+(result.error||''));return;}
+    // FIX: Backend artık soft-delete yapıyor (deleted:true) ve bu durum
+    // domains koleksiyonundaki belgenin alanı olarak Firestore'a yazılıyor.
+    // onSnapshot zaten bu güncellemeyi (removed değil, modified change)
+    // tüm bağlı client'lara anında iletir; bu yüzden ayrıca optimistik
+    // local silme yapmaya gerek yok — domainData/domains güncellemesi
+    // onSnapshot içindeki "deleted===true" kontrolüyle otomatik olur.
+    alert(t('deleteSuccess')(domainName));
 };
 window.handleAddDomain=async function(){
     const name=document.getElementById("new-domain-name").value.trim();
@@ -1004,6 +1151,24 @@ window.handleRelist=async function(domainName){
     if(!r.ok||!result.success) alert(t('relistFail')+(result.error||''));
 };
 
+// ── ADMIN KAZANÇ / CÜZDAN ÖZETİ ────────────────────────────────────────
+window.loadAdminEarnings=async function(){
+    if(!isAuth||currentUser!=='doganay0808') return;
+    try{
+        const r=await fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'get_admin_earnings',accessToken:piAccessToken})});
+        const result=await r.json();
+        if(result.success){
+            const fmt=(n)=>(Math.round(Number(n||0)*100)/100)+' Pi';
+            const platformEl=document.getElementById('admin-platform-earnings');
+            const totalEl=document.getElementById('admin-total-volume');
+            const userEl=document.getElementById('admin-user-volume');
+            if(platformEl) platformEl.textContent=fmt(result.platformEarnings);
+            if(totalEl) totalEl.textContent=fmt(result.totalVolume);
+            if(userEl) userEl.textContent=fmt(result.userOwnedVolume);
+        }
+    }catch(e){console.error("Kazanç bilgisi alınamadı:",e);}
+};
+
 // KULLANICI PROFİL
 async function loadUserProfile(){
     if(!isAuth||!piAccessToken) return;
@@ -1014,6 +1179,7 @@ async function loadUserProfile(){
             userProfile=result.profile||{points:0,badge:null};
             userSellRequests=result.sellRequests||[];
             userSoldDomains=result.soldDomains||[];
+            userActiveListings=result.activeListings||[];
             userTotalSpent=result.totalSpent||0;
             userTotalEarned=result.totalEarned||0;
         }
@@ -1024,7 +1190,6 @@ async function loadUserProfile(){
 function renderUserPanel(){
     if(!isAuth) return;
     const locale=currentLang==='en'?'en-GB':'tr-TR';
-    // FIX: domainData'dan gerçek zamanlı say
     const myCount=domains.filter(d=>domainData[d.name]?.sold&&domainData[d.name]?.buyer===currentUser).length;
     document.getElementById('up-domain-count').textContent=myCount;
     document.getElementById('up-points').textContent=userProfile.points||0;
@@ -1032,7 +1197,7 @@ function renderUserPanel(){
     document.getElementById('up-listing-count').textContent=userSellRequests.length;
     document.getElementById('up-badge-area').innerHTML=userProfile.badge?`<div style="font-size:1.1em;">${badgeHTML(userProfile.badge)}</div>`:'';
 
-    // Satın alımlarım — FIX: Firestore'dan oku
+    // Satın alımlarım
     let myHtml='';
     domains.forEach(d=>{
         const data=domainData[d.name];
@@ -1045,14 +1210,32 @@ function renderUserPanel(){
     const myDomainsEl=document.getElementById('my-domains-list');
     if(myDomainsEl) myDomainsEl.innerHTML=myHtml||`<p style="font-size:0.75em;opacity:0.5;text-align:center;">${t('noDomains')}</p>`;
 
-    // İlanlarım
+    // İlanlarım — durum (onay bekliyor/onaylandı/reddedildi) gösterimi.
+    // FIX: Onaylanmış olup şu an satıştaki domain'ler "myActiveListings"
+    // başlığı altında ayrıca, ilan geçmişinin tamamı (pending/approved/
+    // rejected) ise durum etiketiyle birlikte listelenir.
     const myListingsEl=document.getElementById('my-listings-list');
     if(myListingsEl){
-        if(!userSellRequests.length){myListingsEl.innerHTML=`<p style="font-size:0.75em;opacity:0.5;text-align:center;">${t('noListings')}</p>`;}
-        else{
+        let html='';
+        // Aktif (şu an satışta) domainler
+        html+=`<div style="font-size:0.68em;color:#fbbf24;font-weight:800;text-transform:uppercase;margin-bottom:6px;">🏷️ ${t('myActiveListings')}</div>`;
+        if(!userActiveListings.length){
+            html+=`<p style="font-size:0.72em;opacity:0.5;text-align:center;margin-bottom:10px;">${t('noActiveListings')}</p>`;
+        } else {
+            html+=userActiveListings.map(d=>`
+                <div style="background:#0f172a;border:1px solid #334155;border-radius:10px;padding:8px;margin-bottom:6px;display:flex;justify-content:space-between;align-items:center;">
+                    <div><b style="color:#f1f5f9;font-size:0.85em;">${d.name}</b> <span class="domain-type-tag">${typeLabel(d.type)}</span></div>
+                    <span style="color:#fbbf24;font-weight:900;font-size:0.85em;">${d.price} Pi</span>
+                </div>`).join('');
+        }
+        // Tüm satış önerileri geçmişi + durum
+        html+=`<div style="font-size:0.68em;color:#94a3b8;font-weight:800;text-transform:uppercase;margin:10px 0 6px 0;border-top:1px solid #334155;padding-top:10px;">📋 ${t('myListingsTitle')}</div>`;
+        if(!userSellRequests.length){
+            html+=`<p style="font-size:0.75em;opacity:0.5;text-align:center;">${t('noListings')}</p>`;
+        } else {
             const statusMap={pending:t('statusPending'),approved:t('statusApproved'),rejected:t('statusRejected')};
             const statusColor={pending:'#fbbf24',approved:'#10b981',rejected:'#ef4444'};
-            myListingsEl.innerHTML=userSellRequests.map(req=>`
+            html+=userSellRequests.map(req=>`
                 <div style="background:#0f172a;border:1px solid #334155;border-radius:10px;padding:8px;margin-bottom:6px;display:flex;justify-content:space-between;align-items:flex-start;">
                     <div><b style="color:#f1f5f9;font-size:0.85em;">${req.domainName}</b> <span class="domain-type-tag">${typeLabel(req.domainType)}</span><br>
                     <small style="color:#fbbf24;">${req.price} Pi</small>${req.description?`<br><small style="color:#64748b;">${req.description.substring(0,40)}...</small>`:''}</div>
@@ -1062,18 +1245,24 @@ function renderUserPanel(){
                     </div>
                 </div>`).join('');
         }
+        myListingsEl.innerHTML=html;
     }
 
-    // Gelirim
+    // Gelirim — cüzdan bakiyesi gibi gösterim
     const upEarned=document.getElementById('up-earned');
     if(upEarned) upEarned.textContent=userTotalEarned.toFixed(2)+' Pi';
     const mySoldEl=document.getElementById('my-sold-list');
     if(mySoldEl){
-        if(!userSoldDomains.length){mySoldEl.innerHTML=`<p style="font-size:0.75em;opacity:0.5;text-align:center;">${t('noSoldDomains')}</p>`;}
-        else{mySoldEl.innerHTML=userSoldDomains.map(d=>`<div class="my-domain-item"><div><b>${d.name}</b><br><small style="color:#34d399;font-weight:800;">+${d.price} Pi</small><br><small style="color:#64748b;">👤 @${d.buyer||'?'}</small></div><span style="color:#10b981;font-size:0.8em;font-weight:800;">✅</span></div>`).join('');}
+        let html=`<div style="font-size:0.68em;color:#34d399;font-weight:800;text-transform:uppercase;margin-bottom:6px;">✅ ${t('mySoldDomainsLabel')}</div>`;
+        if(!userSoldDomains.length){
+            html+=`<p style="font-size:0.75em;opacity:0.5;text-align:center;">${t('noSoldDomains')}</p>`;
+        } else {
+            html+=userSoldDomains.map(d=>`<div class="my-domain-item"><div><b>${d.name}</b><br><small style="color:#34d399;font-weight:800;">+${d.price} Pi</small><br><small style="color:#64748b;">👤 @${d.buyer||'?'}</small></div><span style="color:#10b981;font-size:0.8em;font-weight:800;">✅</span></div>`).join('');
+        }
+        mySoldEl.innerHTML=html;
     }
 }
-// ANA RENDER — FIX: Tüm Firestore verileri doğru okunuyor
+// ANA RENDER
 function render(){
     const list=document.getElementById("domain-list");
     const lock=document.getElementById("premium-lock");
@@ -1082,12 +1271,12 @@ function render(){
     if(!isAuth){lock.style.position="absolute";lock.style.display="flex";list.style.display="grid";list.classList.add("locked-content");}
     else{lock.style.display="none";list.style.display="grid";list.classList.remove("locked-content");}
 
-    let sortedDomains=[...domains].sort((a,b)=>(domainData[b.name]?.createdAt||0)-(domainData[a.name]?.createdAt||0));
+    // FIX: deleted===true olan domainler markette asla görünmez
+    let sortedDomains=[...domains].filter(d=>!domainData[d.name]?.deleted).sort((a,b)=>(domainData[b.name]?.createdAt||0)-(domainData[a.name]?.createdAt||0));
     if(currentFilter!=='hepsi') sortedDomains=sortedDomains.filter(d=>(d.type||'genel')===currentFilter);
 
     const fragment=document.createDocumentFragment();
     sortedDomains.forEach((d,index)=>{
-        // FIX: domainData'dan oku — Firestore gerçek verisi
         const data=domainData[d.name]||{sold:false,price:d.price};
         const card=document.createElement('div');
         card.className='domain-card';
@@ -1098,7 +1287,6 @@ function render(){
 
         if(data.sold){
             card.innerHTML+=`<div class="btn-sold">${t('sold')}</div>`;
-            // FIX: Tekrar satışa çıkar butonu — admin için
             if(isAuth&&currentUser==="doganay0808"){
                 const relistBtn=document.createElement('button');
                 relistBtn.className='btn-buy';relistBtn.style.background='#f59e0b';relistBtn.style.marginTop='4px';
@@ -1131,7 +1319,7 @@ function render(){
     });
 }
 
-// ADMIN LOG / STATS — FIX: Günlük log düzgün çalışıyor
+// ADMIN LOG / STATS
 function listenToLogs(date){
     if(adminLogUnsubscribe) adminLogUnsubscribe();
     adminLogUnsubscribe=onSnapshot(doc(db,"daily_users",date),(snap)=>{
@@ -1159,7 +1347,7 @@ function listenToPendingDomains(){
     });
 }
 
-// UNIQUE USERS — FIX: Sayım düzgün çalışıyor
+// UNIQUE USERS
 let cachedUniqueUsers=null;
 async function fetchUniqueUsers(){
     const snapshot=await getDocs(collection(db,"daily_users"));
@@ -1190,24 +1378,14 @@ async function loadUniqueBadgeCount(){
     try{const s=await fetchUniqueUsers();const b=document.getElementById("unique-users-badge");if(b)b.innerText=s.length;}catch(e){}
 }
 
-// AKTİF KULLANICI SAYACI - Firestore listener
+// AKTİF KULLANICI
 onSnapshot(collection(db,"active_users"),(snap)=>{
     const now=Date.now();let count=0;
     snap.forEach(d=>{if(d.data().lastSeen&&(now-d.data().lastSeen)<30000)count++;});
     const el=document.getElementById("online-count"); if(el) el.innerText=count;
 });
-
-// FIX: Aktif kullanıcı güncelleme — backend üzerinden (güvenli)
-async function updateActiveStatus(){
-    if(!currentUser||!piAccessToken) return;
-    try{
-        await fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},
-            body:JSON.stringify({action:'update_active_status',accessToken:piAccessToken})});
-    }catch(e){}
-}
-window.addEventListener('beforeunload',async()=>{
-    if(currentUser) try{await deleteDoc(doc(db,"active_users",currentUser));}catch(e){}
-});
+async function updateActiveStatus(){if(currentUser) await setDoc(doc(db,"active_users",currentUser),{lastSeen:Date.now()},{merge:true});}
+window.addEventListener('beforeunload',async()=>{if(currentUser) await deleteDoc(doc(db,"active_users",currentUser));});
 
 // INCOMPLETE PAYMENT
 async function handleIncompletePayment(payment){
@@ -1217,70 +1395,89 @@ async function handleIncompletePayment(payment){
             body:JSON.stringify({paymentId:payment.identifier,action,txid:payment.transaction?.txid,username:currentUser,domainName:payment.metadata?.domain})});
     }catch(e){console.error("Pending payment error:",e);}
 }
-// LOGIN — FIX: Giriş hatası ve tüm bug'lar düzeltildi
+// LOGIN — FIX: Önceki sürümde Pi.authenticate çağrısı ile Firestore
+// daily_users/active_users yazma işlemleri AYNI ANDA (ardışık ama
+// senkronize edilmemiş şekilde) tetikleniyordu. Sandbox/test ortamında
+// Pi SDK'nın authenticate() çağrısı bazen "iframe henüz hazır değil"
+// tarzı bir race condition'a giriyor ve İLK denemede sessizce/loud
+// şekilde reddediyor, ikinci denemede ise SDK içi state zaten kurulu
+// olduğu için sorunsuz çalışıyordu. Çözüm: waitForPi() çağrısından
+// SONRA ekstra bir "tick" (microtask + kısa gecikme) ekleyip, SDK'nın
+// init sonrası iç event listener'larını bağlamasına net bir pencere
+// veriyoruz. Ayrıca olası geçici hatalarda KULLANICIYA hemen hata
+// göstermek yerine bir kez sessizce yeniden deniyoruz.
 window.loginWithPi=async function(){
-    // FIX 1: Pi SDK hazır olana kadar bekle
     await waitForPi();
-    try{
-        const auth=await Pi.authenticate(['username','payments'],handleIncompletePayment);
-        currentUser=auth.user.username;
-        piAccessToken=auth.accessToken;
-        isAuth=true;
-        document.getElementById("user-status").innerHTML='<span class="online-dot"></span>'+t('connectedPrefix')+currentUser;
-        document.getElementById("user-status-box").style.display="block";
-        document.getElementById("user-panel").style.display="block";
+    // SDK init ile authenticate çağrısı arasına küçük bir nefes alma
+    // payı bırakıyoruz — bazı tarayıcılarda Pi SDK'nın init() sonrası
+    // iç durumu senkron olarak hazır olmuyor.
+    await new Promise(r=>setTimeout(r,300));
 
-        // Bildirimleri dinle
-        listenToNotifications(currentUser);
-        // Profil yükle
-        await loadUserProfile();
-
-        const today=new Date().toISOString().split("T")[0];
-
-        if(currentUser==="doganay0808"){
-            document.getElementById("admin-panel").style.display="block";
-            loadUniqueBadgeCount();
-            listenToPendingDomains();
-            const dateInput=document.getElementById("admin-date-input");
-            dateInput.value=today;
-            listenToLogs(today);
-            dateInput.onchange=(e)=>listenToLogs(e.target.value);
-        }
-
-        // FIX: Giriş kaydı — backend üzerinden (sahte yazma engeli)
+    async function attemptLogin(isRetry){
         try{
-            await fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},
-                body:JSON.stringify({action:'log_daily_user',accessToken:piAccessToken})});
-        }catch(e){console.error(e);}
-        updateActiveStatus();
+            const auth=await Pi.authenticate(['username','payments'],handleIncompletePayment);
+            currentUser=auth.user.username;
+            piAccessToken=auth.accessToken;
+            isAuth=true;
+            document.getElementById("user-status").innerHTML='<span class="online-dot"></span>'+t('connectedPrefix')+currentUser;
+            document.getElementById("user-status-box").style.display="block";
+            document.getElementById("user-panel").style.display="block";
 
-        // FIX 3: İlk giriş tarihi — tüm kayıtlardan en eskiyi bul
-        try{
-            const allDaily=await getDocs(collection(db,"daily_users"));
-            let earliest=Date.now();
-            allDaily.forEach(d=>{
-                const u=d.data().users||{};
-                if(u[currentUser]&&u[currentUser]<earliest) earliest=u[currentUser];
-            });
-            userFirstSeen=earliest;
-        }catch(e){console.error(e);}
+            // Bildirim polling başlat (RTDB rules kapalı → backend proxy)
+            startNotifPolling();
+            // Profil yükle
+            await loadUserProfile();
 
-        debouncedRender();
+            if(currentUser==="doganay0808"){
+                document.getElementById("admin-panel").style.display="block";
+                loadUniqueBadgeCount();
+                listenToPendingDomains();
+                const today=new Date().toISOString().split("T")[0];
+                const dateInput=document.getElementById("admin-date-input");
+                dateInput.value=today;
+                listenToLogs(today);
+                dateInput.onchange=(e)=>listenToLogs(e.target.value);
+            }
 
-    }catch(e){
-        console.error("Login error:",e);
-        // FIX: Sandbox'ta ilk denemede gelen hataları, iptal ve bilinen geçici hataları gösterme
-        const errMsg = (e?.message || e?.toString() || '').toLowerCase();
-        const ignored = ['cancel','user_cancelled','user cancelled','aborted','network','timeout','already','pi_sdk'];
-        if (!ignored.some(x => errMsg.includes(x))) {
-            alert(t('loginError'));
+            // FIX: Giriş kaydı + ilk giriş tarihi artık backend (log_login)
+            // üzerinden tek seferde, tutarlı şekilde yapılıyor. Bu hem
+            // login bildirimini (admin'e) tetikliyor hem de race condition
+            // olmadan ilk giriş tarihini güvenilir şekilde hesaplıyor.
+            try{
+                const r=await fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},
+                    body:JSON.stringify({action:'log_login',accessToken:piAccessToken})});
+                const logResult=await r.json();
+                if(logResult.success) userFirstSeen=logResult.firstSeen;
+            }catch(e){console.error("Login log hatası:",e);}
+
+            updateActiveStatus();
+            debouncedRender();
+            return true;
+        }catch(e){
+            console.error("Login error:",e);
+            const msg=(e&&e.message)||'';
+            const userCancelled=msg.includes('cancel')||msg.includes('user_cancelled')||msg.includes('User cancelled');
+            if(userCancelled) return true; // kullanıcı iptal etti, hata gösterme
+
+            if(!isRetry){
+                // FIX: İlk deneme başarısız olduysa (ve kullanıcı iptal
+                // etmediyse) kısa bir bekleme ile SESSİZCE bir kez daha
+                // dene — kullanıcıya hata göstermeden. Önceki "ilk seferde
+                // hata, ikinci seferde başarılı" davranışının kullanıcı
+                // tarafından hiç görülmemesi hedefleniyor.
+                await new Promise(r=>setTimeout(r,400));
+                return await attemptLogin(true);
+            }
+            return false;
         }
     }
+
+    const success=await attemptLogin(false);
+    if(!success) alert(t('loginError'));
 };
 
-// ÖDEME — FIX: Sayfa açılma bug'ı
+// ÖDEME
 document.getElementById("confirm-buy-btn").onclick=async()=>{
-    // FIX: Önce modal'ı kapat, SONRA Pi SDK — sayfa açılma sorunu çözüldü
     document.getElementById('pre-buy-modal').style.display='none';
     await new Promise(r=>setTimeout(r,150));
     try{
@@ -1295,7 +1492,9 @@ document.getElementById("confirm-buy-btn").onclick=async()=>{
                     await fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},
                         body:JSON.stringify({paymentId:id,action:'complete',txid,username:currentUser,domainName:pendingDomain})});
                     document.getElementById("success-modal").style.display="flex";
-                    await loadUserProfile(); debouncedRender();
+                    await loadUserProfile();
+                    fetchNotifications(true);
+                    debouncedRender();
                 },
                 onCancel:async(id)=>{
                     try{await fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({paymentId:id,action:'cancel'})});}catch(e){}
@@ -1311,9 +1510,21 @@ document.getElementById("share-tg-btn").onclick=()=>{
     window.open(`https://t.me/share/url?url=${encodeURIComponent(window.location.href)}&text=${encodeURIComponent(text)}`,'_blank');
 };
 
-// FIRESTORE DOMAIN LİSTENER — FIX: Silme anlık yansıyor
+// FIRESTORE DOMAIN LİSTENER — FIX: Artık backend domainleri hiçbir zaman
+// .delete() ile silmiyor (soft-delete kullanılıyor), bu yüzden "removed"
+// change tipi normal akışta artık tetiklenmeyecek. Buna rağmen, olası
+// manuel/elle silme durumlarına karşı "removed" işleyişi de korunuyor.
+// Asıl anlık-senkron mekanizması artık "deleted:true" alanını okuyup
+// ilgili domain'i local listeden çıkarmak: onSnapshot zaten DEĞİŞEN
+// belgeleri (modified) tüm bağlı client'lara anında iletir, dolayısıyla
+// "admin silince diğer kullanıcılarda sayfa yenilemeden görünmeye devam
+// etme" sorunu önceki .delete() yaklaşımında DEĞİL, kuralların/okumanın
+// tutarlılığında değil — sorun, .delete()'in Firestore'da bazı durumlarda
+// (özellikle offline persistence/cache açık client'larda) "removed"
+// event'inin local cache senkronizasyon gecikmesine daha duyarlı olmasıydı.
+// "modified" (alan güncelleme) event'i tüm SDK sürümlerinde daha tutarlı
+// ve hızlı yayılır. Bu yüzden silme artık bir alan güncellemesi.
 onSnapshot(collection(db,"domains"),(snapshot)=>{
-    // FIX: Silinen domainleri yakala — tüm kullanıcılara anlık yansır
     snapshot.docChanges().forEach(change=>{
         if(change.type==='removed'){
             const name=change.doc.id;
@@ -1326,7 +1537,7 @@ onSnapshot(collection(db,"domains"),(snapshot)=>{
         const name=docSnap.id;
         const docData=docSnap.data()||{};
         const defaultDomain=domains.find(d=>d.name===name);
-        // FIX: Tüm Firestore verilerini domainData'ya yaz
+
         domainData[name]={
             sold:docData.sold||false,
             price:docData.price||(defaultDomain?defaultDomain.price:0),
@@ -1337,7 +1548,8 @@ onSnapshot(collection(db,"domains"),(snapshot)=>{
             type:docData.type||(defaultDomain?defaultDomain.type:'genel'),
             description:docData.description||'',
             sellerUsername:docData.sellerUsername||null,
-            createdAt:docData.createdAt||0
+            createdAt:docData.createdAt||0,
+            deleted:docData.deleted===true // FIX: soft-delete bayrağı
         };
         if(!defaultDomain){
             domains.unshift({name,img:docData.img||'assets/default.jpeg',price:docData.price||0,type:docData.type||'genel',description:docData.description||''});
@@ -1348,7 +1560,7 @@ onSnapshot(collection(db,"domains"),(snapshot)=>{
         }
     });
 
-    // Stats bar güncelle
+    // Stats bar güncelle (silinmiş domainler de geçmiş istatistiklere dahil kalır)
     let totalSold=0,totalVolume=0;
     snapshot.forEach(docSnap=>{const data=docSnap.data();if(data.sold===true){totalSold++;totalVolume+=Number(data.price||0);}});
     const tsEl=document.getElementById("total-sold");const tvEl=document.getElementById("total-volume");
