@@ -313,12 +313,40 @@ export default async function handler(req, res) {
       const soldAt = soldData.at;
       const prevBuyer = soldData.buyer;
 
-      // FIX: Relist sadece satış durumunu sıfırlar — domainin kendisi,
-      // satıcı bilgisi (sellerUsername/sellerWallet), açıklama, görsel,
-      // tür gibi kalıcı bilgiler silinmez. Önceki alıcıya ait fiyatsal
-      // hareket (global_sales kaydı) de kalıcı geçmiş olarak saklanır;
-      // sadece günün istatistiğinden (daily_stats) düşülür ki anlık
-      // "bugünkü satış" rakamı yanlış şişmesin.
+      // FIX (karar: harcama VE puan geri alınır): Domain relist edildiğinde
+      // eski alıcı için bu satış artık "geçerli" sayılmaz — kullanıcı
+      // panelinde harcama ve puan gerçek durumu yansıtmalı. Bu yüzden:
+      //  1) global_sales kaydı silinir (artık "satın aldım" geçmişinde
+      //     görünmemeli — toplam harcamadan da otomatik düşer çünkü
+      //     totalSpent bu koleksiyondan toplanıyor).
+      //  2) Eski alıcının kazandığı puan (satış anında verilen, fiyat
+      //     kadar puan) geri alınır.
+      // Domain'in kendisi (açıklama, görsel, satıcı bilgisi) ASLA silinmez
+      // — sadece bu işleme ait fiyatsal/puansal etkiler geri alınır.
+      if (prevBuyer) {
+        try {
+          // FIX: global_sales dokümanı ID'si txid VEYA (txid yoksa) paymentId
+          // olabilir — relist anında elimizde paymentId yok, txid de null
+          // olabilir. Bu yüzden ID tahmin etmiyoruz; her durumda alıcı+
+          // domain+satış zamanına göre SORGU ile doğru kaydı/kayıtları
+          // bulup siliyoruz. Bu yaklaşım txid'in var/yok olmasından bağımsız
+          // olarak güvenilir çalışır.
+          const matchSnap = await db.collection('global_sales')
+            .where('user', '==', prevBuyer)
+            .where('domain', '==', domainName)
+            .where('at', '==', soldAt)
+            .get();
+          if (!matchSnap.empty) {
+            const batch = db.batch();
+            matchSnap.forEach(doc => batch.delete(doc.ref));
+            await batch.commit();
+          }
+          await updateUserPoints(prevBuyer, -soldPrice, 'domain_relisted_point_reversal');
+        } catch (reversalErr) {
+          console.error("Relist sırasında harcama/puan geri alma hatası:", reversalErr);
+        }
+      }
+
       await domainRef.set({ sold: false, txid: null, buyer: null, at: null }, { merge: true });
 
       if (soldAt) {
@@ -423,6 +451,16 @@ export default async function handler(req, res) {
       if (!domainSnap.exists) return res.status(404).json({ error: "Domain bulunamadı" });
       if (domainSnap.data().sold === true) return res.status(400).json({ error: "Satılmış domain silinemez" });
 
+      // FIX (karar: puan geri alınır): Eğer bu domain bir kullanıcının
+      // onaylanmış satış ilanıysa (sellerUsername var), o ilan onaylanırken
+      // satıcıya +20 puan verilmişti (approve_sell_request içinde). Domain
+      // şimdi siliniyorsa (henüz satılmamış haliyle), bu puan artık
+      // gerçekte karşılığı olmayan bir kazanç haline gelir — geri alınır.
+      const domainDataForDelete = domainSnap.data();
+      if (domainDataForDelete.sellerUsername) {
+        await updateUserPoints(domainDataForDelete.sellerUsername, -20, 'domain_deleted_point_reversal');
+      }
+
       // FIX (önemli mantık değişikliği): Önceden domainRef.delete() ile
       // belge tamamen siliniyordu. Bu durumda:
       //  - Geçmiş fiyat hareketleri / istatistikler korunsa da domain'in
@@ -459,6 +497,16 @@ export default async function handler(req, res) {
       const snap = await domainRef.get();
       if (!snap.exists) return res.status(404).json({ error: "Domain bulunamadı" });
       if (snap.data().deleted !== true) return res.status(400).json({ error: "Bu domain silinmiş durumda değil" });
+
+      // FIX (simetri): delete_domain, satıcının onay puanını (-20)
+      // geri alıyordu (eğer domain bir sellerUsername'e aitse, henüz
+      // satılmamışsa). Restore işlemi bunun tersini yapmalı: domain
+      // geri geldiğinde, eğer hâlâ satılmamışsa, o puan tekrar verilir.
+      const restoreData = snap.data();
+      if (restoreData.sellerUsername && restoreData.sold !== true) {
+        await updateUserPoints(restoreData.sellerUsername, 20, 'domain_restored_point_reinstate');
+      }
+
       await domainRef.set({ deleted: false, deletedAt: null }, { merge: true });
       console.log(`Domain geri getirildi: ${restoreName}`);
       return res.status(200).json({ success: true });
