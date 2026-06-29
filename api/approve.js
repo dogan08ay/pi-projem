@@ -348,12 +348,69 @@ export default async function handler(req, res) {
       if (!domainSnap.exists) return res.status(404).json({ error: "Domain bulunamadı" });
       if (domainSnap.data().sold === true) return res.status(400).json({ error: "Satılmış domain silinemez" });
 
-      // Önce Firestore'dan sil — client'lar onSnapshot ile anında haberdar olur
+      const domainData = domainSnap.data();
+      const wasSold = domainData.sold === true;
+      const buyer = domainData.buyer || null;
+      const soldPrice = Number(domainData.price || 0);
+      const soldAt = domainData.at || null;
+
+      // 1. Domains koleksiyonundan sil — client'lar onSnapshot ile anında haberdar olur
       await domainRef.delete();
 
-      // Tüm aktif kullanıcılara "domain silindi" bildirimi gönder
-      // (market listesinin anlık güncellenmesi Firestore onSnapshot tarafından zaten yapılıyor,
-      //  bu bildirim ek bilgi amaçlı)
+      // 2. global_sales kaydını sil
+      if (wasSold) {
+        try {
+          const salesSnap = await db.collection('global_sales')
+            .where('domain', '==', delName).get();
+          const batch = db.batch();
+          salesSnap.forEach(d => batch.delete(d.ref));
+          await batch.commit();
+        } catch(e) { console.error("global_sales silme hatası:", e); }
+      }
+
+      // 3. daily_stats'tan düş (bugün satılmışsa)
+      if (wasSold && soldAt) {
+        try {
+          const soldDate = new Date(soldAt).toISOString().split('T')[0];
+          const today = new Date().toISOString().split('T')[0];
+          if (soldDate === today) {
+            await db.collection('daily_stats').doc(today).set({
+              count: FieldValue.increment(-1),
+              volume: FieldValue.increment(-soldPrice)
+            }, { merge: true });
+          }
+        } catch(e) { console.error("daily_stats güncelleme hatası:", e); }
+      }
+
+      // 4. Alıcının puanını düşür
+      if (wasSold && buyer) {
+        try {
+          await db.collection('user_profiles').doc(buyer).set({
+            points: FieldValue.increment(-soldPrice)
+          }, { merge: true });
+        } catch(e) { console.error("user_profiles puan güncelleme hatası:", e); }
+      }
+
+      // 5. sell_requests'teki approved kaydı temizle
+      try {
+        const sellReqSnap = await db.collection('sell_requests')
+          .where('domainName', '==', delName)
+          .where('status', '==', 'approved').get();
+        const batch2 = db.batch();
+        sellReqSnap.forEach(d => batch2.delete(d.ref));
+        await batch2.commit();
+      } catch(e) { console.error("sell_requests silme hatası:", e); }
+
+      // 6. Alıcıya bildirim gönder
+      if (wasSold && buyer) {
+        await sendNotification(buyer, {
+          type: 'domain_deleted',
+          title: '⚠️ Domain Silindi',
+          body: `"${delName}" domaini admin tarafından kaldırıldı.`,
+          domainName: delName
+        });
+      }
+
       console.log(`Domain silindi: ${delName}`);
       return res.status(200).json({ success: true });
     } catch (e) {
