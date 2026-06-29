@@ -1,626 +1,560 @@
-import { useAuth } from "@/_core/hooks/useAuth";
-import { trpc } from "@/lib/trpc";
-import { useEffect, useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Badge } from "@/components/ui/badge";
-import { Bell, LogOut, ChevronRight } from "lucide-react";
-
-// i18n translations
-const translations = {
-  tr: {
-    dashboard: "Kontrol Paneli",
-    notifications: "Bildirimler",
-    profile: "Profil",
-    overview: "Genel",
-    purchases: "Alımlarım",
-    listings: "İlanlarım",
-    earnings: "Gelirim",
-    admin: "Admin",
-    markAllRead: "Tümünü Okundu Yap",
-    noNotifications: "Henüz bildiriminiz yok.",
-    purchasedDomains: "Satın Alınan Domainler",
-    noPurchases: "Henüz satın alma geçmişiniz bulunmuyor.",
-    myListings: "Satış İlanlarım",
-    newListing: "+ Yeni İlan Ver",
-    noListings: "Henüz satışa sunduğunuz bir domain yok.",
-    onSale: "Satışta",
-    sold: "Satıldı",
-    pendingApproval: "⏳ Onay Bekliyor",
-    approved: "✅ Onaylandı",
-    totalEarnings: "Toplam Kazanç",
-    earningsNote: "Satışa sunduğunuz ve satılan domainlerden elde edilen gelir.",
-    adminPanel: "Admin Paneli",
-    pendingApprovals: "Bekleyen Onaylar",
-    adminEarnings: "Kazançlar",
-    noPending: "Bekleyen domain önerisi yok.",
-    approve: "✓ Onayla",
-    reject: "✕ Reddet",
-    details: "📋 Detaylar",
-    domainName: "Domain Adı",
-    price: "Fiyat",
-    type: "Tür",
-    submittedBy: "Gönderen",
-    wallet: "Cüzdan",
-    description: "Açıklama",
-    listDomain: "Domainini Satışa Çıkar",
-    domainNamePlaceholder: "domain.pi",
-    pricePlaceholder: "100",
-    categoryPlaceholder: "Kategori Seçin",
-    descriptionPlaceholder: "Domain hakkında kısa açıklama...",
-    walletPlaceholder: "G... ile başlayan cüzdan adresin",
-    sendForApproval: "ONAYA GÖNDER",
-    cancel: "VAZGEÇ",
-    username: "Kullanıcı Adı",
-    email: "E-posta",
-    signOut: "Çıkış Yap",
-    general: "Genel",
-    finance: "Finans / Bankacılık",
-    ecommerce: "E-Ticaret",
-    personal: "Kişisel İsim",
-    technology: "Teknoloji",
-    tourism: "Turizm / Seyahat",
-    financialServices: "Faizsiz Finansal Hizmetler",
-    health: "Sağlık",
-    education: "Eğitim",
-    media: "Medya",
-    sports: "Spor",
-    other: "Diğer",
-    info: "BİLGİ",
-    testNetNote: "Bu uygulama Test-Pi ağında deneme amaçlıdır. Satın aldığınız domainler, diğer kullanıcıların da test yapabilmesi için markette tekrar SATIN AL olarak görünebilir ve satın alma geçmişinizden silinebilir.",
-  },
-  en: {
-    dashboard: "Dashboard",
-    notifications: "Notifications",
-    profile: "Profile",
-    overview: "Overview",
-    purchases: "My Purchases",
-    listings: "My Listings",
-    earnings: "My Income",
-    admin: "Admin",
-    markAllRead: "Mark All Read",
-    noNotifications: "No notifications yet.",
-    purchasedDomains: "Purchased Domains",
-    noPurchases: "No purchase history found yet.",
-    myListings: "My Domain Listings",
-    newListing: "+ New Listing",
-    noListings: "You haven't listed any domains yet.",
-    onSale: "On Sale",
-    sold: "Sold",
-    pendingApproval: "⏳ Pending Approval",
-    approved: "✅ Approved",
-    totalEarnings: "Total Earnings",
-    earningsNote: "Total earnings from your listed and sold domains.",
-    adminPanel: "Admin Panel",
-    pendingApprovals: "Pending Approvals",
-    adminEarnings: "Earnings",
-    noPending: "No pending domain submissions.",
-    approve: "✓ Approve",
-    reject: "✕ Reject",
-    details: "📋 Details",
-    domainName: "Domain Name",
-    price: "Price",
-    type: "Type",
-    submittedBy: "Submitted By",
-    wallet: "Wallet",
-    description: "Description",
-    listDomain: "List Your Domain for Sale",
-    domainNamePlaceholder: "domain.pi",
-    pricePlaceholder: "100",
-    categoryPlaceholder: "Select Category",
-    descriptionPlaceholder: "Short description about the domain...",
-    walletPlaceholder: "Your wallet address starting with G...",
-    sendForApproval: "SEND FOR APPROVAL",
-    cancel: "CANCEL",
-    username: "Username",
-    email: "Email",
-    signOut: "Sign Out",
-    general: "General",
-    finance: "Finance / Banking",
-    ecommerce: "E-Commerce",
-    personal: "Personal Name",
-    technology: "Technology",
-    tourism: "Tourism / Travel",
-    financialServices: "Interest-Free Financial Services",
-    health: "Health",
-    education: "Education",
-    media: "Media",
-    sports: "Sports",
-    other: "Other",
-    info: "INFO",
-    testNetNote: "This app runs on Test-Pi for demo purposes. Purchased domains may reappear as BUY and may be removed from your history.",
-  },
-};
-
-type Language = "tr" | "en";
-
-export default function EnhancedDashboard() {
-  const { user, logout } = useAuth();
-  const [lang, setLang] = useState<Language>("tr");
-  const [activeTab, setActiveTab] = useState("overview");
-  const [isAdmin, setIsAdmin] = useState(false);
-  const [showSellModal, setShowSellModal] = useState(false);
-  const [showNotifications, setShowNotifications] = useState(false);
-  const [showDetailModal, setShowDetailModal] = useState(false);
-  const [selectedRequest, setSelectedRequest] = useState<any>(null);
-  const [unreadCount, setUnreadCount] = useState(0);
-
-  const t = (key: keyof typeof translations.tr) => translations[lang][key] || key;
-
-  // Fetch data
-  const { data: categories } = trpc.domains.getCategories.useQuery();
-  const { data: earnings } = trpc.domains.getUserTotalEarnings.useQuery();
-  const { data: notifications } = trpc.notifications.getNotifications.useQuery();
-  const { data: pendingRequests } = trpc.domains.getPendingRequests.useQuery(undefined, {
-    enabled: isAdmin,
-  });
-  const { data: userRequests } = trpc.domains.getUserRequests.useQuery();
-  const { data: purchases } = trpc.domains.getUserPurchases.useQuery();
-
-  // Mutations
-  const submitSellMutation = trpc.domains.submitForSale.useMutation();
-  const approveMutation = trpc.domains.approveSellRequest.useMutation();
-  const markAllReadMutation = trpc.notifications.markAllAsRead.useMutation();
-
-  useEffect(() => {
-    if (user?.role === "admin") {
-      setIsAdmin(true);
-    }
-  }, [user]);
-
-  useEffect(() => {
-    if (notifications) {
-      const unread = notifications.filter((n) => !n.read).length;
-      setUnreadCount(unread);
-    }
-  }, [notifications]);
-
-  const handleSubmitSell = async (formData: any) => {
-    try {
-      await submitSellMutation.mutateAsync(formData);
-      setShowSellModal(false);
-    } catch (error) {
-      console.error("Error submitting sell request:", error);
-    }
-  };
-
-  const handleApprove = async (requestId: number) => {
-    try {
-      await approveMutation.mutateAsync({ requestId });
-    } catch (error) {
-      console.error("Error approving request:", error);
-    }
-  };
-
-  const handleMarkAllRead = async () => {
-    try {
-      await markAllReadMutation.mutateAsync();
-    } catch (error) {
-      console.error("Error marking notifications as read:", error);
-    }
-  };
-
-  if (!user) {
-    return (
-      <div className="flex items-center justify-center min-h-screen bg-slate-900">
-        <Card className="bg-slate-800 border-slate-700">
-          <CardHeader>
-            <CardTitle>{t("profile")}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-slate-300">Lütfen devam etmek için giriş yapın.</p>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
-  return (
-    <div className="min-h-screen bg-slate-900 text-white p-4">
-      <div className="max-w-6xl mx-auto">
-        {/* Header */}
-        <div className="flex justify-between items-center mb-8">
-          <h1 className="text-3xl font-bold">{t("dashboard")}</h1>
-          <div className="flex gap-2">
-            <button
-              onClick={() => setShowNotifications(!showNotifications)}
-              className="relative p-2 hover:bg-slate-800 rounded-lg transition"
-            >
-              <Bell size={24} />
-              {unreadCount > 0 && (
-                <Badge className="absolute -top-1 -right-1 bg-red-500 text-xs">
-                  {unreadCount}
-                </Badge>
-              )}
-            </button>
-            <select
-              value={lang}
-              onChange={(e) => setLang(e.target.value as Language)}
-              className="px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm"
-            >
-              <option value="tr">🇹🇷 TR</option>
-              <option value="en">🇬🇧 EN</option>
-            </select>
-            <button onClick={logout} className="p-2 hover:bg-slate-800 rounded-lg transition">
-              <LogOut size={24} />
-            </button>
-          </div>
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Web3 Domain Gateway</title>
+    <script src="https://sdk.minepi.com/pi-sdk.js"></script>
+    <style>
+        :root { 
+            --bg:#0f172a; --card:#1e293b; --accent:#6366f1; --text:#f8fafc; 
+            --sold:#ef4444; --price:#fbbf24; --success:#10b981; --warning:#f59e0b;
+        }
+        html,body{height:100%;}
+        body{font-family:'Segoe UI',sans-serif;background:var(--bg);color:var(--text);margin:0;padding:5px;display:flex;justify-content:center;min-height:100vh;overflow-x:hidden;box-sizing:border-box;}
+        .container{max-width:600px;width:100%;text-align:center;display:flex;flex-direction:column;height:100%;max-height:100vh;}
+        .card{background:var(--card);padding:8px;border-radius:16px;box-shadow:0 8px 12px -3px rgba(0,0,0,0.3);margin-bottom:6px;position:relative;overflow:visible;}
+        .app-logo{width:84px;height:84px;margin-bottom:6px;border-radius:50%;box-shadow:0 0 30px rgba(99,102,241,0.8);border:3px solid #818cf8;object-fit:cover;animation:logo-pulse 3s ease-in-out infinite;}
+        @keyframes logo-pulse{0%,100%{transform:scale(1);}50%{transform:scale(1.05);}}
+        .app-title{font-size:1.5em;font-weight:900;margin:0 0 4px 0;background:linear-gradient(to right,#60a5fa,#a855f7,#60a5fa);background-size:200% auto;-webkit-background-clip:text;-webkit-text-fill-color:transparent;animation:title-shine 4s linear infinite;filter:drop-shadow(0 0 14px rgba(139,92,246,0.55));letter-spacing:0.3px;}
+        @keyframes title-shine{to{background-position:200% center;}}
+        .stats-bar{display:flex;justify-content:space-around;background:rgba(99,102,241,0.1);border:1px solid rgba(99,102,241,0.3);padding:4px;border-radius:10px;margin-bottom:4px;font-size:0.55em;font-weight:bold;color:#94a3b8;}
+        .stats-item span{color:var(--price);margin-left:2px;}
+        .domain-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:4px;position:relative;}
+        .domain-card{background:#334155;padding:6px;border-radius:10px;border:1px solid #475569;display:flex;flex-direction:column;align-items:center;transition:transform 0.25s,box-shadow 0.25s,border-color 0.25s;animation:card-rise 0.5s ease backwards;cursor:pointer;}
+        .domain-card:hover,.domain-card:active{transform:translateY(-4px) scale(1.02);box-shadow:0 10px 20px -6px rgba(99,102,241,0.45),0 0 0 1.5px rgba(129,140,248,0.6);border-color:#818cf8;}
+        @keyframes card-rise{0%{opacity:0;transform:translateY(14px) scale(0.96);}100%{opacity:1;transform:translateY(0) scale(1);}}
+        .domain-img{width:100%;height:42px;margin-bottom:3px;border-radius:6px;object-fit:contain;background-color:#334155;}
+        .domain-name{font-size:0.78em;font-weight:bold;margin-bottom:2px;}
+        .domain-price{color:var(--price);font-size:0.85em;font-weight:800;margin:1px 0;}
+        .domain-type-tag{font-size:0.6em;color:#94a3b8;background:rgba(148,163,184,0.15);border-radius:5px;padding:1px 5px;margin-bottom:2px;display:inline-block;}
+        .btn-buy{background:var(--accent);color:white;border:none;padding:5px 6px;border-radius:6px;cursor:pointer;margin-top:3px;font-weight:bold;width:100%;font-size:0.7em;transition:0.2s;}
+        .btn-buy:hover{background:#4f46e5;transform:scale(1.02);}
+        .btn-sold{background:rgba(239,68,68,0.1);color:var(--sold);border:1.5px solid var(--sold);padding:4px 6px;border-radius:6px;margin-top:3px;font-weight:bold;width:100%;font-size:0.65em;}
+        .pi-btn{background:linear-gradient(135deg,#0052FF 0%,#3b82f6 100%);color:#ffffff;padding:8px 20px;border-radius:50px;font-weight:800;font-size:0.85em;border:none;cursor:pointer;animation:pulse-blue 2s infinite;transition:0.3s;margin:6px 0;}
+        @keyframes pulse-blue{0%{transform:scale(0.95);box-shadow:0 0 0 0 rgba(0,82,255,0.7);}70%{transform:scale(1);box-shadow:0 0 0 10px rgba(0,82,255,0);}100%{transform:scale(0.95);box-shadow:0 0 0 0 rgba(0,82,255,0);}}
+        .section-title-box{background:linear-gradient(90deg,#fef3c7 0%,#fde68a 40%,#ffffff 50%,#fde68a 60%,#fef3c7 100%);background-size:200% auto;color:#1e293b;padding:5px 16px;border-radius:10px;border:2px solid #f59e0b;font-size:0.92em;font-weight:900;display:inline-block;margin-bottom:6px;animation:title-glow 2.5s ease-in-out infinite,section-shimmer 3s linear infinite;}
+        @keyframes title-glow{0%,100%{box-shadow:0 0 10px rgba(245,158,11,0.5);border-color:#f59e0b;}50%{box-shadow:0 0 20px rgba(251,191,36,0.9),0 0 40px rgba(251,191,36,0.45);border-color:#fcd34d;}}
+        @keyframes section-shimmer{0%{background-position:200% center;}100%{background-position:-200% center;}}
+        .modal-overlay{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.92);display:none;flex-direction:column;align-items:center;justify-content:center;z-index:9999;padding:10px;box-sizing:border-box;overflow-y:auto;}
+        .modal-overlay.active{display:flex;}
+        .modal-content{background:var(--card);padding:20px;border-radius:20px;border:2px solid #fbbf24;width:100%;max-width:380px;box-sizing:border-box;text-align:center;max-height:90vh;overflow-y:auto;}
+        .modal-close{position:absolute;top:10px;right:10px;background:rgba(99,102,241,0.2);border:1px solid #6366f1;color:#c7d2fe;width:32px;height:32px;border-radius:8px;font-size:1.1em;cursor:pointer;font-weight:bold;transition:0.2s;}
+        .modal-close:hover{background:rgba(99,102,241,0.4);}
+        .notif-btn{position:fixed;top:12px;right:62px;z-index:500;width:42px;height:42px;border-radius:12px;background:rgba(30,41,59,0.92);border:1.5px solid #6366f1;display:none;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 2px 10px rgba(99,102,241,0.4);backdrop-filter:blur(4px);transition:0.2s;}
+        .notif-btn:hover{border-color:#818cf8;box-shadow:0 2px 15px rgba(99,102,241,0.6);}
+        .notif-badge{position:absolute;top:-5px;right:-5px;background:#ef4444;color:#fff;font-size:0.6em;font-weight:900;border-radius:10px;padding:1px 5px;min-width:16px;text-align:center;border:1.5px solid #0f172a;display:none;}
+        .notif-item{display:flex;align-items:flex-start;gap:8px;padding:10px;border-radius:10px;background:#0f172a;margin-bottom:6px;border:1px solid #334155;text-align:left;transition:0.2s;}
+        .notif-item.unread{border-color:#6366f1;background:rgba(99,102,241,0.08);}
+        .notif-item:hover{transform:translateX(4px);}
+        .notif-dot{width:8px;height:8px;border-radius:50%;background:#6366f1;flex-shrink:0;margin-top:4px;}
+        .notif-dot.read{background:transparent;border:1px solid #334155;}
+        .hamburger-btn{position:fixed;top:12px;right:12px;z-index:500;width:42px;height:42px;border-radius:12px;background:rgba(30,41,59,0.92);border:1.5px solid #6366f1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;cursor:pointer;box-shadow:0 2px 10px rgba(99,102,241,0.4);backdrop-filter:blur(4px);transition:0.2s;}
+        .hamburger-btn:hover{border-color:#818cf8;}
+        .hamburger-btn span{display:block;width:20px;height:2.5px;background:#c7d2fe;border-radius:2px;}
+        .side-menu-overlay{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.55);z-index:998;display:none;}
+        .side-menu{position:fixed;top:0;right:0;width:78%;max-width:320px;height:100%;background:linear-gradient(165deg,#1e1b4b 0%,#0f172a 100%);z-index:999;box-shadow:-8px 0 30px rgba(0,0,0,0.5);transform:translateX(100%);transition:transform 0.3s ease;display:flex;flex-direction:column;padding:18px;box-sizing:border-box;overflow-y:auto;}
+        .side-menu.open{transform:translateX(0);}
+        .side-menu-overlay.open{display:block;}
+        .side-menu-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;}
+        .side-menu-close{background:rgba(99,102,241,0.2);border:1px solid #6366f1;color:#c7d2fe;width:32px;height:32px;border-radius:8px;font-size:1.1em;cursor:pointer;transition:0.2s;}
+        .side-menu-close:hover{background:rgba(99,102,241,0.4);}
+        .side-menu-item{display:flex;align-items:center;gap:12px;padding:13px 12px;border-radius:10px;color:#e2e8f0;font-weight:700;font-size:0.88em;cursor:pointer;margin-bottom:4px;text-align:left;background:transparent;border:none;width:100%;box-sizing:border-box;transition:all 0.15s;}
+        .side-menu-item:hover,.side-menu-item:active{background:rgba(99,102,241,0.18);}
+        .admin-tabs{display:flex;gap:5px;overflow-x:auto;margin-bottom:10px;padding-bottom:2px;}
+        .admin-tab-btn{flex-shrink:0;background:#0f172a;border:1.5px solid #334155;color:#94a3b8;padding:8px 11px;border-radius:10px;font-size:0.68em;font-weight:800;cursor:pointer;display:flex;align-items:center;gap:5px;white-space:nowrap;transition:all 0.15s;}
+        .admin-tab-btn.active{background:rgba(99,102,241,0.18);border-color:#6366f1;color:#c7d2fe;box-shadow:0 0 10px rgba(99,102,241,0.3);}
+        .admin-tab-panel{display:none;}
+        .admin-tab-panel.active{display:block;animation:card-rise 0.3s ease backwards;}
+        .earnings-box{background:linear-gradient(135deg,#064e3b 0%,#065f46 100%);border:2px solid #10b981;border-radius:12px;padding:12px;margin-bottom:8px;text-align:center;}
+        .earnings-value{font-size:1.8em;font-weight:900;color:#34d399;}
+        .earnings-label{font-size:0.8em;color:#a7f3d0;margin-top:4px;}
+        .sell-form-input{background:#0f172a;color:#fff;border:1.5px solid #f59e0b;padding:8px;border-radius:8px;font-size:0.85em;width:100%;box-sizing:border-box;outline:none;margin-bottom:8px;transition:0.2s;}
+        .sell-form-input:focus{border-color:#fbbf24;box-shadow:0 0 10px rgba(251,191,36,0.3);}
+        .sell-form-select{background:#0f172a;color:#fff;border:1.5px solid #f59e0b;padding:8px;border-radius:8px;font-size:0.85em;width:100%;box-sizing:border-box;outline:none;margin-bottom:8px;transition:0.2s;}
+        .sell-form-select:focus{border-color:#fbbf24;box-shadow:0 0 10px rgba(251,191,36,0.3);}
+        .pending-domain-item{background:#1c1917;border:2px solid #f59e0b;border-radius:12px;padding:10px;margin-bottom:8px;text-align:left;transition:0.2s;}
+        .pending-domain-item:hover{border-color:#fcd34d;box-shadow:0 0 10px rgba(252,211,77,0.2);}
+        .info-box{background:rgba(99,102,241,0.1);border:1px dashed #6366f1;color:#94a3b8;padding:10px;border-radius:10px;font-size:0.75em;line-height:1.6;margin-bottom:10px;text-align:left;box-sizing:border-box;width:100%;word-wrap:break-word;white-space:pre-wrap;word-break:break-word;}
+        .detail-modal-content{display:flex;flex-direction:column;gap:10px;text-align:left;}
+        .detail-row{display:flex;justify-content:space-between;align-items:flex-start;padding:8px;background:#0f172a;border-radius:8px;border:1px solid #334155;transition:0.2s;}
+        .detail-row:hover{border-color:#6366f1;background:rgba(99,102,241,0.05);}
+        .detail-label{color:#60a5fa;font-weight:800;font-size:0.85em;flex-shrink:0;}
+        .detail-value{color:#f1f5f9;font-weight:600;flex:1;text-align:right;word-break:break-word;}
+        .btn-primary{background:var(--accent);color:white;border:none;padding:8px 16px;border-radius:8px;cursor:pointer;font-weight:bold;font-size:0.85em;margin-top:8px;width:100%;transition:0.2s;}
+        .btn-primary:hover{background:#4f46e5;transform:scale(1.02);}
+        .btn-danger{background:rgba(239,68,68,0.2);color:#ef4444;border:1.5px solid #ef4444;padding:8px 16px;border-radius:8px;cursor:pointer;font-weight:bold;font-size:0.85em;margin-top:8px;width:100%;transition:0.2s;}
+        .btn-danger:hover{background:rgba(239,68,68,0.3);}
+        .user-tabs{display:flex;gap:5px;overflow-x:auto;margin-bottom:10px;padding-bottom:2px;}
+        .user-tab-btn{flex-shrink:0;background:#0f172a;border:1.5px solid #334155;color:#94a3b8;padding:7px 10px;border-radius:10px;font-size:0.65em;font-weight:800;cursor:pointer;white-space:nowrap;transition:all 0.15s;}
+        .user-tab-btn.active{background:rgba(16,185,129,0.15);border-color:#10b981;color:#6ee7b7;}
+        .user-tab-panel{display:none;}
+        .user-tab-panel.active{display:block;animation:card-rise 0.3s ease backwards;}
+        .sell-request-item{background:#0f172a;border:1px solid #334155;border-radius:10px;padding:10px;margin-bottom:8px;text-align:left;transition:0.2s;}
+        .sell-request-item:hover{border-color:#6366f1;background:rgba(99,102,241,0.05);}
+        .sell-request-status{display:inline-block;font-size:0.7em;font-weight:900;padding:2px 8px;border-radius:6px;margin-top:6px;}
+        .status-pending{background:rgba(245,158,11,0.2);color:#fbbf24;}
+        .status-approved{background:rgba(16,185,129,0.2);color:#10b981;}
+        .btn-detail{background:rgba(99,102,241,0.2);color:#c7d2fe;border:1px solid #6366f1;padding:5px 10px;border-radius:6px;font-size:0.7em;cursor:pointer;margin-right:5px;transition:0.2s;}
+        .btn-detail:hover{background:rgba(99,102,241,0.3);border-color:#818cf8;}
+        .wallet-balance{background:linear-gradient(135deg,#1e40af 0%,#1e3a8a 100%);border:1px solid #3b82f6;border-radius:10px;padding:10px;margin-bottom:8px;text-align:center;}
+        .balance-value{font-size:1.5em;font-weight:900;color:#60a5fa;}
+        .balance-label{font-size:0.7em;color:#93c5fd;margin-top:4px;}
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="card" style="text-align:center;padding:12px;">
+            <img src="assets/logo.png" alt="Logo" class="app-logo" onerror="this.style.display='none'">
+            <h1 class="app-title" data-i18n="app_title">Web3 Domain Gateway</h1>
+            <div id="user-status-box" style="display:none;margin-top:8px;">
+                <span style="font-size:0.85em;color:#10b981;" id="user-status"></span>
+            </div>
         </div>
 
-        {/* Notifications Panel */}
-        {showNotifications && (
-          <Card className="mb-6 bg-slate-800 border-slate-700">
-            <CardHeader>
-              <div className="flex justify-between items-center">
-                <CardTitle>{t("notifications")}</CardTitle>
-                <Button size="sm" onClick={handleMarkAllRead} variant="outline">
-                  {t("markAllRead")}
-                </Button>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-2 max-h-64 overflow-y-auto">
-                {notifications && notifications.length > 0 ? (
-                  notifications.map((notif) => (
-                    <div
-                      key={notif.id}
-                      className={`p-3 rounded-lg border transition ${
-                        notif.read
-                          ? "bg-slate-700 border-slate-600"
-                          : "bg-indigo-900 border-indigo-500"
-                      }`}
-                    >
-                      <p className="font-semibold text-sm">{notif.title}</p>
-                      <p className="text-xs text-slate-300 mt-1">{notif.body}</p>
-                      <p className="text-xs text-slate-500 mt-2">
-                        {new Date(notif.createdAt).toLocaleDateString(lang === "tr" ? "tr-TR" : "en-GB")}
-                      </p>
-                    </div>
-                  ))
-                ) : (
-                  <p className="text-slate-400 text-sm">{t("noNotifications")}</p>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        )}
+        <!-- Stats Bar -->
+        <div class="stats-bar">
+            <div class="stats-item"><span data-i18n="sold_domains">Satılan Domain</span>: <span id="total-sold">0</span></div>
+            <div class="stats-item"><span data-i18n="total_volume">Toplam Hacim</span>: <span id="total-volume">0</span> PI</div>
+            <div class="stats-item"><span data-i18n="active_users">Aktif Kullanıcı</span>: <span id="online-count">0</span></div>
+        </div>
 
-        {/* Main Content */}
-        <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="bg-slate-800 border-slate-700 grid w-full" style={{ gridTemplateColumns: `repeat(${isAdmin ? 5 : 4}, 1fr)` }}>
-            <TabsTrigger value="overview">{t("overview")}</TabsTrigger>
-            <TabsTrigger value="purchases">{t("purchases")}</TabsTrigger>
-            <TabsTrigger value="listings">{t("listings")}</TabsTrigger>
-            <TabsTrigger value="earnings">{t("earnings")}</TabsTrigger>
-            {isAdmin && <TabsTrigger value="admin">{t("admin")}</TabsTrigger>}
-          </TabsList>
-
-          {/* Overview Tab */}
-          <TabsContent value="overview" className="space-y-4">
-            <Card className="bg-slate-800 border-slate-700">
-              <CardHeader>
-                <CardTitle>{t("profile")}</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div>
-                  <p className="text-sm text-slate-400">{t("username")}</p>
-                  <p className="text-lg font-semibold">@{user.name}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-slate-400">{t("email")}</p>
-                  <p className="text-lg font-semibold">{user.email}</p>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="bg-slate-800 border-slate-700">
-              <CardHeader>
-                <CardTitle>{t("info")}</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm text-slate-300 whitespace-pre-wrap">{t("testNetNote")}</p>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          {/* Purchases Tab */}
-          <TabsContent value="purchases">
-            <Card className="bg-slate-800 border-slate-700">
-              <CardHeader>
-                <CardTitle>{t("purchasedDomains")}</CardTitle>
-              </CardHeader>
-              <CardContent>
-                {purchases && purchases.length > 0 ? (
-                  <div className="space-y-2">
-                    {purchases.map((purchase) => (
-                      <div key={purchase.id} className="p-4 bg-slate-700 rounded-lg border border-slate-600 hover:border-slate-500 transition">
-                        <div className="flex justify-between items-start">
-                          <div>
-                            <p className="font-semibold">{purchase.domainName}</p>
-                            <p className="text-sm text-slate-400">
-                              {new Date(purchase.purchasedAt).toLocaleDateString(lang === "tr" ? "tr-TR" : "en-GB")}
-                            </p>
-                          </div>
-                          <Badge variant="secondary">{purchase.price} PI</Badge>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-slate-400 text-center py-8">{t("noPurchases")}</p>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          {/* Listings Tab */}
-          <TabsContent value="listings">
-            <Card className="bg-slate-800 border-slate-700">
-              <CardHeader>
-                <div className="flex justify-between items-center">
-                  <CardTitle>{t("myListings")}</CardTitle>
-                  <Button onClick={() => setShowSellModal(true)}>{t("newListing")}</Button>
-                </div>
-              </CardHeader>
-              <CardContent>
-                {userRequests && userRequests.length > 0 ? (
-                  <div className="space-y-2">
-                    {userRequests.map((request) => (
-                      <div key={request.id} className="p-4 bg-slate-700 rounded-lg border border-slate-600 hover:border-slate-500 transition">
-                        <div className="flex justify-between items-start">
-                          <div className="flex-1">
-                            <p className="font-semibold">{request.domainName}</p>
-                            <p className="text-sm text-slate-400 mt-1">{request.price} PI</p>
-                            <p className="text-xs text-slate-500 mt-2">{request.type}</p>
-                          </div>
-                          <Badge
-                            variant={request.status === "approved" ? "default" : "secondary"}
-                            className={request.status === "approved" ? "bg-green-600" : "bg-yellow-600"}
-                          >
-                            {request.status === "approved" ? t("approved") : t("pendingApproval")}
-                          </Badge>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-slate-400 text-center py-8">{t("noListings")}</p>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          {/* Earnings Tab */}
-          <TabsContent value="earnings">
-            <Card className="bg-slate-800 border-slate-700">
-              <CardHeader>
-                <CardTitle>{t("totalEarnings")}</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="bg-gradient-to-r from-green-900 to-green-800 rounded-lg p-6 border border-green-700 mb-4">
-                  <p className="text-4xl font-bold text-green-400">{earnings || "0"} PI</p>
-                </div>
-                <p className="text-sm text-slate-400">{t("earningsNote")}</p>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          {/* Admin Tab */}
-          {isAdmin && (
-            <TabsContent value="admin" className="space-y-4">
-              <Tabs defaultValue="pending" className="w-full">
-                <TabsList className="bg-slate-800 border-slate-700 grid w-full grid-cols-2">
-                  <TabsTrigger value="pending">{t("pendingApprovals")}</TabsTrigger>
-                  <TabsTrigger value="earnings">{t("adminEarnings")}</TabsTrigger>
-                </TabsList>
-
-                <TabsContent value="pending">
-                  <Card className="bg-slate-800 border-slate-700">
-                    <CardHeader>
-                      <CardTitle>{t("pendingApprovals")}</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      {pendingRequests && pendingRequests.length > 0 ? (
-                        <div className="space-y-2">
-                          {pendingRequests.map((request) => (
-                            <div
-                              key={request.id}
-                              className="p-4 bg-slate-700 rounded-lg border border-yellow-600 hover:border-yellow-500 transition"
-                            >
-                              <div className="flex justify-between items-start mb-3">
-                                <div className="flex-1">
-                                  <p className="font-semibold">{request.domainName}</p>
-                                  <p className="text-sm text-slate-400">@{request.submittedBy}</p>
-                                </div>
-                                <Badge variant="outline">{request.price} PI</Badge>
-                              </div>
-                              {request.description && (
-                                <p className="text-sm text-slate-300 mb-3">{request.description}</p>
-                              )}
-                              <div className="flex gap-2">
-                                <Button
-                                  size="sm"
-                                  onClick={() => {
-                                    setSelectedRequest(request);
-                                    setShowDetailModal(true);
-                                  }}
-                                  variant="outline"
-                                >
-                                  {t("details")}
-                                </Button>
-                                <Button
-                                  size="sm"
-                                  onClick={() => handleApprove(request.id)}
-                                  className="bg-green-600 hover:bg-green-700"
-                                >
-                                  {t("approve")}
-                                </Button>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      ) : (
-                        <p className="text-slate-400 text-center py-8">{t("noPending")}</p>
-                      )}
-                    </CardContent>
-                  </Card>
-                </TabsContent>
-
-                <TabsContent value="earnings">
-                  <Card className="bg-slate-800 border-slate-700">
-                    <CardHeader>
-                      <CardTitle>{t("adminEarnings")}</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <p className="text-slate-400">Admin kazanç istatistikleri burada görüntülenecek.</p>
-                    </CardContent>
-                  </Card>
-                </TabsContent>
-              </Tabs>
-            </TabsContent>
-          )}
-        </Tabs>
-      </div>
-
-      {/* Sell Domain Modal */}
-      <Dialog open={showSellModal} onOpenChange={setShowSellModal}>
-        <DialogContent className="bg-slate-800 border-slate-700">
-          <DialogHeader>
-            <DialogTitle>{t("listDomain")}</DialogTitle>
-          </DialogHeader>
-          <SellDomainForm
-            categories={categories}
-            onSubmit={handleSubmitSell}
-            onClose={() => setShowSellModal(false)}
-            lang={lang}
-            t={t}
-          />
-        </DialogContent>
-      </Dialog>
-
-      {/* Detail Modal */}
-      <Dialog open={showDetailModal} onOpenChange={setShowDetailModal}>
-        <DialogContent className="bg-slate-800 border-slate-700">
-          <DialogHeader>
-            <DialogTitle>{t("details")}</DialogTitle>
-          </DialogHeader>
-          {selectedRequest && (
-            <div className="space-y-3">
-              <DetailRow label={t("domainName")} value={selectedRequest.domainName} />
-              <DetailRow label={t("price")} value={`${selectedRequest.price} PI`} />
-              <DetailRow label={t("type")} value={selectedRequest.type} />
-              <DetailRow label={t("submittedBy")} value={`@${selectedRequest.submittedBy}`} />
-              <DetailRow label={t("wallet")} value={selectedRequest.sellerWallet || "—"} />
-              <DetailRow label={t("description")} value={selectedRequest.description || "—"} />
+        <!-- Marketplace Section -->
+        <div class="card">
+            <div style="text-align:center;margin-bottom:8px;">
+                <span class="section-title-box" data-i18n="available_domains">Satın Alabileceğiniz Domainler</span>
             </div>
-          )}
-        </DialogContent>
-      </Dialog>
+            <div id="domain-grid" class="domain-grid"></div>
+        </div>
+
+        <!-- User Status Box -->
+        <div id="user-panel" style="display:none;">
+            <!-- User Tabs -->
+            <div class="user-tabs">
+                <button class="user-tab-btn active" data-utab="overview" onclick="switchUserTab('overview')" data-i18n="overview">Genel</button>
+                <button class="user-tab-btn" data-utab="purchases" onclick="switchUserTab('purchases')" data-i18n="my_purchases">Alımlarım</button>
+                <button class="user-tab-btn" data-utab="listings" onclick="switchUserTab('listings')" data-i18n="my_listings">İlanlarım</button>
+                <button class="user-tab-btn" data-utab="earnings" onclick="switchUserTab('earnings')" data-i18n="my_income">Gelirim</button>
+            </div>
+
+            <!-- Overview Tab -->
+            <div id="overview" class="user-tab-panel active card">
+                <h3 style="margin:0 0 8px 0;font-size:0.9em;" data-i18n="profile_settings">Profil Ayarları</h3>
+                <div id="profile-content"></div>
+            </div>
+
+            <!-- Purchases Tab -->
+            <div id="purchases" class="user-tab-panel card">
+                <h3 style="margin:0 0 8px 0;font-size:0.9em;" data-i18n="purchased_domains">Satın Alınan Domainler</h3>
+                <div id="purchases-list"></div>
+            </div>
+
+            <!-- Listings Tab -->
+            <div id="listings" class="user-tab-panel card">
+                <h3 style="margin:0 0 8px 0;font-size:0.9em;" data-i18n="my_listings_title">Satış İlanlarım</h3>
+                <button class="btn-primary" onclick="openSellModal()" style="margin-bottom:8px;" data-i18n="list_new_domain">+ Yeni İlan Ver</button>
+                <div id="listings-list"></div>
+            </div>
+
+            <!-- Earnings Tab -->
+            <div id="earnings" class="user-tab-panel card">
+                <h3 style="margin:0 0 8px 0;font-size:0.9em;" data-i18n="my_income">Gelirim</h3>
+                <div class="wallet-balance">
+                    <div class="balance-value" id="wallet-balance">0</div>
+                    <div class="balance-label" data-i18n="total_earnings">Toplam Kazanç</div>
+                </div>
+                <div id="earnings-content"></div>
+            </div>
+        </div>
+
+        <!-- Admin Panel -->
+        <div id="admin-panel" style="display:none;">
+            <div class="admin-tabs">
+                <button class="admin-tab-btn active" data-tab="admin-overview" onclick="switchAdminTab('admin-overview')" data-i18n="overview">Genel</button>
+                <button class="admin-tab-btn" data-tab="admin-pending" onclick="switchAdminTab('admin-pending')" data-i18n="pending_approvals">Bekleyen Onaylar</button>
+                <button class="admin-tab-btn" data-tab="admin-earnings" onclick="switchAdminTab('admin-earnings')" data-i18n="earnings">Kazançlar</button>
+            </div>
+
+            <!-- Admin Overview -->
+            <div id="admin-overview" class="admin-tab-panel active card">
+                <h3 style="margin:0 0 8px 0;font-size:0.9em;" data-i18n="admin_dashboard">Admin Paneli</h3>
+                <div id="admin-stats"></div>
+            </div>
+
+            <!-- Admin Pending -->
+            <div id="admin-pending" class="admin-tab-panel card">
+                <h3 style="margin:0 0 8px 0;font-size:0.9em;" data-i18n="pending_approvals">Bekleyen Onaylar</h3>
+                <div id="pending-list"></div>
+            </div>
+
+            <!-- Admin Earnings -->
+            <div id="admin-earnings" class="admin-tab-panel card">
+                <h3 style="margin:0 0 8px 0;font-size:0.9em;" data-i18n="total_earnings">Toplam Kazanç</h3>
+                <div class="earnings-box">
+                    <div class="earnings-value" id="admin-total-earnings">0 PI</div>
+                    <div class="earnings-label" data-i18n="admin_earnings_note">Tüm satışlardan elde edilen gelir</div>
+                </div>
+                <div id="admin-earnings-content"></div>
+            </div>
+        </div>
+
+        <!-- Info Box -->
+        <div class="card">
+            <div style="text-align:center;margin-bottom:8px;">
+                <span class="section-title-box" data-i18n="info">BİLGİ</span>
+            </div>
+            <div class="info-box" data-i18n="test_net_note">Bu uygulama Test-Pi ağında deneme amaçlıdır. Satın aldığınız domainler, diğer kullanıcıların da test yapabilmesi için markette tekrar SATIN AL olarak görünebilir ve satın alma geçmişinizden silinebilir.</div>
+        </div>
+
+        <!-- Login Button -->
+        <button id="login-btn" class="pi-btn" onclick="loginWithPi()" style="display:none;" data-i18n="connect_with_pi">Pi ile Bağlan</button>
+        <button id="logout-btn" class="btn-danger" onclick="handleLogout()" style="display:none;" data-i18n="logout">Çıkış Yap</button>
     </div>
-  );
-}
 
-function DetailRow({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="flex justify-between items-start p-3 bg-slate-700 rounded-lg border border-slate-600">
-      <span className="font-semibold text-slate-300">{label}</span>
-      <span className="text-slate-200 text-right break-words">{value}</span>
+    <!-- Notification Button -->
+    <button class="notif-btn" id="notif-btn" onclick="openNotifModal()">
+        🔔
+        <span class="notif-badge" id="notif-badge"></span>
+    </button>
+
+    <!-- Hamburger Menu -->
+    <button class="hamburger-btn" onclick="toggleSideMenu()">
+        <span></span>
+        <span></span>
+        <span></span>
+    </button>
+
+    <!-- Side Menu -->
+    <div class="side-menu-overlay" id="side-menu-overlay" onclick="toggleSideMenu()"></div>
+    <div class="side-menu" id="side-menu">
+        <div class="side-menu-header">
+            <span style="font-weight:900;color:#c7d2fe;" data-i18n="menu">Menü</span>
+            <button class="side-menu-close" onclick="toggleSideMenu()">✕</button>
+        </div>
+        <div id="side-menu-profile-box" style="display:none;margin-bottom:16px;padding-bottom:16px;border-bottom:1px solid rgba(99,102,241,0.2);">
+            <div style="font-size:1.1em;font-weight:900;color:#c7d2fe;margin-bottom:4px;" id="side-menu-username">@user</div>
+            <div style="font-size:0.75em;color:#94a3b8;" id="side-menu-badge-display"></div>
+        </div>
+        <button class="side-menu-item" id="side-menu-login-btn" onclick="loginWithPi()" style="display:none;">
+            <span>🔐</span>
+            <span data-i18n="connect_with_pi">Pi ile Bağlan</span>
+        </button>
+        <button class="side-menu-item" id="side-menu-user-panel-btn" onclick="scrollToUserPanel()" style="display:none;">
+            <span>👤</span>
+            <span data-i18n="my_panel">Panelim</span>
+        </button>
+        <button class="side-menu-item" id="side-menu-sell-btn" onclick="openSellModal()" style="display:none;">
+            <span>📤</span>
+            <span data-i18n="sell_my_domain">Domainimi Satışa Çıkar</span>
+        </button>
+        <button class="side-menu-item" id="side-menu-logout-btn" onclick="handleLogout()" style="display:none;">
+            <span>🚪</span>
+            <span data-i18n="logout">Çıkış Yap</span>
+        </button>
+        <div style="margin-top:16px;padding-top:16px;border-top:1px solid rgba(99,102,241,0.2);">
+            <div style="font-size:0.7em;color:#64748b;font-weight:800;letter-spacing:0.8px;text-transform:uppercase;margin-bottom:8px;" data-i18n="language_options">Dil Seçenekleri</div>
+            <button class="side-menu-item" id="lang-btn-tr" onclick="setLang('tr')" style="font-size:0.8em;">
+                <span>🇹🇷</span>
+                <span>Türkçe</span>
+            </button>
+            <button class="side-menu-item" id="lang-btn-en" onclick="setLang('en')" style="font-size:0.8em;">
+                <span>🇬🇧</span>
+                <span>English</span>
+            </button>
+        </div>
     </div>
-  );
-}
 
-function SellDomainForm({ categories, onSubmit, onClose, lang, t }: any) {
-  const [formData, setFormData] = useState({
-    domainName: "",
-    price: "",
-    type: "genel",
-    description: "",
-    sellerWallet: "",
-  });
+    <!-- Modals -->
+    <!-- Notifications Modal -->
+    <div class="modal-overlay" id="notif-modal">
+        <div class="modal-content">
+            <button class="modal-close" onclick="document.getElementById('notif-modal').classList.remove('active')">✕</button>
+            <h2 style="margin:0 0 12px 0;font-size:1.1em;" data-i18n="notifications">Bildirimler</h2>
+            <button class="btn-primary" onclick="markAllNotifRead()" style="margin-bottom:8px;" data-i18n="mark_all_read">Tümünü Okundu Yap</button>
+            <div id="notif-list" style="max-height:300px;overflow-y:auto;"></div>
+        </div>
+    </div>
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    onSubmit({
-      ...formData,
-      price: parseFloat(formData.price),
-    });
-    onClose();
-  };
+    <!-- Sell Domain Modal -->
+    <div class="modal-overlay" id="sell-modal">
+        <div class="modal-content">
+            <button class="modal-close" onclick="document.getElementById('sell-modal').classList.remove('active')">✕</button>
+            <h2 style="margin:0 0 12px 0;font-size:1.1em;" data-i18n="list_domain_title">Domainini Satışa Çıkar</h2>
+            <input type="text" class="sell-form-input" id="sell-domain-name" placeholder="domain.pi" data-i18n-placeholder="domain_name_placeholder">
+            <input type="number" class="sell-form-input" id="sell-domain-price" placeholder="Fiyat (PI)" data-i18n-placeholder="price_label">
+            <select class="sell-form-select" id="sell-domain-type">
+                <option value="genel" data-i18n="type_general">Genel</option>
+                <option value="finans" data-i18n="type_finance">Finans / Bankacılık</option>
+                <option value="eticaret" data-i18n="type_ecommerce">E-Ticaret</option>
+                <option value="kisisel" data-i18n="type_personal">Kişisel İsim</option>
+                <option value="teknoloji" data-i18n="type_technology">Teknoloji</option>
+                <option value="turizm">Turizm / Seyahat</option>
+                <option value="finansal_hizmetler">Faizsiz Finansal Hizmetler</option>
+                <option value="saglik">Sağlık</option>
+                <option value="egitim">Eğitim</option>
+                <option value="medya">Medya</option>
+                <option value="spor">Spor</option>
+                <option value="diger" data-i18n="type_other">Diğer</option>
+            </select>
+            <textarea class="sell-form-input" id="sell-domain-desc" placeholder="Açıklama..." data-i18n-placeholder="description_placeholder" style="resize:vertical;min-height:60px;"></textarea>
+            <input type="text" class="sell-form-input" id="sell-domain-wallet" placeholder="Cüzdan Adresi" data-i18n-placeholder="wallet_placeholder">
+            <button class="btn-primary" onclick="submitSellRequest()" data-i18n="send_for_approval">ONAYA GÖNDER</button>
+        </div>
+    </div>
 
-  return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      <div>
-        <label className="text-sm font-medium">{t("domainName")}</label>
-        <Input
-          placeholder={t("domainNamePlaceholder")}
-          value={formData.domainName}
-          onChange={(e) => setFormData({ ...formData, domainName: e.target.value })}
-          className="bg-slate-700 border-slate-600"
-          required
-        />
-      </div>
+    <!-- Detail Modal -->
+    <div class="modal-overlay" id="detail-modal">
+        <div class="modal-content">
+            <button class="modal-close" onclick="document.getElementById('detail-modal').classList.remove('active')">✕</button>
+            <h2 style="margin:0 0 12px 0;font-size:1.1em;" data-i18n="sell_request_detail">Domain Detayı</h2>
+            <div id="detail-content" class="detail-modal-content"></div>
+        </div>
+    </div>
 
-      <div>
-        <label className="text-sm font-medium">{t("price")}</label>
-        <Input
-          type="number"
-          placeholder={t("pricePlaceholder")}
-          value={formData.price}
-          onChange={(e) => setFormData({ ...formData, price: e.target.value })}
-          className="bg-slate-700 border-slate-600"
-          required
-        />
-      </div>
+    <!-- i18n Translations -->
+    <script>
+        const i18n = {
+            tr: {
+                app_title: 'Web3 Domain Gateway',
+                sold_domains: 'Satılan Domain',
+                total_volume: 'Toplam Hacim',
+                active_users: 'Aktif Kullanıcı',
+                available_domains: 'Satın Alabileceğiniz Domainler',
+                overview: 'Genel',
+                my_purchases: 'Alımlarım',
+                my_listings: 'İlanlarım',
+                my_income: 'Gelirim',
+                profile_settings: 'Profil Ayarları',
+                purchased_domains: 'Satın Alınan Domainler',
+                my_listings_title: 'Satış İlanlarım',
+                list_new_domain: '+ Yeni İlan Ver',
+                my_panel: 'Panelim',
+                sell_my_domain: 'Domainimi Satışa Çıkar',
+                connect_with_pi: 'Pi ile Bağlan',
+                logout: 'Çıkış Yap',
+                language_options: 'Dil Seçenekleri',
+                admin_dashboard: 'Admin Paneli',
+                pending_approvals: 'Bekleyen Onaylar',
+                earnings: 'Kazançlar',
+                total_earnings: 'Toplam Kazanç',
+                admin_earnings_note: 'Tüm satışlardan elde edilen gelir',
+                info: 'BİLGİ',
+                test_net_note: 'Bu uygulama Test-Pi ağında deneme amaçlıdır. Satın aldığınız domainler, diğer kullanıcıların da test yapabilmesi için markette tekrar SATIN AL olarak görünebilir ve satın alma geçmişinizden silinebilir.',
+                menu: 'Menü',
+                notifications: 'Bildirimler',
+                mark_all_read: 'Tümünü Okundu Yap',
+                list_domain_title: 'Domainini Satışa Çıkar',
+                domain_name_placeholder: 'domain.pi',
+                price_label: 'Fiyat (PI)',
+                type_general: 'Genel',
+                type_finance: 'Finans / Bankacılık',
+                type_ecommerce: 'E-Ticaret',
+                type_personal: 'Kişisel İsim',
+                type_technology: 'Teknoloji',
+                description_placeholder: 'Açıklama...',
+                wallet_placeholder: 'Cüzdan Adresi',
+                send_for_approval: 'ONAYA GÖNDER',
+                sell_request_detail: 'Domain Detayı',
+                type_other: 'Diğer',
+            },
+            en: {
+                app_title: 'Web3 Domain Gateway',
+                sold_domains: 'Sold Domains',
+                total_volume: 'Total Volume',
+                active_users: 'Active Users',
+                available_domains: 'Domains Available for Purchase',
+                overview: 'Overview',
+                my_purchases: 'My Purchases',
+                my_listings: 'My Listings',
+                my_income: 'My Income',
+                profile_settings: 'Profile Settings',
+                purchased_domains: 'Purchased Domains',
+                my_listings_title: 'My Domain Listings',
+                list_new_domain: '+ New Listing',
+                my_panel: 'My Panel',
+                sell_my_domain: 'List My Domain for Sale',
+                connect_with_pi: 'Connect with Pi',
+                logout: 'Sign Out',
+                language_options: 'Language Options',
+                admin_dashboard: 'Admin Dashboard',
+                pending_approvals: 'Pending Approvals',
+                earnings: 'Earnings',
+                total_earnings: 'Total Earnings',
+                admin_earnings_note: 'Total earnings from all sales',
+                info: 'INFO',
+                test_net_note: 'This app runs on Test-Pi for demo purposes. Purchased domains may reappear as BUY and may be removed from your history.',
+                menu: 'Menu',
+                notifications: 'Notifications',
+                mark_all_read: 'Mark All Read',
+                list_domain_title: 'List Your Domain for Sale',
+                domain_name_placeholder: 'domain.pi',
+                price_label: 'Price (PI)',
+                type_general: 'General',
+                type_finance: 'Finance / Banking',
+                type_ecommerce: 'E-Commerce',
+                type_personal: 'Personal Name',
+                type_technology: 'Technology',
+                description_placeholder: 'Description...',
+                wallet_placeholder: 'Wallet Address',
+                send_for_approval: 'SEND FOR APPROVAL',
+                sell_request_detail: 'Domain Details',
+                type_other: 'Other',
+            }
+        };
 
-      <div>
-        <label className="text-sm font-medium">{t("type")}</label>
-        <Select value={formData.type} onValueChange={(value) => setFormData({ ...formData, type: value })}>
-          <SelectTrigger className="bg-slate-700 border-slate-600">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent className="bg-slate-700 border-slate-600">
-            {categories?.map((cat: any) => (
-              <SelectItem key={cat.key} value={cat.key}>
-                {lang === "tr" ? cat.labelTr : cat.labelEn}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
+        let currentLang = localStorage.getItem('w3dg_lang') || 'tr';
 
-      <div>
-        <label className="text-sm font-medium">{t("description")}</label>
-        <Textarea
-          placeholder={t("descriptionPlaceholder")}
-          value={formData.description}
-          onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-          className="bg-slate-700 border-slate-600"
-        />
-      </div>
+        function t(key) {
+            return (i18n[currentLang]?.[key] ?? i18n['tr']?.[key]) ?? key;
+        }
 
-      <div>
-        <label className="text-sm font-medium">{t("wallet")}</label>
-        <Input
-          placeholder={t("walletPlaceholder")}
-          value={formData.sellerWallet}
-          onChange={(e) => setFormData({ ...formData, sellerWallet: e.target.value })}
-          className="bg-slate-700 border-slate-600"
-        />
-      </div>
+        function applyTranslations() {
+            document.querySelectorAll('[data-i18n]').forEach(el => {
+                const v = t(el.getAttribute('data-i18n'));
+                if (typeof v === 'string') el.textContent = v;
+            });
+            document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
+                const v = t(el.getAttribute('data-i18n-placeholder'));
+                if (typeof v === 'string') el.placeholder = v;
+            });
+            document.getElementById('lang-btn-tr')?.classList.toggle('active', currentLang === 'tr');
+            document.getElementById('lang-btn-en')?.classList.toggle('active', currentLang === 'en');
+            document.documentElement.lang = currentLang;
+        }
 
-      <div className="flex gap-2">
-        <Button type="submit" className="flex-1 bg-indigo-600 hover:bg-indigo-700">
-          {t("sendForApproval")}
-        </Button>
-        <Button type="button" variant="outline" onClick={onClose} className="flex-1">
-          {t("cancel")}
-        </Button>
-      </div>
-    </form>
-  );
-}
+        window.setLang = function(lang) {
+            currentLang = lang;
+            localStorage.setItem('w3dg_lang', lang);
+            applyTranslations();
+            document.getElementById('side-menu').classList.remove('open');
+            document.getElementById('side-menu-overlay').classList.remove('open');
+        };
+
+        // Pi SDK initialization with waitForPi mechanism
+        let piReady = false;
+        function waitForPi() {
+            return new Promise(resolve => {
+                if (typeof Pi !== 'undefined') {
+                    if (!piReady) {
+                        Pi.init({ version: "2.0", sandbox: true });
+                        piReady = true;
+                    }
+                    resolve();
+                    return;
+                }
+                const check = setInterval(() => {
+                    if (typeof Pi !== 'undefined') {
+                        clearInterval(check);
+                        if (!piReady) {
+                            Pi.init({ version: "2.0", sandbox: true });
+                            piReady = true;
+                        }
+                        resolve();
+                    }
+                }, 100);
+            });
+        }
+
+        // UI Functions
+        function toggleSideMenu() {
+            document.getElementById('side-menu').classList.toggle('open');
+            document.getElementById('side-menu-overlay').classList.toggle('open');
+        }
+
+        function switchUserTab(tabId) {
+            document.querySelectorAll('.user-tab-btn').forEach(b => b.classList.toggle('active', b.dataset.utab === tabId));
+            document.querySelectorAll('.user-tab-panel').forEach(p => p.classList.toggle('active', p.id === tabId));
+        }
+
+        function switchAdminTab(tabId) {
+            document.querySelectorAll('.admin-tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === tabId));
+            document.querySelectorAll('.admin-tab-panel').forEach(p => p.classList.toggle('active', p.id === tabId));
+        }
+
+        function openSellModal() {
+            document.getElementById('sell-modal').classList.add('active');
+            if (document.getElementById('side-menu').classList.contains('open')) toggleSideMenu();
+        }
+
+        function openNotifModal() {
+            document.getElementById('notif-modal').classList.add('active');
+        }
+
+        function openDetailModal(data) {
+            const modal = document.getElementById('detail-modal');
+            const content = document.getElementById('detail-content');
+            content.innerHTML = `
+                <div class="detail-row">
+                    <span class="detail-label">🌐 Domain</span>
+                    <span class="detail-value">${data.domainName}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">💰 Fiyat</span>
+                    <span class="detail-value">${data.price} PI</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">🏷️ Tür</span>
+                    <span class="detail-value">${data.type}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">👤 Gönderen</span>
+                    <span class="detail-value">@${data.submittedBy}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">💳 Cüzdan</span>
+                    <span class="detail-value">${data.sellerWallet || 'Belirtilmemiş'}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">📝 Açıklama</span>
+                    <span class="detail-value">${data.description || 'Açıklama girilmemiş'}</span>
+                </div>
+                <button class="btn-primary" onclick="approveDomain(${data.id})" style="margin-top:12px;">✓ ONAYLA</button>
+            `;
+            modal.classList.add('active');
+        }
+
+        // Placeholder functions
+        function loginWithPi() {
+            alert('Pi login functionality would be implemented here with waitForPi mechanism');
+        }
+
+        function handleLogout() {
+            alert('Logout functionality would be implemented here');
+        }
+
+        function submitSellRequest() {
+            const name = document.getElementById('sell-domain-name').value;
+            const price = document.getElementById('sell-domain-price').value;
+            const type = document.getElementById('sell-domain-type').value;
+            const desc = document.getElementById('sell-domain-desc').value;
+            const wallet = document.getElementById('sell-domain-wallet').value;
+
+            if (!name || !price || !wallet) {
+                alert('Lütfen tüm alanları doldurun');
+                return;
+            }
+
+            alert(`Domain "${name}" onaya gönderildi!\nFiyat: ${price} PI\nKategori: ${type}`);
+            document.getElementById('sell-modal').classList.remove('active');
+        }
+
+        function markAllNotifRead() {
+            alert('Tüm bildirimler okundu olarak işaretlendi');
+        }
+
+        function approveDomain(id) {
+            alert(`Domain #${id} onaylandı ve satışa sunuldu!`);
+            document.getElementById('detail-modal').classList.remove('active');
+        }
+
+        function scrollToUserPanel() {
+            toggleSideMenu();
+            setTimeout(() => document.getElementById('user-panel')?.scrollIntoView({ behavior: 'smooth' }), 350);
+        }
+
+        // Initialize
+        applyTranslations();
+    </script>
+</body>
+</html>
