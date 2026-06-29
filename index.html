@@ -1190,14 +1190,24 @@ async function loadUniqueBadgeCount(){
     try{const s=await fetchUniqueUsers();const b=document.getElementById("unique-users-badge");if(b)b.innerText=s.length;}catch(e){}
 }
 
-// AKTİF KULLANICI — FIX: Doğru sayım
+// AKTİF KULLANICI SAYACI - Firestore listener
 onSnapshot(collection(db,"active_users"),(snap)=>{
     const now=Date.now();let count=0;
     snap.forEach(d=>{if(d.data().lastSeen&&(now-d.data().lastSeen)<30000)count++;});
     const el=document.getElementById("online-count"); if(el) el.innerText=count;
 });
-async function updateActiveStatus(){if(currentUser) await setDoc(doc(db,"active_users",currentUser),{lastSeen:Date.now()},{merge:true});}
-window.addEventListener('beforeunload',async()=>{if(currentUser) await deleteDoc(doc(db,"active_users",currentUser));});
+
+// FIX: Aktif kullanıcı güncelleme — backend üzerinden (güvenli)
+async function updateActiveStatus(){
+    if(!currentUser||!piAccessToken) return;
+    try{
+        await fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},
+            body:JSON.stringify({action:'update_active_status',accessToken:piAccessToken})});
+    }catch(e){}
+}
+window.addEventListener('beforeunload',async()=>{
+    if(currentUser) try{await deleteDoc(doc(db,"active_users",currentUser));}catch(e){}
+});
 
 // INCOMPLETE PAYMENT
 async function handleIncompletePayment(payment){
@@ -1237,12 +1247,11 @@ window.loginWithPi=async function(){
             dateInput.onchange=(e)=>listenToLogs(e.target.value);
         }
 
-        // FIX 2: Giriş kaydı — günlük log
-        const userDocRef=doc(db,"daily_users",today);
-        const userSnap=await getDoc(userDocRef);
-        let currentUsers=userSnap.exists()?userSnap.data().users||{}:{};
-        currentUsers[currentUser]=Date.now();
-        await setDoc(userDocRef,{users:currentUsers},{merge:true});
+        // FIX: Giriş kaydı — backend üzerinden (sahte yazma engeli)
+        try{
+            await fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},
+                body:JSON.stringify({action:'log_daily_user',accessToken:piAccessToken})});
+        }catch(e){console.error(e);}
         updateActiveStatus();
 
         // FIX 3: İlk giriş tarihi — tüm kayıtlardan en eskiyi bul
@@ -1260,8 +1269,10 @@ window.loginWithPi=async function(){
 
     }catch(e){
         console.error("Login error:",e);
-        // FIX 4: Kullanıcı iptal ettiyse hata gösterme
-        if(e&&e.message&&!e.message.includes('cancel')&&!e.message.includes('user_cancelled')&&!e.message.includes('User cancelled')){
+        // FIX: Sandbox'ta ilk denemede gelen hataları, iptal ve bilinen geçici hataları gösterme
+        const errMsg = (e?.message || e?.toString() || '').toLowerCase();
+        const ignored = ['cancel','user_cancelled','user cancelled','aborted','network','timeout','already','pi_sdk'];
+        if (!ignored.some(x => errMsg.includes(x))) {
             alert(t('loginError'));
         }
     }
