@@ -519,7 +519,7 @@
 </div>
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
-import { getFirestore, doc, onSnapshot, setDoc, getDoc, collection, getDocs, deleteDoc } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
+import { getFirestore, doc, onSnapshot, setDoc, getDoc, collection, getDocs, deleteDoc, query, where } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
 
 const firebaseConfig = {
     apiKey: "AIzaSyC9r244vRVGbYOcLHyS6EHxKyiygajW7_A",
@@ -765,6 +765,7 @@ window.setLang=function(lang){ currentLang=lang; localStorage.setItem('w3dg_lang
 let currentUser=null,piAccessToken=null,isAuth=false;
 let domainData={},pendingDomain=null,pendingPrice=0;
 let adminLogUnsubscribe=null,adminStatsUnsubscribe=null,pendingDomainsUnsubscribe=null;
+let myOwnSellRequestsUnsubscribe=null;
 let notifPollInterval=null;
 let currentFilter='hepsi',userFirstSeen=null;
 let userProfile={points:0,badge:null};
@@ -838,6 +839,7 @@ window.openProfileModal=function(){
 window.handleLogout=async function(){
     if(currentUser) try{await deleteDoc(doc(db,"active_users",currentUser));}catch(e){}
     stopNotifPolling();
+    stopListeningToMyOwnSellRequests();
     currentUser=null;piAccessToken=null;isAuth=false;userFirstSeen=null;
     userProfile={points:0,badge:null};userSellRequests=[];userSoldDomains=[];userActiveListings=[];userTotalSpent=0;userTotalEarned=0;
     cachedNotifications=[];
@@ -1347,6 +1349,22 @@ function listenToPendingDomains(){
     });
 }
 
+// FIX: reject_sell_request durumunda domains koleksiyonunda HİÇBİR
+// değişiklik olmaz (domain hiç oluşturulmaz) — bu yüzden domains
+// onSnapshot tetikleyicisi bu senaryoyu yakalayamaz. Her kullanıcı kendi
+// sell_requests belgelerini doğrudan dinler ki "Onay Bekliyor" →
+// "Reddedildi"/"Onaylandı" geçişini sayfa yenilemeden anında görsün.
+function listenToMyOwnSellRequests(username){
+    if(myOwnSellRequestsUnsubscribe) myOwnSellRequestsUnsubscribe();
+    const q=query(collection(db,"sell_requests"),where("submittedBy","==",username));
+    myOwnSellRequestsUnsubscribe=onSnapshot(q,()=>{
+        debouncedProfileRefresh();
+    });
+}
+function stopListeningToMyOwnSellRequests(){
+    if(myOwnSellRequestsUnsubscribe){myOwnSellRequestsUnsubscribe();myOwnSellRequestsUnsubscribe=null;}
+}
+
 // UNIQUE USERS
 let cachedUniqueUsers=null;
 async function fetchUniqueUsers(){
@@ -1427,6 +1445,9 @@ window.loginWithPi=async function(){
             startNotifPolling();
             // Profil yükle
             await loadUserProfile();
+            // FIX: kendi ilan durumu değişikliklerini (onay/red) anında
+            // yakalamak için kendi sell_requests belgelerini dinlemeye başla
+            listenToMyOwnSellRequests(currentUser);
 
             if(currentUser==="doganay0808"){
                 document.getElementById("admin-panel").style.display="block";
@@ -1524,7 +1545,34 @@ document.getElementById("share-tg-btn").onclick=()=>{
 // event'inin local cache senkronizasyon gecikmesine daha duyarlı olmasıydı.
 // "modified" (alan güncelleme) event'i tüm SDK sürümlerinde daha tutarlı
 // ve hızlı yayılır. Bu yüzden silme artık bir alan güncellemesi.
+let profileRefreshTimeout=null;
+function debouncedProfileRefresh(){
+    // FIX (kök neden düzeltmesi): Önceden loadUserProfile() SADECE şu
+    // kullanıcının kendi eylemlerinde çağrılıyordu: ilan gönderme, login,
+    // satın alma. Admin başka bir kullanıcının ilanını onaylar/reddeder/
+    // siler veya bir domain'i relist ederse, O KULLANICININ (ilan/domain
+    // sahibinin) tarayıcısında HİÇBİR tetikleyici yoktu — bu yüzden
+    // "İlanlarım", "ilan sayım", "toplam harcama/puan" gibi alanlar
+    // sayfa yenilenene/yeniden login olana kadar BAYAT veriyle kalıyordu.
+    // Çözüm: domains koleksiyonunda herhangi bir değişiklik (onSnapshot)
+    // geldiğinde, eğer kullanıcı login ise profilini debounce'lu şekilde
+    // (1.2sn) otomatik yeniden çeker. Debounce, çoklu hızlı ardışık
+    // Firestore güncellemesinde gereksiz tekrar tekrar istek atılmasını
+    // önler.
+    if(!isAuth||!piAccessToken) return;
+    clearTimeout(profileRefreshTimeout);
+    profileRefreshTimeout=setTimeout(async()=>{
+        await loadUserProfile();
+        debouncedRender();
+    },1200);
+}
+
 onSnapshot(collection(db,"domains"),(snapshot)=>{
+    // FIX: 'added' dahil her değişiklik tipi profil yenilemesini tetikler.
+    // Çünkü bir satış önerisi onaylandığında domains koleksiyonuna yeni
+    // bir doküman 'added' olarak gelir — bu da kullanıcının "İlanlarım"
+    // durumunun (pending → approved) güncellenmesi gereken bir andır.
+    const hasRelevantChange=snapshot.docChanges().length>0;
     snapshot.docChanges().forEach(change=>{
         if(change.type==='removed'){
             const name=change.doc.id;
@@ -1567,6 +1615,7 @@ onSnapshot(collection(db,"domains"),(snapshot)=>{
     if(tsEl) tsEl.innerText=totalSold; if(tvEl) tvEl.innerText=Math.round(totalVolume*100)/100;
 
     debouncedRender();
+    if(hasRelevantChange) debouncedProfileRefresh();
 });
 
 let renderTimeout=null;
