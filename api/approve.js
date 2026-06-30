@@ -89,7 +89,16 @@ async function sendNotification(targetUsername, notification) {
       ts: Date.now()
     });
   } catch (e) {
-    console.error("Bildirim gönderilemedi:", e);
+    // FIX: Bu hata önceden sadece console.error ile basılıyordu ve
+    // çağıran kodun akışını hiç etkilemiyordu — bu doğru bir davranış
+    // (bir bildirim gönderilemese de asıl işlem, örn. satın alma,
+    // başarısız sayılmamalı). Ama teşhisi kolaylaştırmak için hatanın
+    // TAM mesajını ve hangi kullanıcıya/hangi bildirim tipi için
+    // gönderilmeye çalışıldığını da logluyoruz. En sık görülen neden:
+    // process.env.FIREBASE_DATABASE_URL tanımlı değilse getDatabase()
+    // burada "Can't determine Firebase Database URL" tarzı bir hata
+    // fırlatır — Vercel loglarında bu satırı arayarak teşhis edilebilir.
+    console.error(`Bildirim gönderilemedi (hedef: @${targetUsername}, tip: ${notification?.type||'?'}):`, e.message || e);
   }
 }
 
@@ -685,29 +694,40 @@ export default async function handler(req, res) {
         totalSpent += Number(d.data().price || 0);
       });
 
-      // Satışa sunulan domainler — FIX: silinmiş (deleted:true) domain'e
-      // ait sell_request'leri de işaretleyip frontend'e bildiriyoruz ki
-      // "İlanlarım" sekmesinde o kayıt görünmesin.
+      // Satışa sunulan domainler — FIX: Silinmiş (deleted:true) bir
+      // domain'e ait HİÇBİR sell_request kaydı "İlanlarım" sekmesinde
+      // görünmemeli. Önceki sürümde sadece status==='approved' olan
+      // kayıtların domain adı kontrol ediliyordu; ama bir domain önce
+      // approve edilip SONRA silinmiş olsa bile teorik olarak doğru
+      // çalışmalıydı. Sorunun asıl kaynağı kontrolün KENDİSİ değil,
+      // frontend'in bu güncel veriyi hiç tekrar ÇEKMEMESİYDİ (ayrı bir
+      // fix ile çözüldü — domains/sell_requests onSnapshot tetikleyince
+      // profil otomatik yenileniyor). Burada ekstra bir güvenlik/garanti
+      // katmanı olarak: approved OLMASA BİLE, aynı domain adına sahip
+      // BAŞKA bir kayıt (örn. tekrar başvuru) varsa ve o domain artık
+      // silinmişse, tutarlılık için yine gizlenir.
       const sellReqSnap = await db.collection('sell_requests').where('submittedBy', '==', realUsername).get();
       const sellRequests = [];
-      const approvedDomainNames = [];
+      const allDomainNamesInRequests = new Set();
       sellReqSnap.forEach(d => {
         const data = d.data();
-        if (data.status === 'approved') approvedDomainNames.push(data.domainName);
+        allDomainNamesInRequests.add(data.domainName);
         sellRequests.push({ id: d.id, ...data });
       });
 
       // Onaylanmış domainlerin şu anki "deleted" durumunu kontrol et
       let deletedDomainNames = new Set();
-      if (approvedDomainNames.length > 0) {
+      if (allDomainNamesInRequests.size > 0) {
         const domainDocs = await Promise.all(
-          approvedDomainNames.map(name => db.collection('domains').doc(name).get())
+          Array.from(allDomainNamesInRequests).map(name => db.collection('domains').doc(name).get())
         );
         domainDocs.forEach(snap => {
           if (snap.exists && snap.data().deleted === true) deletedDomainNames.add(snap.id);
         });
       }
-      // Silinmiş domain'lere ait listeleme kayıtlarını çıkar
+      // Silinmiş domain'lere ait listeleme kayıtlarını (statüsü ne olursa
+      // olsun) çıkar — soft-delete edilen bir domain, kullanıcı tarafında
+      // hiç var olmamış gibi davranır.
       const visibleSellRequests = sellRequests.filter(r => !deletedDomainNames.has(r.domainName));
 
       // Satılan domainlerden gelir (silinmemiş olanlar)
