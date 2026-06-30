@@ -550,11 +550,11 @@ export default async function handler(req, res) {
   }
 
 // FIX: active_users güvenlik — kullanıcı sadece kendi kaydını yazabilsin
-// Firestore rules'da bunu enforce etmek için backend üzerinden yazıyoruz
-// Frontend direct write yerine backend'e istek at
-if (action === 'update_active_status') {
+  // ── Aktif Kullanıcı Güncelle ──────────────────────────────────────────
+  if (action === 'update_active_status') {
     if (!checkRateLimit(clientIp, 'update_active_status', 5, 15000))
       return res.status(429).json({ error: "Rate limit" });
+    if (!accessToken) return res.status(400).json({ error: "accessToken zorunludur" });
     const realUsername = await getRealUsername(accessToken);
     if (!realUsername) return res.status(403).json({ error: "Geçersiz oturum" });
     try {
@@ -566,10 +566,11 @@ if (action === 'update_active_status') {
     }
   }
 
-  // FIX: daily_users güvenlik — kullanıcı sadece kendi kaydını yazabilsin
+  // ── Günlük Giriş Kaydı ────────────────────────────────────────────────
   if (action === 'log_daily_user') {
     if (!checkRateLimit(clientIp, 'log_daily_user', 3, 60000))
       return res.status(429).json({ error: "Rate limit" });
+    if (!accessToken) return res.status(400).json({ error: "accessToken zorunludur" });
     const realUsername = await getRealUsername(accessToken);
     if (!realUsername) return res.status(403).json({ error: "Geçersiz oturum" });
     try {
@@ -585,6 +586,8 @@ if (action === 'update_active_status') {
       return res.status(500).json({ error: e.message });
     }
   }
+
+  // ── Kullanıcı Profili Getir ───────────────────────────────────────────
   if (action === 'get_user_profile') {
     if (!checkRateLimit(clientIp, 'get_user_profile', 10, 60000))
       return res.status(429).json({ error: "Çok fazla istek." });
