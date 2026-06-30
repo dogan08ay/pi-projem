@@ -6,11 +6,33 @@ import { getDatabase } from 'firebase-admin/database';
 // ─── Firebase Admin Başlatma ───────────────────────────────────────────────
 function getAdminApp() {
   if (getApps().length > 0) return getApps()[0];
-  const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
+
+  // FIX (teşhis katmanı): Ortam değişkenlerinin VAR olması yetmez, doğru
+  // FORMATTA olması gerekir. Bu loglar Vercel Function Logs'ta her cold
+  // start'ta bir kez görünür ve yapılandırma hatasını net şekilde işaret
+  // eder — "değişken tanımlı ama yanlış" durumunu "hiç tanımlı değil"
+  // durumundan ayırt etmeyi sağlar.
+  const dbUrl = process.env.FIREBASE_DATABASE_URL;
+  if (!dbUrl) {
+    console.error("[FIREBASE INIT UYARI] FIREBASE_DATABASE_URL ortam değişkeni BOŞ/tanımsız. RTDB (bildirimler) çalışmayacak.");
+  } else if (!/^https:\/\/.+\.firebaseio\.com\/?$/.test(dbUrl) && !/^https:\/\/.+\.(firebasedatabase\.app)\/?$/.test(dbUrl)) {
+    console.error(`[FIREBASE INIT UYARI] FIREBASE_DATABASE_URL formatı beklenmedik görünüyor: "${dbUrl}". Beklenen format: https://<proje-id>-default-rtdb.firebaseio.com (sonunda / OLMAMALI, başında https:// OLMALI, tırnak içermemeli).`);
+  } else {
+    console.log(`[FIREBASE INIT] databaseURL doğrulandı: ${dbUrl}`);
+  }
+
+  let serviceAccount;
+  try {
+    serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
+  } catch (e) {
+    console.error("[FIREBASE INIT UYARI] FIREBASE_SERVICE_ACCOUNT geçerli bir JSON değil:", e.message);
+    throw e;
+  }
+
   return initializeApp({
     credential: cert(serviceAccount),
     storageBucket: process.env.FIREBASE_STORAGE_BUCKET, // örn: web3-domain-gateway.appspot.com
-    databaseURL: process.env.FIREBASE_DATABASE_URL,     // örn: https://web3-domain-gateway-default-rtdb.firebaseio.com
+    databaseURL: dbUrl,     // örn: https://web3-domain-gateway-default-rtdb.firebaseio.com
   });
 }
 function getDb()      { getAdminApp(); return getFirestore(); }
@@ -685,13 +707,29 @@ export default async function handler(req, res) {
       const profileSnap = await db.collection('user_profiles').doc(realUsername).get();
       const profileData = profileSnap.exists ? profileSnap.data() : { points: 0, badge: null };
 
-      // Satın alınan domainler
+      // Satın alınan domainler — FIX (karar): totalSpent artık global_sales
+      // yerine DOĞRUDAN domains koleksiyonundaki "sold:true, buyer:ben"
+      // kayıtlarını baz alıyor. Bu, market listesinde "satılmış" olarak
+      // görünen gerçek durumla %100 tutarlı olmasını garantiler — iki ayrı
+      // koleksiyonun (domains ve global_sales) senkron kalma riskini
+      // ortadan kaldırır. global_sales hâlâ "purchases" (satın alma
+      // geçmişi/detay listesi) için ayrıca kullanılmaya devam ediyor,
+      // ama TOPLAM HARCAMA rakamı artık domains'ten hesaplanıyor.
+      const myPurchasedDomainsSnap = await db.collection('domains')
+        .where('buyer', '==', realUsername)
+        .where('sold', '==', true)
+        .get();
+      let totalSpent = 0;
+      myPurchasedDomainsSnap.forEach(d => {
+        const data = d.data();
+        if (data.deleted === true) return; // silinmiş domain harcamaya dahil edilmez
+        totalSpent += Number(data.price || 0);
+      });
+
       const salesSnap = await db.collection('global_sales').where('user', '==', realUsername).get();
       const purchases = [];
-      let totalSpent = 0;
       salesSnap.forEach(d => {
         purchases.push(d.data());
-        totalSpent += Number(d.data().price || 0);
       });
 
       // Satışa sunulan domainler — FIX: Silinmiş (deleted:true) bir
@@ -791,13 +829,39 @@ export default async function handler(req, res) {
       });
 
       // Kullanıcıların kendi domainlerinden kazandığı toplam (sellerUsername'li satışlar)
+      // FIX: deleted===true olan domainler hariç tutulur — relist/silme
+      // sonrası bu hacim de otomatik güncel kalır.
       const userOwnedDomainsSnap = await db.collection('domains')
         .where('sold', '==', true)
         .get();
       let userOwnedVolume = 0;
       userOwnedDomainsSnap.forEach(d => {
         const data = d.data();
+        if (data.deleted === true) return;
         if (data.sellerUsername) userOwnedVolume += Number(data.price || 0);
+      });
+
+      // FIX (yeni): Admin'in (doganay0808) KENDİ satıcı kazancı — yani
+      // admin'in ilan verip BAŞKA kullanıcıların satın aldığı domainlerden
+      // gelen tutar. Bu, "Panelim > Gelirim" sekmesindeki totalEarned ile
+      // AYNI hesaplama mantığını kullanır (sellerUsername === admin,
+      // sold === true, deleted !== true), admin panelinde ayrıca
+      // gösterilmesi istendiği için burada da hesaplanır. Domain
+      // silinirse veya relist edilirse (relist action'ı zaten global_sales
+      // kaydını silip puanı geri alıyor, domains.sold da false oluyor),
+      // bu sorgu güncel veriyi otomatik yansıtır — ayrı bir senkron
+      // mekanizması gerekmez.
+      const adminOwnSalesSnap = await db.collection('domains')
+        .where('sellerUsername', '==', 'doganay0808')
+        .where('sold', '==', true)
+        .get();
+      let adminOwnEarnings = 0;
+      const adminOwnSoldDomains = [];
+      adminOwnSalesSnap.forEach(d => {
+        const data = d.data();
+        if (data.deleted === true) return;
+        adminOwnEarnings += Number(data.price || 0);
+        adminOwnSoldDomains.push({ name: d.id, price: data.price, buyer: data.buyer || null });
       });
 
       const platformEarnings = totalVolume - userOwnedVolume;
@@ -807,6 +871,8 @@ export default async function handler(req, res) {
         totalVolume,
         userOwnedVolume,
         platformEarnings,
+        adminOwnEarnings,
+        adminOwnSoldDomains,
         salesByDomain
       });
     } catch (e) {
