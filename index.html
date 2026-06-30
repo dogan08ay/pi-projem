@@ -1202,7 +1202,8 @@ onSnapshot(collection(db,"active_users"),(snap)=>{
 
 // FIX: Aktif kullanıcı güncelleme — backend üzerinden (güvenli)
 async function updateActiveStatus(){
-    if(!currentUser||!piAccessToken) return;
+    // Token yoksa hiç çağırma — 400 hatasını önler
+    if(!currentUser||!piAccessToken||!isAuth) return;
     try{
         await fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},
             body:JSON.stringify({action:'update_active_status',accessToken:piAccessToken})});
