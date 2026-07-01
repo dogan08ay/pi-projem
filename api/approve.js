@@ -269,15 +269,17 @@ export default async function handler(req, res) {
         points: FieldValue.increment(points),
         updatedAt: Date.now()
       }, { merge: true });
-      // Rozet kontrolü
+      // Rozet kontrolü — puan düşünce rozet de güncellenmeli (null dahil)
       const snap = await ref.get();
-      const totalPoints = (snap.data()?.points || 0);
+      const totalPoints = Math.max(0, snap.data()?.points || 0);
       let badge = null;
       if (totalPoints >= 500) badge = 'diamond';
       else if (totalPoints >= 200) badge = 'gold';
       else if (totalPoints >= 50)  badge = 'silver';
       else if (totalPoints >= 10)  badge = 'bronze';
-      if (badge) await ref.set({ badge }, { merge: true });
+      // FIX: badge null olsa bile yaz — önceki if(badge) kontrolü
+      // puan düşünce rozeti sıfırlamıyordu.
+      await ref.set({ badge }, { merge: true });
     } catch (e) { console.error("Puan güncelleme hatası:", e); }
   }
 
