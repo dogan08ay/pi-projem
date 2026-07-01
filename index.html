@@ -90,13 +90,16 @@
         .admin-tab-panel{display:none;}
         .admin-tab-panel.active{display:block;animation:card-rise 0.3s ease backwards;}
         .pending-badge{background:#ef4444;color:#fff;font-size:0.65em;font-weight:900;border-radius:8px;padding:1px 6px;margin-left:2px;}
-        .user-tabs{display:flex;gap:5px;overflow-x:auto;margin-bottom:10px;padding-bottom:2px;}
-        .user-tab-btn{flex-shrink:0;background:#0f172a;border:1.5px solid #334155;color:#94a3b8;padding:7px 10px;border-radius:10px;font-size:0.65em;font-weight:800;cursor:pointer;white-space:nowrap;transition:all 0.15s;}
+        .user-tabs{display:flex;gap:4px;margin-bottom:10px;width:100%;}
+        .user-tab-btn{flex:1 1 0;min-width:0;background:#0f172a;border:1.5px solid #334155;color:#94a3b8;padding:8px 4px;border-radius:10px;font-size:0.62em;font-weight:800;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;transition:all 0.15s;text-align:center;}
         .user-tab-btn.active{background:rgba(16,185,129,0.15);border-color:#10b981;color:#6ee7b7;}
         .user-tab-panel{display:none;}
         .user-tab-panel.active{display:block;animation:card-rise 0.3s ease backwards;}
         .filter-section{margin-top:10px;padding-top:8px;border-top:1px solid rgba(99,102,241,0.15);}
-        .filter-section-label{font-size:0.62em;color:#64748b;font-weight:800;letter-spacing:0.6px;text-transform:uppercase;margin-bottom:6px;text-align:left;padding-left:2px;}
+        .filter-section-label{display:inline-flex;align-items:center;gap:6px;background:linear-gradient(135deg,#1e1b4b 0%,#312e81 100%);color:#a5b4fc;font-size:0.7em;font-weight:900;letter-spacing:0.5px;text-transform:uppercase;margin-bottom:8px;padding:5px 12px;border-radius:20px;border:1.5px solid #6366f1;box-shadow:0 0 10px rgba(99,102,241,0.3);}
+        .category-select{width:100%;background:linear-gradient(135deg,#1e1b4b 0%,#1e293b 100%);color:#c7d2fe;border:2px solid #6366f1;border-radius:12px;padding:10px 14px;font-size:0.82em;font-weight:700;cursor:pointer;outline:none;appearance:none;-webkit-appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23a5b4fc' stroke-width='2.5'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;padding-right:36px;box-shadow:0 0 12px rgba(99,102,241,0.25);margin-bottom:4px;transition:border-color 0.15s,box-shadow 0.15s;}
+        .category-select:focus{border-color:#818cf8;box-shadow:0 0 16px rgba(99,102,241,0.5);}
+        .category-select option{background:#1e293b;color:#f1f5f9;}
         .filter-bar{display:flex;gap:6px;overflow-x:auto;margin-bottom:8px;padding-bottom:2px;}
         .filter-bar::-webkit-scrollbar{height:4px;}
         .filter-chip{flex-shrink:0;background:#2a3a52;border:1.5px solid #3f5575;color:#cbd5e1;padding:5px 12px;border-radius:16px;font-size:0.7em;font-weight:700;cursor:pointer;transition:all 0.15s;}
@@ -496,18 +499,18 @@
         <div class="section-title-box" data-i18n="availableDomains"></div>
         <div class="filter-section">
             <div class="filter-section-label" data-i18n="filterSectionLabel"></div>
-            <div class="filter-bar">
-                <button class="filter-chip active" data-filter="hepsi" onclick="setDomainFilter('hepsi')" data-i18n="filterAll"></button>
-                <button class="filter-chip" data-filter="genel" onclick="setDomainFilter('genel')" data-i18n="typeGeneral"></button>
-                <button class="filter-chip" data-filter="finans" onclick="setDomainFilter('finans')" data-i18n="typeFinance"></button>
-                <button class="filter-chip" data-filter="eticaret" onclick="setDomainFilter('eticaret')" data-i18n="typeEcommerce"></button>
-                <button class="filter-chip" data-filter="kisisel" onclick="setDomainFilter('kisisel')" data-i18n="typePersonal"></button>
-                <button class="filter-chip" data-filter="teknoloji" onclick="setDomainFilter('teknoloji')" data-i18n="typeTechnology"></button>
-                <button class="filter-chip" data-filter="turizm" onclick="setDomainFilter('turizm')" data-i18n="typeTourism"></button>
-                <button class="filter-chip" data-filter="saglik" onclick="setDomainFilter('saglik')" data-i18n="typeHealth"></button>
-                <button class="filter-chip" data-filter="egitim" onclick="setDomainFilter('egitim')" data-i18n="typeEducation"></button>
-                <button class="filter-chip" data-filter="gayrimenkul" onclick="setDomainFilter('gayrimenkul')" data-i18n="typeRealEstate"></button>
-            </div>
+            <select id="category-filter-select" class="category-select" onchange="setDomainFilter(this.value)">
+                <option value="hepsi" data-i18n="filterAll"></option>
+                <option value="genel" data-i18n="typeGeneral"></option>
+                <option value="finans" data-i18n="typeFinance"></option>
+                <option value="eticaret" data-i18n="typeEcommerce"></option>
+                <option value="kisisel" data-i18n="typePersonal"></option>
+                <option value="teknoloji" data-i18n="typeTechnology"></option>
+                <option value="turizm" data-i18n="typeTourism"></option>
+                <option value="saglik" data-i18n="typeHealth"></option>
+                <option value="egitim" data-i18n="typeEducation"></option>
+                <option value="gayrimenkul" data-i18n="typeRealEstate"></option>
+            </select>
         </div>
         <div id="premium-lock" class="premium-lock-overlay">
             <div style="position:relative;display:inline-block;"><div class="diamond-spin" style="font-size:1.8em;">💎</div>
@@ -672,7 +675,7 @@ const i18n = {
     deletedDomainsTitle:"🗑️ Silinmiş Domainler",noDeletedDomains:"Silinmiş domain yok.",
     restoreBtn:"↩ Geri Getir",restoreConfirm:(n)=>`"${n}" domainini geri getirmek istediğinize emin misiniz? Eski verileri (açıklama, görsel, satıcı bilgisi) korunarak yeniden satışa eklenecek.`,
     restoreFail:"Geri getirme başarısız: ",restoreSuccess:(n)=>`"${n}" domaini geri getirildi.`,
-    deletedAtLabel:"Silinme tarihi:",loadingDomains:"Domainler yükleniyor...",filterSectionLabel:"Kategoriye Göre Filtrele",
+    deletedAtLabel:"Silinme tarihi:",loadingDomains:"Domainler yükleniyor...",filterSectionLabel:"🏷️ Kategoriye Göre Filtrele",
   },
   en: {
     menu:"Menu",account:"Account",preferences:"Preferences",connected:"Connected",
@@ -781,7 +784,7 @@ const i18n = {
     deletedDomainsTitle:"🗑️ Deleted Domains",noDeletedDomains:"No deleted domains.",
     restoreBtn:"↩ Restore",restoreConfirm:(n)=>`Are you sure you want to restore "${n}"? Its previous data (description, image, seller info) will be preserved and it will be relisted for sale.`,
     restoreFail:"Restore failed: ",restoreSuccess:(n)=>`"${n}" has been restored.`,
-    deletedAtLabel:"Deleted on:",loadingDomains:"Loading domains...",filterSectionLabel:"Filter by Category",
+    deletedAtLabel:"Deleted on:",loadingDomains:"Loading domains...",filterSectionLabel:"🏷️ Filter by Category",
   }
 };
 let currentLang = localStorage.getItem('w3dg_lang') || 'tr';
@@ -917,7 +920,9 @@ window.switchUserTab=function(tabId){
 // FILTER
 window.setDomainFilter=function(type){
     currentFilter=type;
-    document.querySelectorAll('.filter-chip').forEach(c=>c.classList.toggle('active',c.dataset.filter===type));
+    // Dropdown select değerini senkronize et
+    const sel=document.getElementById('category-filter-select');
+    if(sel&&sel.value!==type) sel.value=type;
     debouncedRender();
 };
 
