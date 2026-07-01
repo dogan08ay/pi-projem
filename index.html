@@ -35,8 +35,8 @@
         @keyframes title-glow{0%,100%{box-shadow:0 0 10px rgba(245,158,11,0.5);border-color:#f59e0b;}50%{box-shadow:0 0 20px rgba(251,191,36,0.9),0 0 40px rgba(251,191,36,0.45);border-color:#fcd34d;}}
         @keyframes section-shimmer{0%{background-position:200% center;}100%{background-position:-200% center;}}
         .lock-title-box{background:linear-gradient(135deg,#fef3c7 0%,#fde68a 100%);color:#1e293b;padding:4px 10px;border-radius:10px;border:2px solid #f59e0b;font-size:0.8em;font-weight:900;margin-bottom:4px;display:inline-block;}
-        .locked-content{filter:blur(4px);opacity:0.7;pointer-events:none;}
-        .premium-lock-overlay{position:absolute;top:0;left:0;right:0;bottom:0;display:none;flex-direction:column;align-items:center;justify-content:flex-start;background:rgba(15,23,42,0.35);backdrop-filter:blur(1px);z-index:100;padding-top:10px;text-align:center;overflow-y:auto;}
+        .locked-content{filter:blur(8px);opacity:0.45;pointer-events:none;}
+        .premium-lock-overlay{position:absolute;top:0;left:0;right:0;bottom:0;display:none;flex-direction:column;align-items:center;justify-content:flex-start;background:rgba(10,15,30,0.72);backdrop-filter:blur(3px);z-index:100;padding-top:10px;text-align:center;overflow-y:auto;}
         .diamond-spin{margin-bottom:3px;display:inline-block;animation:diamond-rotate 5s ease-in-out infinite;filter:drop-shadow(0 0 14px #818cf8);}
         @keyframes diamond-rotate{0%,100%{transform:rotateY(0deg) scale(1);}50%{transform:rotateY(180deg) scale(1.06);}}
         .diamond-sparkle{opacity:0;transform-origin:center;animation:sparkle-twinkle 2.2s ease-in-out infinite;color:#ffffff;}
@@ -95,7 +95,7 @@
         .user-tab-btn.active{background:rgba(16,185,129,0.15);border-color:#10b981;color:#6ee7b7;}
         .user-tab-panel{display:none;}
         .user-tab-panel.active{display:block;animation:card-rise 0.3s ease backwards;}
-        .filter-section{margin-top:10px;padding-top:8px;border-top:1px solid rgba(99,102,241,0.15);}
+        .filter-section{margin-top:10px;padding-top:8px;border-top:1px solid rgba(99,102,241,0.15);min-height:64px;}
         .filter-section-label{display:inline-flex;align-items:center;gap:6px;background:linear-gradient(135deg,#1e1b4b 0%,#312e81 100%);color:#a5b4fc;font-size:0.7em;font-weight:900;letter-spacing:0.5px;text-transform:uppercase;margin-bottom:8px;padding:5px 12px;border-radius:20px;border:1.5px solid #6366f1;box-shadow:0 0 10px rgba(99,102,241,0.3);}
         .category-select{width:100%;background:linear-gradient(135deg,#1e1b4b 0%,#1e293b 100%);color:#c7d2fe;border:2px solid #6366f1;border-radius:12px;padding:10px 14px;font-size:0.82em;font-weight:700;cursor:pointer;outline:none;appearance:none;-webkit-appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23a5b4fc' stroke-width='2.5'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;padding-right:36px;box-shadow:0 0 12px rgba(99,102,241,0.25);margin-bottom:4px;transition:border-color 0.15s,box-shadow 0.15s;}
         .category-select:focus{border-color:#818cf8;box-shadow:0 0 16px rgba(99,102,241,0.5);}
@@ -153,8 +153,8 @@
             <div style="width:42px;height:42px;border-radius:50%;background:linear-gradient(135deg,#6366f1,#a855f7);display:flex;align-items:center;justify-content:center;font-weight:900;font-size:1.1em;color:#fff;" id="side-menu-avatar">?</div>
             <div>
                 <div id="side-menu-username" style="font-weight:900;color:#f1f5f9;font-size:0.95em;">—</div>
-                <div style="font-size:0.65em;color:#94a3b8;"><span class="online-dot" style="width:7px;height:7px;"></span><span data-i18n="connected"></span></div>
-                <div id="side-menu-badge-display" style="font-size:0.7em;margin-top:2px;"></div>
+                <div style="font-size:0.65em;color:#94a3b8;margin-top:1px;"><span class="online-dot" style="width:7px;height:7px;"></span><span data-i18n="connected"></span></div>
+                <div id="side-menu-badge-display" style="font-size:0.75em;margin-top:3px;"></div>
             </div>
         </div>
         <div style="display:flex;gap:8px;">
@@ -369,7 +369,10 @@
 
     <!-- Kullanıcı Paneli -->
     <div class="card" id="user-panel" style="display:none;border:2.5px solid #10b981;box-shadow:0 0 18px rgba(16,185,129,0.25);">
-        <h3 style="color:#10b981;margin:-8px -8px 10px -8px;padding:10px 8px;font-size:0.95em;display:flex;align-items:center;justify-content:center;gap:6px;background:linear-gradient(135deg,rgba(16,185,129,0.18) 0%,rgba(5,150,105,0.1) 100%);border-bottom:1.5px solid rgba(16,185,129,0.35);border-radius:14px 14px 0 0;font-weight:900;">👤 <span data-i18n="myPanel"></span></h3>
+        <h3 style="color:#10b981;margin:-8px -8px 10px -8px;padding:10px 8px;font-size:0.95em;display:flex;align-items:center;justify-content:space-between;gap:6px;background:linear-gradient(135deg,rgba(16,185,129,0.18) 0%,rgba(5,150,105,0.1) 100%);border-bottom:1.5px solid rgba(16,185,129,0.35);border-radius:14px 14px 0 0;font-weight:900;">
+            <span style="display:flex;align-items:center;gap:6px;margin:0 auto;">👤 <span data-i18n="myPanel"></span></span>
+            <button onclick="refreshUserPanel()" style="background:rgba(16,185,129,0.2);border:1.5px solid #10b981;color:#6ee7b7;width:30px;height:30px;border-radius:8px;font-size:1em;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;" title="Yenile">↻</button>
+        </h3>
         <div class="user-tabs">
             <button class="user-tab-btn active" data-utab="utab-overview" onclick="switchUserTab('utab-overview')">📊 <span data-i18n="overview"></span></button>
             <button class="user-tab-btn" data-utab="utab-purchases" onclick="switchUserTab('utab-purchases')">🛒 <span data-i18n="myPurchases"></span></button>
@@ -495,9 +498,9 @@
     </div>
 
     <!-- Market -->
-    <div class="card" id="market-card" style="position:relative;padding:8px;margin-bottom:4px;overflow:visible;">
+    <div class="card" id="market-card" style="position:relative;padding:8px;margin-bottom:4px;overflow:hidden;min-height:120px;">
         <div class="section-title-box" data-i18n="availableDomains"></div>
-        <div class="filter-section">
+        <div class="filter-section" id="filter-section" style="display:none;">
             <div class="filter-section-label" data-i18n="filterSectionLabel"></div>
             <select id="category-filter-select" class="category-select" onchange="setDomainFilter(this.value)">
                 <option value="hepsi" data-i18n="filterAll"></option>
@@ -1284,6 +1287,14 @@ async function loadUserProfile(){
     }catch(e){console.error("Profil yüklenemedi:",e);}
 }
 
+window.refreshUserPanel=async function(){
+    const btn=document.querySelector('#user-panel h3 button');
+    if(btn){btn.style.transform='rotate(360deg)';btn.style.transition='transform 0.5s ease';}
+    await loadUserProfile();
+    debouncedRender();
+    setTimeout(()=>{if(btn){btn.style.transform='';btn.style.transition='';}},600);
+};
+
 // USER PANEL RENDER
 function renderUserPanel(){
     if(!isAuth) return;
@@ -1366,6 +1377,15 @@ function render(){
     const lock=document.getElementById("premium-lock");
     if(!list) return;
     applyTranslations();
+
+    // FIX: filter-section sadece login olmuş kullanıcılara gösterilir.
+    // Başlangıçta display:none olan bu element, render() ilk çağrıldığında
+    // (Firebase verisi gelmeden önce applyTranslations çalışsa bile)
+    // görünmez kalır — bu sayede "anlık öne çıkıp kaybolma" bug'ı
+    // tamamen ortadan kalkar.
+    const filterSection=document.getElementById('filter-section');
+    if(filterSection) filterSection.style.display=isAuth?'block':'none';
+
     if(!isAuth){lock.style.position="absolute";lock.style.display="flex";list.style.display="grid";list.classList.add("locked-content");}
     else{lock.style.display="none";list.style.display="grid";list.classList.remove("locked-content");}
 
