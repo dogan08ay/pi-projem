@@ -61,13 +61,13 @@
         .verify-btn-disabled{background:rgba(71,85,105,0.45);color:#475569;border:1.5px solid #334155;padding:7px 13px;border-radius:8px;font-size:0.72em;font-weight:700;display:inline-flex;align-items:center;gap:5px;cursor:not-allowed;white-space:nowrap;flex-shrink:0;opacity:0.6;}
         .info-badge-header{display:inline-flex;align-items:center;gap:6px;background:linear-gradient(135deg,#312e81 0%,#4c1d95 50%,#312e81 100%);color:#c4b5fd;font-weight:900;font-size:0.82em;padding:5px 14px;border-radius:10px;margin-bottom:8px;border:1.5px solid #7c3aed;position:relative;overflow:hidden;}
         .info-badge-icon{font-size:1.05em;}
-        .notif-btn{position:fixed;top:12px;left:12px;z-index:500;width:42px;height:42px;border-radius:12px;background:rgba(30,41,59,0.92);border:1.5px solid #6366f1;display:none;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 2px 10px rgba(99,102,241,0.4);backdrop-filter:blur(4px);}
+        .notif-btn{width:42px;height:42px;border-radius:12px;background:rgba(30,41,59,0.92);border:1.5px solid #6366f1;display:none;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 2px 10px rgba(99,102,241,0.4);flex-shrink:0;position:relative;}
         .notif-badge{position:absolute;top:-5px;right:-5px;background:#ef4444;color:#fff;font-size:0.6em;font-weight:900;border-radius:10px;padding:1px 5px;min-width:16px;text-align:center;border:1.5px solid #0f172a;display:none;}
         .notif-item{display:flex;align-items:flex-start;gap:8px;padding:10px;border-radius:10px;background:#0f172a;margin-bottom:6px;border:1px solid #334155;text-align:left;}
         .notif-item.unread{border-color:#6366f1;background:rgba(99,102,241,0.08);}
         .notif-dot{width:8px;height:8px;border-radius:50%;background:#6366f1;flex-shrink:0;margin-top:4px;}
         .notif-dot.read{background:transparent;border:1px solid #334155;}
-        .hamburger-btn{position:fixed;top:12px;right:12px;z-index:500;width:42px;height:42px;border-radius:12px;background:rgba(30,41,59,0.92);border:1.5px solid #6366f1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;cursor:pointer;box-shadow:0 2px 10px rgba(99,102,241,0.4);backdrop-filter:blur(4px);}
+        .hamburger-btn{width:42px;height:42px;border-radius:12px;background:rgba(30,41,59,0.92);border:1.5px solid #6366f1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;cursor:pointer;box-shadow:0 2px 10px rgba(99,102,241,0.4);flex-shrink:0;}
         .hamburger-btn span{display:block;width:20px;height:2.5px;background:#c7d2fe;border-radius:2px;}
         .side-menu-overlay{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.55);z-index:998;display:none;}
         .side-menu{position:fixed;top:0;right:0;width:78%;max-width:320px;height:100%;background:linear-gradient(165deg,#1e1b4b 0%,#0f172a 100%);z-index:999;box-shadow:-8px 0 30px rgba(0,0,0,0.5);transform:translateX(100%);transition:transform 0.3s ease;display:flex;flex-direction:column;padding:18px;box-sizing:border-box;overflow-y:auto;}
@@ -132,14 +132,6 @@
     </style>
 </head>
 <body>
-<!-- Bildirim Butonu -->
-<div class="notif-btn" id="notif-btn" onclick="openNotifModal()" style="position:relative;">
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#c7d2fe" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
-    <span class="notif-badge" id="notif-badge">0</span>
-</div>
-
-<!-- Hamburger -->
-<button class="hamburger-btn" onclick="toggleSideMenu()"><span></span><span></span><span></span></button>
 <div class="side-menu-overlay" id="side-menu-overlay" onclick="toggleSideMenu()"></div>
 
 <!-- Side Menu -->
@@ -355,6 +347,14 @@
 <div class="container">
   <div class="main-scroll">
     <div class="card" style="border:1.5px solid rgba(129,140,248,0.45);background:linear-gradient(160deg,rgba(99,102,241,0.14) 0%,var(--card) 55%);">
+        <!-- İkon satırı: bildirim sol, hamburger sağ, kart içinde -->
+        <div style="display:flex;justify-content:space-between;align-items:center;margin:-8px -8px 8px -8px;padding:8px;">
+            <div class="notif-btn" id="notif-btn" onclick="openNotifModal()" style="position:relative;">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#c7d2fe" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+                <span class="notif-badge" id="notif-badge">0</span>
+            </div>
+            <button class="hamburger-btn" onclick="toggleSideMenu()"><span></span><span></span><span></span></button>
+        </div>
         <img src="assets/logo.jpeg" alt="Logo" class="app-logo">
         <h1 class="app-title">Web3 Domain Gateway</h1>
         <div class="stats-bar">
@@ -391,6 +391,31 @@
                 <div style="background:#0f172a;border:1px solid #334155;border-radius:10px;padding:10px;text-align:center;"><div style="font-size:0.6em;color:#94a3b8;font-weight:700;margin-bottom:4px;" data-i18n="myListingsCount"></div><div id="up-listing-count" style="font-size:1.5em;font-weight:900;color:#34d399;">0</div></div>
             </div>
             <div id="up-badge-area" style="text-align:center;margin-bottom:6px;"></div>
+            <div style="background:#0f172a;border:1px dashed #334155;border-radius:10px;padding:10px;margin-top:4px;">
+                <div style="font-size:0.62em;color:#64748b;font-weight:800;text-transform:uppercase;margin-bottom:8px;letter-spacing:0.5px;" data-i18n="badgeInfoTitle"></div>
+                <div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:6px;">
+                    <div style="background:#1e293b;border-radius:8px;padding:6px;text-align:center;">
+                        <div style="font-size:0.85em;">🥉</div>
+                        <div style="font-size:0.68em;font-weight:800;color:#cd7f32;" data-i18n="badgeBronze"></div>
+                        <div style="font-size:0.6em;color:#64748b;margin-top:2px;" data-i18n="badgeBronzeReq"></div>
+                    </div>
+                    <div style="background:#1e293b;border-radius:8px;padding:6px;text-align:center;">
+                        <div style="font-size:0.85em;">🥈</div>
+                        <div style="font-size:0.68em;font-weight:800;color:#94a3b8;" data-i18n="badgeSilver"></div>
+                        <div style="font-size:0.6em;color:#64748b;margin-top:2px;" data-i18n="badgeSilverReq"></div>
+                    </div>
+                    <div style="background:#1e293b;border-radius:8px;padding:6px;text-align:center;">
+                        <div style="font-size:0.85em;">🥇</div>
+                        <div style="font-size:0.68em;font-weight:800;color:#fbbf24;" data-i18n="badgeGold"></div>
+                        <div style="font-size:0.6em;color:#64748b;margin-top:2px;" data-i18n="badgeGoldReq"></div>
+                    </div>
+                    <div style="background:#1e293b;border-radius:8px;padding:6px;text-align:center;">
+                        <div style="font-size:0.85em;">💎</div>
+                        <div style="font-size:0.68em;font-weight:800;color:#818cf8;" data-i18n="badgeDiamond"></div>
+                        <div style="font-size:0.6em;color:#64748b;margin-top:2px;" data-i18n="badgeDiamondReq"></div>
+                    </div>
+                </div>
+            </div>
         </div>
         <div class="user-tab-panel" id="utab-purchases">
             <div style="background:#061612;border:2px solid #059669;border-radius:12px;padding:10px;">
@@ -412,8 +437,8 @@
     </div>
 
     <!-- Admin Paneli -->
-    <div class="card" id="admin-panel" style="display:none;border:2px solid #6366f1;">
-        <h3 style="font-size:0.95em;font-weight:900;margin-top:0;margin-bottom:10px;color:#fbbf24;display:flex;align-items:center;justify-content:center;gap:6px;">🛠 Admin Panel</h3>
+    <div class="card" id="admin-panel" style="display:none;border:2.5px solid #6366f1;box-shadow:0 0 18px rgba(99,102,241,0.25);">
+        <h3 style="color:#fbbf24;margin:-8px -8px 10px -8px;padding:10px 8px;font-size:0.95em;display:flex;align-items:center;justify-content:center;gap:6px;background:linear-gradient(135deg,rgba(99,102,241,0.2) 0%,rgba(67,56,202,0.1) 100%);border-bottom:1.5px solid rgba(99,102,241,0.4);border-radius:14px 14px 0 0;font-weight:900;">🛠 Admin Panel</h3>
         <div class="admin-tabs">
             <button class="admin-tab-btn active" data-tab="tab-users" onclick="switchAdminTab('tab-users')">👥 <span data-i18n="users"></span></button>
             <button class="admin-tab-btn" data-tab="tab-stats" onclick="switchAdminTab('tab-stats')">📈 <span data-i18n="salesStats"></span></button>
@@ -571,7 +596,7 @@ const i18n = {
     menu:"Menü",account:"Hesap",preferences:"Tercihler",connected:"Bağlı",
     purchasedDomain:"ALINAN DOMAIN",firstLogin:"İLK GİRİŞ",
     profileSettings:"Profil Ayarları",myPanel:"Panelim",sellMyDomain:"Domainimi Satışa Çıkar",
-    languageOptions:"Dil Seçenekleri",logout:"Çıkış Yap",connectWithPi:"Pi ile Bağlan",
+    languageOptions:"Dil Seçenekleri",logout:"Çıkış Yap",connectWithPi:"<span style='display:inline-flex;align-items:center;gap:8px;'><span style='display:inline-block;animation:logo-pulse 1.5s ease-in-out infinite;font-size:1.1em;'>π</span> Pi ile Bağlan</span>",
     contactSection:"İletişim",piNetworkUser:"Pi Network Kullanıcısı",
     firstLoginDate:"İlk Giriş Tarihi",lastSeen:"Son Görülme",
     purchasedDomainLabel:"Alınan Domain",totalPoints:"Toplam Puan",close:"KAPAT",
@@ -655,6 +680,8 @@ const i18n = {
     updateBtn:"Güncelle",deleteBtn:"Sil",
     shareText:(d)=>`🚀 Web3 Domain Gateway üzerinden ${d} domainini satın aldım! Test-Pİ ile siz de katılın.`,
     badgeBronze:"🥉 Bronz",badgeSilver:"🥈 Gümüş",badgeGold:"🥇 Altın",badgeDiamond:"💎 Elmas",
+    badgeInfoTitle:"Rozet Kazanma Koşulları",
+    badgeBronzeReq:"10+ Puan",badgeSilverReq:"50+ Puan",badgeGoldReq:"200+ Puan",badgeDiamondReq:"500+ Puan",
     statusPending:"⏳ Onay Bekliyor",statusApproved:"✅ Onaylandı",statusRejected:"❌ Reddedildi",
     domainOnSale:"Satışta",domainSold:"Satıldı",sellerLabel:"Satıcı:",descriptionEmpty:"Açıklama girilmemiş.",
     imageUploading:"Görsel yükleniyor...",imageUploadFailed:"Görsel yüklenemedi.",
@@ -684,7 +711,7 @@ const i18n = {
     menu:"Menu",account:"Account",preferences:"Preferences",connected:"Connected",
     purchasedDomain:"OWNED DOMAINS",firstLogin:"FIRST LOGIN",
     profileSettings:"Profile Settings",myPanel:"My Panel",sellMyDomain:"List My Domain for Sale",
-    languageOptions:"Language Options",logout:"Sign Out",connectWithPi:"Connect with Pi",
+    languageOptions:"Language Options",logout:"Sign Out",connectWithPi:"<span style='display:inline-flex;align-items:center;gap:8px;'><span style='display:inline-block;animation:logo-pulse 1.5s ease-in-out infinite;font-size:1.1em;'>π</span> Connect with Pi</span>",
     contactSection:"Contact",piNetworkUser:"Pi Network User",firstLoginDate:"First Login Date",
     lastSeen:"Last Seen",purchasedDomainLabel:"Purchased Domains",totalPoints:"Total Points",close:"CLOSE",
     listDomainTitle:"List Your Domain for Sale",
@@ -764,6 +791,8 @@ const i18n = {
     updateBtn:"Update",deleteBtn:"Delete",
     shareText:(d)=>`🚀 I just purchased the ${d} domain on Web3 Domain Gateway! Join with Test-PI.`,
     badgeBronze:"🥉 Bronze",badgeSilver:"🥈 Silver",badgeGold:"🥇 Gold",badgeDiamond:"💎 Diamond",
+    badgeInfoTitle:"Badge Requirements",
+    badgeBronzeReq:"10+ Points",badgeSilverReq:"50+ Points",badgeGoldReq:"200+ Points",badgeDiamondReq:"500+ Points",
     statusPending:"⏳ Pending Approval",statusApproved:"✅ Approved",statusRejected:"❌ Rejected",
     domainOnSale:"On Sale",domainSold:"Sold",sellerLabel:"Seller:",descriptionEmpty:"No description provided.",
     imageUploading:"Uploading image...",imageUploadFailed:"Image upload failed.",
@@ -1326,32 +1355,50 @@ function renderUserPanel(){
     const myListingsEl=document.getElementById('my-listings-list');
     if(myListingsEl){
         let html='';
-        // Aktif (şu an satışta) domainler
+        // Aktif (şu an satışta) domainler — TÜM detaylar
         html+=`<div style="font-size:0.68em;color:#fbbf24;font-weight:800;text-transform:uppercase;margin-bottom:6px;">🏷️ ${t('myActiveListings')}</div>`;
         if(!userActiveListings.length){
             html+=`<p style="font-size:0.72em;opacity:0.5;text-align:center;margin-bottom:10px;">${t('noActiveListings')}</p>`;
         } else {
             html+=userActiveListings.map(d=>`
-                <div style="background:#0f172a;border:1px solid #334155;border-radius:10px;padding:8px;margin-bottom:6px;display:flex;justify-content:space-between;align-items:center;">
-                    <div><b style="color:#f1f5f9;font-size:0.85em;">${d.name}</b> <span class="domain-type-tag">${typeLabel(d.type)}</span></div>
-                    <span style="color:#fbbf24;font-weight:900;font-size:0.85em;">${d.price} Pi</span>
+                <div style="background:#0f172a;border:1.5px solid #f59e0b;border-radius:12px;padding:10px;margin-bottom:8px;">
+                    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px;">
+                        <div style="flex:1;min-width:0;">
+                            <b style="color:#f1f5f9;font-size:0.9em;">${d.name}</b>
+                            <span class="domain-type-tag" style="margin-left:4px;">${typeLabel(d.type)}</span>
+                        </div>
+                        <span style="color:#fbbf24;font-weight:900;font-size:0.9em;flex-shrink:0;margin-left:8px;">${d.price} Pi</span>
+                    </div>
+                    ${d.description?`<div style="font-size:0.72em;color:#94a3b8;margin-bottom:6px;line-height:1.4;">${d.description}</div>`:''}
+                    <div style="display:flex;gap:6px;flex-wrap:wrap;">
+                        <span style="font-size:0.62em;background:rgba(16,185,129,0.15);color:#6ee7b7;border:1px solid #10b981;border-radius:6px;padding:2px 8px;">✅ ${t('domainOnSale')}</span>
+                        ${d.sellerWallet?`<span style="font-size:0.62em;color:#64748b;background:#1e293b;border-radius:6px;padding:2px 8px;">💳 ${d.sellerWallet.substring(0,10)}...</span>`:''}
+                    </div>
                 </div>`).join('');
         }
-        // Tüm satış önerileri geçmişi + durum
+        // Tüm satış önerileri geçmişi + TÜM detaylar
         html+=`<div style="font-size:0.68em;color:#94a3b8;font-weight:800;text-transform:uppercase;margin:10px 0 6px 0;border-top:1px solid #334155;padding-top:10px;">📋 ${t('myListingsTitle')}</div>`;
         if(!userSellRequests.length){
             html+=`<p style="font-size:0.75em;opacity:0.5;text-align:center;">${t('noListings')}</p>`;
         } else {
             const statusMap={pending:t('statusPending'),approved:t('statusApproved'),rejected:t('statusRejected')};
             const statusColor={pending:'#fbbf24',approved:'#10b981',rejected:'#ef4444'};
+            const statusBg={pending:'rgba(251,191,36,0.1)',approved:'rgba(16,185,129,0.1)',rejected:'rgba(239,68,68,0.1)'};
             html+=userSellRequests.map(req=>`
-                <div style="background:#0f172a;border:1px solid #334155;border-radius:10px;padding:8px;margin-bottom:6px;display:flex;justify-content:space-between;align-items:flex-start;">
-                    <div><b style="color:#f1f5f9;font-size:0.85em;">${req.domainName}</b> <span class="domain-type-tag">${typeLabel(req.domainType)}</span><br>
-                    <small style="color:#fbbf24;">${req.price} Pi</small>${req.description?`<br><small style="color:#64748b;">${req.description.substring(0,40)}...</small>`:''}</div>
-                    <div style="text-align:right;flex-shrink:0;">
-                        <div style="font-size:0.68em;font-weight:800;color:${statusColor[req.status]||'#94a3b8'};">${statusMap[req.status]||req.status}</div>
-                        <div style="font-size:0.62em;color:#475569;margin-top:2px;">${req.submittedAt?new Date(req.submittedAt).toLocaleDateString(locale,{day:'2-digit',month:'2-digit'}):''}</div>
+                <div style="background:#0f172a;border:1.5px solid ${statusColor[req.status]||'#334155'};border-radius:12px;padding:10px;margin-bottom:8px;">
+                    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px;">
+                        <div style="flex:1;min-width:0;">
+                            <b style="color:#f1f5f9;font-size:0.88em;">${req.domainName}</b>
+                            <span class="domain-type-tag" style="margin-left:4px;">${typeLabel(req.domainType)}</span>
+                        </div>
+                        <span style="background:${statusBg[req.status]||'transparent'};color:${statusColor[req.status]||'#94a3b8'};font-size:0.65em;font-weight:800;padding:3px 8px;border-radius:8px;border:1px solid ${statusColor[req.status]||'#334155'};flex-shrink:0;margin-left:6px;">${statusMap[req.status]||req.status}</span>
                     </div>
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+                        <span style="color:#fbbf24;font-weight:900;font-size:0.85em;">${req.price} Pi</span>
+                        <span style="font-size:0.62em;color:#475569;">${req.submittedAt?new Date(req.submittedAt).toLocaleDateString(locale,{day:'2-digit',month:'2-digit',year:'numeric'}):''}</span>
+                    </div>
+                    ${req.description?`<div style="font-size:0.72em;color:#94a3b8;line-height:1.4;margin-bottom:6px;">${req.description}</div>`:''}
+                    ${req.sellerWallet?`<div style="font-size:0.62em;color:#64748b;background:#1e293b;border-radius:6px;padding:4px 8px;">💳 ${req.sellerWallet}</div>`:''}
                 </div>`).join('');
         }
         myListingsEl.innerHTML=html;
