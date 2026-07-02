@@ -1,1037 +1,2090 @@
-import { initializeApp, getApps, cert } from 'firebase-admin/app';
-import { getFirestore, FieldValue } from 'firebase-admin/firestore';
-import { getStorage } from 'firebase-admin/storage';
-import { getDatabase } from 'firebase-admin/database';
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Web3 Domain Gateway</title>
+    <script src="https://sdk.minepi.com/pi-sdk.js"></script>
+    <style>
+        :root { --bg:#0f172a; --card:#1e293b; --accent:#6366f1; --text:#f8fafc; --sold:#ef4444; --price:#fbbf24; --success:#10b981; }
+        *, *::before, *::after { box-sizing: inherit; }
+        html { box-sizing: border-box; overflow-x:hidden; }
+        html,body{height:100%;}
+        body{font-family:'Segoe UI',sans-serif;background:var(--bg);color:var(--text);margin:0;padding:0;width:100%;min-height:100vh;overflow-x:hidden;box-sizing:border-box;}
+        .container{max-width:600px;width:100%;min-width:0;text-align:center;display:flex;flex-direction:column;min-height:100vh;padding:5px;box-sizing:border-box;margin-left:auto;margin-right:auto;}
+        .card{background:var(--card);padding:8px;border-radius:16px;box-shadow:0 8px 12px -3px rgba(0,0,0,0.3);margin-bottom:4px;position:relative;overflow:visible;box-sizing:border-box;width:100%;min-width:0;max-width:100%;}
+        
+        /* ✅ LOGO VE UYGULAMA ADI - İLK AÇILIŞTA ÖN PLANDA */
+        
+        .app-logo{width:80px;height:80px;margin:0 auto 6px auto;border-radius:50%;box-shadow:0 0 25px rgba(99,102,241,0.8),0 0 45px rgba(139,92,246,0.3);border:3px solid #818cf8;object-fit:cover;animation:logo-pulse 3s ease-in-out infinite;display:block;}
+        @keyframes logo-pulse{0%,100%{transform:scale(1);}50%{transform:scale(1.1);}}
+        .app-title{font-size:1.5em;font-weight:900;margin:0 0 4px 0;background:linear-gradient(to right,#60a5fa,#a855f7,#60a5fa);background-size:200% auto;-webkit-background-clip:text;-webkit-text-fill-color:transparent;animation:title-shine 4s linear infinite;filter:drop-shadow(0 0 12px rgba(139,92,246,0.5));letter-spacing:1px;}
+        @keyframes title-shine{to{background-position:200% center;}}
+        
+        .stats-bar{display:flex;justify-content:space-around;background:rgba(99,102,241,0.1);border:1px solid rgba(99,102,241,0.3);padding:4px 6px;border-radius:10px;margin:4px 0;font-size:0.6em;font-weight:bold;color:#94a3b8;}
+        .stats-item span{color:var(--price);margin-left:2px;}
+        .domain-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:6px;margin-top:4px;position:relative;min-width:0;}
+        .domain-card{background:#334155;padding:6px;border-radius:10px;border:1px solid #475569;display:flex;flex-direction:column;align-items:center;transition:transform 0.25s,box-shadow 0.25s,border-color 0.25s;animation:card-rise 0.5s ease backwards;cursor:pointer;min-width:0;max-width:100%;box-sizing:border-box;}
+        .domain-card:hover,.domain-card:active{transform:translateY(-4px) scale(1.02);box-shadow:0 10px 20px -6px rgba(99,102,241,0.45),0 0 0 1.5px rgba(129,140,248,0.6);border-color:#818cf8;}
+        @keyframes card-rise{0%{opacity:0;transform:translateY(14px) scale(0.96);}100%{opacity:1;transform:translateY(0) scale(1);}}
+        .domain-img{width:100%;height:42px;margin-bottom:3px;border-radius:6px;object-fit:contain;background-color:#334155;}
+        .domain-name{font-size:0.78em;font-weight:bold;margin-bottom:2px;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+        .domain-price{color:var(--price);font-size:0.85em;font-weight:800;margin:1px 0;}
+        .domain-type-tag{font-size:0.6em;color:#94a3b8;background:rgba(148,163,184,0.15);border-radius:5px;padding:1px 5px;margin-bottom:2px;display:inline-block;}
+        .btn-buy{background:var(--accent);color:white;border:none;padding:5px 6px;border-radius:6px;cursor:pointer;margin-top:3px;font-weight:bold;width:100%;font-size:0.7em;}
+        .btn-sold{background:rgba(239,68,68,0.1);color:var(--sold);border:1.5px solid var(--sold);padding:4px 6px;border-radius:6px;margin-top:3px;font-weight:bold;width:100%;font-size:0.65em;}
+        .pi-btn{background:linear-gradient(135deg,#0052FF 0%,#3b82f6 100%);color:#ffffff;padding:8px 20px;border-radius:50px;font-weight:800;font-size:0.85em;border:none;cursor:pointer;animation:pulse-blue 2s infinite;transition:0.3s;margin:6px 0;}
+        @keyframes pulse-blue{0%{transform:scale(0.95);box-shadow:0 0 0 0 rgba(0,82,255,0.7);}70%{transform:scale(1);box-shadow:0 0 0 10px rgba(0,82,255,0);}100%{transform:scale(0.95);box-shadow:0 0 0 0 rgba(0,82,255,0);}}
+        .section-title-box{background:linear-gradient(90deg,#fef3c7 0%,#fde68a 40%,#ffffff 50%,#fde68a 60%,#fef3c7 100%);background-size:200% auto;color:#1e293b;padding:5px 16px;border-radius:10px;border:2px solid #f59e0b;font-size:0.92em;font-weight:900;display:inline-block;margin-bottom:6px;animation:title-glow 2.5s ease-in-out infinite,section-shimmer 3s linear infinite;}
+        @keyframes title-glow{0%,100%{box-shadow:0 0 10px rgba(245,158,11,0.5);border-color:#f59e0b;}50%{box-shadow:0 0 20px rgba(251,191,36,0.9),0 0 40px rgba(251,191,36,0.45);border-color:#fcd34d;}}
+        @keyframes section-shimmer{0%{background-position:200% center;}100%{background-position:-200% center;}}
+        .lock-title-box{background:linear-gradient(135deg,#fef3c7 0%,#fde68a 100%);color:#1e293b;padding:4px 10px;border-radius:10px;border:2px solid #f59e0b;font-size:0.8em;font-weight:900;margin-bottom:4px;display:inline-block;}
+        .locked-content{filter:blur(8px);opacity:0.45;pointer-events:none;}
+        .premium-lock-overlay{position:absolute;top:0;left:0;right:0;bottom:0;display:none;flex-direction:column;align-items:center;justify-content:flex-start;background:rgba(10,15,30,0.72);backdrop-filter:blur(3px);z-index:100;padding-top:6px;text-align:center;overflow-y:auto;}
+        .diamond-spin{margin-bottom:3px;display:inline-block;animation:diamond-rotate 5s ease-in-out infinite;filter:drop-shadow(0 0 14px #818cf8);}
+        @keyframes diamond-rotate{0%,100%{transform:rotateY(0deg) scale(1);}50%{transform:rotateY(180deg) scale(1.06);}}
+        .diamond-sparkle{opacity:0;transform-origin:center;animation:sparkle-twinkle 2.2s ease-in-out infinite;color:#ffffff;}
+        .diamond-sparkle-1{animation-delay:0.2s;}.diamond-sparkle-2{animation-delay:1.3s;}
+        @keyframes sparkle-twinkle{0%,100%{opacity:0;transform:scale(0.4) rotate(0deg);}50%{opacity:1;transform:scale(1) rotate(20deg);}}
+        .secure-badge{background:#0d2a2a;border:2px solid #10b981;border-radius:14px;padding:10px;width:92%;box-sizing:border-box;margin:4px 0;}
+        .secure-badge-title{color:#10b981;font-size:0.9em;font-weight:800;margin-bottom:4px;border-bottom:1px solid rgba(16,185,129,0.3);padding-bottom:4px;}
+        .secure-badge-body{color:#e2e8f0;font-size:0.8em;line-height:1.4;margin-bottom:4px;border-bottom:1px solid rgba(16,185,129,0.3);padding-bottom:4px;}
+        .secure-badge-warning{color:#fbbf24;font-size:0.9em;font-weight:900;line-height:1.4;text-transform:uppercase;}
+        @keyframes blinker{0%{opacity:1;}50%{opacity:0.3;}100%{opacity:1;}}
+        .blink-yellow{animation:blinker 2s linear infinite;color:#fbbf24;font-weight:900;}
+        .blink-red{animation:blinker 2s linear infinite;color:#ef4444;font-weight:900;}
+        .online-dot{display:inline-block;width:9px;height:9px;border-radius:50%;background:#10b981;margin-right:7px;position:relative;top:-1px;box-shadow:0 0 6px #10b981;animation:dot-pulse 1.6s ease-in-out infinite;}
+        @keyframes dot-pulse{0%,100%{transform:scale(1);opacity:1;}50%{transform:scale(1.35);opacity:0.65;}}
+        .modal-overlay{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.92);display:flex;justify-content:center;align-items:center;z-index:9999;padding:10px;box-sizing:border-box;}
+        .modal-content{background:var(--card);padding:20px;border-radius:20px;border:2px solid #fbbf24;width:100%;max-width:380px;box-sizing:border-box;text-align:center;max-height:90vh;overflow-y:auto;}
+        .item-row{display:flex;align-items:center;margin-bottom:8px;text-align:left;}
+        .item-title{color:#60a5fa;font-weight:800;width:105px;font-size:0.85em;}
+        .item-red-val-small{color:#ef4444;font-weight:900;flex:1;white-space:nowrap;font-size:0.88em;}
+        .my-domain-item{background:#0f172a;padding:10px;border-radius:12px;display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;border:1px solid #334155;gap:8px;}
+        .verify-btn{background:linear-gradient(135deg,#0ea5e9 0%,#0284c7 100%);color:#ffffff;border:none;padding:7px 13px;border-radius:8px;font-size:0.72em;cursor:pointer;font-weight:800;text-decoration:none;display:inline-flex;align-items:center;gap:5px;white-space:nowrap;}
+        .verify-btn-disabled{background:rgba(71,85,105,0.45);color:#475569;border:1.5px solid #334155;padding:7px 13px;border-radius:8px;font-size:0.72em;font-weight:700;display:inline-flex;align-items:center;gap:5px;cursor:not-allowed;white-space:nowrap;opacity:0.6;}
+        .info-badge-header{display:inline-flex;align-items:center;gap:6px;background:linear-gradient(135deg,#312e81 0%,#4c1d95 50%,#312e81 100%);color:#c4b5fd;font-weight:900;font-size:0.82em;padding:5px 14px;border-radius:10px;margin-bottom:8px;border:1.5px solid #7c3aed;position:relative;overflow:hidden;}
+        .info-badge-icon{font-size:1.05em;}
+        
+        /* ✅ BİLDİRİM BUTONU - HER ZAMAN SAĞ ÜSTTE */
+        .notif-btn{width:42px;height:42px;border-radius:12px;background:rgba(30,41,59,0.92);border:1.5px solid #6366f1;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 2px 10px rgba(99,102,241,0.4);position:relative;}
+        .notif-badge{position:absolute;top:-5px;right:-5px;background:#ef4444;color:#fff;font-size:0.6em;font-weight:900;border-radius:10px;padding:1px 5px;min-width:16px;text-align:center;border:1.5px solid #0f172a;display:none;}
+        .notif-item{display:flex;align-items:flex-start;gap:8px;padding:10px;border-radius:10px;background:#0f172a;margin-bottom:6px;border:1px solid #334155;text-align:left;}
+        .notif-item.unread{border-color:#6366f1;background:rgba(99,102,241,0.08);}
+        .notif-dot{width:8px;height:8px;border-radius:50%;background:#6366f1;margin-top:4px;}
+        .notif-dot.read{background:transparent;border:1px solid #334155;}
+        
+        /* ✅ HAMBURGER MENÜ - HER ZAMAN SAĞ ÜSTTE */
+        .hamburger-btn{width:42px;height:42px;border-radius:12px;background:rgba(30,41,59,0.92);border:1.5px solid #6366f1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;cursor:pointer;box-shadow:0 2px 10px rgba(99,102,241,0.4);}
+        .hamburger-btn span{display:block;width:20px;height:2.5px;background:#c7d2fe;border-radius:2px;}
+        .side-menu-overlay{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.55);z-index:998;display:none;}
+        .side-menu{position:fixed;top:0;right:0;width:78%;max-width:320px;height:100%;background:linear-gradient(165deg,#1e1b4b 0%,#0f172a 100%);z-index:999;box-shadow:-8px 0 30px rgba(0,0,0,0.5);transform:translateX(100%);transition:transform 0.3s ease;display:flex;flex-direction:column;padding:18px;box-sizing:border-box;overflow-y:auto;}
+        .side-menu.open{transform:translateX(0);}
+        .side-menu-overlay.open{display:block;}
+        .side-menu-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;}
+        .side-menu-close{background:rgba(99,102,241,0.2);border:1px solid #6366f1;color:#c7d2fe;width:32px;height:32px;border-radius:8px;font-size:1.1em;cursor:pointer;}
+        .side-menu-item{display:flex;align-items:center;gap:12px;padding:13px 12px;border-radius:10px;color:#e2e8f0;font-weight:700;font-size:0.88em;cursor:pointer;margin-bottom:4px;text-align:left;background:transparent;border:none;width:100%;box-sizing:border-box;transition:background 0.15s;}
+        .side-menu-item:hover,.side-menu-item:active{background:rgba(99,102,241,0.18);}
+        .side-menu-section-label{font-size:0.65em;color:#64748b;font-weight:800;letter-spacing:0.8px;text-transform:uppercase;margin:14px 0 6px 4px;text-align:left;}
+        .side-menu-divider{height:1px;background:rgba(99,102,241,0.2);margin:8px 0;}
+        .lang-pill{margin-left:auto;font-size:0.65em;background:rgba(99,102,241,0.3);padding:2px 8px;border-radius:8px;color:#a5b4fc;}
+        .lang-option{display:flex;align-items:center;gap:8px;padding:8px 10px;color:#f1f5f9;font-size:0.8em;font-weight:700;cursor:pointer;border-radius:8px;margin:2px 0;border:none;background:transparent;width:100%;box-sizing:border-box;transition:background 0.15s;}
+        .lang-option:hover,.lang-option.active{background:rgba(99,102,241,0.2);}
+        .lang-option.active{color:#a5b4fc;}
+        .admin-tabs{display:flex;gap:5px;overflow-x:auto;margin-bottom:10px;padding-bottom:2px;}
+        .admin-tabs::-webkit-scrollbar{height:4px;}
+        .admin-tab-btn{background:#0f172a;border:1.5px solid #334155;color:#94a3b8;padding:8px 11px;border-radius:10px;font-size:0.68em;font-weight:800;cursor:pointer;display:flex;align-items:center;gap:5px;white-space:nowrap;transition:all 0.15s;}
+        .admin-tab-btn.active{background:rgba(99,102,241,0.18);border-color:#6366f1;color:#c7d2fe;box-shadow:0 0 10px rgba(99,102,241,0.3);}
+        .admin-tab-panel{display:none;}
+        .admin-tab-panel.active{display:block;animation:card-rise 0.3s ease backwards;}
+        .pending-badge{background:#ef4444;color:#fff;font-size:0.65em;font-weight:900;border-radius:8px;padding:1px 6px;margin-left:2px;}
+        .user-tabs{display:flex;gap:4px;margin-bottom:10px;width:100%;}
+        .user-tab-btn{flex:1 1 0;min-width:0;background:#0f172a;border:1.5px solid #334155;color:#94a3b8;padding:8px 4px;border-radius:10px;font-size:0.62em;font-weight:800;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;transition:all 0.15s;text-align:center;}
+        .user-tab-btn.active{background:rgba(16,185,129,0.15);border-color:#10b981;color:#6ee7b7;}
+        .user-tab-panel{display:none;}
+        .user-tab-panel.active{display:block;animation:card-rise 0.3s ease backwards;}
+        .filter-section{margin-top:10px;padding-top:8px;border-top:1px solid rgba(99,102,241,0.15);min-height:64px;}
+        .filter-section-label{display:inline-flex;align-items:center;gap:6px;background:linear-gradient(135deg,#1e1b4b 0%,#312e81 100%);color:#a5b4fc;font-size:0.7em;font-weight:900;letter-spacing:0.5px;text-transform:uppercase;margin-bottom:8px;padding:5px 12px;border-radius:20px;border:1.5px solid #6366f1;box-shadow:0 0 10px rgba(99,102,241,0.3);}
+        .category-select{width:100%;background:linear-gradient(135deg,#1e1b4b 0%,#1e293b 100%);color:#c7d2fe;border:2px solid #6366f1;border-radius:12px;padding:10px 14px;font-size:0.82em;font-weight:700;cursor:pointer;outline:none;appearance:none;-webkit-appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23a5b4fc' stroke-width='2.5'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;padding-right:36px;box-shadow:0 0 12px rgba(99,102,241,0.25);margin-bottom:4px;transition:border-color 0.15s,box-shadow 0.15s;}
+        .category-select:focus{border-color:#818cf8;box-shadow:0 0 16px rgba(99,102,241,0.5);}
+        .category-select option{background:#1e293b;color:#f1f5f9;}
+        .filter-bar{display:flex;gap:6px;overflow-x:auto;margin-bottom:8px;padding-bottom:2px;}
+        .filter-bar::-webkit-scrollbar{height:4px;}
+        .filter-chip{background:#2a3a52;border:1.5px solid #3f5575;color:#cbd5e1;padding:5px 12px;border-radius:16px;font-size:0.7em;font-weight:700;cursor:pointer;transition:all 0.15s;}
+        .filter-chip.active{background:linear-gradient(135deg,#6366f1,#818cf8);border-color:#818cf8;color:#fff;box-shadow:0 0 10px rgba(99,102,241,0.4);}
+        .sell-form-input{background:#0f172a;color:#fff;border:1.5px solid #f59e0b;padding:8px;border-radius:8px;font-size:0.85em;width:100%;box-sizing:border-box;outline:none;margin-bottom:8px;}
+        .admin-date-picker{background:#0f172a;color:#fff;border:1.5px solid #6366f1;padding:6px;border-radius:8px;font-size:0.85em;margin-bottom:10px;width:100%;box-sizing:border-box;outline:none;}
+        .pending-domain-item{background:#1c1917;border:2px solid #f59e0b;border-radius:12px;padding:10px;margin-bottom:8px;text-align:left;}
+        #log-list{max-height:85px;overflow-y:auto;}
+        #log-list::-webkit-scrollbar{width:5px;}
+        #log-list::-webkit-scrollbar-thumb{background:#6366f1;border-radius:10px;}
+        .log-item{display:flex;justify-content:space-between;background:#0f172a;padding:8px 12px;border-radius:8px;margin-bottom:5px;font-size:0.8em;}
+        
+        /* ✅ BİLGİ METNİ - DÜZGÜN SATIR DÜZENİ */
+        .user-info-note{background:rgba(99,102,241,0.1);border:1px dashed #6366f1;color:#94a3b8;padding:10px;border-radius:10px;font-size:0.75em;line-height:1.6;margin-bottom:10px;text-align:left;box-sizing:border-box;width:100%;max-width:100%;overflow-wrap:break-word;word-break:break-word;hyphens:auto;}
+        .user-info-note-text{display:block;white-space:normal;text-align:left;}
+        
+        .btn-fake-buy{background:var(--accent);color:white;padding:1px 4px;border-radius:3px;font-weight:900;font-size:0.85em;}
+        .income-box{background:linear-gradient(135deg,#064e3b 0%,#065f46 100%);border:2px solid #10b981;border-radius:12px;padding:12px;margin-bottom:8px;text-align:center;}
+        .income-value{font-size:1.8em;font-weight:900;color:#34d399;}
+        .detail-img{width:100%;max-height:120px;object-fit:contain;border-radius:10px;margin-bottom:10px;background:#334155;}
+        .img-upload-area{border:2px dashed #f59e0b;border-radius:10px;padding:16px;text-align:center;cursor:pointer;margin-bottom:8px;color:#94a3b8;font-size:0.8em;}
+        .img-upload-area:hover{border-color:#fcd34d;background:rgba(245,158,11,0.05);}
+        .img-preview{width:100%;max-height:80px;object-fit:contain;border-radius:8px;margin-top:6px;display:none;}
+        .footer-section{padding:10px 12px;color:#f8fafc;font-size:0.62em;text-align:center;border-top:1px solid #334155;background:rgba(15,23,42,0.8);border-radius:16px 16px 0 0;margin-top:auto;}
+        .footer-section a{color:#38bdf8;text-decoration:none;font-weight:800;border-bottom:1px solid #38bdf8;}
+        .footer-row{margin-bottom:5px;display:flex;align-items:center;justify-content:center;gap:6px;flex-wrap:wrap;}
+        .main-scroll{flex:1 1 auto;overflow-y:auto;overflow-x:hidden;display:flex;flex-direction:column;min-height:0;min-width:0;width:100%;scrollbar-width:thin;}
+        #unique-user-list::-webkit-scrollbar{width:5px;}
+        #unique-user-list::-webkit-scrollbar-thumb{background:#6366f1;border-radius:10px;}
+        @keyframes icon-pulse-btn{0%,100%{filter:drop-shadow(0 0 4px rgba(99,102,241,0.6));transform:scale(1);}50%{filter:drop-shadow(0 0 10px rgba(165,180,252,0.9));transform:scale(1.12);}}
+        @keyframes icon-pulse-chart{0%,100%{filter:drop-shadow(0 0 4px rgba(74,222,128,0.5));transform:scale(1);}50%{filter:drop-shadow(0 0 10px rgba(74,222,128,0.9));transform:scale(1.12);}}
+        @keyframes icon-pulse-green{0%,100%{filter:drop-shadow(0 0 4px rgba(52,211,153,0.5));transform:scale(1);}50%{filter:drop-shadow(0 0 10px rgba(52,211,153,0.9));transform:scale(1.12);}}
+        
+        /* ✅ ROZET KARTLARI - YAN YANA SIKIŞTIRILMIŞ */
+        .badge-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;}
+        .badge-item{background:#1e293b;border-radius:6px;padding:4px 2px;text-align:center;}
+        .badge-icon{font-size:0.75em;}
+        .badge-label{font-size:0.55em;font-weight:800;}
+        .badge-req{font-size:0.5em;color:#64748b;margin-top:1px;}
+        
+        /* ✅ SATIŞ İLANLARI RENKLENDİRME */
+        .listings-title{color:#fbbf24;font-weight:900;font-size:0.9em;text-align:center;margin-bottom:8px;padding-bottom:6px;border-bottom:1px solid #78350f;}
+        
+        /* ✅ GİZLİLİK/KULLANIM - KIRMIZI RENK */
+        .legal-link{color:#ef4444 !important;font-weight:800;text-decoration:none;}
+        .legal-link:hover{color:#fca5a5 !important;}
+        
+        /* ✅ SATIŞ DETAY TABLOSU */
+        .sales-detail-table{width:100%;border-collapse:collapse;font-size:0.72em;margin-top:8px;}
+        .sales-detail-table th{background:#0f172a;color:#60a5fa;padding:6px;border:1px solid #334155;font-weight:800;}
+        .sales-detail-table td{padding:6px;border:1px solid #334155;color:#e2e8f0;}
+        .sales-detail-table tr:nth-child(even){background:rgba(99,102,241,0.05);}
+        
+        /* ✅ KALICI SİL BUTONU */
+        .btn-perma-delete{background:#7f1d1d;color:#fca5a5;border:1.5px solid #ef4444;padding:5px 8px;border-radius:6px;font-size:0.65em;font-weight:800;cursor:pointer;margin-left:4px;}
+        .btn-perma-delete:hover{background:#991b1b;}
+    
+        .domain-grid::-webkit-scrollbar{width:5px;}
+        .domain-grid::-webkit-scrollbar-thumb{background:#6366f1;border-radius:10px;}
+</style>
+<base target="_blank">
+</head>
+<body>
+<div class="side-menu-overlay" id="side-menu-overlay" onclick="toggleSideMenu()"></div>
 
-// ─── Firebase Admin Başlatma ───────────────────────────────────────────────
-function getAdminApp() {
-  if (getApps().length > 0) return getApps()[0];
+<!-- Side Menu -->
+<div class="side-menu" id="side-menu">
+    <div class="side-menu-header">
+        <div style="font-weight:900;color:#c7d2fe;font-size:1.05em;">☰ <span data-i18n="menu"></span></div>
+        <button class="side-menu-close" onclick="toggleSideMenu()">✕</button>
+    </div>
+    <div id="side-menu-profile-box" style="display:none;background:rgba(99,102,241,0.12);border:1.5px solid #6366f1;border-radius:12px;padding:12px;margin-bottom:10px;text-align:left;">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
+            <div style="width:42px;height:42px;border-radius:50%;background:linear-gradient(135deg,#6366f1,#a855f7);display:flex;align-items:center;justify-content:center;font-weight:900;font-size:1.1em;color:#fff;" id="side-menu-avatar">?</div>
+            <div>
+                <div id="side-menu-username" style="font-weight:900;color:#f1f5f9;font-size:0.95em;">—</div>
+                <div style="font-size:0.65em;color:#94a3b8;margin-top:1px;"><span class="online-dot" style="width:7px;height:7px;"></span><span data-i18n="connected"></span></div>
+                <div id="side-menu-badge-display" style="font-size:0.75em;margin-top:3px;"></div>
+            </div>
+        </div>
+        <div style="display:flex;gap:8px;">
+            <div style="flex:1;background:#0f172a;border-radius:8px;padding:6px;text-align:center;">
+                <div style="font-size:0.6em;color:#94a3b8;" data-i18n="purchasedDomain"></div>
+                <div id="side-menu-domain-count" style="font-size:1.1em;font-weight:900;color:#fbbf24;">0</div>
+            </div>
+            <div style="flex:1;background:#0f172a;border-radius:8px;padding:6px;text-align:center;">
+                <div style="font-size:0.6em;color:#94a3b8;" data-i18n="firstLogin"></div>
+                <div id="side-menu-first-seen" style="font-size:0.75em;font-weight:800;color:#a5b4fc;margin-top:3px;">—</div>
+            </div>
+        </div>
+    </div>
+    <div class="side-menu-section-label" data-i18n="account"></div>
+    <button class="side-menu-item" onclick="openProfileModal()">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#a5b4fc" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.5-7 8-7s8 3 8 7"/></svg>
+        <span data-i18n="profileSettings"></span>
+    </button>
+    <button class="side-menu-item" id="side-menu-user-panel-btn" onclick="scrollToUserPanel()" style="display:none;">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#34d399" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 9h6M9 12h6M9 15h4"/></svg>
+        <span data-i18n="myPanel"></span>
+    </button>
+    <button class="side-menu-item" id="side-menu-sell-btn" onclick="openSellDomainModal()" style="display:none;">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fbbf24" stroke-width="2"><path d="M12 2v20M2 12h20"/></svg>
+        <span data-i18n="sellMyDomain"></span>
+    </button>
+    <div class="side-menu-section-label" data-i18n="preferences"></div>
+    <button class="side-menu-item" onclick="toggleLangPicker()">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#a5b4fc" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.5 4 6 4 9s-1.5 6.5-4 9c-2.5-2.5-4-6-4-9s1.5-6.5 4-9z"/></svg>
+        <span data-i18n="languageOptions"></span>
+        <span class="lang-pill" id="current-lang-pill">TR</span>
+    </button>
+    <div id="lang-picker" style="display:none;padding:4px 0 4px 16px;text-align:left;">
+        <button class="lang-option" id="lang-btn-tr" onclick="setLang('tr')">🇹🇷 Türkçe</button>
+        <button class="lang-option" id="lang-btn-en" onclick="setLang('en')">🇬🇧 English</button>
+    </div>
+    <div class="side-menu-divider"></div>
+    <div class="side-menu-section-label" data-i18n="contactSection"></div>
+    <a href="mailto:doganay08@hotmail.com" style="text-decoration:none;">
+        <button class="side-menu-item"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg><span style="color:#38bdf8;" data-i18n="contactUs"></span></button>
+    </a>
+    <a href="https://t.me/+5jZi9vrcNMM2NGVk" target="_blank" style="text-decoration:none;">
+        <button class="side-menu-item"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg><span style="color:#38bdf8;" data-i18n="telegramGroup"></span></button>
+    </a>
+    <!-- ✅ GİZLİLİK POLİTİKASI - KIRMIZI RENK -->
+    <div style="display:flex;gap:8px;padding:4px 12px;">
+        <a href="privacy.html" target="_blank" rel="noopener" class="legal-link" style="font-size:0.65em;font-weight:700;" data-i18n="privacyPolicy"></a>
+        <span style="color:#334155;">|</span>
+        <a href="terms.html" target="_blank" rel="noopener" class="legal-link" style="font-size:0.65em;font-weight:700;" data-i18n="termsOfUse"></a>
+    </div>
+    <div class="side-menu-divider"></div>
+    <button class="side-menu-item" id="side-menu-logout-btn" onclick="handleLogout()" style="display:none;color:#fca5a5;">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fca5a5" stroke-width="2"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9"/></svg>
+        <span data-i18n="logout"></span>
+    </button>
+    <button class="side-menu-item" id="side-menu-login-btn" onclick="window.loginWithPi();toggleSideMenu();" style="color:#6ee7b7;">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#6ee7b7" stroke-width="2"><path d="M15 3h4a2 2 0 012 2v14a2 2 0 01-2 2h-4M10 17l5-5-5-5M15 12H3"/></svg>
+        <span data-i18n="connectWithPi"></span>
+    </button>
+</div>
 
-  const dbUrl = process.env.FIREBASE_DATABASE_URL;
-  if (!dbUrl) {
-    console.error("[FIREBASE INIT UYARI] FIREBASE_DATABASE_URL ortam değişkeni BOŞ/tanımsız. RTDB (bildirimler) çalışmayacak.");
-  } else if (!/^https:\/\/.+\.firebaseio\.com\/?$/.test(dbUrl) && !/^https:\/\/.+\.(firebasedatabase\.app)\/?$/.test(dbUrl)) {
-    console.error(`[FIREBASE INIT UYARI] FIREBASE_DATABASE_URL formatı beklenmedik görünüyor: "${dbUrl}".`);
-  } else {
-    console.log(`[FIREBASE INIT] databaseURL doğrulandı: ${dbUrl}`);
-  }
+<!-- MODALLER -->
+<div id="profile-modal" class="modal-overlay" style="display:none;">
+    <div class="modal-content" style="border-color:#6366f1;">
+        <div style="width:62px;height:62px;border-radius:50%;background:linear-gradient(135deg,#6366f1,#a855f7);display:flex;align-items:center;justify-content:center;font-weight:900;font-size:1.6em;color:#fff;margin:0 auto 10px auto;" id="profile-modal-avatar">?</div>
+        <h2 style="color:#c7d2fe;margin:0 0 2px 0;font-size:1.1em;font-weight:900;" id="profile-modal-username">@—</h2>
+        <div id="profile-modal-badge" style="margin-bottom:8px;font-size:0.85em;"></div>
+        <div style="font-size:0.7em;color:#94a3b8;margin-bottom:14px;" data-i18n="piNetworkUser"></div>
+        <div style="background:#0f172a;border-radius:12px;padding:12px;text-align:left;display:flex;flex-direction:column;gap:10px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;"><span style="font-size:0.78em;color:#94a3b8;font-weight:700;">📅 <span data-i18n="firstLoginDate"></span></span><span style="font-size:0.82em;color:#f1f5f9;font-weight:800;" id="profile-first-seen">—</span></div>
+            <div style="display:flex;justify-content:space-between;align-items:center;"><span style="font-size:0.78em;color:#94a3b8;font-weight:700;">🕒 <span data-i18n="lastSeen"></span></span><span style="font-size:0.82em;color:#f1f5f9;font-weight:800;" id="profile-last-seen">—</span></div>
+            <div style="display:flex;justify-content:space-between;align-items:center;"><span style="font-size:0.78em;color:#94a3b8;font-weight:700;">🛒 <span data-i18n="purchasedDomainLabel"></span></span><span style="font-size:0.82em;color:#fbbf24;font-weight:900;" id="profile-domain-count">0</span></div>
+            <div style="display:flex;justify-content:space-between;align-items:center;"><span style="font-size:0.78em;color:#94a3b8;font-weight:700;">⭐ <span data-i18n="totalPoints"></span></span><span style="font-size:0.82em;color:#a5b4fc;font-weight:900;" id="profile-points">0</span></div>
+        </div>
+        <button class="pi-btn" style="background:#6366f1;animation:none;padding:10px;margin:14px 0 0 0;width:100%;" onclick="document.getElementById('profile-modal').style.display='none'" data-i18n="close"></button>
+    </div>
+</div>
 
-  let serviceAccount;
-  try {
-    serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
-  } catch (e) {
-    console.error("[FIREBASE INIT UYARI] FIREBASE_SERVICE_ACCOUNT geçerli bir JSON değil:", e.message);
-    throw e;
-  }
+<div id="sell-domain-modal" class="modal-overlay" style="display:none;">
+    <div class="modal-content" style="border-color:#f59e0b;text-align:left;">
+        <div style="text-align:center;margin-bottom:6px;"><div style="font-size:2em;">🏷️</div>
+        <h2 style="color:#fbbf24;margin:4px 0 2px 0;font-size:1.1em;font-weight:900;" data-i18n="listDomainTitle"></h2>
+        <div style="font-size:0.72em;color:#94a3b8;" data-i18n="listDomainSubtitle"></div></div>
+        <label style="font-size:0.72em;color:#cbd5e1;font-weight:700;" data-i18n="domainName"></label>
+        <input type="text" id="sell-domain-name" class="sell-form-input" data-i18n-placeholder="domainNamePlaceholder">
+        <label style="font-size:0.72em;color:#cbd5e1;font-weight:700;" data-i18n="priceLabel"></label>
+        <input type="number" id="sell-domain-price" class="sell-form-input" placeholder="100">
+        <label style="font-size:0.72em;color:#cbd5e1;font-weight:700;" data-i18n="domainType"></label>
+        <select id="sell-domain-type" class="sell-form-input">
+            <option value="genel" data-i18n="typeGeneral"></option>
+            <option value="finans" data-i18n="typeFinance"></option>
+            <option value="eticaret" data-i18n="typeEcommerce"></option>
+            <option value="kisisel" data-i18n="typePersonal"></option>
+            <option value="teknoloji" data-i18n="typeTechnology"></option>
+            <option value="turizm" data-i18n="typeTourism"></option>
+            <option value="saglik" data-i18n="typeHealth"></option>
+            <option value="egitim" data-i18n="typeEducation"></option>
+            <option value="gayrimenkul" data-i18n="typeRealEstate"></option>
+            <option value="diger" data-i18n="typeOther"></option>
+        </select>
+        <label style="font-size:0.72em;color:#cbd5e1;font-weight:700;" data-i18n="descriptionLabel"></label>
+        <textarea id="sell-domain-desc" class="sell-form-input" rows="2" style="resize:none;" data-i18n-placeholder="descriptionPlaceholder"></textarea>
+        <label style="font-size:0.72em;color:#cbd5e1;font-weight:700;" data-i18n="imageUploadLabel"></label>
+        <div class="img-upload-area" onclick="document.getElementById('sell-img-input').click()">
+            <div id="img-upload-hint" data-i18n="imageUploadHint"></div>
+            <div style="font-size:0.75em;color:#64748b;margin-top:2px;" data-i18n="imageUploadFormats"></div>
+            <img id="sell-img-preview" class="img-preview">
+        </div>
+        <input type="file" id="sell-img-input" accept="image/*" style="display:none;" onchange="handleImageSelect(event)">
+        <label style="font-size:0.72em;color:#cbd5e1;font-weight:700;" data-i18n="walletLabel"></label>
+        <input type="text" id="sell-domain-wallet" class="sell-form-input" data-i18n-placeholder="walletPlaceholder">
+        <div style="background:rgba(99,102,241,0.1);border:1px dashed #6366f1;border-radius:8px;padding:8px;font-size:0.68em;color:#94a3b8;margin-bottom:10px;" data-i18n="walletNote"></div>
+        <div style="display:flex;gap:8px;">
+            <button class="pi-btn" style="background:#475569;flex:1;animation:none;padding:10px;margin:0;" onclick="document.getElementById('sell-domain-modal').style.display='none'" data-i18n="cancel"></button>
+            <button class="pi-btn" style="background:#f59e0b;flex:1;animation:none;padding:10px;margin:0;" onclick="handleSubmitSellRequest()" data-i18n="sendForApproval"></button>
+        </div>
+    </div>
+</div>
 
-  return initializeApp({
-    credential: cert(serviceAccount),
-    storageBucket: process.env.FIREBASE_STORAGE_BUCKET,
-    databaseURL: dbUrl,
-  });
-}
-function getDb()      { getAdminApp(); return getFirestore(); }
-function getBucket()  { getAdminApp(); return getStorage().bucket(); }
-function getRtdb()    { getAdminApp(); return getDatabase(); }
+<div id="notif-modal" class="modal-overlay" style="display:none;">
+    <div class="modal-content" style="border-color:#6366f1;max-height:85vh;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+            <h2 style="color:#818cf8;margin:0;font-size:1.05em;font-weight:900;" data-i18n="notifications"></h2>
+            <button onclick="markAllNotifRead()" style="background:rgba(99,102,241,0.2);border:1px solid #6366f1;color:#a5b4fc;padding:5px 10px;border-radius:8px;font-size:0.7em;cursor:pointer;font-weight:700;" data-i18n="markAllRead"></button>
+        </div>
+        <div id="notif-list" style="max-height:60vh;overflow-y:auto;text-align:left;margin-bottom:12px;"></div>
+        <button class="pi-btn" style="background:#6366f1;animation:none;padding:10px;margin:0;width:100%;" onclick="document.getElementById('notif-modal').style.display='none'" data-i18n="close"></button>
+    </div>
+</div>
 
-// ─── Admin Token Cache ────────────────────────────────────────────────────
-const adminCache = new Map();
-const ADMIN_CACHE_TTL = 5 * 60 * 1000;
+<div id="domain-detail-modal" class="modal-overlay" style="display:none;">
+    <div class="modal-content" style="border-color:#818cf8;text-align:left;">
+        <img id="detail-modal-img" class="detail-img" src="" alt="">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;flex-wrap:wrap;">
+            <h2 id="detail-modal-name" style="color:#f1f5f9;margin:0;font-size:1.1em;font-weight:900;"></h2>
+            <span id="detail-modal-type" class="domain-type-tag"></span>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+            <span id="detail-modal-price" style="color:#fbbf24;font-size:1.2em;font-weight:900;"></span>
+            <span id="detail-modal-status" style="font-size:0.75em;font-weight:800;padding:3px 10px;border-radius:8px;"></span>
+        </div>
+        <div id="detail-modal-desc" style="color:#94a3b8;font-size:0.82em;line-height:1.6;margin-bottom:12px;background:#0f172a;padding:10px;border-radius:10px;"></div>
+        <div id="detail-modal-seller" style="font-size:0.72em;color:#64748b;margin-bottom:12px;"></div>
+        <div id="detail-modal-action"></div>
+        <button class="pi-btn" style="background:#475569;animation:none;padding:10px;margin:8px 0 0 0;width:100%;" onclick="document.getElementById('domain-detail-modal').style.display='none'" data-i18n="close"></button>
+    </div>
+</div>
 
-async function verifyAdmin(accessToken) {
-  if (!accessToken) return false;
-  const cached = adminCache.get(accessToken);
-  if (cached && Date.now() - cached.ts < ADMIN_CACHE_TTL) return cached.valid;
-  try {
-    const response = await fetch('https://api.minepi.com/v2/me', {
-      headers: { 'Authorization': `Bearer ${accessToken}` }
+<div id="sell-request-detail-modal" class="modal-overlay" style="display:none;">
+    <div class="modal-content" style="border-color:#f59e0b;text-align:left;">
+        <div style="text-align:center;margin-bottom:10px;"><div style="font-size:2em;">📋</div>
+        <h2 style="color:#fbbf24;margin:4px 0;font-size:1em;font-weight:900;" data-i18n="sellRequestDetail"></h2></div>
+        <div id="sell-request-detail-content"></div>
+        <button class="pi-btn" style="background:#475569;animation:none;padding:10px;margin:8px 0 0 0;width:100%;" onclick="document.getElementById('sell-request-detail-modal').style.display='none'" data-i18n="close"></button>
+    </div>
+</div>
+
+<div id="pre-buy-modal" class="modal-overlay" style="display:none;">
+    <div class="modal-content">
+        <div style="font-size:2.5em;margin-bottom:10px;">🛡️</div>
+        <h2 style="color:#fbbf24;margin:0 0 12px 0;font-size:1.15em;font-weight:900;text-align:center;" data-i18n="securePaymentTitle"></h2>
+        <div style="color:#fff;font-size:0.82em;line-height:1.6;text-align:left;background:rgba(0,0,0,0.3);padding:12px;border-radius:15px;">
+            <div style="margin-bottom:12px;border-bottom:1px solid #475569;padding-bottom:10px;text-align:center;font-weight:800;" data-i18n="nextStepNote"></div>
+            <div class="item-row"><span class="item-title" data-i18n="transactionType"></span><span class="item-red-val-small blink-red" data-i18n="testTransaction"></span></div>
+            <div class="item-row"><span class="item-title" data-i18n="payment"></span><span class="item-red-val-small blink-red" data-i18n="onlyTestPi"></span></div>
+            <div class="item-row"><span class="item-title" data-i18n="balance"></span><span class="item-red-val-small blink-red" data-i18n="realPiSafe"></span></div>
+            <div class="item-row"><span class="item-title" data-i18n="password"></span><span class="item-red-val-small blink-red" data-i18n="passwordPrivate"></span></div>
+        </div>
+        <div style="display:flex;gap:10px;margin-top:15px;">
+            <button class="pi-btn" style="background:#475569;flex:1;animation:none;padding:10px;margin:0;" onclick="document.getElementById('pre-buy-modal').style.display='none'" data-i18n="cancel"></button>
+            <button class="pi-btn" style="flex:1;animation:none;background:#10b981;padding:10px;margin:0;" id="confirm-buy-btn" data-i18n="proceedToPayment"></button>
+        </div>
+    </div>
+</div>
+
+<div id="success-modal" class="modal-overlay" style="display:none;">
+    <div class="modal-content" style="border-color:#10b981;text-align:center;">
+        <div style="font-size:2.5em;margin-bottom:10px;">✅</div>
+        <h2 style="color:#10b981;margin-top:0;font-size:1.3em;font-weight:900;" data-i18n="successTitle"></h2>
+        <p style="color:#fff;font-size:1.1em;line-height:1.5;font-weight:bold;" data-i18n="successBody"></p>
+        <div style="display:flex;flex-direction:column;gap:10px;margin-top:15px;">
+            <button class="pi-btn" style="background:#0088cc;animation:none;padding:12px;margin:0;" id="share-tg-btn" data-i18n="shareOnTelegram"></button>
+            <button class="pi-btn" style="background:#10b981;animation:none;padding:12px;margin:0;" onclick="document.getElementById('success-modal').style.display='none'" data-i18n="awesome"></button>
+        </div>
+    </div>
+</div>
+
+<div id="unique-users-modal" class="modal-overlay" style="display:none;">
+    <div class="modal-content" style="border-color:#6366f1;max-height:85vh;">
+        <div style="font-size:2em;margin-bottom:8px;">👥</div>
+        <h2 style="color:#818cf8;margin:0 0 4px 0;font-size:1.05em;font-weight:900;" data-i18n="totalUniqueUsers"></h2>
+        <div id="unique-user-total" style="font-size:2.5em;font-weight:900;color:#fbbf24;margin:8px 0 6px 0;">—</div>
+        <div style="font-size:0.7em;color:#94a3b8;margin-bottom:12px;" data-i18n="totalUniqueUsersDesc"></div>
+        <div style="display:flex;gap:8px;margin:8px 0;align-items:center;">
+            <input type="date" id="unique-users-date-input" class="admin-date-picker" style="flex:1;margin-bottom:0;">
+            <button onclick="loadUniqueUsersByDate()" style="background:#6366f1;color:#fff;border:none;padding:6px 12px;border-radius:8px;font-size:0.72em;font-weight:800;cursor:pointer;white-space:nowrap;">📋 Günü Getir</button>
+        </div>
+        <div id="unique-users-daily-count" style="font-size:0.75em;color:#94a3b8;margin-bottom:8px;text-align:center;"></div>
+        <div id="unique-user-list" style="max-height:300px;overflow-y:auto;text-align:left;margin-bottom:12px;"></div>
+        <button class="pi-btn" style="background:#6366f1;animation:none;padding:10px;margin:0;width:100%;" onclick="document.getElementById('unique-users-modal').style.display='none'" data-i18n="close"></button>
+    </div>
+</div>
+<!-- ANA İÇERİK -->
+<div class="container">
+  <div class="main-scroll">
+    <!-- ✅ HEADER - LOGO VE UYGULAMA ADI ÖN PLANDA (BÜYÜLTÜLMÜŞ) -->
+    
+    
+    <div class="card" style="border:1.5px solid rgba(129,140,248,0.45);background:linear-gradient(160deg,rgba(99,102,241,0.14) 0%,var(--card) 55%);">
+        <!-- ✅ İKONLAR - ABSOLUTE ÜSTTE (Bildirim sol, Menü sağ) -->
+        <div style="position:absolute;top:10px;left:10px;display:flex;align-items:center;gap:8px;z-index:20;">
+            <div class="notif-btn" id="notif-btn" onclick="openNotifModal()" style="position:relative;">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#c7d2fe" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+                <span class="notif-badge" id="notif-badge">0</span>
+            </div>
+        </div>
+        <div style="position:absolute;top:10px;right:10px;z-index:20;">
+            <button class="hamburger-btn" onclick="toggleSideMenu()"><span></span><span></span><span></span></button>
+        </div>
+
+        <!-- ✅ LOGO VE BAŞLIK -->
+        <div style="text-align:center;padding:2px 50px 0 50px;">
+            <img src="assets/logo.jpeg" alt="Web3 Domain Gateway Logo" class="app-logo" onerror="this.style.display='none'">
+        <h1 class="app-title">Web3 Domain Gateway</h1>
+        </div>
+
+        <div class="stats-bar">
+            <div class="stats-item"><span data-i18n="soldDomains"></span>: <span id="total-sold">0</span></div>
+            <div class="stats-item"><span data-i18n="totalVolume"></span>: <span id="total-volume">0</span> Test Pİ</div>
+            <div class="stats-item"><span data-i18n="activeUsers"></span>: <span id="online-count">0</span></div>
+        </div>
+        <div id="user-status-box" style="display:none;margin-top:4px;">
+            <p id="user-status" style="display:inline-block;font-size:0.85em;color:#6ee7b7;font-weight:900;margin:0;background:rgba(16,185,129,0.12);border:1.5px solid #10b981;border-radius:20px;padding:5px 14px;"></p>
+        </div>
+    </div>
+
+    <!-- Kullanıcı Paneli -->
+    <div class="card" id="user-panel" style="display:none;border:2.5px solid #10b981;box-shadow:0 0 18px rgba(16,185,129,0.25);">
+        <h3 style="color:#10b981;margin:-8px -8px 10px -8px;padding:10px 8px;font-size:0.95em;display:flex;align-items:center;justify-content:space-between;gap:6px;background:linear-gradient(135deg,rgba(16,185,129,0.18) 0%,rgba(5,150,105,0.1) 100%);border-bottom:1.5px solid rgba(16,185,129,0.35);border-radius:14px 14px 0 0;font-weight:900;">
+            <span style="display:flex;align-items:center;gap:6px;margin:0 auto;">👤 <span data-i18n="myPanel"></span></span>
+            <button onclick="refreshUserPanel()" style="background:rgba(16,185,129,0.2);border:1.5px solid #10b981;color:#6ee7b7;width:30px;height:30px;border-radius:8px;font-size:1em;cursor:pointer;display:flex;align-items:center;justify-content:center;" title="Yenile">↻</button>
+        </h3>
+        <div class="user-tabs">
+            <button class="user-tab-btn active" data-utab="utab-overview" onclick="switchUserTab('utab-overview')">📊 <span data-i18n="overview"></span></button>
+            <button class="user-tab-btn" data-utab="utab-purchases" onclick="switchUserTab('utab-purchases')">🛒 <span data-i18n="myPurchases"></span></button>
+            <button class="user-tab-btn" data-utab="utab-listings" onclick="switchUserTab('utab-listings')">🏷️ <span data-i18n="myListings"></span></button>
+            <button class="user-tab-btn" data-utab="utab-income" onclick="switchUserTab('utab-income')">💰 <span data-i18n="myIncome"></span></button>
+        </div>
+        <div class="user-tab-panel active" id="utab-overview">
+            <div class="user-info-note">
+                <div class="info-badge-header"><span class="info-badge-icon">ℹ️</span><span data-i18n="info"></span></div>
+                <div class="user-info-note-text" data-i18n="testNetNote"></div>
+            </div>
+            <div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px;margin-bottom:8px;min-width:0;">
+                <div style="background:#0f172a;border:1px solid #334155;border-radius:10px;padding:10px;text-align:center;"><div style="font-size:0.6em;color:#94a3b8;font-weight:700;margin-bottom:4px;" data-i18n="purchasedDomainLabel"></div><div id="up-domain-count" style="font-size:1.5em;font-weight:900;color:#fbbf24;">0</div></div>
+                <div style="background:#0f172a;border:1px solid #334155;border-radius:10px;padding:10px;text-align:center;"><div style="font-size:0.6em;color:#94a3b8;font-weight:700;margin-bottom:4px;" data-i18n="totalPoints"></div><div id="up-points" style="font-size:1.5em;font-weight:900;color:#a5b4fc;">0</div></div>
+                <div style="background:#0f172a;border:1px solid #334155;border-radius:10px;padding:10px;text-align:center;"><div style="font-size:0.6em;color:#94a3b8;font-weight:700;margin-bottom:4px;" data-i18n="totalSpent"></div><div id="up-spent" style="font-size:1.2em;font-weight:900;color:#f87171;">0 Pi</div></div>
+                <div style="background:#0f172a;border:1px solid #334155;border-radius:10px;padding:10px;text-align:center;"><div style="font-size:0.6em;color:#94a3b8;font-weight:700;margin-bottom:4px;" data-i18n="myListingsCount"></div><div id="up-listing-count" style="font-size:1.5em;font-weight:900;color:#34d399;">0</div></div>
+            </div>
+            <div id="up-badge-area" style="text-align:center;margin-bottom:6px;"></div>
+            <!-- ✅ ROZET KARTLARI - YAN YANA SIKIŞTIRILMIŞ -->
+            <div style="background:#0f172a;border:1px dashed #334155;border-radius:10px;padding:10px;margin-top:4px;">
+                <div style="font-size:0.62em;color:#64748b;font-weight:800;text-transform:uppercase;margin-bottom:8px;letter-spacing:0.5px;" data-i18n="badgeInfoTitle"></div>
+                <div class="badge-grid">
+                    <div class="badge-item">
+                        <div class="badge-icon">🥉</div>
+                        <div class="badge-label" style="color:#cd7f32;" data-i18n="badgeBronze"></div>
+                        <div class="badge-req" data-i18n="badgeBronzeReq"></div>
+                    </div>
+                    <div class="badge-item">
+                        <div class="badge-icon">🥈</div>
+                        <div class="badge-label" style="color:#94a3b8;" data-i18n="badgeSilver"></div>
+                        <div class="badge-req" data-i18n="badgeSilverReq"></div>
+                    </div>
+                    <div class="badge-item">
+                        <div class="badge-icon">🥇</div>
+                        <div class="badge-label" style="color:#fbbf24;" data-i18n="badgeGold"></div>
+                        <div class="badge-req" data-i18n="badgeGoldReq"></div>
+                    </div>
+                    <div class="badge-item">
+                        <div class="badge-icon">💎</div>
+                        <div class="badge-label" style="color:#818cf8;" data-i18n="badgeDiamond"></div>
+                        <div class="badge-req" data-i18n="badgeDiamondReq"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="user-tab-panel" id="utab-purchases">
+            <div style="background:#061612;border:2px solid #059669;border-radius:12px;padding:10px;">
+                <div style="display:flex;align-items:center;justify-content:center;gap:6px;margin-bottom:8px;padding-bottom:7px;border-bottom:1px solid #064e3b;"><span style="animation:icon-pulse-green 2s ease-in-out infinite;">🛒</span><span style="font-size:0.72em;color:#34d399;font-weight:800;text-transform:uppercase;" data-i18n="purchasedDomains"></span></div>
+                <div id="my-domains-list" style="text-align:left;"></div>
+            </div>
+        </div>
+        <div class="user-tab-panel" id="utab-listings">
+            <div style="background:#1c1917;border:2px solid #f59e0b;border-radius:12px;padding:10px;">
+                <!-- ✅ SATIŞ İLANLARI RENKLENDİRME -->
+                <div class="listings-title">🏷️ <span data-i18n="myListingsTitle"></span></div>
+                <div id="my-listings-list" style="text-align:left;"></div>
+                <button class="pi-btn" style="background:#f59e0b;animation:none;padding:8px;margin:8px 0 0 0;width:100%;font-size:0.8em;" onclick="openSellDomainModal()" data-i18n="listNewDomain"></button>
+            </div>
+        </div>
+        <div class="user-tab-panel" id="utab-income">
+            <div class="income-box"><div style="font-size:0.7em;color:#6ee7b7;font-weight:800;margin-bottom:4px;" data-i18n="totalEarned"></div><div class="income-value" id="up-earned">0 Pi</div><div style="font-size:0.65em;color:#94a3b8;margin-top:6px;" data-i18n="earnedNote"></div></div>
+            <div id="my-sold-list" style="text-align:left;"></div>
+        </div>
+    </div>
+
+    <!-- Admin Paneli -->
+    <div class="card" id="admin-panel" style="display:none;border:2.5px solid #6366f1;box-shadow:0 0 18px rgba(99,102,241,0.25);">
+        <h3 style="color:#fbbf24;margin:-8px -8px 10px -8px;padding:10px 8px;font-size:0.95em;display:flex;align-items:center;justify-content:center;gap:6px;background:linear-gradient(135deg,rgba(99,102,241,0.2) 0%,rgba(67,56,202,0.1) 100%);border-bottom:1.5px solid rgba(99,102,241,0.4);border-radius:14px 14px 0 0;font-weight:900;">🛠 Admin Panel</h3>
+        <div class="admin-tabs">
+            <button class="admin-tab-btn active" data-tab="tab-users" onclick="switchAdminTab('tab-users')">👥 <span data-i18n="users"></span></button>
+            <button class="admin-tab-btn" data-tab="tab-stats" onclick="switchAdminTab('tab-stats')">📈 <span data-i18n="salesStats"></span></button>
+            <button class="admin-tab-btn" data-tab="tab-pending" onclick="switchAdminTab('tab-pending')">🏷️ <span data-i18n="pendingApprovals"></span><span class="pending-badge" id="pending-count-badge" style="display:none;">0</span></button>
+            <button class="admin-tab-btn" data-tab="tab-prices" onclick="switchAdminTab('tab-prices')">💰 <span data-i18n="priceManagement"></span></button>
+            <button class="admin-tab-btn" data-tab="tab-add" onclick="switchAdminTab('tab-add')">➕ <span data-i18n="addDomain"></span></button>
+            <button class="admin-tab-btn" data-tab="tab-earnings" onclick="switchAdminTab('tab-earnings')">🏦 <span data-i18n="earningsTab"></span></button>
+        </div>
+        <div class="admin-tab-panel active" id="tab-users">
+            <button onclick="openUniqueUsersModal()" style="width:100%;box-sizing:border-box;background:linear-gradient(135deg,#1e1b4b 0%,#1e293b 100%);border:2px solid #6366f1;border-radius:14px;padding:12px 14px;cursor:pointer;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;box-shadow:0 4px 18px rgba(99,102,241,0.4);">
+                <div style="display:flex;align-items:center;gap:10px;"><div style="background:rgba(99,102,241,0.25);border:1.5px solid #818cf8;border-radius:10px;width:38px;height:38px;display:flex;align-items:center;justify-content:center;font-size:1.3em;animation:icon-pulse-btn 2.5s ease-in-out infinite;">👥</div>
+                <div style="text-align:left;"><div style="font-size:0.58em;color:#a5b4fc;font-weight:700;text-transform:uppercase;margin-bottom:2px;" data-i18n="totalLoggedInUsers"></div><div style="font-size:0.84em;color:#f1f5f9;font-weight:900;" data-i18n="uniqueUsers"></div></div></div>
+                <div style="display:flex;align-items:center;gap:5px;"><span id="unique-users-badge" style="font-size:1.8em;font-weight:900;color:#a5b4fc;">—</span><div style="background:rgba(99,102,241,0.3);border:1px solid #6366f1;border-radius:6px;padding:3px 5px;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#a5b4fc" stroke-width="3"><polyline points="9 18 15 12 9 6"/></svg></div></div>
+            </button>
+            <div style="background:#060d1f;border:2.5px solid #3b82f6;border-radius:12px;padding:10px;">
+                <div style="display:flex;align-items:center;justify-content:center;gap:6px;margin-bottom:8px;padding-bottom:7px;border-bottom:1px solid #1e3a8a;"><span style="animation:icon-pulse-btn 2s ease-in-out infinite;">📋</span><span style="font-size:0.72em;color:#60a5fa;font-weight:800;text-transform:uppercase;" data-i18n="dailyLoginLog"></span></div>
+                <input type="date" id="admin-date-input" class="admin-date-picker" style="margin-bottom:8px;">
+                <div id="log-list"></div>
+            </div>
+        </div>
+        <div class="admin-tab-panel" id="tab-stats">
+            <div style="background:#061a0d;border:2.5px solid #16a34a;border-radius:12px;padding:10px;">
+                <div style="display:flex;align-items:center;justify-content:center;gap:6px;margin-bottom:8px;padding-bottom:7px;border-bottom:1px solid #14532d;"><span style="animation:icon-pulse-chart 2s ease-in-out infinite;">📈</span><span style="font-size:0.72em;color:#4ade80;font-weight:800;text-transform:uppercase;" data-i18n="dailySalesStats"></span></div>
+                <div style="display:flex;gap:8px;">
+                                        <div style="flex:1;background:#1e293b;border:1px solid #4ade80;border-radius:10px;padding:8px;text-align:center;"><div style="font-size:0.62em;color:#86efac;font-weight:bold;margin-bottom:2px;" data-i18n="salesCount"></div><div id="daily-stat-count" style="font-size:1.2em;color:#fbbf24;font-weight:900;">0</div></div>
+                    <div style="flex:1;background:#1e293b;border:1px solid #4ade80;border-radius:10px;padding:8px;text-align:center;"><div style="font-size:0.62em;color:#86efac;font-weight:bold;margin-bottom:2px;" data-i18n="volumePi"></div><div id="daily-stat-volume" style="font-size:1.2em;color:#fbbf24;font-weight:900;">0</div></div>
+                </div>
+                <!-- ✅ SATIŞ DETAY TABLOSU -->
+                <div style="margin-top:12px;">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;flex-wrap:wrap;gap:6px;">
+                        <div style="font-size:0.68em;color:#4ade80;font-weight:800;text-transform:uppercase;">📋 <span data-i18n="salesDetailTitle">Satış Detayları</span></div>
+                        <div style="display:flex;gap:6px;align-items:center;">
+                            <input type="date" id="sales-detail-date-input" class="admin-date-picker" style="width:130px;margin-bottom:0;padding:4px 8px;font-size:0.7em;">
+                            <button onclick="loadSalesDetailsByDate()" style="background:#10b981;color:#fff;border:none;padding:4px 10px;border-radius:6px;font-size:0.65em;font-weight:800;cursor:pointer;white-space:nowrap;">📋 Getir</button>
+                        </div>
+                    </div>
+                    <div style="max-height:200px;overflow-y:auto;">
+                        <table class="sales-detail-table" id="sales-detail-table">
+                            <thead>
+                                <tr>
+                                    <th data-i18n="detailFieldDomain">Domain</th>
+                                    <th data-i18n="detailFieldBuyer">Alıcı</th>
+                                    <th data-i18n="detailFieldPrice">Tutar</th>
+                                    <th data-i18n="detailFieldDate">Tarih</th>
+                                </tr>
+                            </thead>
+                            <tbody id="sales-detail-body">
+                                <tr><td colspan="4" style="text-align:center;color:#64748b;">Henüz satış yok</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="admin-tab-panel" id="tab-pending"><div id="pending-domains-list" style="text-align:left;"><p style="font-size:0.75em;opacity:0.5;text-align:center;" data-i18n="noPendingDomains"></p></div></div>
+        <div class="admin-tab-panel" id="tab-prices">
+            <div id="admin-price-list" style="text-align:left;"></div>
+            <div id="admin-deleted-section" style="margin-top:14px;display:none;">
+                <div style="font-size:0.68em;color:#f87171;font-weight:800;text-transform:uppercase;margin-bottom:6px;border-top:1px solid #334155;padding-top:10px;" data-i18n="deletedDomainsTitle"></div>
+                <div id="admin-deleted-list" style="text-align:left;"></div>
+            </div>
+        </div>
+        <div class="admin-tab-panel" id="tab-add">
+            <div style="display:flex;flex-direction:column;gap:6px;">
+                <input type="text" id="new-domain-name" data-i18n-placeholder="newDomainPlaceholder" class="admin-date-picker" style="margin-bottom:0;">
+                <input type="number" id="new-domain-price" data-i18n-placeholder="newDomainPricePlaceholder" class="admin-date-picker" style="margin-bottom:0;">
+                <input type="text" id="new-domain-img" data-i18n-placeholder="newDomainImgPlaceholder" class="admin-date-picker" style="margin-bottom:0;">
+                <select id="new-domain-type" class="admin-date-picker" style="margin-bottom:0;">
+                    <option value="genel" data-i18n="typeGeneral"></option>
+                    <option value="finans" data-i18n="typeFinance"></option>
+                    <option value="bankacilik" data-i18n="typeBanking"></option>
+                    <option value="eticaret" data-i18n="typeEcommerce"></option>
+                    <option value="kisisel" data-i18n="typePersonal"></option>
+                    <option value="teknoloji" data-i18n="typeTechnology"></option>
+                    <option value="turizm" data-i18n="typeTourism"></option>
+                    <option value="saglik" data-i18n="typeHealth"></option>
+                    <option value="egitim" data-i18n="typeEducation"></option>
+                    <option value="gayrimenkul" data-i18n="typeRealEstate"></option>
+                    <option value="diger" data-i18n="typeOther"></option>
+                </select>
+                <textarea id="new-domain-desc" data-i18n-placeholder="descriptionPlaceholder" class="admin-date-picker" rows="2" style="resize:none;margin-bottom:0;"></textarea>
+                <button class="pi-btn" style="margin:4px 0 0 0;animation:none;background:#10b981;padding:8px;" onclick="handleAddDomain()" data-i18n="addDomainBtn"></button>
+            </div>
+        </div>
+        <div class="admin-tab-panel" id="tab-earnings">
+            <div class="income-box" style="border-color:#6366f1;background:linear-gradient(135deg,#1e1b4b 0%,#312e81 100%);">
+                <div style="font-size:0.7em;color:#c7d2fe;font-weight:800;margin-bottom:4px;" data-i18n="platformWalletTitle"></div>
+                <div class="income-value" id="admin-platform-earnings" style="color:#a5b4fc;">0 Pi</div>
+                <div style="font-size:0.65em;color:#94a3b8;margin-top:6px;" data-i18n="platformWalletNote"></div>
+            </div>
+            <div class="income-box" style="border-color:#10b981;background:linear-gradient(135deg,#064e3b 0%,#065f46 100%);">
+                <div style="font-size:0.7em;color:#6ee7b7;font-weight:800;margin-bottom:4px;" data-i18n="adminOwnEarningsTitle"></div>
+                <div class="income-value" id="admin-own-earnings" style="color:#34d399;">0 Pi</div>
+                <div style="font-size:0.65em;color:#94a3b8;margin-top:6px;" data-i18n="adminOwnEarningsNote"></div>
+            </div>
+            <div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px;margin-bottom:8px;min-width:0;">
+                <div style="background:#0f172a;border:1px solid #334155;border-radius:10px;padding:10px;text-align:center;">
+                    <div style="font-size:0.6em;color:#94a3b8;font-weight:700;margin-bottom:4px;" data-i18n="totalVolumeAll"></div>
+                    <div id="admin-total-volume" style="font-size:1.3em;font-weight:900;color:#fbbf24;">0 Pi</div>
+                </div>
+                <div style="background:#0f172a;border:1px solid #334155;border-radius:10px;padding:10px;text-align:center;">
+                    <div style="font-size:0.6em;color:#94a3b8;font-weight:700;margin-bottom:4px;" data-i18n="userOwnedVolume"></div>
+                    <div id="admin-user-volume" style="font-size:1.3em;font-weight:900;color:#34d399;">0 Pi</div>
+                </div>
+            </div>
+            <button class="pi-btn" style="background:#6366f1;animation:none;padding:8px;width:100%;font-size:0.8em;" onclick="loadAdminEarnings()" data-i18n="refreshBtn"></button>
+            <div style="margin-top:12px;background:#1c0a0a;border:2px solid #ef4444;border-radius:12px;padding:10px;">
+                <div style="font-size:0.68em;color:#fca5a5;font-weight:800;text-transform:uppercase;margin-bottom:6px;">⚠️ <span data-i18n="resetDangerTitle"></span></div>
+                <div style="font-size:0.68em;color:#94a3b8;line-height:1.5;margin-bottom:8px;" data-i18n="resetDangerNote"></div>
+                <button onclick="handleResetPlatformStats()" style="background:#ef4444;color:#fff;border:none;padding:8px;border-radius:8px;font-size:0.72em;font-weight:800;cursor:pointer;width:100%;" data-i18n="resetBtn"></button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Market -->
+    <div class="card" id="market-card" style="position:relative;padding:8px;margin-bottom:4px;overflow:hidden;min-height:80px;">
+        <div class="section-title-box" data-i18n="availableDomains"></div>
+        <div class="filter-section" id="filter-section" style="display:none;">
+            <div class="filter-section-label" data-i18n="filterSectionLabel"></div>
+            <select id="category-filter-select" class="category-select" onchange="setDomainFilter(this.value)">
+                <option value="hepsi" data-i18n="filterAll"></option>
+                <option value="genel" data-i18n="typeGeneral"></option>
+                <option value="finans" data-i18n="typeFinance"></option>
+                <option value="bankacilik" data-i18n="typeBanking"></option>
+                <option value="eticaret" data-i18n="typeEcommerce"></option>
+                <option value="kisisel" data-i18n="typePersonal"></option>
+                <option value="teknoloji" data-i18n="typeTechnology"></option>
+                <option value="turizm" data-i18n="typeTourism"></option>
+                <option value="saglik" data-i18n="typeHealth"></option>
+                <option value="egitim" data-i18n="typeEducation"></option>
+                <option value="gayrimenkul" data-i18n="typeRealEstate"></option>
+            </select>
+        </div>
+        <div id="premium-lock" class="premium-lock-overlay">
+            <div style="position:relative;display:inline-block;"><div class="diamond-spin" style="font-size:1.8em;">💎</div>
+            <span class="diamond-sparkle diamond-sparkle-1" style="position:absolute;top:-6px;left:-10px;font-size:0.9em;">✦</span>
+            <span class="diamond-sparkle diamond-sparkle-2" style="position:absolute;bottom:-2px;right:-12px;font-size:0.8em;">✦</span></div>
+            <div class="lock-title-box" data-i18n="joinWeb3"></div>
+            <div class="secure-badge">
+                <div style="font-size:1.8em;text-align:center;margin-bottom:4px;">🛡️</div>
+                <div class="secure-badge-title" style="text-align:center;" data-i18n="secureConnection"></div>
+                <div class="secure-badge-body" data-i18n="testNetBadgeBody"></div>
+                <div class="secure-badge-warning" data-i18n="testNetWarning"></div>
+            </div>
+            <p style="font-size:0.7em;color:#e2e8f0;font-weight:600;line-height:1.25;margin:3px 0;max-width:90%;" data-i18n="connectPrompt"></p>
+            <div style="color:#fbbf24;font-weight:700;margin-bottom:3px;font-size:0.75em;" data-i18n="useButton"></div>
+            <button class="pi-btn" onclick="window.loginWithPi()" data-i18n="connectWithPi"></button>
+        </div>
+        <div class="domain-grid locked-content" id="domain-list">
+            <div id="domain-list-loading" style="grid-column:1/-1;text-align:center;padding:24px 0;color:#64748b;font-size:0.8em;">⏳ <span data-i18n="loadingDomains"></span></div>
+        </div>
+    </div>
+  </div>
+
+  <div class="footer-section" style="padding:6px 8px;font-size:0.55em;">
+      <div class="footer-row" style="margin-bottom:2px;">📩 <span data-i18n="contactUs"></span>: <a href="mailto:doganay08@hotmail.com">doganay08@hotmail.com</a></div>
+      <div class="footer-row" style="margin-bottom:2px;">💬 <span data-i18n="community"></span>: <a href="https://t.me/+5jZi9vrcNMM2NGVk" target="_blank" data-i18n="telegramGroup"></a></div>
+      <div style="margin-top:3px;font-size:0.85em;">
+          <a href="privacy.html" target="_blank" rel="noopener" class="legal-link" data-i18n="privacyPolicy"></a> | 
+          <a href="terms.html" target="_blank" rel="noopener" class="legal-link" data-i18n="termsOfUse"></a>
+      </div>
+  </div>
+</div>
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
+import { getFirestore, doc, onSnapshot, setDoc, getDoc, collection, getDocs, deleteDoc, query, where } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
+
+const firebaseConfig = {
+    apiKey: "AIzaSyC9r244vRVGbYOcLHyS6EHxKyiygajW7_A",
+    authDomain: "web3-domain-gateway.firebaseapp.com",
+    projectId: "web3-domain-gateway",
+    storageBucket: "web3-domain-gateway.firebasestorage.app",
+    messagingSenderId: "315563254318",
+    appId: "1:315563254318:web:12f2f3f340bb69606df5bf",
+    databaseURL: "https://web3-domain-gateway-default-rtdb.firebaseio.com"
+};
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+// FIX 1: Pi SDK hazır olana kadar bekle
+let piReady = false;
+function waitForPi() {
+    return new Promise(resolve => {
+        if (typeof Pi !== 'undefined') { if (!piReady) { Pi.init({ version:"2.0", sandbox:true }); piReady=true; } resolve(); return; }
+        const check = setInterval(() => { if (typeof Pi !== 'undefined') { clearInterval(check); if (!piReady) { Pi.init({ version:"2.0", sandbox:true }); piReady=true; } resolve(); } }, 100);
     });
-    if (!response.ok) { adminCache.set(accessToken, { valid: false, ts: Date.now() }); return false; }
-    const userDto = await response.json();
-    const valid = userDto.username === 'doganay0808';
-    adminCache.set(accessToken, { valid, ts: Date.now() });
-    return valid;
-  } catch (e) {
-    console.error("Pi /v2/me admin doğrulama hatası:", e);
-    return false;
-  }
 }
 
-// Kullanıcı token cache
-const userCache = new Map();
-async function getRealUsername(accessToken) {
-  if (!accessToken) return null;
-  const cached = userCache.get(accessToken);
-  if (cached && Date.now() - cached.ts < ADMIN_CACHE_TTL) return cached.username;
-  try {
-    const response = await fetch('https://api.minepi.com/v2/me', {
-      headers: { 'Authorization': `Bearer ${accessToken}` }
+const i18n = {
+  tr: {
+    menu:"Menü",account:"Hesap",preferences:"Tercihler",connected:"Bağlı",
+    purchasedDomain:"ALINAN DOMAIN",firstLogin:"İLK GİRİŞ",
+    profileSettings:"Profil Ayarları",myPanel:"Panelim",sellMyDomain:"Domainimi Satışa Çıkar",
+    languageOptions:"Dil Seçenekleri",logout:"Çıkış Yap",connectWithPi:"<span style='display:inline-flex;align-items:center;gap:8px;'><span style='display:inline-block;animation:logo-pulse 1.5s ease-in-out infinite;font-size:1.1em;'>π</span> Pi ile Bağlan</span>",
+    contactSection:"İletişim",piNetworkUser:"Pi Network Kullanıcısı",
+    firstLoginDate:"İlk Giriş Tarihi",lastSeen:"Son Görülme",
+    purchasedDomainLabel:"Alınan Domain",totalPoints:"Toplam Puan",close:"KAPAT",
+    listDomainTitle:"Domainini Satışa Çıkar",
+    listDomainSubtitle:"Gönderdiğin domain, admin onayından sonra markette listelenir.",
+    domainName:"Domain Adı",domainNamePlaceholder:"ornek.pi",priceLabel:"Fiyat (Pİ)",
+    domainType:"Domain Türü",descriptionLabel:"Açıklama",
+    descriptionPlaceholder:"Domain hakkında kısa açıklama...",
+    imageUploadLabel:"Domain Görseli",imageUploadHint:"📁 Görsel seçmek için tıklayın",
+    imageUploadFormats:"JPG, PNG, WEBP — Maks. 2MB",
+    walletLabel:"Pi Cüzdan Adresin",walletPlaceholder:"G... ile başlayan cüzdan adresin",
+    walletNote:"ℹ️ Ödeme transferi ileride aktif olacak özellik için şimdiden alınıyor.",
+    cancel:"VAZGEÇ",sendForApproval:"ONAYA GÖNDER",
+    typeGeneral:"Genel",typeFinance:"Faizsiz Finansal Hizmetler",typeBanking:"Bankacılık Hizmetleri",typeEcommerce:"E-Ticaret",
+    typePersonal:"Kişisel İsim",typeTechnology:"Teknoloji",typeOther:"Diğer",
+    typeTourism:"Turizm ve Seyahat",typeHealth:"Sağlık",typeEducation:"Eğitim",typeRealEstate:"Gayrimenkul",
+    soldDomains:"Satılan Domain",totalVolume:"Toplam Hacim",activeUsers:"Aktif Kullanıcı",
+    overview:"Genel",myPurchases:"Alımlarım",myListings:"İlanlarım",myIncome:"Gelirim",
+    totalSpent:"Toplam Harcama",myListingsCount:"İlan Sayım",
+    myListingsTitle:"Satış İlanlarım",listNewDomain:"+ Yeni İlan Ver",
+    totalEarned:"TOPLAM GELİR",earnedNote:"Satışa sunduğunuz ve satılan domainlerden elde edilen gelir.",
+    info:"BİLGİ",
+    testNetNote:"Bu uygulama Test-Pi ağında deneme amaçlıdır. Satın aldığınız domainler, diğer kullanıcıların da test yapabilmesi için markette tekrar <span class=\"btn-fake-buy\">SATIN AL</span> olarak görünebilir ve satın alma geçmişinizden silinebilir.",
+    purchasedDomains:"Satın Alınan Domainler",
+    noDomains:"Henüz satın alma geçmişiniz bulunmuyor.",
+    noListings:"Henüz satışa sunduğunuz bir domain yok.",
+    noSoldDomains:"Henüz satılan bir domaininiz yok.",
+    noActiveListings:"Şu anda satışta bekleyen domaininiz yok.",
+    users:"Kullanıcılar",salesStats:"Satış İstatistikleri",pendingApprovals:"Bekleyen Onaylar",
+    priceManagement:"Domain Yönetimi",addDomain:"Domain Ekle",earningsTab:"Kazanç",
+    totalLoggedInUsers:"Bugüne Kadar Giriş Yapan",uniqueUsers:"Toplam Farklı Kullanıcı",
+    dailyLoginLog:"Günlük Giriş Kaydı",dailySalesStats:"Günlük Satış İstatistikleri",
+    salesCount:"SATIŞ ADEDİ",volumePi:"HACİM (Pİ)",noPendingDomains:"Bekleyen domain önerisi yok.",
+    addDomainBtn:"Domain Ekle",newDomainPlaceholder:"domain-adi.pi",
+    newDomainPricePlaceholder:"Fiyat (Pİ)",newDomainImgPlaceholder:"Görsel yolu (opsiyonel)",
+    availableDomains:"Satın Alabileceğiniz Domainler",filterAll:"Hepsi",
+    joinWeb3:"Ayrıcalıklı Web3 Dünyasına Katılın",secureConnection:"Güvenli Bağlantı",
+    testNetBadgeBody:"Sistemimiz şu anda <span class=\"blink-yellow\">TEST-Pİ</span> ağında çalışmaktadır.",
+    testNetWarning:"<span class=\"blink-yellow\">GERÇEK Pİ BAKİYENİZ KESİNLİKLE<br>KULLANILMAZ!</span>",
+    connectPrompt:"Web3 domain sahibi olmak ve güvenli bağlantı kurmak için,",useButton:"👇 aşağıdaki Pi ile Bağlan butonunu kullanın.",
+    securePaymentTitle:"GÜVENLİ ÖDEME ONAYI",
+    nextStepNote:"BİR SONRAKİ ADIMDA GERÇEK CÜZDAN DEĞİL,\n<span class=\"blink-yellow\" style=\"text-decoration:underline;font-size:1.1em;\">TEST Pİ CÜZDANI</span> AÇILACAKTIR.",
+    transactionType:"İŞLEM TÜRÜ:",testTransaction:"TEST İŞLEMİDİR",
+    payment:"ÖDEME:",onlyTestPi:"SADECE TEST Pİ KULLANILIR",
+    balance:"BAKİYE:",realPiSafe:"GERÇEK Pİ BAKİYENİZ AZALMAZ",
+    password:"ŞİFRENİZ:",passwordPrivate:"SİZDEN BAŞKASI BİLEMEZ.",
+    proceedToPayment:"ÖDEMEYE GEÇ",
+    successTitle:"İŞLEM BAŞARILI!",successBody:"ÖDEMENİZ BAŞARILI OLDU, SATIN ALMANIZ GERÇEKLEŞTİ. HAYIRLI OLSUN!",
+    shareOnTelegram:"🚀 TELEGRAM'DA PAYLAŞ",awesome:"HARİKA!",
+    totalUniqueUsers:"TOPLAM BENZERSİZ KULLANICI",totalUniqueUsersDesc:"Bugüne kadar giriş yapmış toplam kullanıcı sayısı",
+    contactUs:"SORULARINIZ İÇİN",community:"TOPLULUK GRUBUMUZ",
+    telegramGroup:"TELEGRAM GRUBUMUZ",privacyPolicy:"GİZLİLİK POLİTİKASI",termsOfUse:"KULLANIM ŞARTLARI",
+    notifications:"Bildirimler",markAllRead:"Tümünü Okundu Yap",noNotifications:"Henüz bildiriminiz yok.",
+    verify:"🔍 DOĞRULA",verifyLocked:"🔒 DOĞRULA",buyNow:"SATIN AL",sold:"SATILDI",
+    relistBtn:"↺ Tekrar Satılık Yap",detailBtn:"📋 DETAY",approveBtn:"✓ ONAYLA",rejectBtn:"✕ REDDET",
+    sellRequestDetail:"Domain Detayı",
+    loginRequired:"Bu özelliği kullanmak için önce Pi ile bağlanmalısınız.",
+    profileLoginRequired:"Profili görmek için önce Pi ile bağlanmalısınız.",
+    sellLoginRequired:"Domain satışa çıkarmak için önce Pi ile bağlanmalısınız.",
+    domainNamePriceRequired:"Domain adı ve geçerli bir fiyat girin.",
+    sellSubmitSuccess:"Domain öneriniz admin onayına gönderildi!",
+    sellSubmitFail:"Gönderim başarısız: ",sellSubmitError:"Bir hata oluştu.",
+    approveConfirm:"Bu domain önerisini onaylamak istediğinize emin misiniz?",
+    approveFail:"Onaylama başarısız: ",approveError:"Bir hata oluştu.",
+    rejectConfirm:"Bu domain önerisini reddetmek istediğinize emin misiniz?",
+    rejectFail:"Reddetme başarısız: ",
+    relistConfirm:(n)=>`"${n}" domainini tekrar satılık yapmak istediğinize emin misiniz?`,
+    relistFail:"Tekrar satılık yapma başarısız: ",relistError:"Bir hata oluştu.",
+    validPrice:"Geçerli bir fiyat girin.",
+    priceUpdateFail:"Fiyat güncelleme başarısız: ",priceUpdateError:"Bir hata oluştu.",
+    priceUpdateSuccess:(n,p)=>`"${n}" fiyatı ${p} Pİ olarak güncellendi.`,
+    deleteConfirm:(n)=>`"${n}" domainini silmek istediğinize emin misiniz? (Geçmiş veriler korunur, gerekirse geri eklenebilir.)`,
+    deleteFail:"Domain silme başarısız: ",deleteError:"Bir hata oluştu.",
+    deleteSuccess:(n)=>`"${n}" domaini silindi.`,
+    addDomainFail:"Domain ekleme başarısız: ",addDomainError:"Bir hata oluştu.",
+    addDomainSuccess:(n)=>`"${n}" domaini eklendi.`,
+    loginError:"GİRİŞ HATASI!",paymentError:"ÖDEME HATASI!",
+    noRecord:"KAYIT BULUNAMADI.",noUsers:"Kayıt bulunamadı.",usersError:"Hata oluştu.",
+    connectedPrefix:"BAĞLI: @",lastSeenPrefix:"Son: ",soldPiLabel:" Pİ ALINDI",
+    pendingSentBy:"Gönderen: @",pendingWallet:"Cüzdan: ",pendingWalletUnspecified:"belirtilmemiş",
+    updateBtn:"Güncelle",deleteBtn:"Sil",permaDeleteBtn:"🗑️ Kalıcı Sil",
+    permaDeleteConfirm:(n)=>`"${n}" domainini KALICI olarak silmek istediğinize emin misiniz? BU İŞLEM GERİ ALINAMAZ!`,
+    permaDeleteFail:"Kalıcı silme başarısız: ",permaDeleteSuccess:(n)=>`"${n}" domaini kalıcı olarak silindi.`,
+    shareText:(d)=>`🚀 Web3 Domain Gateway üzerinden ${d} domainini satın aldım! Test-Pİ ile siz de katılın.`,
+    badgeBronze:"Bronz",badgeSilver:"Gümüş",badgeGold:"Altın",badgeDiamond:"Elmas",
+    badgeInfoTitle:"Rozet Kazanma Koşulları",
+    badgeBronzeReq:"10+ Puan",badgeSilverReq:"50+ Puan",badgeGoldReq:"200+ Puan",badgeDiamondReq:"500+ Puan",
+    statusPending:"⏳ Onay Bekliyor",statusApproved:"✅ Onaylandı",statusRejected:"❌ Reddedildi",
+    domainOnSale:"Satışta",domainSold:"Satıldı",sellerLabel:"Satıcı:",descriptionEmpty:"Açıklama girilmemiş.",
+    imageUploading:"Görsel yükleniyor...",imageUploadFailed:"Görsel yüklenemedi.",
+    myActiveListings:"Satıştaki Domainleriniz",mySoldDomainsLabel:"Satılan Domainleriniz",
+    walletBalanceLabel:"Domain Satışı Geliriniz",
+    platformWalletTitle:"PLATFORM CÜZDANI (TOPLAM KAZANÇ)",
+    platformWalletNote:"Sahibi belirtilmemiş (sistem) domainlerin satışından elde edilen toplam gelir.",
+    adminOwnEarningsTitle:"KİŞİSEL SATICI KAZANCIM",
+    adminOwnEarningsNote:"İlan verip diğer kullanıcıların satın aldığı domainlerden cüzdanıma gelen tutar. Domain silinir veya tekrar satılık yapılırsa bu rakam otomatik güncellenir.",
+    totalVolumeAll:"Toplam Satış Hacmi",userOwnedVolume:"Kullanıcı Domain Geliri",
+    refreshBtn:"🔄 Yenile",
+    resetDangerTitle:"TEHLİKELİ BÖLGE — GERİ DÖNÜŞÜ YOK",
+    resetDangerNote:"global_sales, daily_stats tamamen silinir. Tüm kullanıcı puanları/rozetleri sıfırlanır. Marketin kendisi ve domain durumları etkilenmez. Bu işlem GERİ ALINAMAZ.",
+    resetBtn:"🗑️ Platform İstatistiklerini Sıfırla (Bugünden Başlat)",
+    resetConfirm:"DİKKAT: Bu işlem geri alınamaz!\n\nSilinecekler:\n• Tüm geçmiş satış kayıtları (global_sales)\n• Tüm günlük istatistikler (daily_stats)\n• Tüm kullanıcı puanları ve rozetleri\n\nMarket ve domain durumları ETKİLENMEZ.\n\nDevam etmek istediğinize emin misiniz?",
+    resetSuccess:"Sıfırlama tamamlandı. Platform istatistikleri bugünden itibaren başlıyor.",
+    resetFail:"Sıfırlama başarısız: ",
+    detailFieldDomain:"Domain Adı",detailFieldPrice:"Fiyat",detailFieldType:"Tür",
+    detailFieldSeller:"Gönderen Kullanıcı",detailFieldWallet:"Cüzdan Adresi",
+    detailFieldDate:"Gönderim Tarihi",detailFieldDesc:"Açıklama",
+    detailFieldBuyer:"Alıcı",
+    deletedDomainsTitle:"🗑️ Silinmiş Domainler",noDeletedDomains:"Silinmiş domain yok.",
+    restoreBtn:"↩ Geri Getir",restoreConfirm:(n)=>`"${n}" domainini geri getirmek istediğinize emin misiniz? Eski verileri (açıklama, görsel, satıcı bilgisi) korunarak yeniden satışa eklenecek.`,
+    restoreFail:"Geri getirme başarısız: ",restoreSuccess:(n)=>`"${n}" domaini geri getirildi.`,
+    deletedAtLabel:"Silinme tarihi:",loadingDomains:"Domainler yükleniyor...",filterSectionLabel:"🏷️ Kategoriye Göre Filtrele",
+    salesDetailTitle:"Satış Detayları",
+    dailyLogTitle:"Günlük Giriş Kaydı",
+    dailyLogCount:"kullanıcı giriş yapmış",
+    noDailyLog:"tarihinde kayıt bulunamadı."
+  },
+  en: {
+    menu:"Menu",account:"Account",preferences:"Preferences",connected:"Connected",
+    purchasedDomain:"OWNED DOMAINS",firstLogin:"FIRST LOGIN",
+    profileSettings:"Profile Settings",myPanel:"My Panel",sellMyDomain:"List My Domain for Sale",
+    languageOptions:"Language Options",logout:"Sign Out",connectWithPi:"<span style='display:inline-flex;align-items:center;gap:8px;'><span style='display:inline-block;animation:logo-pulse 1.5s ease-in-out infinite;font-size:1.1em;'>π</span> Connect with Pi</span>",
+    contactSection:"Contact",piNetworkUser:"Pi Network User",firstLoginDate:"First Login Date",
+    lastSeen:"Last Seen",purchasedDomainLabel:"Purchased Domains",totalPoints:"Total Points",close:"CLOSE",
+    listDomainTitle:"List Your Domain for Sale",
+    listDomainSubtitle:"Your domain will be listed after admin approval.",
+    domainName:"Domain Name",domainNamePlaceholder:"example.pi",priceLabel:"Price (PI)",
+    domainType:"Domain Type",descriptionLabel:"Description",
+    descriptionPlaceholder:"Short description about the domain...",
+    imageUploadLabel:"Domain Image",imageUploadHint:"📁 Click to select an image",
+    imageUploadFormats:"JPG, PNG, WEBP — Max 2MB",
+    walletLabel:"Your Pi Wallet Address",walletPlaceholder:"Your wallet address starting with G...",
+    walletNote:"ℹ️ Payment transfer will be activated in the future.",
+    cancel:"CANCEL",sendForApproval:"SEND FOR APPROVAL",
+    typeGeneral:"General",typeFinance:"Interest-Free Financial Services",typeBanking:"Banking Services",typeEcommerce:"E-Commerce",
+    typePersonal:"Personal Name",typeTechnology:"Technology",typeOther:"Other",
+    typeTourism:"Tourism & Travel",typeHealth:"Health",typeEducation:"Education",typeRealEstate:"Real Estate",
+    soldDomains:"Sold Domains",totalVolume:"Total Volume",activeUsers:"Active Users",
+    overview:"Overview",myPurchases:"My Purchases",myListings:"My Listings",myIncome:"My Income",
+    totalSpent:"Total Spent",myListingsCount:"My Listings",
+    myListingsTitle:"My Domain Listings",listNewDomain:"+ New Listing",
+    totalEarned:"TOTAL EARNINGS",earnedNote:"Total earnings from your listed and sold domains.",
+    info:"INFO",
+    testNetNote:"This app runs on Test-Pi for demo purposes. Purchased domains may reappear as <span class=\"btn-fake-buy\">BUY</span> in the market so other users can also test, and may be removed from your history.",
+    purchasedDomains:"Purchased Domains",noDomains:"No purchase history found yet.",
+    noListings:"You haven't listed any domains yet.",noSoldDomains:"None of your domains have been sold yet.",
+    noActiveListings:"You have no domains currently on sale.",
+    users:"Users",salesStats:"Sales Statistics",pendingApprovals:"Pending Approvals",
+    priceManagement:"Domain Management",addDomain:"Add Domain",earningsTab:"Earnings",
+    totalLoggedInUsers:"All-time logged-in users",uniqueUsers:"Total Unique Users",
+    dailyLoginLog:"Daily Login Log",dailySalesStats:"Daily Sales Statistics",
+    salesCount:"SALES COUNT",volumePi:"VOLUME (PI)",noPendingDomains:"No pending domain submissions.",
+    addDomainBtn:"Add Domain",newDomainPlaceholder:"domain-name.pi",
+    newDomainPricePlaceholder:"Price (PI)",newDomainImgPlaceholder:"Image path (optional)",
+    availableDomains:"Domains Available for Purchase",filterAll:"All",
+    joinWeb3:"Join the Exclusive Web3 World",secureConnection:"Secure Connection",
+    testNetBadgeBody:"Our system runs on <span class=\"blink-yellow\">TEST-PI</span> network.",
+    testNetWarning:"<span class=\"blink-yellow\">YOUR REAL PI BALANCE<br>WILL NOT BE USED!</span>",
+    connectPrompt:"To own a Web3 domain and establish a secure connection,",useButton:"👇 use the Connect with Pi button below.",
+    securePaymentTitle:"SECURE PAYMENT CONFIRMATION",
+    nextStepNote:"IN THE NEXT STEP, YOUR REAL WALLET WILL NOT OPEN —\n<span class=\"blink-yellow\" style=\"text-decoration:underline;font-size:1.1em;\">TEST PI WALLET</span> WILL OPEN.",
+    transactionType:"TRANSACTION TYPE:",testTransaction:"TEST TRANSACTION",
+    payment:"PAYMENT:",onlyTestPi:"ONLY TEST PI IS USED",
+    balance:"BALANCE:",realPiSafe:"YOUR REAL PI BALANCE IS NOT AFFECTED",
+    password:"PASSWORD:",passwordPrivate:"KNOWN ONLY BY YOU.",proceedToPayment:"PROCEED TO PAYMENT",
+    successTitle:"TRANSACTION SUCCESSFUL!",successBody:"YOUR PAYMENT WAS SUCCESSFUL AND YOUR PURCHASE IS COMPLETE. CONGRATULATIONS!",
+    shareOnTelegram:"🚀 SHARE ON TELEGRAM",awesome:"AWESOME!",
+    totalUniqueUsers:"TOTAL UNIQUE USERS",totalUniqueUsersDesc:"Total users who have logged in to date",
+    contactUs:"CONTACT US",community:"OUR COMMUNITY",telegramGroup:"OUR TELEGRAM GROUP",
+    privacyPolicy:"PRIVACY POLICY",termsOfUse:"TERMS OF USE",
+    notifications:"Notifications",markAllRead:"Mark All Read",noNotifications:"No notifications yet.",
+    verify:"🔍 VERIFY",verifyLocked:"🔒 VERIFY",buyNow:"BUY NOW",sold:"SOLD",
+    relistBtn:"↺ Relist for Sale",detailBtn:"📋 DETAIL",approveBtn:"✓ APPROVE",rejectBtn:"✕ REJECT",
+    sellRequestDetail:"Domain Details",
+    loginRequired:"You must connect with Pi first to use this feature.",
+    profileLoginRequired:"You must connect with Pi first to view your profile.",
+    sellLoginRequired:"You must connect with Pi first to list a domain.",
+    domainNamePriceRequired:"Please enter a domain name and a valid price.",
+    sellSubmitSuccess:"Your domain has been sent for admin approval!",
+    sellSubmitFail:"Submission failed: ",sellSubmitError:"An error occurred.",
+    approveConfirm:"Are you sure you want to approve this domain?",
+    approveFail:"Approval failed: ",approveError:"An error occurred.",
+    rejectConfirm:"Are you sure you want to reject this submission?",
+    rejectFail:"Rejection failed: ",
+    relistConfirm:(n)=>`Are you sure you want to relist "${n}" for sale?`,
+    relistFail:"Relist failed: ",relistError:"An error occurred.",
+    validPrice:"Please enter a valid price.",
+    priceUpdateFail:"Price update failed: ",priceUpdateError:"An error occurred.",
+    priceUpdateSuccess:(n,p)=>`"${n}" price updated to ${p} PI.`,
+    deleteConfirm:(n)=>`Are you sure you want to delete "${n}"? (Historical data is preserved and it can be re-added later.)`,
+    deleteFail:"Domain deletion failed: ",deleteError:"An error occurred.",
+    deleteSuccess:(n)=>`"${n}" has been deleted.`,
+    addDomainFail:"Failed to add domain: ",addDomainError:"An error occurred.",
+    addDomainSuccess:(n)=>`"${n}" domain added.`,
+    loginError:"LOGIN ERROR!",paymentError:"PAYMENT ERROR!",
+    noRecord:"NO RECORDS FOUND.",noUsers:"No records found.",usersError:"An error occurred.",
+    connectedPrefix:"CONNECTED: @",lastSeenPrefix:"Last: ",soldPiLabel:" PI PURCHASED",
+    pendingSentBy:"Submitted by: @",pendingWallet:"Wallet: ",pendingWalletUnspecified:"not specified",
+    updateBtn:"Update",deleteBtn:"Delete",permaDeleteBtn:"🗑️ Permanently Delete",
+    permaDeleteConfirm:(n)=>`Are you sure you want to PERMANENTLY delete "${n}"? THIS ACTION CANNOT BE UNDONE!`,
+    permaDeleteFail:"Permanent deletion failed: ",permaDeleteSuccess:(n)=>`"${n}" has been permanently deleted.`,
+    shareText:(d)=>`🚀 I just purchased the ${d} domain on Web3 Domain Gateway! Join with Test-PI.`,
+    badgeBronze:"Bronze",badgeSilver:"Silver",badgeGold:"Gold",badgeDiamond:"Diamond",
+    badgeInfoTitle:"Badge Requirements",
+    badgeBronzeReq:"10+ Points",badgeSilverReq:"50+ Points",badgeGoldReq:"200+ Points",badgeDiamondReq:"500+ Points",
+    statusPending:"⏳ Pending Approval",statusApproved:"✅ Approved",statusRejected:"❌ Rejected",
+    domainOnSale:"On Sale",domainSold:"Sold",sellerLabel:"Seller:",descriptionEmpty:"No description provided.",
+    imageUploading:"Uploading image...",imageUploadFailed:"Image upload failed.",
+    myActiveListings:"Domains Currently on Sale",mySoldDomainsLabel:"Your Sold Domains",
+    walletBalanceLabel:"Your Domain Sales Earnings",
+    platformWalletTitle:"PLATFORM WALLET (TOTAL EARNINGS)",
+    platformWalletNote:"Total income from sales of domains with no listed owner (system domains).",
+    adminOwnEarningsTitle:"MY PERSONAL SELLER EARNINGS",
+    adminOwnEarningsNote:"Amount in your wallet from domains you listed that other users purchased. Updates automatically if a domain is deleted or relisted.",
+    totalVolumeAll:"Total Sales Volume",userOwnedVolume:"User-Owned Domain Income",
+    refreshBtn:"🔄 Refresh",
+    resetDangerTitle:"DANGER ZONE — IRREVERSIBLE",
+    resetDangerNote:"global_sales and daily_stats will be permanently deleted. All user points/badges will be reset to zero. The market and domain statuses are NOT affected.",
+    resetBtn:"🗑️ Reset Platform Stats (Start Fresh from Today)",
+    resetConfirm:"WARNING: This action cannot be undone!\n\nWill be deleted:\n• All past sales records (global_sales)\n• All daily statistics (daily_stats)\n• All user points and badges\n\nMarket and domain statuses are NOT affected.\n\nAre you sure you want to proceed?",
+    resetSuccess:"Reset complete. Platform statistics now start from today.",
+    resetFail:"Reset failed: ",
+    detailFieldDomain:"Domain Name",detailFieldPrice:"Price",detailFieldType:"Type",
+    detailFieldSeller:"Submitted By",detailFieldWallet:"Wallet Address",
+    detailFieldDate:"Submission Date",detailFieldDesc:"Description",
+    detailFieldBuyer:"Buyer",
+    deletedDomainsTitle:"🗑️ Deleted Domains",noDeletedDomains:"No deleted domains.",
+    restoreBtn:"↩ Restore",restoreConfirm:(n)=>`Are you sure you want to restore "${n}"? Its previous data (description, image, seller info) will be preserved and it will be relisted for sale.`,
+    restoreFail:"Restore failed: ",restoreSuccess:(n)=>`"${n}" has been restored.`,
+    deletedAtLabel:"Deleted on:",loadingDomains:"Loading domains...",filterSectionLabel:"🏷️ Filter by Category",
+    salesDetailTitle:"Sales Details",
+    dailyLogTitle:"Daily Login Log",
+    dailyLogCount:"users logged in",
+    noDailyLog:"no records found on this date."
+  }
+};
+    let currentLang = localStorage.getItem('w3dg_lang') || 'tr';
+function t(key) { 
+    const val = i18n[currentLang]?.[key] ?? i18n['tr']?.[key]; 
+    return typeof val === 'function' ? val : (val ?? key); 
+}
+function applyTranslations() {
+    document.querySelectorAll('[data-i18n]').forEach(el => { 
+        const v = t(el.getAttribute('data-i18n')); 
+        if (typeof v === 'string') el.innerHTML = v; 
     });
-    if (!response.ok) return null;
-    const userDto = await response.json();
-    const username = userDto.username || null;
-    userCache.set(accessToken, { username, ts: Date.now() });
-    return username;
-  } catch (e) {
-    console.error("Pi /v2/me kullanıcı doğrulama hatası:", e);
-    return null;
-  }
-}
-
-// ─── Rate Limiter ─────────────────────────────────────────────────────────
-const rateLimitMap = new Map();
-function checkRateLimit(ip, action, maxReq = 10, windowMs = 60000) {
-  const key = `${ip}:${action}`;
-  const now = Date.now();
-  const entry = rateLimitMap.get(key) || { count: 0, start: now };
-  if (now - entry.start > windowMs) { entry.count = 1; entry.start = now; }
-  else entry.count++;
-  rateLimitMap.set(key, entry);
-  return entry.count <= maxReq;
-}
-
-// ─── Bildirim Yardımcıları ────────────────────────────────────────────────
-async function sendNotification(targetUsername, notification) {
-  if (!targetUsername) return;
-  try {
-    const rtdb = getRtdb();
-    const ref = rtdb.ref(`notifications/${targetUsername}`);
-    await ref.push({
-      ...notification,
-      read: false,
-      ts: Date.now()
+    document.querySelectorAll('[data-i18n-placeholder]').forEach(el => { 
+        const v = t(el.getAttribute('data-i18n-placeholder')); 
+        if (typeof v === 'string') el.placeholder = v; 
     });
-  } catch (e) {
-    console.error(`Bildirim gönderilemedi (hedef: @${targetUsername}, tip: ${notification?.type||'?'}):`, e.message || e);
-  }
-}
-
-async function sendNotificationToAdmin(notification) {
-  await sendNotification('doganay0808', notification);
-}
-
-// ─── Telegram Yardımcısı ────────────────────────────────────────────────────
-const TG_BOT_TOKEN = process.env.TG_BOT_TOKEN;
-const TG_CHAT_ID   = process.env.TG_CHAT_ID;
-const TG_GROUP_ID  = process.env.TG_GROUP_ID;
-
-async function sendTG(chatId, text) {
-  if (!TG_BOT_TOKEN || !chatId) return;
-  try {
-    await fetch(`https://api.telegram.org/bot${TG_BOT_TOKEN}/sendMessage`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ chat_id: chatId, text, parse_mode: 'Markdown' })
+    document.querySelectorAll('select option[data-i18n]').forEach(el => { 
+        const v = t(el.getAttribute('data-i18n')); 
+        if (typeof v === 'string') el.textContent = v; 
     });
-  } catch (e) { console.error("TG Error:", e); }
+    const pill = document.getElementById('current-lang-pill'); 
+    if (pill) pill.textContent = currentLang.toUpperCase();
+    document.getElementById('lang-btn-tr')?.classList.toggle('active', currentLang === 'tr');
+    document.getElementById('lang-btn-en')?.classList.toggle('active', currentLang === 'en');
+    document.documentElement.lang = currentLang;
+    if (isAuth && currentUser) {
+        const statusEl = document.getElementById('user-status');
+        if (statusEl) statusEl.innerHTML = '<span class="online-dot"></span>' + t('connectedPrefix') + currentUser;
+    }
+}
+window.setLang = function(lang) { 
+    currentLang = lang; 
+    localStorage.setItem('w3dg_lang', lang); 
+    applyTranslations(); 
+    debouncedRender(); 
+    document.getElementById('lang-picker').style.display = 'none'; 
+};
+
+// STATE
+let currentUser = null, piAccessToken = null, isAuth = false;
+let domainData = {}, pendingDomain = null, pendingPrice = 0;
+let adminLogUnsubscribe = null, adminStatsUnsubscribe = null, pendingDomainsUnsubscribe = null;
+let myOwnSellRequestsUnsubscribe = null;
+let notifPollInterval = null;
+let currentFilter = 'hepsi', userFirstSeen = null;
+let userProfile = { points: 0, badge: null };
+let userSellRequests = [], userSoldDomains = [], userActiveListings = [], userTotalSpent = 0, userTotalEarned = 0;
+let selectedImageBase64 = null, selectedImageMime = null, selectedImageName = null;
+let cachedNotifications = [];
+
+// ✅ BANKACILIK KATEGORİSİ EKLENDİ
+let domains = [
+    { name: 'test-domain', img: 'assets/test.jpeg', price: 10, type: 'genel', description: '' },
+    { name: 'etstur.pi', img: 'assets/etstur.jpeg', price: 250, type: 'turizm', description: '' },
+    { name: 'eminevim.pi', img: 'assets/eminevim.jpeg', price: 150, type: 'finans', description: '' },
+    { name: 'fuzulev.pi', img: 'assets/fuzulev.jpeg', price: 300, type: 'finans', description: '' },
+    { name: 'fibabank.pi', img: 'assets/fibabank.jpeg', price: 500, type: 'bankacilik', description: '' },
+    { name: 'sekerbank.pi', img: 'assets/sekerbank.jpeg', price: 600, type: 'bankacilik', description: '' },
+    { name: 'doganay.pi', img: 'assets/doganay.jpeg', price: 150, type: 'kisisel', description: '' }
+];
+
+const typeKeys = { 
+    genel: 'typeGeneral', 
+    finans: 'typeFinance', 
+    bankacilik: 'typeBanking',
+    eticaret: 'typeEcommerce', 
+    kisisel: 'typePersonal', 
+    teknoloji: 'typeTechnology',
+    turizm: 'typeTourism', 
+    saglik: 'typeHealth', 
+    egitim: 'typeEducation', 
+    gayrimenkul: 'typeRealEstate', 
+    diger: 'typeOther' 
+};
+function typeLabel(type) { return t(typeKeys[type] || 'typeGeneral'); }
+
+const badgeInfo = {
+    bronze: { label: () => t('badgeBronze'), color: '#cd7f32' },
+    silver: { label: () => t('badgeSilver'), color: '#94a3b8' },
+    gold: { label: () => t('badgeGold'), color: '#fbbf24' },
+    diamond: { label: () => t('badgeDiamond'), color: '#818cf8' }
+};
+function badgeHTML(badge) { 
+    if (!badge || !badgeInfo[badge]) return ''; 
+    return `<span style="color:${badgeInfo[badge].color};font-weight:900;">${badgeInfo[badge].label()}</span>`; 
 }
 
-// ─── CORS ─────────────────────────────────────────────────────────────────
-function setCors(req, res) {
-  const allowedOrigins = (process.env.ALLOWED_ORIGIN || '')
-    .split(',').map(o => o.trim()).filter(Boolean);
-  const requestOrigin = req.headers.origin;
-  if (allowedOrigins.length === 0) {
-    if (requestOrigin) res.setHeader('Access-Control-Allow-Origin', requestOrigin);
-  } else if (requestOrigin && allowedOrigins.includes(requestOrigin)) {
-    res.setHeader('Access-Control-Allow-Origin', requestOrigin);
-  }
-  res.setHeader('Vary', 'Origin');
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+// SIDE MENU
+window.toggleSideMenu = function() {
+    const menu = document.getElementById('side-menu'), overlay = document.getElementById('side-menu-overlay');
+    menu.classList.toggle('open'); 
+    overlay.classList.toggle('open');
+    if (menu.classList.contains('open')) {
+        updateSideMenuProfile();
+        applyTranslations();
+    }
+};
+function updateSideMenuProfile() {
+    const profileBox = document.getElementById('side-menu-profile-box');
+    const loginBtn = document.getElementById('side-menu-login-btn');
+    const logoutBtn = document.getElementById('side-menu-logout-btn');
+    const sellBtn = document.getElementById('side-menu-sell-btn');
+    const userPanelBtn = document.getElementById('side-menu-user-panel-btn');
+    if (isAuth && currentUser) {
+        profileBox.style.display = 'block'; 
+        loginBtn.style.display = 'none';
+        logoutBtn.style.display = 'flex'; 
+        sellBtn.style.display = 'flex'; 
+        userPanelBtn.style.display = 'flex';
+        document.getElementById('side-menu-username').innerText = '@' + currentUser;
+        document.getElementById('side-menu-avatar').innerText = currentUser.charAt(0).toUpperCase();
+        document.getElementById('side-menu-badge-display').innerHTML = badgeHTML(userProfile.badge);
+        const myCount = domains.filter(d => domainData[d.name]?.sold && domainData[d.name]?.buyer === currentUser).length;
+        document.getElementById('side-menu-domain-count').innerText = myCount;
+        const locale = currentLang === 'en' ? 'en-GB' : 'tr-TR';
+        document.getElementById('side-menu-first-seen').innerText = userFirstSeen && userFirstSeen < Date.now()
+            ? new Date(userFirstSeen).toLocaleDateString(locale, { day: '2-digit', month: '2-digit', year: 'numeric' }) : '—';
+    } else {
+        profileBox.style.display = 'none'; 
+        loginBtn.style.display = 'flex';
+        logoutBtn.style.display = 'none'; 
+        sellBtn.style.display = 'none'; 
+        userPanelBtn.style.display = 'none';
+    }
 }
+window.scrollToUserPanel = function() { 
+    toggleSideMenu(); 
+    setTimeout(() => document.getElementById('user-panel')?.scrollIntoView({ behavior: 'smooth' }), 350); 
+};
+window.toggleLangPicker = function() { 
+    const p = document.getElementById('lang-picker'); 
+    p.style.display = p.style.display === 'none' ? 'block' : 'none'; 
+};
 
-// ─── Puan Güncelle ─────────────────────────────────────────────────────────
-async function updateUserPoints(username, points, reason) {
-  try {
-    const db = getDb();
-    const ref = db.collection('user_profiles').doc(username);
-    await ref.set({
-      points: FieldValue.increment(points),
-      updatedAt: Date.now()
-    }, { merge: true });
-    const snap = await ref.get();
-    const totalPoints = Math.max(0, snap.data()?.points || 0);
-    let badge = null;
-    if (totalPoints >= 500) badge = 'diamond';
-    else if (totalPoints >= 200) badge = 'gold';
-    else if (totalPoints >= 50)  badge = 'silver';
-    else if (totalPoints >= 10)  badge = 'bronze';
-    await ref.set({ badge }, { merge: true });
-  } catch (e) { console.error("Puan güncelleme hatası:", e); }
-}
+// PROFILE MODAL
+window.openProfileModal = function() {
+    if (!isAuth) { alert(t('profileLoginRequired')); return; }
+    document.getElementById('profile-modal').style.display = 'flex';
+    document.getElementById('profile-modal-username').innerText = '@' + currentUser;
+    document.getElementById('profile-modal-avatar').innerText = currentUser.charAt(0).toUpperCase();
+    document.getElementById('profile-modal-badge').innerHTML = badgeHTML(userProfile.badge);
+    const locale = currentLang === 'en' ? 'en-GB' : 'tr-TR';
+    document.getElementById('profile-first-seen').innerText = userFirstSeen && userFirstSeen < Date.now()
+        ? new Date(userFirstSeen).toLocaleDateString(locale, { day: '2-digit', month: '2-digit', year: 'numeric' }) : '—';
+    document.getElementById('profile-last-seen').innerText = new Date().toLocaleDateString(locale, { day: '2-digit', month: '2-digit', year: 'numeric' }) + ' ' + new Date().toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' });
+    document.getElementById('profile-domain-count').innerText = domains.filter(d => domainData[d.name]?.sold && domainData[d.name]?.buyer === currentUser).length;
+    document.getElementById('profile-points').innerText = Math.round((userProfile.points || 0) * 100) / 100;
+    toggleSideMenu();
+};
 
-// ══════════════════════════════════════════════════════════════════════════
-//  ANA HANDLER
-// ══════════════════════════════════════════════════════════════════════════
-export default async function handler(req, res) {
-  setCors(req, res);
-  if (req.method === 'OPTIONS') return res.status(200).end();
-  if (req.method !== 'POST') return res.status(405).json({ error: "Sadece POST kabul edilir" });
-
-  const clientIp = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.socket?.remoteAddress || 'unknown';
-  const { action, accessToken } = req.body;
-
-  if (!action) return res.status(400).json({ error: "action zorunludur" });
-
-  // ── Görsel Yükleme ─────────────────────────────────────────────────────
-  if (action === 'upload_image') {
-    if (!checkRateLimit(clientIp, 'upload_image', 5, 60000))
-      return res.status(429).json({ error: "Çok fazla istek. Lütfen bekleyin." });
-
-    const realUsername = await getRealUsername(accessToken);
-    if (!realUsername) return res.status(403).json({ error: "Geçersiz oturum" });
-
-    const { imageBase64, mimeType, fileName } = req.body;
-    if (!imageBase64 || !mimeType) return res.status(400).json({ error: "Görsel verisi eksik" });
-
-    const allowed = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
-    if (!allowed.includes(mimeType)) return res.status(400).json({ error: "Desteklenmeyen görsel formatı" });
-
-    try {
-      const bucket = getBucket();
-      const ext = mimeType.split('/')[1];
-      const safeName = (fileName || 'domain').replace(/[^a-zA-Z0-9._-]/g, '_').substring(0, 50);
-      const filePath = `domain-images/${realUsername}/${Date.now()}_${safeName}.${ext}`;
-      const file = bucket.file(filePath);
-      const buffer = Buffer.from(imageBase64, 'base64');
-
-      if (buffer.length > 2 * 1024 * 1024)
-        return res.status(400).json({ error: "Görsel 2MB'dan büyük olamaz" });
-
-      await file.save(buffer, {
-        metadata: { contentType: mimeType },
-        public: true
-      });
-      const publicUrl = `https://storage.googleapis.com/${bucket.name}/${filePath}`;
-      return res.status(200).json({ success: true, url: publicUrl });
-    } catch (e) {
-      console.error("Görsel yükleme hatası:", e);
-      return res.status(500).json({ error: e.message });
-    }
-  }
-
-  // ── Bildirimleri Getir ───────────────────────────────────────────────────
-  if (action === 'get_notifications') {
-    const realUsername = await getRealUsername(accessToken);
-    if (!realUsername) return res.status(403).json({ error: "Geçersiz oturum" });
-    try {
-      const rtdb = getRtdb();
-      const snap = await rtdb.ref(`notifications/${realUsername}`).once('value');
-      const data = snap.val() || {};
-      const notifications = Object.entries(data)
-        .map(([id, v]) => ({ id, ...v }))
-        .sort((a, b) => (b.ts || 0) - (a.ts || 0))
-        .slice(0, 100);
-      return res.status(200).json({ success: true, notifications });
-    } catch (e) {
-      console.error("Bildirim getirme hatası:", e);
-      return res.status(500).json({ error: e.message });
-    }
-  }
-
-  // ── Bildirimleri Okundu Yap ────────────────────────────────────────────
-  if (action === 'mark_notifications_read') {
-    const realUsername = await getRealUsername(accessToken);
-    if (!realUsername) return res.status(403).json({ error: "Geçersiz oturum" });
-    try {
-      const rtdb = getRtdb();
-      const ref = rtdb.ref(`notifications/${realUsername}`);
-      const snap = await ref.once('value');
-      const updates = {};
-      snap.forEach(child => { if (!child.val().read) updates[`${child.key}/read`] = true; });
-      if (Object.keys(updates).length > 0) await ref.update(updates);
-      return res.status(200).json({ success: true });
-    } catch (e) {
-      return res.status(500).json({ error: e.message });
-    }
-  }
-
-  // ── Bildirim Sil ──────────────────────────────────────────────────────
-  if (action === 'delete_notification') {
-    const { notifId } = req.body;
-    const realUsername = await getRealUsername(accessToken);
-    if (!realUsername) return res.status(403).json({ error: "Geçersiz oturum" });
-    try {
-      const rtdb = getRtdb();
-      await rtdb.ref(`notifications/${realUsername}/${notifId}`).remove();
-      return res.status(200).json({ success: true });
-    } catch (e) {
-      return res.status(500).json({ error: e.message });
-    }
-  }
-
-  // ── Giriş Bildirimi ────────────────────────────────────────────────────
-  if (action === 'log_login') {
-    const realUsername = await getRealUsername(accessToken);
-    if (!realUsername) return res.status(403).json({ error: "Geçersiz oturum" });
-    try {
-      const db = getDb();
-      const today = new Date().toISOString().split('T')[0];
-      const userDocRef = db.collection('daily_users').doc(today);
-      const userSnap = await userDocRef.get();
-      const users = userSnap.exists ? (userSnap.data().users || {}) : {};
-      const isFirstLoginToday = !users[realUsername];
-
-      users[realUsername] = Date.now();
-      await userDocRef.set({ users }, { merge: true });
-
-      const allDaily = await db.collection('daily_users').get();
-      let earliest = Date.now();
-      let isBrandNewUser = true;
-      allDaily.forEach(d => {
-        const u = d.data().users || {};
-        if (u[realUsername]) {
-          isBrandNewUser = false;
-          if (u[realUsername] < earliest) earliest = u[realUsername];
-        }
-      });
-
-      if (realUsername !== 'doganay0808') {
-        await sendNotificationToAdmin({
-          type: isBrandNewUser ? 'new_user_login' : 'user_login',
-          title: isBrandNewUser ? '🆕 Yeni Kullanıcı Katıldı' : '👤 Kullanıcı Girişi',
-          body: `@${realUsername} ${isBrandNewUser ? 'ilk kez giriş yaptı.' : 'giriş yaptı.'}`,
-          username: realUsername
-        });
-      }
-
-      return res.status(200).json({ success: true, firstSeen: earliest, isFirstLoginToday });
-    } catch (e) {
-      console.error("Login log hatası:", e);
-      return res.status(500).json({ error: e.message });
-    }
-  }
-
-  // ── Logout ── ✅ YENİ EKLENDİ ──────────────────────────────────────────
-  if (action === 'logout') {
-    const realUsername = await getRealUsername(accessToken);
-    if (!realUsername) return res.status(403).json({ error: "Geçersiz oturum" });
-    try {
-      // Kullanıcı cache'inden temizle
-      userCache.delete(accessToken);
-      // Active users'tan sil
-      const db = getDb();
-      await db.collection('active_users').doc(realUsername).delete().catch(() => {});
-      console.log(`Kullanıcı çıkış yaptı: @${realUsername}`);
-      return res.status(200).json({ success: true, message: "Çıkış başarılı" });
-    } catch (e) {
-      console.error("Logout hatası:", e);
-      return res.status(500).json({ error: e.message });
-    }
-  }
-
-  // ── Relist ────────────────────────────────────────────────────────────
-  if (action === 'relist') {
-    const { domainName } = req.body;
-    const isAdmin = await verifyAdmin(accessToken);
-    if (!isAdmin) return res.status(403).json({ error: "Yetki yok" });
-    if (!domainName) return res.status(400).json({ error: "Geçersiz domain adı" });
-
-    try {
-      const db = getDb();
-      const domainRef = db.collection('domains').doc(domainName);
-      const domainSnap = await domainRef.get();
-      if (!domainSnap.exists || domainSnap.data().sold !== true)
-        return res.status(400).json({ error: "Bu domain zaten satılık durumda" });
-
-      const soldData = domainSnap.data();
-      const soldPrice = Number(soldData.price || 0);
-      const soldAt = soldData.at;
-      const prevBuyer = soldData.buyer;
-
-      if (prevBuyer) {
+// LOGOUT - ✅ BACKEND PROXY'YE TAŞINDI
+window.handleLogout = async function() {
+    // ✅ Önce backend'e logout bildir
+    if (piAccessToken) {
         try {
-          const matchSnap = await db.collection('global_sales')
-            .where('user', '==', prevBuyer)
-            .where('domain', '==', domainName)
-            .where('at', '==', soldAt)
-            .get();
-          if (!matchSnap.empty) {
-            const batch = db.batch();
-            matchSnap.forEach(doc => batch.delete(doc.ref));
-            await batch.commit();
-          }
-          await updateUserPoints(prevBuyer, -soldPrice, 'domain_relisted_point_reversal');
-        } catch (reversalErr) {
-          console.error("Relist sırasında harcama/puan geri alma hatası:", reversalErr);
+            await fetch('/api/approve', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'logout', accessToken: piAccessToken })
+            });
+        } catch (e) {
+            console.error("Logout API hatası:", e);
         }
-      }
+    }
+    
+    stopNotifPolling();
+    stopListeningToMyOwnSellRequests();
+    currentUser = null; 
+    piAccessToken = null; 
+    isAuth = false; 
+    userFirstSeen = null;
+    userProfile = { points: 0, badge: null }; 
+    userSellRequests = []; 
+    userSoldDomains = []; 
+    userActiveListings = []; 
+    userTotalSpent = 0; 
+    userTotalEarned = 0;
+    cachedNotifications = [];
+    document.getElementById("user-status-box").style.display = "none";
+    document.getElementById("user-panel").style.display = "none";
+    document.getElementById("admin-panel").style.display = "none";
+    document.getElementById("notif-btn").style.display = "none";
+    toggleSideMenu(); 
+    debouncedRender();
+};
 
-      await domainRef.set({ sold: false, txid: null, buyer: null, at: null }, { merge: true });
-
-      if (soldAt) {
-        const soldDate = new Date(soldAt).toISOString().split('T')[0];
-        const today = new Date().toISOString().split('T')[0];
-        if (soldDate === today) {
-          await db.collection('daily_stats').doc(today).set({
-            count: FieldValue.increment(-1),
-            volume: FieldValue.increment(-soldPrice)
-          }, { merge: true });
+// TABS
+window.switchAdminTab = function(tabId) {
+    document.querySelectorAll('.admin-tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === tabId));
+    document.querySelectorAll('.admin-tab-panel').forEach(p => p.classList.toggle('active', p.id === tabId));
+    if (tabId === 'tab-earnings') loadAdminEarnings();
+    if (tabId === 'tab-stats') { 
+        loadSalesDetails(); 
+        const sdDate = document.getElementById('sales-detail-date-input'); 
+        if (sdDate && !sdDate.value) sdDate.value = new Date().toISOString().split('T')[0]; 
+    }
+    if (tabId === 'tab-users') {
+        // Kullanıcılar tab'ına geçince log'ları yenile
+        const dateInput = document.getElementById('admin-date-input');
+        if (dateInput && dateInput.value) {
+            console.log("[switchAdminTab] tab-users yenileniyor, tarih:", dateInput.value);
+            listenToLogs(dateInput.value);
         }
-      }
+    }
+};
+window.switchUserTab = function(tabId) {
+    document.querySelectorAll('.user-tab-btn').forEach(b => b.classList.toggle('active', b.dataset.utab === tabId));
+    document.querySelectorAll('.user-tab-panel').forEach(p => p.classList.toggle('active', p.id === tabId));
+};
 
-      if (prevBuyer) {
-        await sendNotification(prevBuyer, {
-          type: 'domain_relisted',
-          title: 'Domain Tekrar Satışa Çıkarıldı',
-          body: `"${domainName}" domaini admin tarafından tekrar satışa çıkarıldı.`,
-          domainName
+// FILTER
+window.setDomainFilter = function(type) {
+    currentFilter = type;
+    const sel = document.getElementById('category-filter-select');
+    if (sel && sel.value !== type) sel.value = type;
+    debouncedRender();
+};
+
+// GÖRSEL SEÇME
+window.handleImageSelect = function(event) {
+    const file = event.target.files[0]; 
+    if (!file) return;
+    if (file.size > 2 * 1024 * 1024) { alert(t('imageUploadFailed')); return; }
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        const result = e.target.result;
+        selectedImageBase64 = result.split(',')[1]; 
+        selectedImageMime = file.type; 
+        selectedImageName = file.name;
+        const preview = document.getElementById('sell-img-preview');
+        preview.src = result; 
+        preview.style.display = 'block';
+    };
+    reader.readAsDataURL(file);
+};
+
+// SATIŞ ÖNERİSİ
+window.openSellDomainModal = function() {
+    if (!isAuth) { alert(t('sellLoginRequired')); return; }
+    document.getElementById('sell-domain-modal').style.display = 'flex';
+    if (document.getElementById('side-menu').classList.contains('open')) toggleSideMenu();
+};
+window.handleSubmitSellRequest = async function() {
+    const name = document.getElementById('sell-domain-name').value.trim();
+    const price = Number(document.getElementById('sell-domain-price').value);
+    const type = document.getElementById('sell-domain-type').value;
+    const desc = document.getElementById('sell-domain-desc').value.trim();
+    const wallet = document.getElementById('sell-domain-wallet').value.trim();
+    if (!name || !price || price <= 0) { alert(t('domainNamePriceRequired')); return; }
+    let imgUrl = 'assets/default.jpeg';
+    if (selectedImageBase64) {
+        const hint = document.getElementById('img-upload-hint');
+        if (hint) hint.textContent = t('imageUploading');
+        try {
+            const r = await fetch('/api/approve', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'upload_image', imageBase64: selectedImageBase64, mimeType: selectedImageMime, fileName: selectedImageName, accessToken: piAccessToken })
+            });
+            const result = await r.json();
+            if (result.success && result.url) imgUrl = result.url;
+            else { alert(t('imageUploadFailed')); if (hint) hint.textContent = t('imageUploadHint'); return; }
+        } catch (e) { alert(t('imageUploadFailed')); return; }
+    }
+    try {
+        const r = await fetch('/api/approve', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'submit_sell_request', domainName: name, price, domainType: type, imgPath: imgUrl, sellerWallet: wallet, description: desc, accessToken: piAccessToken })
         });
-      }
+        const result = await r.json();
+        if (!r.ok || !result.success) { alert(t('sellSubmitFail') + (result.error || '')); return; }
+        alert(t('sellSubmitSuccess'));
+        document.getElementById('sell-domain-modal').style.display = 'none';
+        ['sell-domain-name', 'sell-domain-price', 'sell-domain-desc', 'sell-domain-wallet'].forEach(id => document.getElementById(id).value = '');
+        selectedImageBase64 = null; 
+        selectedImageMime = null; 
+        selectedImageName = null;
+        document.getElementById('sell-img-preview').style.display = 'none';
+        await loadUserProfile(); 
+        debouncedRender();
+    } catch (e) { alert(t('sellSubmitError')); }
+};
 
-      console.log(`Domain tekrar satılık yapıldı: ${domainName}`);
-      return res.status(200).json({ success: true });
-    } catch (e) {
-      console.error("Relist hatası:", e);
-      return res.status(500).json({ error: e.message });
-    }
-  }
-
-  // ── Fiyat Güncelle ────────────────────────────────────────────────────
-  if (action === 'update_price') {
-    const { domainName: dName, newPrice } = req.body;
-    const isAdmin = await verifyAdmin(accessToken);
-    if (!isAdmin) return res.status(403).json({ error: "Yetki yok" });
-    const priceNum = Number(newPrice);
-    if (!dName || !priceNum || priceNum <= 0) return res.status(400).json({ error: "Geçersiz parametre" });
+// BİLDİRİMLER
+async function fetchNotifications(silent) {
+    if (!piAccessToken) return;
     try {
-      const db = getDb();
-      const domainRef = db.collection('domains').doc(dName);
-      const domainSnap = await domainRef.get();
-      if (!domainSnap.exists) return res.status(404).json({ error: "Domain bulunamadı" });
-      if (domainSnap.data().sold === true) return res.status(400).json({ error: "Satılmış domain fiyatı değiştirilemez" });
-      await domainRef.set({ price: priceNum }, { merge: true });
-      return res.status(200).json({ success: true });
-    } catch (e) {
-      return res.status(500).json({ error: e.message });
-    }
-  }
-
-  // ── Domain Ekle ───────────────────────────────────────────────────────
-  if (action === 'add_domain') {
-    const { domainName: newName, newPrice: newP, imgPath, domainType, description } = req.body;
-    const isAdmin = await verifyAdmin(accessToken);
-    if (!isAdmin) return res.status(403).json({ error: "Yetki yok" });
-    const priceNum = Number(newP);
-    if (!newName || !priceNum || priceNum <= 0) return res.status(400).json({ error: "Geçersiz parametre" });
-    try {
-      const db = getDb();
-      const domainRef = db.collection('domains').doc(newName);
-      const existing = await domainRef.get();
-      if (existing.exists) {
-        return res.status(400).json({
-          error: existing.data().deleted === true
-            ? "Bu domain adı daha önce kullanılmış ve silinmiş. Yeniden eklemek için 'restore_domain' kullanın."
-            : "Bu domain zaten kayıtlı"
+        const r = await fetch('/api/approve', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'get_notifications', accessToken: piAccessToken })
         });
-      }
-      await domainRef.set({
-        sold: false, price: priceNum,
-        img: imgPath || 'assets/default.jpeg',
-        type: domainType || 'genel',
-        description: description || '',
-        txid: null, buyer: null, at: null,
-        deleted: false, deletedAt: null,
-        createdAt: Date.now()
-      });
-      return res.status(200).json({ success: true });
-    } catch (e) {
-      return res.status(500).json({ error: e.message });
+        const result = await r.json();
+        if (result.success) {
+            cachedNotifications = result.notifications || [];
+            renderNotifBadgeAndList();
+        } else {
+            console.error("Bildirimler alınamadı (backend hatası):", result.error || r.status);
+        }
+    } catch (e) { console.error("Bildirimler alınamadı (network hatası):", e); }
+}
+function renderNotifBadgeAndList() {
+    const unread = cachedNotifications.filter(n => !n.read).length;
+    const badge = document.getElementById('notif-badge');
+    const btn = document.getElementById('notif-btn');
+    if (badge) {
+        if (unread > 0) { badge.style.display = 'block'; badge.textContent = unread > 99 ? '99+' : unread; }
+        else { badge.style.display = 'none'; }
     }
-  }
-
-  // ── Domain Sil (SOFT DELETE) ──────────────────────────────────────────
-  if (action === 'delete_domain') {
-    const { domainName: delName } = req.body;
-    const isAdmin = await verifyAdmin(accessToken);
-    if (!isAdmin) return res.status(403).json({ error: "Yetki yok" });
-    if (!delName) return res.status(400).json({ error: "Geçersiz domain adı" });
+    renderNotifList(cachedNotifications);
+}
+function renderNotifList(notifs) {
+    const list = document.getElementById('notif-list'); 
+    if (!list) return;
+    const locale = currentLang === 'en' ? 'en-GB' : 'tr-TR';
+    list.innerHTML = notifs.length === 0
+        ? `<p style="font-size:0.8em;opacity:0.5;text-align:center;">${t('noNotifications')}</p>`
+        : notifs.map(n => `<div class="notif-item ${n.read ? '' : 'unread'}"><div class="notif-dot ${n.read ? 'read' : ''}"></div><div style="flex:1;"><div style="font-size:0.82em;font-weight:800;color:#f1f5f9;margin-bottom:2px;">${n.title || ''}</div><div style="font-size:0.72em;color:#94a3b8;line-height:1.4;">${n.body || ''}</div><div style="font-size:0.62em;color:#475569;margin-top:4px;">${new Date(n.ts).toLocaleString(locale, { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}</div></div></div>`).join('');
+}
+function startNotifPolling() {
+    stopNotifPolling();
+    fetchNotifications();
+    notifPollInterval = setInterval(() => fetchNotifications(true), 15000);
+}
+function stopNotifPolling() {
+    if (notifPollInterval) { clearInterval(notifPollInterval); notifPollInterval = null; }
+}
+window.openNotifModal = function() {
+    document.getElementById('notif-modal').style.display = 'flex';
+    fetchNotifications();
+};
+window.markAllNotifRead = async function() {
+    if (!piAccessToken) return;
     try {
-      const db = getDb();
-      const domainRef = db.collection('domains').doc(delName);
-      const domainSnap = await domainRef.get();
-      if (!domainSnap.exists) return res.status(404).json({ error: "Domain bulunamadı" });
-      if (domainSnap.data().sold === true) return res.status(400).json({ error: "Satılmış domain silinemez" });
+        await fetch('/api/approve', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'mark_notifications_read', accessToken: piAccessToken }) });
+        cachedNotifications = cachedNotifications.map(n => ({ ...n, read: true }));
+        renderNotifBadgeAndList();
+    } catch (e) { }
+};
 
-      const domainDataForDelete = domainSnap.data();
-      if (domainDataForDelete.sellerUsername) {
-        await updateUserPoints(domainDataForDelete.sellerUsername, -20, 'domain_deleted_point_reversal');
-      }
+// DOMAIN DETAY
+window.openDomainDetail = function(domainName) {
+    const domain = domains.find(d => d.name === domainName); 
+    if (!domain) return;
+    const data = domainData[domainName] || { sold: false, price: domain.price };
+    document.getElementById('detail-modal-img').src = data.img || domain.img;
+    document.getElementById('detail-modal-name').textContent = domain.name;
+    document.getElementById('detail-modal-type').textContent = typeLabel(domain.type);
+    document.getElementById('detail-modal-price').textContent = `${data.price} Pi`;
+    const statusEl = document.getElementById('detail-modal-status');
+    if (data.sold) { statusEl.textContent = t('domainSold'); statusEl.style.background = 'rgba(239,68,68,0.15)'; statusEl.style.color = '#ef4444'; }
+    else { statusEl.textContent = t('domainOnSale'); statusEl.style.background = 'rgba(16,185,129,0.15)'; statusEl.style.color = '#10b981'; }
+    document.getElementById('detail-modal-desc').textContent = data.description || domain.description || t('descriptionEmpty');
+    document.getElementById('detail-modal-seller').textContent = data.sellerUsername ? `${t('sellerLabel')} @${data.sellerUsername}` : '';
+    const actionEl = document.getElementById('detail-modal-action');
+    if (!data.sold && isAuth) {
+        actionEl.innerHTML = `<button class="btn-buy" style="width:100%;padding:10px;font-size:0.9em;" onclick="document.getElementById('domain-detail-modal').style.display='none';pendingDomain='${domainName}';pendingPrice=${data.price};document.getElementById('pre-buy-modal').style.display='flex';">${t('buyNow')}</button>`;
+    } else { actionEl.innerHTML = ''; }
+    document.getElementById('domain-detail-modal').style.display = 'flex';
+};
 
-      await domainRef.set({
-        deleted: true,
-        deletedAt: Date.now()
-      }, { merge: true });
-
-      console.log(`Domain soft-delete edildi: ${delName}`);
-      return res.status(200).json({ success: true });
-    } catch (e) {
-      return res.status(500).json({ error: e.message });
+// SATIŞ ÖNERİSİ DETAY
+window.openSellRequestDetail = function(requestId, dataStr) {
+    let p; 
+    try { p = JSON.parse(dataStr); } catch (e) { return; }
+    const locale = currentLang === 'en' ? 'en-GB' : 'tr-TR';
+    const rows = [
+        { label: t('detailFieldDomain'), value: p.domainName, icon: '🌐' },
+        { label: t('detailFieldPrice'), value: `${p.price} Pi`, icon: '💰' },
+        { label: t('detailFieldType'), value: typeLabel(p.domainType), icon: '🏷️' },
+        { label: t('detailFieldSeller'), value: '@' + p.submittedBy, icon: '👤' },
+        { label: t('detailFieldWallet'), value: p.sellerWallet || t('pendingWalletUnspecified'), icon: '💳' },
+        { label: t('detailFieldDate'), value: p.submittedAt ? new Date(p.submittedAt).toLocaleDateString(locale) : '-', icon: '📅' },
+    ];
+    let html = `<img src="${p.img || 'assets/default.jpeg'}" style="width:100%;max-height:110px;object-fit:contain;border-radius:8px;margin-bottom:12px;background:#334155;">`;
+    html += `<div style="display:flex;flex-direction:column;gap:10px;">`;
+    rows.forEach(row => {
+        html += `<div style="background:#0f172a;border-radius:8px;padding:8px 10px;">
+            <div style="font-size:0.65em;color:#94a3b8;font-weight:800;text-transform:uppercase;margin-bottom:3px;">${row.icon} ${row.label}</div>
+            <div style="font-size:0.88em;color:#f1f5f9;font-weight:700;word-break:break-all;">${row.value}</div>
+        </div>`;
+    });
+    if (p.description) {
+        html += `<div style="background:#0f172a;border-radius:8px;padding:8px 10px;">
+            <div style="font-size:0.65em;color:#94a3b8;font-weight:800;text-transform:uppercase;margin-bottom:3px;">📝 ${t('detailFieldDesc')}</div>
+            <div style="font-size:0.82em;color:#cbd5e1;line-height:1.5;">${p.description}</div>
+        </div>`;
     }
-  }
+    html += `</div>`;
+    html += `<div style="display:flex;gap:8px;margin-top:14px;">
+        <button onclick="handleApproveSellRequest('${requestId}');document.getElementById('sell-request-detail-modal').style.display='none';" style="flex:1;background:#10b981;color:#fff;border:none;padding:9px;border-radius:8px;font-size:0.8em;font-weight:800;cursor:pointer;">${t('approveBtn')}</button>
+        <button onclick="handleRejectSellRequest('${requestId}');document.getElementById('sell-request-detail-modal').style.display='none';" style="flex:1;background:#ef4444;color:#fff;border:none;padding:9px;border-radius:8px;font-size:0.8em;font-weight:800;cursor:pointer;">${t('rejectBtn')}</button>
+    </div>`;
+    document.getElementById('sell-request-detail-content').innerHTML = html;
+    document.getElementById('sell-request-detail-modal').style.display = 'flex';
+};
 
-  // ── Domain Kalıcı Sil (PERMA DELETE) ── ✅ YENİ EKLENDİ ────────────────
-  if (action === 'perma_delete_domain') {
-    const { domainName: permaDelName } = req.body;
-    const isAdmin = await verifyAdmin(accessToken);
-    if (!isAdmin) return res.status(403).json({ error: "Yetki yok" });
-    if (!permaDelName) return res.status(400).json({ error: "Geçersiz domain adı" });
+// PENDING DOMAINS
+function renderPendingDomains(pendingList) {
+    const container = document.getElementById('pending-domains-list');
+    const badge = document.getElementById('pending-count-badge');
+    if (!container) return;
+    if (!pendingList?.length) { container.innerHTML = `<p style="font-size:0.75em;opacity:0.5;text-align:center;">${t('noPendingDomains')}</p>`; if (badge) badge.style.display = 'none'; return; }
+    if (badge) { badge.style.display = 'inline-block'; badge.innerText = pendingList.length; }
+    container.innerHTML = pendingList.map(p => {
+        const safe = JSON.stringify(p).replace(/\\/g, '\\\\').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+        return `<div class="pending-domain-item">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px;">
+                <div><b style="color:#fbbf24;">${p.domainName}</b> <span class="domain-type-tag">${typeLabel(p.domainType)}</span></div>
+                <span style="color:#fbbf24;font-weight:900;font-size:0.9em;">${p.price} PI</span>
+            </div>
+            <div style="font-size:0.72em;color:#94a3b8;margin-bottom:8px;">
+                👤 ${t('pendingSentBy')}${p.submittedBy}<br>
+                💳 ${t('pendingWallet')}${p.sellerWallet ? p.sellerWallet.substring(0, 14) + '...' : t('pendingWalletUnspecified')}
+            </div>
+            <div style="display:flex;gap:6px;">
+                <button onclick="openSellRequestDetail('${p.id}', '${safe}')" style="flex:1;background:#6366f1;color:#fff;border:none;padding:7px;border-radius:8px;font-size:0.72em;font-weight:800;cursor:pointer;">${t('detailBtn')}</button>
+                <button onclick="handleApproveSellRequest('${p.id}')" style="flex:1;background:#10b981;color:#fff;border:none;padding:7px;border-radius:8px;font-size:0.72em;font-weight:800;cursor:pointer;">${t('approveBtn')}</button>
+                <button onclick="handleRejectSellRequest('${p.id}')" style="flex:1;background:#ef4444;color:#fff;border:none;padding:7px;border-radius:8px;font-size:0.72em;font-weight:800;cursor:pointer;">${t('rejectBtn')}</button>
+            </div>
+        </div>`;
+    }).join('');
+}
+window.handleApproveSellRequest = async function(requestId) {
+    if (!confirm(t('approveConfirm'))) return;
+    const r = await fetch('/api/approve', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'approve_sell_request', requestId, accessToken: piAccessToken }) });
+    const result = await r.json(); 
+    if (!r.ok || !result.success) alert(t('approveFail') + (result.error || ''));
+};
+window.handleRejectSellRequest = async function(requestId) {
+    if (!confirm(t('rejectConfirm'))) return;
+    const r = await fetch('/api/approve', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'reject_sell_request', requestId, accessToken: piAccessToken }) });
+    const result = await r.json(); 
+    if (!r.ok || !result.success) alert(t('rejectFail') + (result.error || ''));
+};
+
+// ADMIN PRICE LIST - ✅ KALICI SİL BUTONU EKLENDİ
+function renderAdminPriceList() {
+    const container = document.getElementById("admin-price-list"); 
+    if (!container) return;
+    const activeDomains = domains.filter(d => !domainData[d.name]?.deleted);
+    container.innerHTML = activeDomains.map(d => {
+        const data = domainData[d.name] || { price: d.price, sold: false };
+        const isSold = data.sold === true;
+        return `<div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;background:#0f172a;padding:6px 8px;border-radius:8px;">
+            <span style="flex:1;font-size:0.8em;font-weight:bold;color:#e2e8f0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${d.name}${isSold ? ' 🔒' : ''}</span>
+            <input type="number" id="price-input-${d.name}" value="${data.price}" ${isSold ? 'disabled' : ''} style="width:70px;background:#1e293b;border:1px solid #6366f1;color:#fff;border-radius:6px;padding:4px 6px;font-size:0.8em;">
+            <button onclick="handlePriceUpdate('${d.name}')" ${isSold ? 'disabled' : ''} style="background:#6366f1;color:#fff;border:none;padding:5px 8px;border-radius:6px;font-size:0.7em;font-weight:bold;cursor:pointer;opacity:${isSold ? '0.4' : '1'};">${t('updateBtn')}</button>
+            ${!isSold ? `<button onclick="handleDeleteDomain('${d.name}')" style="background:#ef4444;color:#fff;border:none;padding:5px 8px;border-radius:6px;font-size:0.7em;font-weight:bold;cursor:pointer;">${t('deleteBtn')}</button>` : ''}
+        </div>`;
+    }).join('');
+
+    const deletedDomains = domains.filter(d => domainData[d.name]?.deleted === true);
+    const deletedSection = document.getElementById('admin-deleted-section');
+    const deletedList = document.getElementById('admin-deleted-list');
+    if (deletedSection && deletedList) {
+        if (deletedDomains.length === 0) {
+            deletedSection.style.display = 'none';
+        } else {
+            deletedSection.style.display = 'block';
+            const locale = currentLang === 'en' ? 'en-GB' : 'tr-TR';
+            deletedList.innerHTML = deletedDomains.map(d => {
+                const data = domainData[d.name] || {};
+                const delDate = data.deletedAt ? new Date(data.deletedAt).toLocaleDateString(locale, { day: '2-digit', month: '2-digit', year: 'numeric' }) : '-';
+                return `<div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;background:#1c1917;border:1px solid #7f1d1d;padding:6px 8px;border-radius:8px;">
+                    <div style="flex:1;overflow:hidden;">
+                        <div style="font-size:0.8em;font-weight:bold;color:#fca5a5;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${d.name}</div>
+                        <div style="font-size:0.62em;color:#94a3b8;">${t('deletedAtLabel')} ${delDate}</div>
+                    </div>
+                    <button onclick="handleRestoreDomain('${d.name}')" style="background:#10b981;color:#fff;border:none;padding:5px 8px;border-radius:6px;font-size:0.7em;font-weight:bold;cursor:pointer;">${t('restoreBtn')}</button>
+                    <button onclick="handlePermaDeleteDomain('${d.name}')" class="btn-perma-delete">${t('permaDeleteBtn')}</button>
+                </div>`;
+            }).join('');
+        }
+    }
+}
+
+// ✅ KALICI SİL FONKSİYONU
+window.handlePermaDeleteDomain = async function(domainName) {
+    if (!confirm(t('permaDeleteConfirm')(domainName))) return;
+    const r = await fetch('/api/approve', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'perma_delete_domain', domainName, accessToken: piAccessToken })
+    });
+    const result = await r.json();
+    if (!r.ok || !result.success) alert(t('permaDeleteFail') + (result.error || ''));
+    else {
+        alert(t('permaDeleteSuccess')(domainName));
+        // Local'den de kaldır
+        domains = domains.filter(d => d.name !== domainName);
+        delete domainData[domainName];
+        debouncedRender();
+    }
+};
+
+window.handleRestoreDomain = async function(domainName) {
+    if (!confirm(t('restoreConfirm')(domainName))) return;
+    const r = await fetch('/api/approve', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'restore_domain', domainName, accessToken: piAccessToken }) });
+    const result = await r.json();
+    if (!r.ok || !result.success) alert(t('restoreFail') + (result.error || ''));
+    else alert(t('restoreSuccess')(domainName));
+};
+window.handlePriceUpdate = async function(domainName) {
+    const newPrice = Number(document.getElementById(`price-input-${domainName}`)?.value);
+    if (!newPrice || newPrice <= 0) { alert(t('validPrice')); return; }
+    const r = await fetch('/api/approve', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'update_price', domainName, newPrice, accessToken: piAccessToken }) });
+    const result = await r.json();
+    if (!r.ok || !result.success) alert(t('priceUpdateFail') + (result.error || ''));
+    else alert(t('priceUpdateSuccess')(domainName, newPrice));
+};
+window.handleDeleteDomain = async function(domainName) {
+    if (!confirm(t('deleteConfirm')(domainName))) return;
+    const r = await fetch('/api/approve', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'delete_domain', domainName, accessToken: piAccessToken }) });
+    const result = await r.json();
+    if (!r.ok || !result.success) { alert(t('deleteFail') + (result.error || '')); return; }
+    alert(t('deleteSuccess')(domainName));
+};
+window.handleAddDomain = async function() {
+    const name = document.getElementById("new-domain-name").value.trim();
+    const price = Number(document.getElementById("new-domain-price").value);
+    const img = document.getElementById("new-domain-img").value.trim() || 'assets/default.jpeg';
+    const domainType = document.getElementById("new-domain-type").value;
+    const description = document.getElementById("new-domain-desc").value.trim();
+    if (!name || !price || price <= 0) { alert(t('domainNamePriceRequired')); return; }
+    const r = await fetch('/api/approve', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'add_domain', domainName: name, newPrice: price, imgPath: img, domainType, description, accessToken: piAccessToken }) });
+    const result = await r.json();
+    if (!r.ok || !result.success) alert(t('addDomainFail') + (result.error || ''));
+    else { alert(t('addDomainSuccess')(name)); ['new-domain-name', 'new-domain-price', 'new-domain-img', 'new-domain-desc'].forEach(id => document.getElementById(id).value = ''); }
+};
+window.handleRelist = async function(domainName) {
+    if (!confirm(t('relistConfirm')(domainName))) return;
+    const r = await fetch('/api/approve', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'relist', domainName, accessToken: piAccessToken }) });
+    const result = await r.json();
+    if (!r.ok || !result.success) alert(t('relistFail') + (result.error || ''));
+};
+
+// ✅ SATIŞ DETAYLARINI YÜKLE
+window.loadSalesDetails = async function() {
+    if (!isAuth || currentUser !== 'doganay0808') return;
     try {
-      const db = getDb();
-      const domainRef = db.collection('domains').doc(permaDelName);
-      const domainSnap = await domainRef.get();
-      if (!domainSnap.exists) return res.status(404).json({ error: "Domain bulunamadı" });
-
-      // İlişkili global_sales kayıtlarını sil
-      const salesSnap = await db.collection('global_sales')
-        .where('domain', '==', permaDelName)
-        .get();
-      if (!salesSnap.empty) {
-        const batch = db.batch();
-        salesSnap.forEach(doc => batch.delete(doc.ref));
-        await batch.commit();
-      }
-
-      // Domain'i tamamen sil
-      await domainRef.delete();
-      console.log(`Domain kalıcı olarak silindi: ${permaDelName}`);
-      return res.status(200).json({ success: true });
-    } catch (e) {
-      console.error("Kalıcı silme hatası:", e);
-      return res.status(500).json({ error: e.message });
-    }
-  }
-
-  // ── Domain Geri Getir ──────────────────────────────────────────────────
-  if (action === 'restore_domain') {
-    const { domainName: restoreName } = req.body;
-    const isAdmin = await verifyAdmin(accessToken);
-    if (!isAdmin) return res.status(403).json({ error: "Yetki yok" });
-    if (!restoreName) return res.status(400).json({ error: "Geçersiz domain adı" });
-    try {
-      const db = getDb();
-      const domainRef = db.collection('domains').doc(restoreName);
-      const snap = await domainRef.get();
-      if (!snap.exists) return res.status(404).json({ error: "Domain bulunamadı" });
-      if (snap.data().deleted !== true) return res.status(400).json({ error: "Bu domain silinmiş durumda değil" });
-
-      const restoreData = snap.data();
-      if (restoreData.sellerUsername && restoreData.sold !== true) {
-        await updateUserPoints(restoreData.sellerUsername, 20, 'domain_restored_point_reinstate');
-      }
-
-      await domainRef.set({ deleted: false, deletedAt: null }, { merge: true });
-      console.log(`Domain geri getirildi: ${restoreName}`);
-      return res.status(200).json({ success: true });
-    } catch (e) {
-      return res.status(500).json({ error: e.message });
-    }
-  }
-
-  // ── Platform İstatistiklerini Sıfırla ──────────────────────────────────
-  if (action === 'reset_platform_stats') {
-    const { confirmReset } = req.body;
-    const isAdmin = await verifyAdmin(accessToken);
-    if (!isAdmin) return res.status(403).json({ error: "Yetki yok" });
-    if (confirmReset !== true) {
-      return res.status(400).json({ error: "Bu kalıcı bir işlemdir. confirmReset:true parametresi olmadan çalıştırılamaz." });
-    }
-    try {
-      const db = getDb();
-
-      const salesSnap = await db.collection('global_sales').get();
-      let batch = db.batch();
-      let opCount = 0;
-      for (const doc of salesSnap.docs) {
-        batch.delete(doc.ref);
-        opCount++;
-        if (opCount >= 450) { await batch.commit(); batch = db.batch(); opCount = 0; }
-      }
-      if (opCount > 0) await batch.commit();
-
-      const statsSnap = await db.collection('daily_stats').get();
-      batch = db.batch();
-      opCount = 0;
-      for (const doc of statsSnap.docs) {
-        batch.delete(doc.ref);
-        opCount++;
-        if (opCount >= 450) { await batch.commit(); batch = db.batch(); opCount = 0; }
-      }
-      if (opCount > 0) await batch.commit();
-
-      const profilesSnap = await db.collection('user_profiles').get();
-      batch = db.batch();
-      opCount = 0;
-      for (const doc of profilesSnap.docs) {
-        batch.set(doc.ref, { points: 0, badge: null, resetAt: Date.now() }, { merge: true });
-        opCount++;
-        if (opCount >= 450) { await batch.commit(); batch = db.batch(); opCount = 0; }
-      }
-      if (opCount > 0) await batch.commit();
-
-      const resetTimestamp = Date.now();
-      await db.collection('system_config').doc('reset_epoch').set({
-        resetAt: resetTimestamp,
-        resetBy: 'doganay0808'
-      });
-
-      console.log(`Platform istatistikleri sıfırlandı: ${new Date(resetTimestamp).toISOString()}`);
-      return res.status(200).json({ success: true, resetAt: resetTimestamp });
-    } catch (e) {
-      console.error("Platform sıfırlama hatası:", e);
-      return res.status(500).json({ error: e.message });
-    }
-  }
-
-  // ── Satış Önerisi Gönder ──────────────────────────────────────────────
-  if (action === 'submit_sell_request') {
-    if (!checkRateLimit(clientIp, 'submit_sell_request', 3, 60000))
-      return res.status(429).json({ error: "Çok fazla istek. 1 dakika bekleyin." });
-
-    const { domainName: reqDomainName, price: reqPrice, domainType, imgPath: reqImgPath, sellerWallet, description } = req.body;
-    const realUsername = await getRealUsername(accessToken);
-    if (!realUsername) return res.status(403).json({ error: "Geçerli Pi oturumu bulunamadı" });
-
-    const priceNum = Number(reqPrice);
-    if (!reqDomainName || !priceNum || priceNum <= 0) return res.status(400).json({ error: "Geçersiz parametre" });
-
-    try {
-      const db = getDb();
-      const existingDomain = await db.collection('domains').doc(reqDomainName).get();
-      if (existingDomain.exists) {
-        return res.status(400).json({
-          error: existingDomain.data().deleted === true
-            ? "Bu domain adı daha önce kullanılmış ve silinmiş, tekrar kullanılamaz."
-            : "Bu domain zaten markette mevcut"
+        const r = await fetch('/api/approve', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'get_sales_details', accessToken: piAccessToken })
         });
-      }
+        const result = await r.json();
+        if (result.success) {
+            const tbody = document.getElementById('sales-detail-body');
+            if (tbody) {
+                if (!result.sales || result.sales.length === 0) {
+                    tbody.innerHTML = `<tr><td colspan="4" style="text-align:center;color:#64748b;">Henüz satış yok</td></tr>`;
+                } else {
+                    const locale = currentLang === 'en' ? 'en-GB' : 'tr-TR';
+                    tbody.innerHTML = result.sales.map(s => `
+                        <tr>
+                            <td style="font-weight:800;">${s.domain}</td>
+                            <td>@${s.buyer}</td>
+                            <td style="color:#fbbf24;font-weight:800;">${s.price} Pi</td>
+                            <td style="color:#94a3b8;">${new Date(s.at).toLocaleDateString(locale, { day: '2-digit', month: '2-digit', year: 'numeric' })}</td>
+                        </tr>
+                    `).join('');
+                }
+            }
+        }
+    } catch (e) { console.error("Satış detayları alınamadı:", e); }
 
-      const existingReq = await db.collection('sell_requests')
-        .where('submittedBy', '==', realUsername)
-        .where('status', '==', 'pending')
-        .where('domainName', '==', reqDomainName)
-        .get();
-      if (!existingReq.empty) return res.status(400).json({ error: "Bu domain için zaten bekleyen bir öneriniz var" });
+// ✅ GÜNLÜK GİRİŞ KAYDI - TARİH SEÇİCİ İLE (Doğrudan Firestore)
+window.loadUniqueUsersByDate = async function() {
+    const dateInput = document.getElementById('unique-users-date-input');
+    const selectedDate = dateInput.value;
+    if (!selectedDate) { alert('Lütfen bir tarih seçin'); return; }
 
-      const requestRef = db.collection('sell_requests').doc();
-      await requestRef.set({
-        domainName: reqDomainName,
-        price: priceNum,
-        domainType: domainType || 'genel',
-        img: reqImgPath || 'assets/default.jpeg',
-        sellerWallet: sellerWallet || null,
-        description: description || '',
-        submittedBy: realUsername,
-        status: 'pending',
-        deleted: false,
-        submittedAt: Date.now()
-      });
+    console.log("[loadUniqueUsersByDate] Tarih:", selectedDate);
 
-      await sendNotificationToAdmin({
-        type: 'new_sell_request',
-        title: 'Yeni Domain Önerisi',
-        body: `@${realUsername} tarafından "${reqDomainName}" domaini onay için gönderildi.`,
-        domainName: reqDomainName,
-        requestId: requestRef.id
-      });
-
-      await sendTG(TG_CHAT_ID, `📬 *YENİ DOMAIN ÖNERİSİ*\n\n👤 @${realUsername}\n🌐 ${reqDomainName}\n💰 ${priceNum} Pi\n📋 ${description || '—'}`);
-
-      return res.status(200).json({ success: true });
-    } catch (e) {
-      console.error("Satış önerisi hatası:", e);
-      return res.status(500).json({ error: e.message });
-    }
-  }
-
-  // ── Satış Önerisini Onayla ────────────────────────────────────────────
-  if (action === 'approve_sell_request') {
-    const { requestId } = req.body;
-    const isAdmin = await verifyAdmin(accessToken);
-    if (!isAdmin) return res.status(403).json({ error: "Yetki yok" });
-    if (!requestId) return res.status(400).json({ error: "Geçersiz istek ID" });
     try {
-      const db = getDb();
-      const requestRef = db.collection('sell_requests').doc(requestId);
-      const requestSnap = await requestRef.get();
-      if (!requestSnap.exists) return res.status(404).json({ error: "Öneri bulunamadı" });
-      const reqData = requestSnap.data();
-      if (reqData.status !== 'pending') return res.status(400).json({ error: "Bu öneri zaten işlenmiş" });
+        // Doğrudan Firestore'dan çek (client SDK ile)
+        const { doc, getDoc } = await import("https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js");
+        const snap = await getDoc(doc(db, "daily_users", selectedDate));
+        const users = (snap.data() || {}).users || {};
+        const sorted = Object.keys(users).sort((a, b) => users[b] - users[a]);
 
-      const domainRef = db.collection('domains').doc(reqData.domainName);
-      const existingDomain = await domainRef.get();
-      if (existingDomain.exists) {
-        return res.status(400).json({
-          error: existingDomain.data().deleted === true
-            ? "Bu domain adı silinmiş durumda, onaylanamaz. Önce restore_domain ile geri getirin."
-            : "Domain adı zaten mevcut"
+        console.log("[loadUniqueUsersByDate] Bulunan kullanıcı sayısı:", sorted.length);
+
+        const listEl = document.getElementById("unique-user-list");
+        const countEl = document.getElementById("unique-users-daily-count");
+        const locale = currentLang === 'en' ? 'en-GB' : 'tr-TR';
+
+        if (countEl) {
+            countEl.innerHTML = `<span style="color:#fbbf24;font-weight:900;">${sorted.length}</span> ${currentLang === 'en' ? 'users logged in' : 'kullanıcı giriş yapmış'}`;
+        }
+
+        if (listEl) {
+            if (sorted.length === 0) {
+                listEl.innerHTML = `<p style="font-size:0.8em;opacity:0.5;text-align:center;padding:20px 0;">${selectedDate} ${currentLang === 'en' ? 'no records found' : 'tarihinde kayıt bulunamadı.'}</p>`;
+            } else {
+                listEl.innerHTML = sorted.map(u => 
+                    `<div class="log-item"><b>@${u}</b><span style="color:#94a3b8;font-size:0.85em;">${t('lastSeenPrefix')}${new Date(users[u]).toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' })}</span></div>`
+                ).join('');
+            }
+        }
+    } catch (e) {
+        console.error("[loadUniqueUsersByDate] HATA:", e);
+        alert('Veri getirme hatası: ' + e.message);
+    }
+};
+
+// ✅ SATIŞ DETAYLARI - TARİH SEÇİCİ İLE
+window.loadSalesDetailsByDate = async function() {
+    if (!isAuth || currentUser !== 'doganay0808') return;
+    const dateInput = document.getElementById('sales-detail-date-input');
+    const selectedDate = dateInput.value;
+    try {
+        const r = await fetch('/api/approve', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'get_sales_details', date: selectedDate || null, accessToken: piAccessToken })
         });
-      }
+        const result = await r.json();
+        if (result.success) {
+            const tbody = document.getElementById('sales-detail-body');
+            if (tbody) {
+                if (!result.sales || result.sales.length === 0) {
+                    tbody.innerHTML = `<tr><td colspan="4" style="text-align:center;color:#64748b;">${selectedDate ? selectedDate + ' tarihinde satış yok' : 'Henüz satış yok'}</td></tr>`;
+                } else {
+                    const locale = currentLang === 'en' ? 'en-GB' : 'tr-TR';
+                    tbody.innerHTML = result.sales.map(s => `
+                        <tr>
+                            <td style="font-weight:800;">${s.domain}</td>
+                            <td>@${s.buyer}</td>
+                            <td style="color:#fbbf24;font-weight:800;">${s.price} Pi</td>
+                            <td style="color:#94a3b8;">${new Date(s.at).toLocaleDateString(locale, { day: '2-digit', month: '2-digit', year: 'numeric' })}</td>
+                        </tr>
+                    `).join('');
+                }
+            }
+        }
+    } catch (e) { console.error("Satış detayları alınamadı:", e); }
+};
+};
 
-      await domainRef.set({
-        sold: false, price: reqData.price,
-        img: reqData.img, type: reqData.domainType,
-        description: reqData.description || '',
-        sellerUsername: reqData.submittedBy,
-        sellerWallet: reqData.sellerWallet,
-        txid: null, buyer: null, at: null,
-        deleted: false, deletedAt: null,
-        createdAt: Date.now()
-      });
-      await requestRef.set({ status: 'approved', resolvedAt: Date.now() }, { merge: true });
-
-      await sendNotification(reqData.submittedBy, {
-        type: 'sell_request_approved',
-        title: '✅ Domain Öneriniz Onaylandı!',
-        body: `"${reqData.domainName}" domaininiz markete eklendi. Satışa hazır!`,
-        domainName: reqData.domainName
-      });
-
-      await updateUserPoints(reqData.submittedBy, 20, 'domain_approved');
-
-      return res.status(200).json({ success: true });
-    } catch (e) {
-      return res.status(500).json({ error: e.message });
-    }
-  }
-
-  // ── Satış Önerisini Reddet ────────────────────────────────────────────
-  if (action === 'reject_sell_request') {
-    const { requestId, rejectReason } = req.body;
-    const isAdmin = await verifyAdmin(accessToken);
-    if (!isAdmin) return res.status(403).json({ error: "Yetki yok" });
-    if (!requestId) return res.status(400).json({ error: "Geçersiz istek ID" });
+// ADMIN KAZANÇ
+window.loadAdminEarnings = async function() {
+    if (!isAuth || currentUser !== 'doganay0808') return;
     try {
-      const db = getDb();
-      const requestRef = db.collection('sell_requests').doc(requestId);
-      const requestSnap = await requestRef.get();
-      const reqData = requestSnap.data();
-      await requestRef.set({ status: 'rejected', resolvedAt: Date.now(), rejectReason: rejectReason || '' }, { merge: true });
+        const r = await fetch('/api/approve', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'get_admin_earnings', accessToken: piAccessToken }) });
+        const result = await r.json();
+        if (result.success) {
+            const fmt = (n) => (Math.round(Number(n || 0) * 100) / 100) + ' Pi';
+            const platformEl = document.getElementById('admin-platform-earnings');
+            const totalEl = document.getElementById('admin-total-volume');
+            const userEl = document.getElementById('admin-user-volume');
+            const ownEl = document.getElementById('admin-own-earnings');
+            if (platformEl) platformEl.textContent = fmt(result.platformEarnings);
+            if (totalEl) totalEl.textContent = fmt(result.totalVolume);
+            if (userEl) userEl.textContent = fmt(result.userOwnedVolume);
+            if (ownEl) ownEl.textContent = fmt(result.adminOwnEarnings);
+        }
+    } catch (e) { console.error("Kazanç bilgisi alınamadı:", e); }
+};
 
-      if (reqData?.submittedBy) {
-        await sendNotification(reqData.submittedBy, {
-          type: 'sell_request_rejected',
-          title: '❌ Domain Öneriniz Reddedildi',
-          body: `"${reqData.domainName}" öneriniz reddedildi.${rejectReason ? ' Neden: ' + rejectReason : ''}`,
-          domainName: reqData.domainName
+window.handleResetPlatformStats = async function() {
+    if (!confirm(t('resetConfirm'))) return;
+    try {
+        const r = await fetch('/api/approve', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'reset_platform_stats', confirmReset: true, accessToken: piAccessToken })
         });
-      }
-
-      return res.status(200).json({ success: true });
+        const result = await r.json();
+        if (!r.ok || !result.success) {
+            alert(t('resetFail') + (result.error || r.status));
+            return;
+        }
+        alert(t('resetSuccess'));
+        await loadAdminEarnings();
     } catch (e) {
-      return res.status(500).json({ error: e.message });
+        console.error("Sıfırlama hatası:", e);
+        alert(t('resetFail') + e.message);
     }
-  }
+};
 
-  // ── Kullanıcı Profili Getir ───────────────────────────────────────────
-  if (action === 'get_user_profile') {
-    const realUsername = await getRealUsername(accessToken);
-    if (!realUsername) return res.status(403).json({ error: "Geçersiz oturum" });
+// KULLANICI PROFİL
+async function loadUserProfile() {
+    if (!isAuth || !piAccessToken) return;
     try {
-      const db = getDb();
-      const profileSnap = await db.collection('user_profiles').doc(realUsername).get();
-      const profileData = profileSnap.exists ? profileSnap.data() : { points: 0, badge: null };
+        const r = await fetch('/api/approve', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'get_user_profile', accessToken: piAccessToken }) });
+        const result = await r.json();
+        if (result.success) {
+            userProfile = result.profile || { points: 0, badge: null };
+            userSellRequests = result.sellRequests || [];
+            userSoldDomains = result.soldDomains || [];
+            userActiveListings = result.activeListings || [];
+            userTotalSpent = result.totalSpent || 0;
+            userTotalEarned = result.totalEarned || 0;
+        }
+    } catch (e) { console.error("Profil yüklenemedi:", e); }
+}
 
-      const myPurchasedDomainsSnap = await db.collection('domains')
-        .where('buyer', '==', realUsername)
-        .where('sold', '==', true)
-        .get();
-      let totalSpent = 0;
-      myPurchasedDomainsSnap.forEach(d => {
-        const data = d.data();
-        if (data.deleted === true) return;
-        totalSpent += Number(data.price || 0);
-      });
+window.refreshUserPanel = async function() {
+    const btn = document.querySelector('#user-panel h3 button');
+    if (btn) { btn.style.transform = 'rotate(360deg)'; btn.style.transition = 'transform 0.5s ease'; }
+    await loadUserProfile();
+    debouncedRender();
+    setTimeout(() => { if (btn) { btn.style.transform = ''; btn.style.transition = ''; } }, 600);
+};
 
-      const salesSnap = await db.collection('global_sales').where('user', '==', realUsername).get();
-      const purchases = [];
-      salesSnap.forEach(d => { purchases.push(d.data()); });
+// USER PANEL RENDER
+function renderUserPanel() {
+    if (!isAuth) return;
+    const locale = currentLang === 'en' ? 'en-GB' : 'tr-TR';
+    const myCount = domains.filter(d => domainData[d.name]?.sold && domainData[d.name]?.buyer === currentUser).length;
+    document.getElementById('up-domain-count').textContent = myCount;
+    document.getElementById('up-points').textContent = Math.round((userProfile.points || 0) * 100) / 100;
+    document.getElementById('up-spent').textContent = userTotalSpent.toFixed(2) + ' Pi';
+    document.getElementById('up-listing-count').textContent = userSellRequests.length;
+    document.getElementById('up-badge-area').innerHTML = userProfile.badge ? `<div style="font-size:1.1em;">${badgeHTML(userProfile.badge)}</div>` : '';
 
-      const sellReqSnap = await db.collection('sell_requests').where('submittedBy', '==', realUsername).get();
-      const sellRequests = [];
-      const allDomainNamesInRequests = new Set();
-      sellReqSnap.forEach(d => {
-        const data = d.data();
-        allDomainNamesInRequests.add(data.domainName);
-        sellRequests.push({ id: d.id, ...data });
-      });
+    // Satın alımlarım
+    let myHtml = '';
+    domains.forEach(d => {
+        const data = domainData[d.name];
+        if (data?.sold && data.buyer === currentUser) {
+            const date = data.at ? new Date(data.at).toLocaleDateString(locale, { day: '2-digit', month: '2-digit', year: 'numeric' }) + ' ' + new Date(data.at).toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' }) : '-';
+            const dogrulaBtn = data.txid ? `<a href="https://blockexplorer.minepi.com/testnet/tx/${data.txid}" target="_blank" class="verify-btn">${t('verify')}</a>` : `<span class="verify-btn-disabled">${t('verifyLocked')}</span>`;
+            myHtml += `<div class="my-domain-item"><div><b>${d.name}</b><br><small style="color:#fbbf24;font-weight:800;">${data.price}${t('soldPiLabel')}</small><br><small style="color:#64748b;">📅 ${date}</small></div>${dogrulaBtn}</div>`;
+        }
+    });
+    const myDomainsEl = document.getElementById('my-domains-list');
+    if (myDomainsEl) myDomainsEl.innerHTML = myHtml || `<p style="font-size:0.75em;opacity:0.5;text-align:center;">${t('noDomains')}</p>`;
 
-      let deletedDomainNames = new Set();
-      if (allDomainNamesInRequests.size > 0) {
-        const domainDocs = await Promise.all(
-          Array.from(allDomainNamesInRequests).map(name => db.collection('domains').doc(name).get())
+    // İlanlarım
+    const myListingsEl = document.getElementById('my-listings-list');
+    if (myListingsEl) {
+        let html = '';
+        html += `<div style="font-size:0.68em;color:#fbbf24;font-weight:800;text-transform:uppercase;margin-bottom:6px;">🏷️ ${t('myActiveListings')}</div>`;
+        if (!userActiveListings.length) {
+            html += `<p style="font-size:0.72em;opacity:0.5;text-align:center;margin-bottom:10px;">${t('noActiveListings')}</p>`;
+        } else {
+            // Silinen domainleri filtrele
+            const visibleActiveListings = userActiveListings.filter(d => {
+                const domainStillExists = domains.find(dom => dom.name === d.name);
+                return domainStillExists !== undefined;
+            });
+            html += visibleActiveListings.map(d => `
+                <div style="background:#0f172a;border:1.5px solid #f59e0b;border-radius:12px;padding:10px;margin-bottom:8px;">
+                    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px;">
+                        <div style="flex:1;min-width:0;">
+                            <b style="color:#f1f5f9;font-size:0.9em;">${d.name}</b>
+                            <span class="domain-type-tag" style="margin-left:4px;">${typeLabel(d.type)}</span>
+                        </div>
+                        <span style="color:#fbbf24;font-weight:900;font-size:0.9em;margin-left:8px;">${d.price} Pi</span>
+                    </div>
+                    ${d.description ? `<div style="font-size:0.72em;color:#94a3b8;margin-bottom:6px;line-height:1.4;">${d.description}</div>` : ''}
+                    <div style="display:flex;gap:6px;flex-wrap:wrap;">
+                        <span style="font-size:0.62em;background:rgba(16,185,129,0.15);color:#6ee7b7;border:1px solid #10b981;border-radius:6px;padding:2px 8px;">✅ ${t('domainOnSale')}</span>
+                        ${d.sellerWallet ? `<span style="font-size:0.62em;color:#64748b;background:#1e293b;border-radius:6px;padding:2px 8px;">💳 ${d.sellerWallet.substring(0, 10)}...</span>` : ''}
+                    </div>
+                </div>`).join('');
+        }
+        html += `<div style="font-size:0.68em;color:#94a3b8;font-weight:800;text-transform:uppercase;margin:10px 0 6px 0;border-top:1px solid #334155;padding-top:10px;">📋 ${t('myListingsTitle')}</div>`;
+        if (!userSellRequests.length) {
+            html += `<p style="font-size:0.75em;opacity:0.5;text-align:center;">${t('noListings')}</p>`;
+        } else {
+            const statusMap = { pending: t('statusPending'), approved: t('statusApproved'), rejected: t('statusRejected') };
+            const statusColor = { pending: '#fbbf24', approved: '#10b981', rejected: '#ef4444' };
+            const statusBg = { pending: 'rgba(251,191,36,0.1)', approved: 'rgba(16,185,129,0.1)', rejected: 'rgba(239,68,68,0.1)' };
+            // Kalıcı silinen domainleri filtrele (yedek)
+            const visibleSellRequests = userSellRequests.filter(req => {
+                // Eğer domain hâlâ domains dizisinde varsa ve deleted değilse göster
+                const domainStillExists = domains.find(d => d.name === req.domainName);
+                return domainStillExists !== undefined;
+            });
+            html += visibleSellRequests.map(req => `
+                <div style="background:#0f172a;border:1.5px solid ${statusColor[req.status] || '#334155'};border-radius:12px;padding:10px;margin-bottom:8px;">
+                    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px;">
+                        <div style="flex:1;min-width:0;">
+                            <b style="color:#f1f5f9;font-size:0.88em;">${req.domainName}</b>
+                            <span class="domain-type-tag" style="margin-left:4px;">${typeLabel(req.domainType)}</span>
+                        </div>
+                        <span style="background:${statusBg[req.status] || 'transparent'};color:${statusColor[req.status] || '#94a3b8'};font-size:0.65em;font-weight:800;padding:3px 8px;border-radius:8px;border:1px solid ${statusColor[req.status] || '#334155'};margin-left:6px;">${statusMap[req.status] || req.status}</span>
+                    </div>
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+                        <span style="color:#fbbf24;font-weight:900;font-size:0.85em;">${req.price} Pi</span>
+                        <span style="font-size:0.62em;color:#475569;">${req.submittedAt ? new Date(req.submittedAt).toLocaleDateString(locale, { day: '2-digit', month: '2-digit', year: 'numeric' }) : ''}</span>
+                    </div>
+                    ${req.description ? `<div style="font-size:0.72em;color:#94a3b8;line-height:1.4;margin-bottom:6px;">${req.description}</div>` : ''}
+                    ${req.sellerWallet ? `<div style="font-size:0.62em;color:#64748b;background:#1e293b;border-radius:6px;padding:4px 8px;">💳 ${req.sellerWallet}</div>` : ''}
+                </div>`).join('');
+        }
+        myListingsEl.innerHTML = html;
+    }
+
+    // Gelirim
+    const upEarned = document.getElementById('up-earned');
+    if (upEarned) upEarned.textContent = userTotalEarned.toFixed(2) + ' Pi';
+    const mySoldEl = document.getElementById('my-sold-list');
+    if (mySoldEl) {
+        let html = `<div style="font-size:0.68em;color:#34d399;font-weight:800;text-transform:uppercase;margin-bottom:6px;">✅ ${t('mySoldDomainsLabel')}</div>`;
+        if (!userSoldDomains.length) {
+            html += `<p style="font-size:0.75em;opacity:0.5;text-align:center;">${t('noSoldDomains')}</p>`;
+        } else {
+            // Silinen domainleri filtrele
+            const visibleSoldDomains = userSoldDomains.filter(d => {
+                const domainStillExists = domains.find(dom => dom.name === d.name);
+                return domainStillExists !== undefined;
+            });
+            html += visibleSoldDomains.map(d => `<div class="my-domain-item"><div><b>${d.name}</b><br><small style="color:#34d399;font-weight:800;">+${d.price} Pi</small><br><small style="color:#64748b;">👤 @${d.buyer || '?'}</small></div><span style="color:#10b981;font-size:0.8em;font-weight:800;">✅</span></div>`).join('');
+        }
+        mySoldEl.innerHTML = html;
+    }
+}
+
+// ANA RENDER
+function render() {
+    const list = document.getElementById("domain-list");
+    const lock = document.getElementById("premium-lock");
+    if (!list) return;
+    applyTranslations();
+
+    const filterSection = document.getElementById('filter-section');
+    if (filterSection) filterSection.style.display = isAuth ? 'block' : 'none';
+
+    if (!isAuth) { 
+        lock.style.position = "absolute"; 
+        lock.style.display = "flex"; 
+        list.style.display = "grid"; 
+        list.classList.add("locked-content"); 
+    } else { 
+        lock.style.display = "none"; 
+        list.style.display = "grid"; 
+        list.classList.remove("locked-content"); 
+    }
+
+    let sortedDomains = [...domains].filter(d => !domainData[d.name]?.deleted).sort((a, b) => (domainData[b.name]?.createdAt || 0) - (domainData[a.name]?.createdAt || 0));
+    if (currentFilter !== 'hepsi') sortedDomains = sortedDomains.filter(d => (d.type || 'genel') === currentFilter);
+
+    const fragment = document.createDocumentFragment();
+    sortedDomains.forEach((d, index) => {
+        const data = domainData[d.name] || { sold: false, price: d.price };
+        const card = document.createElement('div');
+        card.className = 'domain-card';
+        card.style.animationDelay = (index * 0.06) + 's';
+        const tTag = d.type ? `<span class="domain-type-tag">${typeLabel(d.type)}</span>` : '';
+        const imgSrc = data.img || d.img;
+        card.innerHTML = `<img src="${imgSrc}" class="domain-img" onerror="this.src='data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMDAiIGhlaWdodD0iMTAwIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjNDc1NTY5Ii8+PC9zdmc+'">${tTag}<div class="domain-name">${d.name}</div><div class="domain-price">${data.price} PI</div>`;
+
+        if (data.sold) {
+            card.innerHTML += `<div class="btn-sold">${t('sold')}</div>`;
+            if (isAuth && currentUser === "doganay0808") {
+                const relistBtn = document.createElement('button');
+                relistBtn.className = 'btn-buy'; 
+                relistBtn.style.background = '#f59e0b'; 
+                relistBtn.style.marginTop = '4px';
+                relistBtn.innerText = t('relistBtn');
+                relistBtn.onclick = (e) => { e.stopPropagation(); handleRelist(d.name); };
+                card.appendChild(relistBtn);
+            }
+        } else {
+            const btn = document.createElement('button');
+            btn.className = 'btn-buy'; 
+            btn.innerText = t('buyNow');
+            btn.onclick = (e) => {
+                e.stopPropagation();
+                if (!isAuth) { alert(t('loginRequired')); return; }
+                pendingDomain = d.name; 
+                pendingPrice = data.price;
+                document.getElementById('pre-buy-modal').style.display = 'flex';
+            };
+            card.appendChild(btn);
+        }
+        card.onclick = () => openDomainDetail(d.name);
+        fragment.appendChild(card);
+    });
+    list.innerHTML = ''; 
+    list.appendChild(fragment);
+    renderUserPanel();
+    if (isAuth && currentUser === "doganay0808") renderAdminPriceList();
+    if (isAuth) updateSideMenuProfile();
+    requestAnimationFrame(() => {
+        const mc = document.getElementById("market-card"); 
+        if (!mc) return;
+        if (!isAuth) { mc.style.minHeight = Math.max(lock.scrollHeight, list.scrollHeight, 30) + "px"; }
+        else { mc.style.minHeight = ""; }
+    });
+}
+
+// ADMIN LOG / STATS
+function listenToLogs(date) {
+    console.log("[listenToLogs] Tarih:", date);
+    if (adminLogUnsubscribe) adminLogUnsubscribe();
+    adminLogUnsubscribe = onSnapshot(doc(db, "daily_users", date), (snap) => {
+        const users = (snap.data() || {}).users || {};
+        const sorted = Object.keys(users).sort((a, b) => users[b] - users[a]);
+        console.log("[listenToLogs] onSnapshot users:", sorted.length);
+        const logList = document.getElementById("log-list");
+        if (logList) logList.innerHTML = sorted.length === 0
+            ? `<p style="font-style:italic;opacity:0.6;font-size:0.8em;">${t('noRecord')}</p>`
+            : sorted.map(u => `<div class="log-item"><b>@${u}</b><span>${new Date(users[u]).toLocaleTimeString()}</span></div>`).join('');
+    }, (err) => {
+        console.error("[listenToLogs] onSnapshot hata:", err);
+        const logList = document.getElementById("log-list");
+        if (logList) logList.innerHTML = `<p style="color:#ef4444;font-size:0.8em;text-align:center;">Veri alınamadı</p>`;
+    });
+    if (adminStatsUnsubscribe) adminStatsUnsubscribe();
+    adminStatsUnsubscribe = onSnapshot(doc(db, "daily_stats", date), (snap) => {
+        const data = snap.data() || {};
+        console.log("[listenToLogs] onSnapshot stats:", data);
+        const c = document.getElementById("daily-stat-count"); 
+        const v = document.getElementById("daily-stat-volume");
+        if (c) c.innerText = data.count || 0; 
+        if (v) v.innerText = Math.round((data.volume || 0) * 100) / 100;
+    }, (err) => {
+        console.error("[listenToLogs] stats onSnapshot hata:", err);
+    });
+}
+function listenToPendingDomains() {
+    if (pendingDomainsUnsubscribe) pendingDomainsUnsubscribe();
+    pendingDomainsUnsubscribe = onSnapshot(collection(db, "sell_requests"), (snapshot) => {
+        const pending = [];
+        snapshot.forEach(docSnap => { const d = docSnap.data(); if (d.status === 'pending') pending.push({ id: docSnap.id, ...d }); });
+        pending.sort((a, b) => (b.submittedAt || 0) - (a.submittedAt || 0));
+        renderPendingDomains(pending);
+    });
+}
+
+function listenToMyOwnSellRequests(username) {
+    if (myOwnSellRequestsUnsubscribe) myOwnSellRequestsUnsubscribe();
+    const q = query(collection(db, "sell_requests"), where("submittedBy", "==", username));
+    myOwnSellRequestsUnsubscribe = onSnapshot(q, () => {
+        debouncedProfileRefresh();
+    });
+}
+function stopListeningToMyOwnSellRequests() {
+    if (myOwnSellRequestsUnsubscribe) { myOwnSellRequestsUnsubscribe(); myOwnSellRequestsUnsubscribe = null; }
+}
+
+// UNIQUE USERS
+let cachedUniqueUsers = null;
+async function fetchUniqueUsers() {
+    const snapshot = await getDocs(collection(db, "daily_users"));
+    const allUsers = {};
+    snapshot.forEach(docSnap => {
+        const users = docSnap.data().users || {};
+        Object.keys(users).forEach(u => { if (!allUsers[u] || users[u] > allUsers[u].lastSeen) allUsers[u] = { lastSeen: users[u] }; });
+    });
+    cachedUniqueUsers = Object.entries(allUsers).sort((a, b) => b[1].lastSeen - a[1].lastSeen);
+    return cachedUniqueUsers;
+}
+function renderUniqueUsersList(sorted) {
+    const listEl = document.getElementById("unique-user-list"); 
+    const totalEl = document.getElementById("unique-user-total");
+    if (!listEl || !totalEl) return;
+    totalEl.innerText = sorted.length;
+    const badge = document.getElementById("unique-users-badge"); 
+    if (badge) badge.innerText = sorted.length;
+    const locale = currentLang === 'en' ? 'en-GB' : 'tr-TR';
+    listEl.innerHTML = sorted.length === 0 ? `<p style="font-size:0.8em;opacity:0.5;text-align:center;">${t('noUsers')}</p>`
+        : sorted.map(([username, info]) => `<div class="log-item"><b>@${username}</b><span style="color:#94a3b8;font-size:0.85em;">${t('lastSeenPrefix')}${new Date(info.lastSeen).toLocaleDateString(locale, { day: '2-digit', month: '2-digit', year: 'numeric' })}</span></div>`).join('');
+}
+window.openUniqueUsersModal = async function() {
+    document.getElementById('unique-users-modal').style.display = 'flex';
+    const uuDate = document.getElementById('unique-users-date-input');
+    if (uuDate && !uuDate.value) uuDate.value = new Date().toISOString().split('T')[0];
+    if (cachedUniqueUsers) { renderUniqueUsersList(cachedUniqueUsers); return; }
+    try { renderUniqueUsersList(await fetchUniqueUsers()); }
+    catch (e) { const l = document.getElementById("unique-user-list"); if (l) l.innerHTML = `<p style="color:#ef4444;text-align:center;font-size:0.8em;">${t('usersError')}</p>`; }
+};
+async function loadUniqueBadgeCount() {
+    try { 
+        const s = await fetchUniqueUsers(); 
+        console.log("[loadUniqueBadgeCount] Kullanıcı sayısı:", s.length);
+        const b = document.getElementById("unique-users-badge"); 
+        if (b) b.innerText = s.length; 
+    } catch (e) { 
+        console.error("[loadUniqueBadgeCount] HATA:", e);
+    }
+}
+
+// AKTİF KULLANICI
+onSnapshot(collection(db, "active_users"), (snap) => {
+    const now = Date.now(); 
+    let count = 0;
+    snap.forEach(d => { if (d.data().lastSeen && (now - d.data().lastSeen) < 30000) count++; });
+    const el = document.getElementById("online-count"); 
+    if (el) el.innerText = count;
+});
+async function updateActiveStatus() { if (currentUser) await setDoc(doc(db, "active_users", currentUser), { lastSeen: Date.now() }, { merge: true }); }
+window.addEventListener('beforeunload', async () => { if (currentUser) await deleteDoc(doc(db, "active_users", currentUser)); });
+
+// INCOMPLETE PAYMENT
+async function handleIncompletePayment(payment) {
+    try {
+        const action = payment?.transaction?.txid ? 'complete' : 'cancel';
+        await fetch('/api/approve', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ paymentId: payment.identifier, action, txid: payment.transaction?.txid, username: currentUser, domainName: payment.metadata?.domain }) });
+    } catch (e) { console.error("Pending payment error:", e); }
+}
+
+// LOGIN - ✅ PI SDK HATA DÜZELTMESİ
+window.loginWithPi = async function() {
+    await waitForPi();
+    await new Promise(r => setTimeout(r, 300));
+
+    async function attemptLogin(isRetry) {
+        try {
+            const auth = await Pi.authenticate(['username', 'payments'], handleIncompletePayment);
+            currentUser = auth.user.username;
+            piAccessToken = auth.accessToken;
+            isAuth = true;
+            document.getElementById("user-status").innerHTML = '<span class="online-dot"></span>' + t('connectedPrefix') + currentUser;
+            document.getElementById("user-status-box").style.display = "block";
+            document.getElementById("user-panel").style.display = "block";
+
+            document.getElementById("notif-btn").style.display = "flex";
+            startNotifPolling();
+            await loadUserProfile();
+            listenToMyOwnSellRequests(currentUser);
+
+            if (currentUser === "doganay0808") {
+                document.getElementById("admin-panel").style.display = "block";
+                loadUniqueBadgeCount();
+                listenToPendingDomains();
+                const today = new Date().toISOString().split("T")[0];
+                const dateInput = document.getElementById("admin-date-input");
+                dateInput.value = today;
+                listenToLogs(today);
+                dateInput.onchange = (e) => listenToLogs(e.target.value);
+            }
+
+            try {
+                const r = await fetch('/api/approve', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'log_login', accessToken: piAccessToken }) });
+                const logResult = await r.json();
+                if (logResult.success) userFirstSeen = logResult.firstSeen;
+            } catch (e) { console.error("Login log hatası:", e); }
+
+            updateActiveStatus();
+            debouncedRender();
+            return true;
+        } catch (e) {
+            console.error("Login error:", e);
+            const msg = (e && e.message) || '';
+            const userCancelled = msg.includes('cancel') || msg.includes('user_cancelled') || msg.includes('User cancelled');
+            if (userCancelled) return true;
+
+            if (!isRetry) {
+                await new Promise(r => setTimeout(r, 400));
+                return await attemptLogin(true);
+            }
+            return false;
+        }
+    }
+
+    const success = await attemptLogin(false);
+    if (!success) alert(t('loginError'));
+};
+
+// ÖDEME
+document.getElementById("confirm-buy-btn").onclick = async () => {
+    document.getElementById('pre-buy-modal').style.display = 'none';
+    await new Promise(r => setTimeout(r, 150));
+    try {
+        await Pi.createPayment(
+            { amount: Number(pendingPrice), memo: "Domain: " + pendingDomain, metadata: { domain: pendingDomain } },
+            {
+                onReadyForServerApproval: async (id) => {
+                    await fetch('/api/approve', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ paymentId: id, action: 'approve', accessToken: piAccessToken }) });
+                },
+                onReadyForServerCompletion: async (id, txid) => {
+                    await fetch('/api/approve', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ paymentId: id, action: 'complete', txid, username: currentUser, domainName: pendingDomain }) });
+                    document.getElementById("success-modal").style.display = "flex";
+                    await loadUserProfile();
+                    fetchNotifications(true);
+                    debouncedRender();
+                },
+                onCancel: async (id) => {
+                    try { await fetch('/api/approve', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ paymentId: id, action: 'cancel' }) }); } catch (e) { }
+                },
+                onError: (e) => { console.error("Payment error:", e); alert(t('paymentError')); }
+            }
         );
-        domainDocs.forEach(snap => {
-          if (snap.exists && snap.data().deleted === true) deletedDomainNames.add(snap.id);
-        });
-      }
-      const visibleSellRequests = sellRequests.filter(r => !deletedDomainNames.has(r.domainName));
+    } catch (e) { console.error(e); }
+};
 
-      const domainsSnap = await db.collection('domains')
-        .where('sellerUsername', '==', realUsername)
-        .where('sold', '==', true)
-        .get();
-      let totalEarned = 0;
-      const soldDomains = [];
-      domainsSnap.forEach(d => {
-        const data = d.data();
-        if (data.deleted === true) return;
-        totalEarned += Number(data.price || 0);
-        soldDomains.push({ name: d.id, ...data });
-      });
+document.getElementById("share-tg-btn").onclick = () => {
+    const text = t('shareText')(pendingDomain);
+    window.open(`https://t.me/share/url?url=${encodeURIComponent(window.location.href)}&text=${encodeURIComponent(text)}`, '_blank');
+};
 
-      const activeListingsSnap = await db.collection('domains')
-        .where('sellerUsername', '==', realUsername)
-        .where('sold', '==', false)
-        .get();
-      const activeListings = [];
-      activeListingsSnap.forEach(d => {
-        const data = d.data();
-        if (data.deleted === true) return;
-        activeListings.push({ name: d.id, ...data });
-      });
+// FIRESTORE DOMAIN LİSTENER
+let profileRefreshTimeout = null;
+function debouncedProfileRefresh() {
+    if (!isAuth || !piAccessToken) return;
+    clearTimeout(profileRefreshTimeout);
+    profileRefreshTimeout = setTimeout(async () => {
+        await loadUserProfile();
+        debouncedRender();
+    }, 1200);
+}
 
-      return res.status(200).json({
-        success: true,
-        profile: profileData,
-        purchases,
-        sellRequests: visibleSellRequests,
-        soldDomains,
-        activeListings,
-        totalSpent,
-        totalEarned
-      });
-    } catch (e) {
-      return res.status(500).json({ error: e.message });
-    }
-  }
-
-  // ── Admin: Toplam Kazanç / Cüzdan Özeti ────────────────────────────────
-  if (action === 'get_admin_earnings') {
-    const isAdmin = await verifyAdmin(accessToken);
-    if (!isAdmin) return res.status(403).json({ error: "Yetki yok" });
-    try {
-      const db = getDb();
-      const allSalesSnap = await db.collection('global_sales').get();
-      let totalVolume = 0;
-      const salesByDomain = {};
-      allSalesSnap.forEach(d => {
-        const data = d.data();
-        totalVolume += Number(data.price || 0);
-        salesByDomain[data.domain] = (salesByDomain[data.domain] || 0) + Number(data.price || 0);
-      });
-
-      const userOwnedDomainsSnap = await db.collection('domains')
-        .where('sold', '==', true)
-        .get();
-      let userOwnedVolume = 0;
-      userOwnedDomainsSnap.forEach(d => {
-        const data = d.data();
-        if (data.deleted === true) return;
-        if (data.sellerUsername) userOwnedVolume += Number(data.price || 0);
-      });
-
-      const adminOwnSalesSnap = await db.collection('domains')
-        .where('sellerUsername', '==', 'doganay0808')
-        .where('sold', '==', true)
-        .get();
-      let adminOwnEarnings = 0;
-      const adminOwnSoldDomains = [];
-      adminOwnSalesSnap.forEach(d => {
-        const data = d.data();
-        if (data.deleted === true) return;
-        adminOwnEarnings += Number(data.price || 0);
-        adminOwnSoldDomains.push({ name: d.id, price: data.price, buyer: data.buyer || null });
-      });
-
-      const platformEarnings = totalVolume - userOwnedVolume;
-
-      return res.status(200).json({
-        success: true,
-        totalVolume,
-        userOwnedVolume,
-        platformEarnings,
-        adminOwnEarnings,
-        adminOwnSoldDomains,
-        salesByDomain
-      });
-    } catch (e) {
-      return res.status(500).json({ error: e.message });
-    }
-  }
-
-  // ── Satış Detaylarını Getir ── ✅ YENİ EKLENDİ ─────────────────────────
-  if (action === 'get_sales_details') {
-    const isAdmin = await verifyAdmin(accessToken);
-    if (!isAdmin) return res.status(403).json({ error: "Yetki yok" });
-    const { date } = req.body;
-    try {
-      const db = getDb();
-      let query = db.collection('global_sales').orderBy('at', 'desc');
-      if (date) {
-        const startOfDay = new Date(date); startOfDay.setHours(0, 0, 0, 0);
-        const endOfDay = new Date(date); endOfDay.setHours(23, 59, 59, 999);
-        query = query.where('at', '>=', startOfDay.getTime()).where('at', '<=', endOfDay.getTime());
-      }
-      const salesSnap = await query.limit(100).get();
-      const sales = [];
-      salesSnap.forEach(d => {
-        const data = d.data();
-        sales.push({ domain: data.domain || '', buyer: data.user || '', price: Number(data.price || 0), at: data.at || Date.now(), sellerUsername: data.sellerUsername || null });
-      });
-      return res.status(200).json({ success: true, sales });
-    } catch (e) {
-      console.error("Satış detayları hatası:", e);
-      return res.status(500).json({ error: e.message });
-    }
-  }
-
-  // ── Günlük Giriş Kaydını Getir ── ✅ YENİ EKLENDİ ──────────────────────
-  if (action === 'get_daily_log') {
-    const isAdmin = await verifyAdmin(accessToken);
-    if (!isAdmin) return res.status(403).json({ error: "Yetki yok" });
-    const { date } = req.body;
-    if (!date) return res.status(400).json({ error: "Tarih zorunludur" });
-    try {
-      const db = getDb();
-      const snap = await db.collection('daily_users').doc(date).get();
-      const users = snap.exists ? (snap.data().users || {}) : {};
-      const sorted = Object.keys(users).sort((a, b) => users[b] - users[a]);
-      return res.status(200).json({ success: true, users: sorted, userData: users, count: sorted.length, date });
-    } catch (e) {
-      console.error("Günlük log hatası:", e);
-      return res.status(500).json({ error: e.message });
-    }
-  }
-
-  // ── Onaya Gelen Domain Detayı (Admin) ──────────────────────────────────
-  if (action === 'get_sell_request_detail') {
-    const { requestId } = req.body;
-    const isAdmin = await verifyAdmin(accessToken);
-    if (!isAdmin) return res.status(403).json({ error: "Yetki yok" });
-    if (!requestId) return res.status(400).json({ error: "Geçersiz istek ID" });
-    try {
-      const db = getDb();
-      const snap = await db.collection('sell_requests').doc(requestId).get();
-      if (!snap.exists) return res.status(404).json({ error: "Öneri bulunamadı" });
-      return res.status(200).json({ success: true, detail: { id: snap.id, ...snap.data() } });
-    } catch (e) {
-      return res.status(500).json({ error: e.message });
-    }
-  }
-
-  // ══════════════════════════════════════════════════════════════════════
-  //  Pi Ödeme Akışı (approve / complete / cancel)
-  // ══════════════════════════════════════════════════════════════════════
-  const { paymentId, txid, username, domainName } = req.body;
-
-  if (!paymentId) return res.status(400).json({ error: "paymentId zorunludur" });
-
-  const allowedActions = ['approve', 'complete', 'cancel'];
-  if (!allowedActions.includes(action)) return res.status(400).json({ error: "Geçersiz action" });
-
-  const PI_API_KEY = process.env.APP_SECRET;
-  const body = action === 'complete' ? { txid } : {};
-  const url = `https://api.minepi.com/v2/payments/${paymentId}/${action}`;
-
-  try {
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: { 'Authorization': `Key ${PI_API_KEY}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify(body)
+onSnapshot(collection(db, "domains"), (snapshot) => {
+    const hasRelevantChange = snapshot.docChanges().length > 0;
+    snapshot.docChanges().forEach(change => {
+        if (change.type === 'removed') {
+            const name = change.doc.id;
+            domains = domains.filter(d => d.name !== name);
+            delete domainData[name];
+        }
     });
 
-    let data;
-    try { data = await response.json(); } catch (e) { data = {}; }
+    snapshot.forEach(docSnap => {
+        const name = docSnap.id;
+        const docData = docSnap.data() || {};
+        const defaultDomain = domains.find(d => d.name === name);
 
-    if (!response.ok) {
-      console.error("Pi API hatası:", action, paymentId, data);
-      return res.status(response.status).json({ error: "Pi API hatası", details: data });
-    }
-
-    if (action === 'complete' && domainName && username) {
-      let purchaseCode = null;
-      try {
-        const db = getDb();
-        const domainRef = db.collection('domains').doc(domainName);
-        const domainSnap = await domainRef.get();
-        const realPrice = domainSnap.exists ? domainSnap.data().price : null;
-
-        if (typeof realPrice !== 'number')
-          return res.status(400).json({ error: "Geçersiz domain" });
-
-        if (domainSnap.data().sold !== true) {
-          purchaseCode = "WEB3-" + Math.random().toString(36).substr(2, 6).toUpperCase();
-          const sellerUsername = domainSnap.data().sellerUsername || null;
-          const previousBuyer = domainSnap.data().buyer || null;
-
-          await domainRef.set({
-            sold: true, price: realPrice,
-            txid: txid || null, buyer: username, at: Date.now()
-          }, { merge: true });
-
-          await db.collection('global_sales').doc(txid || paymentId).set({
-            user: username, domain: domainName, price: realPrice, at: Date.now(),
-            sellerUsername: sellerUsername || null
-          });
-
-          const today = new Date().toISOString().split('T')[0];
-          await db.collection('daily_stats').doc(today).set({
-            count: FieldValue.increment(1),
-            volume: FieldValue.increment(realPrice)
-          }, { merge: true });
-
-          await updateUserPoints(username, realPrice, 'purchase');
-
-          await sendNotification(username, {
-            type: 'purchase_success',
-            title: '🎉 Satın Alma Başarılı!',
-            body: `"${domainName}" domainini ${realPrice} Pi karşılığında satın aldınız!`,
-            domainName, txid
-          });
-
-          await sendNotificationToAdmin({
-            type: 'new_sale',
-            title: '💰 Yeni Satış!',
-            body: `@${username} tarafından "${domainName}" ${realPrice} Pi'ye satıldı.`,
-            domainName, buyer: username, price: realPrice
-          });
-
-          if (sellerUsername && sellerUsername !== username) {
-            await sendNotification(sellerUsername, {
-              type: 'your_domain_sold',
-              title: '🏆 Domaininiz Satıldı!',
-              body: `"${domainName}" domaininiz @${username} tarafından ${realPrice} Pi'ye satın alındı!`,
-              domainName, buyer: username, price: realPrice
-            });
-          }
-
-          if (previousBuyer && previousBuyer !== username) {
-            await sendNotification(previousBuyer, {
-              type: 'domain_resold',
-              title: 'ℹ️ Domain Yeniden Satıldı',
-              body: `Daha önce sahip olduğunuz "${domainName}" domaini, tekrar satışa çıkarıldıktan sonra @${username} tarafından satın alındı.`,
-              domainName, buyer: username, price: realPrice
-            });
-          }
-
-          const groupMsg = `🎉 *YENİ SATIŞ!*\n\n👤 @${username}, *${domainName}* domainini satın aldı! 🚀`;
-          await sendTG(TG_GROUP_ID, groupMsg);
-          await sendTG(TG_CHAT_ID, `✅ *SATIŞ TAMAMLANDI*\n\n👤 @${username}\n🌐 ${domainName}\n💰 ${realPrice} Pi\n🔑 ${purchaseCode}`);
+        domainData[name] = {
+            sold: docData.sold || false,
+            price: docData.price || (defaultDomain ? defaultDomain.price : 0),
+            txid: docData.txid || null,
+            buyer: docData.buyer || null,
+            at: docData.at || null,
+            img: docData.img || (defaultDomain ? defaultDomain.img : 'assets/default.jpeg'),
+            type: docData.type || (defaultDomain ? defaultDomain.type : 'genel'),
+            description: docData.description || '',
+            sellerUsername: docData.sellerUsername || null,
+            createdAt: docData.createdAt || 0,
+            deleted: docData.deleted === true,
+            deletedAt: docData.deletedAt || null
+        };
+        if (!defaultDomain) {
+            domains.unshift({ name, img: docData.img || 'assets/default.jpeg', price: docData.price || 0, type: docData.type || 'genel', description: docData.description || '' });
         } else {
-          console.warn("Domain zaten satılmış:", domainName);
+            defaultDomain.img = docData.img || defaultDomain.img;
+            defaultDomain.description = docData.description || '';
+            defaultDomain.price = docData.price || defaultDomain.price;
         }
-      } catch (firestoreErr) {
-        console.error("Firestore yazma hatası:", firestoreErr);
-        await sendTG(TG_CHAT_ID, `⚠️ *DİKKAT:* Ödeme tamamlandı (txid: ${txid}) ama Firestore'a yazılamadı. Domain: ${domainName}, @${username}`);
-      }
-      return res.status(200).json({ ...data, purchaseCode, success: true });
-    }
+    });
 
-    return res.status(200).json({ ...data, success: true });
-  } catch (e) {
-    console.error("Sunucu hatası:", e);
-    return res.status(500).json({ error: e.message });
-  }
-}
+    let totalSold = 0, totalVolume = 0;
+    snapshot.forEach(docSnap => { const data = docSnap.data(); if (data.sold === true) { totalSold++; totalVolume += Number(data.price || 0); } });
+    const tsEl = document.getElementById("total-sold"); 
+    const tvEl = document.getElementById("total-volume");
+    if (tsEl) tsEl.innerText = totalSold; 
+    if (tvEl) tvEl.innerText = Math.round(totalVolume * 100) / 100;
+
+    if (!firstDomainsSnapshotReceived) {
+        firstDomainsSnapshotReceived = true;
+        render();
+    } else {
+        debouncedRender();
+    }
+    if (hasRelevantChange) debouncedProfileRefresh();
+});
+
+let renderTimeout = null;
+function debouncedRender() { clearTimeout(renderTimeout); renderTimeout = setTimeout(render, 50); }
+
+domains.forEach(d => { if (!domainData[d.name]) domainData[d.name] = { sold: false, price: d.price }; });
+applyTranslations();
+let firstDomainsSnapshotReceived = false;
+window.addEventListener("load", () => { setInterval(updateActiveStatus, 15000); });
+</script>
+</body>
+</html>
