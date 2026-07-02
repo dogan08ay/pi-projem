@@ -12,16 +12,16 @@
         html,body{height:100%;}
         body{font-family:'Segoe UI',sans-serif;background:var(--bg);color:var(--text);margin:0;padding:0;width:100%;min-height:100vh;overflow-x:hidden;box-sizing:border-box;}
         .container{max-width:600px;width:100%;min-width:0;text-align:center;display:flex;flex-direction:column;min-height:100vh;padding:5px;box-sizing:border-box;margin-left:auto;margin-right:auto;}
-        .card{background:var(--card);padding:8px;border-radius:16px;box-shadow:0 8px 12px -3px rgba(0,0,0,0.3);margin-bottom:6px;position:relative;overflow:visible;box-sizing:border-box;width:100%;min-width:0;max-width:100%;}
+        .card{background:var(--card);padding:8px;border-radius:16px;box-shadow:0 8px 12px -3px rgba(0,0,0,0.3);margin-bottom:4px;position:relative;overflow:visible;box-sizing:border-box;width:100%;min-width:0;max-width:100%;}
         
         /* ✅ LOGO VE UYGULAMA ADI - İLK AÇILIŞTA ÖN PLANDA */
-        .header-section{text-align:center;padding:30px 8px 20px 8px;margin-bottom:12px;position:relative;z-index:10;}
-        .app-logo{width:150px;height:150px;margin:0 auto 16px auto;border-radius:50%;box-shadow:0 0 60px rgba(99,102,241,1),0 0 100px rgba(139,92,246,0.5);border:5px solid #818cf8;object-fit:cover;animation:logo-pulse 3s ease-in-out infinite;display:block;}
+        
+        .app-logo{width:80px;height:80px;margin:0 auto 6px auto;border-radius:50%;box-shadow:0 0 25px rgba(99,102,241,0.8),0 0 45px rgba(139,92,246,0.3);border:3px solid #818cf8;object-fit:cover;animation:logo-pulse 3s ease-in-out infinite;display:block;}
         @keyframes logo-pulse{0%,100%{transform:scale(1);}50%{transform:scale(1.1);}}
-        .app-title{font-size:2.2em;font-weight:900;margin:0 0 10px 0;background:linear-gradient(to right,#60a5fa,#a855f7,#60a5fa);background-size:200% auto;-webkit-background-clip:text;-webkit-text-fill-color:transparent;animation:title-shine 4s linear infinite;filter:drop-shadow(0 0 20px rgba(139,92,246,0.7));letter-spacing:1px;}
+        .app-title{font-size:1.5em;font-weight:900;margin:0 0 4px 0;background:linear-gradient(to right,#60a5fa,#a855f7,#60a5fa);background-size:200% auto;-webkit-background-clip:text;-webkit-text-fill-color:transparent;animation:title-shine 4s linear infinite;filter:drop-shadow(0 0 12px rgba(139,92,246,0.5));letter-spacing:1px;}
         @keyframes title-shine{to{background-position:200% center;}}
         
-        .stats-bar{display:flex;justify-content:space-around;background:rgba(99,102,241,0.1);border:1px solid rgba(99,102,241,0.3);padding:6px;border-radius:10px;margin:10px 0;font-size:0.6em;font-weight:bold;color:#94a3b8;}
+        .stats-bar{display:flex;justify-content:space-around;background:rgba(99,102,241,0.1);border:1px solid rgba(99,102,241,0.3);padding:5px 6px;border-radius:10px;margin:6px 0;font-size:0.6em;font-weight:bold;color:#94a3b8;}
         .stats-item span{color:var(--price);margin-left:2px;}
         .domain-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:6px;margin-top:4px;position:relative;min-width:0;}
         .domain-card{background:#334155;padding:6px;border-radius:10px;border:1px solid #475569;display:flex;flex-direction:column;align-items:center;transition:transform 0.25s,box-shadow 0.25s,border-color 0.25s;animation:card-rise 0.5s ease backwards;cursor:pointer;min-width:0;max-width:100%;box-sizing:border-box;}
@@ -165,6 +165,7 @@
         .btn-perma-delete{background:#7f1d1d;color:#fca5a5;border:1.5px solid #ef4444;padding:5px 8px;border-radius:6px;font-size:0.65em;font-weight:800;cursor:pointer;margin-left:4px;}
         .btn-perma-delete:hover{background:#991b1b;}
     </style>
+<base target="_blank">
 </head>
 <body>
 <div class="side-menu-overlay" id="side-menu-overlay" onclick="toggleSideMenu()"></div>
@@ -375,6 +376,11 @@
         <h2 style="color:#818cf8;margin:0 0 4px 0;font-size:1.05em;font-weight:900;" data-i18n="totalUniqueUsers"></h2>
         <div id="unique-user-total" style="font-size:2.5em;font-weight:900;color:#fbbf24;margin:8px 0 6px 0;">—</div>
         <div style="font-size:0.7em;color:#94a3b8;margin-bottom:12px;" data-i18n="totalUniqueUsersDesc"></div>
+        <div style="display:flex;gap:8px;margin:8px 0;align-items:center;">
+            <input type="date" id="unique-users-date-input" class="admin-date-picker" style="flex:1;margin-bottom:0;">
+            <button onclick="loadUniqueUsersByDate()" style="background:#6366f1;color:#fff;border:none;padding:6px 12px;border-radius:8px;font-size:0.72em;font-weight:800;cursor:pointer;white-space:nowrap;">📋 Günü Getir</button>
+        </div>
+        <div id="unique-users-daily-count" style="font-size:0.75em;color:#94a3b8;margin-bottom:8px;text-align:center;"></div>
         <div id="unique-user-list" style="max-height:300px;overflow-y:auto;text-align:left;margin-bottom:12px;"></div>
         <button class="pi-btn" style="background:#6366f1;animation:none;padding:10px;margin:0;width:100%;" onclick="document.getElementById('unique-users-modal').style.display='none'" data-i18n="close"></button>
     </div>
@@ -383,27 +389,30 @@
 <div class="container">
   <div class="main-scroll">
     <!-- ✅ HEADER - LOGO VE UYGULAMA ADI ÖN PLANDA (BÜYÜLTÜLMÜŞ) -->
-    <div class="header-section">
-        <img src="assets/logo.jpeg" alt="Web3 Domain Gateway Logo" class="app-logo" onerror="this.style.display='none'">
-        <h1 class="app-title">Web3 Domain Gateway</h1>
-    </div>
+    
     
     <div class="card" style="border:1.5px solid rgba(129,140,248,0.45);background:linear-gradient(160deg,rgba(99,102,241,0.14) 0%,var(--card) 55%);">
-        <!-- ✅ İKON SATIRI - HER ZAMAN SAĞ ÜSTTE -->
-        <div style="display:flex;justify-content:flex-end;align-items:center;margin:-8px -8px 8px -8px;padding:8px;gap:8px;">
+        <!-- ✅ İKONLAR - ABSOLUTE SAĞ ÜST -->
+        <div style="position:absolute;top:10px;right:10px;display:flex;align-items:center;gap:8px;z-index:20;">
             <div class="notif-btn" id="notif-btn" onclick="openNotifModal()" style="position:relative;">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#c7d2fe" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
                 <span class="notif-badge" id="notif-badge">0</span>
             </div>
             <button class="hamburger-btn" onclick="toggleSideMenu()"><span></span><span></span><span></span></button>
         </div>
-        
+
+        <!-- ✅ LOGO VE BAŞLIK -->
+        <div style="text-align:center;padding:4px 50px 4px 8px;">
+            <img src="assets/logo.jpeg" alt="Web3 Domain Gateway Logo" class="app-logo" onerror="this.style.display='none'">
+        <h1 class="app-title">Web3 Domain Gateway</h1>
+        </div>
+
         <div class="stats-bar">
             <div class="stats-item"><span data-i18n="soldDomains"></span>: <span id="total-sold">0</span></div>
             <div class="stats-item"><span data-i18n="totalVolume"></span>: <span id="total-volume">0</span> Test Pİ</div>
             <div class="stats-item"><span data-i18n="activeUsers"></span>: <span id="online-count">0</span></div>
         </div>
-        <div id="user-status-box" style="display:none;margin-top:6px;">
+        <div id="user-status-box" style="display:none;margin-top:4px;">
             <p id="user-status" style="display:inline-block;font-size:0.85em;color:#6ee7b7;font-weight:900;margin:0;background:rgba(16,185,129,0.12);border:1.5px solid #10b981;border-radius:20px;padding:5px 14px;"></p>
         </div>
     </div>
@@ -511,7 +520,13 @@
                 </div>
                 <!-- ✅ SATIŞ DETAY TABLOSU -->
                 <div style="margin-top:12px;">
-                    <div style="font-size:0.68em;color:#4ade80;font-weight:800;text-transform:uppercase;margin-bottom:6px;text-align:left;">📋 <span data-i18n="salesDetailTitle">Satış Detayları</span></div>
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;flex-wrap:wrap;gap:6px;">
+                        <div style="font-size:0.68em;color:#4ade80;font-weight:800;text-transform:uppercase;">📋 <span data-i18n="salesDetailTitle">Satış Detayları</span></div>
+                        <div style="display:flex;gap:6px;align-items:center;">
+                            <input type="date" id="sales-detail-date-input" class="admin-date-picker" style="width:130px;margin-bottom:0;padding:4px 8px;font-size:0.7em;">
+                            <button onclick="loadSalesDetailsByDate()" style="background:#10b981;color:#fff;border:none;padding:4px 10px;border-radius:6px;font-size:0.65em;font-weight:800;cursor:pointer;white-space:nowrap;">📋 Getir</button>
+                        </div>
+                    </div>
                     <div style="max-height:200px;overflow-y:auto;">
                         <table class="sales-detail-table" id="sales-detail-table">
                             <thead>
@@ -783,7 +798,10 @@ const i18n = {
     restoreBtn:"↩ Geri Getir",restoreConfirm:(n)=>`"${n}" domainini geri getirmek istediğinize emin misiniz? Eski verileri (açıklama, görsel, satıcı bilgisi) korunarak yeniden satışa eklenecek.`,
     restoreFail:"Geri getirme başarısız: ",restoreSuccess:(n)=>`"${n}" domaini geri getirildi.`,
     deletedAtLabel:"Silinme tarihi:",loadingDomains:"Domainler yükleniyor...",filterSectionLabel:"🏷️ Kategoriye Göre Filtrele",
-    salesDetailTitle:"Satış Detayları"
+    salesDetailTitle:"Satış Detayları",
+    dailyLogTitle:"Günlük Giriş Kaydı",
+    dailyLogCount:"kullanıcı giriş yapmış",
+    noDailyLog:"tarihinde kayıt bulunamadı."
   },
   en: {
     menu:"Menu",account:"Account",preferences:"Preferences",connected:"Connected",
@@ -898,7 +916,10 @@ const i18n = {
     restoreBtn:"↩ Restore",restoreConfirm:(n)=>`Are you sure you want to restore "${n}"? Its previous data (description, image, seller info) will be preserved and it will be relisted for sale.`,
     restoreFail:"Restore failed: ",restoreSuccess:(n)=>`"${n}" has been restored.`,
     deletedAtLabel:"Deleted on:",loadingDomains:"Loading domains...",filterSectionLabel:"🏷️ Filter by Category",
-    salesDetailTitle:"Sales Details"
+    salesDetailTitle:"Sales Details",
+    dailyLogTitle:"Daily Login Log",
+    dailyLogCount:"users logged in",
+    noDailyLog:"no records found on this date."
   }
 };
     let currentLang = localStorage.getItem('w3dg_lang') || 'tr';
@@ -1090,7 +1111,7 @@ window.switchAdminTab = function(tabId) {
     document.querySelectorAll('.admin-tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === tabId));
     document.querySelectorAll('.admin-tab-panel').forEach(p => p.classList.toggle('active', p.id === tabId));
     if (tabId === 'tab-earnings') loadAdminEarnings();
-    if (tabId === 'tab-stats') loadSalesDetails(); // ✅ Satış detaylarını yükle
+    if (tabId === 'tab-stats') { loadSalesDetails(); const sdDate = document.getElementById('sales-detail-date-input'); if (sdDate && !sdDate.value) sdDate.value = new Date().toISOString().split('T')[0]; }
 };
 window.switchUserTab = function(tabId) {
     document.querySelectorAll('.user-tab-btn').forEach(b => b.classList.toggle('active', b.dataset.utab === tabId));
@@ -1454,6 +1475,67 @@ window.loadSalesDetails = async function() {
             }
         }
     } catch (e) { console.error("Satış detayları alınamadı:", e); }
+
+// ✅ GÜNLÜK GİRİŞ KAYDI - TARİH SEÇİCİ İLE
+window.loadUniqueUsersByDate = async function() {
+    const dateInput = document.getElementById('unique-users-date-input');
+    const selectedDate = dateInput.value;
+    if (!selectedDate) { alert('Lütfen bir tarih seçin'); return; }
+    try {
+        const r = await fetch('/api/approve', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'get_daily_log', date: selectedDate, accessToken: piAccessToken })
+        });
+        const result = await r.json();
+        if (result.success) {
+            const listEl = document.getElementById("unique-user-list");
+            const countEl = document.getElementById("unique-users-daily-count");
+            const locale = currentLang === 'en' ? 'en-GB' : 'tr-TR';
+            const sorted = result.users || [];
+            const users = result.userData || {};
+            if (countEl) countEl.innerHTML = `<span style="color:#fbbf24;font-weight:900;">${result.count}</span> ${t('dailyLogCount')}`;
+            if (listEl) {
+                listEl.innerHTML = sorted.length === 0
+                    ? `<p style="font-size:0.8em;opacity:0.5;text-align:center;">${selectedDate} ${t('noDailyLog')}</p>`
+                    : sorted.map(u => `<div class="log-item"><b>@${u}</b><span style="color:#94a3b8;font-size:0.85em;">${t('lastSeenPrefix')}${new Date(users[u]).toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' })}</span></div>`).join('');
+            }
+        } else { alert(result.error || 'Veri getirme hatası'); }
+    } catch (e) { console.error("Günlük kullanıcı getirme hatası:", e); alert('Veri getirme hatası: ' + e.message); }
+};
+
+// ✅ SATIŞ DETAYLARI - TARİH SEÇİCİ İLE
+window.loadSalesDetailsByDate = async function() {
+    if (!isAuth || currentUser !== 'doganay0808') return;
+    const dateInput = document.getElementById('sales-detail-date-input');
+    const selectedDate = dateInput.value;
+    try {
+        const r = await fetch('/api/approve', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'get_sales_details', date: selectedDate || null, accessToken: piAccessToken })
+        });
+        const result = await r.json();
+        if (result.success) {
+            const tbody = document.getElementById('sales-detail-body');
+            if (tbody) {
+                if (!result.sales || result.sales.length === 0) {
+                    tbody.innerHTML = `<tr><td colspan="4" style="text-align:center;color:#64748b;">${selectedDate ? selectedDate + ' tarihinde satış yok' : 'Henüz satış yok'}</td></tr>`;
+                } else {
+                    const locale = currentLang === 'en' ? 'en-GB' : 'tr-TR';
+                    tbody.innerHTML = result.sales.map(s => `
+                        <tr>
+                            <td style="font-weight:800;">${s.domain}</td>
+                            <td>@${s.buyer}</td>
+                            <td style="color:#fbbf24;font-weight:800;">${s.price} Pi</td>
+                            <td style="color:#94a3b8;">${new Date(s.at).toLocaleDateString(locale, { day: '2-digit', month: '2-digit', year: 'numeric' })}</td>
+                        </tr>
+                    `).join('');
+                }
+            }
+        }
+    } catch (e) { console.error("Satış detayları alınamadı:", e); }
+};
 };
 
 // ADMIN KAZANÇ
@@ -1752,6 +1834,8 @@ function renderUniqueUsersList(sorted) {
 }
 window.openUniqueUsersModal = async function() {
     document.getElementById('unique-users-modal').style.display = 'flex';
+    const uuDate = document.getElementById('unique-users-date-input');
+    if (uuDate && !uuDate.value) uuDate.value = new Date().toISOString().split('T')[0];
     if (cachedUniqueUsers) { renderUniqueUsersList(cachedUniqueUsers); return; }
     try { renderUniqueUsersList(await fetchUniqueUsers()); }
     catch (e) { const l = document.getElementById("unique-user-list"); if (l) l.innerHTML = `<p style="color:#ef4444;text-align:center;font-size:0.8em;">${t('usersError')}</p>`; }
