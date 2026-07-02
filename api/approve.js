@@ -763,7 +763,8 @@ export default async function handler(req, res) {
           Array.from(allDomainNamesInRequests).map(name => db.collection('domains').doc(name).get())
         );
         domainDocs.forEach(snap => {
-          if (snap.exists && snap.data().deleted === true) deletedDomainNames.add(snap.id);
+          // Domain yoksa (perma silinmiş) veya deleted === true ise filtrele
+          if (!snap.exists || snap.data().deleted === true) deletedDomainNames.add(snap.id);
         });
       }
       const visibleSellRequests = sellRequests.filter(r => !deletedDomainNames.has(r.domainName));
