@@ -35,7 +35,7 @@
         .btn-sold{background:rgba(239,68,68,0.1);color:var(--sold);border:1.5px solid var(--sold);padding:4px 6px;border-radius:6px;margin-top:3px;font-weight:bold;width:100%;font-size:0.65em;}
         .pi-btn{background:linear-gradient(135deg,#0052FF 0%,#3b82f6 100%);color:#ffffff;padding:8px 20px;border-radius:50px;font-weight:800;font-size:0.85em;border:none;cursor:pointer;animation:pulse-blue 2s infinite;transition:0.3s;margin:6px 0;}
         @keyframes pulse-blue{0%{transform:scale(0.95);box-shadow:0 0 0 0 rgba(0,82,255,0.7);}70%{transform:scale(1);box-shadow:0 0 0 10px rgba(0,82,255,0);}100%{transform:scale(0.95);box-shadow:0 0 0 0 rgba(0,82,255,0);}}
-        .section-title-box{background:linear-gradient(90deg,#fef3c7 0%,#fde68a 40%,#ffffff 50%,#fde68a 60%,#fef3c7 100%);background-size:200% auto;color:#1e293b;padding:5px 16px;border-radius:10px;border:2px solid #f59e0b;font-size:0.92em;font-weight:900;display:inline-block;margin-bottom:6px;animation:title-glow 2.5s ease-in-out infinite,section-shimmer 3s linear infinite;}
+        .section-title-box{background:linear-gradient(90deg,#fef3c7 0%,#fde68a 40%,#ffffff 50%,#fde68a 60%,#fef3c7 100%);background-size:200% auto;color:#1e293b;padding:5px 16px;border-radius:10px;border:2px solid #f59e0b;font-size:0.92em;font-weight:900;display:inline-block;margin-bottom:6px;animation:title-glow 2.5s ease-in-out infinite,section-shimmer 3s linear infinite;will-change:transform,opacity;}
         @keyframes title-glow{0%,100%{box-shadow:0 0 10px rgba(245,158,11,0.5);border-color:#f59e0b;}50%{box-shadow:0 0 20px rgba(251,191,36,0.9),0 0 40px rgba(251,191,36,0.45);border-color:#fcd34d;}}
         @keyframes section-shimmer{0%{background-position:200% center;}100%{background-position:-200% center;}}
         .lock-title-box{background:linear-gradient(135deg,#fef3c7 0%,#fde68a 100%);color:#1e293b;padding:4px 10px;border-radius:10px;border:2px solid #f59e0b;font-size:0.8em;font-weight:900;margin-bottom:4px;display:inline-block;}
@@ -2025,6 +2025,12 @@ function debouncedProfileRefresh() {
 }
 
 onSnapshot(collection(db, "domains"), (snapshot) => {
+    // ✅ Cache'den gelen ilk veriyi atla, sadece server'dan geleni işle
+    if (snapshot.metadata.fromCache && !firstDomainsSnapshotReceived) {
+        console.log("[onSnapshot] Cache verisi atlandı, server bekleniyor...");
+        return;
+    }
+
     const hasRelevantChange = snapshot.docChanges().length > 0;
     snapshot.docChanges().forEach(change => {
         if (change.type === 'removed') {
@@ -2071,15 +2077,19 @@ onSnapshot(collection(db, "domains"), (snapshot) => {
 
     if (!firstDomainsSnapshotReceived) {
         firstDomainsSnapshotReceived = true;
+        console.log("[onSnapshot] İlk server verisi alındı, render yapılıyor");
         render();
-    } else {
+    } else if (hasRelevantChange) {
+        console.log("[onSnapshot] Değişiklik algılandı, render yapılıyor");
         debouncedRender();
+    } else {
+        console.log("[onSnapshot] Değişiklik yok, render atlandı");
     }
     if (hasRelevantChange) debouncedProfileRefresh();
 });
 
 let renderTimeout = null;
-function debouncedRender() { clearTimeout(renderTimeout); renderTimeout = setTimeout(render, 50); }
+function debouncedRender() { clearTimeout(renderTimeout); renderTimeout = setTimeout(render, 300); }
 
 domains.forEach(d => { if (!domainData[d.name]) domainData[d.name] = { sold: false, price: d.price }; });
 applyTranslations();
