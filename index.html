@@ -412,6 +412,9 @@
         <h1 class="app-title">Web3 Domain Gateway</h1>
         </div>
 
+        <div id="guest-pi-btn" style="margin:8px 0;">
+            <button class="pi-btn" onclick="window.loginWithPi()" data-i18n="connectWithPi"></button>
+        </div>
         <div class="stats-bar">
             <div class="stats-item"><span data-i18n="soldDomains"></span>: <span id="total-sold">0</span></div>
             <div class="stats-item"><span data-i18n="totalVolume"></span>: <span id="total-volume">0</span> Test Pİ</div>
@@ -419,6 +422,9 @@
         </div>
         <div id="user-status-box" style="display:none;margin-top:4px;">
             <p id="user-status" style="display:inline-block;font-size:0.85em;color:#6ee7b7;font-weight:900;margin:0;background:rgba(16,185,129,0.12);border:1.5px solid #10b981;border-radius:20px;padding:5px 14px;"></p>
+        </div>
+        <div id="guest-pi-btn-bottom" style="margin:8px 0;">
+            <button class="pi-btn" onclick="window.loginWithPi()" data-i18n="connectWithPi"></button>
         </div>
     </div>
 
@@ -611,7 +617,7 @@
     </div>
 
     <!-- Market -->
-    <div class="card" id="market-card" style="position:relative;padding:8px;margin-bottom:4px;overflow:hidden;min-height:80px;">
+    <div class="card" id="market-card" style="position:relative;padding:8px;margin-bottom:4px;overflow:hidden;min-height:80px;display:none;">
         <div class="section-title-box" data-i18n="availableDomains"></div>
         <div class="filter-section" id="filter-section" style="display:none;">
             <div class="filter-section-label" data-i18n="filterSectionLabel"></div>
@@ -1749,11 +1755,14 @@ function render() {
     if (filterSection) filterSection.style.display = isAuth ? 'block' : 'none';
 
     if (!isAuth) { 
-        lock.style.position = "absolute"; 
-        lock.style.display = "flex"; 
-        list.style.display = "grid"; 
-        list.classList.add("locked-content"); 
+        // İlk açılış: sadece header göster, market kartı gizli
+        const marketCard = document.getElementById("market-card");
+        if (marketCard) marketCard.style.display = "none";
+        return; // Domain listesini render etme
     } else { 
+        // Giriş yapıldı: market kartını göster
+        const marketCard = document.getElementById("market-card");
+        if (marketCard) marketCard.style.display = "block";
         lock.style.display = "none"; 
         list.style.display = "grid"; 
         list.classList.remove("locked-content"); 
@@ -1937,6 +1946,13 @@ window.loginWithPi = async function() {
             document.getElementById("user-status").innerHTML = '<span class="online-dot"></span>' + t('connectedPrefix') + currentUser;
             document.getElementById("user-status-box").style.display = "block";
             document.getElementById("user-panel").style.display = "block";
+            // ✅ Giriş yapınca Pi butonlarını gizle, market kartını göster
+            const guestBtnTop = document.getElementById("guest-pi-btn");
+            const guestBtnBottom = document.getElementById("guest-pi-btn-bottom");
+            if (guestBtnTop) guestBtnTop.style.display = "none";
+            if (guestBtnBottom) guestBtnBottom.style.display = "none";
+            const marketCard = document.getElementById("market-card");
+            if (marketCard) marketCard.style.display = "block";
 
             document.getElementById("notif-btn").style.display = "flex";
             startNotifPolling();
