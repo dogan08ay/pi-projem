@@ -7,16 +7,11 @@ import { getDatabase } from 'firebase-admin/database';
 function getAdminApp() {
   if (getApps().length > 0) return getApps()[0];
 
-  // FIX (teşhis katmanı): Ortam değişkenlerinin VAR olması yetmez, doğru
-  // FORMATTA olması gerekir. Bu loglar Vercel Function Logs'ta her cold
-  // start'ta bir kez görünür ve yapılandırma hatasını net şekilde işaret
-  // eder — "değişken tanımlı ama yanlış" durumunu "hiç tanımlı değil"
-  // durumundan ayırt etmeyi sağlar.
   const dbUrl = process.env.FIREBASE_DATABASE_URL;
   if (!dbUrl) {
     console.error("[FIREBASE INIT UYARI] FIREBASE_DATABASE_URL ortam değişkeni BOŞ/tanımsız. RTDB (bildirimler) çalışmayacak.");
   } else if (!/^https:\/\/.+\.firebaseio\.com\/?$/.test(dbUrl) && !/^https:\/\/.+\.(firebasedatabase\.app)\/?$/.test(dbUrl)) {
-    console.error(`[FIREBASE INIT UYARI] FIREBASE_DATABASE_URL formatı beklenmedik görünüyor: "${dbUrl}". Beklenen format: https://<proje-id>-default-rtdb.firebaseio.com (sonunda / OLMAMALI, başında https:// OLMALI, tırnak içermemeli).`);
+    console.error(`[FIREBASE INIT UYARI] FIREBASE_DATABASE_URL formatı beklenmedik görünüyor: "${dbUrl}".`);
   } else {
     console.log(`[FIREBASE INIT] databaseURL doğrulandı: ${dbUrl}`);
   }
@@ -31,17 +26,17 @@ function getAdminApp() {
 
   return initializeApp({
     credential: cert(serviceAccount),
-    storageBucket: process.env.FIREBASE_STORAGE_BUCKET, // örn: web3-domain-gateway.appspot.com
-    databaseURL: dbUrl,     // örn: https://web3-domain-gateway-default-rtdb.firebaseio.com
+    storageBucket: process.env.FIREBASE_STORAGE_BUCKET,
+    databaseURL: dbUrl,
   });
 }
 function getDb()      { getAdminApp(); return getFirestore(); }
 function getBucket()  { getAdminApp(); return getStorage().bucket(); }
 function getRtdb()    { getAdminApp(); return getDatabase(); }
 
-// ─── Admin Token Cache (Pi API'ye her seferinde gitmeyi önler) ────────────
-const adminCache = new Map(); // token -> { valid: bool, ts: timestamp }
-const ADMIN_CACHE_TTL = 5 * 60 * 1000; // 5 dakika
+// ─── Admin Token Cache ────────────────────────────────────────────────────
+const adminCache = new Map();
+const ADMIN_CACHE_TTL = 5 * 60 * 1000;
 
 async function verifyAdmin(accessToken) {
   if (!accessToken) return false;
@@ -83,7 +78,7 @@ async function getRealUsername(accessToken) {
   }
 }
 
-// ─── Rate Limiter (IP bazlı, in-memory) ───────────────────────────────────
+// ─── Rate Limiter ─────────────────────────────────────────────────────────
 const rateLimitMap = new Map();
 function checkRateLimit(ip, action, maxReq = 10, windowMs = 60000) {
   const key = `${ip}:${action}`;
@@ -95,11 +90,7 @@ function checkRateLimit(ip, action, maxReq = 10, windowMs = 60000) {
   return entry.count <= maxReq;
 }
 
-// ─── Bildirim Yardımcıları (Firebase Realtime Database) ───────────────────
-// NOT: RTDB rules tamamen kapalı (read:false, write:false). Admin SDK bu
-// kuralları bypass eder, dolayısıyla backend (Admin SDK) hem yazabilir hem
-// okuyabilir. Frontend client SDK'sı ise hiçbir şekilde okuyamaz/yazamaz.
-// Bu yüzden bildirim okuma/işaretleme de backend üzerinden (proxy) yapılır.
+// ─── Bildirim Yardımcıları ────────────────────────────────────────────────
 async function sendNotification(targetUsername, notification) {
   if (!targetUsername) return;
   try {
@@ -111,15 +102,6 @@ async function sendNotification(targetUsername, notification) {
       ts: Date.now()
     });
   } catch (e) {
-    // FIX: Bu hata önceden sadece console.error ile basılıyordu ve
-    // çağıran kodun akışını hiç etkilemiyordu — bu doğru bir davranış
-    // (bir bildirim gönderilemese de asıl işlem, örn. satın alma,
-    // başarısız sayılmamalı). Ama teşhisi kolaylaştırmak için hatanın
-    // TAM mesajını ve hangi kullanıcıya/hangi bildirim tipi için
-    // gönderilmeye çalışıldığını da logluyoruz. En sık görülen neden:
-    // process.env.FIREBASE_DATABASE_URL tanımlı değilse getDatabase()
-    // burada "Can't determine Firebase Database URL" tarzı bir hata
-    // fırlatır — Vercel loglarında bu satırı arayarak teşhis edilebilir.
     console.error(`Bildirim gönderilemedi (hedef: @${targetUsername}, tip: ${notification?.type||'?'}):`, e.message || e);
   }
 }
@@ -128,7 +110,7 @@ async function sendNotificationToAdmin(notification) {
   await sendNotification('doganay0808', notification);
 }
 
-// ─── Telegram Yardımcısı ──────────────────────────────────────────────────
+// ─── Telegram Yardımcısı ────────────────────────────────────────────────────
 const TG_BOT_TOKEN = process.env.TG_BOT_TOKEN;
 const TG_CHAT_ID   = process.env.TG_CHAT_ID;
 const TG_GROUP_ID  = process.env.TG_GROUP_ID;
@@ -157,6 +139,26 @@ function setCors(req, res) {
   res.setHeader('Vary', 'Origin');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+}
+
+// ─── Puan Güncelle ─────────────────────────────────────────────────────────
+async function updateUserPoints(username, points, reason) {
+  try {
+    const db = getDb();
+    const ref = db.collection('user_profiles').doc(username);
+    await ref.set({
+      points: FieldValue.increment(points),
+      updatedAt: Date.now()
+    }, { merge: true });
+    const snap = await ref.get();
+    const totalPoints = Math.max(0, snap.data()?.points || 0);
+    let badge = null;
+    if (totalPoints >= 500) badge = 'diamond';
+    else if (totalPoints >= 200) badge = 'gold';
+    else if (totalPoints >= 50)  badge = 'silver';
+    else if (totalPoints >= 10)  badge = 'bronze';
+    await ref.set({ badge }, { merge: true });
+  } catch (e) { console.error("Puan güncelleme hatası:", e); }
 }
 
 // ══════════════════════════════════════════════════════════════════════════
@@ -194,7 +196,6 @@ export default async function handler(req, res) {
       const file = bucket.file(filePath);
       const buffer = Buffer.from(imageBase64, 'base64');
 
-      // Max 2MB kontrol
       if (buffer.length > 2 * 1024 * 1024)
         return res.status(400).json({ error: "Görsel 2MB'dan büyük olamaz" });
 
@@ -210,7 +211,7 @@ export default async function handler(req, res) {
     }
   }
 
-  // ── Bildirimleri Getir (RTDB rules kapalı olduğu için backend proxy) ───
+  // ── Bildirimleri Getir ───────────────────────────────────────────────────
   if (action === 'get_notifications') {
     const realUsername = await getRealUsername(accessToken);
     if (!realUsername) return res.status(403).json({ error: "Geçersiz oturum" });
@@ -221,7 +222,7 @@ export default async function handler(req, res) {
       const notifications = Object.entries(data)
         .map(([id, v]) => ({ id, ...v }))
         .sort((a, b) => (b.ts || 0) - (a.ts || 0))
-        .slice(0, 100); // son 100 bildirim ile sınırla
+        .slice(0, 100);
       return res.status(200).json({ success: true, notifications });
     } catch (e) {
       console.error("Bildirim getirme hatası:", e);
@@ -260,30 +261,7 @@ export default async function handler(req, res) {
     }
   }
 
-  // ── Puan Güncelle (satın alma sonrası otomatik çağrılır) ───────────────
-  async function updateUserPoints(username, points, reason) {
-    try {
-      const db = getDb();
-      const ref = db.collection('user_profiles').doc(username);
-      await ref.set({
-        points: FieldValue.increment(points),
-        updatedAt: Date.now()
-      }, { merge: true });
-      // Rozet kontrolü — puan düşünce rozet de güncellenmeli (null dahil)
-      const snap = await ref.get();
-      const totalPoints = Math.max(0, snap.data()?.points || 0);
-      let badge = null;
-      if (totalPoints >= 500) badge = 'diamond';
-      else if (totalPoints >= 200) badge = 'gold';
-      else if (totalPoints >= 50)  badge = 'silver';
-      else if (totalPoints >= 10)  badge = 'bronze';
-      // FIX: badge null olsa bile yaz — önceki if(badge) kontrolü
-      // puan düşünce rozeti sıfırlamıyordu.
-      await ref.set({ badge }, { merge: true });
-    } catch (e) { console.error("Puan güncelleme hatası:", e); }
-  }
-
-  // ── Giriş Bildirimi (yeni kullanıcı girişinde admin'e + login event log) ─
+  // ── Giriş Bildirimi ────────────────────────────────────────────────────
   if (action === 'log_login') {
     const realUsername = await getRealUsername(accessToken);
     if (!realUsername) return res.status(403).json({ error: "Geçersiz oturum" });
@@ -298,7 +276,6 @@ export default async function handler(req, res) {
       users[realUsername] = Date.now();
       await userDocRef.set({ users }, { merge: true });
 
-      // İlk giriş tarihini hesapla (tüm daily_users kayıtlarından en eski)
       const allDaily = await db.collection('daily_users').get();
       let earliest = Date.now();
       let isBrandNewUser = true;
@@ -310,7 +287,6 @@ export default async function handler(req, res) {
         }
       });
 
-      // Admin'e "kullanıcı girişi" bildirimi (admin kendisi değilse)
       if (realUsername !== 'doganay0808') {
         await sendNotificationToAdmin({
           type: isBrandNewUser ? 'new_user_login' : 'user_login',
@@ -323,6 +299,24 @@ export default async function handler(req, res) {
       return res.status(200).json({ success: true, firstSeen: earliest, isFirstLoginToday });
     } catch (e) {
       console.error("Login log hatası:", e);
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  // ── Logout ── ✅ YENİ EKLENDİ ──────────────────────────────────────────
+  if (action === 'logout') {
+    const realUsername = await getRealUsername(accessToken);
+    if (!realUsername) return res.status(403).json({ error: "Geçersiz oturum" });
+    try {
+      // Kullanıcı cache'inden temizle
+      userCache.delete(accessToken);
+      // Active users'tan sil
+      const db = getDb();
+      await db.collection('active_users').doc(realUsername).delete().catch(() => {});
+      console.log(`Kullanıcı çıkış yaptı: @${realUsername}`);
+      return res.status(200).json({ success: true, message: "Çıkış başarılı" });
+    } catch (e) {
+      console.error("Logout hatası:", e);
       return res.status(500).json({ error: e.message });
     }
   }
@@ -346,24 +340,8 @@ export default async function handler(req, res) {
       const soldAt = soldData.at;
       const prevBuyer = soldData.buyer;
 
-      // FIX (karar: harcama VE puan geri alınır): Domain relist edildiğinde
-      // eski alıcı için bu satış artık "geçerli" sayılmaz — kullanıcı
-      // panelinde harcama ve puan gerçek durumu yansıtmalı. Bu yüzden:
-      //  1) global_sales kaydı silinir (artık "satın aldım" geçmişinde
-      //     görünmemeli — toplam harcamadan da otomatik düşer çünkü
-      //     totalSpent bu koleksiyondan toplanıyor).
-      //  2) Eski alıcının kazandığı puan (satış anında verilen, fiyat
-      //     kadar puan) geri alınır.
-      // Domain'in kendisi (açıklama, görsel, satıcı bilgisi) ASLA silinmez
-      // — sadece bu işleme ait fiyatsal/puansal etkiler geri alınır.
       if (prevBuyer) {
         try {
-          // FIX: global_sales dokümanı ID'si txid VEYA (txid yoksa) paymentId
-          // olabilir — relist anında elimizde paymentId yok, txid de null
-          // olabilir. Bu yüzden ID tahmin etmiyoruz; her durumda alıcı+
-          // domain+satış zamanına göre SORGU ile doğru kaydı/kayıtları
-          // bulup siliyoruz. Bu yaklaşım txid'in var/yok olmasından bağımsız
-          // olarak güvenilir çalışır.
           const matchSnap = await db.collection('global_sales')
             .where('user', '==', prevBuyer)
             .where('domain', '==', domainName)
@@ -393,7 +371,6 @@ export default async function handler(req, res) {
         }
       }
 
-      // Eski alıcıya bildirim
       if (prevBuyer) {
         await sendNotification(prevBuyer, {
           type: 'domain_relisted',
@@ -442,13 +419,6 @@ export default async function handler(req, res) {
       const db = getDb();
       const domainRef = db.collection('domains').doc(newName);
       const existing = await domainRef.get();
-      // FIX (güvenlik/veri bütünlüğü): Bu isim daha önce kullanılmışsa
-      // (silinmiş olsa bile) burada YENİ bir kayıt olarak ASLA
-      // oluşturulmaz. Aksi halde .set() çağrısı eski (silinmiş) domain'in
-      // sellerUsername, sellerWallet, description, görsel geçmişi gibi
-      // tüm alanlarını sessizce ezer — bu, "silinen veriler korunur"
-      // garantisini bozar. Admin bu ismi geri istiyorsa restore_domain
-      // action'ını kullanmalı.
       if (existing.exists) {
         return res.status(400).json({
           error: existing.data().deleted === true
@@ -471,7 +441,7 @@ export default async function handler(req, res) {
     }
   }
 
-  // ── Domain Sil (SOFT DELETE — kalıcı silme yerine işaretleme) ─────────
+  // ── Domain Sil (SOFT DELETE) ──────────────────────────────────────────
   if (action === 'delete_domain') {
     const { domainName: delName } = req.body;
     const isAdmin = await verifyAdmin(accessToken);
@@ -484,28 +454,11 @@ export default async function handler(req, res) {
       if (!domainSnap.exists) return res.status(404).json({ error: "Domain bulunamadı" });
       if (domainSnap.data().sold === true) return res.status(400).json({ error: "Satılmış domain silinemez" });
 
-      // FIX (karar: puan geri alınır): Eğer bu domain bir kullanıcının
-      // onaylanmış satış ilanıysa (sellerUsername var), o ilan onaylanırken
-      // satıcıya +20 puan verilmişti (approve_sell_request içinde). Domain
-      // şimdi siliniyorsa (henüz satılmamış haliyle), bu puan artık
-      // gerçekte karşılığı olmayan bir kazanç haline gelir — geri alınır.
       const domainDataForDelete = domainSnap.data();
       if (domainDataForDelete.sellerUsername) {
         await updateUserPoints(domainDataForDelete.sellerUsername, -20, 'domain_deleted_point_reversal');
       }
 
-      // FIX (önemli mantık değişikliği): Önceden domainRef.delete() ile
-      // belge tamamen siliniyordu. Bu durumda:
-      //  - Geçmiş fiyat hareketleri / istatistikler korunsa da domain'in
-      //    kendisi geri getirilemez hale geliyordu.
-      //  - "Panelim" tarafında kullanıcıların sellRequests/soldDomains
-      //    listelerinde silinen domain'e ait kayıtlar query'lerde
-      //    görünmeye devam edebiliyordu çünkü sell_requests koleksiyonu
-      //    ayrı ve dokunulmuyordu.
-      // Çözüm: documenti SİLMEK yerine deleted:true olarak işaretliyoruz.
-      // Frontend tarafında "deleted === true" olan domainler hem markette
-      // hem kullanıcı panellerinde gösterilmez ama veri kalıcı olarak
-      // saklanır (admin ileride geri getirebilir / denetim izi kalır).
       await domainRef.set({
         deleted: true,
         deletedAt: Date.now()
@@ -518,7 +471,39 @@ export default async function handler(req, res) {
     }
   }
 
-  // ── Domain Geri Getir (Soft-delete edilmiş bir domain'i canlandırır) ──
+  // ── Domain Kalıcı Sil (PERMA DELETE) ── ✅ YENİ EKLENDİ ────────────────
+  if (action === 'perma_delete_domain') {
+    const { domainName: permaDelName } = req.body;
+    const isAdmin = await verifyAdmin(accessToken);
+    if (!isAdmin) return res.status(403).json({ error: "Yetki yok" });
+    if (!permaDelName) return res.status(400).json({ error: "Geçersiz domain adı" });
+    try {
+      const db = getDb();
+      const domainRef = db.collection('domains').doc(permaDelName);
+      const domainSnap = await domainRef.get();
+      if (!domainSnap.exists) return res.status(404).json({ error: "Domain bulunamadı" });
+
+      // İlişkili global_sales kayıtlarını sil
+      const salesSnap = await db.collection('global_sales')
+        .where('domain', '==', permaDelName)
+        .get();
+      if (!salesSnap.empty) {
+        const batch = db.batch();
+        salesSnap.forEach(doc => batch.delete(doc.ref));
+        await batch.commit();
+      }
+
+      // Domain'i tamamen sil
+      await domainRef.delete();
+      console.log(`Domain kalıcı olarak silindi: ${permaDelName}`);
+      return res.status(200).json({ success: true });
+    } catch (e) {
+      console.error("Kalıcı silme hatası:", e);
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  // ── Domain Geri Getir ──────────────────────────────────────────────────
   if (action === 'restore_domain') {
     const { domainName: restoreName } = req.body;
     const isAdmin = await verifyAdmin(accessToken);
@@ -531,10 +516,6 @@ export default async function handler(req, res) {
       if (!snap.exists) return res.status(404).json({ error: "Domain bulunamadı" });
       if (snap.data().deleted !== true) return res.status(400).json({ error: "Bu domain silinmiş durumda değil" });
 
-      // FIX (simetri): delete_domain, satıcının onay puanını (-20)
-      // geri alıyordu (eğer domain bir sellerUsername'e aitse, henüz
-      // satılmamışsa). Restore işlemi bunun tersini yapmalı: domain
-      // geri geldiğinde, eğer hâlâ satılmamışsa, o puan tekrar verilir.
       const restoreData = snap.data();
       if (restoreData.sellerUsername && restoreData.sold !== true) {
         await updateUserPoints(restoreData.sellerUsername, 20, 'domain_restored_point_reinstate');
@@ -548,29 +529,7 @@ export default async function handler(req, res) {
     }
   }
 
-  // ── Platform İstatistiklerini Sıfırla (KARAR: kalıcı silme + epoch) ───
-  // Bu işlem geri alınamaz, bu yüzden ekstra bir confirmReset:true
-  // parametresi zorunlu kılınmıştır — yanlışlıkla tetiklenmeyi önler.
-  //
-  // Ne yapar:
-  //  1) global_sales koleksiyonundaki TÜM dokümanları kalıcı olarak siler
-  //     (artık totalSpent zaten domains'ten hesaplanıyor, ama "karışmasın"
-  //     talebi gereği bu geçmiş veri de temizlenir).
-  //  2) daily_stats koleksiyonundaki TÜM dokümanları siler (platform
-  //     kazancının totalVolume hesabını besleyen günlük hacim geçmişi).
-  //  3) user_profiles koleksiyonundaki TÜM dokümanlarda points alanını
-  //     0'a, badge alanını null'a sıfırlar (rozet de puana bağlı olduğu
-  //     için sıfırdan başlamalı).
-  //  4) system_config/reset_epoch dokümanına bugünün timestamp'ini yazar.
-  //     Bu epoch, gelecekteki tüm yeni satış/puan/onay işlemlerinin
-  //     "bugünden sonraki gerçek veri" olduğunu işaretler — ileride
-  //     ihtiyaç olursa bu tarihten önceki/sonraki ayrımı yapılabilir.
-  //
-  // Ne YAPMAZ (bilinçli olarak dokunulmaz):
-  //  - domains koleksiyonu silinmez/değiştirilmez (market ve
-  //    "satılmış/satışta" durumları, ayrıca totalSpent/totalEarned
-  //    hesaplamaları bu koleksiyona bağımlı — silinirse market çöker).
-  //  - sell_requests koleksiyonu silinmez (ilan geçmişi/durumu kalır).
+  // ── Platform İstatistiklerini Sıfırla ──────────────────────────────────
   if (action === 'reset_platform_stats') {
     const { confirmReset } = req.body;
     const isAdmin = await verifyAdmin(accessToken);
@@ -581,7 +540,6 @@ export default async function handler(req, res) {
     try {
       const db = getDb();
 
-      // 1) global_sales — tamamen sil
       const salesSnap = await db.collection('global_sales').get();
       let batch = db.batch();
       let opCount = 0;
@@ -592,7 +550,6 @@ export default async function handler(req, res) {
       }
       if (opCount > 0) await batch.commit();
 
-      // 2) daily_stats — tamamen sil
       const statsSnap = await db.collection('daily_stats').get();
       batch = db.batch();
       opCount = 0;
@@ -603,7 +560,6 @@ export default async function handler(req, res) {
       }
       if (opCount > 0) await batch.commit();
 
-      // 3) user_profiles — points/badge sıfırla
       const profilesSnap = await db.collection('user_profiles').get();
       batch = db.batch();
       opCount = 0;
@@ -614,7 +570,6 @@ export default async function handler(req, res) {
       }
       if (opCount > 0) await batch.commit();
 
-      // 4) Reset epoch'u kaydet
       const resetTimestamp = Date.now();
       await db.collection('system_config').doc('reset_epoch').set({
         resetAt: resetTimestamp,
@@ -644,9 +599,6 @@ export default async function handler(req, res) {
     try {
       const db = getDb();
       const existingDomain = await db.collection('domains').doc(reqDomainName).get();
-      // FIX: Silinmiş bir domain ismi de dahil, bu isim hiçbir şekilde
-      // yeni bir satış önerisine konu olamaz — aksi halde approve_sell_request
-      // eski silinmiş domain'in verisini ezerdi (bkz. add_domain'deki not).
       if (existingDomain.exists) {
         return res.status(400).json({
           error: existingDomain.data().deleted === true
@@ -655,7 +607,6 @@ export default async function handler(req, res) {
         });
       }
 
-      // Aynı kullanıcının bekleyen önerisi var mı? (spam koruması)
       const existingReq = await db.collection('sell_requests')
         .where('submittedBy', '==', realUsername)
         .where('status', '==', 'pending')
@@ -677,7 +628,6 @@ export default async function handler(req, res) {
         submittedAt: Date.now()
       });
 
-      // Admin'e bildirim
       await sendNotificationToAdmin({
         type: 'new_sell_request',
         title: 'Yeni Domain Önerisi',
@@ -711,10 +661,6 @@ export default async function handler(req, res) {
 
       const domainRef = db.collection('domains').doc(reqData.domainName);
       const existingDomain = await domainRef.get();
-      // FIX: submit_sell_request aşamasında zaten engellenmiş olsa da,
-      // bu ikinci kontrol (onay anında) bir güvenlik katmanı olarak
-      // korunuyor — örn. öneri gönderildikten SONRA admin domain'i
-      // silmiş olabilir, bu durumda onay anında yine reddedilmeli.
       if (existingDomain.exists) {
         return res.status(400).json({
           error: existingDomain.data().deleted === true
@@ -735,7 +681,6 @@ export default async function handler(req, res) {
       });
       await requestRef.set({ status: 'approved', resolvedAt: Date.now() }, { merge: true });
 
-      // Satıcıya bildirim
       await sendNotification(reqData.submittedBy, {
         type: 'sell_request_approved',
         title: '✅ Domain Öneriniz Onaylandı!',
@@ -743,7 +688,6 @@ export default async function handler(req, res) {
         domainName: reqData.domainName
       });
 
-      // Satıcıya puan
       await updateUserPoints(reqData.submittedBy, 20, 'domain_approved');
 
       return res.status(200).json({ success: true });
@@ -765,7 +709,6 @@ export default async function handler(req, res) {
       const reqData = requestSnap.data();
       await requestRef.set({ status: 'rejected', resolvedAt: Date.now(), rejectReason: rejectReason || '' }, { merge: true });
 
-      // Kullanıcıya bildirim
       if (reqData?.submittedBy) {
         await sendNotification(reqData.submittedBy, {
           type: 'sell_request_rejected',
@@ -790,14 +733,6 @@ export default async function handler(req, res) {
       const profileSnap = await db.collection('user_profiles').doc(realUsername).get();
       const profileData = profileSnap.exists ? profileSnap.data() : { points: 0, badge: null };
 
-      // Satın alınan domainler — FIX (karar): totalSpent artık global_sales
-      // yerine DOĞRUDAN domains koleksiyonundaki "sold:true, buyer:ben"
-      // kayıtlarını baz alıyor. Bu, market listesinde "satılmış" olarak
-      // görünen gerçek durumla %100 tutarlı olmasını garantiler — iki ayrı
-      // koleksiyonun (domains ve global_sales) senkron kalma riskini
-      // ortadan kaldırır. global_sales hâlâ "purchases" (satın alma
-      // geçmişi/detay listesi) için ayrıca kullanılmaya devam ediyor,
-      // ama TOPLAM HARCAMA rakamı artık domains'ten hesaplanıyor.
       const myPurchasedDomainsSnap = await db.collection('domains')
         .where('buyer', '==', realUsername)
         .where('sold', '==', true)
@@ -805,28 +740,14 @@ export default async function handler(req, res) {
       let totalSpent = 0;
       myPurchasedDomainsSnap.forEach(d => {
         const data = d.data();
-        if (data.deleted === true) return; // silinmiş domain harcamaya dahil edilmez
+        if (data.deleted === true) return;
         totalSpent += Number(data.price || 0);
       });
 
       const salesSnap = await db.collection('global_sales').where('user', '==', realUsername).get();
       const purchases = [];
-      salesSnap.forEach(d => {
-        purchases.push(d.data());
-      });
+      salesSnap.forEach(d => { purchases.push(d.data()); });
 
-      // Satışa sunulan domainler — FIX: Silinmiş (deleted:true) bir
-      // domain'e ait HİÇBİR sell_request kaydı "İlanlarım" sekmesinde
-      // görünmemeli. Önceki sürümde sadece status==='approved' olan
-      // kayıtların domain adı kontrol ediliyordu; ama bir domain önce
-      // approve edilip SONRA silinmiş olsa bile teorik olarak doğru
-      // çalışmalıydı. Sorunun asıl kaynağı kontrolün KENDİSİ değil,
-      // frontend'in bu güncel veriyi hiç tekrar ÇEKMEMESİYDİ (ayrı bir
-      // fix ile çözüldü — domains/sell_requests onSnapshot tetikleyince
-      // profil otomatik yenileniyor). Burada ekstra bir güvenlik/garanti
-      // katmanı olarak: approved OLMASA BİLE, aynı domain adına sahip
-      // BAŞKA bir kayıt (örn. tekrar başvuru) varsa ve o domain artık
-      // silinmişse, tutarlılık için yine gizlenir.
       const sellReqSnap = await db.collection('sell_requests').where('submittedBy', '==', realUsername).get();
       const sellRequests = [];
       const allDomainNamesInRequests = new Set();
@@ -836,7 +757,6 @@ export default async function handler(req, res) {
         sellRequests.push({ id: d.id, ...data });
       });
 
-      // Onaylanmış domainlerin şu anki "deleted" durumunu kontrol et
       let deletedDomainNames = new Set();
       if (allDomainNamesInRequests.size > 0) {
         const domainDocs = await Promise.all(
@@ -846,12 +766,8 @@ export default async function handler(req, res) {
           if (snap.exists && snap.data().deleted === true) deletedDomainNames.add(snap.id);
         });
       }
-      // Silinmiş domain'lere ait listeleme kayıtlarını (statüsü ne olursa
-      // olsun) çıkar — soft-delete edilen bir domain, kullanıcı tarafında
-      // hiç var olmamış gibi davranır.
       const visibleSellRequests = sellRequests.filter(r => !deletedDomainNames.has(r.domainName));
 
-      // Satılan domainlerden gelir (silinmemiş olanlar)
       const domainsSnap = await db.collection('domains')
         .where('sellerUsername', '==', realUsername)
         .where('sold', '==', true)
@@ -860,12 +776,11 @@ export default async function handler(req, res) {
       const soldDomains = [];
       domainsSnap.forEach(d => {
         const data = d.data();
-        if (data.deleted === true) return; // silinmiş domain'in geliri panelde gösterilmez
+        if (data.deleted === true) return;
         totalEarned += Number(data.price || 0);
         soldDomains.push({ name: d.id, ...data });
       });
 
-      // Şu anda satışta olan (henüz satılmamış, silinmemiş) kendi domainleri
       const activeListingsSnap = await db.collection('domains')
         .where('sellerUsername', '==', realUsername)
         .where('sold', '==', false)
@@ -898,10 +813,6 @@ export default async function handler(req, res) {
     if (!isAdmin) return res.status(403).json({ error: "Yetki yok" });
     try {
       const db = getDb();
-      // Platforma ait (sellerUsername'i olmayan, yani admin/sistem domaini)
-      // satışlardan toplam hacim zaten daily_stats / global_sales'te var.
-      // Burada "kullanıcıdan komisyon" modeli olmadığı için, admin'e giden
-      // gelir = sahibi belirtilmemiş (sellerUsername yok) domain satışları.
       const allSalesSnap = await db.collection('global_sales').get();
       let totalVolume = 0;
       const salesByDomain = {};
@@ -911,9 +822,6 @@ export default async function handler(req, res) {
         salesByDomain[data.domain] = (salesByDomain[data.domain] || 0) + Number(data.price || 0);
       });
 
-      // Kullanıcıların kendi domainlerinden kazandığı toplam (sellerUsername'li satışlar)
-      // FIX: deleted===true olan domainler hariç tutulur — relist/silme
-      // sonrası bu hacim de otomatik güncel kalır.
       const userOwnedDomainsSnap = await db.collection('domains')
         .where('sold', '==', true)
         .get();
@@ -924,16 +832,6 @@ export default async function handler(req, res) {
         if (data.sellerUsername) userOwnedVolume += Number(data.price || 0);
       });
 
-      // FIX (yeni): Admin'in (doganay0808) KENDİ satıcı kazancı — yani
-      // admin'in ilan verip BAŞKA kullanıcıların satın aldığı domainlerden
-      // gelen tutar. Bu, "Panelim > Gelirim" sekmesindeki totalEarned ile
-      // AYNI hesaplama mantığını kullanır (sellerUsername === admin,
-      // sold === true, deleted !== true), admin panelinde ayrıca
-      // gösterilmesi istendiği için burada da hesaplanır. Domain
-      // silinirse veya relist edilirse (relist action'ı zaten global_sales
-      // kaydını silip puanı geri alıyor, domains.sold da false oluyor),
-      // bu sorgu güncel veriyi otomatik yansıtır — ayrı bir senkron
-      // mekanizması gerekmez.
       const adminOwnSalesSnap = await db.collection('domains')
         .where('sellerUsername', '==', 'doganay0808')
         .where('sold', '==', true)
@@ -959,6 +857,50 @@ export default async function handler(req, res) {
         salesByDomain
       });
     } catch (e) {
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  // ── Satış Detaylarını Getir ── ✅ YENİ EKLENDİ ─────────────────────────
+  if (action === 'get_sales_details') {
+    const isAdmin = await verifyAdmin(accessToken);
+    if (!isAdmin) return res.status(403).json({ error: "Yetki yok" });
+    const { date } = req.body;
+    try {
+      const db = getDb();
+      let query = db.collection('global_sales').orderBy('at', 'desc');
+      if (date) {
+        const startOfDay = new Date(date); startOfDay.setHours(0, 0, 0, 0);
+        const endOfDay = new Date(date); endOfDay.setHours(23, 59, 59, 999);
+        query = query.where('at', '>=', startOfDay.getTime()).where('at', '<=', endOfDay.getTime());
+      }
+      const salesSnap = await query.limit(100).get();
+      const sales = [];
+      salesSnap.forEach(d => {
+        const data = d.data();
+        sales.push({ domain: data.domain || '', buyer: data.user || '', price: Number(data.price || 0), at: data.at || Date.now(), sellerUsername: data.sellerUsername || null });
+      });
+      return res.status(200).json({ success: true, sales });
+    } catch (e) {
+      console.error("Satış detayları hatası:", e);
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  // ── Günlük Giriş Kaydını Getir ── ✅ YENİ EKLENDİ ──────────────────────
+  if (action === 'get_daily_log') {
+    const isAdmin = await verifyAdmin(accessToken);
+    if (!isAdmin) return res.status(403).json({ error: "Yetki yok" });
+    const { date } = req.body;
+    if (!date) return res.status(400).json({ error: "Tarih zorunludur" });
+    try {
+      const db = getDb();
+      const snap = await db.collection('daily_users').doc(date).get();
+      const users = snap.exists ? (snap.data().users || {}) : {};
+      const sorted = Object.keys(users).sort((a, b) => users[b] - users[a]);
+      return res.status(200).json({ success: true, users: sorted, userData: users, count: sorted.length, date });
+    } catch (e) {
+      console.error("Günlük log hatası:", e);
       return res.status(500).json({ error: e.message });
     }
   }
@@ -1022,10 +964,6 @@ export default async function handler(req, res) {
         if (domainSnap.data().sold !== true) {
           purchaseCode = "WEB3-" + Math.random().toString(36).substr(2, 6).toUpperCase();
           const sellerUsername = domainSnap.data().sellerUsername || null;
-          // FIX: Bu domain daha önce başka bir kullanıcı tarafından satın
-          // alınıp admin tarafından "tekrar satışa çıkarılmış" olabilir.
-          // Bu durumda en son alıcıya "X kişisi de bu domaini satın aldı"
-          // tarzı bilgilendirme bildirimi gönderiyoruz (rekabet/sosyal kanıt).
           const previousBuyer = domainSnap.data().buyer || null;
 
           await domainRef.set({
@@ -1044,10 +982,8 @@ export default async function handler(req, res) {
             volume: FieldValue.increment(realPrice)
           }, { merge: true });
 
-          // Puan ver
           await updateUserPoints(username, realPrice, 'purchase');
 
-          // Alıcıya bildirim
           await sendNotification(username, {
             type: 'purchase_success',
             title: '🎉 Satın Alma Başarılı!',
@@ -1055,7 +991,6 @@ export default async function handler(req, res) {
             domainName, txid
           });
 
-          // Admin'e bildirim
           await sendNotificationToAdmin({
             type: 'new_sale',
             title: '💰 Yeni Satış!',
@@ -1063,7 +998,6 @@ export default async function handler(req, res) {
             domainName, buyer: username, price: realPrice
           });
 
-          // Eğer domain bir kullanıcıya aitse (satıcı varsa) ona da bildirim
           if (sellerUsername && sellerUsername !== username) {
             await sendNotification(sellerUsername, {
               type: 'your_domain_sold',
@@ -1073,9 +1007,6 @@ export default async function handler(req, res) {
             });
           }
 
-          // FIX: Domain daha önce relist edilip yeniden satıldıysa, eski
-          // alıcıya "yerine biri aldı" bilgisi gönder (sadece yeni alıcı
-          // farklıysa ve eski alıcı kaydı varsa).
           if (previousBuyer && previousBuyer !== username) {
             await sendNotification(previousBuyer, {
               type: 'domain_resold',
