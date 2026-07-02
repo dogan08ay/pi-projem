@@ -11,7 +11,7 @@ function getAdminApp() {
   if (!dbUrl) {
     console.error("[FIREBASE INIT UYARI] FIREBASE_DATABASE_URL ortam değişkeni BOŞ/tanımsız. RTDB (bildirimler) çalışmayacak.");
   } else if (!/^https:\/\/.+\.firebaseio\.com\/?$/.test(dbUrl) && !/^https:\/\/.+\.(firebasedatabase\.app)\/?$/.test(dbUrl)) {
-    console.error(`[FIREBASE INIT UYARI] FIREBASE_DATABASE_URL formatı beklenmedik: "${dbUrl}". Beklenen format: https://<proje-id>-default-rtdb.firebaseio.com`);
+    console.error(`[FIREBASE INIT UYARI] FIREBASE_DATABASE_URL formatı beklenmedik görünüyor: "${dbUrl}".`);
   } else {
     console.log(`[FIREBASE INIT] databaseURL doğrulandı: ${dbUrl}`);
   }
@@ -34,7 +34,7 @@ function getDb()      { getAdminApp(); return getFirestore(); }
 function getBucket()  { getAdminApp(); return getStorage().bucket(); }
 function getRtdb()    { getAdminApp(); return getDatabase(); }
 
-// ─── Admin Token Cache ─────────────────────────────────────────────────────
+// ─── Admin Token Cache ────────────────────────────────────────────────────
 const adminCache = new Map();
 const ADMIN_CACHE_TTL = 5 * 60 * 1000;
 
@@ -78,7 +78,7 @@ async function getRealUsername(accessToken) {
   }
 }
 
-// ─── Rate Limiter ────────────────────────────────────────────────────────
+// ─── Rate Limiter ─────────────────────────────────────────────────────────
 const rateLimitMap = new Map();
 function checkRateLimit(ip, action, maxReq = 10, windowMs = 60000) {
   const key = `${ip}:${action}`;
@@ -110,7 +110,7 @@ async function sendNotificationToAdmin(notification) {
   await sendNotification('doganay0808', notification);
 }
 
-// ─── Telegram Yardımcısı ─────────────────────────────────────────────────
+// ─── Telegram Yardımcısı ────────────────────────────────────────────────────
 const TG_BOT_TOKEN = process.env.TG_BOT_TOKEN;
 const TG_CHAT_ID   = process.env.TG_CHAT_ID;
 const TG_GROUP_ID  = process.env.TG_GROUP_ID;
@@ -141,7 +141,7 @@ function setCors(req, res) {
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
 }
 
-// ─── Puan Güncelle ───────────────────────────────────────────────────────
+// ─── Puan Güncelle ─────────────────────────────────────────────────────────
 async function updateUserPoints(username, points, reason) {
   try {
     const db = getDb();
@@ -211,7 +211,7 @@ export default async function handler(req, res) {
     }
   }
 
-  // ── Bildirimleri Getir ─────────────────────────────────────────────────
+  // ── Bildirimleri Getir ───────────────────────────────────────────────────
   if (action === 'get_notifications') {
     const realUsername = await getRealUsername(accessToken);
     if (!realUsername) return res.status(403).json({ error: "Geçersiz oturum" });
@@ -299,6 +299,24 @@ export default async function handler(req, res) {
       return res.status(200).json({ success: true, firstSeen: earliest, isFirstLoginToday });
     } catch (e) {
       console.error("Login log hatası:", e);
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  // ── Logout ── ✅ YENİ EKLENDİ ──────────────────────────────────────────
+  if (action === 'logout') {
+    const realUsername = await getRealUsername(accessToken);
+    if (!realUsername) return res.status(403).json({ error: "Geçersiz oturum" });
+    try {
+      // Kullanıcı cache'inden temizle
+      userCache.delete(accessToken);
+      // Active users'tan sil
+      const db = getDb();
+      await db.collection('active_users').doc(realUsername).delete().catch(() => {});
+      console.log(`Kullanıcı çıkış yaptı: @${realUsername}`);
+      return res.status(200).json({ success: true, message: "Çıkış başarılı" });
+    } catch (e) {
+      console.error("Logout hatası:", e);
       return res.status(500).json({ error: e.message });
     }
   }
@@ -423,7 +441,7 @@ export default async function handler(req, res) {
     }
   }
 
-  // ── Domain Sil (SOFT DELETE) ─────────────────────────────────────────
+  // ── Domain Sil (SOFT DELETE) ──────────────────────────────────────────
   if (action === 'delete_domain') {
     const { domainName: delName } = req.body;
     const isAdmin = await verifyAdmin(accessToken);
@@ -453,7 +471,39 @@ export default async function handler(req, res) {
     }
   }
 
-  // ── Domain Geri Getir ─────────────────────────────────────────────────
+  // ── Domain Kalıcı Sil (PERMA DELETE) ── ✅ YENİ EKLENDİ ────────────────
+  if (action === 'perma_delete_domain') {
+    const { domainName: permaDelName } = req.body;
+    const isAdmin = await verifyAdmin(accessToken);
+    if (!isAdmin) return res.status(403).json({ error: "Yetki yok" });
+    if (!permaDelName) return res.status(400).json({ error: "Geçersiz domain adı" });
+    try {
+      const db = getDb();
+      const domainRef = db.collection('domains').doc(permaDelName);
+      const domainSnap = await domainRef.get();
+      if (!domainSnap.exists) return res.status(404).json({ error: "Domain bulunamadı" });
+
+      // İlişkili global_sales kayıtlarını sil
+      const salesSnap = await db.collection('global_sales')
+        .where('domain', '==', permaDelName)
+        .get();
+      if (!salesSnap.empty) {
+        const batch = db.batch();
+        salesSnap.forEach(doc => batch.delete(doc.ref));
+        await batch.commit();
+      }
+
+      // Domain'i tamamen sil
+      await domainRef.delete();
+      console.log(`Domain kalıcı olarak silindi: ${permaDelName}`);
+      return res.status(200).json({ success: true });
+    } catch (e) {
+      console.error("Kalıcı silme hatası:", e);
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  // ── Domain Geri Getir ──────────────────────────────────────────────────
   if (action === 'restore_domain') {
     const { domainName: restoreName } = req.body;
     const isAdmin = await verifyAdmin(accessToken);
@@ -479,7 +529,7 @@ export default async function handler(req, res) {
     }
   }
 
-  // ── Platform İstatistiklerini Sıfırla ─────────────────────────────────
+  // ── Platform İstatistiklerini Sıfırla ──────────────────────────────────
   if (action === 'reset_platform_stats') {
     const { confirmReset } = req.body;
     const isAdmin = await verifyAdmin(accessToken);
@@ -696,9 +746,7 @@ export default async function handler(req, res) {
 
       const salesSnap = await db.collection('global_sales').where('user', '==', realUsername).get();
       const purchases = [];
-      salesSnap.forEach(d => {
-        purchases.push(d.data());
-      });
+      salesSnap.forEach(d => { purchases.push(d.data()); });
 
       const sellReqSnap = await db.collection('sell_requests').where('submittedBy', '==', realUsername).get();
       const sellRequests = [];
@@ -809,6 +857,31 @@ export default async function handler(req, res) {
         salesByDomain
       });
     } catch (e) {
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  // ── Satış Detaylarını Getir ── ✅ YENİ EKLENDİ ─────────────────────────
+  if (action === 'get_sales_details') {
+    const isAdmin = await verifyAdmin(accessToken);
+    if (!isAdmin) return res.status(403).json({ error: "Yetki yok" });
+    try {
+      const db = getDb();
+      const salesSnap = await db.collection('global_sales').orderBy('at', 'desc').limit(100).get();
+      const sales = [];
+      salesSnap.forEach(d => {
+        const data = d.data();
+        sales.push({
+          domain: data.domain || '',
+          buyer: data.user || '',
+          price: Number(data.price || 0),
+          at: data.at || Date.now(),
+          sellerUsername: data.sellerUsername || null
+        });
+      });
+      return res.status(200).json({ success: true, sales });
+    } catch (e) {
+      console.error("Satış detayları hatası:", e);
       return res.status(500).json({ error: e.message });
     }
   }
