@@ -865,23 +865,42 @@ export default async function handler(req, res) {
   if (action === 'get_sales_details') {
     const isAdmin = await verifyAdmin(accessToken);
     if (!isAdmin) return res.status(403).json({ error: "Yetki yok" });
+    const { date } = req.body;
     try {
       const db = getDb();
-      const salesSnap = await db.collection('global_sales').orderBy('at', 'desc').limit(100).get();
+      let query = db.collection('global_sales').orderBy('at', 'desc');
+      if (date) {
+        const startOfDay = new Date(date); startOfDay.setHours(0, 0, 0, 0);
+        const endOfDay = new Date(date); endOfDay.setHours(23, 59, 59, 999);
+        query = query.where('at', '>=', startOfDay.getTime()).where('at', '<=', endOfDay.getTime());
+      }
+      const salesSnap = await query.limit(100).get();
       const sales = [];
       salesSnap.forEach(d => {
         const data = d.data();
-        sales.push({
-          domain: data.domain || '',
-          buyer: data.user || '',
-          price: Number(data.price || 0),
-          at: data.at || Date.now(),
-          sellerUsername: data.sellerUsername || null
-        });
+        sales.push({ domain: data.domain || '', buyer: data.user || '', price: Number(data.price || 0), at: data.at || Date.now(), sellerUsername: data.sellerUsername || null });
       });
       return res.status(200).json({ success: true, sales });
     } catch (e) {
       console.error("Satış detayları hatası:", e);
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  // ── Günlük Giriş Kaydını Getir ── ✅ YENİ EKLENDİ ──────────────────────
+  if (action === 'get_daily_log') {
+    const isAdmin = await verifyAdmin(accessToken);
+    if (!isAdmin) return res.status(403).json({ error: "Yetki yok" });
+    const { date } = req.body;
+    if (!date) return res.status(400).json({ error: "Tarih zorunludur" });
+    try {
+      const db = getDb();
+      const snap = await db.collection('daily_users').doc(date).get();
+      const users = snap.exists ? (snap.data().users || {}) : {};
+      const sorted = Object.keys(users).sort((a, b) => users[b] - users[a]);
+      return res.status(200).json({ success: true, users: sorted, userData: users, count: sorted.length, date });
+    } catch (e) {
+      console.error("Günlük log hatası:", e);
       return res.status(500).json({ error: e.message });
     }
   }
