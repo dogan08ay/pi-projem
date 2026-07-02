@@ -1,0 +1,39 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /domains/{domain} {
+      allow read: if true;
+      allow write: if false;
+    }
+    match /global_sales/{sale} {
+      allow read: if true;
+      allow write: if false;
+    }
+    match /daily_stats/{date} {
+      allow read: if true;
+      allow write: if false;
+    }
+    match /sell_requests/{request} {
+      allow read, write: if false;
+    }
+    match /active_users/{user} {
+      allow read: if true;
+      allow create, update: if request.resource.data.keys().hasOnly(['lastSeen'])
+                             && request.resource.data.lastSeen is number
+                             && request.resource.data.lastSeen > 0;
+      allow delete: if false;
+    }
+    match /daily_users/{date} {
+      allow read, write: if false;
+    }
+    match /user_profiles/{user} {
+      allow read, write: if false;
+    }
+    match /system_config/{docId} {
+      allow read, write: if false;
+    }
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
