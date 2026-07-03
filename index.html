@@ -11,26 +11,25 @@
         html { box-sizing: border-box; overflow-x:hidden; }
         html,body{height:100%;}
         body{font-family:'Segoe UI',sans-serif;background:var(--bg);color:var(--text);margin:0;padding:0;width:100%;min-height:100vh;overflow-x:hidden;box-sizing:border-box;}
-        .container{max-width:600px;width:100%;min-width:0;text-align:center;display:flex;flex-direction:column;height:100vh;padding:2px;box-sizing:border-box;margin-left:auto;margin-right:auto;overflow:hidden;}
-        .card{background:var(--card);padding:8px;border-radius:16px;box-shadow:0 8px 12px -3px rgba(0,0,0,0.3);margin-bottom:6px;position:relative;overflow:visible;box-sizing:border-box;width:100%;min-width:0;max-width:100%;}
-        .app-logo{width:80px;height:80px;margin:2px auto 6px auto;display:block;border-radius:50%;box-shadow:0 0 25px rgba(99,102,241,0.8);border:2px solid #818cf8;object-fit:cover;animation:logo-pulse 3s ease-in-out infinite;}
-        .app-logo-header{width:42px;height:42px;border-radius:50%;border:1.5px solid #818cf8;box-shadow:0 0 12px rgba(99,102,241,0.5);object-fit:cover;}
+        .container{max-width:600px;width:100%;min-width:0;text-align:center;display:flex;flex-direction:column;min-height:100vh;padding:4px;}box-sizing:border-box;margin-left:auto;margin-right:auto;}
+        .card{background:var(--card);padding:6px;border-radius:12px;box-shadow:0 8px 12px -3px rgba(0,0,0,0.3);margin-bottom:4px;position:relative;overflow:visible;box-sizing:border-box;width:100%;min-width:0;max-width:100%;}
+        .app-logo{width:80px;height:80px;margin:2px auto 6px auto;display:block;border-radius:50%;box-shadow:0 0 40px rgba(99,102,241,0.9);border:3px solid #818cf8;object-fit:cover;animation:logo-pulse 3s ease-in-out infinite;}
         @keyframes logo-pulse{0%,100%{transform:scale(1);}50%{transform:scale(1.05);}}
-        .app-title{font-size:1.4em;font-weight:900;margin:0 0 4px 0;text-align:center;background:linear-gradient(to right,#60a5fa,#a855f7,#60a5fa);background-size:200% auto;-webkit-background-clip:text;-webkit-text-fill-color:transparent;animation:title-shine 4s linear infinite;filter:drop-shadow(0 0 12px rgba(139,92,246,0.7));letter-spacing:0.2px;}
+        .app-title{font-size:1.4em;font-weight:900;margin:0 0 6px 0;text-align:center;background:linear-gradient(to right,#60a5fa,#a855f7,#60a5fa);background-size:200% auto;-webkit-background-clip:text;-webkit-text-fill-color:transparent;animation:title-shine 4s linear infinite;filter:drop-shadow(0 0 18px rgba(139,92,246,0.7));letter-spacing:0.3px;}
         @keyframes title-shine{to{background-position:200% center;}}
-        .stats-bar{display:flex;justify-content:space-around;background:rgba(99,102,241,0.1);border:1px solid rgba(99,102,241,0.3);padding:3px;border-radius:10px;margin-bottom:2px;font-size:0.52em;font-weight:bold;color:#94a3b8;}
+        .stats-bar{display:flex;justify-content:space-around;background:rgba(99,102,241,0.1);border:1px solid rgba(99,102,241,0.3);padding:3px 2px;border-radius:8px;margin-bottom:2px;font-size:0.5em;font-weight:bold;color:#94a3b8;}
         .stats-item span{color:var(--price);margin-left:2px;}
-        .domain-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:6px;margin-top:4px;position:relative;min-width:0;}
-        .domain-card{background:#334155;padding:6px;border-radius:10px;border:1px solid #475569;display:flex;flex-direction:column;align-items:center;transition:transform 0.25s,box-shadow 0.25s,border-color 0.25s;animation:card-rise 0.5s ease backwards;cursor:pointer;min-width:0;max-width:100%;box-sizing:border-box;}
+        .domain-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:4px;margin-top:2px;position:relative;min-width:0;}
+        .domain-card{background:#334155;padding:4px;border-radius:8px;border:1px solid #475569;display:flex;flex-direction:column;align-items:center;transition:transform 0.25s,box-shadow 0.25s,border-color 0.25s;animation:card-rise 0.5s ease backwards;cursor:pointer;min-width:0;max-width:100%;box-sizing:border-box;}
         .domain-card:hover,.domain-card:active{transform:translateY(-4px) scale(1.02);box-shadow:0 10px 20px -6px rgba(99,102,241,0.45),0 0 0 1.5px rgba(129,140,248,0.6);border-color:#818cf8;}
         @keyframes card-rise{0%{opacity:0;transform:translateY(14px) scale(0.96);}100%{opacity:1;transform:translateY(0) scale(1);}}
-        .domain-img{width:100%;height:42px;margin-bottom:3px;border-radius:6px;object-fit:contain;background-color:#334155;}
-        .domain-name{font-size:0.78em;font-weight:bold;margin-bottom:2px;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-        .domain-price{color:var(--price);font-size:0.85em;font-weight:800;margin:1px 0;}
-        .domain-type-tag{font-size:0.6em;color:#94a3b8;background:rgba(148,163,184,0.15);border-radius:5px;padding:1px 5px;margin-bottom:2px;display:inline-block;}
-        .btn-buy{background:var(--accent);color:white;border:none;padding:5px 6px;border-radius:6px;cursor:pointer;margin-top:3px;font-weight:bold;width:100%;font-size:0.7em;}
-        .btn-sold{background:rgba(239,68,68,0.1);color:var(--sold);border:1.5px solid var(--sold);padding:4px 6px;border-radius:6px;margin-top:3px;font-weight:bold;width:100%;font-size:0.65em;}
-        .pi-btn{background:linear-gradient(135deg,#0052FF 0%,#3b82f6 100%);color:#ffffff;padding:8px 20px;border-radius:50px;font-weight:800;font-size:0.85em;border:none;cursor:pointer;animation:pulse-blue 2s infinite;transition:0.3s;margin:6px 0;}
+        .domain-img{width:100%;height:36px;margin-bottom:3px;border-radius:6px;object-fit:contain;background-color:#334155;}
+        .domain-name{font-size:0.7em;font-weight:bold;margin-bottom:2px;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+        .domain-price{color:var(--price);font-size:0.75em;font-weight:800;margin:1px 0;}
+        .domain-type-tag{font-size:0.55em;color:#94a3b8;background:rgba(148,163,184,0.15);border-radius:5px;padding:1px 5px;margin-bottom:2px;display:inline-block;}
+        .btn-buy{background:var(--accent);color:white;border:none;padding:3px 4px;border-radius:5px;cursor:pointer;margin-top:3px;font-weight:bold;width:100%;font-size:0.7em;}
+        .btn-sold{background:rgba(239,68,68,0.1);color:var(--sold);border:1.5px solid var(--sold);padding:3px 4px;border-radius:5px;margin-top:3px;font-weight:bold;width:100%;font-size:0.65em;}
+        .pi-btn{background:linear-gradient(135deg,#0052FF 0%,#3b82f6 100%);color:#ffffff;padding:6px 16px;border-radius:50px;font-weight:800;font-size:0.8em;border:none;cursor:pointer;animation:pulse-blue 2s infinite;transition:0.3s;margin:6px 0;}
         @keyframes pulse-blue{0%{transform:scale(0.95);box-shadow:0 0 0 0 rgba(0,82,255,0.7);}70%{transform:scale(1);box-shadow:0 0 0 10px rgba(0,82,255,0);}100%{transform:scale(0.95);box-shadow:0 0 0 0 rgba(0,82,255,0);}}
         .section-title-box{background:linear-gradient(90deg,#fef3c7 0%,#fde68a 40%,#ffffff 50%,#fde68a 60%,#fef3c7 100%);background-size:200% auto;color:#1e293b;padding:5px 16px;border-radius:10px;border:2px solid #f59e0b;font-size:0.92em;font-weight:900;display:inline-block;margin-bottom:6px;animation:title-glow 2.5s ease-in-out infinite,section-shimmer 3s linear infinite;}
         @keyframes title-glow{0%,100%{box-shadow:0 0 10px rgba(245,158,11,0.5);border-color:#f59e0b;}50%{box-shadow:0 0 20px rgba(251,191,36,0.9),0 0 40px rgba(251,191,36,0.45);border-color:#fcd34d;}}
@@ -84,7 +83,7 @@
         .lang-option{display:flex;align-items:center;gap:8px;padding:8px 10px;color:#f1f5f9;font-size:0.8em;font-weight:700;cursor:pointer;border-radius:8px;margin:2px 0;border:none;background:transparent;width:100%;box-sizing:border-box;transition:background 0.15s;}
         .lang-option:hover,.lang-option.active{background:rgba(99,102,241,0.2);}
         .lang-option.active{color:#a5b4fc;}
-        .admin-tabs{display:flex;gap:5px;overflow-x:auto;margin-bottom:10px;padding-bottom:2px; -webkit-overflow-scrolling: touch;}
+        .admin-tabs{display:flex;gap:5px;overflow-x:auto;margin-bottom:10px;padding-bottom:2px;}
         .admin-tabs::-webkit-scrollbar{height:4px;}
         .admin-tab-btn{flex-shrink:0;background:#0f172a;border:1.5px solid #334155;color:#94a3b8;padding:8px 11px;border-radius:10px;font-size:0.68em;font-weight:800;cursor:pointer;display:flex;align-items:center;gap:5px;white-space:nowrap;transition:all 0.15s;}
         .admin-tab-btn.active{background:rgba(99,102,241,0.18);border-color:#6366f1;color:#c7d2fe;box-shadow:0 0 10px rgba(99,102,241,0.3);}
@@ -96,12 +95,12 @@
         .user-tab-btn.active{background:rgba(16,185,129,0.15);border-color:#10b981;color:#6ee7b7;}
         .user-tab-panel{display:none;}
         .user-tab-panel.active{display:block;animation:card-rise 0.3s ease backwards;}
-        .filter-section{margin-top:10px;padding-top:8px;border-top:1px solid rgba(99,102,241,0.15);min-height:64px;}
+        .filter-section{margin-top:10px;padding-top:4px;border-top:1px solid rgba(99,102,241,0.15);min-height:64px;}
         .filter-section-label{display:inline-flex;align-items:center;gap:6px;background:linear-gradient(135deg,#1e1b4b 0%,#312e81 100%);color:#a5b4fc;font-size:0.7em;font-weight:900;letter-spacing:0.5px;text-transform:uppercase;margin-bottom:8px;padding:5px 12px;border-radius:20px;border:1.5px solid #6366f1;box-shadow:0 0 10px rgba(99,102,241,0.3);}
         .category-select{width:100%;background:linear-gradient(135deg,#1e1b4b 0%,#1e293b 100%);color:#c7d2fe;border:2px solid #6366f1;border-radius:12px;padding:10px 14px;font-size:0.82em;font-weight:700;cursor:pointer;outline:none;appearance:none;-webkit-appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23a5b4fc' stroke-width='2.5'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;padding-right:36px;box-shadow:0 0 12px rgba(99,102,241,0.25);margin-bottom:4px;transition:border-color 0.15s,box-shadow 0.15s;}
         .category-select:focus{border-color:#818cf8;box-shadow:0 0 16px rgba(99,102,241,0.5);}
         .category-select option{background:#1e293b;color:#f1f5f9;}
-        .filter-bar{display:flex;gap:6px;overflow-x:auto;margin-bottom:8px;padding-bottom:2px; -webkit-overflow-scrolling: touch;}
+        .filter-bar{display:flex;gap:6px;overflow-x:auto;margin-bottom:8px;padding-bottom:2px;}
         .filter-bar::-webkit-scrollbar{height:4px;}
         .filter-chip{flex-shrink:0;background:#2a3a52;border:1.5px solid #3f5575;color:#cbd5e1;padding:5px 12px;border-radius:16px;font-size:0.7em;font-weight:700;cursor:pointer;transition:all 0.15s;}
         .filter-chip.active{background:linear-gradient(135deg,#6366f1,#818cf8);border-color:#818cf8;color:#fff;box-shadow:0 0 10px rgba(99,102,241,0.4);}
@@ -121,7 +120,7 @@
         .img-upload-area{border:2px dashed #f59e0b;border-radius:10px;padding:16px;text-align:center;cursor:pointer;margin-bottom:8px;color:#94a3b8;font-size:0.8em;}
         .img-upload-area:hover{border-color:#fcd34d;background:rgba(245,158,11,0.05);}
         .img-preview{width:100%;max-height:80px;object-fit:contain;border-radius:8px;margin-top:6px;display:none;}
-        .footer-section{padding:10px 12px;color:#f8fafc;font-size:0.62em;text-align:center;border-top:1px solid #334155;background:rgba(15,23,42,0.8);border-radius:16px 16px 0 0;margin-top:auto;}
+        .footer-section{padding:6px 10px;color:#f8fafc;font-size:0.55em;text-align:center;border-top:1px solid #334155;background:rgba(15,23,42,0.8);border-radius:16px 16px 0 0;margin-top:auto;}
         .footer-section a{color:#38bdf8;text-decoration:none;font-weight:800;border-bottom:1px solid #38bdf8;}
         .footer-row{margin-bottom:5px;display:flex;align-items:center;justify-content:center;gap:6px;flex-wrap:wrap;}
         .main-scroll{flex:1 1 auto;overflow-y:auto;overflow-x:hidden;display:flex;flex-direction:column;min-height:0;min-width:0;width:100%;}
@@ -129,8 +128,16 @@
         #unique-user-list::-webkit-scrollbar-thumb{background:#6366f1;border-radius:10px;}
         @keyframes icon-pulse-btn{0%,100%{filter:drop-shadow(0 0 4px rgba(99,102,241,0.6));transform:scale(1);}50%{filter:drop-shadow(0 0 10px rgba(165,180,252,0.9));transform:scale(1.12);}}
         @keyframes icon-pulse-chart{0%,100%{filter:drop-shadow(0 0 4px rgba(74,222,128,0.5));transform:scale(1);}50%{filter:drop-shadow(0 0 10px rgba(74,222,128,0.9));transform:scale(1.12);}}
+        .sale-detail-item{background:#0f172a;border:1px solid #1e3a8a;border-radius:8px;padding:8px;margin-bottom:5px;cursor:pointer;transition:all 0.2s;}
+        .sale-detail-item:hover{border-color:#3b82f6;background:#0a1628;}
+        .sale-detail-header{display:flex;justify-content:space-between;align-items:center;}
+        .sale-detail-body{display:none;padding-top:6px;margin-top:5px;border-top:1px solid #1e3a8a;}
+        .sale-detail-body.expanded{display:block;animation:card-rise 0.2s ease;}
+        .sale-detail-arrow{transition:transform 0.2s;color:#60a5fa;font-size:0.85em;}
+        .sale-detail-arrow.rotated{transform:rotate(180deg);}
         @keyframes icon-pulse-green{0%,100%{filter:drop-shadow(0 0 4px rgba(52,211,153,0.5));transform:scale(1);}50%{filter:drop-shadow(0 0 10px rgba(52,211,153,0.9));transform:scale(1.12);}}
     </style>
+<base target="_blank">
 </head>
 <body>
 <div class="side-menu-overlay" id="side-menu-overlay" onclick="toggleSideMenu()"></div>
@@ -238,22 +245,22 @@
         <select id="sell-domain-type" class="sell-form-input">
             <option value="genel" data-i18n="typeGeneral"></option>
             <option value="finans" data-i18n="typeFinance"></option>
+            <option value="bankacilik" data-i18n="typeBanking"></option>
             <option value="eticaret" data-i18n="typeEcommerce"></option>
             <option value="kisisel" data-i18n="typePersonal"></option>
             <option value="teknoloji" data-i18n="typeTechnology"></option>
             <option value="turizm" data-i18n="typeTourism"></option>
-                <option value="saglik" data-i18n="typeHealth"></option>
-                <option value="egitim" data-i18n="typeEducation"></option>
-                <option value="gayrimenkul" data-i18n="typeRealEstate"></option>
-                <option value="bankacilik" data-i18n="typeBanking"></option>
-                <option value="diger" data-i18n="typeOther"></option>
-            </select>
+            <option value="saglik" data-i18n="typeHealth"></option>
+            <option value="egitim" data-i18n="typeEducation"></option>
+            <option value="gayrimenkul" data-i18n="typeRealEstate"></option>
+            <option value="diger" data-i18n="typeOther"></option>
+        </select>
         <label style="font-size:0.72em;color:#cbd5e1;font-weight:700;" data-i18n="descriptionLabel"></label>
         <textarea id="sell-domain-desc" class="sell-form-input" rows="2" style="resize:none;" data-i18n-placeholder="descriptionPlaceholder"></textarea>
         <label style="font-size:0.72em;color:#cbd5e1;font-weight:700;" data-i18n="imageUploadLabel"></label>
         <div class="img-upload-area" onclick="document.getElementById('sell-img-input').click()">
             <div id="img-upload-hint" data-i18n="imageUploadHint"></div>
-            <div style="font-size:0.75em;color:#64748b;margin-top:2px;" data-i18n="imageUploadFormats"></div>
+            <div style="font-size:0.75em;color:#64748b;margin-top:1px;" data-i18n="imageUploadFormats"></div>
             <img id="sell-img-preview" class="img-preview">
         </div>
         <input type="file" id="sell-img-input" accept="image/*" style="display:none;" onchange="handleImageSelect(event)">
@@ -347,15 +354,15 @@
 </div>
 <!-- ANA İÇERİK -->
 <div class="container">
-    <div class="main-scroll" style="flex:1; overflow-y:auto; padding-bottom:60px; -webkit-overflow-scrolling: touch;">
-    <div class="card" style="border:1.5px solid rgba(129,140,248,0.45);background:linear-gradient(160deg,rgba(99,102,241,0.14) 0%,var(--card) 55%); margin-bottom:4px;">
-        <!-- İkon satırı: bildirim sol, logo orta, hamburger sağ -->
-        <div style="display:flex;justify-content:space-between;align-items:center;margin:-8px -8px 4px -8px;padding:8px;">
+  <div class="main-scroll">
+    <div class="card" style="border:1.5px solid rgba(129,140,248,0.45);background:linear-gradient(160deg,rgba(99,102,241,0.14) 0%,var(--card) 55%);">
+        <!-- İkon satırı: bildirim sol, hamburger sağ — her zaman aynı konumda -->
+        <div class="icon-row-around-logo">
             <div class="notif-btn" id="notif-btn" onclick="openNotifModal()" style="position:relative;visibility:hidden;">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#c7d2fe" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#c7d2fe" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
                 <span class="notif-badge" id="notif-badge">0</span>
             </div>
-            <img src="assets/logo.jpeg" alt="Logo" class="app-logo-header">
+            <img src="assets/logo.jpeg" alt="Logo" class="app-logo" style="width:80px;height:80px;margin:2px auto 6px auto;box-shadow:0 0 30px rgba(99,102,241,0.8);border:2px solid #818cf8;">
             <button class="hamburger-btn" onclick="toggleSideMenu()"><span></span><span></span><span></span></button>
         </div>
         <h1 class="app-title">Web3 Domain Gateway</h1>
@@ -370,7 +377,7 @@
     </div>
 
     <!-- Kullanıcı Paneli -->
-    <div class="card" id="user-panel" style="display:none;border:2.5px solid #10b981;box-shadow:0 0 18px rgba(16,185,129,0.25); max-height:80vh; overflow-y:auto;">
+    <div class="card" id="user-panel" style="display:none;border:2.5px solid #10b981;box-shadow:0 0 18px rgba(16,185,129,0.25);">
         <h3 style="color:#10b981;margin:-8px -8px 10px -8px;padding:10px 8px;font-size:0.95em;display:flex;align-items:center;justify-content:space-between;gap:6px;background:linear-gradient(135deg,rgba(16,185,129,0.18) 0%,rgba(5,150,105,0.1) 100%);border-bottom:1.5px solid rgba(16,185,129,0.35);border-radius:14px 14px 0 0;font-weight:900;">
             <span style="display:flex;align-items:center;gap:6px;margin:0 auto;">👤 <span data-i18n="myPanel"></span></span>
             <button onclick="refreshUserPanel()" style="background:rgba(16,185,129,0.2);border:1.5px solid #10b981;color:#6ee7b7;width:30px;height:30px;border-radius:8px;font-size:1em;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;" title="Yenile">↻</button>
@@ -439,7 +446,7 @@
     </div>
 
     <!-- Admin Paneli -->
-    <div class="card" id="admin-panel" style="display:none;border:2.5px solid #6366f1;box-shadow:0 0 18px rgba(99,102,241,0.25); max-height:80vh; overflow-y:auto;">
+    <div class="card" id="admin-panel" style="display:none;border:2.5px solid #6366f1;box-shadow:0 0 18px rgba(99,102,241,0.25);">
         <h3 style="color:#fbbf24;margin:-8px -8px 10px -8px;padding:10px 8px;font-size:0.95em;display:flex;align-items:center;justify-content:center;gap:6px;background:linear-gradient(135deg,rgba(99,102,241,0.2) 0%,rgba(67,56,202,0.1) 100%);border-bottom:1.5px solid rgba(99,102,241,0.4);border-radius:14px 14px 0 0;font-weight:900;">🛠 Admin Panel</h3>
         <div class="admin-tabs">
             <button class="admin-tab-btn active" data-tab="tab-users" onclick="switchAdminTab('tab-users')">👥 <span data-i18n="users"></span></button>
@@ -462,20 +469,25 @@
             </div>
         </div>
         <div class="admin-tab-panel" id="tab-stats">
-            <div style="background:#061a0d;border:2.5px solid #16a34a;border-radius:12px;padding:10px;margin-bottom:8px;">
-                <div style="display:flex;align-items:center;justify-content:center;gap:6px;margin-bottom:8px;padding-bottom:7px;border-bottom:1px solid #14532d;"><span style="animation:icon-pulse-chart 2s ease-in-out infinite;">📈</span><span style="font-size:0.72em;color:#4ade80;font-weight:800;text-transform:uppercase;" data-i18n="dailySalesStats"></span></div>
-                <div style="display:flex;gap:8px;">
-                    <div style="flex:1;background:#1e293b;border:1px solid #4ade80;border-radius:10px;padding:8px;text-align:center;"><div style="font-size:0.62em;color:#86efac;font-weight:bold;margin-bottom:2px;" data-i18n="salesCount"></div><div id="daily-stat-count" style="font-size:1.2em;color:#fbbf24;font-weight:900;">0</div></div>
-                    <div style="flex:1;background:#1e293b;border:1px solid #4ade80;border-radius:10px;padding:8px;text-align:center;"><div style="font-size:0.62em;color:#86efac;font-weight:bold;margin-bottom:2px;" data-i18n="volumePi"></div><div id="daily-stat-volume" style="font-size:1.2em;color:#fbbf24;font-weight:900;">0</div></div>
+            <button onclick="toggleStatsSection()" id="stats-toggle-btn" style="width:100%;box-sizing:border-box;background:linear-gradient(135deg,#064e3b 0%,#065f46 100%);border:2px solid #16a34a;border-radius:12px;padding:10px 14px;cursor:pointer;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;box-shadow:0 4px 14px rgba(22,163,74,0.35);">
+                <div style="display:flex;align-items:center;gap:8px;"><span style="animation:icon-pulse-chart 2s ease-in-out infinite;">📈</span><span style="font-size:0.8em;color:#4ade80;font-weight:800;" data-i18n="dailySalesStats"></span></div>
+                <span id="stats-toggle-arrow" style="color:#4ade80;font-size:1em;transition:transform 0.3s;">▼</span>
+            </button>
+            <div id="stats-section" style="display:none;">
+                <div style="background:#061a0d;border:2px solid #16a34a;border-radius:10px;padding:8px;margin-bottom:8px;">
+                    <div style="display:flex;gap:6px;">
+                        <div style="flex:1;background:#1e293b;border:1px solid #4ade80;border-radius:8px;padding:6px;text-align:center;"><div style="font-size:0.58em;color:#86efac;font-weight:bold;margin-bottom:2px;" data-i18n="salesCount"></div><div id="daily-stat-count" style="font-size:1.1em;color:#fbbf24;font-weight:900;">0</div></div>
+                        <div style="flex:1;background:#1e293b;border:1px solid #4ade80;border-radius:8px;padding:6px;text-align:center;"><div style="font-size:0.58em;color:#86efac;font-weight:bold;margin-bottom:2px;" data-i18n="volumePi"></div><div id="daily-stat-volume" style="font-size:1.1em;color:#fbbf24;font-weight:900;">0</div></div>
+                    </div>
                 </div>
-            </div>
-            <div style="background:#0a0f1e;border:2px solid #3b82f6;border-radius:12px;padding:10px;">
-                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;padding-bottom:7px;border-bottom:1px solid #1e3a8a;">
-                    <div style="display:flex;align-items:center;gap:6px;"><span>🧾</span><span style="font-size:0.72em;color:#60a5fa;font-weight:800;text-transform:uppercase;" data-i18n="allSalesDetail"></span></div>
-                    <button onclick="loadAllSalesDetail()" style="background:rgba(59,130,246,0.2);border:1px solid #3b82f6;color:#93c5fd;padding:4px 10px;border-radius:8px;font-size:0.65em;font-weight:700;cursor:pointer;" data-i18n="refreshBtn"></button>
-                </div>
-                <div id="admin-all-sales-list" style="max-height:300px;overflow-y:auto;text-align:left;">
-                    <p style="font-size:0.75em;opacity:0.5;text-align:center;" data-i18n="clickToLoad"></p>
+                <div style="background:#0a0f1e;border:2px solid #3b82f6;border-radius:10px;padding:8px;">
+                    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;padding-bottom:6px;border-bottom:1px solid #1e3a8a;">
+                        <div style="display:flex;align-items:center;gap:5px;"><span>🧾</span><span style="font-size:0.68em;color:#60a5fa;font-weight:800;text-transform:uppercase;" data-i18n="allSalesDetail"></span></div>
+                        <button onclick="loadAllSalesDetail()" style="background:rgba(59,130,246,0.2);border:1px solid #3b82f6;color:#93c5fd;padding:3px 8px;border-radius:6px;font-size:0.6em;font-weight:700;cursor:pointer;" data-i18n="refreshBtn"></button>
+                    </div>
+                    <div id="admin-all-sales-list" style="max-height:260px;overflow-y:auto;text-align:left;">
+                        <p style="font-size:0.72em;opacity:0.5;text-align:center;" data-i18n="clickToLoad"></p>
+                    </div>
                 </div>
             </div>
         </div>
@@ -494,12 +506,11 @@
                 <input type="text" id="new-domain-img" data-i18n-placeholder="newDomainImgPlaceholder" class="admin-date-picker" style="margin-bottom:0;">
                 <select id="new-domain-type" class="admin-date-picker" style="margin-bottom:0;">
                     <option value="genel" data-i18n="typeGeneral"></option><option value="finans" data-i18n="typeFinance"></option>
+                    <option value="bankacilik" data-i18n="typeBanking"></option>
                     <option value="eticaret" data-i18n="typeEcommerce"></option><option value="kisisel" data-i18n="typePersonal"></option>
                     <option value="teknoloji" data-i18n="typeTechnology"></option><option value="turizm" data-i18n="typeTourism"></option>
                     <option value="saglik" data-i18n="typeHealth"></option><option value="egitim" data-i18n="typeEducation"></option>
-                    <option value="gayrimenkul" data-i18n="typeRealEstate"></option>
-                    <option value="bankacilik" data-i18n="typeBanking"></option>
-                    <option value="diger" data-i18n="typeOther"></option>
+                    <option value="gayrimenkul" data-i18n="typeRealEstate"></option><option value="diger" data-i18n="typeOther"></option>
                 </select>
                 <textarea id="new-domain-desc" data-i18n-placeholder="descriptionPlaceholder" class="admin-date-picker" rows="2" style="resize:none;margin-bottom:0;"></textarea>
                 <button class="pi-btn" style="margin:4px 0 0 0;animation:none;background:#10b981;padding:8px;" onclick="handleAddDomain()" data-i18n="addDomainBtn"></button>
@@ -536,7 +547,7 @@
     </div>
 
     <!-- Market -->
-    <div class="card" id="market-card" style="position:relative;padding:8px;margin-bottom:4px;overflow:hidden;min-height:120px;">
+    <div class="card" id="market-card" style="position:relative;padding:6px;margin-bottom:4px;overflow:hidden;min-height:80px;">
         <div class="section-title-box" id="market-title-box" style="display:none;" data-i18n="availableDomains"></div>
         <div class="filter-section" id="filter-section" style="display:none;">
             <div class="filter-section-label" data-i18n="filterSectionLabel"></div>
@@ -544,6 +555,7 @@
                 <option value="hepsi" data-i18n="filterAll"></option>
                 <option value="genel" data-i18n="typeGeneral"></option>
                 <option value="finans" data-i18n="typeFinance"></option>
+                <option value="bankacilik" data-i18n="typeBanking"></option>
                 <option value="eticaret" data-i18n="typeEcommerce"></option>
                 <option value="kisisel" data-i18n="typePersonal"></option>
                 <option value="teknoloji" data-i18n="typeTechnology"></option>
@@ -574,10 +586,10 @@
     </div>
   </div>
 
-  <div class="footer-section" style="padding:4px 0; background:rgba(15,23,42,0.9); border-top:1px solid rgba(99,102,241,0.2); z-index:10;">
-      <div class="footer-row" style="font-size:0.75em; margin-bottom:2px;">📩 <span data-i18n="contactUs"></span>: <a href="mailto:doganay0808@hotmail.com">doganay0808@hotmail.com</a></div>
-      <div class="footer-row" style="font-size:0.75em; margin-bottom:2px;">💬 <span data-i18n="community"></span>: <a href="https://t.me/+5jZi9vrcNMM2NGVk" target="_blank" data-i18n="telegramGroup"></a></div>
-      <div style="margin-top:2px;font-size:0.7em;"><a href="privacy.html" target="_blank" rel="noopener" data-i18n="privacyPolicy"></a> | <a href="terms.html" target="_blank" rel="noopener" data-i18n="termsOfUse"></a></div>
+  <div class="footer-section">
+      <div class="footer-row">📩 <span data-i18n="contactUs"></span>: <a href="mailto:doganay08@hotmail.com">doganay08@hotmail.com</a></div>
+      <div class="footer-row">💬 <span data-i18n="community"></span>: <a href="https://t.me/+5jZi9vrcNMM2NGVk" target="_blank" data-i18n="telegramGroup"></a></div>
+      <div class="footer-row" style="margin-top:2px;"><a href="privacy.html" target="_blank" rel="noopener" data-i18n="privacyPolicy"></a> | <a href="terms.html" target="_blank" rel="noopener" data-i18n="termsOfUse"></a></div>
   </div>
 </div>
 <script type="module">
@@ -605,10 +617,8 @@ function waitForPi() {
     });
 }
 const i18n = {
-    tr: {
+  tr: {
     menu:"Menü",account:"Hesap",preferences:"Tercihler",connected:"Bağlı",
-    buyer:"Alıcı",seller:"Satıcı",date:"Tarih",system:"Sistem",verifyOnExplorer:"Explorer'da Doğrula",
-    typeBanking:"Bankacılık Hizmetleri",
     purchasedDomain:"ALINAN DOMAIN",firstLogin:"İLK GİRİŞ",
     profileSettings:"Profil Ayarları",myPanel:"Panelim",sellMyDomain:"Domainimi Satışa Çıkar",
     languageOptions:"Dil Seçenekleri",logout:"Çıkış Yap",connectWithPi:"<span style='display:inline-flex;align-items:center;gap:8px;'><span style='display:inline-block;animation:logo-pulse 1.5s ease-in-out infinite;font-size:1.1em;'>π</span> Pi ile Bağlan</span>",
@@ -625,13 +635,13 @@ const i18n = {
     walletLabel:"Pi Cüzdan Adresin",walletPlaceholder:"G... ile başlayan cüzdan adresin",
     walletNote:"ℹ️ Ödeme transferi ileride aktif olacak özellik için şimdiden alınıyor.",
     cancel:"VAZGEÇ",sendForApproval:"ONAYA GÖNDER",
-    typeGeneral:"Genel",typeFinance:"Faizsiz Finansal Hizmetler",typeEcommerce:"E-Ticaret",
+    typeGeneral:"Genel",typeFinance:"Faizsiz Finansal Hizmetler",typeBanking:"Bankacılık Hizmetleri",typeEcommerce:"E-Ticaret",
     typePersonal:"Kişisel İsim",typeTechnology:"Teknoloji",typeOther:"Diğer",
     typeTourism:"Turizm ve Seyahat",typeHealth:"Sağlık",typeEducation:"Eğitim",typeRealEstate:"Gayrimenkul",
     soldDomains:"Satılan Domain",totalVolume:"Toplam Hacim",activeUsers:"Aktif Kullanıcı",
     overview:"Genel",myPurchases:"Alımlarım",myListings:"İlanlarım",myIncome:"Gelirim",
     totalSpent:"Toplam Harcama",myListingsCount:"İlan Sayım",
-    myListingsTitle:"Satış İlanlarım",listNewDomain:"+ Yeni İlan Ver",
+    myListingsTitle:"Domain İlan Durum Takibi",listNewDomain:"+ Yeni İlan Ver",
     totalEarned:"TOPLAM GELİR",earnedNote:"Satışa sunduğunuz ve satılan domainlerden elde edilen gelir.",
     info:"BİLGİ",
     testNetNote:"Bu uygulama Test-Pi ağında deneme amaçlıdır. Satın aldığınız domainler, diğer kullanıcıların da test yapabilmesi için markette tekrar <span class=\"btn-fake-buy\">SATIN AL</span> olarak görünebilir ve satın alma geçmişinizden silinebilir.",
@@ -702,7 +712,7 @@ const i18n = {
     statusPending:"⏳ Onay Bekliyor",statusApproved:"✅ Onaylandı",statusRejected:"❌ Reddedildi",
     domainOnSale:"Satışta",domainSold:"Satıldı",sellerLabel:"Satıcı:",descriptionEmpty:"Açıklama girilmemiş.",
     imageUploading:"Görsel yükleniyor...",imageUploadFailed:"Görsel yüklenemedi.",
-    myActiveListings:"Satıştaki Domainleriniz",mySoldDomainsLabel:"Satılan Domainleriniz",
+    myActiveListings:"Aktif İlanlarım",mySoldDomainsLabel:"Satılan Domainleriniz",
     walletBalanceLabel:"Domain Satışı Geliriniz",
     platformWalletTitle:"PLATFORM CÜZDANI (TOPLAM KAZANÇ)",
     platformWalletNote:"Sahibi belirtilmemiş (sistem) domainlerin satışından elde edilen toplam gelir.",
@@ -727,10 +737,8 @@ const i18n = {
     permanentDeleteConfirm:(n)=>`"${n}" domainini KALICI OLARAK silmek istediğinize emin misiniz? Bu işlem GERİ ALINAMAZ, veri tamamen yok olur.`,
     permanentDeleteFail:"Kalıcı silme başarısız: ",permanentDeleteSuccess:(n)=>`"${n}" kalıcı olarak silindi.`,loadingDomains:"Domainler yükleniyor...",filterSectionLabel:"🏷️ Kategoriye Göre Filtrele",
   },
-    en: {
+  en: {
     menu:"Menu",account:"Account",preferences:"Preferences",connected:"Connected",
-    buyer:"Buyer",seller:"Seller",date:"Date",system:"System",verifyOnExplorer:"Verify on Explorer",
-    typeBanking:"Banking Services",
     purchasedDomain:"OWNED DOMAINS",firstLogin:"FIRST LOGIN",
     profileSettings:"Profile Settings",myPanel:"My Panel",sellMyDomain:"List My Domain for Sale",
     languageOptions:"Language Options",logout:"Sign Out",connectWithPi:"<span style='display:inline-flex;align-items:center;gap:8px;'><span style='display:inline-block;animation:logo-pulse 1.5s ease-in-out infinite;font-size:1.1em;'>π</span> Connect with Pi</span>",
@@ -746,13 +754,13 @@ const i18n = {
     walletLabel:"Your Pi Wallet Address",walletPlaceholder:"Your wallet address starting with G...",
     walletNote:"ℹ️ Payment transfer will be activated in the future.",
     cancel:"CANCEL",sendForApproval:"SEND FOR APPROVAL",
-    typeGeneral:"General",typeFinance:"Interest-Free Financial Services",typeEcommerce:"E-Commerce",
+    typeGeneral:"General",typeFinance:"Interest-Free Financial Services",typeBanking:"Banking Services",typeEcommerce:"E-Commerce",
     typePersonal:"Personal Name",typeTechnology:"Technology",typeOther:"Other",
     typeTourism:"Tourism & Travel",typeHealth:"Health",typeEducation:"Education",typeRealEstate:"Real Estate",
     soldDomains:"Sold Domains",totalVolume:"Total Volume",activeUsers:"Active Users",
     overview:"Overview",myPurchases:"My Purchases",myListings:"My Listings",myIncome:"My Income",
     totalSpent:"Total Spent",myListingsCount:"My Listings",
-    myListingsTitle:"My Domain Listings",listNewDomain:"+ New Listing",
+    myListingsTitle:"Domain Listing Status Tracker",listNewDomain:"+ New Listing",
     totalEarned:"TOTAL EARNINGS",earnedNote:"Total earnings from your listed and sold domains.",
     info:"INFO",
     testNetNote:"This app runs on Test-Pi for demo purposes. Purchased domains may reappear as <span class=\"btn-fake-buy\">BUY</span> in the market so other users can also test, and may be removed from your history.",
@@ -820,7 +828,7 @@ const i18n = {
     statusPending:"⏳ Pending Approval",statusApproved:"✅ Approved",statusRejected:"❌ Rejected",
     domainOnSale:"On Sale",domainSold:"Sold",sellerLabel:"Seller:",descriptionEmpty:"No description provided.",
     imageUploading:"Uploading image...",imageUploadFailed:"Image upload failed.",
-    myActiveListings:"Domains Currently on Sale",mySoldDomainsLabel:"Your Sold Domains",
+    myActiveListings:"My Active Listings",mySoldDomainsLabel:"Your Sold Domains",
     walletBalanceLabel:"Your Domain Sales Earnings",
     platformWalletTitle:"PLATFORM WALLET (TOTAL EARNINGS)",
     platformWalletNote:"Total income from sales of domains with no listed owner (system domains).",
@@ -884,12 +892,12 @@ let domains=[
     {name:'etstur.pi',img:'assets/etstur.jpeg',price:250,type:'turizm',description:''},
     {name:'eminevim.pi',img:'assets/eminevim.jpeg',price:150,type:'finans',description:''},
     {name:'fuzulev.pi',img:'assets/fuzulev.jpeg',price:300,type:'finans',description:''},
-    {name:'fibabank.pi',img:'assets/fibabank.jpeg',price:500,type:'finans',description:''},
-    {name:'sekerbank.pi',img:'assets/sekerbank.jpeg',price:600,type:'finans',description:''},
+    {name:'fibabank.pi',img:'assets/fibabank.jpeg',price:500,type:'bankacilik',description:''},
+    {name:'sekerbank.pi',img:'assets/sekerbank.jpeg',price:600,type:'bankacilik',description:''},
     {name:'doganay.pi',img:'assets/doganay.jpeg',price:150,type:'kisisel',description:''}
 ];
 
-const typeKeys={genel:'typeGeneral',finans:'typeFinance',eticaret:'typeEcommerce',kisisel:'typePersonal',teknoloji:'typeTechnology',turizm:'typeTourism',saglik:'typeHealth',egitim:'typeEducation',gayrimenkul:'typeRealEstate',diger:'typeOther'};
+const typeKeys={genel:'typeGeneral',finans:'typeFinance',bankacilik:'typeBanking',eticaret:'typeEcommerce',kisisel:'typePersonal',teknoloji:'typeTechnology',turizm:'typeTourism',saglik:'typeHealth',egitim:'typeEducation',gayrimenkul:'typeRealEstate',diger:'typeOther'};
 function typeLabel(type){return t(typeKeys[type]||'typeGeneral');}
 const badgeInfo={bronze:{label:()=>t('badgeBronze'),color:'#cd7f32'},silver:{label:()=>t('badgeSilver'),color:'#94a3b8'},gold:{label:()=>t('badgeGold'),color:'#fbbf24'},diamond:{label:()=>t('badgeDiamond'),color:'#818cf8'}};
 function badgeHTML(badge){if(!badge||!badgeInfo[badge])return '';return `<span style="color:${badgeInfo[badge].color};font-weight:900;">${badgeInfo[badge].label()}</span>`;}
@@ -1128,6 +1136,29 @@ window.openDomainDetail=function(domainName){
 };
 
 // SATIŞ ÖNERİSİ DETAY (Admin) — başlık/açıklama formatında sıralı gösterim
+window.toggleStatsSection=function(){
+    const sec=document.getElementById('stats-section');
+    const arrow=document.getElementById('stats-toggle-arrow');
+    if(!sec) return;
+    if(sec.style.display==='none'){
+        sec.style.display='block';
+        arrow.style.transform='rotate(180deg)';
+        // İlk açılışta verileri yükle
+        const list=document.getElementById('admin-all-sales-list');
+        if(list && list.innerHTML.includes(t('clickToLoad'))) loadAllSalesDetail();
+    } else {
+        sec.style.display='none';
+        arrow.style.transform='rotate(0deg)';
+    }
+};
+window.toggleSaleDetail=function(id){
+    const body=document.getElementById(id+'-body');
+    const arrow=document.getElementById(id+'-arrow');
+    if(!body) return;
+    const isExpanded=body.classList.contains('expanded');
+    if(isExpanded){body.classList.remove('expanded');arrow.classList.remove('rotated');}
+    else{body.classList.add('expanded');arrow.classList.add('rotated');}
+};
 window.openSellRequestDetail=function(requestId,dataStr){
     let p; try{p=JSON.parse(dataStr);}catch(e){return;}
     const locale=currentLang==='en'?'en-GB':'tr-TR';
@@ -1252,8 +1283,15 @@ window.handlePermanentDelete=async function(domainName){
     const result=await r.json();
     if(!r.ok||!result.success) alert(t('permanentDeleteFail')+(result.error||''));
     else{
+        // TAMAMEN kaldır: domains dizisinden, domainData'dan, sell_requests'ten
         domains=domains.filter(d=>d.name!==domainName);
         delete domainData[domainName];
+        // Kullanıcı panellerindeki ilan/satış listelerinden de kaldır
+        userSellRequests=userSellRequests.filter(r=>r.domainName!==domainName);
+        userSoldDomains=userSoldDomains.filter(d=>d.name!==domainName);
+        userActiveListings=userActiveListings.filter(d=>d.name!==domainName);
+        // Toplam harcama/gelir hesaplaması için profili yenile
+        await loadUserProfile();
         alert(t('permanentDeleteSuccess')(domainName));
         debouncedRender();
     }
@@ -1311,24 +1349,27 @@ window.loadAllSalesDetail=async function(){
             return;
         }
         const locale=currentLang==='en'?'en-GB':'tr-TR';
-        container.innerHTML=result.allSalesDetail.map((s, idx)=>`
-            <div style="background:#0f172a;border:1px solid #1e3a8a;border-radius:8px;margin-bottom:6px;overflow:hidden;">
-                <div onclick="const el=document.getElementById('sale-detail-${idx}'); el.style.display=el.style.display==='none'?'block':'none';" style="display:flex;justify-content:space-between;align-items:center;padding:10px;cursor:pointer;background:rgba(30,58,138,0.2);">
+        let saleIdx=0;
+            container.innerHTML=result.allSalesDetail.map(s=>{
+                const saleId="sale-detail-"+(saleIdx++);
+                return `<div class="sale-detail-item" onclick="toggleSaleDetail('${saleId}')">
+                <div class="sale-detail-header">
                     <b style="color:#f1f5f9;font-size:0.85em;">${s.name}</b>
-                    <div style="display:flex;align-items:center;gap:8px;">
+                    <div style="display:flex;align-items:center;gap:6px;">
                         <span style="color:#fbbf24;font-weight:900;font-size:0.85em;">${s.price} Pi</span>
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="3"><polyline points="6 9 12 15 18 9"/></svg>
+                        <span class="sale-detail-arrow" id="${saleId}-arrow">▼</span>
                     </div>
                 </div>
-                <div id="sale-detail-${idx}" style="display:none;padding:10px;border-top:1px solid rgba(30,58,138,0.3);background:rgba(15,23,42,0.5);">
-                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:0.75em;">
-                        <div style="color:#94a3b8;">👤 ${t('buyer')}: <span style="color:#e2e8f0;font-weight:700;">@${s.buyer||'?'}</span></div>
-                        <div style="color:#94a3b8;">🏷️ ${t('seller')}: <span style="color:#e2e8f0;font-weight:700;">${s.sellerUsername?'@'+s.sellerUsername:t('system')}</span></div>
-                        <div style="color:#94a3b8;grid-column:span 2;">📅 ${t('date')}: <span style="color:#e2e8f0;">${s.at?new Date(s.at).toLocaleDateString(locale,{day:'2-digit',month:'2-digit',year:'numeric'})+' '+new Date(s.at).toLocaleTimeString(locale,{hour:'2-digit',minute:'2-digit'}):'-'}</span></div>
-                        ${s.txid?`<div style="grid-column:span 2;margin-top:4px;"><a href="https://blockexplorer.minepi.com/testnet/tx/${s.txid}" target="_blank" style="color:#60a5fa;text-decoration:none;font-weight:bold;display:flex;align-items:center;gap:4px;">🔗 ${t('verifyOnExplorer')}</a></div>`:''}
+                <div class="sale-detail-body" id="${saleId}-body">
+                    <div style="display:flex;flex-direction:column;gap:4px;font-size:0.68em;color:#94a3b8;">
+                        <span>👤 ${t('saleDetailBuyer')}: @${s.buyer||'?'}</span>
+                        <span>📅 ${t('saleDetailDate')}: ${s.at?new Date(s.at).toLocaleDateString(locale,{day:'2-digit',month:'2-digit',year:'numeric'})+' '+new Date(s.at).toLocaleTimeString(locale,{hour:'2-digit',minute:'2-digit'}):'-'}</span>
+                        <span>💰 ${t('saleDetailPrice')}: ${s.price} Pi</span>
+                        ${s.sellerUsername?`<span>🏷️ ${t('saleDetailSeller')}: @${s.sellerUsername}</span>`:'<span style="color:#6366f1;">🔧 Sistem Domaini</span>'}
+                        <span>🏷️ ${t('detailFieldType')}: ${typeLabel(s.type||'genel')}</span>
                     </div>
                 </div>
-            </div>`).join('');
+            </div>`;}).join('');
     }catch(e){container.innerHTML=`<p style="color:#ef4444;font-size:0.75em;text-align:center;">${e.message}</p>`;}
 };
 window.loadAdminEarnings=async function(){
@@ -1386,9 +1427,13 @@ async function loadUserProfile(){
         const result=await r.json();
         if(result.success){
             userProfile=result.profile||{points:0,badge:null};
-            userSellRequests=result.sellRequests||[];
-            userSoldDomains=result.soldDomains||[];
-            userActiveListings=result.activeListings||[];
+            // Silinmiş domain'lere ait kayıtları frontend'de de filtrele
+            // (backend visibleSellRequests zaten filtreliyor ama ekstra güvenlik)
+            const deletedNames=new Set();
+            Object.keys(domainData).forEach(name=>{if(domainData[name]?.deleted) deletedNames.add(name);});
+            userSellRequests=(result.sellRequests||[]).filter(r=>!deletedNames.has(r.domainName));
+            userSoldDomains=(result.soldDomains||[]).filter(d=>!deletedNames.has(d.name));
+            userActiveListings=(result.activeListings||[]).filter(d=>!deletedNames.has(d.name));
             userTotalSpent=result.totalSpent||0;
             userTotalEarned=result.totalEarned||0;
         }
