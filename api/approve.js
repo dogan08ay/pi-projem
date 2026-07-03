@@ -384,8 +384,6 @@ export default async function handler(req, res) {
 
       if (soldAt) {
         const soldDate = new Date(soldAt).toISOString().split('T')[0];
-        const today = new Date().toISOString().split('T')[0];
-        // Her durumda daily_stats'tan düş (bugün olmasa bile)
         await db.collection('daily_stats').doc(soldDate).set({
           count: FieldValue.increment(-1),
           volume: FieldValue.increment(-soldPrice)
@@ -510,14 +508,12 @@ export default async function handler(req, res) {
         deletedAt: Date.now()
       }, { merge: true });
 
-      // Eğer domain satılmışsa, daily_stats ve global_sales'tan da düş
       if (domainDataForDelete.sold === true && domainDataForDelete.at) {
         const soldDate = new Date(domainDataForDelete.at).toISOString().split('T')[0];
         await db.collection('daily_stats').doc(soldDate).set({
           count: FieldValue.increment(-1),
           volume: FieldValue.increment(-(Number(domainDataForDelete.price) || 0))
         }, { merge: true });
-        // global_sales kaydını sil
         const matchSnap = await db.collection('global_sales')
           .where('domain', '==', delName)
           .where('user', '==', domainDataForDelete.buyer)
@@ -579,7 +575,6 @@ export default async function handler(req, res) {
       if (!snap.exists) return res.status(404).json({ error: "Domain bulunamadı" });
       if (snap.data().deleted !== true) return res.status(400).json({ error: "Sadece soft-delete edilmiş domainler kalıcı silinebilir" });
       await domainRef.delete();
-      // İlgili sell_requests kayıtlarını da temizle
       const reqSnap = await db.collection('sell_requests')
         .where('domainName', '==', permDelName)
         .get();
@@ -949,14 +944,11 @@ export default async function handler(req, res) {
       const allSalesSnap = await db.collection('global_sales').get();
       let totalVolume = 0;
       const salesByDomain = {};
-      // Silinmiş domain adlarını öğren
       const deletedDomainsSnap = await db.collection('domains').where('deleted', '==', true).get();
       const deletedDomainNames = new Set();
       deletedDomainsSnap.forEach(d => deletedDomainNames.add(d.id));
-
       allSalesSnap.forEach(d => {
         const data = d.data();
-        // Silinmiş domainlerin satışlarını sayma
         if (deletedDomainNames.has(data.domain)) return;
         totalVolume += Number(data.price || 0);
         salesByDomain[data.domain] = (salesByDomain[data.domain] || 0) + Number(data.price || 0);
