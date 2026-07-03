@@ -548,6 +548,26 @@ export default async function handler(req, res) {
     }
   }
 
+  // ── Domain Kalıcı Sil (sadece deleted:true olanlar) ──────────────────
+  if (action === 'permanent_delete_domain') {
+    const { domainName: permDelName } = req.body;
+    const isAdmin = await verifyAdmin(accessToken);
+    if (!isAdmin) return res.status(403).json({ error: "Yetki yok" });
+    if (!permDelName) return res.status(400).json({ error: "Geçersiz domain adı" });
+    try {
+      const db = getDb();
+      const domainRef = db.collection('domains').doc(permDelName);
+      const snap = await domainRef.get();
+      if (!snap.exists) return res.status(404).json({ error: "Domain bulunamadı" });
+      if (snap.data().deleted !== true) return res.status(400).json({ error: "Sadece soft-delete edilmiş domainler kalıcı silinebilir" });
+      await domainRef.delete();
+      console.log(`Domain kalıcı silindi: ${permDelName}`);
+      return res.status(200).json({ success: true });
+    } catch (e) {
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
   // ── Platform İstatistiklerini Sıfırla (KARAR: kalıcı silme + epoch) ───
   // Bu işlem geri alınamaz, bu yüzden ekstra bir confirmReset:true
   // parametresi zorunlu kılınmıştır — yanlışlıkla tetiklenmeyi önler.
@@ -898,10 +918,7 @@ export default async function handler(req, res) {
     if (!isAdmin) return res.status(403).json({ error: "Yetki yok" });
     try {
       const db = getDb();
-      // Platforma ait (sellerUsername'i olmayan, yani admin/sistem domaini)
-      // satışlardan toplam hacim zaten daily_stats / global_sales'te var.
-      // Burada "kullanıcıdan komisyon" modeli olmadığı için, admin'e giden
-      // gelir = sahibi belirtilmemiş (sellerUsername yok) domain satışları.
+      // Tüm satışları topla (toplam hacim için)
       const allSalesSnap = await db.collection('global_sales').get();
       let totalVolume = 0;
       const salesByDomain = {};
@@ -911,9 +928,7 @@ export default async function handler(req, res) {
         salesByDomain[data.domain] = (salesByDomain[data.domain] || 0) + Number(data.price || 0);
       });
 
-      // Kullanıcıların kendi domainlerinden kazandığı toplam (sellerUsername'li satışlar)
-      // FIX: deleted===true olan domainler hariç tutulur — relist/silme
-      // sonrası bu hacim de otomatik güncel kalır.
+      // Kullanıcıların kendi ilan verdiği (sellerUsername var) domain satışları
       const userOwnedDomainsSnap = await db.collection('domains')
         .where('sold', '==', true)
         .get();
@@ -924,16 +939,12 @@ export default async function handler(req, res) {
         if (data.sellerUsername) userOwnedVolume += Number(data.price || 0);
       });
 
-      // FIX (yeni): Admin'in (doganay0808) KENDİ satıcı kazancı — yani
-      // admin'in ilan verip BAŞKA kullanıcıların satın aldığı domainlerden
-      // gelen tutar. Bu, "Panelim > Gelirim" sekmesindeki totalEarned ile
-      // AYNI hesaplama mantığını kullanır (sellerUsername === admin,
-      // sold === true, deleted !== true), admin panelinde ayrıca
-      // gösterilmesi istendiği için burada da hesaplanır. Domain
-      // silinirse veya relist edilirse (relist action'ı zaten global_sales
-      // kaydını silip puanı geri alıyor, domains.sold da false oluyor),
-      // bu sorgu güncel veriyi otomatik yansıtır — ayrı bir senkron
-      // mekanizması gerekmez.
+      // Platform kazancı = sellerUsername'i OLMAYAN (admin/sistem tarafından
+      // eklenen) domain satışları. Başka kullanıcıların ilan verip satılan
+      // domainleri bu hesaba dahil değil.
+      const platformEarnings = totalVolume - userOwnedVolume;
+
+      // Admin'in KENDİ satıcı olarak ilan verdiği domainlerden kazancı
       const adminOwnSalesSnap = await db.collection('domains')
         .where('sellerUsername', '==', 'doganay0808')
         .where('sold', '==', true)
@@ -947,7 +958,25 @@ export default async function handler(req, res) {
         adminOwnSoldDomains.push({ name: d.id, price: data.price, buyer: data.buyer || null });
       });
 
-      const platformEarnings = totalVolume - userOwnedVolume;
+      // Tüm satış detayları (admin satış istatistikleri için)
+      const allSoldDomainsSnap = await db.collection('domains')
+        .where('sold', '==', true)
+        .get();
+      const allSalesDetail = [];
+      allSoldDomainsSnap.forEach(d => {
+        const data = d.data();
+        if (data.deleted === true) return;
+        allSalesDetail.push({
+          name: d.id,
+          price: data.price,
+          buyer: data.buyer || null,
+          at: data.at || null,
+          sellerUsername: data.sellerUsername || null,
+          type: data.type || 'genel'
+        });
+      });
+      // En son satışlar önce
+      allSalesDetail.sort((a, b) => (b.at || 0) - (a.at || 0));
 
       return res.status(200).json({
         success: true,
@@ -956,6 +985,7 @@ export default async function handler(req, res) {
         platformEarnings,
         adminOwnEarnings,
         adminOwnSoldDomains,
+        allSalesDetail,
         salesByDomain
       });
     } catch (e) {
