@@ -83,8 +83,9 @@
         .lang-option{display:flex;align-items:center;gap:8px;padding:8px 10px;color:#f1f5f9;font-size:0.8em;font-weight:700;cursor:pointer;border-radius:8px;margin:2px 0;border:none;background:transparent;width:100%;box-sizing:border-box;transition:background 0.15s;}
         .lang-option:hover,.lang-option.active{background:rgba(99,102,241,0.2);}
         .lang-option.active{color:#a5b4fc;}
-        .admin-tabs{display:grid;grid-template-columns:repeat(3,1fr);gap:5px;margin-bottom:10px;padding-bottom:2px;}
-        .admin-tab-btn{background:#0f172a;border:1.5px solid #334155;color:#94a3b8;padding:8px 4px;border-radius:10px;font-size:0.62em;font-weight:800;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:4px;white-space:nowrap;transition:all 0.15s;text-align:center;min-width:0;}
+        .admin-tabs{display:flex;gap:5px;overflow-x:auto;margin-bottom:10px;padding-bottom:2px;}
+        .admin-tabs::-webkit-scrollbar{height:4px;}
+        .admin-tab-btn{background:#0f172a;border:1.5px solid #334155;color:#94a3b8;padding:8px 6px;border-radius:10px;font-size:0.65em;font-weight:800;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:4px;text-align:center;white-space:normal;line-height:1.2;min-height:44px;transition:all 0.15s;}
         .admin-tab-btn.active{background:rgba(99,102,241,0.18);border-color:#6366f1;color:#c7d2fe;box-shadow:0 0 10px rgba(99,102,241,0.3);}
         .admin-tab-panel{display:none;}
         .admin-tab-panel.active{display:block;animation:card-rise 0.3s ease backwards;}
@@ -139,7 +140,7 @@
 <base target="_blank">
 <base target="_blank">
 </head>
-<body>
+<body style="display:flex;flex-direction:column;min-height:100vh;">
 <div class="side-menu-overlay" id="side-menu-overlay" onclick="toggleSideMenu()"></div>
 
 <!-- Side Menu -->
@@ -198,9 +199,6 @@
     </a>
     <a href="https://t.me/+5jZi9vrcNMM2NGVk" target="_blank" style="text-decoration:none;">
         <button class="side-menu-item"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg><span style="color:#38bdf8;" data-i18n="telegramGroup"></span></button>
-    </a>
-    <a href="mailto:doganay08@hotmail.com" style="text-decoration:none;">
-        <button class="side-menu-item"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg><span style="color:#38bdf8;">doganay08@hotmail.com</span></button>
     </a>
     <div style="display:flex;gap:8px;padding:4px 12px;">
         <a href="privacy.html" target="_blank" rel="noopener" style="color:#f87171;font-size:0.65em;font-weight:700;" data-i18n="privacyPolicy"></a>
@@ -356,7 +354,7 @@
     </div>
 </div>
 <!-- ANA İÇERİK -->
-<div class="container">
+<div class="container" style="min-height:100vh;display:flex;flex-direction:column;">
   <div class="main-scroll">
     <div class="card" style="border:1.5px solid rgba(129,140,248,0.45);background:linear-gradient(160deg,rgba(99,102,241,0.14) 0%,var(--card) 55%);">
         <!-- İkon satırı: bildirim sol, hamburger sağ — her zaman aynı konumda -->
@@ -373,10 +371,6 @@
             <div class="stats-item"><span data-i18n="soldDomains"></span>: <span id="total-sold">0</span></div>
             <div class="stats-item"><span data-i18n="totalVolume"></span>: <span id="total-volume">0</span> Test Pİ</div>
             <div class="stats-item"><span data-i18n="activeUsers"></span>: <span id="online-count">0</span></div>
-        </div>
-        <div style="display:flex;justify-content:center;align-items:center;gap:8px;margin-top:8px;padding:6px 10px;background:rgba(56,189,248,0.08);border:1px solid rgba(56,189,248,0.25);border-radius:10px;font-size:0.72em;color:#38bdf8;font-weight:700;">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
-            <span>doganay08@hotmail.com</span>
         </div>
         <div id="user-status-box" style="display:none;margin-top:6px;">
             <p id="user-status" style="display:inline-block;font-size:0.85em;color:#6ee7b7;font-weight:900;margin:0;background:rgba(16,185,129,0.12);border:1.5px solid #10b981;border-radius:20px;padding:5px 14px;"></p>
@@ -455,7 +449,7 @@
     <!-- Admin Paneli -->
     <div class="card" id="admin-panel" style="display:none;border:2.5px solid #6366f1;box-shadow:0 0 18px rgba(99,102,241,0.25);">
         <h3 style="color:#fbbf24;margin:-8px -8px 10px -8px;padding:10px 8px;font-size:0.95em;display:flex;align-items:center;justify-content:center;gap:6px;background:linear-gradient(135deg,rgba(99,102,241,0.2) 0%,rgba(67,56,202,0.1) 100%);border-bottom:1.5px solid rgba(99,102,241,0.4);border-radius:14px 14px 0 0;font-weight:900;">🛠 Admin Panel</h3>
-        <div class="admin-tabs" style="display:grid;grid-template-columns:repeat(3,1fr);gap:5px;margin-bottom:10px;">
+        <div class="admin-tabs">
             <button class="admin-tab-btn active" data-tab="tab-users" onclick="switchAdminTab('tab-users')">👥 <span data-i18n="users"></span></button>
             <button class="admin-tab-btn" data-tab="tab-stats" onclick="switchAdminTab('tab-stats')">📈 <span data-i18n="salesStats"></span></button>
             <button class="admin-tab-btn" data-tab="tab-pending" onclick="switchAdminTab('tab-pending')">🏷️ <span data-i18n="pendingApprovals"></span><span class="pending-badge" id="pending-count-badge" style="display:none;">0</span></button>
@@ -552,7 +546,7 @@
     </div>
 
     <!-- Market -->
-    <div class="card" id="market-card" style="position:relative;padding:8px;margin-bottom:4px;overflow:hidden;min-height:120px;">
+    <div class="card" id="market-card" style="position:relative;padding:8px;margin-bottom:4px;overflow:hidden;min-height:80px;">
         <div class="section-title-box" id="market-title-box" style="display:none;" data-i18n="availableDomains"></div>
         <div class="filter-section" id="filter-section" style="display:none;">
             <div class="filter-section-label" data-i18n="filterSectionLabel"></div>
@@ -570,19 +564,19 @@
                 <option value="gayrimenkul" data-i18n="typeRealEstate"></option>
             </select>
         </div>
-        <div id="premium-lock" class="premium-lock-overlay">
+        <div id="premium-lock" class="premium-lock-overlay" style="padding-top:6px;padding-bottom:60px;justify-content:center;">
             <div style="position:relative;display:inline-block;"><div class="diamond-spin" style="font-size:1.8em;">💎</div>
             <span class="diamond-sparkle diamond-sparkle-1" style="position:absolute;top:-6px;left:-10px;font-size:0.9em;">✦</span>
             <span class="diamond-sparkle diamond-sparkle-2" style="position:absolute;bottom:-2px;right:-12px;font-size:0.8em;">✦</span></div>
             <div class="lock-title-box" data-i18n="joinWeb3"></div>
-            <div class="secure-badge">
+            <div class="secure-badge" style="padding:10px;margin:3px 0;">
                 <div style="font-size:1.8em;text-align:center;margin-bottom:4px;">🛡️</div>
                 <div class="secure-badge-title" style="text-align:center;" data-i18n="secureConnection"></div>
                 <div class="secure-badge-body" data-i18n="testNetBadgeBody"></div>
                 <div class="secure-badge-warning" data-i18n="testNetWarning"></div>
             </div>
-            <p style="font-size:0.68em;color:#e2e8f0;font-weight:600;line-height:1.15;margin:1px 0;max-width:90%;" data-i18n="connectPrompt"></p>
-            <div style="color:#fbbf24;font-weight:700;margin-bottom:1px;font-size:0.68em;" data-i18n="useButton"></div>
+            <p style="font-size:0.68em;color:#e2e8f0;font-weight:600;line-height:1.15;margin:1px 0 2px 0;max-width:90%;" data-i18n="connectPrompt"></p>
+            <div style="color:#fbbf24;font-weight:700;margin-bottom:3px;font-size:0.68em;" data-i18n="useButton"></div>
             <button class="pi-btn" onclick="window.loginWithPi()" data-i18n="connectWithPi"></button>
         </div>
         <div class="domain-grid locked-content" id="domain-list">
@@ -591,7 +585,7 @@
     </div>
   </div>
 
-  <div class="footer-section" style="position:relative;z-index:50;margin-top:10px;">
+  <div class="footer-section" style="position:sticky;bottom:0;z-index:50;flex-shrink:0;">
       <div class="footer-row">📩 <span data-i18n="contactUs"></span>: <a href="mailto:doganay08@hotmail.com">doganay08@hotmail.com</a></div>
       <div class="footer-row">💬 <span data-i18n="community"></span>: <a href="https://t.me/+5jZi9vrcNMM2NGVk" target="_blank" data-i18n="telegramGroup"></a></div>
       <div style="margin-top:5px;font-size:0.8em;"><a href="privacy.html" target="_blank" rel="noopener" data-i18n="privacyPolicy"></a> | <a href="terms.html" target="_blank" rel="noopener" data-i18n="termsOfUse"></a></div>
