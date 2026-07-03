@@ -4,6 +4,7 @@ import { getStorage } from 'firebase-admin/storage';
 import { getDatabase } from 'firebase-admin/database';
 
 // ─── Admin Config ───────────────────────────────────────────────────────
+// ÖNCE env'den oku, fallback olarak sabit değer
 const ADMIN_USERNAME = process.env.ADMIN_USERNAME || 'doganay0808';
 
 // ─── Firebase Admin Başlatma ───────────────────────────────────────────────
