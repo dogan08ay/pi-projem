@@ -23,6 +23,8 @@
         .domain-card{background:#334155;padding:1px 2px 2px 2px;border-radius:7px;border:1px solid #475569;display:flex;flex-direction:column;align-items:center;transition:transform 0.25s,box-shadow 0.25s,border-color 0.25s;animation:card-rise 0.5s ease backwards;cursor:pointer;min-width:0;max-width:100%;box-sizing:border-box;}
         .domain-card:hover,.domain-card:active{transform:translateY(-4px) scale(1.02);box-shadow:0 10px 20px -6px rgba(99,102,241,0.45),0 0 0 1.5px rgba(129,140,248,0.6);border-color:#818cf8;}
         @keyframes card-rise{0%{opacity:0;transform:translateY(14px) scale(0.96);}100%{opacity:1;transform:translateY(0) scale(1);}}
+#changelog-list::-webkit-scrollbar{width:5px;}
+#changelog-list::-webkit-scrollbar-thumb{background:#f59e0b;border-radius:10px;}
         .domain-img{width:100%;height:32px;margin-bottom:1px;border-radius:6px;object-fit:contain;background-color:#334155;}
         .domain-name{font-size:0.72em;font-weight:bold;margin-bottom:0;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
         .domain-price{color:var(--price);font-size:0.78em;font-weight:800;margin:0;}
@@ -196,6 +198,13 @@
         <button class="lang-option" id="lang-btn-en" onclick="setLang('en')">🇬🇧 English</button>
     </div>
     <div class="side-menu-divider"></div>
+    <div class="side-menu-section-label" data-i18n="whatsNewSection"></div>
+    <button class="side-menu-item" onclick="openChangelogModal();toggleSideMenu();">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fbbf24" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+        <span style="color:#fbbf24;" data-i18n="whatsNew"></span>
+        <span style="margin-left:auto;font-size:0.6em;background:#ef4444;color:#fff;padding:1px 6px;border-radius:10px;font-weight:900;">NEW</span>
+    </button>
+    <div class="side-menu-divider"></div>
     <div class="side-menu-section-label" data-i18n="contactSection"></div>
     <a href="mailto:doganay08@hotmail.com" style="text-decoration:none;">
         <button class="side-menu-item"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg><span style="color:#38bdf8;" data-i18n="contactUs"></span></button>
@@ -286,6 +295,18 @@
         </div>
         <div id="notif-list" style="max-height:60vh;overflow-y:auto;text-align:left;margin-bottom:12px;"></div>
         <button class="pi-btn" style="background:#6366f1;animation:none;padding:10px;margin:0;width:100%;" onclick="document.getElementById('notif-modal').style.display='none'" data-i18n="close"></button>
+    </div>
+</div>
+
+<div id="changelog-modal" class="modal-overlay" style="display:none;">
+    <div class="modal-content" style="border-color:#fbbf24;max-height:85vh;">
+        <div style="text-align:center;margin-bottom:12px;">
+            <div style="font-size:2em;margin-bottom:6px;">🚀</div>
+            <h2 style="color:#fbbf24;margin:0;font-size:1.1em;font-weight:900;" data-i18n="whatsNewTitle"></h2>
+            <div style="font-size:0.7em;color:#94a3b8;margin-top:4px;" data-i18n="whatsNewSubtitle"></div>
+        </div>
+        <div id="changelog-list" style="max-height:55vh;overflow-y:auto;text-align:left;margin-bottom:12px;"></div>
+        <button class="pi-btn" style="background:#f59e0b;animation:none;padding:10px;margin:0;width:100%;" onclick="document.getElementById('changelog-modal').style.display='none'" data-i18n="close"></button>
     </div>
 </div>
 
@@ -744,6 +765,13 @@ const i18n = {
     permanentDeleteBtn:"Kalıcı Sil",
     permanentDeleteConfirm:(n)=>`"${n}" domainini KALICI OLARAK silmek istediğinize emin misiniz? Bu işlem GERİ ALINAMAZ, veri tamamen yok olur.`,
     permanentDeleteFail:"Kalıcı silme başarısız: ",permanentDeleteSuccess:(n)=>`"${n}" kalıcı olarak silindi.`,loadingDomains:"Domainler yükleniyor...",filterSectionLabel:"🏷️ Kategoriye Göre Filtrele",
+    whatsNewSection:"Yenilikler",whatsNew:"Güncelleme Geçmişi",
+    whatsNewTitle:"🚀 Yenilikler & Güncellemeler",whatsNewSubtitle:"Uygulamadaki son değişiklikler",
+    changelogV1_0:"v1.0 - İlk Sürüm",changelogV1_0Desc:"Web3 Domain Gateway yayına alındı. Test-Pi ağı üzerinden domain alım/satımı başladı.",
+    changelogV1_1:"v1.1 - Kullanıcı Paneli",changelogV1_1Desc:"Panelim bölümü eklendi. Kullanıcılar artık alımlarını, ilanlarını ve gelirlerini takip edebiliyor.",
+    changelogV1_2:"v1.2 - Bildirim Sistemi",changelogV1_2Desc:"Gerçek zamanlı bildirim sistemi eklendi. Satın alma, onay ve satış bildirimleri anında ulaşıyor.",
+    changelogV1_3:"v1.3 - Rozet Sistemi",changelogV1_3Desc:"Bronz, Gümüş, Altın ve Elmas rozetler eklendi. Puan kazanarak rozet yükseltebilirsiniz.",
+    changelogV1_4:"v1.4 - Güvenli Ödeme",changelogV1_4Desc:"Güvenli ödeme onay ekranı eklendi. Test-Pi cüzdanı ile güvenli alım yapabilirsiniz.",
   },
   en: {
     menu:"Menu",account:"Account",preferences:"Preferences",connected:"Connected",
@@ -864,6 +892,13 @@ const i18n = {
     permanentDeleteBtn:"Permanent Delete",
     permanentDeleteConfirm:(n)=>`Are you sure you want to PERMANENTLY delete "${n}"? This action is IRREVERSIBLE and all data will be lost.`,
     permanentDeleteFail:"Permanent delete failed: ",permanentDeleteSuccess:(n)=>`"${n}" has been permanently deleted.`,loadingDomains:"Loading domains...",filterSectionLabel:"🏷️ Filter by Category",
+    whatsNewSection:"What's New",whatsNew:"Changelog",
+    whatsNewTitle:"🚀 What's New & Updates",whatsNewSubtitle:"Latest changes in the app",
+    changelogV1_0:"v1.0 - Initial Release",changelogV1_0Desc:"Web3 Domain Gateway launched. Domain trading on Test-Pi network began.",
+    changelogV1_1:"v1.1 - User Panel",changelogV1_1Desc:"My Panel section added. Users can now track purchases, listings and earnings.",
+    changelogV1_2:"v1.2 - Notification System",changelogV1_2Desc:"Real-time notification system added. Purchase, approval and sale notifications arrive instantly.",
+    changelogV1_3:"v1.3 - Badge System",changelogV1_3Desc:"Bronze, Silver, Gold and Diamond badges added. Earn points to upgrade your badge.",
+    changelogV1_4:"v1.4 - Secure Payment",changelogV1_4Desc:"Secure payment confirmation screen added. Make safe purchases with Test-Pi wallet.",
   }
 };
 let currentLang = localStorage.getItem('w3dg_lang') || 'tr';
@@ -1124,6 +1159,31 @@ function stopNotifPolling(){
 window.openNotifModal=function(){
     document.getElementById('notif-modal').style.display='flex';
     fetchNotifications(); // modal açılınca anında tazele
+};
+
+window.openChangelogModal=function(){
+    const list=document.getElementById('changelog-list');
+    if(!list) return;
+    const versions=[
+        {v:t('changelogV1_4'),d:t('changelogV1_4Desc'),date:'2026-07-03',icon:'🛡️',color:'#10b981'},
+        {v:t('changelogV1_3'),d:t('changelogV1_3Desc'),date:'2026-06-28',icon:'💎',color:'#818cf8'},
+        {v:t('changelogV1_2'),d:t('changelogV1_2Desc'),date:'2026-06-20',icon:'🔔',color:'#fbbf24'},
+        {v:t('changelogV1_1'),d:t('changelogV1_1Desc'),date:'2026-06-15',icon:'👤',color:'#60a5fa'},
+        {v:t('changelogV1_0'),d:t('changelogV1_0Desc'),date:'2026-06-10',icon:'🚀',color:'#a855f7'}
+    ];
+    list.innerHTML=versions.map((item,i)=>`
+        <div style="display:flex;gap:10px;padding:10px;border-radius:10px;background:#0f172a;margin-bottom:6px;border-left:3px solid ${item.color};">
+            <div style="font-size:1.4em;flex-shrink:0;">${item.icon}</div>
+            <div style="flex:1;">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px;">
+                    <b style="color:${item.color};font-size:0.85em;">${item.v}</b>
+                    <span style="font-size:0.6em;color:#64748b;">${item.date}</span>
+                </div>
+                <div style="font-size:0.75em;color:#94a3b8;line-height:1.4;">${item.d}</div>
+            </div>
+        </div>
+    `).join('');
+    document.getElementById('changelog-modal').style.display='flex';
 };
 window.markAllNotifRead=async function(){
     if(!piAccessToken) return;
