@@ -470,6 +470,62 @@ export default async function handler(req, res) {
     }
   }
 
+
+  // ── İlanı Geri Çek (Sadece İlan Sahibi) ──────────────────────────────
+  if (action === 'withdraw_listing') {
+    const { domainName } = req.body;
+    const realUsername = await getRealUsername(accessToken);
+    if (!realUsername) return res.status(403).json({ error: "Geçersiz oturum" });
+    if (!domainName) return res.status(400).json({ error: "Geçersiz domain adı" });
+
+    try {
+      const db = getDb();
+      const domainRef = db.collection('domains').doc(domainName);
+      const domainSnap = await domainRef.get();
+
+      if (!domainSnap.exists) return res.status(404).json({ error: "Domain bulunamadı" });
+      const domainData = domainSnap.data();
+
+      // Sadece ilan sahibi geri çekebilir
+      if (domainData.sellerUsername !== realUsername) {
+        return res.status(403).json({ error: "Bu ilanı geri çekme yetkiniz yok" });
+      }
+
+      if (domainData.sold === true) {
+        return res.status(400).json({ error: "Satılmış domain geri çekilemez" });
+      }
+
+      // Soft delete (sistem ilanı değilse)
+      await domainRef.set({
+        deleted: true,
+        deletedAt: Date.now(),
+        deletedBy: realUsername
+      }, { merge: true });
+
+      // Eğer bu domain bir sell_request'ten geliyorsa, durumu güncelle
+      const reqSnap = await db.collection('sell_requests')
+        .where('domainName', '==', domainName)
+        .where('submittedBy', '==', realUsername)
+        .where('status', '==', 'approved')
+        .get();
+
+      if (!reqSnap.empty) {
+        const batch = db.batch();
+        reqSnap.forEach(doc => {
+          batch.update(doc.ref, { status: 'withdrawn', withdrawnAt: Date.now() });
+        });
+        await batch.commit();
+      }
+
+      // Satıcıya puan geri al (onayda +20 verilmişti)
+      await updateUserPoints(realUsername, -20, 'listing_withdrawn');
+
+      return res.status(200).json({ success: true });
+    } catch (e) {
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
   // ── Domain Sil (SOFT DELETE — kalıcı silme yerine işaretleme) ─────────
   if (action === 'delete_domain') {
     const { domainName: delName } = req.body;
@@ -481,53 +537,24 @@ export default async function handler(req, res) {
       const domainRef = db.collection('domains').doc(delName);
       const domainSnap = await domainRef.get();
       if (!domainSnap.exists) return res.status(404).json({ error: "Domain bulunamadı" });
-      if (domainSnap.data().sold === true) return res.status(400).json({ error: "Satılmış domain silinemez" });
 
-      // FIX (karar: puan geri alınır): Eğer bu domain bir kullanıcının
-      // onaylanmış satış ilanıysa (sellerUsername var), o ilan onaylanırken
-      // satıcıya +20 puan verilmişti (approve_sell_request içinde). Domain
-      // şimdi siliniyorsa (henüz satılmamış haliyle), bu puan artık
-      // gerçekte karşılığı olmayan bir kazanç haline gelir — geri alınır.
       const domainDataForDelete = domainSnap.data();
+
+      // Satılmış domaini silme - önce relist yapılmalı
+      if (domainDataForDelete.sold === true) {
+        return res.status(400).json({ error: "Satılmış domain önce 'Tekrar Satılık Yap' ile satıştan kaldırılmalı" });
+      }
+
+      // Puan geri al (eğer kullanıcı ilanıysa)
       if (domainDataForDelete.sellerUsername) {
         await updateUserPoints(domainDataForDelete.sellerUsername, -20, 'domain_deleted_point_reversal');
       }
 
-      // FIX (önemli mantık değişikliği): Önceden domainRef.delete() ile
-      // belge tamamen siliniyordu. Bu durumda:
-      //  - Geçmiş fiyat hareketleri / istatistikler korunsa da domain'in
-      //    kendisi geri getirilemez hale geliyordu.
-      //  - "Panelim" tarafında kullanıcıların sellRequests/soldDomains
-      //    listelerinde silinen domain'e ait kayıtlar query'lerde
-      //    görünmeye devam edebiliyordu çünkü sell_requests koleksiyonu
-      //    ayrı ve dokunulmuyordu.
-      // Çözüm: documenti SİLMEK yerine deleted:true olarak işaretliyoruz.
-      // Frontend tarafında "deleted === true" olan domainler hem markette
-      // hem kullanıcı panellerinde gösterilmez ama veri kalıcı olarak
-      // saklanır (admin ileride geri getirebilir / denetim izi kalır).
+      // Soft delete
       await domainRef.set({
         deleted: true,
         deletedAt: Date.now()
       }, { merge: true });
-
-      // Eğer domain satılmışsa, daily_stats ve global_sales'tan da düş
-      if (domainDataForDelete.sold === true && domainDataForDelete.at) {
-        const soldDate = new Date(domainDataForDelete.at).toISOString().split('T')[0];
-        await db.collection('daily_stats').doc(soldDate).set({
-          count: FieldValue.increment(-1),
-          volume: FieldValue.increment(-(Number(domainDataForDelete.price) || 0))
-        }, { merge: true });
-        // global_sales kaydını sil
-        const matchSnap = await db.collection('global_sales')
-          .where('domain', '==', delName)
-          .where('user', '==', domainDataForDelete.buyer)
-          .get();
-        if (!matchSnap.empty) {
-          const batch = db.batch();
-          matchSnap.forEach(doc => batch.delete(doc.ref));
-          await batch.commit();
-        }
-      }
 
       console.log(`Domain soft-delete edildi: ${delName}`);
       return res.status(200).json({ success: true });
@@ -945,61 +972,28 @@ export default async function handler(req, res) {
     if (!isAdmin) return res.status(403).json({ error: "Yetki yok" });
     try {
       const db = getDb();
-      // Tüm satışları topla (toplam hacim için) — silinmiş domainler HARİÇ
-      const allSalesSnap = await db.collection('global_sales').get();
-      let totalVolume = 0;
+
+      // Tüm SATIŞTA olan domainleri getir (silinmemiş, satılmış)
+      const allDomainsSnap = await db.collection('domains').get();
+
+      let totalVolume = 0;           // Tüm satılmış domainlerin toplamı
+      let userOwnedVolume = 0;       // Kullanıcı ilanlarının satış toplamı
+      let adminOwnEarnings = 0;      // Admin'in kendi ilanlarından kazancı
+      let platformEarnings = 0;      // Sistem ilanlarından kazanç
       const salesByDomain = {};
-      // Silinmiş domain adlarını öğren
-      const deletedDomainsSnap = await db.collection('domains').where('deleted', '==', true).get();
-      const deletedDomainNames = new Set();
-      deletedDomainsSnap.forEach(d => deletedDomainNames.add(d.id));
-
-      allSalesSnap.forEach(d => {
-        const data = d.data();
-        // Silinmiş domainlerin satışlarını sayma
-        if (deletedDomainNames.has(data.domain)) return;
-        totalVolume += Number(data.price || 0);
-        salesByDomain[data.domain] = (salesByDomain[data.domain] || 0) + Number(data.price || 0);
-      });
-
-      // Kullanıcıların kendi ilan verdiği (sellerUsername var) domain satışları
-      const userOwnedDomainsSnap = await db.collection('domains')
-        .where('sold', '==', true)
-        .get();
-      let userOwnedVolume = 0;
-      userOwnedDomainsSnap.forEach(d => {
-        const data = d.data();
-        if (data.deleted === true) return;
-        if (data.sellerUsername) userOwnedVolume += Number(data.price || 0);
-      });
-
-      // Platform kazancı = sellerUsername'i OLMAYAN (admin/sistem tarafından
-      // eklenen) domain satışları. Başka kullanıcıların ilan verip satılan
-      // domainleri bu hesaba dahil değil.
-      const platformEarnings = totalVolume - userOwnedVolume;
-
-      // Admin'in KENDİ satıcı olarak ilan verdiği domainlerden kazancı
-      const adminOwnSalesSnap = await db.collection('domains')
-        .where('sellerUsername', '==', 'doganay0808')
-        .where('sold', '==', true)
-        .get();
-      let adminOwnEarnings = 0;
       const adminOwnSoldDomains = [];
-      adminOwnSalesSnap.forEach(d => {
-        const data = d.data();
-        if (data.deleted === true) return;
-        adminOwnEarnings += Number(data.price || 0);
-        adminOwnSoldDomains.push({ name: d.id, price: data.price, buyer: data.buyer || null });
-      });
-
-      // Tüm satış detayları (admin satış istatistikleri için)
-      const allSoldDomainsSnap = await db.collection('domains')
-        .where('sold', '==', true)
-        .get();
       const allSalesDetail = [];
-      allSoldDomainsSnap.forEach(d => {
+
+      allDomainsSnap.forEach(d => {
         const data = d.data();
-        if (data.deleted === true) return;
+        const price = Number(data.price || 0);
+
+        // Silinmiş domainleri ve satılmamışları atla
+        if (data.deleted === true || data.sold !== true) return;
+
+        totalVolume += price;
+        salesByDomain[d.id] = (salesByDomain[d.id] || 0) + price;
+
         allSalesDetail.push({
           name: d.id,
           price: data.price,
@@ -1008,7 +1002,26 @@ export default async function handler(req, res) {
           sellerUsername: data.sellerUsername || null,
           type: data.type || 'genel'
         });
+
+        if (data.sellerUsername) {
+          // Kullanıcı ilanı
+          userOwnedVolume += price;
+
+          // Admin'in kendi ilanları
+          if (data.sellerUsername === 'doganay0808') {
+            adminOwnEarnings += price;
+            adminOwnSoldDomains.push({ 
+              name: d.id, 
+              price: data.price, 
+              buyer: data.buyer || null 
+            });
+          }
+        } else {
+          // Sistem ilanı (sellerUsername yok)
+          platformEarnings += price;
+        }
       });
+
       // En son satışlar önce
       allSalesDetail.sort((a, b) => (b.at || 0) - (a.at || 0));
 
