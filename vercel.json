@@ -1,9 +1,37 @@
 {
   "buildCommand": null,
   "outputDirectory": ".",
-  "functions": {
-    "api/approve.js": {
-      "maxDuration": 10
+  "framework": null,
+  "installCommand": "npm install",
+  "env": {
+    "NODE_ENV": "production"
+  },
+  "builds": [
+    {
+      "src": "api/approve.js",
+      "use": "@vercel/node"
+    },
+    {
+      "src": "api/config.js",
+      "use": "@vercel/node"
+    },
+    {
+      "src": "index.html",
+      "use": "@vercel/static"
     }
-  }
+  ],
+  "routes": [
+    {
+      "src": "/api/approve",
+      "dest": "/api/approve.js"
+    },
+    {
+      "src": "/api/config",
+      "dest": "/api/config.js"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/index.html"
+    }
+  ]
 }
