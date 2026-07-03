@@ -1015,10 +1015,13 @@ export default async function handler(req, res) {
               price: data.price, 
               buyer: data.buyer || null 
             });
+          } else {
+            // Başka bir kullanıcının ilanı satıldı → platform komisyonu/kazancı
+            platformEarnings += price;
           }
         } else {
-          // Sistem ilanı (sellerUsername yok)
-          platformEarnings += price;
+          // Sistem ilanı (sellerUsername yok) → admin'in doğrudan kazancı
+          adminOwnEarnings += price;
         }
       });
 
