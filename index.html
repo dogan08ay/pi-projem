@@ -123,7 +123,7 @@
         .footer-section{padding:10px 12px;color:#f8fafc;font-size:0.62em;text-align:center;border-top:1px solid #334155;background:rgba(15,23,42,0.8);border-radius:16px 16px 0 0;margin-top:auto;}
         .footer-section a{color:#38bdf8;text-decoration:none;font-weight:800;border-bottom:1px solid #38bdf8;}
         .footer-row{margin-bottom:5px;display:flex;align-items:center;justify-content:center;gap:6px;flex-wrap:wrap;}
-        .main-scroll{flex:1 1 auto;overflow-y:auto;overflow-x:hidden;display:flex;flex-direction:column;min-height:0;min-width:0;width:100%;max-height:calc(100vh - 40px);}
+        .main-scroll{flex:1 1 auto;overflow-y:auto;overflow-x:hidden;display:flex;flex-direction:column;min-height:0;min-width:0;width:100%;}
         #unique-user-list::-webkit-scrollbar{width:5px;}
         #unique-user-list::-webkit-scrollbar-thumb{background:#6366f1;border-radius:10px;}
         .sale-detail-item{background:#0f172a;border:1px solid #1e3a8a;border-radius:8px;padding:8px;margin-bottom:5px;cursor:pointer;transition:all 0.2s;}
@@ -982,6 +982,8 @@ window.handleLogout=async function(){
     document.getElementById("user-panel").style.display="none";
     document.getElementById("admin-panel").style.display="none";
     document.getElementById("notif-btn").style.visibility="hidden";
+    // Logout sonrası scroll'u sınırla (footer görünsün)
+    document.querySelector('.main-scroll').style.maxHeight='calc(100vh - 40px)';
     toggleSideMenu(); debouncedRender();
 };
 
@@ -1744,6 +1746,9 @@ window.loginWithPi=async function(){
             document.getElementById("user-status").innerHTML='<span class="online-dot"></span>'+t('connectedPrefix')+currentUser;
             document.getElementById("user-status-box").style.display="block";
             document.getElementById("user-panel").style.display="block";
+            // Login sonrası scroll'u etkinleştir
+            document.querySelector('.main-scroll').style.maxHeight='none';
+            document.querySelector('.main-scroll').style.overflowY='auto';
 
             // FIX: Bildirim ikonu artık fetch sonucunu beklemeden, login
             // olur olmaz HEMEN gösteriliyor. Önceden ikon sadece bir
@@ -1962,7 +1967,7 @@ function debouncedRender(){clearTimeout(renderTimeout);renderTimeout=setTimeout(
 domains.forEach(d=>{if(!domainData[d.name]) domainData[d.name]={sold:false,price:d.price};});
 applyTranslations();
 let firstDomainsSnapshotReceived=false;
-window.addEventListener("load",()=>{setInterval(updateActiveStatus,15000);});
+window.addEventListener("load",()=>{setInterval(updateActiveStatus,15000);document.querySelector('.main-scroll').style.maxHeight='calc(100vh - 40px)';});
 </script>
 </body>
 </html>
