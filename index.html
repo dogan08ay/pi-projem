@@ -33,10 +33,10 @@
         .btn-sold{background:rgba(239,68,68,0.1);color:var(--sold);border:1.5px solid var(--sold);padding:3px 4px;border-radius:5px;margin-top:3px;font-weight:bold;width:100%;font-size:0.65em;}
         .pi-btn{background:linear-gradient(135deg,#0052FF 0%,#3b82f6 100%);color:#ffffff;padding:10px 24px;border-radius:50px;font-weight:900;font-size:0.9em;border:none;cursor:pointer;animation:pulse-blue 2s infinite;transition:0.3s;margin:3px 0;}
         @keyframes pulse-blue{0%{transform:scale(0.95);box-shadow:0 0 0 0 rgba(0,82,255,0.7);}70%{transform:scale(1);box-shadow:0 0 0 10px rgba(0,82,255,0);}100%{transform:scale(0.95);box-shadow:0 0 0 0 rgba(0,82,255,0);}}
-        .section-title-box{background:linear-gradient(90deg,#fef3c7 0%,#fde68a 40%,#ffffff 50%,#fde68a 60%,#fef3c7 100%);background-size:200% auto;color:#1e293b;padding:3px 10px;border-radius:7px;border:2px solid #f59e0b;font-size:0.82em;font-weight:900;display:inline-block;margin-bottom:6px;animation:title-glow 2.5s ease-in-out infinite,section-shimmer 3s linear infinite;}
+        .section-title-box{background:linear-gradient(90deg,#fef3c7 0%,#fde68a 30%,#ffffff 45%,#ffffff 55%,#fde68a 70%,#fef3c7 100%);background-size:200% auto;color:#1e293b;padding:6px 18px;border-radius:10px;border:2.5px solid #f59e0b;font-size:0.95em;font-weight:900;letter-spacing:0.5px;box-shadow:0 0 15px rgba(245,158,11,0.4),0 4px 8px rgba(0,0,0,0.2);font-weight:900;display:inline-block;margin-bottom:6px;animation:title-glow 2.5s ease-in-out infinite,section-shimmer 3s linear infinite;}
         @keyframes title-glow{0%,100%{box-shadow:0 0 10px rgba(245,158,11,0.5);border-color:#f59e0b;}50%{box-shadow:0 0 20px rgba(251,191,36,0.9),0 0 40px rgba(251,191,36,0.45);border-color:#fcd34d;}}
         @keyframes section-shimmer{0%{background-position:200% center;}100%{background-position:-200% center;}}
-        .lock-title-box{background:linear-gradient(135deg,#fef3c7 0%,#fde68a 100%);color:#1e293b;padding:2px 7px;border-radius:7px;border:2px solid #f59e0b;font-size:0.75em;font-weight:900;margin-bottom:4px;display:inline-block;}
+        .lock-title-box{background:linear-gradient(135deg,#fef3c7 0%,#fde68a 100%);color:#1e293b;padding:2px 7px;border-radius:7px;border:2px solid #f59e0b;font-size:0.75em;box-shadow:0 0 8px rgba(245,158,11,0.3);font-weight:900;margin-bottom:4px;display:inline-block;}
         .locked-content{filter:blur(8px);opacity:0.45;pointer-events:none;}
         .premium-lock-overlay{position:absolute;top:0;left:0;right:0;bottom:0;display:none;flex-direction:column;align-items:center;justify-content:flex-start;background:rgba(10,15,30,0.72);backdrop-filter:blur(3px);z-index:100;padding-top:5px;text-align:center;overflow-y:auto;}
         .diamond-spin{margin-bottom:1px;display:inline-block;animation:diamond-rotate 5s ease-in-out infinite;filter:drop-shadow(0 0 14px #818cf8);}
@@ -44,10 +44,10 @@
         .diamond-sparkle{opacity:0;transform-origin:center;animation:sparkle-twinkle 2.2s ease-in-out infinite;color:#ffffff;}
         .diamond-sparkle-1{animation-delay:0.2s;}.diamond-sparkle-2{animation-delay:1.3s;}
         @keyframes sparkle-twinkle{0%,100%{opacity:0;transform:scale(0.4) rotate(0deg);}50%{opacity:1;transform:scale(1) rotate(20deg);}}
-        .secure-badge{background:linear-gradient(135deg,#0d2a2a 0%,#064e3b 40%,#065f46 60%,#0d2a2a 100%);border:2.5px solid #34d399;border-radius:20px;padding:16px 18px;box-shadow:0 0 25px rgba(16,185,129,0.4),inset 0 0 40px rgba(52,211,153,0.15),0 0 60px rgba(16,185,129,0.1);width:92%;box-sizing:border-box;margin:6px 0;}
-        .secure-badge-title{color:#6ee7b7;font-size:1.05em;font-weight:900;margin-bottom:6px;text-shadow:0 0 15px rgba(110,231,183,0.6),0 0 30px rgba(52,211,153,0.3);letter-spacing:1px;border-bottom:1px solid rgba(16,185,129,0.3);padding-bottom:6px;}
-        .secure-badge-body{color:#d1fae5;font-size:0.88em;line-height:1.5;margin-bottom:6px;font-weight:600;border-bottom:1px solid rgba(16,185,129,0.3);padding-bottom:8px;}
-        .secure-badge-warning{color:#fcd34d;font-size:0.9em;font-weight:900;line-height:1.3;text-transform:uppercase;text-shadow:0 0 10px rgba(252,211,77,0.5),0 0 20px rgba(251,191,36,0.3);letter-spacing:1px;}
+        .secure-badge{background:linear-gradient(135deg,#0f172a 0%,#1e1b4b 30%,#312e81 50%,#1e1b4b 70%,#0f172a 100%);border:2.5px solid #818cf8;border-radius:20px;padding:16px 18px;box-shadow:0 0 25px rgba(99,102,241,0.4),inset 0 0 40px rgba(129,140,248,0.15),0 0 60px rgba(99,102,241,0.1);width:92%;box-sizing:border-box;margin:6px 0;}
+        .secure-badge-title{color:#c7d2fe;font-size:1.05em;font-weight:900;margin-bottom:6px;text-shadow:0 0 15px rgba(199,210,254,0.6),0 0 30px rgba(129,140,248,0.3);letter-spacing:1px;border-bottom:1px solid rgba(16,185,129,0.3);padding-bottom:6px;}
+        .secure-badge-body{color:#e0e7ff;font-size:0.88em;line-height:1.5;margin-bottom:6px;font-weight:600;border-bottom:1px solid rgba(16,185,129,0.3);padding-bottom:8px;}
+        .secure-badge-warning{color:#fbbf24;font-size:0.92em;font-weight:900;line-height:1.3;text-transform:uppercase;text-shadow:0 0 12px rgba(251,191,36,0.6),0 0 25px rgba(245,158,11,0.4);letter-spacing:1.2px;}
         @keyframes blinker{0%{opacity:1;}50%{opacity:0.3;}100%{opacity:1;}}
         .blink-yellow{animation:blinker 2s linear infinite;color:#fbbf24;font-weight:900;}
         .blink-red{animation:blinker 2s linear infinite;color:#ef4444;font-weight:900;}
@@ -140,7 +140,7 @@
         @keyframes icon-pulse-green{0%,100%{filter:drop-shadow(0 0 4px rgba(52,211,153,0.5));transform:scale(1);}50%{filter:drop-shadow(0 0 10px rgba(52,211,153,0.9));transform:scale(1.12);}}
 @keyframes connected-pulse{0%,100%{box-shadow:0 0 8px rgba(16,185,129,0.3);}50%{box-shadow:0 0 16px rgba(16,185,129,0.6),0 0 4px rgba(52,211,153,0.4);}}
 @keyframes connected-pulse-blue{0%,100%{box-shadow:0 0 8px rgba(59,130,246,0.3);}50%{box-shadow:0 0 16px rgba(59,130,246,0.6),0 0 4px rgba(96,165,250,0.4);}}
-@keyframes shield-pulse{0%,100%{filter:drop-shadow(0 0 10px rgba(16,185,129,0.6)) drop-shadow(0 0 20px rgba(52,211,153,0.3));transform:scale(1);}50%{filter:drop-shadow(0 0 20px rgba(16,185,129,0.9)) drop-shadow(0 0 30px rgba(52,211,153,0.5));transform:scale(1.1);}}
+@keyframes shield-pulse{0%,100%{filter:drop-shadow(0 0 12px rgba(99,102,241,0.7)) drop-shadow(0 0 25px rgba(129,140,248,0.4));transform:scale(1);}50%{filter:drop-shadow(0 0 25px rgba(99,102,241,0.9)) drop-shadow(0 0 40px rgba(129,140,248,0.6));transform:scale(1.12);}}
     </style>
 <base target="_blank">
 <base target="_blank">
@@ -339,7 +339,7 @@
 
 <div id="pre-buy-modal" class="modal-overlay" style="display:none;">
     <div class="modal-content">
-        <div style="font-size:2.5em;margin-bottom:10px;display:inline-block;filter:drop-shadow(0 0 12px rgba(16,185,129,0.7));animation:shield-pulse 2s ease-in-out infinite;">🛡️</div>
+        <div style="font-size:2.5em;margin-bottom:10px;display:inline-block;animation:shield-pulse 2s ease-in-out infinite;">🛡️</div>
         <h2 style="color:#fbbf24;margin:0 0 12px 0;font-size:1.15em;font-weight:900;text-align:center;" data-i18n="securePaymentTitle"></h2>
         <div style="color:#fff;font-size:0.82em;line-height:1.6;text-align:left;background:rgba(0,0,0,0.3);padding:12px;border-radius:15px;">
             <div style="margin-bottom:12px;border-bottom:1px solid #475569;padding-bottom:10px;text-align:center;font-weight:800;" data-i18n="nextStepNote"></div>
@@ -387,7 +387,7 @@
         </div>
         <button class="hamburger-btn" onclick="toggleSideMenu()" style="position:absolute;top:4px;right:8px;z-index:10;"><span></span><span></span><span></span></button>
         <img src="assets/logo.jpeg" alt="Logo" class="app-logo" style="width:130px;height:130px;margin:8px auto 4px auto;">
-        <h1 class="app-title" style="margin:0 0 2px 0;font-size:1.45em;">Web3 Domain Gateway</h1>
+        <h1 class="app-title" style="margin:0 0 3px 0;font-size:1.55em;">Web3 Domain Gateway</h1>
         <div class="stats-bar" style="margin:0 auto 1px auto;max-width:340px;">
             <div class="stats-item"><span data-i18n="soldDomains"></span>: <span id="total-sold">0</span></div>
             <div class="stats-item"><span data-i18n="totalVolume"></span>: <span id="total-volume">0</span> Test Pİ</div>
@@ -596,7 +596,7 @@
             <span class="diamond-sparkle diamond-sparkle-2" style="position:absolute;bottom:-2px;right:-12px;font-size:0.8em;">✦</span></div>
             <div class="lock-title-box" data-i18n="joinWeb3"></div>
             <div class="secure-badge">
-                <div style="font-size:2.4em;text-align:center;margin-bottom:8px;filter:drop-shadow(0 0 15px rgba(16,185,129,0.8));animation:shield-pulse 2s ease-in-out infinite;display:inline-block;background:linear-gradient(135deg,#10b981,#059669);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">🛡️</div>
+                <div style="font-size:2.6em;text-align:center;margin-bottom:8px;animation:shield-pulse 2s ease-in-out infinite;display:inline-block;">🛡️</div>
                 <div class="secure-badge-title" style="text-align:center;" data-i18n="secureConnection"></div>
                 <div class="secure-badge-body" data-i18n="testNetBadgeBody"></div>
                 <div class="secure-badge-warning" data-i18n="testNetWarning"></div>
