@@ -17,10 +17,10 @@
         @keyframes logo-pulse{0%,100%{transform:scale(1);}50%{transform:scale(1.05);}}
         .app-title{font-size:1.7em;font-weight:900;margin:0 0 6px 0;text-align:center;background:linear-gradient(to right,#60a5fa,#a855f7,#60a5fa);background-size:200% auto;-webkit-background-clip:text;-webkit-text-fill-color:transparent;animation:title-shine 4s linear infinite;filter:drop-shadow(0 0 18px rgba(139,92,246,0.7));letter-spacing:0.3px;}
         @keyframes title-shine{to{background-position:200% center;}}
-        .stats-bar{display:flex;justify-content:space-around;background:rgba(99,102,241,0.1);border:1px solid rgba(99,102,241,0.3);padding:4px;border-radius:10px;margin-bottom:3px;font-size:0.55em;font-weight:bold;color:#94a3b8;}
+        .stats-bar{display:flex;justify-content:space-around;background:rgba(99,102,241,0.1);border:1px solid rgba(99,102,241,0.3);padding:4px;border-radius:10px;margin-bottom:2px;font-size:0.55em;font-weight:bold;color:#94a3b8;}
         .stats-item span{color:var(--price);margin-left:2px;}
         .domain-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:6px;margin-top:4px;position:relative;min-width:0;}
-        .domain-card{background:#334155;padding:4px 6px 6px 6px;border-radius:10px;border:1px solid #475569;display:flex;flex-direction:column;align-items:center;transition:transform 0.25s,box-shadow 0.25s,border-color 0.25s;animation:card-rise 0.5s ease backwards;cursor:pointer;min-width:0;max-width:100%;box-sizing:border-box;}
+        .domain-card{background:#334155;padding:2px 4px 4px 4px;border-radius:10px;border:1px solid #475569;display:flex;flex-direction:column;align-items:center;transition:transform 0.25s,box-shadow 0.25s,border-color 0.25s;animation:card-rise 0.5s ease backwards;cursor:pointer;min-width:0;max-width:100%;box-sizing:border-box;}
         .domain-card:hover,.domain-card:active{transform:translateY(-4px) scale(1.02);box-shadow:0 10px 20px -6px rgba(99,102,241,0.45),0 0 0 1.5px rgba(129,140,248,0.6);border-color:#818cf8;}
         @keyframes card-rise{0%{opacity:0;transform:translateY(14px) scale(0.96);}100%{opacity:1;transform:translateY(0) scale(1);}}
         .domain-img{width:100%;height:42px;margin-bottom:3px;border-radius:6px;object-fit:contain;background-color:#334155;}
@@ -153,7 +153,7 @@
             <div style="width:42px;height:42px;border-radius:50%;background:linear-gradient(135deg,#6366f1,#a855f7);display:flex;align-items:center;justify-content:center;font-weight:900;font-size:1.1em;color:#fff;" id="side-menu-avatar">?</div>
             <div>
                 <div id="side-menu-username" style="font-weight:900;color:#f1f5f9;font-size:0.95em;">—</div>
-                <div style="font-size:0.65em;color:#94a3b8;margin-top:1px;"><span class="online-dot" style="width:7px;height:7px;"></span><span data-i18n="connected"></span></div>
+                <div style="font-size:0.65em;color:#94a3b8;margin-top:0px;"><span class="online-dot" style="width:7px;height:7px;"></span><span data-i18n="connected"></span></div>
                 <div id="side-menu-badge-display" style="font-size:0.75em;margin-top:3px;"></div>
             </div>
         </div>
@@ -571,8 +571,8 @@
                 <div class="secure-badge-body" data-i18n="testNetBadgeBody"></div>
                 <div class="secure-badge-warning" data-i18n="testNetWarning"></div>
             </div>
-            <p style="font-size:0.7em;color:#e2e8f0;font-weight:600;line-height:1.2;margin:2px 0;max-width:90%;" data-i18n="connectPrompt"></p>
-            <div style="color:#fbbf24;font-weight:700;margin-bottom:2px;font-size:0.72em;" data-i18n="useButton"></div>
+            <p style="font-size:0.68em;color:#e2e8f0;font-weight:600;line-height:1.15;margin:1px 0;max-width:90%;" data-i18n="connectPrompt"></p>
+            <div style="color:#fbbf24;font-weight:700;margin-bottom:1px;font-size:0.68em;" data-i18n="useButton"></div>
             <button class="pi-btn" onclick="window.loginWithPi()" data-i18n="connectWithPi"></button>
         </div>
         <div class="domain-grid locked-content" id="domain-list">
@@ -629,14 +629,14 @@ const i18n = {
     imageUploadFormats:"JPG, PNG, WEBP — Maks. 2MB",
     walletLabel:"Pi Cüzdan Adresin",walletPlaceholder:"G... ile başlayan cüzdan adresin",
     walletNote:"ℹ️ Ödeme transferi ileride aktif olacak özellik için şimdiden alınıyor.",
-    cancel:"VAZGEÇ",sendForApproval:"ONAYA GÖNDER",
+    cancel:"VAZGEÇ",sendForApproval:"ONAYA GÖNDER",withdrawListing:"İlanı Geri Çek",
     typeGeneral:"Genel",typeFinance:"Faizsiz Finansal Hizmetler",typeBanking:"Bankacılık Hizmetleri",typeEcommerce:"E-Ticaret",
     typePersonal:"Kişisel İsim",typeTechnology:"Teknoloji",typeOther:"Diğer",
     typeTourism:"Turizm ve Seyahat",typeHealth:"Sağlık",typeEducation:"Eğitim",typeRealEstate:"Gayrimenkul",
     soldDomains:"Satılan Domain",totalVolume:"Toplam Hacim",activeUsers:"Aktif Kullanıcı",
     overview:"Genel",myPurchases:"Alımlarım",myListings:"İlanlarım",myIncome:"Gelirim",
     totalSpent:"Toplam Harcama",myListingsCount:"İlan Sayım",
-    myListingsTitle:"Satış İlanlarım",listNewDomain:"+ Yeni İlan Ver",
+    myListingsTitle:"Domain İlan Takip Durum",listNewDomain:"+ Yeni İlan Ver",
     totalEarned:"TOPLAM GELİR",earnedNote:"Satışa sunduğunuz ve satılan domainlerden elde edilen gelir.",
     info:"BİLGİ",
     testNetNote:"Bu uygulama Test-Pi ağında deneme amaçlıdır. Satın aldığınız domainler, diğer kullanıcıların da test yapabilmesi için markette tekrar <span class=\"btn-fake-buy\">SATIN AL</span> olarak görünebilir ve satın alma geçmişinizden silinebilir.",
@@ -690,6 +690,10 @@ const i18n = {
     validPrice:"Geçerli bir fiyat girin.",
     priceUpdateFail:"Fiyat güncelleme başarısız: ",priceUpdateError:"Bir hata oluştu.",
     priceUpdateSuccess:(n,p)=>`"${n}" fiyatı ${p} Pİ olarak güncellendi.`,
+    withdrawConfirm:(n)=>`"${n}" ilanını geri çekmek istediğinize emin misiniz? Bu işlem domaini satıştan kaldırır.`,
+    withdrawFail:"İlan geri çekme başarısız: ",
+    withdrawSuccess:(n)=>`"${n}" ilanı geri çekildi.`,
+    withdrawError:"Bir hata oluştu.",
     deleteConfirm:(n)=>`"${n}" domainini silmek istediğinize emin misiniz? (Geçmiş veriler korunur, gerekirse geri eklenebilir.)`,
     deleteFail:"Domain silme başarısız: ",deleteError:"Bir hata oluştu.",
     deleteSuccess:(n)=>`"${n}" domaini silindi.`,
@@ -714,7 +718,7 @@ const i18n = {
     adminOwnEarningsTitle:"KİŞİSEL SATICI KAZANCIM",
     adminOwnEarningsNote:"İlan verip diğer kullanıcıların satın aldığı domainlerden cüzdanıma gelen tutar. Domain silinir veya tekrar satılık yapılırsa bu rakam otomatik güncellenir.",
     totalVolumeAll:"Toplam Satış Hacmi",userOwnedVolume:"Kullanıcı Domain Geliri",
-    refreshBtn:"🔄 Yenile",
+    refreshBtn:"🔄 Yenile",viewBtn:"👁 Gör",
     resetDangerTitle:"TEHLİKELİ BÖLGE — GERİ DÖNÜŞÜ YOK",
     resetDangerNote:"global_sales, daily_stats tamamen silinir. Tüm kullanıcı puanları/rozetleri sıfırlanır. Marketin kendisi ve domain durumları etkilenmez. Bu işlem GERİ ALINAMAZ.",
     resetBtn:"🗑️ Platform İstatistiklerini Sıfırla (Bugünden Başlat)",
@@ -748,14 +752,14 @@ const i18n = {
     imageUploadFormats:"JPG, PNG, WEBP — Max 2MB",
     walletLabel:"Your Pi Wallet Address",walletPlaceholder:"Your wallet address starting with G...",
     walletNote:"ℹ️ Payment transfer will be activated in the future.",
-    cancel:"CANCEL",sendForApproval:"SEND FOR APPROVAL",
+    cancel:"CANCEL",sendForApproval:"SEND FOR APPROVAL",withdrawListing:"Withdraw Listing",
     typeGeneral:"General",typeFinance:"Interest-Free Financial Services",typeBanking:"Banking Services",typeEcommerce:"E-Commerce",
     typePersonal:"Personal Name",typeTechnology:"Technology",typeOther:"Other",
     typeTourism:"Tourism & Travel",typeHealth:"Health",typeEducation:"Education",typeRealEstate:"Real Estate",
     soldDomains:"Sold Domains",totalVolume:"Total Volume",activeUsers:"Active Users",
     overview:"Overview",myPurchases:"My Purchases",myListings:"My Listings",myIncome:"My Income",
     totalSpent:"Total Spent",myListingsCount:"My Listings",
-    myListingsTitle:"My Domain Listings",listNewDomain:"+ New Listing",
+    myListingsTitle:"Domain Listing Status Tracker",listNewDomain:"+ New Listing",
     totalEarned:"TOTAL EARNINGS",earnedNote:"Total earnings from your listed and sold domains.",
     info:"INFO",
     testNetNote:"This app runs on Test-Pi for demo purposes. Purchased domains may reappear as <span class=\"btn-fake-buy\">BUY</span> in the market so other users can also test, and may be removed from your history.",
@@ -806,6 +810,10 @@ const i18n = {
     validPrice:"Please enter a valid price.",
     priceUpdateFail:"Price update failed: ",priceUpdateError:"An error occurred.",
     priceUpdateSuccess:(n,p)=>`"${n}" price updated to ${p} PI.`,
+    withdrawConfirm:(n)=>`Are you sure you want to withdraw the "${n}" listing? This will remove it from sale.`,
+    withdrawFail:"Withdraw failed: ",
+    withdrawSuccess:(n)=>`"${n}" listing has been withdrawn.`,
+    withdrawError:"An error occurred.",
     deleteConfirm:(n)=>`Are you sure you want to delete "${n}"? (Historical data is preserved and it can be re-added later.)`,
     deleteFail:"Domain deletion failed: ",deleteError:"An error occurred.",
     deleteSuccess:(n)=>`"${n}" has been deleted.`,
@@ -830,7 +838,7 @@ const i18n = {
     adminOwnEarningsTitle:"MY PERSONAL SELLER EARNINGS",
     adminOwnEarningsNote:"Amount in your wallet from domains you listed that other users purchased. Updates automatically if a domain is deleted or relisted.",
     totalVolumeAll:"Total Sales Volume",userOwnedVolume:"User-Owned Domain Income",
-    refreshBtn:"🔄 Refresh",
+    refreshBtn:"🔄 Refresh",viewBtn:"👁 View",
     resetDangerTitle:"DANGER ZONE — IRREVERSIBLE",
     resetDangerNote:"global_sales and daily_stats will be permanently deleted. All user points/badges will be reset to zero. The market and domain statuses are NOT affected.",
     resetBtn:"🗑️ Reset Platform Stats (Start Fresh from Today)",
@@ -1467,9 +1475,10 @@ function renderUserPanel(){
                         <span style="color:#fbbf24;font-weight:900;font-size:0.9em;flex-shrink:0;margin-left:8px;">${d.price} Pi</span>
                     </div>
                     ${d.description?`<div style="font-size:0.72em;color:#94a3b8;margin-bottom:6px;line-height:1.4;">${d.description}</div>`:''}
-                    <div style="display:flex;gap:6px;flex-wrap:wrap;">
+                    <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;">
                         <span style="font-size:0.62em;background:rgba(16,185,129,0.15);color:#6ee7b7;border:1px solid #10b981;border-radius:6px;padding:2px 8px;">✅ ${t('domainOnSale')}</span>
                         ${d.sellerWallet?`<span style="font-size:0.62em;color:#64748b;background:#1e293b;border-radius:6px;padding:2px 8px;">💳 ${d.sellerWallet.substring(0,10)}...</span>`:''}
+                        <button onclick="handleWithdrawListing('${d.name}')" style="margin-left:auto;background:#ef4444;color:#fff;border:none;padding:3px 8px;border-radius:5px;font-size:0.6em;font-weight:800;cursor:pointer;">🗑️ ${t('withdrawListing')}</button>
                     </div>
                 </div>`).join('');
         }
