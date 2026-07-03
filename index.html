@@ -13,9 +13,9 @@
         body{font-family:'Segoe UI',sans-serif;background:var(--bg);color:var(--text);margin:0;padding:0;width:100%;min-height:100vh;overflow-x:hidden;box-sizing:border-box;}
         .container{max-width:600px;width:100%;min-width:0;text-align:center;display:flex;flex-direction:column;min-height:100vh;padding:5px;box-sizing:border-box;margin-left:auto;margin-right:auto;}
         .card{background:var(--card);padding:8px;border-radius:16px;box-shadow:0 8px 12px -3px rgba(0,0,0,0.3);margin-bottom:6px;position:relative;overflow:visible;box-sizing:border-box;width:100%;min-width:0;max-width:100%;}
-        .app-logo{width:84px;height:84px;margin-bottom:6px;border-radius:50%;box-shadow:0 0 30px rgba(99,102,241,0.8);border:3px solid #818cf8;object-fit:cover;animation:logo-pulse 3s ease-in-out infinite;}
+        .app-logo{width:110px;height:110px;margin:4px auto 10px auto;display:block;border-radius:50%;box-shadow:0 0 40px rgba(99,102,241,0.9);border:3px solid #818cf8;object-fit:cover;animation:logo-pulse 3s ease-in-out infinite;}
         @keyframes logo-pulse{0%,100%{transform:scale(1);}50%{transform:scale(1.05);}}
-        .app-title{font-size:1.5em;font-weight:900;margin:0 0 4px 0;background:linear-gradient(to right,#60a5fa,#a855f7,#60a5fa);background-size:200% auto;-webkit-background-clip:text;-webkit-text-fill-color:transparent;animation:title-shine 4s linear infinite;filter:drop-shadow(0 0 14px rgba(139,92,246,0.55));letter-spacing:0.3px;}
+        .app-title{font-size:1.7em;font-weight:900;margin:0 0 6px 0;text-align:center;background:linear-gradient(to right,#60a5fa,#a855f7,#60a5fa);background-size:200% auto;-webkit-background-clip:text;-webkit-text-fill-color:transparent;animation:title-shine 4s linear infinite;filter:drop-shadow(0 0 18px rgba(139,92,246,0.7));letter-spacing:0.3px;}
         @keyframes title-shine{to{background-position:200% center;}}
         .stats-bar{display:flex;justify-content:space-around;background:rgba(99,102,241,0.1);border:1px solid rgba(99,102,241,0.3);padding:4px;border-radius:10px;margin-bottom:4px;font-size:0.55em;font-weight:bold;color:#94a3b8;}
         .stats-item span{color:var(--price);margin-left:2px;}
@@ -61,7 +61,7 @@
         .verify-btn-disabled{background:rgba(71,85,105,0.45);color:#475569;border:1.5px solid #334155;padding:7px 13px;border-radius:8px;font-size:0.72em;font-weight:700;display:inline-flex;align-items:center;gap:5px;cursor:not-allowed;white-space:nowrap;flex-shrink:0;opacity:0.6;}
         .info-badge-header{display:inline-flex;align-items:center;gap:6px;background:linear-gradient(135deg,#312e81 0%,#4c1d95 50%,#312e81 100%);color:#c4b5fd;font-weight:900;font-size:0.82em;padding:5px 14px;border-radius:10px;margin-bottom:8px;border:1.5px solid #7c3aed;position:relative;overflow:hidden;}
         .info-badge-icon{font-size:1.05em;}
-        .notif-btn{width:42px;height:42px;border-radius:12px;background:rgba(30,41,59,0.92);border:1.5px solid #6366f1;display:none;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 2px 10px rgba(99,102,241,0.4);flex-shrink:0;position:relative;}
+        .notif-btn{width:42px;height:42px;border-radius:12px;background:rgba(30,41,59,0.92);border:1.5px solid #6366f1;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 2px 10px rgba(99,102,241,0.4);flex-shrink:0;position:relative;}
         .notif-badge{position:absolute;top:-5px;right:-5px;background:#ef4444;color:#fff;font-size:0.6em;font-weight:900;border-radius:10px;padding:1px 5px;min-width:16px;text-align:center;border:1.5px solid #0f172a;display:none;}
         .notif-item{display:flex;align-items:flex-start;gap:8px;padding:10px;border-radius:10px;background:#0f172a;margin-bottom:6px;border:1px solid #334155;text-align:left;}
         .notif-item.unread{border-color:#6366f1;background:rgba(99,102,241,0.08);}
@@ -112,7 +112,7 @@
         #log-list::-webkit-scrollbar-thumb{background:#6366f1;border-radius:10px;}
         .log-item{display:flex;justify-content:space-between;background:#0f172a;padding:8px 12px;border-radius:8px;margin-bottom:5px;font-size:0.8em;}
         .user-info-note{background:rgba(99,102,241,0.1);border:1px dashed #6366f1;color:#94a3b8;padding:10px;border-radius:10px;font-size:0.75em;line-height:1.6;margin-bottom:10px;text-align:left;box-sizing:border-box;width:100%;max-width:100%;overflow-wrap:break-word;word-break:break-word;hyphens:auto;}
-        .user-info-note-text{display:block;white-space:normal;text-align:left;}
+        .user-info-note-text{display:block;white-space:normal;text-align:left;word-break:break-word;overflow-wrap:break-word;hyphens:none;font-size:0.88em;line-height:1.7;}
         .btn-fake-buy{background:var(--accent);color:white;padding:1px 4px;border-radius:3px;font-weight:900;font-size:0.85em;}
         .income-box{background:linear-gradient(135deg,#064e3b 0%,#065f46 100%);border:2px solid #10b981;border-radius:12px;padding:12px;margin-bottom:8px;text-align:center;}
         .income-value{font-size:1.8em;font-weight:900;color:#34d399;}
@@ -192,9 +192,9 @@
         <button class="side-menu-item"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg><span style="color:#38bdf8;" data-i18n="telegramGroup"></span></button>
     </a>
     <div style="display:flex;gap:8px;padding:4px 12px;">
-        <a href="privacy.html" target="_blank" rel="noopener" style="color:#64748b;font-size:0.65em;font-weight:700;" data-i18n="privacyPolicy"></a>
+        <a href="privacy.html" target="_blank" rel="noopener" style="color:#f87171;font-size:0.65em;font-weight:700;" data-i18n="privacyPolicy"></a>
         <span style="color:#334155;">|</span>
-        <a href="terms.html" target="_blank" rel="noopener" style="color:#64748b;font-size:0.65em;font-weight:700;" data-i18n="termsOfUse"></a>
+        <a href="terms.html" target="_blank" rel="noopener" style="color:#f87171;font-size:0.65em;font-weight:700;" data-i18n="termsOfUse"></a>
     </div>
     <div class="side-menu-divider"></div>
     <button class="side-menu-item" id="side-menu-logout-btn" onclick="handleLogout()" style="display:none;color:#fca5a5;">
@@ -347,9 +347,9 @@
 <div class="container">
   <div class="main-scroll">
     <div class="card" style="border:1.5px solid rgba(129,140,248,0.45);background:linear-gradient(160deg,rgba(99,102,241,0.14) 0%,var(--card) 55%);">
-        <!-- İkon satırı: bildirim sol, hamburger sağ, kart içinde -->
+        <!-- İkon satırı: bildirim sol, hamburger sağ — her zaman aynı konumda -->
         <div style="display:flex;justify-content:space-between;align-items:center;margin:-8px -8px 8px -8px;padding:8px;">
-            <div class="notif-btn" id="notif-btn" onclick="openNotifModal()" style="position:relative;">
+            <div class="notif-btn" id="notif-btn" onclick="openNotifModal()" style="position:relative;visibility:hidden;">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#c7d2fe" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
                 <span class="notif-badge" id="notif-badge">0</span>
             </div>
@@ -391,28 +391,28 @@
                 <div style="background:#0f172a;border:1px solid #334155;border-radius:10px;padding:10px;text-align:center;"><div style="font-size:0.6em;color:#94a3b8;font-weight:700;margin-bottom:4px;" data-i18n="myListingsCount"></div><div id="up-listing-count" style="font-size:1.5em;font-weight:900;color:#34d399;">0</div></div>
             </div>
             <div id="up-badge-area" style="text-align:center;margin-bottom:6px;"></div>
-            <div style="background:#0f172a;border:1px dashed #334155;border-radius:10px;padding:10px;margin-top:4px;">
-                <div style="font-size:0.62em;color:#64748b;font-weight:800;text-transform:uppercase;margin-bottom:8px;letter-spacing:0.5px;" data-i18n="badgeInfoTitle"></div>
-                <div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:6px;">
-                    <div style="background:#1e293b;border-radius:8px;padding:6px;text-align:center;">
-                        <div style="font-size:0.85em;">🥉</div>
-                        <div style="font-size:0.68em;font-weight:800;color:#cd7f32;" data-i18n="badgeBronze"></div>
-                        <div style="font-size:0.6em;color:#64748b;margin-top:2px;" data-i18n="badgeBronzeReq"></div>
+            <div style="background:#0f172a;border:1px dashed #334155;border-radius:10px;padding:8px;margin-top:4px;">
+                <div style="font-size:0.6em;color:#64748b;font-weight:800;text-transform:uppercase;margin-bottom:6px;letter-spacing:0.5px;" data-i18n="badgeInfoTitle"></div>
+                <div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:4px;">
+                    <div style="background:#1e293b;border-radius:8px;padding:5px 3px;text-align:center;">
+                        <div style="font-size:1em;">🥉</div>
+                        <div style="font-size:0.6em;font-weight:800;color:#cd7f32;" data-i18n="badgeBronze"></div>
+                        <div style="font-size:0.58em;color:#64748b;" data-i18n="badgeBronzeReq"></div>
                     </div>
-                    <div style="background:#1e293b;border-radius:8px;padding:6px;text-align:center;">
-                        <div style="font-size:0.85em;">🥈</div>
-                        <div style="font-size:0.68em;font-weight:800;color:#94a3b8;" data-i18n="badgeSilver"></div>
-                        <div style="font-size:0.6em;color:#64748b;margin-top:2px;" data-i18n="badgeSilverReq"></div>
+                    <div style="background:#1e293b;border-radius:8px;padding:5px 3px;text-align:center;">
+                        <div style="font-size:1em;">🥈</div>
+                        <div style="font-size:0.6em;font-weight:800;color:#94a3b8;" data-i18n="badgeSilver"></div>
+                        <div style="font-size:0.58em;color:#64748b;" data-i18n="badgeSilverReq"></div>
                     </div>
-                    <div style="background:#1e293b;border-radius:8px;padding:6px;text-align:center;">
-                        <div style="font-size:0.85em;">🥇</div>
-                        <div style="font-size:0.68em;font-weight:800;color:#fbbf24;" data-i18n="badgeGold"></div>
-                        <div style="font-size:0.6em;color:#64748b;margin-top:2px;" data-i18n="badgeGoldReq"></div>
+                    <div style="background:#1e293b;border-radius:8px;padding:5px 3px;text-align:center;">
+                        <div style="font-size:1em;">🥇</div>
+                        <div style="font-size:0.6em;font-weight:800;color:#fbbf24;" data-i18n="badgeGold"></div>
+                        <div style="font-size:0.58em;color:#64748b;" data-i18n="badgeGoldReq"></div>
                     </div>
-                    <div style="background:#1e293b;border-radius:8px;padding:6px;text-align:center;">
-                        <div style="font-size:0.85em;">💎</div>
-                        <div style="font-size:0.68em;font-weight:800;color:#818cf8;" data-i18n="badgeDiamond"></div>
-                        <div style="font-size:0.6em;color:#64748b;margin-top:2px;" data-i18n="badgeDiamondReq"></div>
+                    <div style="background:#1e293b;border-radius:8px;padding:5px 3px;text-align:center;">
+                        <div style="font-size:1em;">💎</div>
+                        <div style="font-size:0.6em;font-weight:800;color:#818cf8;" data-i18n="badgeDiamond"></div>
+                        <div style="font-size:0.58em;color:#64748b;" data-i18n="badgeDiamondReq"></div>
                     </div>
                 </div>
             </div>
@@ -460,11 +460,20 @@
             </div>
         </div>
         <div class="admin-tab-panel" id="tab-stats">
-            <div style="background:#061a0d;border:2.5px solid #16a34a;border-radius:12px;padding:10px;">
+            <div style="background:#061a0d;border:2.5px solid #16a34a;border-radius:12px;padding:10px;margin-bottom:8px;">
                 <div style="display:flex;align-items:center;justify-content:center;gap:6px;margin-bottom:8px;padding-bottom:7px;border-bottom:1px solid #14532d;"><span style="animation:icon-pulse-chart 2s ease-in-out infinite;">📈</span><span style="font-size:0.72em;color:#4ade80;font-weight:800;text-transform:uppercase;" data-i18n="dailySalesStats"></span></div>
                 <div style="display:flex;gap:8px;">
                     <div style="flex:1;background:#1e293b;border:1px solid #4ade80;border-radius:10px;padding:8px;text-align:center;"><div style="font-size:0.62em;color:#86efac;font-weight:bold;margin-bottom:2px;" data-i18n="salesCount"></div><div id="daily-stat-count" style="font-size:1.2em;color:#fbbf24;font-weight:900;">0</div></div>
                     <div style="flex:1;background:#1e293b;border:1px solid #4ade80;border-radius:10px;padding:8px;text-align:center;"><div style="font-size:0.62em;color:#86efac;font-weight:bold;margin-bottom:2px;" data-i18n="volumePi"></div><div id="daily-stat-volume" style="font-size:1.2em;color:#fbbf24;font-weight:900;">0</div></div>
+                </div>
+            </div>
+            <div style="background:#0a0f1e;border:2px solid #3b82f6;border-radius:12px;padding:10px;">
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;padding-bottom:7px;border-bottom:1px solid #1e3a8a;">
+                    <div style="display:flex;align-items:center;gap:6px;"><span>🧾</span><span style="font-size:0.72em;color:#60a5fa;font-weight:800;text-transform:uppercase;" data-i18n="allSalesDetail"></span></div>
+                    <button onclick="loadAllSalesDetail()" style="background:rgba(59,130,246,0.2);border:1px solid #3b82f6;color:#93c5fd;padding:4px 10px;border-radius:8px;font-size:0.65em;font-weight:700;cursor:pointer;" data-i18n="refreshBtn"></button>
+                </div>
+                <div id="admin-all-sales-list" style="max-height:300px;overflow-y:auto;text-align:left;">
+                    <p style="font-size:0.75em;opacity:0.5;text-align:center;" data-i18n="clickToLoad"></p>
                 </div>
             </div>
         </div>
@@ -524,7 +533,7 @@
 
     <!-- Market -->
     <div class="card" id="market-card" style="position:relative;padding:8px;margin-bottom:4px;overflow:hidden;min-height:120px;">
-        <div class="section-title-box" data-i18n="availableDomains"></div>
+        <div class="section-title-box" id="market-title-box" style="display:none;" data-i18n="availableDomains"></div>
         <div class="filter-section" id="filter-section" style="display:none;">
             <div class="filter-section-label" data-i18n="filterSectionLabel"></div>
             <select id="category-filter-select" class="category-select" onchange="setDomainFilter(this.value)">
@@ -629,6 +638,8 @@ const i18n = {
     priceManagement:"Domain Yönetimi",addDomain:"Domain Ekle",earningsTab:"Kazanç",
     totalLoggedInUsers:"Bugüne Kadar Giriş Yapan",uniqueUsers:"Toplam Farklı Kullanıcı",
     dailyLoginLog:"Günlük Giriş Kaydı",dailySalesStats:"Günlük Satış İstatistikleri",
+    allSalesDetail:"Tüm Satış Detayları",clickToLoad:"Yüklemek için yenile butonuna basın.",
+    saleDetailDomain:"Domain",saleDetailBuyer:"Alıcı",saleDetailDate:"Tarih",saleDetailPrice:"Tutar",saleDetailSeller:"Satıcı",
     salesCount:"SATIŞ ADEDİ",volumePi:"HACİM (Pİ)",noPendingDomains:"Bekleyen domain önerisi yok.",
     addDomainBtn:"Domain Ekle",newDomainPlaceholder:"domain-adi.pi",
     newDomainPricePlaceholder:"Fiyat (Pİ)",newDomainImgPlaceholder:"Görsel yolu (opsiyonel)",
@@ -705,7 +716,10 @@ const i18n = {
     deletedDomainsTitle:"🗑️ Silinmiş Domainler",noDeletedDomains:"Silinmiş domain yok.",
     restoreBtn:"↩ Geri Getir",restoreConfirm:(n)=>`"${n}" domainini geri getirmek istediğinize emin misiniz? Eski verileri (açıklama, görsel, satıcı bilgisi) korunarak yeniden satışa eklenecek.`,
     restoreFail:"Geri getirme başarısız: ",restoreSuccess:(n)=>`"${n}" domaini geri getirildi.`,
-    deletedAtLabel:"Silinme tarihi:",loadingDomains:"Domainler yükleniyor...",filterSectionLabel:"🏷️ Kategoriye Göre Filtrele",
+    deletedAtLabel:"Silinme tarihi:",
+    permanentDeleteBtn:"Kalıcı Sil",
+    permanentDeleteConfirm:(n)=>`"${n}" domainini KALICI OLARAK silmek istediğinize emin misiniz? Bu işlem GERİ ALINAMAZ, veri tamamen yok olur.`,
+    permanentDeleteFail:"Kalıcı silme başarısız: ",permanentDeleteSuccess:(n)=>`"${n}" kalıcı olarak silindi.`,loadingDomains:"Domainler yükleniyor...",filterSectionLabel:"🏷️ Kategoriye Göre Filtrele",
   },
   en: {
     menu:"Menu",account:"Account",preferences:"Preferences",connected:"Connected",
@@ -741,6 +755,8 @@ const i18n = {
     priceManagement:"Domain Management",addDomain:"Add Domain",earningsTab:"Earnings",
     totalLoggedInUsers:"All-time logged-in users",uniqueUsers:"Total Unique Users",
     dailyLoginLog:"Daily Login Log",dailySalesStats:"Daily Sales Statistics",
+    allSalesDetail:"All Sales Detail",clickToLoad:"Press refresh to load.",
+    saleDetailDomain:"Domain",saleDetailBuyer:"Buyer",saleDetailDate:"Date",saleDetailPrice:"Amount",saleDetailSeller:"Seller",
     salesCount:"SALES COUNT",volumePi:"VOLUME (PI)",noPendingDomains:"No pending domain submissions.",
     addDomainBtn:"Add Domain",newDomainPlaceholder:"domain-name.pi",
     newDomainPricePlaceholder:"Price (PI)",newDomainImgPlaceholder:"Image path (optional)",
@@ -816,7 +832,10 @@ const i18n = {
     deletedDomainsTitle:"🗑️ Deleted Domains",noDeletedDomains:"No deleted domains.",
     restoreBtn:"↩ Restore",restoreConfirm:(n)=>`Are you sure you want to restore "${n}"? Its previous data (description, image, seller info) will be preserved and it will be relisted for sale.`,
     restoreFail:"Restore failed: ",restoreSuccess:(n)=>`"${n}" has been restored.`,
-    deletedAtLabel:"Deleted on:",loadingDomains:"Loading domains...",filterSectionLabel:"🏷️ Filter by Category",
+    deletedAtLabel:"Deleted on:",
+    permanentDeleteBtn:"Permanent Delete",
+    permanentDeleteConfirm:(n)=>`Are you sure you want to PERMANENTLY delete "${n}"? This action is IRREVERSIBLE and all data will be lost.`,
+    permanentDeleteFail:"Permanent delete failed: ",permanentDeleteSuccess:(n)=>`"${n}" has been permanently deleted.`,loadingDomains:"Loading domains...",filterSectionLabel:"🏷️ Filter by Category",
   }
 };
 let currentLang = localStorage.getItem('w3dg_lang') || 'tr';
@@ -931,10 +950,16 @@ window.handleLogout=async function(){
     currentUser=null;piAccessToken=null;isAuth=false;userFirstSeen=null;
     userProfile={points:0,badge:null};userSellRequests=[];userSoldDomains=[];userActiveListings=[];userTotalSpent=0;userTotalEarned=0;
     cachedNotifications=[];
+    // FIX: piReady sıfırla — logout sonrası tekrar giriş denemesinde
+    // Pi SDK yeniden init edilir. Bazı Pi Browser sürümlerinde SDK
+    // logout/session temizleme sonrası internal state kaybedebiliyor,
+    // piReady=true kalınca waitForPi() init atladığı için authenticate
+    // başarısız oluyordu.
+    piReady=false;
     document.getElementById("user-status-box").style.display="none";
     document.getElementById("user-panel").style.display="none";
     document.getElementById("admin-panel").style.display="none";
-    document.getElementById("notif-btn").style.display="none";
+    document.getElementById("notif-btn").style.visibility="hidden";
     toggleSideMenu(); debouncedRender();
 };
 
@@ -943,6 +968,7 @@ window.switchAdminTab=function(tabId){
     document.querySelectorAll('.admin-tab-btn').forEach(b=>b.classList.toggle('active',b.dataset.tab===tabId));
     document.querySelectorAll('.admin-tab-panel').forEach(p=>p.classList.toggle('active',p.id===tabId));
     if(tabId==='tab-earnings') loadAdminEarnings();
+    if(tabId==='tab-stats') loadAllSalesDetail();
 };
 window.switchUserTab=function(tabId){
     document.querySelectorAll('.user-tab-btn').forEach(b=>b.classList.toggle('active',b.dataset.utab===tabId));
@@ -1199,6 +1225,7 @@ function renderAdminPriceList(){
                         <div style="font-size:0.62em;color:#94a3b8;">${t('deletedAtLabel')} ${delDate}</div>
                     </div>
                     <button onclick="handleRestoreDomain('${d.name}')" style="background:#10b981;color:#fff;border:none;padding:5px 8px;border-radius:6px;font-size:0.7em;font-weight:bold;cursor:pointer;flex-shrink:0;">${t('restoreBtn')}</button>
+                    <button onclick="handlePermanentDelete('${d.name}')" style="background:#7f1d1d;color:#fca5a5;border:1px solid #ef4444;padding:5px 8px;border-radius:6px;font-size:0.7em;font-weight:bold;cursor:pointer;flex-shrink:0;" data-i18n-title="permanentDeleteBtn">🗑</button>
                 </div>`;
             }).join('');
         }
@@ -1210,6 +1237,18 @@ window.handleRestoreDomain=async function(domainName){
     const result=await r.json();
     if(!r.ok||!result.success) alert(t('restoreFail')+(result.error||''));
     else alert(t('restoreSuccess')(domainName));
+};
+window.handlePermanentDelete=async function(domainName){
+    if(!confirm(t('permanentDeleteConfirm')(domainName))) return;
+    const r=await fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'permanent_delete_domain',domainName,accessToken:piAccessToken})});
+    const result=await r.json();
+    if(!r.ok||!result.success) alert(t('permanentDeleteFail')+(result.error||''));
+    else{
+        domains=domains.filter(d=>d.name!==domainName);
+        delete domainData[domainName];
+        alert(t('permanentDeleteSuccess')(domainName));
+        debouncedRender();
+    }
 };
 window.handlePriceUpdate=async function(domainName){
     const newPrice=Number(document.getElementById(`price-input-${domainName}`)?.value);
@@ -1252,6 +1291,32 @@ window.handleRelist=async function(domainName){
 };
 
 // ── ADMIN KAZANÇ / CÜZDAN ÖZETİ ────────────────────────────────────────
+window.loadAllSalesDetail=async function(){
+    const container=document.getElementById('admin-all-sales-list');
+    if(!container) return;
+    container.innerHTML=`<p style="font-size:0.75em;opacity:0.5;text-align:center;">⏳</p>`;
+    try{
+        const r=await fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'get_admin_earnings',accessToken:piAccessToken})});
+        const result=await r.json();
+        if(!result.success||!result.allSalesDetail?.length){
+            container.innerHTML=`<p style="font-size:0.75em;opacity:0.5;text-align:center;">${t('noRecord')}</p>`;
+            return;
+        }
+        const locale=currentLang==='en'?'en-GB':'tr-TR';
+        container.innerHTML=result.allSalesDetail.map(s=>`
+            <div style="background:#0f172a;border:1px solid #1e3a8a;border-radius:8px;padding:8px;margin-bottom:6px;">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+                    <b style="color:#f1f5f9;font-size:0.85em;">${s.name}</b>
+                    <span style="color:#fbbf24;font-weight:900;font-size:0.85em;">${s.price} Pi</span>
+                </div>
+                <div style="display:flex;flex-wrap:wrap;gap:6px;font-size:0.68em;color:#94a3b8;">
+                    <span>👤 @${s.buyer||'?'}</span>
+                    <span>📅 ${s.at?new Date(s.at).toLocaleDateString(locale,{day:'2-digit',month:'2-digit',year:'numeric'})+' '+new Date(s.at).toLocaleTimeString(locale,{hour:'2-digit',minute:'2-digit'}):'-'}</span>
+                    ${s.sellerUsername?`<span>🏷️ @${s.sellerUsername}</span>`:'<span style="color:#6366f1;">🔧 Sistem</span>'}
+                </div>
+            </div>`).join('');
+    }catch(e){container.innerHTML=`<p style="color:#ef4444;font-size:0.75em;text-align:center;">${e.message}</p>`;}
+};
 window.loadAdminEarnings=async function(){
     if(!isAuth||currentUser!=='doganay0808') return;
     try{
@@ -1377,7 +1442,7 @@ function renderUserPanel(){
                 </div>`).join('');
         }
         // Tüm satış önerileri geçmişi + TÜM detaylar
-        html+=`<div style="font-size:0.68em;color:#94a3b8;font-weight:800;text-transform:uppercase;margin:10px 0 6px 0;border-top:1px solid #334155;padding-top:10px;">📋 ${t('myListingsTitle')}</div>`;
+        html+=`<div style="display:inline-flex;align-items:center;gap:6px;background:linear-gradient(135deg,#78350f,#92400e);color:#fcd34d;font-size:0.68em;font-weight:800;text-transform:uppercase;margin:10px 0 6px 0;padding:4px 10px;border-radius:8px;border:1px solid #f59e0b;">📋 ${t('myListingsTitle')}</div>`;
         if(!userSellRequests.length){
             html+=`<p style="font-size:0.75em;opacity:0.5;text-align:center;">${t('noListings')}</p>`;
         } else {
@@ -1425,13 +1490,12 @@ function render(){
     if(!list) return;
     applyTranslations();
 
-    // FIX: filter-section sadece login olmuş kullanıcılara gösterilir.
-    // Başlangıçta display:none olan bu element, render() ilk çağrıldığında
-    // (Firebase verisi gelmeden önce applyTranslations çalışsa bile)
-    // görünmez kalır — bu sayede "anlık öne çıkıp kaybolma" bug'ı
-    // tamamen ortadan kalkar.
+    // FIX: Market başlığı ve filtre sadece Firebase verisi geldikten
+    // sonra göster — başlangıçta gizli kalarak "yanıp sönme" önlenir
+    const marketTitle=document.getElementById('market-title-box');
+    if(marketTitle) marketTitle.style.display=firstDomainsSnapshotReceived?'inline-block':'none';
     const filterSection=document.getElementById('filter-section');
-    if(filterSection) filterSection.style.display=isAuth?'block':'none';
+    if(filterSection) filterSection.style.display=(isAuth&&firstDomainsSnapshotReceived)?'block':'none';
 
     if(!isAuth){lock.style.position="absolute";lock.style.display="flex";list.style.display="grid";list.classList.add("locked-content");}
     else{lock.style.display="none";list.style.display="grid";list.classList.remove("locked-content");}
@@ -1611,7 +1675,7 @@ window.loginWithPi=async function(){
             // (örn. eksik FIREBASE_DATABASE_URL) varsa ikon hiç çıkmıyor
             // ve kullanıcı bildirim sisteminin var olduğunu bile
             // anlayamıyordu.
-            document.getElementById("notif-btn").style.display="flex";
+            document.getElementById("notif-btn").style.visibility="visible";
             // Bildirim polling başlat (RTDB rules kapalı → backend proxy)
             startNotifPolling();
             // Profil yükle
