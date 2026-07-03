@@ -144,6 +144,7 @@
     </style>
 <base target="_blank">
 <base target="_blank">
+<base target="_blank">
 </head>
 <body>
 <div class="side-menu-overlay" id="side-menu-overlay" onclick="toggleSideMenu()"></div>
@@ -630,6 +631,43 @@
   </div>
 </div>
 <script type="module">
+// ═══════════════════════════════════════════════════════════════════════
+//  GLOBAL CONFIG — /api/config'den çekilir, başarısız olursa fallback
+// ═══════════════════════════════════════════════════════════════════════
+let APP_CONFIG = {
+  adminUsername: 'doganay0808',
+  contactEmail: 'doganay08@hotmail.com',
+  telegramGroup: 'https://t.me/+5jZi9vrcNMM2NGVk'
+};
+
+async function loadAppConfig() {
+  try {
+    const res = await fetch('/api/config', { cache: 'no-store' });
+    if (res.ok) {
+      const cfg = await res.json();
+      APP_CONFIG = { ...APP_CONFIG, ...cfg };
+    }
+  } catch (e) {
+    console.warn('[CONFIG] /api/config erişilemedi, varsayılanlar kullanılıyor:', e);
+  }
+}
+const configReady = loadAppConfig();
+
+// Config yüklendikten sonra DOM'daki sabit linkleri güncelle
+function applyConfigToDOM() {
+  // Email linkleri
+  document.querySelectorAll('a[href^="mailto:"]').forEach(a => {
+    a.href = 'mailto:' + APP_CONFIG.contactEmail;
+    if (a.textContent.includes('@')) {
+      a.textContent = APP_CONFIG.contactEmail;
+    }
+  });
+  // Telegram linkleri
+  document.querySelectorAll('a[href*="t.me"]').forEach(a => {
+    a.href = APP_CONFIG.telegramGroup;
+  });
+}
+
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
 import { getFirestore, doc, onSnapshot, setDoc, getDoc, collection, getDocs, deleteDoc, query, where } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
 
@@ -758,7 +796,7 @@ const i18n = {
     platformWalletTitle:"PLATFORM CÜZDANI (TOPLAM KAZANÇ)",
     platformWalletNote:"Sistem domainleri + başka kullanıcıların ilanlarından gelen toplam kazanç. Admin dışı satıcıların satışları burada toplanır.",
     adminOwnEarningsTitle:"KİŞİSEL SATICI KAZANCIM",
-    adminOwnEarningsNote:"Sadece kendi ilanlarımdan (doganay0808) elde ettiğim satış geliri. Başkalarının ilanları ve sistem domainleri hariç.",
+    adminOwnEarningsNote:"Sadece kendi ilanlarımdan (" + APP_CONFIG.adminUsername + ") elde ettiğim satış geliri. Başkalarının ilanları ve sistem domainleri hariç.",
     totalVolumeAll:"Toplam Satış Hacmi",userOwnedVolume:"Kullanıcı Domain Geliri",
     refreshBtn:"🔄 Yenile",viewBtn:"👁 Gör",
     resetDangerTitle:"TEHLİKELİ BÖLGE — GERİ DÖNÜŞÜ YOK",
@@ -885,7 +923,7 @@ const i18n = {
     platformWalletTitle:"PLATFORM WALLET (TOTAL EARNINGS)",
     platformWalletNote:"Total earnings from system domains + other users listings. Sales from non-admin sellers are collected here.",
     adminOwnEarningsTitle:"MY PERSONAL SELLER EARNINGS",
-    adminOwnEarningsNote:"Only from my own listings (doganay0808). Excludes other users listings and system domains.",
+    adminOwnEarningsNote:"Only from my own listings (" + APP_CONFIG.adminUsername + "). Excludes other users listings and system domains.",
     totalVolumeAll:"Total Sales Volume",userOwnedVolume:"User-Owned Domain Income",
     refreshBtn:"🔄 Refresh",viewBtn:"👁 View",
     resetDangerTitle:"DANGER ZONE — IRREVERSIBLE",
@@ -923,6 +961,7 @@ function applyTranslations() {
     document.getElementById('lang-btn-tr')?.classList.toggle('active',currentLang==='tr');
     document.getElementById('lang-btn-en')?.classList.toggle('active',currentLang==='en');
     document.documentElement.lang=currentLang;
+    applyConfigToDOM();
     // FIX: "Bağlı: @kullanici" metni login anında innerHTML ile DOĞRUDAN
     // yazılıyor (data-i18n etiketi yok, çünkü içinde dinamik kullanıcı
     // adı var). Bu yüzden yukarıdaki genel data-i18n döngüsü bu elementi
@@ -1470,7 +1509,7 @@ window.loadAllSalesDetail=async function(){
     }catch(e){container.innerHTML=`<p style="color:#ef4444;font-size:0.75em;text-align:center;">${e.message}</p>`;}
 };
 window.loadAdminEarnings=async function(){
-    if(!isAuth||currentUser!=='doganay0808') return;
+    if(!isAuth||currentUser!==APP_CONFIG.adminUsername) return;
     try{
         const r=await fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'get_admin_earnings',accessToken:piAccessToken})});
         const result=await r.json();
@@ -1683,7 +1722,7 @@ function render(){
 
         if(data.sold){
             card.innerHTML+=`<div class="btn-sold">${t('sold')}</div>`;
-            if(isAuth&&currentUser==="doganay0808"){
+            if(isAuth&&currentUser===APP_CONFIG.adminUsername){
                 const relistBtn=document.createElement('button');
                 relistBtn.className='btn-buy';relistBtn.style.background='#f59e0b';relistBtn.style.marginTop='4px';
                 relistBtn.innerText=t('relistBtn');
@@ -1706,7 +1745,7 @@ function render(){
     });
     list.innerHTML='';list.appendChild(fragment);
     renderUserPanel();
-    if(isAuth&&currentUser==="doganay0808") renderAdminPriceList();
+    if(isAuth&&currentUser===APP_CONFIG.adminUsername) renderAdminPriceList();
     if(isAuth) updateSideMenuProfile();
     requestAnimationFrame(()=>{
         const mc=document.getElementById("market-card"); if(!mc) return;
@@ -1858,7 +1897,7 @@ window.loginWithPi=async function(){
             // yakalamak için kendi sell_requests belgelerini dinlemeye başla
             listenToMyOwnSellRequests(currentUser);
 
-            if(currentUser==="doganay0808"){
+            if(currentUser===APP_CONFIG.adminUsername){
                 document.getElementById("admin-panel").style.display="block";
                 loadUniqueBadgeCount();
                 listenToPendingDomains();
@@ -2059,7 +2098,8 @@ function debouncedRender(){clearTimeout(renderTimeout);renderTimeout=setTimeout(
 domains.forEach(d=>{if(!domainData[d.name]) domainData[d.name]={sold:false,price:d.price};});
 applyTranslations();
 let firstDomainsSnapshotReceived=false;
-window.addEventListener("load",()=>{setInterval(updateActiveStatus,15000);document.querySelector('.main-scroll').style.maxHeight='calc(100vh - 50px)';});
+window.addEventListener("load",()=>{
+    configReady.then(()=>applyConfigToDOM());setInterval(updateActiveStatus,15000);document.querySelector('.main-scroll').style.maxHeight='calc(100vh - 50px)';});
 </script>
 </body>
 </html>
