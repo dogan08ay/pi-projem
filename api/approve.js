@@ -354,18 +354,9 @@ export default async function handler(req, res) {
       //     totalSpent bu koleksiyondan toplanıyor).
       //  2) Eski alıcının kazandığı puan (satış anında verilen, fiyat
       //     kadar puan) geri alınır.
-      //  3) Platform kazancı ve toplam hacimden bu satışın bedeli düşülür.
       // Domain'in kendisi (açıklama, görsel, satıcı bilgisi) ASLA silinmez
       // — sadece bu işleme ait fiyatsal/puansal etkiler geri alınır.
       if (prevBuyer) {
-        // Platform kazancından düşme mantığı
-        const price = Number(soldData.price || 0);
-        const today = new Date().toISOString().split('T')[0];
-        const statsRef = db.collection('daily_stats').doc(today);
-        await statsRef.set({
-          totalVolume: FieldValue.increment(-price),
-          updatedAt: Date.now()
-        }, { merge: true });
         try {
           // FIX: global_sales dokümanı ID'si txid VEYA (txid yoksa) paymentId
           // olabilir — relist anında elimizde paymentId yok, txid de null
@@ -394,12 +385,11 @@ export default async function handler(req, res) {
       if (soldAt) {
         const soldDate = new Date(soldAt).toISOString().split('T')[0];
         const today = new Date().toISOString().split('T')[0];
-        if (soldDate === today) {
-          await db.collection('daily_stats').doc(today).set({
-            count: FieldValue.increment(-1),
-            volume: FieldValue.increment(-soldPrice)
-          }, { merge: true });
-        }
+        // Her durumda daily_stats'tan düş (bugün olmasa bile)
+        await db.collection('daily_stats').doc(soldDate).set({
+          count: FieldValue.increment(-1),
+          volume: FieldValue.increment(-soldPrice)
+        }, { merge: true });
       }
 
       // Eski alıcıya bildirim
@@ -520,6 +510,25 @@ export default async function handler(req, res) {
         deletedAt: Date.now()
       }, { merge: true });
 
+      // Eğer domain satılmışsa, daily_stats ve global_sales'tan da düş
+      if (domainDataForDelete.sold === true && domainDataForDelete.at) {
+        const soldDate = new Date(domainDataForDelete.at).toISOString().split('T')[0];
+        await db.collection('daily_stats').doc(soldDate).set({
+          count: FieldValue.increment(-1),
+          volume: FieldValue.increment(-(Number(domainDataForDelete.price) || 0))
+        }, { merge: true });
+        // global_sales kaydını sil
+        const matchSnap = await db.collection('global_sales')
+          .where('domain', '==', delName)
+          .where('user', '==', domainDataForDelete.buyer)
+          .get();
+        if (!matchSnap.empty) {
+          const batch = db.batch();
+          matchSnap.forEach(doc => batch.delete(doc.ref));
+          await batch.commit();
+        }
+      }
+
       console.log(`Domain soft-delete edildi: ${delName}`);
       return res.status(200).json({ success: true });
     } catch (e) {
@@ -565,57 +574,23 @@ export default async function handler(req, res) {
     if (!permDelName) return res.status(400).json({ error: "Geçersiz domain adı" });
     try {
       const db = getDb();
-      
-      // 1. Domain ana kaydını bul
       const domainRef = db.collection('domains').doc(permDelName);
       const snap = await domainRef.get();
       if (!snap.exists) return res.status(404).json({ error: "Domain bulunamadı" });
       if (snap.data().deleted !== true) return res.status(400).json({ error: "Sadece soft-delete edilmiş domainler kalıcı silinebilir" });
-      
-      // 2. Bu domaine ait TÜM sell_requests kayıtlarını bul ve sil
-      const sellReqSnap = await db.collection('sell_requests')
+      await domainRef.delete();
+      // İlgili sell_requests kayıtlarını da temizle
+      const reqSnap = await db.collection('sell_requests')
         .where('domainName', '==', permDelName)
         .get();
-      
-      let batch = db.batch();
-      let opCount = 0;
-      
-      sellReqSnap.forEach(doc => {
-        batch.delete(doc.ref);
-        opCount++;
-      });
-      
-      // 3. Bu domaine ait TÜM global_sales kayıtlarını bul ve sil
-      const salesSnap = await db.collection('global_sales')
-        .where('domain', '==', permDelName)
-        .get();
-        
-      salesSnap.forEach(doc => {
-        batch.delete(doc.ref);
-        opCount++;
-      });
-      
-      // 3b. Platform kazancı ve toplam hacimden düşme (eğer satılmış bir domain ise)
-      if (snap.data().sold === true) {
-        const price = Number(snap.data().price || 0);
-        const today = new Date().toISOString().split('T')[0];
-        const statsRef = db.collection('daily_stats').doc(today);
-        batch.set(statsRef, {
-          totalVolume: FieldValue.increment(-price),
-          updatedAt: Date.now()
-        }, { merge: true });
+      if (!reqSnap.empty) {
+        const batch = db.batch();
+        reqSnap.forEach(doc => batch.delete(doc.ref));
+        await batch.commit();
       }
-      
-      // 4. Ana domain kaydını sil
-      batch.delete(domainRef);
-      opCount++;
-      
-      if (opCount > 0) await batch.commit();
-      
-      console.log(`Domain ve ilişkili tüm kayıtlar kalıcı silindi: ${permDelName}`);
+      console.log(`Domain kalıcı silindi: ${permDelName}`);
       return res.status(200).json({ success: true });
     } catch (e) {
-      console.error("Kalıcı silme hatası:", e);
       return res.status(500).json({ error: e.message });
     }
   }
@@ -970,12 +945,19 @@ export default async function handler(req, res) {
     if (!isAdmin) return res.status(403).json({ error: "Yetki yok" });
     try {
       const db = getDb();
-      // Tüm satışları topla (toplam hacim için)
+      // Tüm satışları topla (toplam hacim için) — silinmiş domainler HARİÇ
       const allSalesSnap = await db.collection('global_sales').get();
       let totalVolume = 0;
       const salesByDomain = {};
+      // Silinmiş domain adlarını öğren
+      const deletedDomainsSnap = await db.collection('domains').where('deleted', '==', true).get();
+      const deletedDomainNames = new Set();
+      deletedDomainsSnap.forEach(d => deletedDomainNames.add(d.id));
+
       allSalesSnap.forEach(d => {
         const data = d.data();
+        // Silinmiş domainlerin satışlarını sayma
+        if (deletedDomainNames.has(data.domain)) return;
         totalVolume += Number(data.price || 0);
         salesByDomain[data.domain] = (salesByDomain[data.domain] || 0) + Number(data.price || 0);
       });
