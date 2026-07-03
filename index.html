@@ -140,7 +140,7 @@
         @keyframes icon-pulse-green{0%,100%{filter:drop-shadow(0 0 4px rgba(52,211,153,0.5));transform:scale(1);}50%{filter:drop-shadow(0 0 10px rgba(52,211,153,0.9));transform:scale(1.12);}}
 @keyframes connected-pulse{0%,100%{box-shadow:0 0 8px rgba(16,185,129,0.3);}50%{box-shadow:0 0 16px rgba(16,185,129,0.6),0 0 4px rgba(52,211,153,0.4);}}
 @keyframes connected-pulse-blue{0%,100%{box-shadow:0 0 8px rgba(59,130,246,0.3);}50%{box-shadow:0 0 16px rgba(59,130,246,0.6),0 0 4px rgba(96,165,250,0.4);}}
-@keyframes shield-pulse{0%,100%{filter:drop-shadow(0 0 12px rgba(99,102,241,0.7)) drop-shadow(0 0 25px rgba(129,140,248,0.4));transform:scale(1);}50%{filter:drop-shadow(0 0 25px rgba(99,102,241,0.9)) drop-shadow(0 0 40px rgba(129,140,248,0.6));transform:scale(1.12);}}
+@keyframes shield-pulse{0%,100%{filter:drop-shadow(0 0 10px rgba(99,102,241,0.6));transform:scale(1) rotate(0deg);}50%{filter:drop-shadow(0 0 25px rgba(99,102,241,0.9)) drop-shadow(0 0 40px rgba(129,140,248,0.5));transform:scale(1.08) rotate(2deg);}}
     </style>
 <base target="_blank">
 <base target="_blank">
@@ -339,7 +339,13 @@
 
 <div id="pre-buy-modal" class="modal-overlay" style="display:none;">
     <div class="modal-content">
-        <div style="font-size:2.5em;margin-bottom:10px;display:inline-block;animation:shield-pulse 2s ease-in-out infinite;">🛡️</div>
+        <div style="margin-bottom:10px;display:inline-block;animation:shield-pulse 2s ease-in-out infinite;">
+            <svg width="52" height="52" viewBox="0 0 24 24" fill="none" stroke="#818cf8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="filter:drop-shadow(0 0 15px rgba(99,102,241,0.9));">
+                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" fill="rgba(99,102,241,0.2)"/>
+                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                <path d="M9 12l2 2 4-4" stroke="#34d399" stroke-width="2.5"/>
+            </svg>
+        </div>
         <h2 style="color:#fbbf24;margin:0 0 12px 0;font-size:1.15em;font-weight:900;text-align:center;" data-i18n="securePaymentTitle"></h2>
         <div style="color:#fff;font-size:0.82em;line-height:1.6;text-align:left;background:rgba(0,0,0,0.3);padding:12px;border-radius:15px;">
             <div style="margin-bottom:12px;border-bottom:1px solid #475569;padding-bottom:10px;text-align:center;font-weight:800;" data-i18n="nextStepNote"></div>
@@ -596,7 +602,13 @@
             <span class="diamond-sparkle diamond-sparkle-2" style="position:absolute;bottom:-2px;right:-12px;font-size:0.8em;">✦</span></div>
             <div class="lock-title-box" data-i18n="joinWeb3"></div>
             <div class="secure-badge">
-                <div style="font-size:2.6em;text-align:center;margin-bottom:8px;animation:shield-pulse 2s ease-in-out infinite;display:inline-block;">🛡️</div>
+                <div style="text-align:center;margin-bottom:8px;animation:shield-pulse 2s ease-in-out infinite;display:inline-block;">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#818cf8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="filter:drop-shadow(0 0 12px rgba(99,102,241,0.8));">
+                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" fill="rgba(99,102,241,0.15)"/>
+                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                <path d="M9 12l2 2 4-4" stroke="#34d399" stroke-width="2.5"/>
+            </svg>
+        </div>
                 <div class="secure-badge-title" style="text-align:center;" data-i18n="secureConnection"></div>
                 <div class="secure-badge-body" data-i18n="testNetBadgeBody"></div>
                 <div class="secure-badge-warning" data-i18n="testNetWarning"></div>
@@ -1164,6 +1176,10 @@ window.openNotifModal=function(){
 window.openChangelogModal=function(){
     const list=document.getElementById('changelog-list');
     if(!list) return;
+    // NOT: Bu verileri Firebase'den dinamik çekebilirsiniz.
+    // Şu an statik ama yapı hazır. Yeni versiyon eklemek için:
+    // 1. i18n'e yeni key'ler ekleyin (changelogV1_5, changelogV1_5Desc)
+    // 2. Aşağıdaki array'e yeni obje ekleyin
     const versions=[
         {v:t('changelogV1_4'),d:t('changelogV1_4Desc'),date:'2026-07-03',icon:'🛡️',color:'#10b981'},
         {v:t('changelogV1_3'),d:t('changelogV1_3Desc'),date:'2026-06-28',icon:'💎',color:'#818cf8'},
