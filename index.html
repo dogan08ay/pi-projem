@@ -1948,17 +1948,31 @@ async function handleIncompletePayment(payment){
 // göstermek yerine bir kez sessizce yeniden deniyoruz.
 window.loginWithPi=async function(){
     await waitForPi();
-    // SDK init ile authenticate çağrısı arasına küçük bir nefes alma payı
     await new Promise(r=>setTimeout(r,300));
 
     async function attemptLogin(isRetry){
         try{
+            // ═══════════════════════════════════════════════════════════════
+            // FIX 2b: Login sırasında "Bağlanıyor..." durumu göster.
+            // Kullanıcı butona tıklayınca hemen feedback alsın, 
+            // boşta beklerken "dondu mu?" hissi olmasın.
+            // ═══════════════════════════════════════════════════════════════
+            const lock = document.getElementById('premium-lock');
+            const connectBtn = lock?.querySelector('.pi-btn');
+            const originalBtnText = connectBtn?.innerHTML;
+
+            if(connectBtn){
+                connectBtn.innerHTML = '<span style="display:inline-flex;align-items:center;gap:8px;"><span style="display:inline-block;width:16px;height:16px;border:2px solid rgba(255,255,255,0.3);border-top-color:#fff;border-radius:50%;animation:spin-ring 0.8s linear infinite;"></span><span>Bağlanıyor...</span></span>';
+                connectBtn.disabled = true;
+                connectBtn.style.opacity = '0.7';
+            }
+
             const auth=await Pi.authenticate(['username','payments'],handleIncompletePayment);
             currentUser=auth.user.username;
             piAccessToken=auth.accessToken;
-            isAuth=true; // Auth true, ancak PANEL henüz gösterilmiyor
+            isAuth=true;
 
-            // Bildirim ve active status'u başlat (UI görünmeden önce güvenli)
+            // Bildirim ve admin işlemleri (UI görünmeden önce, hızlı)
             document.getElementById("notif-btn").style.visibility="visible";
             startNotifPolling();
 
@@ -1973,7 +1987,6 @@ window.loginWithPi=async function(){
                 dateInput.onchange=(e)=>listenToLogs(e.target.value);
             }
 
-            // Login log + ilk giriş tarihi (backend'den tutarlı şekilde)
             try{
                 const r=await fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},
                     body:JSON.stringify({action:'log_login',accessToken:piAccessToken})});
@@ -1983,43 +1996,76 @@ window.loginWithPi=async function(){
 
             updateActiveStatus();
 
-            // ═════════════════════════════════════════════════════════════════
+            // ═══════════════════════════════════════════════════════════════
             // FIX 2: Profil verileri tamamen yüklenmeden KULLANICI PANELİNİ 
-            // GÖSTERME. Önce tüm kullanıcı verilerini (puan, rozet, ilanlar, 
-            // alımlar, satışlar) çek. Bu, panelin boş/bay veriyle belirip 
-            // kaybolmasını (flickering) engeller.
-            // ═════════════════════════════════════════════════════════════════
+            // GÖSTERME. Önce tüm verileri çek, SONRA tek seferde UI'ı aç.
+            // ═══════════════════════════════════════════════════════════════
             await loadUserProfile();
+            listenToMyOwnSellRequests(currentUser);
 
-            // Şimdi UI'ı TEK SEFERDE, tutarlı şekilde göster.
-            // Artık userProfile, userSellRequests, userSoldDomains vb. DOLU.
+            // Artık TÜM veriler hazır. UI'ı tek seferde, animasyonlu aç.
             document.getElementById("user-status").innerHTML='<span class="online-dot"></span>'+t('connectedPrefix')+currentUser;
             document.getElementById("user-status-box").style.display="none";
             const upu=document.getElementById("user-panel-username");
             const uput=document.getElementById("user-panel-username-text");
             if(upu){upu.style.display='inline-flex';}
             if(uput){uput.textContent='@'+currentUser;}
-            document.getElementById("user-panel").style.display="block";
+
+            // Paneli göster (opacity transition ile yumuşak)
+            const userPanel = document.getElementById("user-panel");
+            userPanel.style.display="block";
+            userPanel.style.opacity = '0';
+            userPanel.style.transform = 'translateY(10px)';
+            userPanel.style.transition = 'opacity 0.4s ease, transform 0.4s ease';
+
+            requestAnimationFrame(() => {
+                userPanel.style.opacity = '1';
+                userPanel.style.transform = 'translateY(0)';
+            });
+
             document.querySelector('.main-scroll').style.maxHeight='none';
             document.querySelector('.main-scroll').style.overflowY='auto';
 
-            // Kendi ilan durumu değişikliklerini dinlemeye başla
-            listenToMyOwnSellRequests(currentUser);
-
-            // Tek seferde render et — tüm veriler (profil + domain) artık tutarlı
             debouncedRender();
+
+            // Butonu normale döndür (artık gerekli değil ama temizlik)
+            if(connectBtn){
+                connectBtn.innerHTML = originalBtnText;
+                connectBtn.disabled = false;
+                connectBtn.style.opacity = '1';
+            }
 
             return true;
         }catch(e){
             console.error("Login error:",e);
             const msg=(e&&e.message)||'';
             const userCancelled=msg.includes('cancel')||msg.includes('user_cancelled')||msg.includes('User cancelled');
-            if(userCancelled) return true;
+            if(userCancelled){
+                // Kullanıcı iptal etti, butonu normale döndür
+                const lock = document.getElementById('premium-lock');
+                const connectBtn = lock?.querySelector('.pi-btn');
+                if(connectBtn && originalBtnText){
+                    connectBtn.innerHTML = originalBtnText;
+                    connectBtn.disabled = false;
+                    connectBtn.style.opacity = '1';
+                }
+                return true;
+            }
 
             if(!isRetry){
                 await new Promise(r=>setTimeout(r,400));
                 return await attemptLogin(true);
             }
+
+            // Hata durumunda butonu normale döndür
+            const lock = document.getElementById('premium-lock');
+            const connectBtn = lock?.querySelector('.pi-btn');
+            if(connectBtn && originalBtnText){
+                connectBtn.innerHTML = originalBtnText;
+                connectBtn.disabled = false;
+                connectBtn.style.opacity = '1';
+            }
+
             return false;
         }
     }
