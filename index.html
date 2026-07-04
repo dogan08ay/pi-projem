@@ -414,21 +414,19 @@
             <div class="stats-item"><span data-i18n="totalVolume"></span>: <span id="total-volume">0</span> Test Pİ</div>
             <div class="stats-item"><span data-i18n="activeUsers"></span>: <span id="online-count">0</span></div>
         </div>
-        <div id="user-status-box" style="display:none;margin-top:1px;">
-            <p id="user-status" style="display:inline-block;font-size:0.78em;color:#6ee7b7;font-weight:900;margin:0;background:rgba(16,185,129,0.12);border:1.5px solid #10b981;border-radius:20px;padding:3px 10px;"></p>
+        <div id="user-status-box" style="display:none;margin-top:1px;text-align:center;">
+            <p id="user-status" style="display:inline-flex;align-items:center;gap:5px;font-size:0.78em;color:#60a5fa;font-weight:900;margin:0;background:linear-gradient(135deg,rgba(59,130,246,0.2),rgba(37,99,235,0.3));border:1.5px solid #3b82f6;border-radius:20px;padding:4px 14px;box-shadow:0 0 10px rgba(59,130,246,0.3);animation:connected-pulse-blue 2s ease-in-out infinite;">
+                <span class="online-dot" style="width:7px;height:7px;margin-right:2px;background:#60a5fa;box-shadow:0 0 6px #60a5fa;"></span>
+                <span id="user-status-text"></span>
+            </p>
         </div>
     </div>
 
     <!-- Kullanıcı Paneli -->
     <div class="card" id="user-panel" style="display:none;border:2px solid #10b981;box-shadow:0 0 12px rgba(16,185,129,0.2);padding:5px;">
-        <h3 style="color:#10b981;margin:-6px -6px 4px -6px;padding:8px 6px 4px 6px;font-size:0.9em;display:flex;flex-direction:column;align-items:center;gap:3px;background:linear-gradient(135deg,rgba(16,185,129,0.18) 0%,rgba(5,150,105,0.1) 100%);border-bottom:1.5px solid rgba(16,185,129,0.35);border-radius:12px 12px 0 0;font-weight:900;">
-            <div style="display:flex;align-items:center;gap:5px;width:100%;justify-content:center;position:relative;">
-                <span style="display:flex;align-items:center;gap:5px;">👤 <span data-i18n="myPanel"></span></span>
-                <button onclick="refreshUserPanel()" style="background:rgba(16,185,129,0.2);border:1.5px solid #10b981;color:#6ee7b7;width:24px;height:24px;border-radius:6px;font-size:0.85em;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;position:absolute;right:8px;top:0;" title="Yenile">↻</button>
-            </div>
-            <span id="user-panel-username" style="font-size:0.72em;color:#60a5fa;background:linear-gradient(135deg,rgba(59,130,246,0.2),rgba(37,99,235,0.3));border:1.5px solid #3b82f6;border-radius:12px;padding:3px 12px;display:none;white-space:nowrap;font-weight:800;box-shadow:0 0 10px rgba(59,130,246,0.3);animation:connected-pulse-blue 2s ease-in-out infinite;">
-                <span class="online-dot" style="width:7px;height:7px;margin-right:5px;background:#60a5fa;box-shadow:0 0 6px #60a5fa;"></span><span id="user-panel-username-text"></span>
-            </span>
+        <h3 style="color:#10b981;margin:-6px -6px 4px -6px;padding:8px 6px 4px 6px;font-size:0.9em;display:flex;align-items:center;justify-content:center;gap:5px;background:linear-gradient(135deg,rgba(16,185,129,0.18) 0%,rgba(5,150,105,0.1) 100%);border-bottom:1.5px solid rgba(16,185,129,0.35);border-radius:12px 12px 0 0;font-weight:900;">
+            <span style="display:flex;align-items:center;gap:5px;">👤 <span data-i18n="myPanel"></span></span>
+            <button onclick="refreshUserPanel()" style="background:rgba(16,185,129,0.2);border:1.5px solid #10b981;color:#6ee7b7;width:24px;height:24px;border-radius:6px;font-size:0.85em;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-left:auto;" title="Yenile">↻</button>
         </h3>
         <div class="user-tabs">
             <button class="user-tab-btn active" data-utab="utab-overview" onclick="switchUserTab('utab-overview')">📊 <span data-i18n="overview"></span></button>
@@ -1024,14 +1022,10 @@ function applyTranslations() {
     document.getElementById('lang-btn-en')?.classList.toggle('active',currentLang==='en');
     document.documentElement.lang=currentLang;
     applyConfigToDOM();
-    // FIX: "Bağlı: @kullanici" metni login anında innerHTML ile DOĞRUDAN
-    // yazılıyor (data-i18n etiketi yok, çünkü içinde dinamik kullanıcı
-    // adı var). Bu yüzden yukarıdaki genel data-i18n döngüsü bu elementi
-    // hiç görmüyordu ve dil değişiminde Türkçe sabit kalıyordu. Burada
-    // login durumuna göre elementi t() ile yeniden, güncel dilde kuruyoruz.
+    // user-status-text span'ı dil değişiminde güncelle
     if(isAuth&&currentUser){
-        const statusEl=document.getElementById('user-status');
-        if(statusEl) statusEl.innerHTML='<span class="online-dot"></span>'+t('connectedPrefix')+currentUser;
+        const statusTextEl=document.getElementById('user-status-text');
+        if(statusTextEl) statusTextEl.textContent=t('connectedPrefix')+currentUser;
     }
 }
 window.setLang=function(lang){ currentLang=lang; localStorage.setItem('w3dg_lang',lang); applyTranslations(); debouncedRender(); document.getElementById('lang-picker').style.display='none'; };
@@ -1134,10 +1128,6 @@ window.handleLogout=async function(){
     piReady=false;
     document.getElementById("user-status-box").style.display="none";
     document.getElementById("user-panel").style.display="none";
-    const upu2=document.getElementById("user-panel-username");
-    const uput2=document.getElementById("user-panel-username-text");
-    if(upu2){upu2.style.display='none';}
-    if(uput2){uput2.textContent='';}
     document.getElementById("admin-panel").style.display="none";
     document.getElementById("notif-btn").style.visibility="hidden";
     // Logout sonrası scroll'u sınırla (footer görünsün)
@@ -2028,16 +2018,12 @@ window.loginWithPi = async function() {
 
             // ── 4. Kullanıcı durum metni (bağlı göstergesi) ────────────
             const userStatusBox = document.getElementById("user-status-box");
-            const userStatus = document.getElementById("user-status");
-            if (userStatus) {
-                userStatus.innerHTML = '<span class="online-dot"></span>' + t('connectedPrefix') + currentUser;
+            const userStatusText = document.getElementById("user-status-text");
+            if (userStatusText) {
+                userStatusText.textContent = t('connectedPrefix') + currentUser;
             }
 
-            // Kullanıcı paneli kullanıcı adını ayarla (ama GÖSTERME)
-            const upu = document.getElementById("user-panel-username");
-            const uput = document.getElementById("user-panel-username-text");
-            if (upu) { upu.style.display = 'inline-flex'; }
-            if (uput) { uput.textContent = '@' + currentUser; }
+
 
             // ── 5. Scroll düzeltmesi ───────────────────────────────────
             document.querySelector('.main-scroll').style.maxHeight = 'none';
