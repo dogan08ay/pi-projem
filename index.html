@@ -161,6 +161,7 @@
 <base target="_blank">
 <base target="_blank">
 <base target="_blank">
+<base target="_blank">
 </head>
 <body>
 <div class="side-menu-overlay" id="side-menu-overlay" onclick="toggleSideMenu()"></div>
@@ -1772,19 +1773,29 @@ function render(){
     const list=document.getElementById("domain-list");
     const lock=document.getElementById("premium-lock");
     if(!list) return;
+
     applyTranslations();
 
-    // FIX: Market başlığı ve filtre sadece Firebase verisi geldikten
-    // sonra göster — başlangıçta gizli kalarak "yanıp sönme" önlenir
+    // FIX 1: İlk açılışta Firebase'den gerçek veri gelmediyse 
+    // sadece "yükleniyor" göster, DOM'u boşaltma.
+    // Bu, "Yükleniyor → Boş Ekran → İçerik" yanıp sönmeyini (flickering)
+    // tamamen engeller. İlk onSnapshot boş gelse bile render() erken 
+    // döner ve innerHTML'i silip tekrar kurmaz.
+    if(!firstDomainsSnapshotReceived || domains.length === 0){
+        list.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:24px 0;color:#64748b;font-size:0.8em;">⏳ ${t('loadingDomains')}</div>`;
+        return;
+    }
+
+    // Market başlığı ve filtre artık sadece GERÇEK veri gelince gösterilir
     const marketTitle=document.getElementById('market-title-box');
-    if(marketTitle) marketTitle.style.display=firstDomainsSnapshotReceived?'inline-block':'none';
+    if(marketTitle) marketTitle.style.display='inline-block';
     const filterSection=document.getElementById('filter-section');
-    if(filterSection) filterSection.style.display=(isAuth&&firstDomainsSnapshotReceived)?'block':'none';
+    if(filterSection) filterSection.style.display=isAuth?'block':'none';
 
     if(!isAuth){lock.classList.add("active");list.classList.add("locked-content");}
     else{lock.classList.remove("active");list.classList.remove("locked-content");}
 
-    // FIX: deleted===true olan domainler markette asla görünmez
+    // ... gerisi aynı (domain-grid oluşturma kısmı değişmedi)
     let sortedDomains=[...domains].filter(d=>!domainData[d.name]?.deleted).sort((a,b)=>(domainData[b.name]?.createdAt||0)-(domainData[a.name]?.createdAt||0));
     if(currentFilter!=='hepsi') sortedDomains=sortedDomains.filter(d=>(d.type||'genel')===currentFilter);
 
@@ -1937,9 +1948,7 @@ async function handleIncompletePayment(payment){
 // göstermek yerine bir kez sessizce yeniden deniyoruz.
 window.loginWithPi=async function(){
     await waitForPi();
-    // SDK init ile authenticate çağrısı arasına küçük bir nefes alma
-    // payı bırakıyoruz — bazı tarayıcılarda Pi SDK'nın init() sonrası
-    // iç durumu senkron olarak hazır olmuyor.
+    // SDK init ile authenticate çağrısı arasına küçük bir nefes alma payı
     await new Promise(r=>setTimeout(r,300));
 
     async function attemptLogin(isRetry){
@@ -1947,33 +1956,11 @@ window.loginWithPi=async function(){
             const auth=await Pi.authenticate(['username','payments'],handleIncompletePayment);
             currentUser=auth.user.username;
             piAccessToken=auth.accessToken;
-            isAuth=true;
-            document.getElementById("user-status").innerHTML='<span class="online-dot"></span>'+t('connectedPrefix')+currentUser;
-            document.getElementById("user-status-box").style.display="none";
-            const upu=document.getElementById("user-panel-username");
-            const uput=document.getElementById("user-panel-username-text");
-            if(upu){upu.style.display='inline-flex';}
-            if(uput){uput.textContent='@'+currentUser;}
-            document.getElementById("user-panel").style.display="block";
-            // Login sonrası scroll'u etkinleştir
-            document.querySelector('.main-scroll').style.maxHeight='none';
-            document.querySelector('.main-scroll').style.overflowY='auto';
+            isAuth=true; // Auth true, ancak PANEL henüz gösterilmiyor
 
-            // FIX: Bildirim ikonu artık fetch sonucunu beklemeden, login
-            // olur olmaz HEMEN gösteriliyor. Önceden ikon sadece bir
-            // get_notifications çağrısı BAŞARILI olduğunda görünür
-            // oluyordu — backend tarafında bir yapılandırma sorunu
-            // (örn. eksik FIREBASE_DATABASE_URL) varsa ikon hiç çıkmıyor
-            // ve kullanıcı bildirim sisteminin var olduğunu bile
-            // anlayamıyordu.
+            // Bildirim ve active status'u başlat (UI görünmeden önce güvenli)
             document.getElementById("notif-btn").style.visibility="visible";
-            // Bildirim polling başlat (RTDB rules kapalı → backend proxy)
             startNotifPolling();
-            // Profil yükle
-            await loadUserProfile();
-            // FIX: kendi ilan durumu değişikliklerini (onay/red) anında
-            // yakalamak için kendi sell_requests belgelerini dinlemeye başla
-            listenToMyOwnSellRequests(currentUser);
 
             if(currentUser===APP_CONFIG.adminUsername){
                 document.getElementById("admin-panel").style.display="block";
@@ -1986,10 +1973,7 @@ window.loginWithPi=async function(){
                 dateInput.onchange=(e)=>listenToLogs(e.target.value);
             }
 
-            // FIX: Giriş kaydı + ilk giriş tarihi artık backend (log_login)
-            // üzerinden tek seferde, tutarlı şekilde yapılıyor. Bu hem
-            // login bildirimini (admin'e) tetikliyor hem de race condition
-            // olmadan ilk giriş tarihini güvenilir şekilde hesaplıyor.
+            // Login log + ilk giriş tarihi (backend'den tutarlı şekilde)
             try{
                 const r=await fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},
                     body:JSON.stringify({action:'log_login',accessToken:piAccessToken})});
@@ -1998,20 +1982,41 @@ window.loginWithPi=async function(){
             }catch(e){console.error("Login log hatası:",e);}
 
             updateActiveStatus();
+
+            // ═════════════════════════════════════════════════════════════════
+            // FIX 2: Profil verileri tamamen yüklenmeden KULLANICI PANELİNİ 
+            // GÖSTERME. Önce tüm kullanıcı verilerini (puan, rozet, ilanlar, 
+            // alımlar, satışlar) çek. Bu, panelin boş/bay veriyle belirip 
+            // kaybolmasını (flickering) engeller.
+            // ═════════════════════════════════════════════════════════════════
+            await loadUserProfile();
+
+            // Şimdi UI'ı TEK SEFERDE, tutarlı şekilde göster.
+            // Artık userProfile, userSellRequests, userSoldDomains vb. DOLU.
+            document.getElementById("user-status").innerHTML='<span class="online-dot"></span>'+t('connectedPrefix')+currentUser;
+            document.getElementById("user-status-box").style.display="none";
+            const upu=document.getElementById("user-panel-username");
+            const uput=document.getElementById("user-panel-username-text");
+            if(upu){upu.style.display='inline-flex';}
+            if(uput){uput.textContent='@'+currentUser;}
+            document.getElementById("user-panel").style.display="block";
+            document.querySelector('.main-scroll').style.maxHeight='none';
+            document.querySelector('.main-scroll').style.overflowY='auto';
+
+            // Kendi ilan durumu değişikliklerini dinlemeye başla
+            listenToMyOwnSellRequests(currentUser);
+
+            // Tek seferde render et — tüm veriler (profil + domain) artık tutarlı
             debouncedRender();
+
             return true;
         }catch(e){
             console.error("Login error:",e);
             const msg=(e&&e.message)||'';
             const userCancelled=msg.includes('cancel')||msg.includes('user_cancelled')||msg.includes('User cancelled');
-            if(userCancelled) return true; // kullanıcı iptal etti, hata gösterme
+            if(userCancelled) return true;
 
             if(!isRetry){
-                // FIX: İlk deneme başarısız olduysa (ve kullanıcı iptal
-                // etmediyse) kısa bir bekleme ile SESSİZCE bir kez daha
-                // dene — kullanıcıya hata göstermeden. Önceki "ilk seferde
-                // hata, ikinci seferde başarılı" davranışının kullanıcı
-                // tarafından hiç görülmemesi hedefleniyor.
                 await new Promise(r=>setTimeout(r,400));
                 return await attemptLogin(true);
             }
@@ -2141,16 +2146,14 @@ onSnapshot(collection(db,"domains"),(snapshot)=>{
     const tsEl=document.getElementById("total-sold");const tvEl=document.getElementById("total-volume");
     if(tsEl) tsEl.innerText=totalSold; if(tvEl) tvEl.innerText=Math.round(totalVolume*100)/100;
 
-    // FIX: İlk veri paketi geldiğinde render() ANINDA (debounce beklemeden)
-    // çağrılır — kullanıcı "yükleniyor" durumundan tek adımda gerçek
-    // listeye geçer, ara bir boş/yarım render görmez. Sonraki tüm
-    // değişiklikler normal debounce ile işlenir.
+    // FIX 1: İlk veri paketi geldiğinde bile debouncedRender() çağrılır.
+    // render() fonksiyonu kendi içinde firstDomainsSnapshotReceived kontrolü
+    // yapar ve veri yoksa "yükleniyor" gösterir. Bu, "yükleniyor → boş → içerik"
+    // yanıp sönmeyini (flickering) engeller.
     if(!firstDomainsSnapshotReceived){
         firstDomainsSnapshotReceived=true;
-        render();
-    } else {
-        debouncedRender();
     }
+    debouncedRender();
     if(hasRelevantChange) debouncedProfileRefresh();
 });
 
