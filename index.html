@@ -157,6 +157,7 @@
 <base target="_blank">
 <base target="_blank">
 <base target="_blank">
+<base target="_blank">
 </head>
 <body>
 <div class="side-menu-overlay" id="side-menu-overlay" onclick="toggleSideMenu()"></div>
@@ -294,7 +295,7 @@
         <input type="text" id="sell-domain-wallet" class="sell-form-input" data-i18n-placeholder="walletPlaceholder">
         <div style="background:rgba(99,102,241,0.1);border:1px dashed #6366f1;border-radius:8px;padding:8px;font-size:0.68em;color:#94a3b8;margin-bottom:10px;" data-i18n="walletNote"></div>
         <div style="display:flex;gap:8px;">
-            <button class="pi-btn" style="background:#475569;flex:1;animation:none;padding:10px;margin:0;" onclick="document.getElementById('sell-domain-modal').style.display='none'" data-i18n="cancel"></button>
+            <button class="pi-btn" style="background:#475569;flex:1;animation:none;padding:10px;margin:0;" onclick="closeSellDomainModal()" data-i18n="cancel"></button>
             <button class="pi-btn" style="background:#f59e0b;flex:1;animation:none;padding:10px;margin:0;" onclick="handleSubmitSellRequest()" data-i18n="sendForApproval"></button>
         </div>
     </div>
@@ -1196,17 +1197,25 @@ window.handleSubmitSellRequest=async function(){
             if(result.success&&result.url) imgUrl=result.url;
             else{alert(t('imageUploadFailed'));if(hint)hint.textContent=t('imageUploadHint');return;}
         }catch(e){alert(t('imageUploadFailed'));return;}
+    }else if(window._editingRejectedRequestId&&window._editingRejectedRequestOldImg){
+        imgUrl=window._editingRejectedRequestOldImg;
+    }
+    // Düzenleme modu: önce eski reddedilmiş kaydı sil, sonra yeni gönder
+    if(window._editingRejectedRequestId){
+        const reqId=window._editingRejectedRequestId;
+        try{
+            const delR=await fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},
+                body:JSON.stringify({action:'delete_rejected_request',requestId:reqId,accessToken:piAccessToken})});
+            if(!delR.ok){alert((currentLang==='tr'?'Eski kayıt silinemedi: ':'Old record could not be deleted: ')+(await delR.json()).error||'');return;}
+        }catch(e){alert(currentLang==='tr'?'Eski kayıt silinirken hata oluştu.':'Error deleting old record.');return;}
     }
     try{
         const r=await fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},
             body:JSON.stringify({action:'submit_sell_request',domainName:name,price,domainType:type,imgPath:imgUrl,sellerWallet:wallet,description:desc,accessToken:piAccessToken})});
         const result=await r.json();
         if(!r.ok||!result.success){alert(t('sellSubmitFail')+(result.error||''));return;}
-        alert(t('sellSubmitSuccess'));
-        document.getElementById('sell-domain-modal').style.display='none';
-        ['sell-domain-name','sell-domain-price','sell-domain-desc','sell-domain-wallet'].forEach(id=>document.getElementById(id).value='');
-        selectedImageBase64=null;selectedImageMime=null;selectedImageName=null;
-        document.getElementById('sell-img-preview').style.display='none';
+        alert(window._editingRejectedRequestId?(currentLang==='tr'?'İlan düzenlenip yeniden onaya gönderildi.':'Listing edited and resubmitted for approval.'):t('sellSubmitSuccess'));
+        closeSellDomainModal();
         await loadUserProfile(); debouncedRender();
     }catch(e){alert(t('sellSubmitError'));}
 };
@@ -1348,17 +1357,62 @@ window.handleDeleteRejectedRequest=async function(requestId){
     }catch(e){alert(currentLang==='tr'?'Bir hata oluştu.':'An error occurred.');}
 };
 
-window.handleResubmitRequest=async function(requestId){
-    const confirmMsg=currentLang==='tr'?'Bu ilanı yeniden onaya göndermek istediğinize emin misiniz?':'Are you sure you want to resubmit this listing for approval?';
-    if(!confirm(confirmMsg)) return;
-    try{
-        const r=await fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'resubmit_sell_request',requestId,accessToken:piAccessToken})});
-        const result=await r.json();
-        if(!r.ok||!result.success){alert((currentLang==='tr'?'Gönderim başarısız: ':'Submission failed: ')+(result.error||''));return;}
-        alert(currentLang==='tr'?'İlan yeniden onaya gönderildi.':'Listing resubmitted for approval.');
-        await loadUserProfile();
-        debouncedRender();
-    }catch(e){alert(currentLang==='tr'?'Bir hata oluştu.':'An error occurred.');}
+window.openEditRejectedRequest=function(requestId){
+    const req=userSellRequests.find(r=>r.id===requestId);
+    if(!req){alert(currentLang==='tr'?'İlan bulunamadı.':'Listing not found.');return;}
+    if(req.status!=='rejected'){alert(currentLang==='tr'?'Sadece reddedilmiş ilanlar düzenlenebilir.':'Only rejected listings can be edited.');return;}
+    // Modal alanlarını doldur
+    document.getElementById('sell-domain-name').value=req.domainName||'';
+    document.getElementById('sell-domain-name').readOnly=true;
+    document.getElementById('sell-domain-name').style.background='#1e293b';
+    document.getElementById('sell-domain-name').style.color='#64748b';
+    document.getElementById('sell-domain-price').value=req.price||'';
+    document.getElementById('sell-domain-type').value=req.domainType||'genel';
+    document.getElementById('sell-domain-desc').value=req.description||'';
+    document.getElementById('sell-domain-wallet').value=req.sellerWallet||'';
+    // Görsel önizlemesi
+    selectedImageBase64=null;selectedImageMime=null;selectedImageName=null;
+    const preview=document.getElementById('sell-img-preview');
+    const hint=document.getElementById('img-upload-hint');
+    if(req.img&&req.img!=='assets/default.jpeg'){
+        preview.src=req.img;
+        preview.style.display='block';
+        if(hint) hint.style.display='none';
+    }else{
+        preview.style.display='none';
+        if(hint){hint.style.display='block';hint.textContent=t('imageUploadHint');}
+    }
+    // Düzenleme modunu ayarla
+    window._editingRejectedRequestId=requestId;
+    window._editingRejectedRequestOldImg=req.img||'assets/default.jpeg';
+    // Modal başlığını güncelle
+    const titleEl=document.querySelector('#sell-domain-modal h2');
+    if(titleEl) titleEl.textContent=currentLang==='tr'?'✏️ Reddedilmiş İlanı Düzenle':'✏️ Edit Rejected Listing';
+    const btnEl=document.querySelector('#sell-domain-modal button[onclick*="handleSubmitSellRequest"]');
+    if(btnEl) btnEl.textContent=currentLang==='tr'?'Onaya Gönder':'Send for Approval';
+    document.getElementById('sell-domain-modal').style.display='flex';
+};
+
+window.closeSellDomainModal=function(){
+    document.getElementById('sell-domain-modal').style.display='none';
+    // Alanları temizle
+    ['sell-domain-name','sell-domain-price','sell-domain-desc','sell-domain-wallet'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+    document.getElementById('sell-domain-name').readOnly=false;
+    document.getElementById('sell-domain-name').style.background='';
+    document.getElementById('sell-domain-name').style.color='';
+    selectedImageBase64=null;selectedImageMime=null;selectedImageName=null;
+    const preview=document.getElementById('sell-img-preview');
+    if(preview) preview.style.display='none';
+    const hint=document.getElementById('img-upload-hint');
+    if(hint){hint.style.display='block';hint.textContent=t('imageUploadHint');}
+    // Başlıkları sıfırla
+    const titleEl=document.querySelector('#sell-domain-modal h2');
+    if(titleEl&&titleEl.hasAttribute('data-i18n')) titleEl.textContent=t(titleEl.getAttribute('data-i18n'));
+    const btnEl=document.querySelector('#sell-domain-modal button[onclick*="handleSubmitSellRequest"]');
+    if(btnEl&&btnEl.hasAttribute('data-i18n')) btnEl.textContent=t(btnEl.getAttribute('data-i18n'));
+    // Düzenleme modunu temizle
+    delete window._editingRejectedRequestId;
+    delete window._editingRejectedRequestOldImg;
 };
 
 window.handleWithdrawSellRequest=async function(requestId){
@@ -1803,7 +1857,7 @@ function renderUserPanel(){
                     <!-- Reddedilmiş ilan için kullanıcı aksiyon butonları -->
                     ${isRejected?`<div style="display:flex;gap:8px;margin-top:8px;padding-top:8px;border-top:1px solid #334155;">
                         <button onclick="handleDeleteRejectedRequest('${req.id}')" style="flex:1;background:#ef4444;color:#fff;border:none;padding:7px;border-radius:6px;font-size:0.7em;font-weight:800;cursor:pointer;">🗑️ ${currentLang==='tr'?'İlanı Sil':'Delete Listing'}</button>
-                        <button onclick="handleResubmitRequest('${req.id}')" style="flex:1;background:#10b981;color:#fff;border:none;padding:7px;border-radius:6px;font-size:0.7em;font-weight:800;cursor:pointer;">🔄 ${currentLang==='tr'?'Yeniden Onaya Gönder':'Resubmit for Approval'}</button>
+                        <button onclick="openEditRejectedRequest('${req.id}')" style="flex:1;background:#3b82f6;color:#fff;border:none;padding:7px;border-radius:6px;font-size:0.7em;font-weight:800;cursor:pointer;">✏️ ${currentLang==='tr'?'Düzenle & Yeniden Gönder':'Edit & Resubmit'}</button>
                     </div>`:''}
                     ${isPending?`<div style="display:flex;gap:8px;margin-top:8px;padding-top:8px;border-top:1px solid #334155;">
                         <button onclick="handleWithdrawSellRequest('${req.id}')" style="width:100%;background:#475569;color:#cbd5e1;border:1px solid #64748b;padding:7px;border-radius:6px;font-size:0.7em;font-weight:800;cursor:pointer;">🚫 ${currentLang==='tr'?'İlanı Geri Çek':'Withdraw Request'}</button>
