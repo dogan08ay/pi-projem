@@ -85,13 +85,13 @@
         .lang-option{display:flex;align-items:center;gap:6px;padding:5px 7px;color:#f1f5f9;font-size:0.75em;font-weight:700;cursor:pointer;border-radius:8px;margin:2px 0;border:none;background:transparent;width:100%;box-sizing:border-box;transition:background 0.15s;}
         .lang-option:hover,.lang-option.active{background:rgba(99,102,241,0.2);}
         .lang-option.active{color:#a5b4fc;}
-        .admin-tabs{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:10px;padding-bottom:4px;}
+        .admin-tabs{display:grid;grid-template-columns:repeat(6,1fr);gap:4px;margin-bottom:8px;padding-bottom:2px;overflow-x:auto;}
         .admin-tabs::-webkit-scrollbar{height:0;display:none;}
-        .admin-tab-btn{background:linear-gradient(135deg,#1e1b4b 0%,#0f172a 100%);border:1.5px solid #4c1d95;color:#a5b4fc;padding:10px 4px;border-radius:10px;font-size:0.72em;text-align:center;display:flex;align-items:center;justify-content:center;white-space:nowrap;font-weight:800;cursor:pointer;display:flex;align-items:center;gap:6px;white-space:nowrap;transition:all 0.2s;box-shadow:0 2px 8px rgba(0,0,0,0.3);}
+        .admin-tab-btn{background:linear-gradient(135deg,#1e1b4b 0%,#0f172a 100%);border:1px solid #4c1d95;color:#a5b4fc;padding:6px 2px;border-radius:8px;font-size:0.58em;text-align:center;display:flex;align-items:center;justify-content:center;white-space:nowrap;font-weight:800;cursor:pointer;gap:3px;transition:all 0.2s;box-shadow:0 2px 6px rgba(0,0,0,0.3);line-height:1.2;min-width:0;overflow:hidden;}
         .admin-tab-btn.active{background:linear-gradient(135deg,rgba(99,102,241,0.25),rgba(129,140,248,0.15));border-color:#818cf8;color:#c7d2fe;box-shadow:0 0 12px rgba(99,102,241,0.4);}
         .admin-tab-panel{display:none;}
         .admin-tab-panel.active{display:block;animation:card-rise 0.3s ease backwards;}
-        .pending-badge{background:#ef4444;color:#fff;font-size:0.65em;font-weight:900;border-radius:8px;padding:1px 6px;margin-left:2px;}
+        .pending-badge{background:#ef4444;color:#fff;font-size:0.55em;font-weight:900;border-radius:6px;padding:1px 4px;margin-left:1px;flex-shrink:0;display:inline-block;vertical-align:middle;line-height:1.2;}
         .user-tabs{display:flex;gap:4px;margin-bottom:8px;width:100%;}
         .user-tab-btn{flex:1 1 0;min-width:0;background:linear-gradient(135deg,#064e3b 0%,#0f172a 100%);border:1.5px solid #059669;color:#6ee7b7;padding:10px 4px;border-radius:9px;font-size:0.75em;font-weight:800;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;transition:all 0.2s;text-align:center;box-shadow:0 2px 8px rgba(0,0,0,0.3);}
         .user-tab-btn.active{background:rgba(16,185,129,0.15);border-color:#10b981;color:#6ee7b7;}
@@ -156,6 +156,7 @@
 <base target="_blank">
 <base target="_blank">
 <base target="_blank">
+<base target="_blank">
 </head>
 <body>
 <div class="side-menu-overlay" id="side-menu-overlay" onclick="toggleSideMenu()"></div>
@@ -169,9 +170,12 @@
     <div id="side-menu-profile-box" style="display:none;background:rgba(99,102,241,0.12);border:1.5px solid #6366f1;border-radius:9px;padding:6px;margin-bottom:4px;text-align:left;">
         <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
             <div style="width:34px;height:34px;border-radius:50%;background:linear-gradient(135deg,#6366f1,#a855f7);display:flex;align-items:center;justify-content:center;font-weight:900;font-size:0.95em;color:#fff;" id="side-menu-avatar">?</div>
-            <div>
-                <div id="side-menu-username" style="font-weight:900;color:#f1f5f9;font-size:0.95em;">—</div>
-                <div style="font-size:0.65em;color:#94a3b8;margin-top:0px;"><span class="online-dot" style="width:7px;height:7px;"></span><span data-i18n="connected"></span></div>
+            <div style="flex:1;min-width:0;">
+                <div id="side-menu-username" style="font-weight:900;color:#f1f5f9;font-size:0.95em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">—</div>
+                <div id="side-menu-connected-status" style="display:none;font-size:0.65em;color:#60a5fa;font-weight:800;margin-top:2px;background:linear-gradient(135deg,rgba(59,130,246,0.15),rgba(37,99,235,0.2));border:1px solid #3b82f6;border-radius:12px;padding:2px 8px;box-shadow:0 0 6px rgba(59,130,246,0.2);animation:connected-pulse-blue 2s ease-in-out infinite;width:fit-content;">
+                    <span class="online-dot" style="width:6px;height:6px;margin-right:4px;background:#60a5fa;box-shadow:0 0 4px #60a5fa;"></span>
+                    <span id="side-menu-status-text"></span>
+                </div>
                 <div id="side-menu-badge-display" style="font-size:0.75em;margin-top:3px;"></div>
             </div>
         </div>
@@ -423,12 +427,7 @@
             <span style="display:flex;align-items:center;gap:5px;">👤 <span data-i18n="myPanel"></span></span>
             <button onclick="refreshUserPanel()" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);background:rgba(16,185,129,0.2);border:1.5px solid #10b981;color:#6ee7b7;width:24px;height:24px;border-radius:6px;font-size:0.85em;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;" title="Yenile"><span id="refresh-icon" style="display:inline-block;transition:transform 0.5s ease;">↻</span></button>
         </h3>
-        <div id="user-status-box" style="display:none;text-align:center;margin:4px 0 2px 0;">
-            <p id="user-status" style="display:inline-flex;align-items:center;gap:5px;font-size:0.78em;color:#60a5fa;font-weight:900;margin:0;background:linear-gradient(135deg,rgba(59,130,246,0.2),rgba(37,99,235,0.3));border:1.5px solid #3b82f6;border-radius:20px;padding:4px 14px;box-shadow:0 0 10px rgba(59,130,246,0.3);animation:connected-pulse-blue 2s ease-in-out infinite;">
-                <span class="online-dot" style="width:7px;height:7px;margin-right:2px;background:#60a5fa;box-shadow:0 0 6px #60a5fa;"></span>
-                <span id="user-status-text"></span>
-            </p>
-        </div>
+        <!-- Bağlı durumu artık side-menu-profile-box içinde gösteriliyor -->
         <div class="user-tabs">
             <button class="user-tab-btn active" data-utab="utab-overview" onclick="switchUserTab('utab-overview')">📊 <span data-i18n="overview"></span></button>
             <button class="user-tab-btn" data-utab="utab-purchases" onclick="switchUserTab('utab-purchases')">🛒 <span data-i18n="myPurchases"></span></button>
@@ -496,12 +495,12 @@
     <div class="card" id="admin-panel" style="display:none;border:2px solid #6366f1;box-shadow:0 0 12px rgba(99,102,241,0.2);padding:5px;">
         <h3 style="color:#fbbf24;margin:-8px -8px 10px -8px;padding:10px 8px;font-size:0.95em;display:flex;align-items:center;justify-content:center;gap:6px;background:linear-gradient(135deg,rgba(99,102,241,0.2) 0%,rgba(67,56,202,0.1) 100%);border-bottom:1.5px solid rgba(99,102,241,0.4);border-radius:14px 14px 0 0;font-weight:900;">🛠 Admin Panel</h3>
         <div class="admin-tabs">
-            <button class="admin-tab-btn active" data-tab="tab-users" onclick="switchAdminTab('tab-users')">👥 <span data-i18n="users"></span></button>
-            <button class="admin-tab-btn" data-tab="tab-stats" onclick="switchAdminTab('tab-stats')">📈 <span data-i18n="salesStats"></span></button>
-            <button class="admin-tab-btn" data-tab="tab-pending" onclick="switchAdminTab('tab-pending')">🏷️ <span data-i18n="pendingApprovals"></span><span class="pending-badge" id="pending-count-badge" style="display:none;">0</span></button>
-            <button class="admin-tab-btn" data-tab="tab-prices" onclick="switchAdminTab('tab-prices')">💰 <span data-i18n="priceManagement"></span></button>
-            <button class="admin-tab-btn" data-tab="tab-add" onclick="switchAdminTab('tab-add')">➕ <span data-i18n="addDomain"></span></button>
-            <button class="admin-tab-btn" data-tab="tab-earnings" onclick="switchAdminTab('tab-earnings')">🏦 <span data-i18n="earningsTab"></span></button>
+            <button class="admin-tab-btn active" data-tab="tab-users" onclick="switchAdminTab('tab-users')" title="Kullanıcılar"><span style="font-size:1.1em;">👥</span><span style="font-size:0.75em;" data-i18n="users"></span></button>
+            <button class="admin-tab-btn" data-tab="tab-stats" onclick="switchAdminTab('tab-stats')" title="Satış İstatistikleri"><span style="font-size:1.1em;">📈</span><span style="font-size:0.75em;" data-i18n="salesStats"></span></button>
+            <button class="admin-tab-btn" data-tab="tab-pending" onclick="switchAdminTab('tab-pending')" title="Bekleyen Onaylar"><span style="font-size:1.1em;">🏷️</span><span style="font-size:0.75em;display:inline-flex;align-items:center;gap:1px;"><span data-i18n="pendingApprovals"></span><span class="pending-badge" id="pending-count-badge" style="display:none;">0</span></span></button>
+            <button class="admin-tab-btn" data-tab="tab-prices" onclick="switchAdminTab('tab-prices')" title="Domain Yönetimi"><span style="font-size:1.1em;">💰</span><span style="font-size:0.75em;" data-i18n="priceManagement"></span></button>
+            <button class="admin-tab-btn" data-tab="tab-add" onclick="switchAdminTab('tab-add')" title="Domain Ekle"><span style="font-size:1.1em;">➕</span><span style="font-size:0.75em;" data-i18n="addDomain"></span></button>
+            <button class="admin-tab-btn" data-tab="tab-earnings" onclick="switchAdminTab('tab-earnings')" title="Kazanç"><span style="font-size:1.1em;">🏦</span><span style="font-size:0.75em;" data-i18n="earningsTab"></span></button>
         </div>
         <div class="admin-tab-panel active" id="tab-users">
             <button onclick="openUniqueUsersModal()" style="width:100%;box-sizing:border-box;background:linear-gradient(135deg,#1e1b4b 0%,#1e293b 100%);border:2px solid #6366f1;border-radius:14px;padding:12px 14px;cursor:pointer;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;box-shadow:0 4px 18px rgba(99,102,241,0.4);">
@@ -737,7 +736,7 @@ const i18n = {
     soldDomains:"Satılan Domain",totalVolume:"Toplam Hacim",activeUsers:"Aktif Kullanıcı",
     overview:"Genel",myPurchases:"Alımlarım",myListings:"İlanlarım",myIncome:"Gelirim",
     totalSpent:"Toplam Harcama",myListingsCount:"İlan Sayım",
-    myListingsTitle:"İlan Son Durumu",listNewDomain:"+ Yeni İlan Ver",
+    myListingsTitle:"İlan Kontrol Paneli",listNewDomain:"+ Yeni İlan Ver",
     totalEarned:"TOPLAM GELİR",earnedNote:"Satışa sunduğunuz ve satılan domainlerden elde edilen gelir.",
     info:"BİLGİ",
     testNetNote:"<div style=\'display:grid;grid-template-columns:auto 1fr;gap:4px 8px;align-items:start;font-size:0.95em;\'><div>🧪</div><div>Bu uygulama <b>Test-Pi</b> ağında deneme amaçlıdır.</div><div>🔄</div><div>Satın aldığınız domainler tekrar <span class=\"btn-fake-buy\">SATIN AL</span> olarak görünebilir.</div><div>⚠️</div><div>Satın alma geçmişinizden silinebilir.</div></div>",
@@ -887,7 +886,7 @@ const i18n = {
     soldDomains:"Sold Domains",totalVolume:"Total Volume",activeUsers:"Active Users",
     overview:"Overview",myPurchases:"My Purchases",myListings:"My Listings",myIncome:"My Income",
     totalSpent:"Total Spent",myListingsCount:"My Listings",
-    myListingsTitle:"Listing Status",listNewDomain:"+ New Listing",
+    myListingsTitle:"Listing Control Panel",listNewDomain:"+ New Listing",
     totalEarned:"TOTAL EARNINGS",earnedNote:"Total earnings from your listed and sold domains.",
     info:"INFO",
     testNetNote:"<div style=\'display:grid;grid-template-columns:auto 1fr;gap:4px 8px;align-items:start;font-size:0.95em;\'><div>🧪</div><div>This app runs on <b>Test-Pi</b> for demo purposes.</div><div>🔄</div><div>Purchased domains may reappear as <span class=\"btn-fake-buy\">BUY</span> in the market.</div><div>⚠️</div><div>They may be removed from your purchase history.</div></div>",
@@ -1084,6 +1083,13 @@ function updateSideMenuProfile(){
         document.getElementById('side-menu-username').innerText='@'+currentUser;
         document.getElementById('side-menu-avatar').innerText=currentUser.charAt(0).toUpperCase();
         document.getElementById('side-menu-badge-display').innerHTML=badgeHTML(userProfile.badge);
+        const sideMenuStatusBoxUpd = document.getElementById('side-menu-connected-status');
+        const sideMenuStatusTextUpd = document.getElementById('side-menu-status-text');
+        if(sideMenuStatusBoxUpd && sideMenuStatusTextUpd) {
+            sideMenuStatusTextUpd.textContent = '@' + currentUser;
+            sideMenuStatusBoxUpd.style.display = 'inline-flex';
+            sideMenuStatusBoxUpd.style.alignItems = 'center';
+        }
         const myCount=domains.filter(d=>domainData[d.name]?.sold&&domainData[d.name]?.buyer===currentUser).length;
         document.getElementById('side-menu-domain-count').innerText=myCount;
         const locale=currentLang==='en'?'en-GB':'tr-TR';
@@ -1127,7 +1133,7 @@ window.handleLogout=async function(){
     // piReady=true kalınca waitForPi() init atladığı için authenticate
     // başarısız oluyordu.
     piReady=false;
-    document.getElementById("user-status-box").style.display="none";
+    const sideMenuStatusBoxLogout = document.getElementById("side-menu-connected-status"); if(sideMenuStatusBoxLogout) sideMenuStatusBoxLogout.style.display="none";
     document.getElementById("user-panel").style.display="none";
     document.getElementById("admin-panel").style.display="none";
     document.getElementById("notif-btn").style.visibility="hidden";
@@ -1405,9 +1411,18 @@ window.handleApproveSellRequest=async function(requestId){
     const result=await r.json(); if(!r.ok||!result.success) alert(t('approveFail')+(result.error||''));
 };
 window.handleRejectSellRequest=async function(requestId){
+    const reason = prompt(currentLang==='tr' ? 'Reddetme nedenini girin (opsiyonel):' : 'Enter rejection reason (optional):');
+    if(reason === null) return; // İptal edildi
     if(!confirm(t('rejectConfirm'))) return;
-    const r=await fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'reject_sell_request',requestId,accessToken:piAccessToken})});
+    const r=await fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'reject_sell_request',requestId,rejectReason:reason,accessToken:piAccessToken})});
     const result=await r.json(); if(!r.ok||!result.success) alert(t('rejectFail')+(result.error||''));
+};
+
+// Reddedilmiş ilanı listeden kaldır (sadece görsel, veritabanında kalır)
+window.handleRemoveRejectedRequest=async function(requestId){
+    if(!confirm(currentLang==='tr' ? 'Bu reddedilmiş ilanı listeden kaldırmak istediğinize emin misiniz?' : 'Are you sure you want to remove this rejected listing from your view?')) return;
+    userSellRequests = userSellRequests.filter(r => r.id !== requestId);
+    debouncedRender();
 };
 // ADMIN PRICE LIST
 function renderAdminPriceList(){
@@ -1700,7 +1715,7 @@ function renderUserPanel(){
                     </div>
                 </div>`).join('');
         }
-        // Tüm satış önerileri geçmişi + TÜM detaylar (YENİ SIRALAMA)
+        // Tüm satış önerileri geçmişi — TABLO DÜZENİ
         html+=`<div style="display:inline-flex;align-items:center;gap:6px;background:linear-gradient(135deg,#78350f,#92400e);color:#fcd34d;font-size:0.68em;font-weight:800;text-transform:uppercase;margin:10px 0 6px 0;padding:4px 10px;border-radius:8px;border:1px solid #f59e0b;">📋 ${t('myListingsTitle')}</div>`;
         if(!userSellRequests.length){
             html+=`<p style="font-size:0.75em;opacity:0.5;text-align:center;">${t('noListings')}</p>`;
@@ -1708,6 +1723,18 @@ function renderUserPanel(){
             const statusMap={pending:t('statusPending'),approved:t('statusApproved'),rejected:t('statusRejected'),sold:t('domainSold')};
             const statusColor={pending:'#fbbf24',approved:'#10b981',rejected:'#ef4444',sold:'#ef4444'};
             const statusBg={pending:'rgba(251,191,36,0.1)',approved:'rgba(16,185,129,0.1)',rejected:'rgba(239,68,68,0.1)',sold:'rgba(239,68,68,0.1)'};
+
+            // TABLO BAŞLIKLARI
+            html+=`<div style="display:grid;grid-template-columns:50px 1fr 70px 1fr 70px 60px 50px;gap:4px;align-items:center;padding:6px 8px;background:#1e293b;border-radius:8px 8px 0 0;font-size:0.6em;font-weight:800;color:#94a3b8;text-transform:uppercase;letter-spacing:0.5px;border-bottom:1px solid #334155;">
+                <div style="text-align:center;">🖼️</div>
+                <div>İlan Adı</div>
+                <div style="text-align:center;">Tür</div>
+                <div>Açıklama</div>
+                <div style="text-align:center;">Tarih</div>
+                <div style="text-align:right;">Fiyat</div>
+                <div style="text-align:center;">Durum</div>
+            </div>`;
+
             html+=userSellRequests.map(req=>{
                 // Domain satıldı mı kontrol et
                 const domainInfo=domainData[req.domainName];
@@ -1716,25 +1743,37 @@ function renderUserPanel(){
                 const finalLabel=statusMap[finalStatus]||req.status;
                 const finalColor=statusColor[finalStatus]||'#94a3b8';
                 const finalBg=statusBg[finalStatus]||'transparent';
-                return `<div style="background:#0f172a;border:1.5px solid ${finalColor};border-radius:12px;padding:10px;margin-bottom:8px;">
-                    <div style="display:flex;gap:8px;margin-bottom:8px;">
-                        <img src="${req.img||'assets/default.jpeg'}" style="width:60px;height:60px;object-fit:cover;border-radius:8px;background:#334155;flex-shrink:0;" onerror="this.src='assets/default.jpeg'">
-                        <div style="flex:1;min-width:0;">
-                            <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:4px;">
-                                <b style="color:#f1f5f9;font-size:0.9em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${req.domainName}</b>
-                                <span style="background:${finalBg};color:${finalColor};font-size:0.6em;font-weight:800;padding:2px 6px;border-radius:6px;border:1px solid ${finalColor};flex-shrink:0;margin-left:4px;white-space:nowrap;">${finalLabel}</span>
-                            </div>
-                            <div style="color:#fbbf24;font-weight:900;font-size:0.9em;margin-bottom:3px;">${req.price} Pi</div>
-                            <div style="font-size:0.65em;color:#94a3b8;">📅 ${req.submittedAt?new Date(req.submittedAt).toLocaleDateString(locale,{day:'2-digit',month:'2-digit',year:'numeric'}):'-'}</div>
-                        </div>
+                const imgUrl = req.img || 'assets/default.jpeg';
+                const descShort = req.description ? (req.description.length > 25 ? req.description.substring(0,25)+'...' : req.description) : '-';
+                const dateStr = req.submittedAt ? new Date(req.submittedAt).toLocaleDateString(locale,{day:'2-digit',month:'2-digit'}) : '-';
+
+                return `<div style="display:grid;grid-template-columns:50px 1fr 70px 1fr 70px 60px 50px;gap:4px;align-items:center;padding:8px;background:#0f172a;border-bottom:1px solid #1e293b;font-size:0.72em;transition:background 0.15s;" onmouseover="this.style.background='#1a2332'" onmouseout="this.style.background='#0f172a'">
+                    <div style="text-align:center;">
+                        <img src="${imgUrl}" style="width:40px;height:40px;object-fit:cover;border-radius:6px;background:#334155;display:block;margin:0 auto;" onerror="this.style.visibility='hidden';this.parentElement.innerHTML='<div style=\'width:40px;height:40px;background:#334155;border-radius:6px;display:flex;align-items:center;justify-content:center;color:#64748b;font-size:0.7em;\'>🖼️</div>'">
                     </div>
-                    <div style="display:flex;flex-direction:column;gap:5px;font-size:0.72em;color:#cbd5e1;line-height:1.4;">
-                        <div style="display:flex;gap:4px;align-items:center;"><span style="color:#64748b;flex-shrink:0;">🏷️ ${t('detailFieldType')}:</span><span class="domain-type-tag" style="margin:0;">${typeLabel(req.domainType)}</span></div>
-                        ${req.description?`<div style="display:flex;gap:4px;align-items:flex-start;"><span style="color:#64748b;flex-shrink:0;">📝 ${t('detailFieldDesc')}:</span><span style="color:#94a3b8;">${req.description}</span></div>`:''}
-                        ${req.sellerWallet?`<div style="display:flex;gap:4px;align-items:center;word-break:break-all;"><span style="color:#64748b;flex-shrink:0;">💳 ${t('detailFieldWallet')}:</span><span style="color:#60a5fa;font-size:0.9em;">${req.sellerWallet}</span></div>`:''}
+                    <div style="font-weight:800;color:#f1f5f9;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${req.domainName}</div>
+                    <div style="text-align:center;"><span class="domain-type-tag" style="margin:0;font-size:0.85em;">${typeLabel(req.domainType)}</span></div>
+                    <div style="color:#94a3b8;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${req.description||''}">${descShort}</div>
+                    <div style="text-align:center;color:#64748b;font-size:0.85em;">${dateStr}</div>
+                    <div style="text-align:right;color:#fbbf24;font-weight:900;font-size:0.9em;">${req.price} π</div>
+                    <div style="text-align:center;">
+                        <span style="background:${finalBg};color:${finalColor};font-size:0.55em;font-weight:800;padding:2px 5px;border-radius:4px;border:1px solid ${finalColor};white-space:nowrap;display:inline-block;margin-bottom:2px;">${finalLabel}</span>
+                        ${finalStatus==='rejected' && req.rejectReason ? `<div style="font-size:0.55em;color:#fca5a5;max-width:50px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${req.rejectReason}">📝 ${req.rejectReason}</div>` : ''}
                     </div>
                 </div>`;
             }).join('');
+
+            // Reddedilmiş ilanlar için kaldır butonu
+            const rejectedRequests = userSellRequests.filter(r => r.status === 'rejected');
+            if(rejectedRequests.length > 0){
+                html+=`<div style="margin-top:10px;padding:8px;background:#1c0a0a;border:1px solid #7f1d1d;border-radius:8px;">
+                    <div style="font-size:0.65em;color:#fca5a5;font-weight:800;margin-bottom:6px;">❌ ${currentLang==='tr'?'Reddedilmiş İlanları Kaldır':'Remove Rejected Listings'}</div>
+                    <div style="display:flex;flex-wrap:wrap;gap:4px;">`;
+                rejectedRequests.forEach(req => {
+                    html+=`<button onclick="handleRemoveRejectedRequest('${req.id}')" style="background:#7f1d1d;color:#fca5a5;border:1px solid #ef4444;padding:3px 8px;border-radius:5px;font-size:0.6em;font-weight:700;cursor:pointer;white-space:nowrap;">🗑️ ${req.domainName}</button>`;
+                });
+                html+=`</div></div>`;
+            }
         }
         myListingsEl.innerHTML=html;
     }
@@ -2017,11 +2056,15 @@ window.loginWithPi = async function() {
             await loadUserProfile();
             listenToMyOwnSellRequests(currentUser);
 
-            // ── 4. Kullanıcı durum metni (bağlı göstergesi) ────────────
-            const userStatusBox = document.getElementById("user-status-box");
-            const userStatusText = document.getElementById("user-status-text");
-            if (userStatusText) {
-                userStatusText.textContent = t('connectedPrefix') + currentUser;
+            // ── 4. Kullanıcı durum metni (bağlı göstergesi) — SIDE MENU'YE TAŞINDI ────────────
+            const sideMenuStatusBox = document.getElementById("side-menu-connected-status");
+            const sideMenuStatusText = document.getElementById("side-menu-status-text");
+            if (sideMenuStatusText) {
+                sideMenuStatusText.textContent = '@' + currentUser;
+            }
+            if (sideMenuStatusBox) {
+                sideMenuStatusBox.style.display = 'inline-flex';
+                sideMenuStatusBox.style.alignItems = 'center';
             }
 
 
@@ -2081,15 +2124,7 @@ window.loginWithPi = async function() {
                         });
                     }
 
-                    // c) Kullanıcı durum metni fade in
-                    if (userStatusBox) {
-                        userStatusBox.style.display = "block";
-                        userStatusBox.style.opacity = '0';
-                        userStatusBox.style.transition = 'opacity 0.3s ease';
-                        requestAnimationFrame(() => {
-                            userStatusBox.style.opacity = '1';
-                        });
-                    }
+                    // c) Kullanıcı durum metni KALDIRILDI — artık side-menu'de gösteriliyor
 
                     // d) Kullanıcı panelini aç (küçük gecikme ile admin'den sonra)
                     const userPanel = document.getElementById("user-panel");
