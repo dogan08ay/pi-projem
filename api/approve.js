@@ -178,6 +178,74 @@ async function updateUserPoints(username, points, reason) {
 }
 
 // ══════════════════════════════════════════════════════════════════════════
+//  YENİ: Satış kaydını ve puanları geri alma yardımcı fonksiyonu
+//  Bu fonksiyon, bir domain satışı iptal edildiğinde (relist, delete vb.)
+//  alıcının global_sales kaydını siler ve puanlarını geri alır.
+// ══════════════════════════════════════════════════════════════════════════
+async function reverseSaleAndPoints(db, domainName, buyerUsername, soldPrice, soldAt) {
+  if (!buyerUsername || !soldPrice) {
+    console.log(`[reverseSale] Atlandı: buyer=${buyerUsername}, price=${soldPrice}`);
+    return;
+  }
+
+  try {
+    // 1. global_sales'ten satış kaydını bul ve sil
+    // txid olmayabilir (test ortamında), o yüzden domain+user+at kombinasyonuyla ara
+    const salesQuery = await db.collection('global_sales')
+      .where('user', '==', buyerUsername)
+      .where('domain', '==', domainName)
+      .get();
+
+    let deletedCount = 0;
+    const batch = db.batch();
+    
+    salesQuery.forEach(doc => {
+      const data = doc.data();
+      // Aynı domain'den birden fazla kayıt olabilir, en yakın tarihli olanı sil
+      // veya hepsini sil (çünkü relist'te zaten tek kayıt olmalı)
+      batch.delete(doc.ref);
+      deletedCount++;
+    });
+
+    if (deletedCount > 0) {
+      await batch.commit();
+      console.log(`[reverseSale] ${deletedCount} adet global_sales kaydı silindi: ${domainName} → @${buyerUsername}`);
+    }
+
+    // 2. Kullanıcı puanlarını geri al (negatif ekle = pozitif puanı azalt)
+    // Satın alma +puan vermişti, şimdi -puan ile geri al
+    await updateUserPoints(buyerUsername, -soldPrice, `sale_reversed_${domainName}`);
+
+    // 3. daily_stats'ten de düş (eğer soldAt varsa)
+    if (soldAt) {
+      const soldDate = new Date(soldAt).toISOString().split('T')[0];
+      try {
+        await db.collection('daily_stats').doc(soldDate).set({
+          count: FieldValue.increment(-1),
+          volume: FieldValue.increment(-soldPrice)
+        }, { merge: true });
+        console.log(`[reverseSale] daily_stats güncellendi: ${soldDate}, -${soldPrice} Pi`);
+      } catch (statErr) {
+        console.error("[reverseSale] daily_stats güncelleme hatası:", statErr);
+      }
+    }
+
+    // 4. Alıcıya bildirim gönder
+    await sendNotification(buyerUsername, {
+      type: 'purchase_reversed',
+      title: 'ℹ️ Satın Alma İptal Edildi',
+      body: `"${domainName}" domaini yönetici tarafından tekrar satışa çıkarıldı veya silindi. ${soldPrice} Pi harcamanız geri alındı.`,
+      domainName,
+      reversedAmount: soldPrice
+    });
+
+  } catch (e) {
+    console.error(`[reverseSale] Hata: ${domainName} → @${buyerUsername}`, e);
+    // Hata olsa bile devam et, kritik değil
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════════════
 //  ANA HANDLER
 // ══════════════════════════════════════════════════════════════════════════
 export default async function handler(req, res) {
@@ -320,6 +388,8 @@ export default async function handler(req, res) {
   }
 
   // ── Relist ────────────────────────────────────────────────────────────
+  // DÜZELTME: Domain tekrar satılık yapıldığında, önceki alıcının 
+  // global_sales kaydı silinir ve puanları/harcamaları geri alınır.
   if (action === 'relist') {
     const { domainName } = req.body;
     const isAdmin = await verifyAdmin(accessToken);
@@ -338,34 +408,15 @@ export default async function handler(req, res) {
       const soldAt = soldData.at;
       const prevBuyer = soldData.buyer;
 
-      if (prevBuyer) {
-        try {
-          const matchSnap = await db.collection('global_sales')
-            .where('user', '==', prevBuyer)
-            .where('domain', '==', domainName)
-            .where('at', '==', soldAt)
-            .get();
-          if (!matchSnap.empty) {
-            const batch = db.batch();
-            matchSnap.forEach(doc => batch.delete(doc.ref));
-            await batch.commit();
-          }
-          // Negatif puan koruması: updateUserPoints zaten Math.max(0, ...) kullanıyor
-          await updateUserPoints(prevBuyer, -soldPrice, 'domain_relisted_point_reversal');
-        } catch (reversalErr) {
-          console.error("Relist sırasında harcama/puan geri alma hatası:", reversalErr);
-        }
+      // ═══════════════════════════════════════════════════════════════════
+      //  DÜZELTME: Önceki alıcının satış kaydını ve puanlarını geri al
+      // ═══════════════════════════════════════════════════════════════════
+      if (prevBuyer && soldPrice > 0) {
+        await reverseSaleAndPoints(db, domainName, prevBuyer, soldPrice, soldAt);
       }
 
+      // Domain'i tekrar satılık yap
       await domainRef.set({ sold: false, txid: null, buyer: null, at: null }, { merge: true });
-
-      if (soldAt) {
-        const soldDate = new Date(soldAt).toISOString().split('T')[0];
-        await db.collection('daily_stats').doc(soldDate).set({
-          count: FieldValue.increment(-1),
-          volume: FieldValue.increment(-soldPrice)
-        }, { merge: true });
-      }
 
       if (prevBuyer) {
         await sendNotification(prevBuyer, {
@@ -480,7 +531,6 @@ export default async function handler(req, res) {
         await batch.commit();
       }
 
-      // Negatif puan koruması: updateUserPoints zaten Math.max(0, ...) kullanıyor
       await updateUserPoints(realUsername, -20, 'listing_withdrawn');
 
       return res.status(200).json({ success: true });
@@ -490,6 +540,8 @@ export default async function handler(req, res) {
   }
 
   // ── Domain Sil (SOFT DELETE) ──────────────────────────────────────────
+  // DÜZELTME: Eğer domain satılmışsa, alıcının global_sales kaydı silinir
+  // ve puanları/harcamaları geri alınır.
   if (action === 'delete_domain') {
     const { domainName: delName } = req.body;
     const isAdmin = await verifyAdmin(accessToken);
@@ -502,6 +554,19 @@ export default async function handler(req, res) {
       if (!domainSnap.exists) return res.status(404).json({ error: "Domain bulunamadı" });
 
       const domainDataForDelete = domainSnap.data();
+
+      // ═══════════════════════════════════════════════════════════════════
+      //  DÜZELTME: Satılmış domain silinirse, alıcının harcamasını geri al
+      // ═══════════════════════════════════════════════════════════════════
+      if (domainDataForDelete.sold === true) {
+        const prevBuyer = domainDataForDelete.buyer;
+        const soldPrice = Number(domainDataForDelete.price || 0);
+        const soldAt = domainDataForDelete.at;
+        
+        if (prevBuyer && soldPrice > 0) {
+          await reverseSaleAndPoints(db, delName, prevBuyer, soldPrice, soldAt);
+        }
+      }
 
       if (domainDataForDelete.sold === true) {
         return res.status(400).json({ error: "Satılmış domain önce 'Tekrar Satılık Yap' ile satıştan kaldırılmalı" });
@@ -550,6 +615,7 @@ export default async function handler(req, res) {
   }
 
   // ── Domain Kalıcı Sil ──────────────────────────────────────────────────
+  // DÜZELTME: Kalıcı silmeden önce eğer satılmışsa, alıcının kaydını geri al
   if (action === 'permanent_delete_domain') {
     const { domainName: permDelName } = req.body;
     const isAdmin = await verifyAdmin(accessToken);
@@ -560,8 +626,26 @@ export default async function handler(req, res) {
       const domainRef = db.collection('domains').doc(permDelName);
       const snap = await domainRef.get();
       if (!snap.exists) return res.status(404).json({ error: "Domain bulunamadı" });
+      
+      const domainData = snap.data();
+      
+      // ═══════════════════════════════════════════════════════════════════
+      //  DÜZELTME: Kalıcı silmeden önce satılmışsa harcamayı geri al
+      // ═══════════════════════════════════════════════════════════════════
+      if (domainData.sold === true) {
+        const prevBuyer = domainData.buyer;
+        const soldPrice = Number(domainData.price || 0);
+        const soldAt = domainData.at;
+        
+        if (prevBuyer && soldPrice > 0) {
+          await reverseSaleAndPoints(db, permDelName, prevBuyer, soldPrice, soldAt);
+        }
+      }
+
       if (snap.data().deleted !== true) return res.status(400).json({ error: "Sadece soft-delete edilmiş domainler kalıcı silinebilir" });
+      
       await domainRef.delete();
+      
       const reqSnap = await db.collection('sell_requests')
         .where('domainName', '==', permDelName)
         .get();
@@ -895,9 +979,7 @@ export default async function handler(req, res) {
               buyer: data.buyer || null 
             });
           }
-          // Platform kazancı = userOwnedVolume - adminOwnEarnings (komisyon mantığı)
         } else {
-          // sellerUsername yoksa admin'e ait varsayılır
           adminOwnEarnings += price;
           adminOwnSoldDomains.push({ 
             name: d.id, 
@@ -907,8 +989,6 @@ export default async function handler(req, res) {
         }
       });
 
-      // platformEarnings = toplam user satışlarından admin'in payı (örnek: %5 komisyon)
-      // Şu an komisyon mantığı yok, 0 olarak bırakılıyor
       platformEarnings = 0;
 
       allSalesDetail.sort((a, b) => (b.at || 0) - (a.at || 0));
@@ -954,7 +1034,6 @@ export default async function handler(req, res) {
   const allowedActions = ['approve', 'complete', 'cancel'];
   if (!allowedActions.includes(action)) return res.status(400).json({ error: "Geçersiz action" });
 
-  // Cancel için domainName ve username kontrolü (opsiyonel ama güvenli)
   if (action === 'cancel') {
     if (domainName && !username) {
       return res.status(400).json({ error: "cancel işlemi için username gerekli" });
