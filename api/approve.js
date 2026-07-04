@@ -856,6 +856,155 @@ export default async function handler(req, res) {
     }
   }
 
+  // ════════════════════════════════════════════════════════════════════════
+  //  YENİ: Kullanıcı - Reddedilmiş Öneriyi Sil
+  //  Sadece kendi reddedilmiş önerisini silebilir.
+  // ════════════════════════════════════════════════════════════════════════
+  if (action === 'delete_rejected_request') {
+    const { requestId } = req.body;
+    const realUsername = await getRealUsername(accessToken);
+    if (!realUsername) return res.status(403).json({ error: "Geçersiz oturum" });
+    if (!requestId) return res.status(400).json({ error: "Geçersiz istek ID" });
+
+    try {
+      const db = getDb();
+      const requestRef = db.collection('sell_requests').doc(requestId);
+      const requestSnap = await requestRef.get();
+
+      if (!requestSnap.exists) return res.status(404).json({ error: "Öneri bulunamadı" });
+
+      const reqData = requestSnap.data();
+      if (reqData.submittedBy !== realUsername) {
+        return res.status(403).json({ error: "Sadece kendi önerinizi silebilirsiniz" });
+      }
+      if (reqData.status !== 'rejected') {
+        return res.status(400).json({ error: "Sadece reddedilmiş öneriler silinebilir" });
+      }
+
+      await requestRef.delete();
+
+      console.log(`Reddedilmiş öneri silindi: ${requestId} (@${realUsername})`);
+      return res.status(200).json({ success: true });
+    } catch (e) {
+      console.error("Reddedilmiş öneri silme hatası:", e);
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  // ════════════════════════════════════════════════════════════════════════
+  //  YENİ: Kullanıcı - Reddedilmiş Öneriyi Tekrar Gönder
+  //  Status 'pending' yapılır, rejectReason temizlenir.
+  // ════════════════════════════════════════════════════════════════════════
+  if (action === 'resubmit_sell_request') {
+    const { requestId } = req.body;
+    const realUsername = await getRealUsername(accessToken);
+    if (!realUsername) return res.status(403).json({ error: "Geçersiz oturum" });
+    if (!requestId) return res.status(400).json({ error: "Geçersiz istek ID" });
+
+    try {
+      const db = getDb();
+      const requestRef = db.collection('sell_requests').doc(requestId);
+      const requestSnap = await requestRef.get();
+
+      if (!requestSnap.exists) return res.status(404).json({ error: "Öneri bulunamadı" });
+
+      const reqData = requestSnap.data();
+      if (reqData.submittedBy !== realUsername) {
+        return res.status(403).json({ error: "Sadece kendi önerinizi tekrar gönderebilirsiniz" });
+      }
+      if (reqData.status !== 'rejected') {
+        return res.status(400).json({ error: "Sadece reddedilmiş öneriler tekrar gönderilebilir" });
+      }
+
+      // Domain hâlâ mevcut mu kontrol et (silinmiş olabilir ama hâlâ var olabilir)
+      const existingDomain = await db.collection('domains').doc(reqData.domainName).get();
+      if (existingDomain.exists) {
+        return res.status(400).json({
+          error: existingDomain.data().deleted === true
+            ? "Bu domain adı daha önce kullanılmış ve silinmiş, tekrar kullanılamaz."
+            : "Bu domain zaten markette mevcut"
+        });
+      }
+
+      // Aynı isimde başka pending öneri var mı?
+      const existingPending = await db.collection('sell_requests')
+        .where('submittedBy', '==', realUsername)
+        .where('status', '==', 'pending')
+        .where('domainName', '==', reqData.domainName)
+        .get();
+      if (!existingPending.empty) {
+        return res.status(400).json({ error: "Bu domain için zaten bekleyen bir öneriniz var" });
+      }
+
+      await requestRef.set({
+        status: 'pending',
+        rejectReason: null,
+        resolvedAt: null,
+        resubmittedAt: Date.now()
+      }, { merge: true });
+
+      await sendNotificationToAdmin({
+        type: 'sell_request_resubmitted',
+        title: '🔄 Domain Önerisi Tekrar Gönderildi',
+        body: `@${realUsername} tarafından "${reqData.domainName}" domaini tekrar onay için gönderildi.`,
+        domainName: reqData.domainName,
+        requestId: requestRef.id
+      });
+
+      console.log(`Öneri tekrar gönderildi: ${requestId} (@${realUsername})`);
+      return res.status(200).json({ success: true });
+    } catch (e) {
+      console.error("Öneri tekrar gönderme hatası:", e);
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  // ════════════════════════════════════════════════════════════════════════
+  //  YENİ: Kullanıcı - Bekleyen Öneriyi Geri Çek
+  //  Status 'withdrawn' yapılır.
+  // ════════════════════════════════════════════════════════════════════════
+  if (action === 'withdraw_sell_request') {
+    const { requestId } = req.body;
+    const realUsername = await getRealUsername(accessToken);
+    if (!realUsername) return res.status(403).json({ error: "Geçersiz oturum" });
+    if (!requestId) return res.status(400).json({ error: "Geçersiz istek ID" });
+
+    try {
+      const db = getDb();
+      const requestRef = db.collection('sell_requests').doc(requestId);
+      const requestSnap = await requestRef.get();
+
+      if (!requestSnap.exists) return res.status(404).json({ error: "Öneri bulunamadı" });
+
+      const reqData = requestSnap.data();
+      if (reqData.submittedBy !== realUsername) {
+        return res.status(403).json({ error: "Sadece kendi önerinizi geri çekebilirsiniz" });
+      }
+      if (reqData.status !== 'pending') {
+        return res.status(400).json({ error: "Sadece bekleyen öneriler geri çekilebilir" });
+      }
+
+      await requestRef.set({
+        status: 'withdrawn',
+        withdrawnAt: Date.now()
+      }, { merge: true });
+
+      await sendNotificationToAdmin({
+        type: 'sell_request_withdrawn',
+        title: '🚫 Domain Önerisi Geri Çekildi',
+        body: `@${realUsername} tarafından "${reqData.domainName}" domain önerisi geri çekildi.`,
+        domainName: reqData.domainName,
+        requestId: requestRef.id
+      });
+
+      console.log(`Öneri geri çekildi: ${requestId} (@${realUsername})`);
+      return res.status(200).json({ success: true });
+    } catch (e) {
+      console.error("Öneri geri çekme hatası:", e);
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
   // ── Kullanıcı Profili Getir ───────────────────────────────────────────
   if (action === 'get_user_profile') {
     const realUsername = await getRealUsername(accessToken);
