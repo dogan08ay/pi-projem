@@ -11,7 +11,7 @@
         html { box-sizing: border-box; overflow-x:hidden; }
         html,body{height:100%;}
         body{font-family:'Segoe UI',sans-serif;background:var(--bg);color:var(--text);margin:0;padding:0;width:100%;min-height:100vh;overflow-x:hidden;box-sizing:border-box;line-height:1.25;}
-        .container{max-width:600px;width:100%;min-width:0;text-align:center;display:flex;flex-direction:column;min-height:100vh;padding:2px;gap:2px;box-sizing:border-box;margin-left:auto;margin-right:auto;}
+        .container{max-width:600px;width:100%;min-width:0;text-align:center;display:flex;flex-direction:column;min-height:100vh;padding:2px 0;gap:2px;box-sizing:border-box;margin-left:auto;margin-right:auto;}
         .card{background:var(--card);padding:5px;border-radius:12px;box-shadow:0 5px 8px -3px rgba(0,0,0,0.3);margin-bottom:3px;position:relative;overflow:visible;box-sizing:border-box;width:100%;min-width:0;max-width:100%;}
         .app-logo{width:130px;height:130px;margin:22px auto 4px auto;display:block;border-radius:50%;box-shadow:0 0 40px rgba(99,102,241,0.9);border:3px solid #818cf8;object-fit:cover;animation:logo-pulse 3s ease-in-out infinite;}
         @keyframes logo-pulse{0%,100%{transform:scale(1);}50%{transform:scale(1.05);}}
@@ -85,15 +85,15 @@
         .lang-option{display:flex;align-items:center;gap:6px;padding:5px 7px;color:#f1f5f9;font-size:0.75em;font-weight:700;cursor:pointer;border-radius:8px;margin:2px 0;border:none;background:transparent;width:100%;box-sizing:border-box;transition:background 0.15s;}
         .lang-option:hover,.lang-option.active{background:rgba(99,102,241,0.2);}
         .lang-option.active{color:#a5b4fc;}
-        .admin-tabs{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:10px;padding-bottom:4px;}
+        .admin-tabs{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;margin-bottom:8px;padding-bottom:3px;width:100%;box-sizing:border-box;}
         .admin-tabs::-webkit-scrollbar{height:0;display:none;}
-        .admin-tab-btn{background:linear-gradient(135deg,#1e1b4b 0%,#0f172a 100%);border:1.5px solid #4c1d95;color:#a5b4fc;padding:10px 4px;border-radius:10px;font-size:0.72em;text-align:center;display:flex;align-items:center;justify-content:center;white-space:nowrap;font-weight:800;cursor:pointer;display:flex;align-items:center;gap:6px;white-space:nowrap;transition:all 0.2s;box-shadow:0 2px 8px rgba(0,0,0,0.3);}
+        .admin-tab-btn{background:linear-gradient(135deg,#1e1b4b 0%,#0f172a 100%);border:1.5px solid #4c1d95;color:#a5b4fc;padding:6px 2px;border-radius:8px;font-size:0.62em;text-align:center;display:flex;align-items:center;justify-content:center;white-space:nowrap;font-weight:800;cursor:pointer;gap:3px;transition:all 0.2s;box-shadow:0 2px 8px rgba(0,0,0,0.3);overflow:hidden;min-width:0;}
         .admin-tab-btn.active{background:linear-gradient(135deg,rgba(99,102,241,0.25),rgba(129,140,248,0.15));border-color:#818cf8;color:#c7d2fe;box-shadow:0 0 12px rgba(99,102,241,0.4);}
         .admin-tab-panel{display:none;}
         .admin-tab-panel.active{display:block;animation:card-rise 0.3s ease backwards;}
-        .pending-badge{background:#ef4444;color:#fff;font-size:0.65em;font-weight:900;border-radius:8px;padding:1px 6px;margin-left:2px;}
-        .user-tabs{display:flex;gap:4px;margin-bottom:8px;width:100%;}
-        .user-tab-btn{flex:1 1 0;min-width:0;background:linear-gradient(135deg,#064e3b 0%,#0f172a 100%);border:1.5px solid #059669;color:#6ee7b7;padding:10px 4px;border-radius:9px;font-size:0.75em;font-weight:800;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;transition:all 0.2s;text-align:center;box-shadow:0 2px 8px rgba(0,0,0,0.3);}
+        .pending-badge{background:#ef4444;color:#fff;font-size:0.55em;font-weight:900;border-radius:6px;padding:1px 4px;margin-left:2px;flex-shrink:0;min-width:14px;text-align:center;line-height:1.2;display:inline-block;}
+        .user-tabs{display:flex;gap:3px;margin-bottom:6px;width:100%;box-sizing:border-box;}
+        .user-tab-btn{flex:1 1 0;min-width:0;background:linear-gradient(135deg,#064e3b 0%,#0f172a 100%);border:1.5px solid #059669;color:#6ee7b7;padding:6px 2px;border-radius:8px;font-size:0.62em;font-weight:800;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;transition:all 0.2s;text-align:center;box-shadow:0 2px 8px rgba(0,0,0,0.3);}
         .user-tab-btn.active{background:rgba(16,185,129,0.15);border-color:#10b981;color:#6ee7b7;}
         .user-tab-panel{display:none;}
         .user-tab-panel.active{display:block;animation:card-rise 0.3s ease backwards;}
@@ -159,7 +159,7 @@
 <base target="_blank">
 <base target="_blank">
 </head>
-<body>
+<body style="margin:0;padding:0;width:100%;overflow-x:hidden;">
 <div class="side-menu-overlay" id="side-menu-overlay" onclick="toggleSideMenu()"></div>
 
 <!-- Side Menu -->
@@ -420,8 +420,8 @@
     </div>
 
     <!-- Kullanıcı Paneli -->
-    <div class="card" id="user-panel" style="display:none;border:2px solid #10b981;box-shadow:0 0 12px rgba(16,185,129,0.2);padding:5px;">
-        <h3 style="color:#10b981;margin:-6px -6px 4px -6px;padding:8px 6px 4px 6px;font-size:0.9em;display:flex;align-items:center;justify-content:center;position:relative;background:linear-gradient(135deg,rgba(16,185,129,0.18) 0%,rgba(5,150,105,0.1) 100%);border-bottom:1.5px solid rgba(16,185,129,0.35);border-radius:12px 12px 0 0;font-weight:900;">
+    <div class="card" id="user-panel" style="display:none;border:2px solid #10b981;box-shadow:0 0 12px rgba(16,185,129,0.2);padding:5px;box-sizing:border-box;max-width:100%;">
+        <h3 style="color:#10b981;margin:-4px -4px 6px -4px;padding:6px 4px;font-size:0.9em;display:flex;align-items:center;justify-content:center;position:relative;background:linear-gradient(135deg,rgba(16,185,129,0.18) 0%,rgba(5,150,105,0.1) 100%);border-bottom:1.5px solid rgba(16,185,129,0.35);border-radius:12px 12px 0 0;font-weight:900;">
             <span style="display:flex;align-items:center;gap:5px;">👤 <span data-i18n="myPanel"></span></span>
             <button onclick="refreshUserPanel()" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);background:rgba(16,185,129,0.2);border:1.5px solid #10b981;color:#6ee7b7;width:24px;height:24px;border-radius:6px;font-size:0.85em;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;" title="Yenile"><span id="refresh-icon" style="display:inline-block;transition:transform 0.5s ease;">↻</span></button>
         </h3>
@@ -434,8 +434,8 @@
         <div class="user-tabs">
             <button class="user-tab-btn active" data-utab="utab-overview" onclick="switchUserTab('utab-overview')">📊 <span data-i18n="overview"></span></button>
             <button class="user-tab-btn" data-utab="utab-purchases" onclick="switchUserTab('utab-purchases')">🛒 <span data-i18n="myPurchases"></span></button>
-            <button class="user-tab-btn" data-utab="utab-listings" onclick="switchUserTab('utab-listings')">🏷️ <span data-i18n="myListings"></span></button>
-            <button class="user-tab-btn" data-utab="utab-income" onclick="switchUserTab('utab-income')">💰 <span data-i18n="myIncome"></span></button>
+            <button class="user-tab-btn" data-utab="utab-listings" onclick="switchUserTab('utab-listings')">🏷️<span data-i18n="myListings"></span></button>
+            <button class="user-tab-btn" data-utab="utab-income" onclick="switchUserTab('utab-income')">💰<span data-i18n="myIncome"></span></button>
         </div>
         <div class="user-tab-panel active" id="utab-overview">
             <div class="user-info-note">
@@ -495,15 +495,15 @@
     </div>
 
     <!-- Admin Paneli -->
-    <div class="card" id="admin-panel" style="display:none;border:2px solid #6366f1;box-shadow:0 0 12px rgba(99,102,241,0.2);padding:5px;">
-        <h3 style="color:#fbbf24;margin:-8px -8px 10px -8px;padding:10px 8px;font-size:0.95em;display:flex;align-items:center;justify-content:center;gap:6px;background:linear-gradient(135deg,rgba(99,102,241,0.2) 0%,rgba(67,56,202,0.1) 100%);border-bottom:1.5px solid rgba(99,102,241,0.4);border-radius:14px 14px 0 0;font-weight:900;">🛠 Admin Panel</h3>
+    <div class="card" id="admin-panel" style="display:none;border:2px solid #6366f1;box-shadow:0 0 12px rgba(99,102,241,0.2);padding:5px;margin-right:0;box-sizing:border-box;max-width:100%;">
+        <h3 style="color:#fbbf24;margin:-5px -5px 8px -5px;padding:8px 5px;font-size:0.95em;display:flex;align-items:center;justify-content:center;gap:6px;background:linear-gradient(135deg,rgba(99,102,241,0.2) 0%,rgba(67,56,202,0.1) 100%);border-bottom:1.5px solid rgba(99,102,241,0.4);border-radius:14px 14px 0 0;font-weight:900;">🛠 Admin Panel</h3>
         <div class="admin-tabs">
-            <button class="admin-tab-btn active" data-tab="tab-users" onclick="switchAdminTab('tab-users')">👥 <span data-i18n="users"></span></button>
-            <button class="admin-tab-btn" data-tab="tab-stats" onclick="switchAdminTab('tab-stats')">📈 <span data-i18n="salesStats"></span></button>
-            <button class="admin-tab-btn" data-tab="tab-pending" onclick="switchAdminTab('tab-pending')">🏷️ <span data-i18n="pendingApprovals"></span><span class="pending-badge" id="pending-count-badge" style="display:none;">0</span></button>
-            <button class="admin-tab-btn" data-tab="tab-prices" onclick="switchAdminTab('tab-prices')">💰 <span data-i18n="priceManagement"></span></button>
-            <button class="admin-tab-btn" data-tab="tab-add" onclick="switchAdminTab('tab-add')">➕ <span data-i18n="addDomain"></span></button>
-            <button class="admin-tab-btn" data-tab="tab-earnings" onclick="switchAdminTab('tab-earnings')">🏦 <span data-i18n="earningsTab"></span></button>
+            <button class="admin-tab-btn active" data-tab="tab-users" onclick="switchAdminTab('tab-users')">👥<span data-i18n="users" style="font-size:0.9em;"></span></button>
+            <button class="admin-tab-btn" data-tab="tab-stats" onclick="switchAdminTab('tab-stats')">📈<span data-i18n="salesStats" style="font-size:0.9em;"></span></button>
+            <button class="admin-tab-btn" data-tab="tab-pending" onclick="switchAdminTab('tab-pending')">🏷️<span data-i18n="pendingApprovals" style="font-size:0.9em;"></span><span class="pending-badge" id="pending-count-badge" style="display:none;">0</span></button>
+            <button class="admin-tab-btn" data-tab="tab-prices" onclick="switchAdminTab('tab-prices')">💰<span data-i18n="priceManagement" style="font-size:0.9em;"></span></button>
+            <button class="admin-tab-btn" data-tab="tab-add" onclick="switchAdminTab('tab-add')">➕<span data-i18n="addDomain" style="font-size:0.9em;"></span></button>
+            <button class="admin-tab-btn" data-tab="tab-earnings" onclick="switchAdminTab('tab-earnings')">🏦<span data-i18n="earningsTab" style="font-size:0.9em;"></span></button>
         </div>
         <div class="admin-tab-panel active" id="tab-users">
             <button onclick="openUniqueUsersModal()" style="width:100%;box-sizing:border-box;background:linear-gradient(135deg,#1e1b4b 0%,#1e293b 100%);border:2px solid #6366f1;border-radius:14px;padding:12px 14px;cursor:pointer;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;box-shadow:0 4px 18px rgba(99,102,241,0.4);">
