@@ -4,7 +4,6 @@ import { getStorage } from 'firebase-admin/storage';
 import { getDatabase } from 'firebase-admin/database';
 
 // ─── Admin Config ───────────────────────────────────────────────────────
-// ÖNCE env'den oku, fallback olarak sabit değer
 const ADMIN_USERNAME = process.env.ADMIN_USERNAME || 'doganay0808';
 
 // ─── Firebase Admin Başlatma ───────────────────────────────────────────────
@@ -38,7 +37,7 @@ function getDb()      { getAdminApp(); return getFirestore(); }
 function getBucket()  { getAdminApp(); return getStorage().bucket(); }
 function getRtdb()    { getAdminApp(); return getDatabase(); }
 
-// ─── Admin Token Cache (Pi API'ye her seferinde gitmeyi önler) ────────────
+// ─── Admin Token Cache ────────────────────────────────────────────────────
 const adminCache = new Map();
 const ADMIN_CACHE_TTL = 5 * 60 * 1000;
 
@@ -63,10 +62,12 @@ async function verifyAdmin(accessToken) {
 
 // Kullanıcı token cache
 const userCache = new Map();
+const USER_CACHE_TTL = 5 * 60 * 1000;
+
 async function getRealUsername(accessToken) {
   if (!accessToken) return null;
   const cached = userCache.get(accessToken);
-  if (cached && Date.now() - cached.ts < ADMIN_CACHE_TTL) return cached.username;
+  if (cached && Date.now() - cached.ts < USER_CACHE_TTL) return cached.username;
   try {
     const response = await fetch('https://api.minepi.com/v2/me', {
       headers: { 'Authorization': `Bearer ${accessToken}` }
@@ -99,6 +100,10 @@ async function sendNotification(targetUsername, notification) {
   if (!targetUsername) return;
   try {
     const rtdb = getRtdb();
+    if (!rtdb) {
+      console.error(`[Bildirim] RTDB başlatılamadı, bildirim gönderilemedi: @${targetUsername}`);
+      return;
+    }
     const ref = rtdb.ref(`notifications/${targetUsername}`);
     await ref.push({
       ...notification,
@@ -143,6 +148,33 @@ function setCors(req, res) {
   res.setHeader('Vary', 'Origin');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+}
+
+// ─── Puan Güncelleme (Handler DIŞINDA - Negatif Puan Koruması) ───────────
+async function updateUserPoints(username, points, reason) {
+  try {
+    const db = getDb();
+    const ref = db.collection('user_profiles').doc(username);
+    const snap = await ref.get();
+    const currentPoints = snap.exists ? (snap.data().points || 0) : 0;
+    const newPoints = Math.max(0, currentPoints + points);
+
+    await ref.set({
+      points: newPoints,
+      updatedAt: Date.now()
+    }, { merge: true });
+
+    let badge = null;
+    if (newPoints >= 500) badge = 'diamond';
+    else if (newPoints >= 200) badge = 'gold';
+    else if (newPoints >= 50)  badge = 'silver';
+    else if (newPoints >= 10)  badge = 'bronze';
+    await ref.set({ badge }, { merge: true });
+
+    console.log(`[Puan] @${username}: ${currentPoints} → ${newPoints} (${reason})`);
+  } catch (e) {
+    console.error("Puan güncelleme hatası:", e);
+  }
 }
 
 // ══════════════════════════════════════════════════════════════════════════
@@ -245,26 +277,6 @@ export default async function handler(req, res) {
     }
   }
 
-  // ── Puan Güncelle ──────────────────────────────────────────────────────
-  async function updateUserPoints(username, points, reason) {
-    try {
-      const db = getDb();
-      const ref = db.collection('user_profiles').doc(username);
-      await ref.set({
-        points: FieldValue.increment(points),
-        updatedAt: Date.now()
-      }, { merge: true });
-      const snap = await ref.get();
-      const totalPoints = Math.max(0, snap.data()?.points || 0);
-      let badge = null;
-      if (totalPoints >= 500) badge = 'diamond';
-      else if (totalPoints >= 200) badge = 'gold';
-      else if (totalPoints >= 50)  badge = 'silver';
-      else if (totalPoints >= 10)  badge = 'bronze';
-      await ref.set({ badge }, { merge: true });
-    } catch (e) { console.error("Puan güncelleme hatası:", e); }
-  }
-
   // ── Giriş Bildirimi ────────────────────────────────────────────────────
   if (action === 'log_login') {
     const realUsername = await getRealUsername(accessToken);
@@ -338,6 +350,7 @@ export default async function handler(req, res) {
             matchSnap.forEach(doc => batch.delete(doc.ref));
             await batch.commit();
           }
+          // Negatif puan koruması: updateUserPoints zaten Math.max(0, ...) kullanıyor
           await updateUserPoints(prevBuyer, -soldPrice, 'domain_relisted_point_reversal');
         } catch (reversalErr) {
           console.error("Relist sırasında harcama/puan geri alma hatası:", reversalErr);
@@ -467,6 +480,7 @@ export default async function handler(req, res) {
         await batch.commit();
       }
 
+      // Negatif puan koruması: updateUserPoints zaten Math.max(0, ...) kullanıyor
       await updateUserPoints(realUsername, -20, 'listing_withdrawn');
 
       return res.status(200).json({ success: true });
@@ -767,21 +781,14 @@ export default async function handler(req, res) {
       const profileSnap = await db.collection('user_profiles').doc(realUsername).get();
       const profileData = profileSnap.exists ? profileSnap.data() : { points: 0, badge: null };
 
-      const myPurchasedDomainsSnap = await db.collection('domains')
-        .where('buyer', '==', realUsername)
-        .where('sold', '==', true)
-        .get();
-      let totalSpent = 0;
-      myPurchasedDomainsSnap.forEach(d => {
-        const data = d.data();
-        if (data.deleted === true) return;
-        totalSpent += Number(data.price || 0);
-      });
-
+      // totalSpent sadece global_sales'ten hesaplanıyor (daha güvenilir)
       const salesSnap = await db.collection('global_sales').where('user', '==', realUsername).get();
+      let totalSpent = 0;
       const purchases = [];
       salesSnap.forEach(d => {
-        purchases.push(d.data());
+        const data = d.data();
+        purchases.push(data);
+        totalSpent += Number(data.price || 0);
       });
 
       const sellReqSnap = await db.collection('sell_requests').where('submittedBy', '==', realUsername).get();
@@ -887,13 +894,22 @@ export default async function handler(req, res) {
               price: data.price, 
               buyer: data.buyer || null 
             });
-          } else {
-            platformEarnings += price;
           }
+          // Platform kazancı = userOwnedVolume - adminOwnEarnings (komisyon mantığı)
         } else {
+          // sellerUsername yoksa admin'e ait varsayılır
           adminOwnEarnings += price;
+          adminOwnSoldDomains.push({ 
+            name: d.id, 
+            price: data.price, 
+            buyer: data.buyer || null 
+          });
         }
       });
+
+      // platformEarnings = toplam user satışlarından admin'in payı (örnek: %5 komisyon)
+      // Şu an komisyon mantığı yok, 0 olarak bırakılıyor
+      platformEarnings = 0;
 
       allSalesDetail.sort((a, b) => (b.at || 0) - (a.at || 0));
 
@@ -937,6 +953,13 @@ export default async function handler(req, res) {
 
   const allowedActions = ['approve', 'complete', 'cancel'];
   if (!allowedActions.includes(action)) return res.status(400).json({ error: "Geçersiz action" });
+
+  // Cancel için domainName ve username kontrolü (opsiyonel ama güvenli)
+  if (action === 'cancel') {
+    if (domainName && !username) {
+      return res.status(400).json({ error: "cancel işlemi için username gerekli" });
+    }
+  }
 
   const PI_API_KEY = process.env.APP_SECRET;
   const body = action === 'complete' ? { txid } : {};
