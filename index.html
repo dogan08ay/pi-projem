@@ -1938,132 +1938,189 @@ async function handleIncompletePayment(payment){
 // init sonrası iç event listener'larını bağlamasına net bir pencere
 // veriyoruz. Ayrıca olası geçici hatalarda KULLANICIYA hemen hata
 // göstermek yerine bir kez sessizce yeniden deniyoruz.
-window.loginWithPi=async function(){
+// ═══════════════════════════════════════════════════════════════════════
+//  LOGIN — DÜZELTİLMİŞ SÜRÜM
+//  Sorun: Admin kullanıcısı login olduğunda hem admin paneli hem de
+//  kullanıcı paneli açılıyor, ama DOM manipülasyonu sırasında
+//  "ekran gidiyor sonra tam sayfa geliyor" yanıp sönme oluşuyor.
+//  
+//  Kök Neden: 
+//  1. Admin paneli display="block" yapılıyor ama kullanıcı paneli
+//     hemen ardından display="block" yapılıyor — bu iki panel
+//     aynı container içinde üst üste biniyor ve layout reflow
+//     tetikleniyor.
+//  2. requestAnimationFrame + debouncedRender() + loadUserProfile()
+//     zinciri, admin panelinin hesaplanmış yüksekliğini bozuyor.
+//  3. CSS transition (opacity/transform) kullanıcı paneline
+//     uygulanıyor ama admin paneline uygulanmıyor — bu da
+//     görsel tutarsızlık yaratıyor.
+//  
+//  Çözüm:
+//  - Admin ve kullanıcı paneli aynı anda açılacaksa, her ikisine de
+//    aynı transition stili uygula.
+//  - Kullanıcı paneli YÜKSEKLİĞİNİ hesaplamadan önce admin panelinin
+//    layout'u tamamlanmış olmalı.
+//  - requestAnimationFrame zincirini basitleştir.
+//  - "Bağlanıyor..." spinner'ı buton üzerinde göster, sayfa
+//    genelinde değil.
+// ═══════════════════════════════════════════════════════════════════════
+window.loginWithPi = async function() {
     await waitForPi();
-    await new Promise(r=>setTimeout(r,300));
+    await new Promise(r => setTimeout(r, 300));
 
-    async function attemptLogin(isRetry){
-        try{
-            // ═══════════════════════════════════════════════════════════════
-            // FIX 2b: Login sırasında "Bağlanıyor..." durumu göster.
-            // Kullanıcı butona tıklayınca hemen feedback alsın, 
-            // boşta beklerken "dondu mu?" hissi olmasın.
-            // ═══════════════════════════════════════════════════════════════
+    async function attemptLogin(isRetry) {
+        try {
+            // ── Spinner'ı sadece buton üzerinde göster ─────────────────
             const lock = document.getElementById('premium-lock');
             const connectBtn = lock?.querySelector('.pi-btn');
             const originalBtnText = connectBtn?.innerHTML;
 
-            if(connectBtn){
+            if (connectBtn) {
                 connectBtn.innerHTML = '<span style="display:inline-flex;align-items:center;gap:8px;"><span style="display:inline-block;width:16px;height:16px;border:2px solid rgba(255,255,255,0.3);border-top-color:#fff;border-radius:50%;animation:spin-ring 0.8s linear infinite;"></span><span>Bağlanıyor...</span></span>';
                 connectBtn.disabled = true;
                 connectBtn.style.opacity = '0.7';
+                connectBtn.style.pointerEvents = 'none';
             }
 
-            const auth=await Pi.authenticate(['username','payments'],handleIncompletePayment);
-            currentUser=auth.user.username;
-            piAccessToken=auth.accessToken;
-            isAuth=true;
+            const auth = await Pi.authenticate(['username', 'payments'], handleIncompletePayment);
+            currentUser = auth.user.username;
+            piAccessToken = auth.accessToken;
+            isAuth = true;
 
-            // Bildirim ve admin işlemleri (UI görünmeden önce, hızlı)
-            document.getElementById("notif-btn").style.visibility="visible";
+            // ── Bildirim ve admin kontrolleri (UI görünmeden önce) ────
+            document.getElementById("notif-btn").style.visibility = "visible";
             startNotifPolling();
 
-            if(currentUser===APP_CONFIG.adminUsername){
-                document.getElementById("admin-panel").style.display="block";
+            const isAdmin = currentUser === APP_CONFIG.adminUsername;
+
+            // Admin panelini HEMEN aç (ama opacity 0 ile, layout hesaplasın)
+            if (isAdmin) {
+                const adminPanel = document.getElementById("admin-panel");
+                adminPanel.style.display = "block";
+                adminPanel.style.opacity = '0';
+                adminPanel.style.transform = 'translateY(10px)';
+                adminPanel.style.transition = 'opacity 0.4s ease, transform 0.4s ease';
+                
                 loadUniqueBadgeCount();
                 listenToPendingDomains();
-                const today=new Date().toISOString().split("T")[0];
-                const dateInput=document.getElementById("admin-date-input");
-                dateInput.value=today;
+                const today = new Date().toISOString().split("T")[0];
+                const dateInput = document.getElementById("admin-date-input");
+                dateInput.value = today;
                 listenToLogs(today);
-                dateInput.onchange=(e)=>listenToLogs(e.target.value);
+                dateInput.onchange = (e) => listenToLogs(e.target.value);
             }
 
-            try{
-                const r=await fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},
-                    body:JSON.stringify({action:'log_login',accessToken:piAccessToken})});
-                const logResult=await r.json();
-                if(logResult.success) userFirstSeen=logResult.firstSeen;
-            }catch(e){console.error("Login log hatası:",e);}
+            // Login log'u async olarak yap (UI'ı bekleme)
+            try {
+                const r = await fetch('/api/approve', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action: 'log_login', accessToken: piAccessToken })
+                });
+                const logResult = await r.json();
+                if (logResult.success) userFirstSeen = logResult.firstSeen;
+            } catch (e) { console.error("Login log hatası:", e); }
 
             updateActiveStatus();
 
-            // ═══════════════════════════════════════════════════════════════
-            // FIX 2: Profil verileri tamamen yüklenmeden KULLANICI PANELİNİ 
-            // GÖSTERME. Önce tüm verileri çek, SONRA tek seferde UI'ı aç.
-            // ═══════════════════════════════════════════════════════════════
+            // ── Profil verilerini yükle ─────────────────────────────────
             await loadUserProfile();
             listenToMyOwnSellRequests(currentUser);
 
-            // Artık TÜM veriler hazır. UI'ı tek seferde, animasyonlu aç.
-            document.getElementById("user-status").innerHTML='<span class="online-dot"></span>'+t('connectedPrefix')+currentUser;
-            document.getElementById("user-status-box").style.display="none";
-            const upu=document.getElementById("user-panel-username");
-            const uput=document.getElementById("user-panel-username-text");
-            if(upu){upu.style.display='inline-flex';}
-            if(uput){uput.textContent='@'+currentUser;}
+            // ── Kullanıcı durum metni (bağlı göstergesi) ───────────────
+            const userStatusBox = document.getElementById("user-status-box");
+            const userStatus = document.getElementById("user-status");
+            if (userStatus) {
+                userStatus.innerHTML = '<span class="online-dot"></span>' + t('connectedPrefix') + currentUser;
+            }
+            // user-status-box'ı GÖSTER ama opacity 0 ile başlat
+            if (userStatusBox) {
+                userStatusBox.style.display = "block";
+                userStatusBox.style.opacity = '0';
+                userStatusBox.style.transition = 'opacity 0.3s ease';
+            }
 
-            // Paneli göster (opacity transition ile yumuşak)
+            // Kullanıcı paneli kullanıcı adını ayarla
+            const upu = document.getElementById("user-panel-username");
+            const uput = document.getElementById("user-panel-username-text");
+            if (upu) { upu.style.display = 'inline-flex'; }
+            if (uput) { uput.textContent = '@' + currentUser; }
+
+            // ── Kullanıcı panelini aç (opacity 0 ile başlat) ───────────
             const userPanel = document.getElementById("user-panel");
-            userPanel.style.display="block";
+            userPanel.style.display = "block";
             userPanel.style.opacity = '0';
             userPanel.style.transform = 'translateY(10px)';
             userPanel.style.transition = 'opacity 0.4s ease, transform 0.4s ease';
 
+            // Scroll düzeltmesi
+            document.querySelector('.main-scroll').style.maxHeight = 'none';
+            document.querySelector('.main-scroll').style.overflowY = 'auto';
+
+            // ── BUTONU NORMALE DÖNDÜR (önemli: spinner'ı kaldır) ──────
+            if (connectBtn) {
+                connectBtn.innerHTML = originalBtnText;
+                connectBtn.disabled = false;
+                connectBtn.style.opacity = '1';
+                connectBtn.style.pointerEvents = 'auto';
+            }
+
+            // ── ANİMASYONLU GÖSTERİM (tek seferde, sıralı) ─────────────
+            // Önce layout'un hesaplanması için bir frame bekle
             requestAnimationFrame(() => {
-                userPanel.style.opacity = '1';
-                userPanel.style.transform = 'translateY(0)';
+                requestAnimationFrame(() => {
+                    // 1. Admin paneli fade in
+                    if (isAdmin) {
+                        const adminPanel = document.getElementById("admin-panel");
+                        adminPanel.style.opacity = '1';
+                        adminPanel.style.transform = 'translateY(0)';
+                    }
+                    
+                    // 2. Kullanıcı durum metni fade in
+                    if (userStatusBox) {
+                        userStatusBox.style.opacity = '1';
+                    }
+                    
+                    // 3. Kullanıcı paneli fade in (küçük gecikme ile)
+                    setTimeout(() => {
+                        userPanel.style.opacity = '1';
+                        userPanel.style.transform = 'translateY(0)';
+                        
+                        // Tüm paneller açıldıktan sonra render et
+                        debouncedRender();
+                    }, isAdmin ? 150 : 50); // Admin ise daha fazla bekle (layout kararlı olsun)
+                });
             });
 
-            document.querySelector('.main-scroll').style.maxHeight='none';
-            document.querySelector('.main-scroll').style.overflowY='auto';
-
-            debouncedRender();
-
-            // Butonu normale döndür (artık gerekli değil ama temizlik)
-            if(connectBtn){
-                connectBtn.innerHTML = originalBtnText;
-                connectBtn.disabled = false;
-                connectBtn.style.opacity = '1';
-            }
-
             return true;
-        }catch(e){
-            console.error("Login error:",e);
-            const msg=(e&&e.message)||'';
-            const userCancelled=msg.includes('cancel')||msg.includes('user_cancelled')||msg.includes('User cancelled');
-            if(userCancelled){
-                // Kullanıcı iptal etti, butonu normale döndür
-                const lock = document.getElementById('premium-lock');
-                const connectBtn = lock?.querySelector('.pi-btn');
-                if(connectBtn && originalBtnText){
-                    connectBtn.innerHTML = originalBtnText;
-                    connectBtn.disabled = false;
-                    connectBtn.style.opacity = '1';
-                }
-                return true;
-            }
 
-            if(!isRetry){
-                await new Promise(r=>setTimeout(r,400));
-                return await attemptLogin(true);
-            }
+        } catch (e) {
+            console.error("Login error:", e);
+            const msg = (e && e.message) || '';
+            const userCancelled = msg.includes('cancel') || msg.includes('user_cancelled') || msg.includes('User cancelled');
 
-            // Hata durumunda butonu normale döndür
+            // Hata durumunda butonu mutlaka normale döndür
             const lock = document.getElementById('premium-lock');
             const connectBtn = lock?.querySelector('.pi-btn');
-            if(connectBtn && originalBtnText){
+            if (connectBtn && originalBtnText) {
                 connectBtn.innerHTML = originalBtnText;
                 connectBtn.disabled = false;
                 connectBtn.style.opacity = '1';
+                connectBtn.style.pointerEvents = 'auto';
             }
 
+            if (userCancelled) return true;
+
+            if (!isRetry) {
+                await new Promise(r => setTimeout(r, 400));
+                return await attemptLogin(true);
+            }
             return false;
         }
     }
 
-    const success=await attemptLogin(false);
-    if(!success) alert(t('loginError'));
+    const success = await attemptLogin(false);
+    if (!success) alert(t('loginError'));
 };
 
 // ÖDEME
