@@ -414,20 +414,21 @@
             <div class="stats-item"><span data-i18n="totalVolume"></span>: <span id="total-volume">0</span> Test Pİ</div>
             <div class="stats-item"><span data-i18n="activeUsers"></span>: <span id="online-count">0</span></div>
         </div>
-        <div id="user-status-box" style="display:none;margin-top:1px;text-align:center;">
+        
+    </div>
+
+    <!-- Kullanıcı Paneli -->
+    <div class="card" id="user-panel" style="display:none;border:2px solid #10b981;box-shadow:0 0 12px rgba(16,185,129,0.2);padding:5px;">
+        <h3 style="color:#10b981;margin:-6px -6px 4px -6px;padding:8px 6px 4px 6px;font-size:0.9em;display:flex;align-items:center;justify-content:center;position:relative;background:linear-gradient(135deg,rgba(16,185,129,0.18) 0%,rgba(5,150,105,0.1) 100%);border-bottom:1.5px solid rgba(16,185,129,0.35);border-radius:12px 12px 0 0;font-weight:900;">
+            <span style="display:flex;align-items:center;gap:5px;">👤 <span data-i18n="myPanel"></span></span>
+            <button onclick="refreshUserPanel()" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);background:rgba(16,185,129,0.2);border:1.5px solid #10b981;color:#6ee7b7;width:24px;height:24px;border-radius:6px;font-size:0.85em;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;" title="Yenile">↻</button>
+        </h3>
+        <div id="user-status-box" style="display:none;text-align:center;margin:4px 0 2px 0;">
             <p id="user-status" style="display:inline-flex;align-items:center;gap:5px;font-size:0.78em;color:#60a5fa;font-weight:900;margin:0;background:linear-gradient(135deg,rgba(59,130,246,0.2),rgba(37,99,235,0.3));border:1.5px solid #3b82f6;border-radius:20px;padding:4px 14px;box-shadow:0 0 10px rgba(59,130,246,0.3);animation:connected-pulse-blue 2s ease-in-out infinite;">
                 <span class="online-dot" style="width:7px;height:7px;margin-right:2px;background:#60a5fa;box-shadow:0 0 6px #60a5fa;"></span>
                 <span id="user-status-text"></span>
             </p>
         </div>
-    </div>
-
-    <!-- Kullanıcı Paneli -->
-    <div class="card" id="user-panel" style="display:none;border:2px solid #10b981;box-shadow:0 0 12px rgba(16,185,129,0.2);padding:5px;">
-        <h3 style="color:#10b981;margin:-6px -6px 4px -6px;padding:8px 6px 4px 6px;font-size:0.9em;display:flex;align-items:center;justify-content:center;gap:5px;background:linear-gradient(135deg,rgba(16,185,129,0.18) 0%,rgba(5,150,105,0.1) 100%);border-bottom:1.5px solid rgba(16,185,129,0.35);border-radius:12px 12px 0 0;font-weight:900;">
-            <span style="display:flex;align-items:center;gap:5px;">👤 <span data-i18n="myPanel"></span></span>
-            <button onclick="refreshUserPanel()" style="background:rgba(16,185,129,0.2);border:1.5px solid #10b981;color:#6ee7b7;width:24px;height:24px;border-radius:6px;font-size:0.85em;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-left:auto;" title="Yenile">↻</button>
-        </h3>
         <div class="user-tabs">
             <button class="user-tab-btn active" data-utab="utab-overview" onclick="switchUserTab('utab-overview')">📊 <span data-i18n="overview"></span></button>
             <button class="user-tab-btn" data-utab="utab-purchases" onclick="switchUserTab('utab-purchases')">🛒 <span data-i18n="myPurchases"></span></button>
