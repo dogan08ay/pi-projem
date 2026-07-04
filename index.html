@@ -37,8 +37,8 @@
         @keyframes title-glow{0%,100%{box-shadow:0 0 10px rgba(245,158,11,0.5);border-color:#f59e0b;}50%{box-shadow:0 0 20px rgba(251,191,36,0.9),0 0 40px rgba(251,191,36,0.45);border-color:#fcd34d;}}
         @keyframes section-shimmer{0%{background-position:200% center;}100%{background-position:-200% center;}}
         .lock-title-box{background:linear-gradient(145deg,#0f172a 0%,#1e1b4b 50%,#0f172a 100%);padding:8px 22px;border-radius:14px;border:2px solid rgba(129,140,248,0.5);font-size:0.95em;box-shadow:0 0 25px rgba(99,102,241,0.25),0 6px 16px rgba(0,0,0,0.3),inset 0 1px 0 rgba(255,255,255,0.08);font-weight:900;margin-bottom:10px;display:inline-block;letter-spacing:1.2px;text-transform:uppercase;position:relative;overflow:hidden;}.lock-title-box span{background:linear-gradient(90deg,#60a5fa 0%,#a78bfa 25%,#f472b6 50%,#a78bfa 75%,#60a5fa 100%);background-size:200% auto;-webkit-background-clip:text;-webkit-text-fill-color:transparent;animation:title-shine 3s linear infinite;display:inline-block;}.lock-title-box::before{content:"";position:absolute;top:0;left:-100%;width:100%;height:100%;background:linear-gradient(90deg,transparent,rgba(255,255,255,0.15),transparent);animation:shine-sweep 2.5s ease-in-out infinite;}@keyframes shine-sweep{0%{left:-100%;}100%{left:200%;}}100%{left:200%;}}.lock-title-box::before{content:"";position:absolute;top:0;left:-100%;width:100%;height:100%;background:linear-gradient(90deg,transparent,rgba(255,255,255,0.4),transparent);animation:shine-sweep 2.5s ease-in-out infinite;}@keyframes shine-sweep{0%{left:-100%;}100%{left:200%;}}
-        .locked-content{filter:blur(8px);opacity:0.45;pointer-events:none;}
-        .premium-lock-overlay{position:absolute;top:0;left:0;right:0;bottom:0;display:none;flex-direction:column;align-items:center;justify-content:flex-start;background:rgba(10,15,30,0.72);backdrop-filter:blur(3px);z-index:100;padding-top:5px;text-align:center;overflow-y:auto;}
+        .locked-content{filter:blur(8px);opacity:0.45;pointer-events:none;}.premium-lock-overlay.active{opacity:1;visibility:visible;pointer-events:auto;}
+        .premium-lock-overlay{position:absolute;top:0;left:0;right:0;bottom:0;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;background:rgba(10,15,30,0.72);backdrop-filter:blur(3px);z-index:100;padding-top:5px;text-align:center;overflow-y:auto;opacity:0;visibility:hidden;pointer-events:none;transition:opacity 0.3s ease,visibility 0.3s ease;}
         .diamond-spin{margin-bottom:1px;display:inline-block;animation:diamond-rotate 5s ease-in-out infinite;filter:drop-shadow(0 0 14px #818cf8);}
         @keyframes diamond-rotate{0%,100%{transform:rotateY(0deg) scale(1);}50%{transform:rotateY(180deg) scale(1.06);}}
         .diamond-sparkle{opacity:0;transform-origin:center;animation:sparkle-twinkle 2.2s ease-in-out infinite;color:#ffffff;}
@@ -153,6 +153,7 @@
             50% { opacity: 1; transform: translate(-50%,-50%) scale(1.15); }
         }
 </style>
+<base target="_blank">
 <base target="_blank">
 <base target="_blank">
 <base target="_blank">
@@ -849,7 +850,25 @@ const i18n = {
     changelogV1_3:"v1.3 - Rozet Sistemi",changelogV1_3Desc:"Bronz, Gümüş, Altın ve Elmas rozetler eklendi. Puan kazanarak rozet yükseltebilirsiniz.",
     changelogV1_4:"v1.4 - Güvenli Ödeme",changelogV1_4Desc:"Güvenli ödeme onay ekranı eklendi. Test-Pi cüzdanı ile güvenli alım yapabilirsiniz.",
     changelogV1_5:"v1.5 - Arayüz ve Görsel İyileştirmeler",changelogV1_5Desc:"Arayüz ve çeşitli görsel iyileştirmeler yapıldı. Güvenli bağlantı bölümü yeniden düzenlendi, ikon konumlandırması optimize edildi, kullanıcı deneyimi geliştirildi.",
-    changelogV1_5:"v1.5 - Arayüz ve Görsel İyileştirmeler",changelogV1_5Desc:"Arayüz ve çeşitli görsel iyileştirmeler yapıldı. Güvenli bağlantı bölümü yeniden düzenlendi, ikon konumlandırması optimize edildi, kullanıcı deneyimi geliştirildi.",
+    changelogV1_5Item1:"Güvenli bağlantı bölümü tamamen yeniden tasarlandı — animasyonlu halka efektleri ve pulse glow eklendi",
+    changelogV1_5Item2:"Yan menü, bildirimler ve kullanıcı paneli arayüzünde tutarlılık iyileştirmeleri yapıldı",
+    changelogV1_5Item3:"Mobil cihazlarda daha akıcı kaydırma ve daha iyi dokunma hedefleri optimize edildi",
+    changelogV1_4Item1:"Ödeme öncesi güvenli onay ekranı eklendi — kullanıcılar işlem türünü ve bakiye etkisini görebiliyor",
+    changelogV1_4Item2:"Test-Pi ve gerçek Pi ayrımı görsel olarak netleştirildi — blink uyarıları eklendi",
+    changelogV1_4Item3:"Şifre girişi için ek güvenlik katmanı ve otomatik timeout mekanizması devreye alındı",
+    changelogV1_3Item1:"Bronz, Gümüş, Altın ve Elmas olmak üzere 4 seviyeli rozet sistemi tanıtıldı",
+    changelogV1_3Item2:"Her satın alma ve satış işlemi puan kazandırıyor — leaderboard yakında geliyor",
+    changelogV1_3Item3:"Rozet görsel efektleri ve profil sayfasında rozet sergileme özelliği eklendi",
+    changelogV1_2Item1:"Gerçek zamanlı bildirim altyapısı kuruldu — WebSocket yerine optimize edilmiş polling",
+    changelogV1_2Item2:"Satın alma, onay ve satış bildirimleri artık anında kullanıcıya ulaşıyor",
+    changelogV1_2Item3:"Bildirim okundu/yeni durumu localStorage ile senkronize çalışıyor",
+    changelogV1_1Item1:"Kullanıcı paneli (Panelim) bölümü eklendi — 4 sekme: Genel, Alımlarım, İlanlarım, Gelirim",
+    changelogV1_1Item2:"Domain satış geçmişi, aktif ilanlar ve kazanç özeti tek ekranda görüntülenebiliyor",
+    changelogV1_1Item3:"Satın alınan domainler için doğrulama butonu ve blok gezgini entegrasyonu yapıldı",
+    changelogV1_0Item1:"Web3 Domain Gateway ilk sürümü yayına alındı",
+    changelogV1_0Item2:"Test-Pi ağı üzerinden domain alım/satımı temel akışı çalışır hale getirildi",
+    changelogV1_0Item3:"Pi SDK entegrasyonu, Firebase Firestore backend ve admin paneli kuruldu",
+    
   },
   en: {
     menu:"Menu",account:"Account",preferences:"Preferences",connected:"Connected",
@@ -978,7 +997,25 @@ const i18n = {
     changelogV1_3:"v1.3 - Badge System",changelogV1_3Desc:"Bronze, Silver, Gold and Diamond badges added. Earn points to upgrade your badge.",
     changelogV1_4:"v1.4 - Secure Payment",changelogV1_4Desc:"Secure payment confirmation screen added. Make safe purchases with Test-Pi wallet.",
     changelogV1_5:"v1.5 - UI & Visual Improvements",changelogV1_5Desc:"Interface and various visual improvements made. Secure connection section redesigned, icon positioning optimized, user experience enhanced.",
-    changelogV1_5:"v1.5 - UI & Visual Improvements",changelogV1_5Desc:"Interface and various visual improvements made. Secure connection section redesigned, icon positioning optimized, user experience enhanced.",
+    changelogV1_5Item1:"Secure connection section fully redesigned — animated ring effects and pulse glow added",
+    changelogV1_5Item2:"Consistency improvements across side menu, notifications and user panel interfaces",
+    changelogV1_5Item3:"Optimized scrolling and touch targets for smoother mobile experience",
+    changelogV1_4Item1:"Pre-payment secure confirmation screen added — users can see transaction type and balance impact",
+    changelogV1_4Item2:"Test-Pi vs real Pi distinction visually clarified with blink warnings",
+    changelogV1_4Item3:"Additional security layer for password entry and auto-timeout mechanism activated",
+    changelogV1_3Item1:"4-tier badge system introduced: Bronze, Silver, Gold and Diamond",
+    changelogV1_3Item2:"Every purchase and sale earns points — leaderboard coming soon",
+    changelogV1_3Item3:"Badge visual effects and profile page badge display feature added",
+    changelogV1_2Item1:"Real-time notification infrastructure built — optimized polling instead of WebSocket",
+    changelogV1_2Item2:"Purchase, approval and sale notifications now reach users instantly",
+    changelogV1_2Item3:"Notification read/unread state syncs with localStorage",
+    changelogV1_1Item1:"User panel (My Panel) section added — 4 tabs: Overview, Purchases, Listings, Income",
+    changelogV1_1Item2:"Domain sales history, active listings and earnings summary viewable in one screen",
+    changelogV1_1Item3:"Verification button and block explorer integration for purchased domains",
+    changelogV1_0Item1:"Web3 Domain Gateway first version launched",
+    changelogV1_0Item2:"Basic domain buy/sell flow on Test-Pi network made operational",
+    changelogV1_0Item3:"Pi SDK integration, Firebase Firestore backend and admin panel established",
+    
   }
 };
 let currentLang = localStorage.getItem('w3dg_lang') || 'tr';
@@ -1245,27 +1282,25 @@ window.openNotifModal=function(){
 window.openChangelogModal=function(){
     const list=document.getElementById('changelog-list');
     if(!list) return;
-    // NOT: Bu verileri Firebase'den dinamik çekebilirsiniz.
-    // Şu an statik ama yapı hazır. Yeni versiyon eklemek için:
-    // 1. i18n'e yeni key'ler ekleyin (changelogV1_5, changelogV1_5Desc)
-    // 2. Aşağıdaki array'e yeni obje ekleyin
     const versions=[
-        {v:t('changelogV1_5'),d:t('changelogV1_5Desc'),date:'2026-07-04',icon:'✨',color:'#f59e0b'},
-        {v:t('changelogV1_4'),d:t('changelogV1_4Desc'),date:'2026-07-03',icon:'🛡️',color:'#10b981'},
-        {v:t('changelogV1_3'),d:t('changelogV1_3Desc'),date:'2026-06-28',icon:'💎',color:'#818cf8'},
-        {v:t('changelogV1_2'),d:t('changelogV1_2Desc'),date:'2026-06-20',icon:'🔔',color:'#fbbf24'},
-        {v:t('changelogV1_1'),d:t('changelogV1_1Desc'),date:'2026-06-15',icon:'👤',color:'#60a5fa'},
-        {v:t('changelogV1_0'),d:t('changelogV1_0Desc'),date:'2026-06-10',icon:'🚀',color:'#a855f7'}
+        {v:t('changelogV1_5'),items:[t('changelogV1_5Item1'),t('changelogV1_5Item2'),t('changelogV1_5Item3')],date:'2026-07-04',icon:'✨',color:'#f59e0b'},
+        {v:t('changelogV1_4'),items:[t('changelogV1_4Item1'),t('changelogV1_4Item2'),t('changelogV1_4Item3')],date:'2026-07-03',icon:'🛡️',color:'#10b981'},
+        {v:t('changelogV1_3'),items:[t('changelogV1_3Item1'),t('changelogV1_3Item2'),t('changelogV1_3Item3')],date:'2026-06-28',icon:'💎',color:'#818cf8'},
+        {v:t('changelogV1_2'),items:[t('changelogV1_2Item1'),t('changelogV1_2Item2'),t('changelogV1_2Item3')],date:'2026-06-20',icon:'🔔',color:'#fbbf24'},
+        {v:t('changelogV1_1'),items:[t('changelogV1_1Item1'),t('changelogV1_1Item2'),t('changelogV1_1Item3')],date:'2026-06-15',icon:'👤',color:'#60a5fa'},
+        {v:t('changelogV1_0'),items:[t('changelogV1_0Item1'),t('changelogV1_0Item2'),t('changelogV1_0Item3')],date:'2026-06-10',icon:'🚀',color:'#a855f7'}
     ];
-    list.innerHTML=versions.map((item,i)=>`
-        <div style="display:flex;gap:10px;padding:10px;border-radius:10px;background:#0f172a;margin-bottom:6px;border-left:3px solid ${item.color};">
-            <div style="font-size:1.4em;flex-shrink:0;">${item.icon}</div>
-            <div style="flex:1;">
-                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px;">
-                    <b style="color:${item.color};font-size:0.85em;">${item.v}</b>
-                    <span style="font-size:0.6em;color:#64748b;">${item.date}</span>
+    list.innerHTML=versions.map(item=>`
+        <div style="display:flex;gap:10px;padding:12px;border-radius:12px;background:#0f172a;margin-bottom:8px;border-left:3px solid ${item.color};box-shadow:0 2px 8px rgba(0,0,0,0.2);">
+            <div style="font-size:1.6em;flex-shrink:0;display:flex;align-items:flex-start;padding-top:2px;">${item.icon}</div>
+            <div style="flex:1;min-width:0;">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;flex-wrap:wrap;gap:4px;">
+                    <b style="color:${item.color};font-size:0.88em;letter-spacing:0.3px;">${item.v}</b>
+                    <span style="font-size:0.62em;color:#64748b;background:#1e293b;padding:2px 8px;border-radius:6px;font-weight:700;">${item.date}</span>
                 </div>
-                <div style="font-size:0.75em;color:#94a3b8;line-height:1.4;">${item.d}</div>
+                <ul style="margin:0;padding-left:18px;list-style:none;">
+                    ${item.items.map(it=>`<li style="font-size:0.78em;color:#94a3b8;line-height:1.5;margin-bottom:4px;position:relative;padding-left:14px;"><span style="position:absolute;left:0;color:${item.color};">›</span>${it}</li>`).join('')}
+                </ul>
             </div>
         </div>
     `).join('');
@@ -1746,8 +1781,8 @@ function render(){
     const filterSection=document.getElementById('filter-section');
     if(filterSection) filterSection.style.display=(isAuth&&firstDomainsSnapshotReceived)?'block':'none';
 
-    if(!isAuth){lock.style.position="absolute";lock.style.display="flex";list.style.display="grid";list.classList.add("locked-content");}
-    else{lock.style.display="none";list.style.display="grid";list.classList.remove("locked-content");}
+    if(!isAuth){lock.classList.add("active");list.classList.add("locked-content");}
+    else{lock.classList.remove("active");list.classList.remove("locked-content");}
 
     // FIX: deleted===true olan domainler markette asla görünmez
     let sortedDomains=[...domains].filter(d=>!domainData[d.name]?.deleted).sort((a,b)=>(domainData[b.name]?.createdAt||0)-(domainData[a.name]?.createdAt||0));
@@ -1792,7 +1827,7 @@ function render(){
     if(isAuth) updateSideMenuProfile();
     requestAnimationFrame(()=>{
         const mc=document.getElementById("market-card"); if(!mc) return;
-        if(!isAuth){mc.style.minHeight=Math.max(lock.scrollHeight,list.scrollHeight,30)+"px";}
+        if(!isAuth){mc.style.minHeight=Math.max(lock.scrollHeight||0,list.scrollHeight||0,300)+"px";}
         else{mc.style.minHeight="";}
     });
 }
