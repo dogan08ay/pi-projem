@@ -1639,10 +1639,22 @@ async function loadUserProfile(){
 
 window.refreshUserPanel=async function(){
     const btn=document.querySelector('#user-panel h3 button');
-    if(btn){btn.style.transform='rotate(360deg)';btn.style.transition='transform 0.5s ease';}
+    const icon=btn?btn.querySelector('span'):null;
+    if(btn){
+        // Wrapper span'a rotate uygula, butonun position transform'u bozulmasın
+        if(!icon){
+            // İlk kez çalışıyorsa, içeriği span'a sar
+            btn.innerHTML='<span style="display:inline-block;transition:transform 0.5s ease;">'+btn.innerHTML+'</span>';
+        }
+        const spinner=btn.querySelector('span');
+        if(spinner) spinner.style.transform='rotate(360deg)';
+    }
     await loadUserProfile();
     debouncedRender();
-    setTimeout(()=>{if(btn){btn.style.transform='';btn.style.transition='';}},600);
+    setTimeout(()=>{
+        const spinner=btn?btn.querySelector('span'):null;
+        if(spinner){spinner.style.transform='';spinner.style.transition='';}
+    },600);
 };
 
 // USER PANEL RENDER
