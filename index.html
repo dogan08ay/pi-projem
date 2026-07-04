@@ -2225,7 +2225,7 @@ window.addEventListener("load",()=>{
 //  target="_blank" bazen Pi Browser'da çalışmaz, bu yüzden
 //  onclick ile window.open() veya top.location kullanıyoruz
 // ═══════════════════════════════════════════════════════════════════════
-function openLink(url, isExternal) {
+window.openLink = function(url, isExternal) {
     try {
         if (isExternal) {
             // Dış linkler için yeni sekme/pencere dene
@@ -2247,7 +2247,7 @@ function openLink(url, isExternal) {
         // En son çare: doğrudan yönlendir
         window.location.href = url;
     }
-}
+};
 
 </script>
 </body>
