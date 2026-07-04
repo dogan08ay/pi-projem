@@ -20,17 +20,20 @@
         .stats-bar{display:flex;justify-content:space-around;background:rgba(99,102,241,0.1);border:1px solid rgba(99,102,241,0.3);padding:2px 4px;border-radius:8px;margin:0 auto 1px auto;font-size:0.52em;max-width:320px;font-weight:bold;color:#94a3b8;}
         .stats-item span{color:var(--price);margin-left:2px;}
         .domain-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:3px;margin-top:1px;position:relative;min-width:0;}
-        .domain-card{background:#334155;padding:1px 2px 2px 2px;border-radius:7px;border:1px solid #475569;display:flex;flex-direction:column;align-items:center;transition:transform 0.25s,box-shadow 0.25s,border-color 0.25s;animation:card-rise 0.5s ease backwards;cursor:pointer;min-width:0;max-width:100%;box-sizing:border-box;}
-        .domain-card:hover,.domain-card:active{transform:translateY(-4px) scale(1.02);box-shadow:0 10px 20px -6px rgba(99,102,241,0.45),0 0 0 1.5px rgba(129,140,248,0.6);border-color:#818cf8;}
+        .domain-card{background:linear-gradient(145deg,#1e293b 0%,#0f172a 50%,#1e1b4b 100%);padding:1px 2px 2px 2px;border-radius:12px;border:1px solid rgba(99,102,241,0.25);display:flex;flex-direction:column;align-items:center;transition:transform 0.3s,box-shadow 0.3s,border-color 0.3s;animation:card-rise 0.5s ease backwards;cursor:pointer;min-width:0;max-width:100%;box-sizing:border-box;position:relative;overflow:hidden;}
+        .domain-card::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent 0%,rgba(99,102,241,0.4) 50%,transparent 100%);}
+        .domain-card:hover,.domain-card:active{transform:translateY(-6px) scale(1.03);box-shadow:0 12px 24px -8px rgba(99,102,241,0.5),0 0 0 2px rgba(129,140,248,0.5),0 0 30px rgba(99,102,241,0.15);border-color:rgba(129,140,248,0.6);}
+        .domain-card:hover::before{background:linear-gradient(90deg,transparent 0%,rgba(129,140,248,0.7) 50%,transparent 100%);}
         @keyframes card-rise{0%{opacity:0;transform:translateY(14px) scale(0.96);}100%{opacity:1;transform:translateY(0) scale(1);}}
 #changelog-list::-webkit-scrollbar{width:5px;}
 #changelog-list::-webkit-scrollbar-thumb{background:#f59e0b;border-radius:10px;}
-        .domain-img{width:100%;height:32px;margin-bottom:1px;border-radius:6px;object-fit:contain;background-color:#334155;}
-        .domain-name{font-size:0.72em;font-weight:bold;margin-bottom:0;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-        .domain-price{color:var(--price);font-size:0.78em;font-weight:800;margin:0;}
+        .domain-img{width:100%;height:40px;margin-bottom:3px;border-radius:10px 10px 4px 4px;object-fit:cover;background:linear-gradient(135deg,#1e293b 0%,#0f172a 100%);border-bottom:1px solid rgba(99,102,241,0.15);}
+        .domain-name{font-size:0.78em;font-weight:800;margin-bottom:2px;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#f1f5f9;text-shadow:0 1px 2px rgba(0,0,0,0.5);}
+        .domain-price{color:var(--price);font-size:0.85em;font-weight:900;margin:2px 0;background:linear-gradient(135deg,rgba(251,191,36,0.15) 0%,rgba(245,158,11,0.05) 100%);padding:2px 8px;border-radius:8px;border:1px solid rgba(251,191,36,0.2);}
         .domain-type-tag{font-size:0.6em;color:#94a3b8;background:rgba(148,163,184,0.15);border-radius:5px;padding:1px 5px;margin-bottom:2px;display:inline-block;}
-        .btn-buy{background:var(--accent);color:white;border:none;padding:3px 4px;border-radius:5px;cursor:pointer;margin-top:3px;font-weight:bold;width:100%;font-size:0.7em;}
-        .btn-sold{background:rgba(239,68,68,0.1);color:var(--sold);border:1.5px solid var(--sold);padding:3px 4px;border-radius:5px;margin-top:3px;font-weight:bold;width:100%;font-size:0.65em;}
+        .btn-buy{background:linear-gradient(135deg,var(--accent) 0%,#4f46e5 100%);color:white;border:none;padding:5px 6px;border-radius:8px;cursor:pointer;margin-top:4px;font-weight:900;width:100%;font-size:0.72em;letter-spacing:0.3px;text-transform:uppercase;box-shadow:0 2px 10px rgba(99,102,241,0.3);transition:all 0.2s;}
+        .btn-buy:hover{background:linear-gradient(135deg,#4f46e5 0%,var(--accent) 100%);box-shadow:0 4px 15px rgba(99,102,241,0.5);transform:translateY(-1px);}
+        .btn-sold{background:linear-gradient(135deg,rgba(239,68,68,0.15) 0%,rgba(220,38,38,0.1) 100%);color:var(--sold);border:1.5px solid var(--sold);padding:4px 6px;border-radius:8px;margin-top:4px;font-weight:900;width:100%;font-size:0.68em;letter-spacing:0.5px;text-transform:uppercase;box-shadow:0 2px 8px rgba(239,68,68,0.15);}
         .pi-btn{background:linear-gradient(135deg,#0052FF 0%,#3b82f6 100%);color:#ffffff;padding:10px 24px;border-radius:50px;font-weight:900;font-size:0.9em;border:none;cursor:pointer;animation:pulse-blue 2s infinite;transition:0.3s;margin:3px 0;}
         @keyframes pulse-blue{0%{transform:scale(0.95);box-shadow:0 0 0 0 rgba(0,82,255,0.7);}70%{transform:scale(1);box-shadow:0 0 0 10px rgba(0,82,255,0);}100%{transform:scale(0.95);box-shadow:0 0 0 0 rgba(0,82,255,0);}}
         .section-title-box{background:linear-gradient(90deg,#fef3c7 0%,#fde68a 30%,#ffffff 45%,#ffffff 55%,#fde68a 70%,#fef3c7 100%);background-size:200% auto;color:#1e293b;padding:6px 18px;border-radius:10px;border:2.5px solid #f59e0b;font-size:0.95em;font-weight:900;letter-spacing:0.5px;box-shadow:0 0 15px rgba(245,158,11,0.4),0 4px 8px rgba(0,0,0,0.2);font-weight:900;display:inline-block;margin-bottom:6px;animation:title-glow 2.5s ease-in-out infinite,section-shimmer 3s linear infinite;}
@@ -85,15 +88,15 @@
         .lang-option{display:flex;align-items:center;gap:6px;padding:5px 7px;color:#f1f5f9;font-size:0.75em;font-weight:700;cursor:pointer;border-radius:8px;margin:2px 0;border:none;background:transparent;width:100%;box-sizing:border-box;transition:background 0.15s;}
         .lang-option:hover,.lang-option.active{background:rgba(99,102,241,0.2);}
         .lang-option.active{color:#a5b4fc;}
-        .admin-tabs{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;margin-bottom:6px;padding-bottom:2px;}
+        .admin-tabs{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:10px;padding-bottom:4px;}
         .admin-tabs::-webkit-scrollbar{height:0;display:none;}
-        .admin-tab-btn{background:#0f172a;border:1.5px solid #334155;color:#94a3b8;padding:6px 2px;border-radius:8px;font-size:0.58em;text-align:center;display:flex;align-items:center;justify-content:center;white-space:nowrap;font-weight:800;cursor:pointer;display:flex;align-items:center;gap:5px;white-space:nowrap;transition:all 0.15s;}
+        .admin-tab-btn{background:linear-gradient(135deg,#1e1b4b 0%,#0f172a 100%);border:1.5px solid #4c1d95;color:#a5b4fc;padding:10px 4px;border-radius:10px;font-size:0.72em;text-align:center;display:flex;align-items:center;justify-content:center;white-space:nowrap;font-weight:800;cursor:pointer;display:flex;align-items:center;gap:6px;white-space:nowrap;transition:all 0.2s;box-shadow:0 2px 8px rgba(0,0,0,0.3);}
         .admin-tab-btn.active{background:linear-gradient(135deg,rgba(99,102,241,0.25),rgba(129,140,248,0.15));border-color:#818cf8;color:#c7d2fe;box-shadow:0 0 12px rgba(99,102,241,0.4);}
         .admin-tab-panel{display:none;}
         .admin-tab-panel.active{display:block;animation:card-rise 0.3s ease backwards;}
         .pending-badge{background:#ef4444;color:#fff;font-size:0.65em;font-weight:900;border-radius:8px;padding:1px 6px;margin-left:2px;}
-        .user-tabs{display:flex;gap:2px;margin-bottom:5px;width:100%;}
-        .user-tab-btn{flex:1 1 0;min-width:0;background:#0f172a;border:1.5px solid #334155;color:#94a3b8;padding:5px 2px;border-radius:7px;font-size:0.62em;font-weight:800;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;transition:all 0.15s;text-align:center;}
+        .user-tabs{display:flex;gap:4px;margin-bottom:8px;width:100%;}
+        .user-tab-btn{flex:1 1 0;min-width:0;background:linear-gradient(135deg,#064e3b 0%,#0f172a 100%);border:1.5px solid #059669;color:#6ee7b7;padding:10px 4px;border-radius:9px;font-size:0.75em;font-weight:800;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;transition:all 0.2s;text-align:center;box-shadow:0 2px 8px rgba(0,0,0,0.3);}
         .user-tab-btn.active{background:rgba(16,185,129,0.15);border-color:#10b981;color:#6ee7b7;}
         .user-tab-panel{display:none;}
         .user-tab-panel.active{display:block;animation:card-rise 0.3s ease backwards;}
@@ -141,6 +144,29 @@
 @keyframes connected-pulse{0%,100%{box-shadow:0 0 8px rgba(16,185,129,0.3);}50%{box-shadow:0 0 16px rgba(16,185,129,0.6),0 0 4px rgba(52,211,153,0.4);}}
 @keyframes connected-pulse-blue{0%,100%{box-shadow:0 0 8px rgba(59,130,246,0.3);}50%{box-shadow:0 0 16px rgba(59,130,246,0.6),0 0 4px rgba(96,165,250,0.4);}}
 @keyframes shield-pulse{0%,100%{filter:drop-shadow(0 0 10px rgba(99,102,241,0.6));transform:scale(1) rotate(0deg);}50%{filter:drop-shadow(0 0 25px rgba(99,102,241,0.9)) drop-shadow(0 0 40px rgba(129,140,248,0.5));transform:scale(1.08) rotate(2deg);}}
+        /* Domain tip bazlı renkler */
+        .domain-card.type-genel{border-color:rgba(99,102,241,0.3);}
+        .domain-card.type-genel::before{background:linear-gradient(90deg,transparent 0%,rgba(99,102,241,0.3) 50%,transparent 100%);}
+        .domain-card.type-finans{border-color:rgba(245,158,11,0.3);}
+        .domain-card.type-finans::before{background:linear-gradient(90deg,transparent 0%,rgba(245,158,11,0.3) 50%,transparent 100%);}
+        .domain-card.type-bankacilik{border-color:rgba(59,130,246,0.3);}
+        .domain-card.type-bankacilik::before{background:linear-gradient(90deg,transparent 0%,rgba(59,130,246,0.3) 50%,transparent 100%);}
+        .domain-card.type-eticaret{border-color:rgba(16,185,129,0.3);}
+        .domain-card.type-eticaret::before{background:linear-gradient(90deg,transparent 0%,rgba(16,185,129,0.3) 50%,transparent 100%);}
+        .domain-card.type-kisisel{border-color:rgba(236,72,153,0.3);}
+        .domain-card.type-kisisel::before{background:linear-gradient(90deg,transparent 0%,rgba(236,72,153,0.3) 50%,transparent 100%);}
+        .domain-card.type-teknoloji{border-color:rgba(6,182,212,0.3);}
+        .domain-card.type-teknoloji::before{background:linear-gradient(90deg,transparent 0%,rgba(6,182,212,0.3) 50%,transparent 100%);}
+        .domain-card.type-turizm{border-color:rgba(139,92,246,0.3);}
+        .domain-card.type-turizm::before{background:linear-gradient(90deg,transparent 0%,rgba(139,92,246,0.3) 50%,transparent 100%);}
+        .domain-card.type-saglik{border-color:rgba(239,68,68,0.3);}
+        .domain-card.type-saglik::before{background:linear-gradient(90deg,transparent 0%,rgba(239,68,68,0.3) 50%,transparent 100%);}
+        .domain-card.type-egitim{border-color:rgba(234,179,8,0.3);}
+        .domain-card.type-egitim::before{background:linear-gradient(90deg,transparent 0%,rgba(234,179,8,0.3) 50%,transparent 100%);}
+        .domain-card.type-gayrimenkul{border-color:rgba(168,85,247,0.3);}
+        .domain-card.type-gayrimenkul::before{background:linear-gradient(90deg,transparent 0%,rgba(168,85,247,0.3) 50%,transparent 100%);}
+        .domain-card.type-diger{border-color:rgba(148,163,184,0.3);}
+        .domain-card.type-diger::before{background:linear-gradient(90deg,transparent 0%,rgba(148,163,184,0.3) 50%,transparent 100%);}
     </style>
 <base target="_blank">
 <base target="_blank">
@@ -606,20 +632,42 @@
             </select>
         </div>
         <div id="premium-lock" class="premium-lock-overlay">
-            <div style="position:relative;display:inline-block;margin-bottom:8px;">
-                <div style="width:80px;height:80px;border-radius:50%;background:linear-gradient(135deg,#1e1b4b 0%,#312e81 50%,#1e1b4b 100%);border:3px solid #818cf8;display:flex;align-items:center;justify-content:center;box-shadow:0 0 30px rgba(99,102,241,0.5),0 0 60px rgba(99,102,241,0.2),inset 0 0 20px rgba(129,140,248,0.2);animation:shield-pulse 3s ease-in-out infinite;">
-                    <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#a5b4fc" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" fill="rgba(99,102,241,0.2)"/>
-                        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-                        <circle cx="12" cy="12" r="3" fill="rgba(52,211,153,0.3)" stroke="#34d399" stroke-width="1.5"/>
-                        <path d="M12 9v6M9 12h6" stroke="#34d399" stroke-width="1.5"/>
+            <div style="position:relative;display:inline-block;margin-bottom:12px;">
+                <div style="width:90px;height:90px;border-radius:24px;background:linear-gradient(145deg,#1e1b4b 0%,#312e81 30%,#4c1d95 50%,#312e81 70%,#1e1b4b 100%);border:2px solid rgba(129,140,248,0.6);display:flex;align-items:center;justify-content:center;box-shadow:0 8px 32px rgba(99,102,241,0.4),0 0 60px rgba(99,102,241,0.15),inset 0 2px 20px rgba(129,140,248,0.25),inset 0 -2px 20px rgba(76,29,149,0.3);animation:shield-pulse 3s ease-in-out infinite;position:relative;overflow:hidden;">
+                    <div style="position:absolute;top:0;left:0;right:0;height:40%;background:linear-gradient(180deg,rgba(255,255,255,0.08) 0%,transparent 100%);border-radius:24px 24px 0 0;"></div>
+                    <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="none" style="filter:drop-shadow(0 2px 8px rgba(0,0,0,0.4));position:relative;z-index:1;">
+                        <!-- Kalkan dış çerçeve -->
+                        <path d="M12 2.5L4.5 6v5.5c0 4.5 3.2 8.7 7.5 9.8 4.3-1.1 7.5-5.3 7.5-9.8V6L12 2.5z" fill="url(#shieldGrad)" stroke="#a5b4fc" stroke-width="1.2" stroke-linejoin="round"/>
+                        <!-- Kalkan iç parlama -->
+                        <path d="M12 4.5L6.5 7.2v4.3c0 3.5 2.3 6.8 5.5 7.8 3.2-1 5.5-4.3 5.5-7.8V7.2L12 4.5z" fill="url(#shieldInner)" opacity="0.7"/>
+                        <!-- Kilit gövdesi -->
+                        <rect x="9.5" y="10.5" width="5" height="4.5" rx="1" fill="#0f172a" stroke="#34d399" stroke-width="1.2"/>
+                        <!-- Kilit kapağı (yay) -->
+                        <path d="M10.5 10.5V9.5a1.5 1.5 0 0 1 3 0v1" fill="none" stroke="#34d399" stroke-width="1.2" stroke-linecap="round"/>
+                        <!-- Kilit anahtar deliği -->
+                        <circle cx="12" cy="12.8" r="0.8" fill="#34d399"/>
+                        <rect x="11.7" y="12.8" width="0.6" height="1.2" fill="#34d399" rx="0.3"/>
+                        <!-- Onay işareti -->
+                        <path d="M10.2 14.5l1.5 1.5 2.8-2.8" fill="none" stroke="#34d399" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.9"/>
+                        <defs>
+                            <linearGradient id="shieldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                                <stop offset="0%" style="stop-color:#312e81;stop-opacity:0.9"/>
+                                <stop offset="50%" style="stop-color:#1e1b4b;stop-opacity:0.95"/>
+                                <stop offset="100%" style="stop-color:#0f172a;stop-opacity:0.9"/>
+                            </linearGradient>
+                            <linearGradient id="shieldInner" x1="0%" y1="0%" x2="0%" y2="100%">
+                                <stop offset="0%" style="stop-color:#818cf8;stop-opacity:0.3"/>
+                                <stop offset="100%" style="stop-color:#4c1d95;stop-opacity:0.1"/>
+                            </linearGradient>
+                        </defs>
                     </svg>
                 </div>
-                <span class="diamond-sparkle diamond-sparkle-1" style="position:absolute;top:-4px;left:-4px;font-size:1em;">✦</span>
-                <span class="diamond-sparkle diamond-sparkle-2" style="position:absolute;bottom:-4px;right:-4px;font-size:0.9em;">✦</span>
+                <!-- Parlama efektleri -->
+                <div style="position:absolute;top:-8px;right:-8px;width:24px;height:24px;border-radius:50%;background:radial-gradient(circle,rgba(52,211,153,0.6) 0%,transparent 70%);animation:sparkle-twinkle 2s ease-in-out infinite;"></div>
+                <div style="position:absolute;bottom:-6px;left:-6px;width:18px;height:18px;border-radius:50%;background:radial-gradient(circle,rgba(129,140,248,0.5) 0%,transparent 70%);animation:sparkle-twinkle 2.5s ease-in-out infinite 0.5s;"></div>
             </div>
             <div class="lock-title-box" data-i18n="joinWeb3"></div>
-            <div class="secure-badge" style="background:linear-gradient(165deg,#0f172a 0%,#1e1b4b 40%,#312e81 60%,#1e1b4b 80%,#0f172a 100%);border:2px solid rgba(129,140,248,0.4);border-radius:16px;padding:18px 16px;box-shadow:0 0 20px rgba(99,102,241,0.15),inset 0 0 30px rgba(99,102,241,0.05);width:92%;margin:6px 0;">
+            <div class="secure-badge" style="background:linear-gradient(165deg,#0a0f1e 0%,#0f172a 30%,#1e1b4b 50%,#0f172a 70%,#0a0f1e 100%);border:1.5px solid rgba(99,102,241,0.25);border-radius:16px;padding:20px 18px;box-shadow:0 4px 20px rgba(0,0,0,0.4),0 0 15px rgba(99,102,241,0.1),inset 0 1px 0 rgba(255,255,255,0.05);width:92%;margin:8px 0;backdrop-filter:blur(10px);">
                 <div class="secure-badge-title" style="text-align:center;color:#c7d2fe;font-size:1.05em;font-weight:900;margin-bottom:8px;text-shadow:0 0 15px rgba(199,210,254,0.4);letter-spacing:1px;border-bottom:1px solid rgba(99,102,241,0.2);padding-bottom:8px;" data-i18n="secureConnection"></div>
                 <div class="secure-badge-body" style="color:#e0e7ff;font-size:0.85em;line-height:1.6;margin-bottom:8px;font-weight:600;border-bottom:1px solid rgba(99,102,241,0.2);padding-bottom:10px;" data-i18n="testNetBadgeBody"></div>
                 <div class="secure-badge-warning" style="color:#fbbf24;font-size:0.9em;font-weight:900;line-height:1.3;text-transform:uppercase;text-shadow:0 0 12px rgba(251,191,36,0.4);letter-spacing:1.2px;" data-i18n="testNetWarning"></div>
@@ -1736,7 +1784,7 @@ function render(){
     sortedDomains.forEach((d,index)=>{
         const data=domainData[d.name]||{sold:false,price:d.price};
         const card=document.createElement('div');
-        card.className='domain-card';
+        card.className='domain-card type-'+(d.type||'genel');
         card.style.animationDelay=(index*0.06)+'s';
         const tTag=d.type?`<span class="domain-type-tag">${typeLabel(d.type)}</span>`:'';
         const imgSrc=data.img||d.img;
