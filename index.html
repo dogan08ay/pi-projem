@@ -1,8 +1,8 @@
 <!DOCTYPE html>
-<html lang="tr">
+<html lang="tr" style="overflow-x:hidden;width:100%;">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0">
     <title>Web3 Domain Gateway</title>
     <script src="https://sdk.minepi.com/pi-sdk.js"></script>
     <style>
@@ -11,7 +11,7 @@
         html { box-sizing: border-box; overflow-x:hidden; }
         html,body{height:100%;}
         body{font-family:'Segoe UI',sans-serif;background:var(--bg);color:var(--text);margin:0;padding:0;width:100%;min-height:100vh;overflow-x:hidden;box-sizing:border-box;line-height:1.25;}
-        .container{max-width:600px;width:100%;min-width:0;text-align:center;display:flex;flex-direction:column;min-height:100vh;padding:2px 0;gap:2px;box-sizing:border-box;margin-left:auto;margin-right:auto;}
+        .container{max-width:600px;width:100%;min-width:0;text-align:center;display:flex;flex-direction:column;min-height:100vh;padding:2px 4px;gap:2px;box-sizing:border-box;margin-left:auto;margin-right:auto;}
         .card{background:var(--card);padding:5px;border-radius:12px;box-shadow:0 5px 8px -3px rgba(0,0,0,0.3);margin-bottom:3px;position:relative;overflow:visible;box-sizing:border-box;width:100%;min-width:0;max-width:100%;}
         .app-logo{width:130px;height:130px;margin:22px auto 4px auto;display:block;border-radius:50%;box-shadow:0 0 40px rgba(99,102,241,0.9);border:3px solid #818cf8;object-fit:cover;animation:logo-pulse 3s ease-in-out infinite;}
         @keyframes logo-pulse{0%,100%{transform:scale(1);}50%{transform:scale(1.05);}}
@@ -159,7 +159,7 @@
 <base target="_blank">
 <base target="_blank">
 </head>
-<body style="margin:0;padding:0;width:100%;overflow-x:hidden;">
+<body style="margin:0;padding:0;width:100%;overflow-x:hidden;position:relative;">
 <div class="side-menu-overlay" id="side-menu-overlay" onclick="toggleSideMenu()"></div>
 
 <!-- Side Menu -->
@@ -1782,19 +1782,37 @@ function renderUserPanel(){
         } else {
             html+=userActiveListings.map(d=>`
                 <div style="background:#0f172a;border:1.5px solid #f59e0b;border-radius:12px;padding:10px;margin-bottom:8px;">
-                    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px;">
+                    <!-- Üst satır: Domain adı + Tür + Satışta etiketi (sağ üst) -->
+                    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;gap:8px;">
                         <div style="flex:1;min-width:0;">
-                            <b style="color:#f1f5f9;font-size:0.9em;">${d.name}</b>
+                            <b style="color:#f1f5f9;font-size:0.9em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${d.name}">${d.name}</b>
                             <span class="domain-type-tag" style="margin-left:4px;">${typeLabel(d.type)}</span>
                         </div>
                         <div style="display:flex;flex-direction:column;align-items:flex-end;gap:3px;flex-shrink:0;margin-left:8px;">
-                            <span style="color:#fbbf24;font-weight:900;font-size:0.85em;">${d.price} Pi</span>
                             <span style="font-size:0.58em;background:rgba(16,185,129,0.15);color:#6ee7b7;border:1px solid #10b981;border-radius:6px;padding:1px 6px;font-weight:700;white-space:nowrap;">✅ ${t('domainOnSale')}</span>
                         </div>
                     </div>
-                    ${d.description?`<div style="font-size:0.72em;color:#94a3b8;margin-bottom:6px;line-height:1.4;">${d.description}</div>`:''}
+                    <!-- Etiket:Değer düzeni (onay bekleyenler gibi) -->
+                    <div style="display:flex;flex-direction:column;gap:4px;font-size:0.72em;color:#cbd5e1;line-height:1.4;margin-bottom:8px;">
+                        <div style="display:flex;gap:6px;align-items:baseline;">
+                            <span style="color:#64748b;flex-shrink:0;font-weight:700;min-width:90px;">💰 ${t('detailFieldPrice')}:</span>
+                            <span style="color:#fbbf24;font-weight:900;">${d.price} Pi</span>
+                        </div>
+                        <div style="display:flex;gap:6px;align-items:baseline;">
+                            <span style="color:#64748b;flex-shrink:0;font-weight:700;min-width:90px;">🏷️ ${t('detailFieldType')}:</span>
+                            <span class="domain-type-tag" style="margin:0;">${typeLabel(d.type)}</span>
+                        </div>
+                        <div style="display:flex;gap:6px;align-items:flex-start;">
+                            <span style="color:#64748b;flex-shrink:0;font-weight:700;min-width:90px;">📝 ${t('detailFieldDesc')}:</span>
+                            <span style="color:#94a3b8;word-break:break-word;flex:1;">${d.description||'<span style="color:#475569;font-style:italic;">—</span>'}</span>
+                        </div>
+                        ${d.sellerWallet?`<div style="display:flex;gap:6px;align-items:baseline;word-break:break-all;">
+                            <span style="color:#64748b;flex-shrink:0;font-weight:700;min-width:90px;">💳 ${t('detailFieldWallet')}:</span>
+                            <span style="color:#60a5fa;font-size:0.9em;">${d.sellerWallet}</span>
+                        </div>`:''}
+                    </div>
+                    <!-- İlanı Geri Çek butonu (aynı yerinde) -->
                     <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;">
-                        ${d.sellerWallet?`<span style="font-size:0.62em;color:#64748b;background:#1e293b;border-radius:6px;padding:2px 8px;">💳 ${d.sellerWallet.substring(0,10)}...</span>`:''}
                         <button onclick="handleWithdrawListing('${d.name}')" style="margin-left:auto;background:#ef4444;color:#fff;border:none;padding:3px 8px;border-radius:5px;font-size:0.6em;font-weight:800;cursor:pointer;">🗑️ ${t('withdrawListing')}</button>
                     </div>
                 </div>`).join('');
