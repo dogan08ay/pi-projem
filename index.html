@@ -20,17 +20,17 @@
         .stats-bar{display:flex;justify-content:space-around;background:rgba(99,102,241,0.1);border:1px solid rgba(99,102,241,0.3);padding:2px 4px;border-radius:8px;margin:0 auto 1px auto;font-size:0.52em;max-width:320px;font-weight:bold;color:#94a3b8;}
         .stats-item span{color:var(--price);margin-left:2px;}
         .domain-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:3px;margin-top:1px;position:relative;min-width:0;}
-        .domain-card{background:linear-gradient(145deg,#1e293b 0%,#0f172a 50%,#1e1b4b 100%);padding:1px 2px 2px 2px;border-radius:7px;border:1px solid #475569;display:flex;flex-direction:column;align-items:center;transition:transform 0.25s,box-shadow 0.25s,border-color 0.25s;animation:card-rise 0.5s ease backwards;cursor:pointer;min-width:0;max-width:100%;box-sizing:border-box;}
+        .domain-card{background:linear-gradient(145deg,#1e293b 0%,#0f172a 50%,#1e1b4b 100%);padding:4px 6px 6px 6px;border-radius:10px;border:1px solid #475569;display:flex;flex-direction:column;align-items:center;transition:transform 0.25s,box-shadow 0.25s,border-color 0.25s;animation:card-rise 0.5s ease backwards;cursor:pointer;min-width:0;max-width:100%;box-sizing:border-box;}
         .domain-card:hover,.domain-card:active{transform:translateY(-4px) scale(1.02);box-shadow:0 10px 20px -6px rgba(99,102,241,0.45),0 0 0 1.5px rgba(129,140,248,0.6);border-color:#818cf8;}
         @keyframes card-rise{0%{opacity:0;transform:translateY(14px) scale(0.96);}100%{opacity:1;transform:translateY(0) scale(1);}}
 #changelog-list::-webkit-scrollbar{width:5px;}
 #changelog-list::-webkit-scrollbar-thumb{background:#f59e0b;border-radius:10px;}
-        .domain-img{width:100%;height:32px;margin-bottom:1px;border-radius:6px;object-fit:contain;background-color:#334155;}
-        .domain-name{font-size:0.72em;font-weight:bold;margin-bottom:0;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-        .domain-price{color:var(--price);font-size:0.78em;font-weight:800;margin:0;}
-        .domain-type-tag{font-size:0.6em;color:#94a3b8;background:rgba(148,163,184,0.15);border-radius:5px;padding:1px 5px;margin-bottom:2px;display:inline-block;}
-        .btn-buy{background:var(--accent);color:white;border:none;padding:3px 4px;border-radius:5px;cursor:pointer;margin-top:3px;font-weight:bold;width:100%;font-size:0.7em;}
-        .btn-sold{background:rgba(239,68,68,0.1);color:var(--sold);border:1.5px solid var(--sold);padding:3px 4px;border-radius:5px;margin-top:3px;font-weight:bold;width:100%;font-size:0.65em;}
+        .domain-img{width:100%;height:48px;margin-bottom:3px;border-radius:8px;object-fit:contain;background-color:#334155;}
+        .domain-name{font-size:0.75em;font-weight:bold;margin-bottom:2px;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#e2e8f0;}
+        .domain-price{color:var(--price);font-size:0.68em;font-weight:700;margin:0;display:none;}
+        .domain-type-tag{font-size:0.58em;color:#94a3b8;background:rgba(148,163,184,0.15);border-radius:5px;padding:2px 6px;margin-bottom:3px;display:inline-block;}
+        .btn-buy{background:var(--accent);color:white;border:none;padding:5px 6px;border-radius:6px;cursor:pointer;margin-top:4px;font-weight:bold;width:100%;font-size:0.72em;}
+        .btn-sold{background:rgba(239,68,68,0.1);color:var(--sold);border:1.5px solid var(--sold);padding:5px 6px;border-radius:6px;margin-top:4px;font-weight:bold;width:100%;font-size:0.68em;}
         .pi-btn{background:linear-gradient(135deg,#0052FF 0%,#3b82f6 100%);color:#ffffff;padding:10px 24px;border-radius:50px;font-weight:900;font-size:0.9em;border:none;cursor:pointer;animation:pulse-blue 2s infinite;transition:0.3s;margin:3px 0;}
         @keyframes pulse-blue{0%{transform:scale(0.95);box-shadow:0 0 0 0 rgba(0,82,255,0.7);}70%{transform:scale(1);box-shadow:0 0 0 10px rgba(0,82,255,0);}100%{transform:scale(0.95);box-shadow:0 0 0 0 rgba(0,82,255,0);}}
         .section-title-box{background:linear-gradient(90deg,#fef3c7 0%,#fde68a 30%,#ffffff 45%,#ffffff 55%,#fde68a 70%,#fef3c7 100%);background-size:200% auto;color:#1e293b;padding:6px 18px;border-radius:10px;border:2.5px solid #f59e0b;font-size:0.95em;font-weight:900;letter-spacing:0.5px;box-shadow:0 0 15px rgba(245,158,11,0.4),0 4px 8px rgba(0,0,0,0.2);font-weight:900;display:inline-block;margin-bottom:6px;animation:title-glow 2.5s ease-in-out infinite,section-shimmer 3s linear infinite;}
@@ -144,6 +144,7 @@
 @keyframes icon-glow{0%,100%{filter:drop-shadow(0 0 4px rgba(59,130,246,0.3)) drop-shadow(0 2px 8px rgba(0,0,0,0.4));}50%{filter:drop-shadow(0 0 12px rgba(96,165,250,0.6)) drop-shadow(0 0 20px rgba(59,130,246,0.3)) drop-shadow(0 2px 8px rgba(0,0,0,0.4));}}
 
     </style>
+<base target="_blank">
 <base target="_blank">
 <base target="_blank">
 <base target="_blank">
@@ -344,11 +345,7 @@
 <div id="pre-buy-modal" class="modal-overlay" style="display:none;">
     <div class="modal-content">
         <div style="margin-bottom:10px;display:inline-block;animation:shield-pulse 2s ease-in-out infinite;">
-            <svg width="52" height="52" viewBox="0 0 24 24" fill="none" stroke="#818cf8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="filter:drop-shadow(0 0 15px rgba(99,102,241,0.9));">
-                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" fill="rgba(99,102,241,0.2)"/>
-                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-                <path d="M9 12l2 2 4-4" stroke="#34d399" stroke-width="2.5"/>
-            </svg>
+            <img src="assets/secure-lock.png" style="width:80px;height:80px;object-fit:contain;filter:drop-shadow(0 0 15px rgba(99,102,241,0.9));" alt="Secure Payment" onerror="this.style.display='none'">
         </div>
         <h2 style="color:#fbbf24;margin:0 0 12px 0;font-size:1.15em;font-weight:900;text-align:center;" data-i18n="securePaymentTitle"></h2>
         <div style="color:#fff;font-size:0.82em;line-height:1.6;text-align:left;background:rgba(0,0,0,0.3);padding:12px;border-radius:15px;">
@@ -589,7 +586,7 @@
     </div>
 
     <!-- Market -->
-    <div class="card" id="market-card" style="position:relative;padding:5px;margin-bottom:2px;overflow:hidden;min-height:70px;">
+    <div class="card" id="market-card" style="position:relative;padding:5px;margin-bottom:2px;overflow:hidden;min-height:70px;background:linear-gradient(180deg,#131c31 0%,#0f172a 100%);border:1px solid #334155;">
         <div class="section-title-box" id="market-title-box" style="display:none;" data-i18n="availableDomains"></div>
         <div class="filter-section" id="filter-section" style="display:none;">
             <div class="filter-section-label" data-i18n="filterSectionLabel"></div>
@@ -611,7 +608,7 @@
             <div style="position:relative;display:inline-block;margin-bottom:12px;">
                 <div style="width:110px;height:110px;border-radius:28px;background:linear-gradient(145deg,#1e1b4b 0%,#312e81 30%,#4c1d95 50%,#312e81 70%,#1e1b4b 100%);border:2px solid rgba(129,140,248,0.5);display:flex;align-items:center;justify-content:center;box-shadow:0 8px 32px rgba(99,102,241,0.4),0 0 60px rgba(99,102,241,0.15),inset 0 2px 20px rgba(129,140,248,0.25),inset 0 -2px 20px rgba(76,29,149,0.3);animation:shield-pulse 3s ease-in-out infinite;position:relative;overflow:hidden;padding:4px;">
                     <div style="position:absolute;top:0;left:0;right:0;height:40%;background:linear-gradient(180deg,rgba(255,255,255,0.08) 0%,transparent 100%);border-radius:28px 28px 0 0;"></div>
-                    <img src="assets/secure-lock.png" style="width:100px;height:100px;object-fit:contain;position:relative;z-index:1;filter:drop-shadow(0 2px 8px rgba(0,0,0,0.4));animation:icon-glow 2.5s ease-in-out infinite;" alt="Secure Connection" onerror="this.style.display='none'">
+                    <img src="assets/secure-lock.png" style="width:100px;height:100px;object-fit:contain;position:relative;z-index:1;filter:drop-shadow(0 2px 8px rgba(0,0,0,0.4));animation:icon-glow 2.5s ease-in-out infinite;border-radius:16px;" alt="Secure Connection" onerror="this.style.display='none'">
                 </div>
                 <!-- Parlama efektleri -->
                 <div style="position:absolute;top:-8px;right:-8px;width:24px;height:24px;border-radius:50%;background:radial-gradient(circle,rgba(52,211,153,0.6) 0%,transparent 70%);animation:sparkle-twinkle 2s ease-in-out infinite;"></div>
@@ -1740,7 +1737,7 @@ function render(){
         card.style.animationDelay=(index*0.06)+'s';
         const tTag=d.type?`<span class="domain-type-tag">${typeLabel(d.type)}</span>`:'';
         const imgSrc=data.img||d.img;
-        card.innerHTML=`<img src="${imgSrc}" class="domain-img" onerror="this.src='data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMDAiIGhlaWdodD0iMTAwIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjNDc1NTY5Ii8+PC9zdmc+'">${tTag}<div class="domain-name">${d.name}</div><div class="domain-price">${data.price} PI</div>`;
+        card.innerHTML=`<img src="${imgSrc}" class="domain-img" onerror="this.src='data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMDAiIGhlaWdodD0iMTAwIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjNDc1NTY5Ii8+PC9zdmc+'">${tTag}<div class="domain-name">${d.name} <span style="color:#fbbf24;font-weight:800;">(${data.price} π)</span></div><div class="domain-price">${data.price} PI</div>`;
 
         if(data.sold){
             card.innerHTML+=`<div class="btn-sold">${t('sold')}</div>`;
