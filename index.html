@@ -11,7 +11,7 @@
         html { box-sizing: border-box; overflow-x:hidden; }
         html,body{height:100%;}
         body{font-family:'Segoe UI',sans-serif;background:var(--bg);color:var(--text);margin:0;padding:0;width:100%;min-height:100vh;overflow-x:hidden;box-sizing:border-box;line-height:1.25;}
-        .container{max-width:600px;width:100%;min-width:0;text-align:center;display:flex;flex-direction:column;min-height:100vh;padding:2px 0;gap:2px;box-sizing:border-box;margin-left:auto;margin-right:auto;}
+        .container{max-width:600px;width:100%;min-width:320px;text-align:center;display:flex;flex-direction:column;min-height:100vh;padding:2px 4px;gap:2px;box-sizing:border-box;margin-left:auto;margin-right:auto;}
         .card{background:var(--card);padding:5px;border-radius:12px;box-shadow:0 5px 8px -3px rgba(0,0,0,0.3);margin-bottom:3px;position:relative;overflow:visible;box-sizing:border-box;width:100%;min-width:0;max-width:100%;}
         .app-logo{width:130px;height:130px;margin:22px auto 4px auto;display:block;border-radius:50%;box-shadow:0 0 40px rgba(99,102,241,0.9);border:3px solid #818cf8;object-fit:cover;animation:logo-pulse 3s ease-in-out infinite;}
         @keyframes logo-pulse{0%,100%{transform:scale(1);}50%{transform:scale(1.05);}}
@@ -165,7 +165,7 @@
 <base target="_blank">
 <base target="_blank">
 </head>
-<body style="margin:0;padding:0;width:100%;overflow-x:hidden;position:relative;box-sizing:border-box;">
+<body style="margin:0;padding:0;width:100%;min-width:320px;overflow-x:hidden;position:relative;box-sizing:border-box;">
 <div class="side-menu-overlay" id="side-menu-overlay" onclick="toggleSideMenu()"></div>
 
 <!-- Side Menu -->
@@ -424,12 +424,16 @@
             <div style="width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,#10b981,#059669);border:2px solid #34d399;display:flex;align-items:center;justify-content:center;box-shadow:0 0 8px rgba(16,185,129,0.4);animation:connected-pulse 2s ease-in-out infinite;">
                 <span style="font-size:1.1em;">👤</span>
             </div>
-            <div id="user-menu-dropdown" style="display:none;position:absolute;top:38px;right:0;background:#0f172a;border:1.5px solid #10b981;border-radius:10px;padding:10px;min-width:180px;box-shadow:0 8px 24px rgba(0,0,0,0.5);z-index:100;">
+            <div id="user-menu-dropdown" style="display:none;position:absolute;top:38px;right:0;background:#0f172a;border:1.5px solid #10b981;border-radius:10px;padding:10px;min-width:200px;box-shadow:0 8px 24px rgba(0,0,0,0.5);z-index:100;">
                 <div style="display:flex;align-items:center;justify-content:center;gap:6px;padding-bottom:8px;border-bottom:1px solid #1e293b;margin-bottom:8px;">
                     <div style="width:8px;height:8px;border-radius:50%;background:#10b981;box-shadow:0 0 6px #10b981;animation:connected-pulse 1.5s ease-in-out infinite;"></div>
+                    <span style="font-size:0.65em;color:#10b981;font-weight:800;">BAĞLI</span>
                     <span style="font-size:0.75em;color:#6ee7b7;font-weight:800;" id="user-menu-name">@user</span>
                 </div>
-                <div style="font-size:0.65em;color:#64748b;text-align:center;margin-bottom:4px;">🕐 <span id="user-menu-time">--.--.---- --:--</span></div>
+                <div style="background:rgba(30,41,59,0.6);border:1px solid #334155;border-radius:6px;padding:6px 8px;text-align:center;">
+                    <span style="font-size:0.6em;color:#94a3b8;">🕐 Bağlanma:</span>
+                    <span style="font-size:0.7em;color:#fbbf24;font-weight:700;" id="user-menu-time">--.--.---- --:--</span>
+                </div>
             </div>
         </div>
         <img src="assets/logo.jpeg" alt="Logo" class="app-logo" style="width:130px;height:130px;margin:8px auto 4px auto;">
@@ -757,7 +761,7 @@ const i18n = {
     soldDomains:"Satılan Domain",totalVolume:"Toplam Hacim",activeUsers:"Aktif Kullanıcı",
     overview:"Genel",myPurchases:"Alımlarım",myListings:"İlanlarım",myIncome:"Gelirim",
     totalSpent:"Toplam Harcama",myListingsCount:"İlan Sayım",
-    myListingsTitle:"İLAN TAKİP PANELİ",listNewDomain:"+ Yeni İlan Ver",
+    myListingsTitle:"İlan Son Durumu",listNewDomain:"+ Yeni İlan Ver",
     totalEarned:"TOPLAM GELİR",earnedNote:"Satışa sunduğunuz ve satılan domainlerden elde edilen gelir.",
     info:"BİLGİ",
     testNetNote:"<div style=\'display:grid;grid-template-columns:auto 1fr;gap:4px 8px;align-items:start;font-size:0.95em;\'><div>🧪</div><div>Bu uygulama <b>Test-Pi</b> ağında deneme amaçlıdır.</div><div>🔄</div><div>Satın aldığınız domainler tekrar <span class=\"btn-fake-buy\">SATIN AL</span> olarak görünebilir.</div><div>⚠️</div><div>Satın alma geçmişinizden silinebilir.</div></div>",
@@ -907,7 +911,7 @@ const i18n = {
     soldDomains:"Sold Domains",totalVolume:"Total Volume",activeUsers:"Active Users",
     overview:"Overview",myPurchases:"My Purchases",myListings:"My Listings",myIncome:"My Income",
     totalSpent:"Total Spent",myListingsCount:"My Listings",
-    myListingsTitle:"LISTING TRACKING PANEL",listNewDomain:"+ New Listing",
+    myListingsTitle:"Listing Status",listNewDomain:"+ New Listing",
     totalEarned:"TOTAL EARNINGS",earnedNote:"Total earnings from your listed and sold domains.",
     info:"INFO",
     testNetNote:"<div style=\'display:grid;grid-template-columns:auto 1fr;gap:4px 8px;align-items:start;font-size:0.95em;\'><div>🧪</div><div>This app runs on <b>Test-Pi</b> for demo purposes.</div><div>🔄</div><div>Purchased domains may reappear as <span class=\"btn-fake-buy\">BUY</span> in the market.</div><div>⚠️</div><div>They may be removed from your purchase history.</div></div>",
