@@ -37,7 +37,7 @@
         @keyframes title-glow{0%,100%{box-shadow:0 0 10px rgba(245,158,11,0.5);border-color:#f59e0b;}50%{box-shadow:0 0 20px rgba(251,191,36,0.9),0 0 40px rgba(251,191,36,0.45);border-color:#fcd34d;}}
         @keyframes section-shimmer{0%{background-position:200% center;}100%{background-position:-200% center;}}
         .lock-title-box{background:linear-gradient(145deg,#0f172a 0%,#1e1b4b 50%,#0f172a 100%);padding:8px 22px;border-radius:14px;border:2px solid rgba(129,140,248,0.5);font-size:0.95em;box-shadow:0 0 25px rgba(99,102,241,0.25),0 6px 16px rgba(0,0,0,0.3),inset 0 1px 0 rgba(255,255,255,0.08);font-weight:900;margin-bottom:10px;display:inline-block;letter-spacing:1.2px;text-transform:uppercase;position:relative;overflow:hidden;}.lock-title-box span{background:linear-gradient(90deg,#60a5fa 0%,#a78bfa 25%,#f472b6 50%,#a78bfa 75%,#60a5fa 100%);background-size:200% auto;-webkit-background-clip:text;-webkit-text-fill-color:transparent;animation:title-shine 3s linear infinite;display:inline-block;}.lock-title-box::before{content:"";position:absolute;top:0;left:-100%;width:100%;height:100%;background:linear-gradient(90deg,transparent,rgba(255,255,255,0.15),transparent);animation:shine-sweep 2.5s ease-in-out infinite;}@keyframes shine-sweep{0%{left:-100%;}100%{left:200%;}}100%{left:200%;}}.lock-title-box::before{content:"";position:absolute;top:0;left:-100%;width:100%;height:100%;background:linear-gradient(90deg,transparent,rgba(255,255,255,0.4),transparent);animation:shine-sweep 2.5s ease-in-out infinite;}@keyframes shine-sweep{0%{left:-100%;}100%{left:200%;}}
-        .locked-content{filter:blur(8px);opacity:0.45;pointer-events:none;}.premium-lock-overlay.active{opacity:1;visibility:visible;pointer-events:auto;}
+        .locked-content{filter:blur(8px);opacity:0.45;pointer-events:none;transition:filter 0.3s ease,opacity 0.3s ease;}.premium-lock-overlay.active{opacity:1;visibility:visible;pointer-events:auto;}
         .premium-lock-overlay{position:absolute;top:0;left:0;right:0;bottom:0;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;background:rgba(10,15,30,0.72);backdrop-filter:blur(3px);z-index:100;padding-top:5px;text-align:center;overflow-y:auto;opacity:0;visibility:hidden;pointer-events:none;transition:opacity 0.3s ease,visibility 0.3s ease;}
         .diamond-spin{margin-bottom:1px;display:inline-block;animation:diamond-rotate 5s ease-in-out infinite;filter:drop-shadow(0 0 14px #818cf8);}
         @keyframes diamond-rotate{0%,100%{transform:rotateY(0deg) scale(1);}50%{transform:rotateY(180deg) scale(1.06);}}
@@ -153,6 +153,7 @@
             50% { opacity: 1; transform: translate(-50%,-50%) scale(1.15); }
         }
 </style>
+<base target="_blank">
 <base target="_blank">
 </head>
 <body>
@@ -1969,14 +1970,17 @@ window.loginWithPi = async function() {
     await new Promise(r => setTimeout(r, 300));
 
     async function attemptLogin(isRetry) {
+        let originalBtnText = null;
+        let connectBtn = null;
+
         try {
-            // ── Spinner'ı sadece buton üzerinde göster ─────────────────
+            // ── 1. Spinner'ı buton üzerinde göster ─────────────────────
             const lock = document.getElementById('premium-lock');
-            const connectBtn = lock?.querySelector('.pi-btn');
-            const originalBtnText = connectBtn?.innerHTML;
+            connectBtn = lock?.querySelector('.pi-btn');
+            originalBtnText = connectBtn?.innerHTML;
 
             if (connectBtn) {
-                connectBtn.innerHTML = '<span style="display:inline-flex;align-items:center;gap:8px;"><span style="display:inline-block;width:16px;height:16px;border:2px solid rgba(255,255,255,0.3);border-top-color:#fff;border-radius:50%;animation:spin-ring 0.8s linear infinite;"></span><span>Bağlanıyor...</span></span>';
+                connectBtn.innerHTML = '<span style="display:inline-flex;align-items:center;gap:8px;"><span style="display:inline-block;width:16px;height:16px;border:2px solid rgba(255,255,255,0.3);border-top-color:#fff;border-radius:50%;animation:spin-ring 0.8s linear infinite;"></span><span style="font-size:0.9em;">Bağlanıyor...</span></span>';
                 connectBtn.disabled = true;
                 connectBtn.style.opacity = '0.7';
                 connectBtn.style.pointerEvents = 'none';
@@ -1987,20 +1991,14 @@ window.loginWithPi = async function() {
             piAccessToken = auth.accessToken;
             isAuth = true;
 
-            // ── Bildirim ve admin kontrolleri (UI görünmeden önce) ────
+            // ── 2. Bildirim ve admin kontrolleri (UI görünmeden önce) ─
             document.getElementById("notif-btn").style.visibility = "visible";
             startNotifPolling();
 
             const isAdmin = currentUser === APP_CONFIG.adminUsername;
 
-            // Admin panelini HEMEN aç (ama opacity 0 ile, layout hesaplasın)
+            // Admin panelini HEMEN açma — sadece veriyi hazırla
             if (isAdmin) {
-                const adminPanel = document.getElementById("admin-panel");
-                adminPanel.style.display = "block";
-                adminPanel.style.opacity = '0';
-                adminPanel.style.transform = 'translateY(10px)';
-                adminPanel.style.transition = 'opacity 0.4s ease, transform 0.4s ease';
-                
                 loadUniqueBadgeCount();
                 listenToPendingDomains();
                 const today = new Date().toISOString().split("T")[0];
@@ -2023,72 +2021,99 @@ window.loginWithPi = async function() {
 
             updateActiveStatus();
 
-            // ── Profil verilerini yükle ─────────────────────────────────
+            // ── 3. Profil verilerini yükle ─────────────────────────────
             await loadUserProfile();
             listenToMyOwnSellRequests(currentUser);
 
-            // ── Kullanıcı durum metni (bağlı göstergesi) ───────────────
+            // ── 4. Kullanıcı durum metni (bağlı göstergesi) ────────────
             const userStatusBox = document.getElementById("user-status-box");
             const userStatus = document.getElementById("user-status");
             if (userStatus) {
                 userStatus.innerHTML = '<span class="online-dot"></span>' + t('connectedPrefix') + currentUser;
             }
-            // user-status-box'ı GÖSTER ama opacity 0 ile başlat
-            if (userStatusBox) {
-                userStatusBox.style.display = "block";
-                userStatusBox.style.opacity = '0';
-                userStatusBox.style.transition = 'opacity 0.3s ease';
-            }
 
-            // Kullanıcı paneli kullanıcı adını ayarla
+            // Kullanıcı paneli kullanıcı adını ayarla (ama GÖSTERME)
             const upu = document.getElementById("user-panel-username");
             const uput = document.getElementById("user-panel-username-text");
             if (upu) { upu.style.display = 'inline-flex'; }
             if (uput) { uput.textContent = '@' + currentUser; }
 
-            // ── Kullanıcı panelini aç (opacity 0 ile başlat) ───────────
-            const userPanel = document.getElementById("user-panel");
-            userPanel.style.display = "block";
-            userPanel.style.opacity = '0';
-            userPanel.style.transform = 'translateY(10px)';
-            userPanel.style.transition = 'opacity 0.4s ease, transform 0.4s ease';
-
-            // Scroll düzeltmesi
+            // ── 5. Scroll düzeltmesi ───────────────────────────────────
             document.querySelector('.main-scroll').style.maxHeight = 'none';
             document.querySelector('.main-scroll').style.overflowY = 'auto';
 
-            // ── BUTONU NORMALE DÖNDÜR (önemli: spinner'ı kaldır) ──────
-            if (connectBtn) {
+            // ── 6. BUTONU NORMALE DÖNDÜR (önemli: spinner'ı kaldır) ───
+            if (connectBtn && originalBtnText) {
                 connectBtn.innerHTML = originalBtnText;
                 connectBtn.disabled = false;
                 connectBtn.style.opacity = '1';
                 connectBtn.style.pointerEvents = 'auto';
             }
 
-            // ── ANİMASYONLU GÖSTERİM (tek seferde, sıralı) ─────────────
-            // Önce layout'un hesaplanması için bir frame bekle
+            // ── 7. ANİMASYONLU GÖSTERİM — TEK RAF, SIRALI ─────────────
+            // ÖNCE render() çağrılır ki içerik DOM'a girsin (ama panel'ler
+            // hâlâ display:none olduğu için görünmez)
+            debouncedRender();
+
             requestAnimationFrame(() => {
                 requestAnimationFrame(() => {
-                    // 1. Admin paneli fade in
+                    // a) Önce #premium-lock'u KALDIR ve .locked-content'ü temizle
+                    //    Bu, "görünüp kaybolma" bug'ını çözer.
+                    const lockOverlay = document.getElementById('premium-lock');
+                    const domainList = document.getElementById('domain-list');
+                    const marketTitle = document.getElementById('market-title-box');
+                    const filterSection = document.getElementById('filter-section');
+
+                    if (lockOverlay) {
+                        lockOverlay.classList.remove('active');
+                        lockOverlay.style.opacity = '0';
+                        lockOverlay.style.visibility = 'hidden';
+                        lockOverlay.style.pointerEvents = 'none';
+                    }
+                    if (domainList) {
+                        domainList.classList.remove('locked-content');
+                        domainList.style.filter = 'none';
+                        domainList.style.opacity = '1';
+                        domainList.style.pointerEvents = 'auto';
+                    }
+                    if (marketTitle) marketTitle.style.display = 'inline-block';
+                    if (filterSection) filterSection.style.display = 'block';
+
+                    // b) Admin panelini aç (eğer admin ise)
                     if (isAdmin) {
                         const adminPanel = document.getElementById("admin-panel");
-                        adminPanel.style.opacity = '1';
-                        adminPanel.style.transform = 'translateY(0)';
+                        adminPanel.style.display = "block";
+                        adminPanel.style.opacity = '0';
+                        adminPanel.style.transform = 'translateY(10px)';
+                        adminPanel.style.transition = 'opacity 0.4s ease, transform 0.4s ease';
+
+                        requestAnimationFrame(() => {
+                            adminPanel.style.opacity = '1';
+                            adminPanel.style.transform = 'translateY(0)';
+                        });
                     }
-                    
-                    // 2. Kullanıcı durum metni fade in
+
+                    // c) Kullanıcı durum metni fade in
                     if (userStatusBox) {
-                        userStatusBox.style.opacity = '1';
+                        userStatusBox.style.display = "block";
+                        userStatusBox.style.opacity = '0';
+                        userStatusBox.style.transition = 'opacity 0.3s ease';
+                        requestAnimationFrame(() => {
+                            userStatusBox.style.opacity = '1';
+                        });
                     }
-                    
-                    // 3. Kullanıcı paneli fade in (küçük gecikme ile)
+
+                    // d) Kullanıcı panelini aç (küçük gecikme ile admin'den sonra)
+                    const userPanel = document.getElementById("user-panel");
+                    userPanel.style.display = "block";
+                    userPanel.style.opacity = '0';
+                    userPanel.style.transform = 'translateY(10px)';
+                    userPanel.style.transition = 'opacity 0.4s ease, transform 0.4s ease';
+
                     setTimeout(() => {
                         userPanel.style.opacity = '1';
                         userPanel.style.transform = 'translateY(0)';
-                        
-                        // Tüm paneller açıldıktan sonra render et
-                        debouncedRender();
-                    }, isAdmin ? 150 : 50); // Admin ise daha fazla bekle (layout kararlı olsun)
+                    }, isAdmin ? 200 : 80);
                 });
             });
 
@@ -2100,8 +2125,6 @@ window.loginWithPi = async function() {
             const userCancelled = msg.includes('cancel') || msg.includes('user_cancelled') || msg.includes('User cancelled');
 
             // Hata durumunda butonu mutlaka normale döndür
-            const lock = document.getElementById('premium-lock');
-            const connectBtn = lock?.querySelector('.pi-btn');
             if (connectBtn && originalBtnText) {
                 connectBtn.innerHTML = originalBtnText;
                 connectBtn.disabled = false;
@@ -2123,7 +2146,6 @@ window.loginWithPi = async function() {
     if (!success) alert(t('loginError'));
 };
 
-// ÖDEME
 document.getElementById("confirm-buy-btn").onclick=async()=>{
     document.getElementById('pre-buy-modal').style.display='none';
     await new Promise(r=>setTimeout(r,150));
