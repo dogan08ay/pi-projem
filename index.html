@@ -11,7 +11,7 @@
         html { box-sizing: border-box; overflow-x:hidden; }
         html,body{height:100%;}
         body{font-family:'Segoe UI',sans-serif;background:var(--bg);color:var(--text);margin:0;padding:0;width:100%;min-height:100vh;overflow-x:hidden;box-sizing:border-box;line-height:1.25;}
-        .container{max-width:600px;width:100%;min-width:0;text-align:center;display:flex;flex-direction:column;min-height:100vh;padding:2px 12px;gap:2px;box-sizing:border-box;margin-left:auto;margin-right:auto;}
+        .container{max-width:600px;width:100%;min-width:0;text-align:center;display:flex;flex-direction:column;min-height:100vh;padding:2px 0;gap:2px;box-sizing:border-box;margin-left:auto;margin-right:auto;}
         .card{background:var(--card);padding:5px;border-radius:12px;box-shadow:0 5px 8px -3px rgba(0,0,0,0.3);margin-bottom:3px;position:relative;overflow:visible;box-sizing:border-box;width:100%;min-width:0;max-width:100%;}
         .app-logo{width:130px;height:130px;margin:22px auto 4px auto;display:block;border-radius:50%;box-shadow:0 0 40px rgba(99,102,241,0.9);border:3px solid #818cf8;object-fit:cover;animation:logo-pulse 3s ease-in-out infinite;}
         @keyframes logo-pulse{0%,100%{transform:scale(1);}50%{transform:scale(1.05);}}
@@ -36,7 +36,7 @@
         .section-title-box{background:linear-gradient(90deg,#fef3c7 0%,#fde68a 30%,#ffffff 45%,#ffffff 55%,#fde68a 70%,#fef3c7 100%);background-size:200% auto;color:#1e293b;padding:6px 18px;border-radius:10px;border:2.5px solid #f59e0b;font-size:0.95em;font-weight:900;letter-spacing:0.5px;box-shadow:0 0 15px rgba(245,158,11,0.4),0 4px 8px rgba(0,0,0,0.2);font-weight:900;display:inline-block;margin-bottom:6px;animation:title-glow 2.5s ease-in-out infinite,section-shimmer 3s linear infinite;}
         @keyframes title-glow{0%,100%{box-shadow:0 0 10px rgba(245,158,11,0.5);border-color:#f59e0b;}50%{box-shadow:0 0 20px rgba(251,191,36,0.9),0 0 40px rgba(251,191,36,0.45);border-color:#fcd34d;}}
         @keyframes section-shimmer{0%{background-position:200% center;}100%{background-position:-200% center;}}
-        .lock-title-box{background:linear-gradient(145deg,#0f172a 0%,#1e1b4b 50%,#0f172a 100%);padding:8px 22px;border-radius:14px;border:2px solid rgba(129,140,248,0.5);font-size:0.95em;box-shadow:0 0 25px rgba(99,102,241,0.25),0 6px 16px rgba(0,0,0,0.3),inset 0 1px 0 rgba(255,255,255,0.08);font-weight:900;margin-bottom:10px;display:inline-block;letter-spacing:1.2px;text-transform:uppercase;position:relative;overflow:hidden;}.lock-title-box span{background:linear-gradient(90deg,#60a5fa 0%,#a78bfa 25%,#f472b6 50%,#a78bfa 75%,#60a5fa 100%);background-size:200% auto;-webkit-background-clip:text;-webkit-text-fill-color:transparent;animation:title-shine 3s linear infinite;display:inline-block;}.lock-title-box::before{content:"";position:absolute;top:0;left:-100%;width:100%;height:100%;background:linear-gradient(90deg,transparent,rgba(255,255,255,0.15),transparent);animation:shine-sweep 2.5s ease-in-out infinite;}@keyframes shine-sweep{0%{left:-100%;}100%{left:200%;}}100%{left:200%;}}.lock-title-box::before{content:"";position:absolute;top:0;left:-100%;width:100%;height:100%;background:linear-gradient(90deg,transparent,rgba(255,255,255,0.4),transparent);animation:shine-sweep 2.5s ease-in-out infinite;}@keyframes shine-sweep{0%{left:-100%;}100%{left:200%;}}
+        .lock-title-box{background:linear-gradient(145deg,#0f172a 0%,#1e1b4b 50%,#0f172a 100%);padding:8px 22px;border-radius:14px;border:2px solid rgba(129,140,248,0.5);font-size:0.95em;box-shadow:0 0 25px rgba(99,102,241,0.25),0 6px 16px rgba(0,0,0,0.3),inset 0 1px 0 rgba(255,255,255,0.08);font-weight:900;margin:0 auto 10px auto;display:block;letter-spacing:1.2px;text-transform:uppercase;position:relative;overflow:hidden;text-align:center;max-width:90%;}.lock-title-box span{background:linear-gradient(90deg,#60a5fa 0%,#a78bfa 25%,#f472b6 50%,#a78bfa 75%,#60a5fa 100%);background-size:200% auto;-webkit-background-clip:text;-webkit-text-fill-color:transparent;animation:title-shine 3s linear infinite;display:inline-block;}.lock-title-box::before{content:"";position:absolute;top:0;left:-100%;width:100%;height:100%;background:linear-gradient(90deg,transparent,rgba(255,255,255,0.15),transparent);animation:shine-sweep 2.5s ease-in-out infinite;}@keyframes shine-sweep{0%{left:-100%;}100%{left:200%;}}100%{left:200%;}}.lock-title-box::before{content:"";position:absolute;top:0;left:-100%;width:100%;height:100%;background:linear-gradient(90deg,transparent,rgba(255,255,255,0.4),transparent);animation:shine-sweep 2.5s ease-in-out infinite;}@keyframes shine-sweep{0%{left:-100%;}100%{left:200%;}}
         .locked-content{filter:blur(8px);opacity:0.45;pointer-events:none;transition:filter 0.3s ease,opacity 0.3s ease;}.premium-lock-overlay.active{opacity:1;visibility:visible;pointer-events:auto;}
         .premium-lock-overlay{position:absolute;top:0;left:0;right:0;bottom:0;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;background:rgba(10,15,30,0.72);backdrop-filter:blur(3px);z-index:100;padding-top:5px;text-align:center;overflow-y:auto;opacity:0;visibility:hidden;pointer-events:none;transition:opacity 0.3s ease,visibility 0.3s ease;}
         .diamond-spin{margin-bottom:1px;display:inline-block;animation:diamond-rotate 5s ease-in-out infinite;filter:drop-shadow(0 0 14px #818cf8);}
@@ -414,6 +414,11 @@
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#c7d2fe" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
             <span class="notif-badge" id="notif-badge">0</span>
         </div>
+        <button onclick="toggleSideMenu()" style="position:absolute;top:4px;right:8px;z-index:10;background:transparent;border:none;padding:4px;cursor:pointer;display:flex;flex-direction:column;gap:4px;width:32px;height:32px;align-items:center;justify-content:center;">
+            <span style="display:block;width:20px;height:2px;background:#cbd5e1;border-radius:2px;"></span>
+            <span style="display:block;width:20px;height:2px;background:#cbd5e1;border-radius:2px;"></span>
+            <span style="display:block;width:20px;height:2px;background:#cbd5e1;border-radius:2px;"></span>
+        </button>
         <!-- Kullanıcı Avatarı - Hamburger'ın Sağı -->
         <div id="user-avatar-btn" onclick="toggleUserMenu()" style="position:absolute;top:4px;right:48px;z-index:10;display:none;cursor:pointer;">
             <div style="width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,#10b981,#059669);border:2px solid #34d399;display:flex;align-items:center;justify-content:center;box-shadow:0 0 8px rgba(16,185,129,0.4);animation:connected-pulse 2s ease-in-out infinite;">
@@ -438,7 +443,7 @@
     </div>
 
     <!-- Kullanıcı Paneli -->
-    <div class="card" id="user-panel" style="display:none;border:2px solid #10b981;box-shadow:0 0 12px rgba(16,185,129,0.2);padding:5px;box-sizing:border-box;max-width:100%;margin-left:4px;margin-right:4px;">
+    <div class="card" id="user-panel" style="display:none;border:2px solid #10b981;box-shadow:0 0 12px rgba(16,185,129,0.2);padding:5px;box-sizing:border-box;width:calc(100% - 16px);margin-left:auto;margin-right:auto;">
         <h3 style="color:#10b981;margin:-4px -4px 6px -4px;padding:6px 4px;font-size:0.9em;display:flex;align-items:center;justify-content:center;position:relative;background:linear-gradient(135deg,rgba(16,185,129,0.18) 0%,rgba(5,150,105,0.1) 100%);border-bottom:1.5px solid rgba(16,185,129,0.35);border-radius:12px 12px 0 0;font-weight:900;">
             <span style="display:flex;align-items:center;gap:5px;">👤 <span data-i18n="myPanel"></span></span>
             <button onclick="refreshUserPanel()" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);background:rgba(16,185,129,0.2);border:1.5px solid #10b981;color:#6ee7b7;width:24px;height:24px;border-radius:6px;font-size:0.85em;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;" title="Yenile"><span id="refresh-icon" style="display:inline-block;transition:transform 0.5s ease;">↻</span></button>
@@ -508,7 +513,7 @@
     </div>
 
     <!-- Admin Paneli -->
-    <div class="card" id="admin-panel" style="display:none;border:2px solid #6366f1;box-shadow:0 0 12px rgba(99,102,241,0.2);padding:5px;margin-right:0;box-sizing:border-box;max-width:100%;margin-left:4px;margin-right:4px;">
+    <div class="card" id="admin-panel" style="display:none;border:2px solid #6366f1;box-shadow:0 0 12px rgba(99,102,241,0.2);padding:5px;box-sizing:border-box;width:calc(100% - 16px);margin-left:auto;margin-right:auto;">
         <h3 style="color:#fbbf24;margin:-5px -5px 8px -5px;padding:8px 5px;font-size:0.95em;display:flex;align-items:center;justify-content:center;gap:6px;background:linear-gradient(135deg,rgba(99,102,241,0.2) 0%,rgba(67,56,202,0.1) 100%);border-bottom:1.5px solid rgba(99,102,241,0.4);border-radius:14px 14px 0 0;font-weight:900;">🛠 Admin Panel</h3>
         <div class="admin-tabs">
             <button class="admin-tab-btn active" data-tab="tab-users" onclick="switchAdminTab('tab-users')">👥<span data-i18n="users" style="font-size:0.9em;"></span></button>
@@ -614,7 +619,7 @@
     </div>
 
     <!-- Market -->
-    <div class="card" id="market-card" style="position:relative;padding:5px;margin-bottom:2px;overflow:hidden;min-height:70px;background:linear-gradient(145deg,#0f172a 0%,#1e1b4b 50%,#0f172a 100%);border:1px solid #2a3a52;margin-left:4px;margin-right:4px;">
+    <div class="card" id="market-card" style="position:relative;padding:5px;margin-bottom:2px;overflow:hidden;min-height:70px;background:linear-gradient(145deg,#0f172a 0%,#1e1b4b 50%,#0f172a 100%);border:1px solid #2a3a52;width:calc(100% - 16px);margin-left:auto;margin-right:auto;">
         <div class="section-title-box" id="market-title-box" style="display:none;" data-i18n="availableDomains"></div>
         <div class="filter-section" id="filter-section" style="display:none;">
             <div class="filter-section-label" data-i18n="filterSectionLabel"></div>
