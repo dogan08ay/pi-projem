@@ -1,8 +1,8 @@
 <!DOCTYPE html>
-<html lang="tr" style="overflow-x:hidden;width:100%;">
+<html lang="tr" style="overflow-x:hidden;width:100%;min-width:320px;">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Web3 Domain Gateway</title>
     <script src="https://sdk.minepi.com/pi-sdk.js"></script>
     <style>
@@ -11,7 +11,7 @@
         html { box-sizing: border-box; overflow-x:hidden; }
         html,body{height:100%;}
         body{font-family:'Segoe UI',sans-serif;background:var(--bg);color:var(--text);margin:0;padding:0;width:100%;min-height:100vh;overflow-x:hidden;box-sizing:border-box;line-height:1.25;}
-        .container{max-width:600px;width:100%;min-width:320px;text-align:center;display:flex;flex-direction:column;min-height:100vh;padding:2px 4px;gap:2px;box-sizing:border-box;margin-left:auto;margin-right:auto;}
+        .container{max-width:600px;width:100%;min-width:320px;text-align:center;display:flex;flex-direction:column;min-height:100vh;padding:0;gap:2px;box-sizing:border-box;margin-left:auto;margin-right:auto;}
         .card{background:var(--card);padding:5px;border-radius:12px;box-shadow:0 5px 8px -3px rgba(0,0,0,0.3);margin-bottom:3px;position:relative;overflow:visible;box-sizing:border-box;width:100%;min-width:0;max-width:100%;}
         .app-logo{width:130px;height:130px;margin:22px auto 4px auto;display:block;border-radius:50%;box-shadow:0 0 40px rgba(99,102,241,0.9);border:3px solid #818cf8;object-fit:cover;animation:logo-pulse 3s ease-in-out infinite;}
         @keyframes logo-pulse{0%,100%{transform:scale(1);}50%{transform:scale(1.05);}}
@@ -761,7 +761,7 @@ const i18n = {
     soldDomains:"Satılan Domain",totalVolume:"Toplam Hacim",activeUsers:"Aktif Kullanıcı",
     overview:"Genel",myPurchases:"Alımlarım",myListings:"İlanlarım",myIncome:"Gelirim",
     totalSpent:"Toplam Harcama",myListingsCount:"İlan Sayım",
-    myListingsTitle:"İlan Son Durumu",listNewDomain:"+ Yeni İlan Ver",
+    myListingsTitle:"İLAN TAKİP PANELİ",listNewDomain:"+ Yeni İlan Ver",
     totalEarned:"TOPLAM GELİR",earnedNote:"Satışa sunduğunuz ve satılan domainlerden elde edilen gelir.",
     info:"BİLGİ",
     testNetNote:"<div style=\'display:grid;grid-template-columns:auto 1fr;gap:4px 8px;align-items:start;font-size:0.95em;\'><div>🧪</div><div>Bu uygulama <b>Test-Pi</b> ağında deneme amaçlıdır.</div><div>🔄</div><div>Satın aldığınız domainler tekrar <span class=\"btn-fake-buy\">SATIN AL</span> olarak görünebilir.</div><div>⚠️</div><div>Satın alma geçmişinizden silinebilir.</div></div>",
@@ -911,7 +911,7 @@ const i18n = {
     soldDomains:"Sold Domains",totalVolume:"Total Volume",activeUsers:"Active Users",
     overview:"Overview",myPurchases:"My Purchases",myListings:"My Listings",myIncome:"My Income",
     totalSpent:"Total Spent",myListingsCount:"My Listings",
-    myListingsTitle:"Listing Status",listNewDomain:"+ New Listing",
+    myListingsTitle:"LISTING TRACKING PANEL",listNewDomain:"+ New Listing",
     totalEarned:"TOTAL EARNINGS",earnedNote:"Total earnings from your listed and sold domains.",
     info:"INFO",
     testNetNote:"<div style=\'display:grid;grid-template-columns:auto 1fr;gap:4px 8px;align-items:start;font-size:0.95em;\'><div>🧪</div><div>This app runs on <b>Test-Pi</b> for demo purposes.</div><div>🔄</div><div>Purchased domains may reappear as <span class=\"btn-fake-buy\">BUY</span> in the market.</div><div>⚠️</div><div>They may be removed from your purchase history.</div></div>",
@@ -1848,7 +1848,7 @@ function renderUserPanel(){
                 </div>`).join('');
         }
         // Tüm satış önerileri geçmişi + TÜM detaylar (YENİ SIRALAMA)
-        html+=`<div style="display:inline-flex;align-items:center;gap:6px;background:linear-gradient(135deg,#78350f,#92400e);color:#fcd34d;font-size:0.68em;font-weight:800;text-transform:uppercase;margin:10px 0 6px 0;padding:4px 10px;border-radius:8px;border:1px solid #f59e0b;">📋 ${t('myListingsTitle')}</div>`;
+        html+=`<div style="display:inline-flex;align-items:center;gap:6px;background:linear-gradient(135deg,#78350f,#92400e);color:#fcd34d;font-size:0.68em;font-weight:800;text-transform:uppercase;margin:10px 0 6px 0;padding:4px 10px;border-radius:8px;border:1px solid #f59e0b;">📋 İlan Son Durumu</div>`;
         if(!userSellRequests.length){
             html+=`<p style="font-size:0.75em;opacity:0.5;text-align:center;">${t('noListings')}</p>`;
         } else {
