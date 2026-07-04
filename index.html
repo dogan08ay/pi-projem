@@ -152,7 +152,13 @@
             0%, 100% { opacity: 0.6; transform: translate(-50%,-50%) scale(1); }
             50% { opacity: 1; transform: translate(-50%,-50%) scale(1.15); }
         }
-</style>
+
+        /* User Menu Dropdown */
+        #user-menu-dropdown{display:none;animation:fadeInDown 0.2s ease-out;}
+        #user-menu-dropdown.open{display:block;}
+        @keyframes fadeInDown{from{opacity:0;transform:translateY(-5px);}to{opacity:1;transform:translateY(0);}}
+        #user-avatar-btn:hover #user-menu-dropdown{display:block;}
+    </style>
 <base target="_blank">
 <base target="_blank">
 <base target="_blank">
@@ -408,7 +414,18 @@
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#c7d2fe" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
             <span class="notif-badge" id="notif-badge">0</span>
         </div>
-        <button class="hamburger-btn" onclick="toggleSideMenu()" style="position:absolute;top:4px;right:8px;z-index:10;"><span></span><span></span><span></span></button>
+        <button class="hamburger-btn" onclick="toggleSideMenu()" style="position:absolute;top:4px;right:48px;z-index:10;"><span></span><span></span><span></span></button>
+        <!-- Kullanıcı Avatarı - Sağ Üst -->
+        <div id="user-avatar-btn" onclick="toggleUserMenu()" style="position:absolute;top:4px;right:8px;z-index:10;display:none;cursor:pointer;">
+            <div style="width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,#10b981,#059669);border:2px solid #34d399;display:flex;align-items:center;justify-content:center;box-shadow:0 0 8px rgba(16,185,129,0.4);animation:connected-pulse 2s ease-in-out infinite;">
+                <span style="font-size:1.1em;">👤</span>
+            </div>
+            <div id="user-menu-dropdown" style="display:none;position:absolute;top:38px;right:0;background:#0f172a;border:1.5px solid #10b981;border-radius:10px;padding:8px;min-width:150px;box-shadow:0 8px 24px rgba(0,0,0,0.5);z-index:100;">
+                <div style="font-size:0.7em;color:#6ee7b7;font-weight:800;text-align:center;padding-bottom:6px;border-bottom:1px solid #1e293b;margin-bottom:6px;" id="user-menu-name">@user</div>
+                <button onclick="event.stopPropagation();openUserPanel()" style="width:100%;background:transparent;border:none;color:#cbd5e1;padding:6px 8px;border-radius:6px;font-size:0.72em;font-weight:700;cursor:pointer;text-align:left;display:flex;align-items:center;gap:6px;margin-bottom:3px;hover:background:#1e293b;"><span>👤</span> <span data-i18n="myPanel"></span></button>
+                <button onclick="event.stopPropagation();handleLogout()" style="width:100%;background:transparent;border:none;color:#f87171;padding:6px 8px;border-radius:6px;font-size:0.72em;font-weight:700;cursor:pointer;text-align:left;display:flex;align-items:center;gap:6px;"><span>🚪</span> <span data-i18n="logoutBtn">Çıkış</span></button>
+            </div>
+        </div>
         <img src="assets/logo.jpeg" alt="Logo" class="app-logo" style="width:130px;height:130px;margin:8px auto 4px auto;">
         <h1 class="app-title" style="margin:0 0 3px 0;font-size:1.55em;">Web3 Domain Gateway</h1>
         <div class="stats-bar" style="margin:0 auto 1px auto;max-width:340px;">
@@ -425,12 +442,7 @@
             <span style="display:flex;align-items:center;gap:5px;">👤 <span data-i18n="myPanel"></span></span>
             <button onclick="refreshUserPanel()" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);background:rgba(16,185,129,0.2);border:1.5px solid #10b981;color:#6ee7b7;width:24px;height:24px;border-radius:6px;font-size:0.85em;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;" title="Yenile"><span id="refresh-icon" style="display:inline-block;transition:transform 0.5s ease;">↻</span></button>
         </h3>
-        <div id="user-status-box" style="display:none;text-align:center;margin:4px 0 2px 0;">
-            <p id="user-status" style="display:inline-flex;align-items:center;gap:5px;font-size:0.78em;color:#60a5fa;font-weight:900;margin:0;background:linear-gradient(135deg,rgba(59,130,246,0.2),rgba(37,99,235,0.3));border:1.5px solid #3b82f6;border-radius:20px;padding:4px 14px;box-shadow:0 0 10px rgba(59,130,246,0.3);animation:connected-pulse-blue 2s ease-in-out infinite;">
-                <span class="online-dot" style="width:7px;height:7px;margin-right:2px;background:#60a5fa;box-shadow:0 0 6px #60a5fa;"></span>
-                <span id="user-status-text"></span>
-            </p>
-        </div>
+        
         <div class="user-tabs">
             <button class="user-tab-btn active" data-utab="utab-overview" onclick="switchUserTab('utab-overview')">📊 <span data-i18n="overview"></span></button>
             <button class="user-tab-btn" data-utab="utab-purchases" onclick="switchUserTab('utab-purchases')">🛒 <span data-i18n="myPurchases"></span></button>
@@ -804,7 +816,7 @@ const i18n = {
     addDomainSuccess:(n)=>`"${n}" domaini eklendi.`,
     loginError:"GİRİŞ HATASI!",paymentError:"ÖDEME HATASI!",
     noRecord:"KAYIT BULUNAMADI.",noUsers:"Kayıt bulunamadı.",usersError:"Hata oluştu.",
-    connectedPrefix:"BAĞLI: @",lastSeenPrefix:"Son: ",soldPiLabel:" Pİ ALINDI",
+    logoutBtn:"Çıkış",logoutBtnEn:"Logout",connectedPrefix:"BAĞLI: @",lastSeenPrefix:"Son: ",soldPiLabel:" Pİ ALINDI",
     pendingSentBy:"Gönderen: @",pendingWallet:"Cüzdan: ",pendingWalletUnspecified:"belirtilmemiş",
     updateBtn:"Güncelle",deleteBtn:"Sil",
     shareText:(d)=>`🚀 Web3 Domain Gateway üzerinden ${d} domainini satın aldım! Test-Pİ ile siz de katılın.`,
@@ -951,7 +963,7 @@ const i18n = {
     addDomainSuccess:(n)=>`"${n}" domain added.`,
     loginError:"LOGIN ERROR!",paymentError:"PAYMENT ERROR!",
     noRecord:"NO RECORDS FOUND.",noUsers:"No records found.",usersError:"An error occurred.",
-    connectedPrefix:"CONNECTED: @",lastSeenPrefix:"Last: ",soldPiLabel:" PI PURCHASED",
+    logoutBtn:"Çıkış",logoutBtnEn:"Logout",connectedPrefix:"CONNECTED: @",lastSeenPrefix:"Last: ",soldPiLabel:" PI PURCHASED",
     pendingSentBy:"Submitted by: @",pendingWallet:"Wallet: ",pendingWalletUnspecified:"not specified",
     updateBtn:"Update",deleteBtn:"Delete",
     shareText:(d)=>`🚀 I just purchased the ${d} domain on Web3 Domain Gateway! Join with Test-PI.`,
@@ -1270,6 +1282,11 @@ function startNotifPolling(){
 function stopNotifPolling(){
     if(notifPollInterval){clearInterval(notifPollInterval);notifPollInterval=null;}
 }
+window.toggleUserMenu=function(){
+    const menu=document.getElementById('user-menu-dropdown');
+    if(!menu)return;
+    menu.style.display=menu.style.display==='block'?'none':'block';
+};
 window.openNotifModal=function(){
     document.getElementById('notif-modal').style.display='flex';
     fetchNotifications(); // modal açılınca anında tazele
@@ -2132,6 +2149,12 @@ window.loginWithPi = async function() {
             currentUser = auth.user.username;
             piAccessToken = auth.accessToken;
             isAuth = true;
+
+            // Kullanıcı avatarını göster
+            const avatarBtn=document.getElementById('user-avatar-btn');
+            if(avatarBtn) avatarBtn.style.display='block';
+            const menuName=document.getElementById('user-menu-name');
+            if(menuName&&currentUser) menuName.textContent='@'+currentUser;
 
             // ── 2. Bildirim ve admin kontrolleri (UI görünmeden önce) ─
             document.getElementById("notif-btn").style.visibility = "visible";
