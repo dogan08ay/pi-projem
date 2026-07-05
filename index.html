@@ -201,6 +201,7 @@
 <base target="_blank">
 <base target="_blank">
 <base target="_blank">
+<base target="_blank">
 </head>
 <body style="margin:0;padding:0;width:100%;min-width:320px;overflow-x:hidden;position:relative;box-sizing:border-box;">
 <div class="side-menu-overlay" id="side-menu-overlay" onclick="toggleSideMenu()"></div>
@@ -877,7 +878,9 @@ const i18n = {
     badgeBronze:"🥉 Bronz",badgeSilver:"🥈 Gümüş",badgeGold:"🥇 Altın",badgeDiamond:"💎 Elmas",
     badgeInfoTitle:"Rozet Kazanma Koşulları",
     badgeBronzeReq:"10+ Puan",badgeSilverReq:"50+ Puan",badgeGoldReq:"200+ Puan",badgeDiamondReq:"500+ Puan",
-    statusPending:"⏳ Onay Bekliyor",statusApproved:"✅ Onaylandı",statusRejected:"❌ Reddedildi",
+    statusPending:"⏳ Onay Bekliyor",statusApproved:"✅ Onaylandı",statusRejected:"❌ Reddedildi",statusWithdrawn:"🚫 Geri Çekildi",statusSold:"✅ Satıldı",
+    myListingsStatusTitle:"📋 İlan Son Durumu",withdrawnAtLabel:"Geri Çekilme:",approvalDateLabel:"Onay Tarihi",listingDateLabel:"İlan Tarihi",
+    deleteListingBtn:"🗑️ İlanı Sil",editResubmitBtn:"✏️ Düzenle & Yeniden Gönder",withdrawRequestBtn:"🚫 İlanı Geri Çek",rejectReasonLabel:"Red Sebebi",
     domainOnSale:"Satışta",domainSold:"Satıldı",sellerLabel:"Satıcı:",descriptionEmpty:"Açıklama girilmemiş.",
     imageUploading:"Görsel yükleniyor...",imageUploadFailed:"Görsel yüklenemedi.",
     myActiveListings:"Satıştaki Domainleriniz",mySoldDomainsLabel:"Satılan Domainleriniz",
@@ -1024,7 +1027,9 @@ const i18n = {
     badgeBronze:"🥉 Bronze",badgeSilver:"🥈 Silver",badgeGold:"🥇 Gold",badgeDiamond:"💎 Diamond",
     badgeInfoTitle:"Badge Requirements",
     badgeBronzeReq:"10+ Points",badgeSilverReq:"50+ Points",badgeGoldReq:"200+ Points",badgeDiamondReq:"500+ Points",
-    statusPending:"⏳ Pending Approval",statusApproved:"✅ Approved",statusRejected:"❌ Rejected",
+    statusPending:"⏳ Pending Approval",statusApproved:"✅ Approved",statusRejected:"❌ Rejected",statusWithdrawn:"🚫 Withdrawn",statusSold:"✅ Sold",
+    myListingsStatusTitle:"📋 Listing Status",withdrawnAtLabel:"Withdrawn:",approvalDateLabel:"Approval Date",listingDateLabel:"Listing Date",
+    deleteListingBtn:"🗑️ Delete Listing",editResubmitBtn:"✏️ Edit & Resubmit",withdrawRequestBtn:"🚫 Withdraw Request",rejectReasonLabel:"Reject Reason",
     domainOnSale:"On Sale",domainSold:"Sold",sellerLabel:"Seller:",descriptionEmpty:"No description provided.",
     imageUploading:"Uploading image...",imageUploadFailed:"Image upload failed.",
     myActiveListings:"Domains Currently on Sale",mySoldDomainsLabel:"Your Sold Domains",
@@ -1874,7 +1879,7 @@ function renderUserPanel(){
         } else {
             html+=userActiveListings.map(d=>`
                 <div style="background:#0f172a;border:1.5px solid #f59e0b;border-radius:12px;padding:10px;margin-bottom:8px;">
-                    <!-- Üst satır: Domain adı + Tür + Satışta etiketi (sağ üst) -->
+                    <!-- Top row: Domain name + Type + On Sale tag (top right) -->
                     <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;gap:8px;">
                         <div style="flex:1;min-width:0;">
                             <b style="color:#f1f5f9;font-size:0.9em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${d.name}">${d.name}</b>
@@ -1883,14 +1888,14 @@ function renderUserPanel(){
                             <span style="font-size:0.58em;background:rgba(16,185,129,0.15);color:#6ee7b7;border:1px solid #10b981;border-radius:6px;padding:1px 6px;font-weight:700;white-space:nowrap;">✅ ${t('domainOnSale')}</span>
                         </div>
                     </div>
-                    <!-- Etiket:Değer düzeni (onay bekleyenler gibi) -->
+                    <!-- Label:Value layout (like pending listings) -->
                     <div style="display:flex;flex-direction:column;gap:4px;font-size:0.72em;color:#cbd5e1;line-height:1.4;margin-bottom:8px;">
                         <div style="display:flex;gap:6px;align-items:baseline;">
                             <span style="color:#64748b;flex-shrink:0;font-weight:700;min-width:90px;">💰 ${t('detailFieldPrice')}:</span>
                             <span style="color:#fbbf24;font-weight:900;">${d.price} Pi</span>
                         </div>
                         <div style="display:flex;gap:6px;align-items:baseline;">
-                            <span style="color:#64748b;flex-shrink:0;font-weight:700;min-width:90px;">📅 ${currentLang==='tr'?'Onay Tarihi':'Approval Date'}:</span>
+                            <span style="color:#64748b;flex-shrink:0;font-weight:700;min-width:90px;">📅 ${t('approvalDateLabel')}:</span>
                             <span style="color:#94a3b8;">${d.createdAt?new Date(d.createdAt).toLocaleDateString(locale,{day:'2-digit',month:'2-digit',year:'numeric'}):'-'}</span>
                         </div>
                         <div style="display:flex;gap:6px;align-items:baseline;">
@@ -1906,20 +1911,20 @@ function renderUserPanel(){
                             <span style="color:#60a5fa;font-size:0.9em;">${d.sellerWallet}</span>
                         </div>`:''}
                     </div>
-                    <!-- İlanı Geri Çek butonu (aynı yerinde) -->
+                    <!-- Withdraw listing button -->
                     <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;">
                         <button onclick="handleWithdrawListing('${d.name}')" style="margin-left:auto;background:#ef4444;color:#fff;border:none;padding:3px 8px;border-radius:5px;font-size:0.6em;font-weight:800;cursor:pointer;">🗑️ ${t('withdrawListing')}</button>
                     </div>
                 </div>`).join('');
         }
         // Tüm satış önerileri geçmişi + TÜM detaylar (YENİ SIRALAMA)
-        html+=`<div style="display:inline-flex;align-items:center;gap:6px;background:linear-gradient(135deg,#78350f,#92400e);color:#fcd34d;font-size:0.68em;font-weight:800;text-transform:uppercase;margin:10px 0 6px 0;padding:4px 10px;border-radius:8px;border:1px solid #f59e0b;">📋 İlan Son Durumu</div>`;
+        html+=`<div style="display:inline-flex;align-items:center;gap:6px;background:linear-gradient(135deg,#78350f,#92400e);color:#fcd34d;font-size:0.68em;font-weight:800;text-transform:uppercase;margin:10px 0 6px 0;padding:4px 10px;border-radius:8px;border:1px solid #f59e0b;">${t('myListingsStatusTitle')}</div>`;
         if(!userSellRequests.length){
             html+=`<p style="font-size:0.75em;opacity:0.5;text-align:center;">${t('noListings')}</p>`;
         } else {
-            const statusMap={pending:t('statusPending'),approved:t('statusApproved'),rejected:t('statusRejected'),sold:t('domainSold')};
-            const statusColor={pending:'#fbbf24',approved:'#10b981',rejected:'#ef4444',sold:'#ef4444'};
-            const statusBg={pending:'rgba(251,191,36,0.1)',approved:'rgba(16,185,129,0.1)',rejected:'rgba(239,68,68,0.1)',sold:'rgba(239,68,68,0.1)'};
+            const statusMap={pending:t('statusPending'),approved:t('statusApproved'),rejected:t('statusRejected'),sold:t('statusSold'),withdrawn:t('statusWithdrawn')};
+            const statusColor={pending:'#fbbf24',approved:'#10b981',rejected:'#ef4444',sold:'#ef4444',withdrawn:'#64748b'};
+            const statusBg={pending:'rgba(251,191,36,0.1)',approved:'rgba(16,185,129,0.1)',rejected:'rgba(239,68,68,0.1)',sold:'rgba(239,68,68,0.1)',withdrawn:'rgba(100,116,139,0.1)'};
             html+=userSellRequests.map(req=>{
                 // Domain satıldı mı kontrol et
                 const domainInfo=domainData[req.domainName];
@@ -1946,7 +1951,7 @@ function renderUserPanel(){
                             <span style="color:#fbbf24;font-weight:900;">${req.price} Pi</span>
                         </div>
                         <div style="display:flex;gap:6px;align-items:baseline;">
-                            <span style="color:#64748b;flex-shrink:0;font-weight:700;min-width:90px;">📅 ${currentLang==='tr'?'İlan Tarihi':'Listing Date'}:</span>
+                            <span style="color:#64748b;flex-shrink:0;font-weight:700;min-width:90px;">📅 ${t('listingDateLabel')}:</span>
                             <span style="color:#94a3b8;">${dateStr}</span>
                         </div>
                         <div style="display:flex;gap:6px;align-items:baseline;">
@@ -1962,18 +1967,18 @@ function renderUserPanel(){
                             <span style="color:#60a5fa;font-size:0.9em;">${req.sellerWallet}</span>
                         </div>`:''}
                         ${req.rejectReason?`<div style="display:flex;gap:6px;align-items:flex-start;margin-top:4px;padding:6px 8px;background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.3);border-radius:6px;">
-                            <span style="color:#f87171;flex-shrink:0;font-weight:800;min-width:90px;">❌ ${currentLang==='tr'?'Red Sebebi':'Reject Reason'}:</span>
+                            <span style="color:#f87171;flex-shrink:0;font-weight:800;min-width:90px;">❌ ${t('rejectReasonLabel')}:</span>
                             <span style="color:#fca5a5;word-break:break-word;flex:1;font-weight:600;">${req.rejectReason}</span>
                         </div>`:''}
                     </div>
 
-                    <!-- Reddedilmiş ilan için kullanıcı aksiyon butonları -->
+                    <!-- Rejected listing user action buttons -->
                     ${isRejected?`<div style="display:flex;gap:8px;margin-top:8px;padding-top:8px;border-top:1px solid #334155;">
-                        <button onclick="handleDeleteRejectedRequest('${req.id}')" style="flex:1;background:#ef4444;color:#fff;border:none;padding:7px;border-radius:6px;font-size:0.7em;font-weight:800;cursor:pointer;">🗑️ ${currentLang==='tr'?'İlanı Sil':'Delete Listing'}</button>
-                        <button onclick="openEditRejectedRequest('${req.id}')" style="flex:1;background:#3b82f6;color:#fff;border:none;padding:7px;border-radius:6px;font-size:0.7em;font-weight:800;cursor:pointer;">✏️ ${currentLang==='tr'?'Düzenle & Yeniden Gönder':'Edit & Resubmit'}</button>
+                        <button onclick="handleDeleteRejectedRequest('${req.id}')" style="flex:1;background:#ef4444;color:#fff;border:none;padding:7px;border-radius:6px;font-size:0.7em;font-weight:800;cursor:pointer;">${t('deleteListingBtn')}</button>
+                        <button onclick="openEditRejectedRequest('${req.id}')" style="flex:1;background:#3b82f6;color:#fff;border:none;padding:7px;border-radius:6px;font-size:0.7em;font-weight:800;cursor:pointer;">${t('editResubmitBtn')}</button>
                     </div>`:''}
                     ${isPending?`<div style="display:flex;gap:8px;margin-top:8px;padding-top:8px;border-top:1px solid #334155;">
-                        <button onclick="handleWithdrawSellRequest('${req.id}')" style="width:100%;background:#475569;color:#cbd5e1;border:1px solid #64748b;padding:7px;border-radius:6px;font-size:0.7em;font-weight:800;cursor:pointer;">🚫 ${currentLang==='tr'?'İlanı Geri Çek':'Withdraw Request'}</button>
+                        <button onclick="handleWithdrawSellRequest('${req.id}')" style="width:100%;background:#475569;color:#cbd5e1;border:1px solid #64748b;padding:7px;border-radius:6px;font-size:0.7em;font-weight:800;cursor:pointer;">🚫 ${t('withdrawListing')}</button>
                     </div>`:''}
                 </div>`;
             }).join('');
