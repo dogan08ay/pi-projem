@@ -747,6 +747,11 @@ export default async function handler(req, res) {
       if (!existingReq.empty) return res.status(400).json({ error: "Bu domain için zaten bekleyen bir öneriniz var" });
 
       const requestRef = db.collection('sell_requests').doc();
+      // Eski reddedilmiş kaydı sil (edit mode)
+      if (body.editMode && body.oldRequestId) {
+        await db.collection('sell_requests').doc(body.oldRequestId).delete();
+      }
+
       await requestRef.set({
         domainName: reqDomainName,
         price: priceNum,
@@ -811,6 +816,11 @@ export default async function handler(req, res) {
         deleted: false, deletedAt: null,
         createdAt: Date.now()
       });
+      // Eski reddedilmiş kaydı sil (edit mode)
+      if (body.editMode && body.oldRequestId) {
+        await db.collection('sell_requests').doc(body.oldRequestId).delete();
+      }
+
       await requestRef.set({ status: 'approved', resolvedAt: Date.now() }, { merge: true });
 
       await sendNotification(reqData.submittedBy, {
@@ -839,6 +849,11 @@ export default async function handler(req, res) {
       const requestRef = db.collection('sell_requests').doc(requestId);
       const requestSnap = await requestRef.get();
       const reqData = requestSnap.data();
+      // Eski reddedilmiş kaydı sil (edit mode)
+      if (body.editMode && body.oldRequestId) {
+        await db.collection('sell_requests').doc(body.oldRequestId).delete();
+      }
+
       await requestRef.set({ status: 'rejected', resolvedAt: Date.now(), rejectReason: rejectReason || '' }, { merge: true });
 
       if (reqData?.submittedBy) {
