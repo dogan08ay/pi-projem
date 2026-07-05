@@ -192,7 +192,441 @@
         #user-menu-dropdown.open{display:block;}
         @keyframes fadeInDown{from{opacity:0;transform:translateY(-5px);}to{opacity:1;transform:translateY(0);}}
         #user-avatar-btn:hover #user-menu-dropdown{display:block;}
-    </style>
+    
+/* ============================================================ */
+/*  TICKET / DESTEK SİSTEMİ STİLLERİ                         */
+/* ============================================================ */
+
+.ticket-filters, .ticket-admin-filters {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+  padding: 8px;
+  background: rgba(99,102,241,0.08);
+  border-radius: 10px;
+  border: 1px solid rgba(99,102,241,0.15);
+}
+
+.ticket-filter-btn {
+  padding: 5px 12px;
+  border: 1.5px solid rgba(99,102,241,0.2);
+  background: rgba(30,41,59,0.8);
+  color: #94a3b8;
+  border-radius: 16px;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-size: 0.65em;
+  font-weight: 700;
+}
+
+.ticket-filter-btn:hover, .ticket-filter-btn.active {
+  background: linear-gradient(135deg, #6366f1 0%, #818cf8 100%);
+  color: white;
+  border-color: transparent;
+  box-shadow: 0 0 10px rgba(99,102,241,0.3);
+}
+
+.ticket-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.ticket-card {
+  background: rgba(15,23,42,0.9);
+  border: 1.5px solid rgba(99,102,241,0.15);
+  border-radius: 10px;
+  padding: 10px;
+  cursor: pointer;
+  transition: all 0.2s;
+  position: relative;
+  overflow: hidden;
+}
+
+.ticket-card:hover {
+  background: rgba(30,41,59,0.9);
+  transform: translateX(3px);
+  border-color: rgba(99,102,241,0.3);
+}
+
+.ticket-card::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  border-radius: 10px 0 0 10px;
+}
+
+.ticket-card.status-new::before { background: #3b82f6; }
+.ticket-card.status-reviewing::before { background: #f59e0b; }
+.ticket-card.status-answered::before { background: #a855f7; }
+.ticket-card.status-resolved::before { background: #10b981; }
+.ticket-card.status-closed::before { background: #64748b; }
+
+.ticket-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+  gap: 8px;
+}
+
+.ticket-card-subject {
+  font-weight: 800;
+  font-size: 0.82em;
+  color: #f1f5f9;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+}
+
+.ticket-status-badge {
+  padding: 2px 8px;
+  border-radius: 8px;
+  font-size: 0.58em;
+  font-weight: 800;
+  text-transform: uppercase;
+  flex-shrink: 0;
+}
+
+.status-badge-new { background: rgba(59,130,246,0.15); color: #60a5fa; border: 1px solid rgba(59,130,246,0.3); }
+.status-badge-reviewing { background: rgba(245,158,11,0.15); color: #fbbf24; border: 1px solid rgba(245,158,11,0.3); }
+.status-badge-answered { background: rgba(168,85,247,0.15); color: #c084fc; border: 1px solid rgba(168,85,247,0.3); }
+.status-badge-resolved { background: rgba(16,185,129,0.15); color: #34d399; border: 1px solid rgba(16,185,129,0.3); }
+.status-badge-closed { background: rgba(100,116,139,0.15); color: #94a3b8; border: 1px solid rgba(100,116,139,0.3); }
+
+.ticket-card-meta {
+  display: flex;
+  gap: 10px;
+  font-size: 0.65em;
+  color: #64748b;
+  margin-bottom: 6px;
+  flex-wrap: wrap;
+}
+
+.ticket-card-preview {
+  font-size: 0.72em;
+  color: #94a3b8;
+  line-height: 1.4;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.ticket-card-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(99,102,241,0.1);
+}
+
+.ticket-priority {
+  font-size: 0.6em;
+  padding: 2px 8px;
+  border-radius: 6px;
+  font-weight: 700;
+}
+
+.priority-low { background: rgba(16,185,129,0.15); color: #34d399; }
+.priority-normal { background: rgba(245,158,11,0.15); color: #fbbf24; }
+.priority-high { background: rgba(239,68,68,0.15); color: #f87171; }
+.priority-urgent { background: rgba(185,28,28,0.2); color: #fca5a5; }
+
+/* Ticket Modal */
+.ticket-modal-content {
+  border-color: #6366f1 !important;
+  max-height: 85vh;
+}
+
+.ticket-detail-content, .admin-ticket-detail-content {
+  padding: 12px;
+}
+
+.ticket-messages {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 280px;
+  overflow-y: auto;
+  padding: 10px;
+  background: rgba(15,23,42,0.8);
+  border-radius: 10px;
+  margin: 10px 0;
+  border: 1px solid rgba(99,102,241,0.1);
+}
+
+.ticket-messages::-webkit-scrollbar { width: 4px; }
+.ticket-messages::-webkit-scrollbar-thumb { background: #6366f1; border-radius: 10px; }
+
+.ticket-message {
+  padding: 8px 12px;
+  border-radius: 10px;
+  max-width: 85%;
+  word-break: break-word;
+  font-size: 0.78em;
+  line-height: 1.5;
+}
+
+.ticket-message.user {
+  align-self: flex-end;
+  background: linear-gradient(135deg, #6366f1 0%, #818cf8 100%);
+  color: white;
+  border-bottom-right-radius: 3px;
+}
+
+.ticket-message.admin {
+  align-self: flex-start;
+  background: rgba(99,102,241,0.12);
+  color: #c7d2fe;
+  border: 1px solid rgba(99,102,241,0.2);
+  border-bottom-left-radius: 3px;
+}
+
+.ticket-message-header {
+  font-size: 0.72em;
+  opacity: 0.8;
+  margin-bottom: 3px;
+  font-weight: 700;
+}
+
+.ticket-message-text {
+  font-size: 0.88em;
+  line-height: 1.5;
+}
+
+.ticket-reply-area {
+  display: flex;
+  gap: 6px;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(99,102,241,0.15);
+}
+
+.ticket-reply-area textarea {
+  flex: 1;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1.5px solid rgba(99,102,241,0.2);
+  background: rgba(15,23,42,0.8);
+  color: #f1f5f9;
+  resize: none;
+  min-height: 60px;
+  font-size: 0.8em;
+  font-family: inherit;
+}
+
+.ticket-reply-area textarea:focus {
+  outline: none;
+  border-color: #6366f1;
+  box-shadow: 0 0 8px rgba(99,102,241,0.2);
+}
+
+/* Admin Stats */
+.ticket-admin-stats {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+
+.ticket-stat-badge {
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 0.62em;
+  font-weight: 800;
+  background: rgba(15,23,42,0.8);
+}
+
+.ticket-stat-badge.new { border: 1.5px solid rgba(59,130,246,0.3); color: #60a5fa; }
+.ticket-stat-badge.reviewing { border: 1.5px solid rgba(245,158,11,0.3); color: #fbbf24; }
+.ticket-stat-badge.answered { border: 1.5px solid rgba(168,85,247,0.3); color: #c084fc; }
+.ticket-stat-badge.resolved { border: 1.5px solid rgba(16,185,129,0.3); color: #34d399; }
+
+/* Admin Actions */
+.ticket-admin-actions {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin: 10px 0;
+  padding: 10px;
+  background: rgba(15,23,42,0.6);
+  border-radius: 10px;
+  border: 1px solid rgba(99,102,241,0.1);
+}
+
+.ticket-admin-actions button {
+  padding: 5px 10px;
+  border-radius: 6px;
+  border: none;
+  cursor: pointer;
+  font-size: 0.65em;
+  font-weight: 800;
+  transition: all 0.2s;
+  flex: 1;
+  min-width: 0;
+}
+
+.ticket-btn-status-new { background: rgba(59,130,246,0.15); color: #60a5fa; border: 1px solid rgba(59,130,246,0.3); }
+.ticket-btn-status-reviewing { background: rgba(245,158,11,0.15); color: #fbbf24; border: 1px solid rgba(245,158,11,0.3); }
+.ticket-btn-status-answered { background: rgba(168,85,247,0.15); color: #c084fc; border: 1px solid rgba(168,85,247,0.3); }
+.ticket-btn-status-resolved { background: rgba(16,185,129,0.15); color: #34d399; border: 1px solid rgba(16,185,129,0.3); }
+.ticket-btn-status-closed { background: rgba(100,116,139,0.15); color: #94a3b8; border: 1px solid rgba(100,116,139,0.3); }
+
+.ticket-admin-actions button:hover {
+  filter: brightness(1.3);
+  transform: translateY(-1px);
+}
+
+/* Timeline */
+.ticket-timeline {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 8px 0;
+  padding: 10px;
+  background: rgba(15,23,42,0.5);
+  border-radius: 10px;
+}
+
+.ticket-timeline-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.72em;
+  color: #64748b;
+}
+
+.ticket-timeline-item.active {
+  color: #34d399;
+  font-weight: 800;
+}
+
+.ticket-timeline-item.completed {
+  color: #10b981;
+}
+
+.ticket-timeline-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #334155;
+  border: 2px solid transparent;
+  flex-shrink: 0;
+}
+
+.ticket-timeline-item.active .ticket-timeline-dot {
+  background: #34d399;
+  box-shadow: 0 0 8px rgba(16,185,129,0.5);
+}
+
+.ticket-timeline-item.completed .ticket-timeline-dot {
+  background: #10b981;
+}
+
+/* Empty state */
+.ticket-empty-state {
+  text-align: center;
+  padding: 24px 12px;
+  color: #64748b;
+}
+
+.ticket-empty-state .empty-icon {
+  font-size: 2.5em;
+  margin-bottom: 8px;
+}
+
+/* Form styles for ticket */
+.ticket-form-group {
+  margin-bottom: 10px;
+  text-align: left;
+}
+
+.ticket-form-group label {
+  display: block;
+  font-size: 0.72em;
+  color: #cbd5e1;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+
+.ticket-form-group select,
+.ticket-form-group input,
+.ticket-form-group textarea {
+  width: 100%;
+  background: #0f172a;
+  color: #f1f5f9;
+  border: 1.5px solid rgba(99,102,241,0.3);
+  padding: 6px 10px;
+  border-radius: 8px;
+  font-size: 0.8em;
+  font-family: inherit;
+  box-sizing: border-box;
+}
+
+.ticket-form-group select:focus,
+.ticket-form-group input:focus,
+.ticket-form-group textarea:focus {
+  outline: none;
+  border-color: #6366f1;
+  box-shadow: 0 0 10px rgba(99,102,241,0.2);
+}
+
+.ticket-form-group textarea {
+  resize: none;
+}
+
+.ticket-char-count {
+  font-size: 0.6em;
+  color: #64748b;
+  text-align: right;
+  display: block;
+  margin-top: 2px;
+}
+
+/* Ticket detail header */
+.ticket-detail-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.ticket-detail-header h4 {
+  margin: 0;
+  color: #f1f5f9;
+  font-size: 0.95em;
+  flex: 1;
+}
+
+/* Ticket info grid */
+.ticket-info {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  font-size: 0.72em;
+  color: #94a3b8;
+  margin: 8px 0;
+}
+
+.ticket-info p {
+  margin: 0;
+}
+
+.ticket-info strong {
+  color: #cbd5e1;
+}
+
+</style>
+<base target="_blank">
 <base target="_blank">
 <base target="_blank">
 <base target="_blank">
@@ -246,6 +680,11 @@
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fbbf24" stroke-width="2"><path d="M12 2v20M2 12h20"/></svg>
         <span data-i18n="sellMyDomain"></span>
     </button>
+    <button class="side-menu-item" onclick="scrollToTicketPanel();toggleSideMenu();">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fbbf24" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+        <span data-i18n="myTickets"></span>
+    </button>
+
     <div class="side-menu-section-label" data-i18n="preferences"></div>
     <button class="side-menu-item" onclick="toggleLangPicker()">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#a5b4fc" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.5 4 6 4 9s-1.5 6.5-4 9c-2.5-2.5-4-6-4-9s1.5-6.5 4-9z"/></svg>
@@ -502,6 +941,8 @@
             <button class="user-tab-btn" data-utab="utab-purchases" onclick="switchUserTab('utab-purchases')">🛒 <span data-i18n="myPurchases"></span></button>
             <button class="user-tab-btn" data-utab="utab-listings" onclick="switchUserTab('utab-listings')">🏷️<span data-i18n="myListings"></span></button>
             <button class="user-tab-btn" data-utab="utab-income" onclick="switchUserTab('utab-income')">💰<span data-i18n="myIncome"></span></button>
+            <button class="user-tab-btn" data-utab="utab-tickets" onclick="switchUserTab('utab-tickets')">🎫<span data-i18n="myTickets"></span></button>
+
         </div>
         <div class="user-tab-panel active" id="utab-overview">
             <div class="user-info-note">
@@ -559,6 +1000,16 @@
             <div id="my-sold-list" style="text-align:left;"></div>
         </div>
     </div>
+        <div class="user-tab-panel" id="utab-tickets">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+                <span style="font-size:0.72em;color:#fbbf24;font-weight:800;">🎫 <span data-i18n="myTickets"></span></span>
+                <button class="pi-btn" style="animation:none;padding:6px 12px;font-size:0.72em;margin:0;" onclick="showCreateTicketForm()">➕ <span data-i18n="newTicket"></span></button>
+            </div>
+            <div id="ticket-list-container">
+                <p style="font-size:0.75em;opacity:0.5;text-align:center;"><span data-i18n="loadingTickets"></span></p>
+            </div>
+        </div>
+
 
     <!-- Admin Paneli -->
     <div class="card" id="admin-panel" style="display:none;border:2px solid #6366f1;box-shadow:0 0 12px rgba(99,102,241,0.2);padding:5px;box-sizing:border-box;width:calc(100% - 16px);margin-left:auto;margin-right:auto;">
@@ -570,6 +1021,8 @@
             <button class="admin-tab-btn" data-tab="tab-prices" onclick="switchAdminTab('tab-prices')">💰<span data-i18n="priceManagement" style="font-size:0.9em;"></span></button>
             <button class="admin-tab-btn" data-tab="tab-add" onclick="switchAdminTab('tab-add')">➕<span data-i18n="addDomain" style="font-size:0.9em;"></span></button>
             <button class="admin-tab-btn" data-tab="tab-earnings" onclick="switchAdminTab('tab-earnings')">🏦<span data-i18n="earningsTab" style="font-size:0.9em;"></span></button>
+            <button class="admin-tab-btn" data-tab="tab-tickets" onclick="switchAdminTab('tab-tickets')">🎫<span data-i18n="ticketManagement" style="font-size:0.9em;"></span></button>
+
         </div>
         <div class="admin-tab-panel active" id="tab-users">
             <button onclick="openUniqueUsersModal()" style="width:100%;box-sizing:border-box;background:linear-gradient(135deg,#1e1b4b 0%,#1e293b 100%);border:2px solid #6366f1;border-radius:14px;padding:12px 14px;cursor:pointer;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;box-shadow:0 4px 18px rgba(99,102,241,0.4);">
@@ -664,7 +1117,21 @@
                 <button onclick="handleResetPlatformStats()" style="background:#ef4444;color:#fff;border:none;padding:8px;border-radius:8px;font-size:0.72em;font-weight:800;cursor:pointer;width:100%;" data-i18n="resetBtn"></button>
             </div>
         </div>
-    </div>
+    
+        <div class="admin-tab-panel" id="tab-tickets">
+            <div class="ticket-admin-filters" id="ticket-admin-filters">
+                <button class="ticket-filter-btn active" data-status="all" onclick="adminFilterTickets('all')" data-i18n="ticketFilterAll">Tümü</button>
+                <button class="ticket-filter-btn" data-status="new" onclick="adminFilterTickets('new')" data-i18n="ticketFilterNew">Yeni</button>
+                <button class="ticket-filter-btn" data-status="reviewing" onclick="adminFilterTickets('reviewing')" data-i18n="ticketFilterReviewing">İnceleniyor</button>
+                <button class="ticket-filter-btn" data-status="answered" onclick="adminFilterTickets('answered')" data-i18n="ticketFilterAnswered">Yanıtlandı</button>
+                <button class="ticket-filter-btn" data-status="resolved" onclick="adminFilterTickets('resolved')" data-i18n="ticketFilterResolved">Çözüldü</button>
+            </div>
+            <div class="ticket-admin-stats" id="ticket-admin-stats"></div>
+            <div id="ticket-admin-list">
+                <p style="font-size:0.75em;opacity:0.5;text-align:center;"><span data-i18n="loadingTickets"></span></p>
+            </div>
+        </div>
+</div>
 
     <!-- Market -->
     <div class="card" id="market-card" style="position:relative;padding:5px;margin-bottom:2px;overflow:hidden;min-height:70px;background:linear-gradient(145deg,#0f172a 0%,#1e1b4b 50%,#0f172a 100%);border:1px solid #2a3a52;width:calc(100% - 16px);margin-left:auto;margin-right:auto;">
@@ -935,6 +1402,70 @@ const i18n = {
     changelogV1_0Item2:"Test-Pi ağı üzerinden domain alım/satımı temel akışı çalışır hale getirildi",
     changelogV1_0Item3:"Pi SDK entegrasyonu, Firebase Firestore backend ve admin paneli kuruldu",
     
+
+    // Ticket system translations
+    myTickets:"Destek Taleplerim",
+    newTicket:"Yeni Talep",
+    loadingTickets:"Talepler yükleniyor...",
+    ticketManagement:"Destek Talepleri",
+    ticketFilterAll:"Tümü",
+    ticketFilterNew:"Yeni",
+    ticketFilterReviewing:"İnceleniyor",
+    ticketFilterAnswered:"Yanıtlandı",
+    ticketFilterResolved:"Çözüldü",
+    newTicketTitle:"Yeni Destek Talebi",
+    newTicketSubtitle:"Sorununuzu detaylı açıklayın, en kısa sürede yanıtlayacağız.",
+    ticketSubjectLabel:"Konu",
+    ticketSubjectPlaceholder:"Talep konusunu kısaca yazın...",
+    ticketCategoryLabel:"Kategori",
+    ticketCatGeneral:"Genel Soru",
+    ticketCatTechnical:"Teknik Sorun",
+    ticketCatPayment:"Ödeme / Pi Cüzdan",
+    ticketCatDomain:"Domain İşlemleri",
+    ticketCatOther:"Diğer",
+    ticketPriorityLabel:"Öncelik",
+    ticketPriorityLow:"Düşük",
+    ticketPriorityNormal:"Normal",
+    ticketPriorityHigh:"Yüksek",
+    ticketPriorityUrgent:"Acil",
+    ticketMessageLabel:"Mesajınız",
+    ticketMessagePlaceholder:"Sorununuzu detaylı açıklayın...",
+    ticketSubmit:"GÖNDER",
+    ticketReplyPlaceholder:"Yanıtınızı yazın...",
+    ticketSendReply:"Gönder",
+    ticketStatusNew:"Yeni",
+    ticketStatusReviewing:"İnceleniyor",
+    ticketStatusAnswered:"Yanıtlandı",
+    ticketStatusResolved:"Çözüldü",
+    ticketStatusClosed:"Kapatıldı",
+    noTickets:"Henüz destek talebiniz bulunmuyor.",
+    ticketNumber:"Talep #",
+    ticketCreated:"Oluşturulma",
+    ticketLastUpdate:"Son Güncelleme",
+    ticketReplies:"Yanıt",
+    ticketDetailTitle:"Talep Detayı",
+    ticketReplyFrom:"den yanıt",
+    ticketReplyFromAdmin:"Yönetici yanıtı",
+    ticketReplyFromYou:"Sizin yanıtınız",
+    ticketCloseConfirm:"Bu talebi kapatmak istediğinize emin misiniz?",
+    ticketClosedSuccess:"Talep kapatıldı.",
+    ticketSubmitSuccess:"Destek talebiniz oluşturuldu!",
+    ticketSubmitFail:"Talep oluşturulamadı: ",
+    ticketReplySuccess:"Yanıtınız gönderildi.",
+    ticketReplyFail:"Yanıt gönderilemedi: ",
+    ticketEmptySubject:"Lütfen bir konu girin.",
+    ticketEmptyMessage:"Lütfen bir mesaj yazın.",
+    ticketAdminNoTickets:"Bekleyen destek talebi yok.",
+    ticketAdminStats:"İstatistikler",
+    ticketAdminAction:"İşlem",
+    ticketAdminSetStatus:"Durum Güncelle",
+    ticketAdminReply:"Yanıtla",
+    ticketAdminClose:"Kapat",
+    ticketAdminReopen:"Yeniden Aç",
+    ticketAdminAssign:"Üzerine Al",
+    ticketAdminUnassign:"Bırak",
+    ticketAssignedTo:"Atanan",
+    ticketUnassigned:"Atanmamış",
   },
   en: {
     menu:"Menu",account:"Account",preferences:"Preferences",connected:"Connected",
@@ -1084,6 +1615,70 @@ const i18n = {
     changelogV1_0Item2:"Basic domain buy/sell flow on Test-Pi network made operational",
     changelogV1_0Item3:"Pi SDK integration, Firebase Firestore backend and admin panel established",
     
+
+    // Ticket system translations
+    myTickets:"My Tickets",
+    newTicket:"New Ticket",
+    loadingTickets:"Loading tickets...",
+    ticketManagement:"Support Tickets",
+    ticketFilterAll:"All",
+    ticketFilterNew:"New",
+    ticketFilterReviewing:"Reviewing",
+    ticketFilterAnswered:"Answered",
+    ticketFilterResolved:"Resolved",
+    newTicketTitle:"New Support Ticket",
+    newTicketSubtitle:"Describe your issue in detail, we will respond as soon as possible.",
+    ticketSubjectLabel:"Subject",
+    ticketSubjectPlaceholder:"Briefly write the ticket subject...",
+    ticketCategoryLabel:"Category",
+    ticketCatGeneral:"General Question",
+    ticketCatTechnical:"Technical Issue",
+    ticketCatPayment:"Payment / Pi Wallet",
+    ticketCatDomain:"Domain Operations",
+    ticketCatOther:"Other",
+    ticketPriorityLabel:"Priority",
+    ticketPriorityLow:"Low",
+    ticketPriorityNormal:"Normal",
+    ticketPriorityHigh:"High",
+    ticketPriorityUrgent:"Urgent",
+    ticketMessageLabel:"Your Message",
+    ticketMessagePlaceholder:"Describe your issue in detail...",
+    ticketSubmit:"SUBMIT",
+    ticketReplyPlaceholder:"Write your reply...",
+    ticketSendReply:"Send",
+    ticketStatusNew:"New",
+    ticketStatusReviewing:"Reviewing",
+    ticketStatusAnswered:"Answered",
+    ticketStatusResolved:"Resolved",
+    ticketStatusClosed:"Closed",
+    noTickets:"No support tickets yet.",
+    ticketNumber:"Ticket #",
+    ticketCreated:"Created",
+    ticketLastUpdate:"Last Update",
+    ticketReplies:"Replies",
+    ticketDetailTitle:"Ticket Detail",
+    ticketReplyFrom:"replied",
+    ticketReplyFromAdmin:"Admin reply",
+    ticketReplyFromYou:"Your reply",
+    ticketCloseConfirm:"Are you sure you want to close this ticket?",
+    ticketClosedSuccess:"Ticket closed.",
+    ticketSubmitSuccess:"Support ticket created!",
+    ticketSubmitFail:"Failed to create ticket: ",
+    ticketReplySuccess:"Your reply has been sent.",
+    ticketReplyFail:"Failed to send reply: ",
+    ticketEmptySubject:"Please enter a subject.",
+    ticketEmptyMessage:"Please write a message.",
+    ticketAdminNoTickets:"No pending support tickets.",
+    ticketAdminStats:"Statistics",
+    ticketAdminAction:"Action",
+    ticketAdminSetStatus:"Update Status",
+    ticketAdminReply:"Reply",
+    ticketAdminClose:"Close",
+    ticketAdminReopen:"Reopen",
+    ticketAdminAssign:"Assign to Me",
+    ticketAdminUnassign:"Unassign",
+    ticketAssignedTo:"Assigned to",
+    ticketUnassigned:"Unassigned",
   }
 };
 let currentLang = localStorage.getItem('w3dg_lang') || 'tr';
@@ -2589,6 +3184,555 @@ window.openLink = function(url, isExternal) {
     }
 };
 
+
+
+// ═══════════════════════════════════════════════════════════════════════
+//  DESTEK / TICKET SİSTEMİ
+// ═══════════════════════════════════════════════════════════════════════
+
+let myTickets = [];
+let adminTickets = [];
+let adminTicketFilter = 'all';
+let currentTicketId = null;
+
+// ── KULLANICI: Ticket listesini yükle ────────────────────────────────
+async function loadMyTickets() {
+    if (!isAuth || !piAccessToken) return;
+    try {
+        const r = await fetch('/api/approve', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'get_my_tickets', accessToken: piAccessToken })
+        });
+        const result = await r.json();
+        if (result.success) {
+            myTickets = result.tickets || [];
+            renderTicketList();
+        }
+    } catch (e) {
+        console.error("Ticket listesi yüklenemedi:", e);
+        const container = document.getElementById('ticket-list-container');
+        if (container) container.innerHTML = `<p style="font-size:0.75em;opacity:0.5;text-align:center;">${t('loadingTickets')}</p>`;
+    }
+}
+
+// ── KULLANICI: Ticket listesini render et ────────────────────────────
+function renderTicketList() {
+    const container = document.getElementById('ticket-list-container');
+    if (!container) return;
+
+    if (!myTickets.length) {
+        container.innerHTML = `
+            <div class="ticket-empty-state">
+                <div class="empty-icon">🎫</div>
+                <div style="font-size:0.85em;font-weight:700;color:#94a3b8;margin-bottom:4px;">${t('noTickets')}</div>
+                <div style="font-size:0.72em;color:#64748b;">${t('newTicketSubtitle')}</div>
+            </div>`;
+        return;
+    }
+
+    const locale = currentLang === 'en' ? 'en-GB' : 'tr-TR';
+    const statusMap = {
+        new: t('ticketStatusNew'),
+        reviewing: t('ticketStatusReviewing'),
+        answered: t('ticketStatusAnswered'),
+        resolved: t('ticketStatusResolved'),
+        closed: t('ticketStatusClosed')
+    };
+    const priorityClass = { low: 'priority-low', normal: 'priority-normal', high: 'priority-high', urgent: 'priority-urgent' };
+    const priorityLabel = { low: t('ticketPriorityLow'), normal: t('ticketPriorityNormal'), high: t('ticketPriorityHigh'), urgent: t('ticketPriorityUrgent') };
+
+    container.innerHTML = `<div class="ticket-list">` + myTickets.map(ticket => {
+        const created = ticket.createdAt ? new Date(ticket.createdAt).toLocaleDateString(locale, { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '-';
+        const lastUpdate = ticket.lastUpdate ? new Date(ticket.lastUpdate).toLocaleDateString(locale, { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : created;
+        const replyCount = ticket.messages ? ticket.messages.length - 1 : 0;
+        const preview = ticket.messages && ticket.messages[0] ? ticket.messages[0].text : '';
+
+        return `<div class="ticket-card status-${ticket.status}" onclick="openTicketDetail('${ticket.id}')">
+            <div class="ticket-card-header">
+                <span class="ticket-card-subject">${escapeHtml(ticket.subject)}</span>
+                <span class="ticket-status-badge status-badge-${ticket.status}">${statusMap[ticket.status] || ticket.status}</span>
+            </div>
+            <div class="ticket-card-meta">
+                <span>#${ticket.ticketNumber || ticket.id.slice(-6).toUpperCase()}</span>
+                <span>📅 ${created}</span>
+                <span>💬 ${replyCount} ${t('ticketReplies')}</span>
+            </div>
+            <div class="ticket-card-preview">${escapeHtml(preview)}</div>
+            <div class="ticket-card-footer">
+                <span class="ticket-priority ${priorityClass[ticket.priority] || 'priority-normal'}">${priorityLabel[ticket.priority] || ticket.priority}</span>
+                <span style="font-size:0.6em;color:#64748b;">🔄 ${lastUpdate}</span>
+            </div>
+        </div>`;
+    }).join('') + `</div>`;
+}
+
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+// ── KULLANICI: Yeni ticket formunu göster ────────────────────────────
+window.showCreateTicketForm = function() {
+    document.getElementById('ticket-create-modal').style.display = 'flex';
+    document.getElementById('ticket-subject').value = '';
+    document.getElementById('ticket-message').value = '';
+    document.getElementById('ticket-category').value = 'general';
+    document.getElementById('ticket-priority').value = 'normal';
+    document.getElementById('ticket-subject-count').textContent = '0';
+    document.getElementById('ticket-message-count').textContent = '0';
+};
+
+window.closeTicketCreateModal = function() {
+    document.getElementById('ticket-create-modal').style.display = 'none';
+};
+
+// ── KULLANICI: Ticket gönder ──────────────────────────────────────────
+window.submitTicket = async function() {
+    const subject = document.getElementById('ticket-subject').value.trim();
+    const message = document.getElementById('ticket-message').value.trim();
+    const category = document.getElementById('ticket-category').value;
+    const priority = document.getElementById('ticket-priority').value;
+
+    if (!subject) { alert(t('ticketEmptySubject')); return; }
+    if (!message) { alert(t('ticketEmptyMessage')); return; }
+
+    try {
+        const r = await fetch('/api/approve', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                action: 'create_ticket',
+                subject,
+                message,
+                category,
+                priority,
+                accessToken: piAccessToken
+            })
+        });
+        const result = await r.json();
+        if (result.success) {
+            alert(t('ticketSubmitSuccess'));
+            closeTicketCreateModal();
+            await loadMyTickets();
+        } else {
+            alert(t('ticketSubmitFail') + (result.error || ''));
+        }
+    } catch (e) {
+        alert(t('ticketSubmitFail') + e.message);
+    }
+};
+
+// ── KULLANICI: Ticket detayını aç ─────────────────────────────────────
+window.openTicketDetail = async function(ticketId) {
+    currentTicketId = ticketId;
+    const ticket = myTickets.find(t => t.id === ticketId);
+    if (!ticket) return;
+
+    const locale = currentLang === 'en' ? 'en-GB' : 'tr-TR';
+    const statusMap = {
+        new: t('ticketStatusNew'),
+        reviewing: t('ticketStatusReviewing'),
+        answered: t('ticketStatusAnswered'),
+        resolved: t('ticketStatusResolved'),
+        closed: t('ticketStatusClosed')
+    };
+
+    const header = document.getElementById('ticket-detail-header');
+    header.innerHTML = `
+        <div class="ticket-detail-header">
+            <h4>#${ticket.ticketNumber || ticket.id.slice(-6).toUpperCase()} — ${escapeHtml(ticket.subject)}</h4>
+            <span class="ticket-status-badge status-badge-${ticket.status}">${statusMap[ticket.status]}</span>
+        </div>
+        <div class="ticket-info">
+            <p><strong>📅</strong> ${t('ticketCreated')}: ${ticket.createdAt ? new Date(ticket.createdAt).toLocaleDateString(locale) : '-'}</p>
+            <p><strong>🏷️</strong> ${ticket.category}</p>
+            <p><strong>🔔</strong> ${ticket.priority}</p>
+            <p><strong>🔄</strong> ${ticket.lastUpdate ? new Date(ticket.lastUpdate).toLocaleDateString(locale, { hour: '2-digit', minute: '2-digit' }) : '-'}</p>
+        </div>
+        <div class="ticket-timeline">
+            <div class="ticket-timeline-item ${ticket.status === 'new' ? 'active' : 'completed'}"><div class="ticket-timeline-dot"></div>${t('ticketStatusNew')}</div>
+            <div class="ticket-timeline-item ${ticket.status === 'reviewing' ? 'active' : (['answered','resolved','closed'].includes(ticket.status) ? 'completed' : '')}"><div class="ticket-timeline-dot"></div>${t('ticketStatusReviewing')}</div>
+            <div class="ticket-timeline-item ${ticket.status === 'answered' ? 'active' : (['resolved','closed'].includes(ticket.status) ? 'completed' : '')}"><div class="ticket-timeline-dot"></div>${t('ticketStatusAnswered')}</div>
+            <div class="ticket-timeline-item ${ticket.status === 'resolved' ? 'active' : (ticket.status === 'closed' ? 'completed' : '')}"><div class="ticket-timeline-dot"></div>${t('ticketStatusResolved')}</div>
+        </div>`;
+
+    const messagesContainer = document.getElementById('ticket-detail-messages');
+    if (ticket.messages && ticket.messages.length) {
+        messagesContainer.innerHTML = ticket.messages.map((msg, idx) => {
+            const isAdmin = msg.from === 'admin';
+            const isUser = msg.from === currentUser;
+            const time = msg.timestamp ? new Date(msg.timestamp).toLocaleString(locale, { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '';
+            return `<div class="ticket-message ${isAdmin ? 'admin' : 'user'}">
+                <div class="ticket-message-header">${isAdmin ? '👤 ' + t('ticketReplyFromAdmin') : (isUser ? '👤 ' + t('ticketReplyFromYou') : '@' + msg.from)} — ${time}</div>
+                <div class="ticket-message-text">${escapeHtml(msg.text)}</div>
+            </div>`;
+        }).join('');
+    } else {
+        messagesContainer.innerHTML = '';
+    }
+
+    // Scroll to bottom
+    setTimeout(() => { messagesContainer.scrollTop = messagesContainer.scrollHeight; }, 50);
+
+    document.getElementById('ticket-detail-modal').style.display = 'flex';
+};
+
+window.closeTicketDetailModal = function() {
+    document.getElementById('ticket-detail-modal').style.display = 'none';
+    currentTicketId = null;
+};
+
+// ── KULLANICI: Ticket'a yanıt gönder ──────────────────────────────────
+window.sendTicketReply = async function() {
+    const text = document.getElementById('ticket-reply-text').value.trim();
+    if (!text) return;
+    if (!currentTicketId) return;
+
+    try {
+        const r = await fetch('/api/approve', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                action: 'reply_ticket',
+                ticketId: currentTicketId,
+                text,
+                accessToken: piAccessToken
+            })
+        });
+        const result = await r.json();
+        if (result.success) {
+            document.getElementById('ticket-reply-text').value = '';
+            await loadMyTickets();
+            // Refresh detail view
+            openTicketDetail(currentTicketId);
+        } else {
+            alert(t('ticketReplyFail') + (result.error || ''));
+        }
+    } catch (e) {
+        alert(t('ticketReplyFail') + e.message);
+    }
+};
+
+// ── KULLANICI: Ticket paneline scroll ──────────────────────────────────
+window.scrollToTicketPanel = function() {
+    if (!isAuth) { alert(t('loginRequired')); return; }
+    switchUserTab('utab-tickets');
+    const up = document.getElementById('user-panel');
+    if (up) {
+        up.style.display = 'block';
+        up.scrollIntoView({ behavior: 'smooth' });
+    }
+    loadMyTickets();
+};
+
+// ── ADMIN: Ticket'ları yükle ───────────────────────────────────────────
+async function adminLoadTickets() {
+    if (!isAuth || currentUser !== APP_CONFIG.adminUsername) return;
+    try {
+        const r = await fetch('/api/approve', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'get_all_tickets', accessToken: piAccessToken })
+        });
+        const result = await r.json();
+        if (result.success) {
+            adminTickets = result.tickets || [];
+            renderAdminTicketList();
+        }
+    } catch (e) {
+        console.error("Admin ticket listesi yüklenemedi:", e);
+    }
+}
+
+// ── ADMIN: Ticket listesini render et ─────────────────────────────────
+function renderAdminTicketList() {
+    const container = document.getElementById('ticket-admin-list');
+    const statsContainer = document.getElementById('ticket-admin-stats');
+    if (!container) return;
+
+    // Stats
+    const counts = { new: 0, reviewing: 0, answered: 0, resolved: 0, closed: 0 };
+    adminTickets.forEach(t => { counts[t.status] = (counts[t.status] || 0) + 1; });
+
+    if (statsContainer) {
+        statsContainer.innerHTML = `
+            <span class="ticket-stat-badge new">${t('ticketStatusNew')}: ${counts.new}</span>
+            <span class="ticket-stat-badge reviewing">${t('ticketStatusReviewing')}: ${counts.reviewing}</span>
+            <span class="ticket-stat-badge answered">${t('ticketStatusAnswered')}: ${counts.answered}</span>
+            <span class="ticket-stat-badge resolved">${t('ticketStatusResolved')}: ${counts.resolved}</span>
+        `;
+    }
+
+    let filtered = adminTickets;
+    if (adminTicketFilter !== 'all') {
+        filtered = adminTickets.filter(t => t.status === adminTicketFilter);
+    }
+
+    if (!filtered.length) {
+        container.innerHTML = `<p style="font-size:0.75em;opacity:0.5;text-align:center;">${t('ticketAdminNoTickets')}</p>`;
+        return;
+    }
+
+    const locale = currentLang === 'en' ? 'en-GB' : 'tr-TR';
+    const statusMap = {
+        new: t('ticketStatusNew'),
+        reviewing: t('ticketStatusReviewing'),
+        answered: t('ticketStatusAnswered'),
+        resolved: t('ticketStatusResolved'),
+        closed: t('ticketStatusClosed')
+    };
+
+    container.innerHTML = `<div class="ticket-list">` + filtered.map(ticket => {
+        const created = ticket.createdAt ? new Date(ticket.createdAt).toLocaleDateString(locale, { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '-';
+        const user = ticket.username || ticket.createdBy || '?';
+        return `<div class="ticket-card status-${ticket.status}" onclick="renderAdminTicketDetail('${ticket.id}')">
+            <div class="ticket-card-header">
+                <span class="ticket-card-subject">${escapeHtml(ticket.subject)}</span>
+                <span class="ticket-status-badge status-badge-${ticket.status}">${statusMap[ticket.status]}</span>
+            </div>
+            <div class="ticket-card-meta">
+                <span>#${ticket.ticketNumber || ticket.id.slice(-6).toUpperCase()}</span>
+                <span>👤 @${user}</span>
+                <span>📅 ${created}</span>
+            </div>
+            <div class="ticket-card-preview">${escapeHtml(ticket.messages && ticket.messages[0] ? ticket.messages[0].text : '')}</div>
+        </div>`;
+    }).join('') + `</div>`;
+}
+
+window.adminFilterTickets = function(status) {
+    adminTicketFilter = status;
+    document.querySelectorAll('#ticket-admin-filters .ticket-filter-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.status === status);
+    });
+    renderAdminTicketList();
+};
+
+// ── ADMIN: Ticket detayını göster ──────────────────────────────────────
+window.renderAdminTicketDetail = async function(ticketId) {
+    currentTicketId = ticketId;
+    const ticket = adminTickets.find(t => t.id === ticketId);
+    if (!ticket) return;
+
+    const locale = currentLang === 'en' ? 'en-GB' : 'tr-TR';
+    const statusMap = {
+        new: t('ticketStatusNew'),
+        reviewing: t('ticketStatusReviewing'),
+        answered: t('ticketStatusAnswered'),
+        resolved: t('ticketStatusResolved'),
+        closed: t('ticketStatusClosed')
+    };
+
+    const user = ticket.username || ticket.createdBy || '?';
+
+    const header = document.getElementById('admin-ticket-detail-header');
+    header.innerHTML = `
+        <div class="ticket-detail-header">
+            <h4>#${ticket.ticketNumber || ticket.id.slice(-6).toUpperCase()} — ${escapeHtml(ticket.subject)}</h4>
+            <span class="ticket-status-badge status-badge-${ticket.status}">${statusMap[ticket.status]}</span>
+        </div>
+        <div class="ticket-info">
+            <p><strong>👤</strong> @${user}</p>
+            <p><strong>📅</strong> ${ticket.createdAt ? new Date(ticket.createdAt).toLocaleDateString(locale) : '-'}</p>
+            <p><strong>🏷️</strong> ${ticket.category}</p>
+            <p><strong>🔔</strong> ${ticket.priority}</p>
+            <p><strong>👤</strong> ${t('ticketAssignedTo')}: ${ticket.assignedTo ? '@' + ticket.assignedTo : t('ticketUnassigned')}</p>
+        </div>`;
+
+    const messagesContainer = document.getElementById('admin-ticket-detail-messages');
+    if (ticket.messages && ticket.messages.length) {
+        messagesContainer.innerHTML = ticket.messages.map((msg, idx) => {
+            const isAdmin = msg.from === 'admin';
+            const time = msg.timestamp ? new Date(msg.timestamp).toLocaleString(locale, { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '';
+            return `<div class="ticket-message ${isAdmin ? 'admin' : 'user'}">
+                <div class="ticket-message-header">${isAdmin ? '👤 ' + t('ticketReplyFromAdmin') : '@' + msg.from} — ${time}</div>
+                <div class="ticket-message-text">${escapeHtml(msg.text)}</div>
+            </div>`;
+        }).join('');
+    } else {
+        messagesContainer.innerHTML = '';
+    }
+
+    // Admin actions
+    const actionsContainer = document.getElementById('admin-ticket-actions');
+    const statusButtons = ['new', 'reviewing', 'answered', 'resolved', 'closed'].map(s => 
+        `<button class="ticket-btn-status-${s} ${ticket.status === s ? 'active' : ''}" onclick="adminUpdateTicketStatus('${ticketId}', '${s}')">${statusMap[s]}</button>`
+    ).join('');
+
+    const assignBtn = ticket.assignedTo === currentUser 
+        ? `<button onclick="adminAssignTicket('${ticketId}', false)" style="background:rgba(100,116,139,0.15);color:#94a3b8;border:1px solid rgba(100,116,139,0.3);">${t('ticketAdminUnassign')}</button>`
+        : `<button onclick="adminAssignTicket('${ticketId}', true)" style="background:rgba(99,102,241,0.15);color:#818cf8;border:1px solid rgba(99,102,241,0.3);">${t('ticketAdminAssign')}</button>`;
+
+    actionsContainer.innerHTML = statusButtons + assignBtn;
+
+    setTimeout(() => { messagesContainer.scrollTop = messagesContainer.scrollHeight; }, 50);
+    document.getElementById('admin-ticket-detail-modal').style.display = 'flex';
+};
+
+window.closeAdminTicketDetailModal = function() {
+    document.getElementById('admin-ticket-detail-modal').style.display = 'none';
+    currentTicketId = null;
+};
+
+// ── ADMIN: Ticket durumunu güncelle ──────────────────────────────────
+window.adminUpdateTicketStatus = async function(ticketId, status) {
+    try {
+        const r = await fetch('/api/approve', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                action: 'update_ticket_status',
+                ticketId,
+                status,
+                accessToken: piAccessToken
+            })
+        });
+        const result = await r.json();
+        if (result.success) {
+            await adminLoadTickets();
+            renderAdminTicketDetail(ticketId);
+        }
+    } catch (e) { console.error("Durum güncelleme hatası:", e); }
+};
+
+// ── ADMIN: Ticket'a yanıt gönder ─────────────────────────────────────
+window.adminReplyTicket = async function() {
+    const text = document.getElementById('admin-ticket-reply-text').value.trim();
+    if (!text || !currentTicketId) return;
+
+    try {
+        const r = await fetch('/api/approve', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                action: 'admin_reply_ticket',
+                ticketId: currentTicketId,
+                text,
+                accessToken: piAccessToken
+            })
+        });
+        const result = await r.json();
+        if (result.success) {
+            document.getElementById('admin-ticket-reply-text').value = '';
+            await adminLoadTickets();
+            renderAdminTicketDetail(currentTicketId);
+        }
+    } catch (e) { console.error("Admin yanıt hatası:", e); }
+};
+
+// ── ADMIN: Ticket ata/bırak ──────────────────────────────────────────
+window.adminAssignTicket = async function(ticketId, assign) {
+    try {
+        const r = await fetch('/api/approve', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                action: 'assign_ticket',
+                ticketId,
+                assign,
+                accessToken: piAccessToken
+            })
+        });
+        const result = await r.json();
+        if (result.success) {
+            await adminLoadTickets();
+            renderAdminTicketDetail(ticketId);
+        }
+    } catch (e) { console.error("Atama hatası:", e); }
+};
+
+// ── Karakter sayacı ────────────────────────────────────────────────────
+document.addEventListener('input', function(e) {
+    if (e.target.id === 'ticket-subject') {
+        const count = e.target.value.length;
+        const el = document.getElementById('ticket-subject-count');
+        if (el) el.textContent = count;
+    }
+    if (e.target.id === 'ticket-message') {
+        const count = e.target.value.length;
+        const el = document.getElementById('ticket-message-count');
+        if (el) el.textContent = count;
+    }
+});
+
+// ═══════════════════════════════════════════════════════════════════════
+//  DESTEK SİSTEMİ SONU
+// ═══════════════════════════════════════════════════════════════════════
+
 </script>
+
+
+<!-- Ticket Create Modal -->
+<div id="ticket-create-modal" class="modal-overlay" style="display:none;">
+    <div class="modal-content" style="border-color:#6366f1;text-align:left;max-height:85vh;">
+        <div style="text-align:center;margin-bottom:10px;">
+            <div style="font-size:2em;">🎫</div>
+            <h2 style="color:#818cf8;margin:4px 0;font-size:1.1em;font-weight:900;" data-i18n="newTicketTitle"></h2>
+            <div style="font-size:0.72em;color:#94a3b8;" data-i18n="newTicketSubtitle"></div>
+        </div>
+        <div class="ticket-form-group">
+            <label data-i18n="ticketSubjectLabel"></label>
+            <input type="text" id="ticket-subject" maxlength="100" data-i18n-placeholder="ticketSubjectPlaceholder">
+            <span class="ticket-char-count"><span id="ticket-subject-count">0</span>/100</span>
+        </div>
+        <div class="ticket-form-group">
+            <label data-i18n="ticketCategoryLabel"></label>
+            <select id="ticket-category">
+                <option value="general" data-i18n="ticketCatGeneral"></option>
+                <option value="technical" data-i18n="ticketCatTechnical"></option>
+                <option value="payment" data-i18n="ticketCatPayment"></option>
+                <option value="domain" data-i18n="ticketCatDomain"></option>
+                <option value="other" data-i18n="ticketCatOther"></option>
+            </select>
+        </div>
+        <div class="ticket-form-group">
+            <label data-i18n="ticketPriorityLabel"></label>
+            <select id="ticket-priority">
+                <option value="low" data-i18n="ticketPriorityLow"></option>
+                <option value="normal" selected data-i18n="ticketPriorityNormal"></option>
+                <option value="high" data-i18n="ticketPriorityHigh"></option>
+                <option value="urgent" data-i18n="ticketPriorityUrgent"></option>
+            </select>
+        </div>
+        <div class="ticket-form-group">
+            <label data-i18n="ticketMessageLabel"></label>
+            <textarea id="ticket-message" rows="4" maxlength="2000" data-i18n-placeholder="ticketMessagePlaceholder"></textarea>
+            <span class="ticket-char-count"><span id="ticket-message-count">0</span>/2000</span>
+        </div>
+        <div style="display:flex;gap:8px;margin-top:4px;">
+            <button class="pi-btn" style="background:#475569;flex:1;animation:none;padding:10px;margin:0;" onclick="closeTicketCreateModal()" data-i18n="cancel"></button>
+            <button class="pi-btn" style="background:#6366f1;flex:1;animation:none;padding:10px;margin:0;" onclick="submitTicket()" data-i18n="ticketSubmit"></button>
+        </div>
+    </div>
+</div>
+
+<!-- Ticket Detail Modal (User) -->
+<div id="ticket-detail-modal" class="modal-overlay" style="display:none;">
+    <div class="modal-content ticket-modal-content" style="text-align:left;">
+        <div id="ticket-detail-header"></div>
+        <div id="ticket-detail-messages" class="ticket-messages"></div>
+        <div class="ticket-reply-area">
+            <textarea id="ticket-reply-text" rows="2" maxlength="1000" data-i18n-placeholder="ticketReplyPlaceholder"></textarea>
+            <button class="pi-btn" style="animation:none;padding:10px 14px;margin:0;flex-shrink:0;" onclick="sendTicketReply()" data-i18n="ticketSendReply"></button>
+        </div>
+        <button class="pi-btn" style="background:#475569;animation:none;padding:10px;margin:8px 0 0 0;width:100%;" onclick="closeTicketDetailModal()" data-i18n="close"></button>
+    </div>
+</div>
+
+<!-- Admin Ticket Detail Modal -->
+<div id="admin-ticket-detail-modal" class="modal-overlay" style="display:none;">
+    <div class="modal-content ticket-modal-content" style="text-align:left;border-color:#f59e0b;">
+        <div id="admin-ticket-detail-header"></div>
+        <div id="admin-ticket-detail-messages" class="ticket-messages"></div>
+        <div class="ticket-admin-actions" id="admin-ticket-actions"></div>
+        <div class="ticket-reply-area">
+            <textarea id="admin-ticket-reply-text" rows="2" maxlength="1000" data-i18n-placeholder="ticketReplyPlaceholder"></textarea>
+            <button class="pi-btn" style="background:#f59e0b;animation:none;padding:10px 14px;margin:0;flex-shrink:0;" onclick="adminReplyTicket()" data-i18n="ticketSendReply"></button>
+        </div>
+        <button class="pi-btn" style="background:#475569;animation:none;padding:10px;margin:8px 0 0 0;width:100%;" onclick="closeAdminTicketDetailModal()" data-i18n="close"></button>
+    </div>
+</div>
 </body>
 </html>
