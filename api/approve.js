@@ -1093,6 +1093,45 @@ export default async function handler(req, res) {
     }
   }
 
+  // ── Ticket Sil (Kullanıcı kendi talebini / Admin herhangi bir talebi) ──
+  if (action === 'delete_ticket') {
+    const { ticketId } = req.body;
+    if (!ticketId) return res.status(400).json({ error: "ticketId zorunludur" });
+
+    const isAdmin = await verifyAdmin(accessToken);
+    const realUsername = await getRealUsername(accessToken);
+    if (!realUsername) return res.status(403).json({ error: "Geçersiz oturum" });
+
+    try {
+      const db = getDb();
+      const ticketRef = db.collection('tickets').doc(ticketId);
+      const snap = await ticketRef.get();
+      if (!snap.exists) return res.status(404).json({ error: "Talep bulunamadı" });
+      const data = snap.data();
+
+      // Sadece talebin sahibi ya da admin silebilir
+      if (!isAdmin && data.createdBy !== realUsername) {
+        return res.status(403).json({ error: "Bu talebi silme yetkiniz yok" });
+      }
+
+      await ticketRef.delete();
+
+      // Admin başkasının talebini sildiyse kullanıcıya bilgi ver
+      if (isAdmin && data.createdBy && data.createdBy !== realUsername) {
+        await sendNotification(data.createdBy, {
+          type: 'ticket_deleted',
+          title: '🗑️ Destek Talebiniz Silindi',
+          body: `"${data.subject}" konulu talebiniz yönetici tarafından silindi.`
+        });
+      }
+
+      return res.status(200).json({ success: true });
+    } catch (e) {
+      console.error("delete_ticket hatası:", e);
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
   // ── Kullanıcı Profili Getir ───────────────────────────────────────────
   if (action === 'get_user_profile') {
     const realUsername = await getRealUsername(accessToken);
