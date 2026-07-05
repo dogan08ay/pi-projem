@@ -1466,6 +1466,13 @@ const i18n = {
     ticketAdminUnassign:"Bırak",
     ticketAssignedTo:"Atanan",
     ticketUnassigned:"Atanmamış",
+    ticketDeleteBtn:"Talebi Sil",
+    ticketDeleteConfirm:"Bu destek talebini kalıcı olarak silmek istediğinize emin misiniz? Bu işlem geri alınamaz.",
+    ticketDeleteSuccess:"Talep silindi.",
+    ticketDeleteFail:"Talep silinemedi: ",
+    ticketAdminDeleteBtn:"Talebi Kalıcı Sil",
+    ticketAdminDeleteConfirm:"Bu destek talebini kalıcı olarak silmek istediğinize emin misiniz? Kullanıcı ve tüm mesaj geçmişi silinecek. Bu işlem geri alınamaz.",
+    ticketAdminDeleteFail:"Talep silinemedi: ",
   },
   en: {
     menu:"Menu",account:"Account",preferences:"Preferences",connected:"Connected",
@@ -1679,6 +1686,13 @@ const i18n = {
     ticketAdminUnassign:"Unassign",
     ticketAssignedTo:"Assigned to",
     ticketUnassigned:"Unassigned",
+    ticketDeleteBtn:"Delete Ticket",
+    ticketDeleteConfirm:"Are you sure you want to permanently delete this support ticket? This action cannot be undone.",
+    ticketDeleteSuccess:"Ticket deleted.",
+    ticketDeleteFail:"Failed to delete ticket: ",
+    ticketAdminDeleteBtn:"Permanently Delete Ticket",
+    ticketAdminDeleteConfirm:"Are you sure you want to permanently delete this ticket? The user and full message history will be removed. This action cannot be undone.",
+    ticketAdminDeleteFail:"Failed to delete ticket: ",
   }
 };
 let currentLang = localStorage.getItem('w3dg_lang') || 'tr';
@@ -3379,12 +3393,44 @@ window.openTicketDetail = async function(ticketId) {
     // Scroll to bottom
     setTimeout(() => { messagesContainer.scrollTop = messagesContainer.scrollHeight; }, 50);
 
+    // Kullanıcı işlem butonları — sadece kendi talebini silebilir
+    const userActionsContainer = document.getElementById('ticket-detail-user-actions');
+    if (userActionsContainer) {
+        userActionsContainer.innerHTML = `<button onclick="deleteMyTicket('${ticket.id}')" style="width:100%;background:rgba(239,68,68,0.15);color:#f87171;border:1.5px solid rgba(239,68,68,0.4);padding:8px;border-radius:8px;font-size:0.75em;font-weight:800;cursor:pointer;">🗑️ ${t('ticketDeleteBtn')}</button>`;
+    }
+
     document.getElementById('ticket-detail-modal').style.display = 'flex';
 };
 
 window.closeTicketDetailModal = function() {
     document.getElementById('ticket-detail-modal').style.display = 'none';
     currentTicketId = null;
+};
+
+// ── KULLANICI: Kendi talebini sil ─────────────────────────────────────
+window.deleteMyTicket = async function(ticketId) {
+    if (!confirm(t('ticketDeleteConfirm'))) return;
+    try {
+        const r = await fetch('/api/approve', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                action: 'delete_ticket',
+                ticketId,
+                accessToken: piAccessToken
+            })
+        });
+        const result = await r.json();
+        if (result.success) {
+            closeTicketDetailModal();
+            alert(t('ticketDeleteSuccess'));
+            await loadMyTickets();
+        } else {
+            alert(t('ticketDeleteFail') + (result.error || ''));
+        }
+    } catch (e) {
+        alert(t('ticketDeleteFail') + e.message);
+    }
 };
 
 // ── KULLANICI: Ticket'a yanıt gönder ──────────────────────────────────
@@ -3646,6 +3692,32 @@ window.adminAssignTicket = async function(ticketId, assign) {
     } catch (e) { console.error("Atama hatası:", e); }
 };
 
+// ── ADMIN: Ticket'ı kalıcı sil ─────────────────────────────────────────
+window.adminDeleteTicket = async function() {
+    if (!currentTicketId) return;
+    if (!confirm(t('ticketAdminDeleteConfirm'))) return;
+    try {
+        const r = await fetch('/api/approve', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                action: 'delete_ticket',
+                ticketId: currentTicketId,
+                accessToken: piAccessToken
+            })
+        });
+        const result = await r.json();
+        if (result.success) {
+            closeAdminTicketDetailModal();
+            await adminLoadTickets();
+        } else {
+            alert(t('ticketAdminDeleteFail') + (result.error || ''));
+        }
+    } catch (e) {
+        alert(t('ticketAdminDeleteFail') + e.message);
+    }
+};
+
 // ── Karakter sayacı ────────────────────────────────────────────────────
 document.addEventListener('input', function(e) {
     if (e.target.id === 'ticket-subject') {
@@ -3720,6 +3792,7 @@ document.addEventListener('input', function(e) {
             <textarea id="ticket-reply-text" rows="2" maxlength="1000" data-i18n-placeholder="ticketReplyPlaceholder"></textarea>
             <button class="pi-btn" style="animation:none;padding:10px 14px;margin:0;flex-shrink:0;" onclick="sendTicketReply()" data-i18n="ticketSendReply"></button>
         </div>
+        <div id="ticket-detail-user-actions" style="margin-top:8px;"></div>
         <button class="pi-btn" style="background:#475569;animation:none;padding:10px;margin:8px 0 0 0;width:100%;" onclick="closeTicketDetailModal()" data-i18n="close"></button>
     </div>
 </div>
@@ -3734,6 +3807,7 @@ document.addEventListener('input', function(e) {
             <textarea id="admin-ticket-reply-text" rows="2" maxlength="1000" data-i18n-placeholder="ticketReplyPlaceholder"></textarea>
             <button class="pi-btn" style="background:#f59e0b;animation:none;padding:10px 14px;margin:0;flex-shrink:0;" onclick="adminReplyTicket()" data-i18n="ticketSendReply"></button>
         </div>
+        <button onclick="adminDeleteTicket()" style="width:100%;background:rgba(239,68,68,0.15);color:#f87171;border:1.5px solid rgba(239,68,68,0.4);padding:9px;border-radius:8px;font-size:0.75em;font-weight:800;cursor:pointer;margin-top:8px;">🗑️ <span data-i18n="ticketAdminDeleteBtn"></span></button>
         <button class="pi-btn" style="background:#475569;animation:none;padding:10px;margin:8px 0 0 0;width:100%;" onclick="closeAdminTicketDetailModal()" data-i18n="close"></button>
     </div>
 </div>
