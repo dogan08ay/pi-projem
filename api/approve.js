@@ -253,13 +253,29 @@ export default async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ error: "Sadece POST kabul edilir" });
 
+  // Body parse (Vercel'de otomatik değil)
+  if (!req.body) {
+    let rawBody = '';
+    try {
+      for await (const chunk of req) {
+        rawBody += chunk;
+      }
+      req.body = rawBody ? JSON.parse(rawBody) : {};
+    } catch (e) {
+      req.body = {};
+    }
+  }
+
   const clientIp = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.socket?.remoteAddress || 'unknown';
   const { action, accessToken } = req.body;
 
   // DEBUG: Gelen action'ı logla
-  console.log(`[DEBUG] Gelen action: "${action}" | Body keys: ${Object.keys(req.body).join(',')}`);
+  console.log(`[DEBUG] Gelen action: "${action}" | Body: ${JSON.stringify(req.body)} | Content-Type: ${req.headers['content-type']}`);
 
-  if (!action) return res.status(400).json({ error: "action zorunludur" });
+  if (!action) {
+    console.log(`[DEBUG] action boş/undefined. Body: ${JSON.stringify(req.body)}`);
+    return res.status(400).json({ error: "action zorunludur", bodyReceived: req.body });
+  }
 
   // ── Görsel Yükleme ─────────────────────────────────────────────────────
   if (action === 'upload_image') {
