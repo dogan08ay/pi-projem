@@ -880,6 +880,41 @@ export default async function handler(req, res) {
     }
   }
 
+  // ── Reddedilmiş Öneriyi Sil (Kullanıcı) ───────────────────────────────
+  if (action === 'delete_rejected_request') {
+    const { requestId } = req.body;
+    const realUsername = await getRealUsername(accessToken);
+    if (!realUsername) return res.status(403).json({ error: "Geçersiz oturum" });
+    if (!requestId) return res.status(400).json({ error: "Geçersiz istek ID" });
+    try {
+      const db = getDb();
+      const requestRef = db.collection('sell_requests').doc(requestId);
+      const requestSnap = await requestRef.get();
+
+      if (!requestSnap.exists) return res.status(404).json({ error: "Öneri bulunamadı" });
+
+      const reqData = requestSnap.data();
+
+      // Sadece kendi önerisini silebilir
+      if (reqData.submittedBy !== realUsername) {
+        return res.status(403).json({ error: "Bu öneriyi silme yetkiniz yok" });
+      }
+
+      // Sadece reddedilmiş öneriler silinebilir
+      if (reqData.status !== 'rejected') {
+        return res.status(400).json({ error: "Sadece reddedilmiş öneriler silinebilir" });
+      }
+
+      await requestRef.delete();
+
+      console.log(`Reddedilmiş öneri silindi: ${requestId} by @${realUsername}`);
+      return res.status(200).json({ success: true });
+    } catch (e) {
+      console.error("Reddedilmiş öneri silme hatası:", e);
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
   // ── Kullanıcı Profili Getir ───────────────────────────────────────────
   if (action === 'get_user_profile') {
     const realUsername = await getRealUsername(accessToken);
