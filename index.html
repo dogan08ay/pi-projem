@@ -202,6 +202,7 @@
 <base target="_blank">
 <base target="_blank">
 <base target="_blank">
+<base target="_blank">
 </head>
 <body style="margin:0;padding:0;width:100%;min-width:320px;overflow-x:hidden;position:relative;box-sizing:border-box;">
 <div class="side-menu-overlay" id="side-menu-overlay" onclick="toggleSideMenu()"></div>
@@ -1280,21 +1281,31 @@ window.handleSubmitSellRequest=async function(){
     }else if(window._editingRejectedRequestId&&window._editingRejectedRequestOldImg){
         imgUrl=window._editingRejectedRequestOldImg;
     }
-    // Düzenleme modu: önce eski reddedilmiş kaydı sil, sonra yeni gönder
-    if(window._editingRejectedRequestId){
-        const reqId=window._editingRejectedRequestId;
-        try{
-            const delR=await fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},
-                body:JSON.stringify({action:'delete_rejected_request',requestId:reqId,accessToken:piAccessToken})});
-            if(!delR.ok){alert((currentLang==='tr'?'Eski kayıt silinemedi: ':'Old record could not be deleted: ')+(await delR.json()).error||'');return;}
-        }catch(e){alert(currentLang==='tr'?'Eski kayıt silinirken hata oluştu.':'Error deleting old record.');return;}
-    }
+
+    const isEditMode = !!window._editingRejectedRequestId;
+    const oldRequestId = window._editingRejectedRequestId || null;
+
     try{
+        const payload = {
+            action: 'submit_sell_request',
+            domainName: name,
+            price: price,
+            domainType: type,
+            imgPath: imgUrl,
+            sellerWallet: wallet,
+            description: desc,
+            accessToken: piAccessToken
+        };
+        if(isEditMode){
+            payload.editMode = true;
+            payload.oldRequestId = oldRequestId;
+        }
+
         const r=await fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},
-            body:JSON.stringify({action:'submit_sell_request',domainName:name,price,domainType:type,imgPath:imgUrl,sellerWallet:wallet,description:desc,accessToken:piAccessToken})});
+            body:JSON.stringify(payload)});
         const result=await r.json();
         if(!r.ok||!result.success){alert(t('sellSubmitFail')+(result.error||''));return;}
-        alert(window._editingRejectedRequestId?(currentLang==='tr'?'İlan düzenlenip yeniden onaya gönderildi.':'Listing edited and resubmitted for approval.'):t('sellSubmitSuccess'));
+        alert(isEditMode?(currentLang==='tr'?'İlan düzenlenip yeniden onaya gönderildi.':'Listing edited and resubmitted for approval.'):t('sellSubmitSuccess'));
         closeSellDomainModal();
         await loadUserProfile(); debouncedRender();
     }catch(e){alert(t('sellSubmitError'));}
@@ -1445,7 +1456,7 @@ window.handleDeleteRejectedRequest=async function(requestId){
     const confirmMsg=currentLang==='tr'?'Bu reddedilmiş ilanı tamamen silmek istediğinize emin misiniz? Bu işlem geri alınamaz.':'Are you sure you want to permanently delete this rejected listing? This action cannot be undone.';
     if(!confirm(confirmMsg)) return;
     try{
-        const r=await fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'delete_rejected_request',requestId,accessToken:piAccessToken})});
+        const r=await fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'delete_rejected_request',requestId:requestId,accessToken:piAccessToken})});
         const result=await r.json();
         if(!r.ok||!result.success){alert((currentLang==='tr'?'Silme başarısız: ':'Delete failed: ')+(result.error||''));return;}
         alert(currentLang==='tr'?'İlan başarıyla silindi.':'Listing deleted successfully.');
