@@ -150,8 +150,8 @@
             50% { transform: scale(1.08); box-shadow: 0 0 0 8px rgba(16,185,129,0), 0 0 25px rgba(16,185,129,0.8); }
         }
         @keyframes avatar-ring-pulse {
-            0% { transform: translate(-50%,-50%) scale(0.8); opacity: 1; }
-            100% { transform: translate(-50%,-50%) scale(1.6); opacity: 0; }
+            0% { transform: scale(0.8); opacity: 1; }
+            100% { transform: scale(1.6); opacity: 0; }
         }
         @keyframes avatar-glow-breathe {
             0%, 100% { filter: drop-shadow(0 0 4px rgba(16,185,129,0.6)) drop-shadow(0 0 12px rgba(52,211,153,0.4)); }
@@ -459,9 +459,9 @@
         <!-- Kullanıcı Avatarı - Hamburger'ın Sağı -->
         <div id="user-avatar-btn" onclick="toggleUserMenu()" style="position:absolute;top:4px;right:48px;z-index:10;display:none;cursor:pointer;">
             <div class="avatar-pulse-container" style="width:32px;height:32px;">
-                <div class="avatar-pulse-ring" style="width:32px;height:32px;"></div>
-                <div class="avatar-pulse-ring" style="width:32px;height:32px;"></div>
-                <div class="avatar-pulse-ring" style="width:32px;height:32px;"></div>
+                <div class="avatar-pulse-ring" style="width:48px;height:48px;top:50%;left:50%;margin-top:-24px;margin-left:-24px;"></div>
+                <div class="avatar-pulse-ring" style="width:48px;height:48px;top:50%;left:50%;margin-top:-24px;margin-left:-24px;"></div>
+                <div class="avatar-pulse-ring" style="width:48px;height:48px;top:50%;left:50%;margin-top:-24px;margin-left:-24px;"></div>
                 <div style="width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,#10b981,#059669);border:2px solid #34d399;display:flex;align-items:center;justify-content:center;box-shadow:0 0 8px rgba(16,185,129,0.4);animation:avatar-pulse 2s ease-in-out infinite;position:relative;z-index:2;">
                     <span class="avatar-glow-icon" style="font-size:1.1em;">👤</span>
                 </div>
