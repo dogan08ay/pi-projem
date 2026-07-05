@@ -190,7 +190,6 @@ async function reverseSaleAndPoints(db, domainName, buyerUsername, soldPrice, so
 
   try {
     // 1. global_sales'ten satış kaydını bul ve sil
-    // txid olmayabilir (test ortamında), o yüzden domain+user+at kombinasyonuyla ara
     const salesQuery = await db.collection('global_sales')
       .where('user', '==', buyerUsername)
       .where('domain', '==', domainName)
@@ -198,11 +197,8 @@ async function reverseSaleAndPoints(db, domainName, buyerUsername, soldPrice, so
 
     let deletedCount = 0;
     const batch = db.batch();
-    
+
     salesQuery.forEach(doc => {
-      const data = doc.data();
-      // Aynı domain'den birden fazla kayıt olabilir, en yakın tarihli olanı sil
-      // veya hepsini sil (çünkü relist'te zaten tek kayıt olmalı)
       batch.delete(doc.ref);
       deletedCount++;
     });
@@ -213,7 +209,6 @@ async function reverseSaleAndPoints(db, domainName, buyerUsername, soldPrice, so
     }
 
     // 2. Kullanıcı puanlarını geri al (negatif ekle = pozitif puanı azalt)
-    // Satın alma +puan vermişti, şimdi -puan ile geri al
     await updateUserPoints(buyerUsername, -soldPrice, `sale_reversed_${domainName}`);
 
     // 3. daily_stats'ten de düş (eğer soldAt varsa)
@@ -241,7 +236,6 @@ async function reverseSaleAndPoints(db, domainName, buyerUsername, soldPrice, so
 
   } catch (e) {
     console.error(`[reverseSale] Hata: ${domainName} → @${buyerUsername}`, e);
-    // Hata olsa bile devam et, kritik değil
   }
 }
 
@@ -388,8 +382,6 @@ export default async function handler(req, res) {
   }
 
   // ── Relist ────────────────────────────────────────────────────────────
-  // DÜZELTME: Domain tekrar satılık yapıldığında, önceki alıcının 
-  // global_sales kaydı silinir ve puanları/harcamaları geri alınır.
   if (action === 'relist') {
     const { domainName } = req.body;
     const isAdmin = await verifyAdmin(accessToken);
@@ -408,14 +400,10 @@ export default async function handler(req, res) {
       const soldAt = soldData.at;
       const prevBuyer = soldData.buyer;
 
-      // ═══════════════════════════════════════════════════════════════════
-      //  DÜZELTME: Önceki alıcının satış kaydını ve puanlarını geri al
-      // ═══════════════════════════════════════════════════════════════════
       if (prevBuyer && soldPrice > 0) {
         await reverseSaleAndPoints(db, domainName, prevBuyer, soldPrice, soldAt);
       }
 
-      // Domain'i tekrar satılık yap
       await domainRef.set({ sold: false, txid: null, buyer: null, at: null }, { merge: true });
 
       if (prevBuyer) {
@@ -540,8 +528,6 @@ export default async function handler(req, res) {
   }
 
   // ── Domain Sil (SOFT DELETE) ──────────────────────────────────────────
-  // DÜZELTME: Eğer domain satılmışsa, alıcının global_sales kaydı silinir
-  // ve puanları/harcamaları geri alınır.
   if (action === 'delete_domain') {
     const { domainName: delName } = req.body;
     const isAdmin = await verifyAdmin(accessToken);
@@ -555,19 +541,7 @@ export default async function handler(req, res) {
 
       const domainDataForDelete = domainSnap.data();
 
-      // ═══════════════════════════════════════════════════════════════════
-      //  DÜZELTME: Satılmış domain silinirse, alıcının harcamasını geri al
-      // ═══════════════════════════════════════════════════════════════════
-      if (domainDataForDelete.sold === true) {
-        const prevBuyer = domainDataForDelete.buyer;
-        const soldPrice = Number(domainDataForDelete.price || 0);
-        const soldAt = domainDataForDelete.at;
-        
-        if (prevBuyer && soldPrice > 0) {
-          await reverseSaleAndPoints(db, delName, prevBuyer, soldPrice, soldAt);
-        }
-      }
-
+      // Önce satılmış mı kontrol et - satılmışsa relist yapılmadan silinemez
       if (domainDataForDelete.sold === true) {
         return res.status(400).json({ error: "Satılmış domain önce 'Tekrar Satılık Yap' ile satıştan kaldırılmalı" });
       }
@@ -615,7 +589,6 @@ export default async function handler(req, res) {
   }
 
   // ── Domain Kalıcı Sil ──────────────────────────────────────────────────
-  // DÜZELTME: Kalıcı silmeden önce eğer satılmışsa, alıcının kaydını geri al
   if (action === 'permanent_delete_domain') {
     const { domainName: permDelName } = req.body;
     const isAdmin = await verifyAdmin(accessToken);
@@ -626,26 +599,23 @@ export default async function handler(req, res) {
       const domainRef = db.collection('domains').doc(permDelName);
       const snap = await domainRef.get();
       if (!snap.exists) return res.status(404).json({ error: "Domain bulunamadı" });
-      
+
       const domainData = snap.data();
-      
-      // ═══════════════════════════════════════════════════════════════════
-      //  DÜZELTME: Kalıcı silmeden önce satılmışsa harcamayı geri al
-      // ═══════════════════════════════════════════════════════════════════
+
       if (domainData.sold === true) {
         const prevBuyer = domainData.buyer;
         const soldPrice = Number(domainData.price || 0);
         const soldAt = domainData.at;
-        
+
         if (prevBuyer && soldPrice > 0) {
           await reverseSaleAndPoints(db, permDelName, prevBuyer, soldPrice, soldAt);
         }
       }
 
       if (snap.data().deleted !== true) return res.status(400).json({ error: "Sadece soft-delete edilmiş domainler kalıcı silinebilir" });
-      
+
       await domainRef.delete();
-      
+
       const reqSnap = await db.collection('sell_requests')
         .where('domainName', '==', permDelName)
         .get();
@@ -891,6 +861,7 @@ export default async function handler(req, res) {
         assignedTo: null
       });
 
+      // Kullanıcıya bildirim
       await sendNotification(realUsername, {
         type: 'ticket_created',
         title: '📬 Talebiniz Alındı',
@@ -899,6 +870,7 @@ export default async function handler(req, res) {
         status: 'new'
       });
 
+      // Admin'e bildirim
       await sendNotificationToAdmin({
         type: 'new_ticket',
         title: '🎫 Yeni Destek Talebi',
@@ -907,12 +879,8 @@ export default async function handler(req, res) {
         category
       });
 
-      await sendTG(TG_CHAT_ID, `🎫 *YENİ DESTEK TALEBİ*
-
-👤 @${realUsername}
-📌 ${subject}
-🏷️ ${category || 'genel'}
-🎫 ${ticketId}`);
+      // Telegram bildirimi
+      await sendTG(TG_CHAT_ID, `🎫 *YENİ DESTEK TALEBİ*\n\n👤 @${realUsername}\n📌 ${subject}\n🏷️ ${category || 'genel'}\n🎫 ${ticketId}`);
 
       return res.status(200).json({ success: true, ticketId });
     } catch (e) {
@@ -952,7 +920,6 @@ export default async function handler(req, res) {
       if (!snap.exists) return res.status(404).json({ error: "Talep bulunamadı" });
 
       const data = snap.data();
-      // Sadece kendi ticket'ini veya admin tüm ticket'leri görebilir
       const isAdmin = await verifyAdmin(accessToken);
       if (data.createdBy !== realUsername && !isAdmin) {
         return res.status(403).json({ error: "Bu talebi görme yetkiniz yok" });
@@ -984,8 +951,9 @@ export default async function handler(req, res) {
         return res.status(400).json({ error: "Kapatılmış taleplere mesaj eklenemez" });
       }
 
+      // DÜZELTME: admin.firestore.FieldValue yerine FieldValue kullan
       await ticketRef.update({
-        messages: admin.firestore.FieldValue.arrayUnion({
+        messages: FieldValue.arrayUnion({
           sender: realUsername,
           message,
           timestamp: Date.now(),
@@ -1050,7 +1018,6 @@ export default async function handler(req, res) {
 
       await ticketRef.update(updates);
 
-      // Durum adımlarına göre bildirim mesajları
       const statusMessages = {
         'reviewing': { title: '🔍 Talebiniz İnceleniyor', body: `"${ticketData.subject}" konulu talebiniz incelenmeye başlandı.` },
         'answered': { title: '💬 Geri Bildirim', body: `"${ticketData.subject}" konulu talebinize yanıt verildi. Lütfen kontrol edin.` },
@@ -1092,8 +1059,9 @@ export default async function handler(req, res) {
         return res.status(400).json({ error: "Kapatılmış taleplere cevap yazılamaz" });
       }
 
+      // DÜZELTME: admin.firestore.FieldValue yerine FieldValue kullan
       await ticketRef.update({
-        messages: admin.firestore.FieldValue.arrayUnion({
+        messages: FieldValue.arrayUnion({
           sender: ADMIN_USERNAME,
           message,
           timestamp: Date.now(),
@@ -1125,7 +1093,6 @@ export default async function handler(req, res) {
       const profileSnap = await db.collection('user_profiles').doc(realUsername).get();
       const profileData = profileSnap.exists ? profileSnap.data() : { points: 0, badge: null };
 
-      // totalSpent sadece global_sales'ten hesaplanıyor (daha güvenilir)
       const salesSnap = await db.collection('global_sales').where('user', '==', realUsername).get();
       let totalSpent = 0;
       const purchases = [];
