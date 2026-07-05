@@ -256,6 +256,9 @@ export default async function handler(req, res) {
   const clientIp = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.socket?.remoteAddress || 'unknown';
   const { action, accessToken } = req.body;
 
+  // DEBUG: Gelen action'ı logla
+  console.log(`[DEBUG] Gelen action: "${action}" | Body keys: ${Object.keys(req.body).join(',')}`);
+
   if (!action) return res.status(400).json({ error: "action zorunludur" });
 
   // ── Görsel Yükleme ─────────────────────────────────────────────────────
@@ -1151,5 +1154,6 @@ export default async function handler(req, res) {
   }
 
   // Bilinmeyen action
-  return res.status(400).json({ error: "Geçersiz action" });
+  console.log(`[DEBUG] Bilinmeyen action: "${action}"`);
+  return res.status(400).json({ error: "Geçersiz action", receivedAction: action });
 }
