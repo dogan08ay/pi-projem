@@ -423,9 +423,8 @@
         </button>
         <!-- Kullanıcı Avatarı - Hamburger'ın Sağı -->
         <div id="user-avatar-btn" onclick="toggleUserMenu()" style="position:absolute;top:4px;right:48px;z-index:10;display:none;cursor:pointer;">
-            <div style="width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,#10b981,#059669);border:2px solid #34d399;display:flex;align-items:center;justify-content:center;box-shadow:0 0 8px rgba(16,185,129,0.4);animation:connected-pulse 2s ease-in-out infinite;position:relative;">
+            <div style="width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,#10b981,#059669);border:2px solid #34d399;display:flex;align-items:center;justify-content:center;box-shadow:0 0 8px rgba(16,185,129,0.4);animation:connected-pulse 2s ease-in-out infinite;">
                 <span style="font-size:1.1em;">👤</span>
-                <span style="position:absolute;bottom:-2px;right:-2px;width:10px;height:10px;border-radius:50%;background:#10b981;border:2px solid #0f172a;box-shadow:0 0 6px #10b981;animation:dot-pulse 1.6s ease-in-out infinite;"></span>
             </div>
             <div id="user-menu-dropdown" style="display:none;position:absolute;top:38px;right:0;background:#0f172a;border:1.5px solid #10b981;border-radius:10px;padding:10px;min-width:200px;box-shadow:0 8px 24px rgba(0,0,0,0.5);z-index:100;">
                 <div style="display:flex;align-items:center;justify-content:center;gap:6px;padding-bottom:8px;border-bottom:1px solid #1e293b;margin-bottom:8px;">
@@ -441,10 +440,10 @@
         </div>
         <img src="assets/logo.jpeg" alt="Logo" class="app-logo" style="width:120px;height:120px;margin:6px auto 4px auto;">
         <h1 class="app-title" style="margin:0 0 3px 0;font-size:1.55em;">Web3 Domain Gateway</h1>
-        <div class="stats-bar" style="margin:0 auto 1px auto;max-width:340px;font-size:0.62em;">
-            <div class="stats-item" style="white-space:normal;line-height:1.3;"><span data-i18n="soldDomains"></span>: <span id="total-sold">0</span></div>
-            <div class="stats-item" style="white-space:normal;line-height:1.3;"><span data-i18n="totalVolume"></span>: <span id="total-volume">0</span> <span style="font-size:0.85em;">Test Pİ</span></div>
-            <div class="stats-item" style="white-space:normal;line-height:1.3;"><span data-i18n="activeUsers"></span>: <span id="online-count">0</span></div>
+        <div class="stats-bar" style="margin:0 auto 1px auto;max-width:340px;font-size:0.58em;overflow:hidden;">
+            <div class="stats-item" style="white-space:nowrap;line-height:1.2;overflow:hidden;text-overflow:ellipsis;"><span data-i18n="soldDomains"></span>: <span id="total-sold">0</span></div>
+            <div class="stats-item" style="white-space:nowrap;line-height:1.2;overflow:hidden;text-overflow:ellipsis;"><span data-i18n="totalVolume"></span>: <span id="total-volume">0</span> <span style="font-size:0.85em;">Test Pİ</span></div>
+            <div class="stats-item" style="white-space:nowrap;line-height:1.2;overflow:hidden;text-overflow:ellipsis;"><span data-i18n="activeUsers"></span>: <span id="online-count">0</span></div>
         </div>
         
     </div>
