@@ -1820,10 +1820,12 @@ window.switchAdminTab=function(tabId){
     document.querySelectorAll('.admin-tab-panel').forEach(p=>p.classList.toggle('active',p.id===tabId));
     if(tabId==='tab-earnings') loadAdminEarnings();
     if(tabId==='tab-stats') loadAllSalesDetail();
+    if(tabId==='tab-tickets') adminLoadTickets();
 };
 window.switchUserTab=function(tabId){
     document.querySelectorAll('.user-tab-btn').forEach(b=>b.classList.toggle('active',b.dataset.utab===tabId));
     document.querySelectorAll('.user-tab-panel').forEach(p=>p.classList.toggle('active',p.id===tabId));
+    if(tabId==='utab-tickets') loadMyTickets();
 };
 
 // FILTER
@@ -2859,6 +2861,7 @@ window.loginWithPi = async function() {
             if (isAdmin) {
                 loadUniqueBadgeCount();
                 listenToPendingDomains();
+                adminLoadTickets();
                 const today = new Date().toISOString().split("T")[0];
                 const dateInput = document.getElementById("admin-date-input");
                 dateInput.value = today;
