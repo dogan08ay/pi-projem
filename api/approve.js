@@ -178,7 +178,7 @@ async function updateUserPoints(username, points, reason) {
 }
 
 // ══════════════════════════════════════════════════════════════════════════
-//  YENİ: Satış kaydını ve puanları geri alma yardımcı fonksiyonu
+//  Satış kaydını ve puanları geri alma yardımcı fonksiyonu
 //  Bu fonksiyon, bir domain satışı iptal edildiğinde (relist, delete vb.)
 //  alıcının global_sales kaydını siler ve puanlarını geri alır.
 // ══════════════════════════════════════════════════════════════════════════
@@ -190,7 +190,6 @@ async function reverseSaleAndPoints(db, domainName, buyerUsername, soldPrice, so
 
   try {
     // 1. global_sales'ten satış kaydını bul ve sil
-    // txid olmayabilir (test ortamında), o yüzden domain+user+at kombinasyonuyla ara
     const salesQuery = await db.collection('global_sales')
       .where('user', '==', buyerUsername)
       .where('domain', '==', domainName)
@@ -198,11 +197,8 @@ async function reverseSaleAndPoints(db, domainName, buyerUsername, soldPrice, so
 
     let deletedCount = 0;
     const batch = db.batch();
-    
+
     salesQuery.forEach(doc => {
-      const data = doc.data();
-      // Aynı domain'den birden fazla kayıt olabilir, en yakın tarihli olanı sil
-      // veya hepsini sil (çünkü relist'te zaten tek kayıt olmalı)
       batch.delete(doc.ref);
       deletedCount++;
     });
@@ -212,11 +208,10 @@ async function reverseSaleAndPoints(db, domainName, buyerUsername, soldPrice, so
       console.log(`[reverseSale] ${deletedCount} adet global_sales kaydı silindi: ${domainName} → @${buyerUsername}`);
     }
 
-    // 2. Kullanıcı puanlarını geri al (negatif ekle = pozitif puanı azalt)
-    // Satın alma +puan vermişti, şimdi -puan ile geri al
+    // 2. Kullanıcı puanlarını geri al
     await updateUserPoints(buyerUsername, -soldPrice, `sale_reversed_${domainName}`);
 
-    // 3. daily_stats'ten de düş (eğer soldAt varsa)
+    // 3. daily_stats'ten de düş
     if (soldAt) {
       const soldDate = new Date(soldAt).toISOString().split('T')[0];
       try {
@@ -241,7 +236,6 @@ async function reverseSaleAndPoints(db, domainName, buyerUsername, soldPrice, so
 
   } catch (e) {
     console.error(`[reverseSale] Hata: ${domainName} → @${buyerUsername}`, e);
-    // Hata olsa bile devam et, kritik değil
   }
 }
 
@@ -388,8 +382,6 @@ export default async function handler(req, res) {
   }
 
   // ── Relist ────────────────────────────────────────────────────────────
-  // DÜZELTME: Domain tekrar satılık yapıldığında, önceki alıcının 
-  // global_sales kaydı silinir ve puanları/harcamaları geri alınır.
   if (action === 'relist') {
     const { domainName } = req.body;
     const isAdmin = await verifyAdmin(accessToken);
@@ -408,14 +400,10 @@ export default async function handler(req, res) {
       const soldAt = soldData.at;
       const prevBuyer = soldData.buyer;
 
-      // ═══════════════════════════════════════════════════════════════════
-      //  DÜZELTME: Önceki alıcının satış kaydını ve puanlarını geri al
-      // ═══════════════════════════════════════════════════════════════════
       if (prevBuyer && soldPrice > 0) {
         await reverseSaleAndPoints(db, domainName, prevBuyer, soldPrice, soldAt);
       }
 
-      // Domain'i tekrar satılık yap
       await domainRef.set({ sold: false, txid: null, buyer: null, at: null }, { merge: true });
 
       if (prevBuyer) {
@@ -540,8 +528,6 @@ export default async function handler(req, res) {
   }
 
   // ── Domain Sil (SOFT DELETE) ──────────────────────────────────────────
-  // DÜZELTME: Eğer domain satılmışsa, alıcının global_sales kaydı silinir
-  // ve puanları/harcamaları geri alınır.
   if (action === 'delete_domain') {
     const { domainName: delName } = req.body;
     const isAdmin = await verifyAdmin(accessToken);
@@ -555,14 +541,11 @@ export default async function handler(req, res) {
 
       const domainDataForDelete = domainSnap.data();
 
-      // ═══════════════════════════════════════════════════════════════════
-      //  DÜZELTME: Satılmış domain silinirse, alıcının harcamasını geri al
-      // ═══════════════════════════════════════════════════════════════════
       if (domainDataForDelete.sold === true) {
         const prevBuyer = domainDataForDelete.buyer;
         const soldPrice = Number(domainDataForDelete.price || 0);
         const soldAt = domainDataForDelete.at;
-        
+
         if (prevBuyer && soldPrice > 0) {
           await reverseSaleAndPoints(db, delName, prevBuyer, soldPrice, soldAt);
         }
@@ -615,7 +598,6 @@ export default async function handler(req, res) {
   }
 
   // ── Domain Kalıcı Sil ──────────────────────────────────────────────────
-  // DÜZELTME: Kalıcı silmeden önce eğer satılmışsa, alıcının kaydını geri al
   if (action === 'permanent_delete_domain') {
     const { domainName: permDelName } = req.body;
     const isAdmin = await verifyAdmin(accessToken);
@@ -626,26 +608,23 @@ export default async function handler(req, res) {
       const domainRef = db.collection('domains').doc(permDelName);
       const snap = await domainRef.get();
       if (!snap.exists) return res.status(404).json({ error: "Domain bulunamadı" });
-      
+
       const domainData = snap.data();
-      
-      // ═══════════════════════════════════════════════════════════════════
-      //  DÜZELTME: Kalıcı silmeden önce satılmışsa harcamayı geri al
-      // ═══════════════════════════════════════════════════════════════════
+
       if (domainData.sold === true) {
         const prevBuyer = domainData.buyer;
         const soldPrice = Number(domainData.price || 0);
         const soldAt = domainData.at;
-        
+
         if (prevBuyer && soldPrice > 0) {
           await reverseSaleAndPoints(db, permDelName, prevBuyer, soldPrice, soldAt);
         }
       }
 
       if (snap.data().deleted !== true) return res.status(400).json({ error: "Sadece soft-delete edilmiş domainler kalıcı silinebilir" });
-      
+
       await domainRef.delete();
-      
+
       const reqSnap = await db.collection('sell_requests')
         .where('domainName', '==', permDelName)
         .get();
@@ -856,8 +835,56 @@ export default async function handler(req, res) {
     }
   }
 
+  // ── İlan Talebini Geri Çek (pending durumundaki sell_request) ─────────
+  if (action === 'withdraw_sell_request') {
+    const { requestId } = req.body;
+    const realUsername = await getRealUsername(accessToken);
+    if (!realUsername) return res.status(403).json({ error: "Geçersiz oturum" });
+    if (!requestId) return res.status(400).json({ error: "Geçersiz istek ID" });
+    try {
+      const db = getDb();
+      const requestRef = db.collection('sell_requests').doc(requestId);
+      const snap = await requestRef.get();
+      if (!snap.exists) return res.status(404).json({ error: "İlan talebi bulunamadı" });
+      const data = snap.data();
+      if (data.submittedBy !== realUsername) return res.status(403).json({ error: "Bu talebi geri çekme yetkiniz yok" });
+      if (data.status !== 'pending') return res.status(400).json({ error: "Sadece onay bekleyen talepler geri çekilebilir" });
 
-  // ── Ticket Oluştur (Kullanıcı) ───────────────────────────────────────────
+      await requestRef.set({ status: 'withdrawn', withdrawnAt: Date.now() }, { merge: true });
+      return res.status(200).json({ success: true });
+    } catch (e) {
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  // ── Reddedilmiş İlan Talebini Sil ──────────────────────────────────────
+  if (action === 'delete_rejected_request') {
+    const { requestId } = req.body;
+    const realUsername = await getRealUsername(accessToken);
+    if (!realUsername) return res.status(403).json({ error: "Geçersiz oturum" });
+    if (!requestId) return res.status(400).json({ error: "Geçersiz istek ID" });
+    try {
+      const db = getDb();
+      const requestRef = db.collection('sell_requests').doc(requestId);
+      const snap = await requestRef.get();
+      if (!snap.exists) return res.status(404).json({ error: "İlan talebi bulunamadı" });
+      const data = snap.data();
+      if (data.submittedBy !== realUsername) return res.status(403).json({ error: "Bu talebi silme yetkiniz yok" });
+      if (data.status !== 'rejected') return res.status(400).json({ error: "Sadece reddedilmiş talepler silinebilir" });
+
+      await requestRef.delete();
+      return res.status(200).json({ success: true });
+    } catch (e) {
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  // ══════════════════════════════════════════════════════════════════════
+  //  TICKET / DESTEK SİSTEMİ — frontend ile birebir uyumlu action isimleri
+  //  Mesaj formatı: { from: 'username'|'admin', text: '...', timestamp: N }
+  // ══════════════════════════════════════════════════════════════════════
+
+  // ── Ticket Oluştur (Kullanıcı) ────────────────────────────────────────
   if (action === 'create_ticket') {
     if (!checkRateLimit(clientIp, 'create_ticket', 5, 60000))
       return res.status(429).json({ error: "Çok fazla istek. Lütfen bekleyin." });
@@ -870,248 +897,198 @@ export default async function handler(req, res) {
     try {
       const db = getDb();
       const ticketRef = db.collection('tickets').doc();
-      const ticketId = ticketRef.id;
+      const now = Date.now();
 
       await ticketRef.set({
-        ticketId,
         subject,
-        category: category || 'genel',
+        category: category || 'general',
         priority: priority || 'normal',
         status: 'new',
         createdBy: realUsername,
-        createdAt: Date.now(),
-        updatedAt: Date.now(),
-        messages: [{
-          sender: realUsername,
-          message,
-          timestamp: Date.now(),
-          isAdmin: false
-        }],
-        adminNotes: '',
-        assignedTo: null
+        createdAt: now,
+        lastUpdate: now,
+        assignedTo: null,
+        messages: [{ from: realUsername, text: message, timestamp: now }]
       });
 
       await sendNotification(realUsername, {
         type: 'ticket_created',
         title: '📬 Talebiniz Alındı',
-        body: `"${subject}" konulu talebiniz başarıyla oluşturuldu. En kısa sürede incelenecektir.`,
-        ticketId,
-        status: 'new'
+        body: `"${subject}" konulu talebiniz oluşturuldu. En kısa sürede yanıtlanacaktır.`,
+        ticketId: ticketRef.id
       });
 
       await sendNotificationToAdmin({
         type: 'new_ticket',
         title: '🎫 Yeni Destek Talebi',
         body: `@${realUsername} tarafından "${subject}" konulu yeni bir talep oluşturuldu.`,
-        ticketId,
-        category
+        ticketId: ticketRef.id
       });
 
-      await sendTG(TG_CHAT_ID, `🎫 *YENİ DESTEK TALEBİ*
+      await sendTG(TG_CHAT_ID, `🎫 *YENİ DESTEK TALEBİ*\n\n👤 @${realUsername}\n📌 ${subject}\n🏷️ ${category || 'general'}`);
 
-👤 @${realUsername}
-📌 ${subject}
-🏷️ ${category || 'genel'}
-🎫 ${ticketId}`);
-
-      return res.status(200).json({ success: true, ticketId });
+      return res.status(200).json({ success: true, ticketId: ticketRef.id });
     } catch (e) {
       console.error("Ticket oluşturma hatası:", e);
       return res.status(500).json({ error: e.message });
     }
   }
 
-  // ── Kullanıcı Ticket'larını Getir ──────────────────────────────────────
+  // ── Kullanıcı: Kendi Ticket'larını Getir ──────────────────────────────
   if (action === 'get_my_tickets') {
     const realUsername = await getRealUsername(accessToken);
     if (!realUsername) return res.status(403).json({ error: "Geçersiz oturum" });
     try {
       const db = getDb();
-      const snap = await db.collection('tickets')
-        .where('createdBy', '==', realUsername)
-        .orderBy('updatedAt', 'desc')
-        .get();
-
+      const snap = await db.collection('tickets').where('createdBy', '==', realUsername).get();
       const tickets = [];
       snap.forEach(doc => tickets.push({ id: doc.id, ...doc.data() }));
+      tickets.sort((a, b) => (b.lastUpdate || 0) - (a.lastUpdate || 0));
       return res.status(200).json({ success: true, tickets });
     } catch (e) {
+      console.error("get_my_tickets hatası:", e);
       return res.status(500).json({ error: e.message });
     }
   }
 
-  // ── Ticket Detayını Getir ─────────────────────────────────────────────
-  if (action === 'get_ticket_detail') {
-    const { ticketId } = req.body;
+  // ── Kullanıcı: Ticket'a Yanıt Gönder ──────────────────────────────────
+  if (action === 'reply_ticket') {
+    const { ticketId, text } = req.body;
     const realUsername = await getRealUsername(accessToken);
     if (!realUsername) return res.status(403).json({ error: "Geçersiz oturum" });
-    if (!ticketId) return res.status(400).json({ error: "ticketId zorunludur" });
-    try {
-      const db = getDb();
-      const snap = await db.collection('tickets').doc(ticketId).get();
-      if (!snap.exists) return res.status(404).json({ error: "Talep bulunamadı" });
-
-      const data = snap.data();
-      // Sadece kendi ticket'ini veya admin tüm ticket'leri görebilir
-      const isAdmin = await verifyAdmin(accessToken);
-      if (data.createdBy !== realUsername && !isAdmin) {
-        return res.status(403).json({ error: "Bu talebi görme yetkiniz yok" });
-      }
-
-      return res.status(200).json({ success: true, ticket: { id: snap.id, ...data } });
-    } catch (e) {
-      return res.status(500).json({ error: e.message });
-    }
-  }
-
-  // ── Ticket'a Mesaj Ekle (Kullanıcı) ────────────────────────────────────
-  if (action === 'add_ticket_message') {
-    const { ticketId, message } = req.body;
-    const realUsername = await getRealUsername(accessToken);
-    if (!realUsername) return res.status(403).json({ error: "Geçersiz oturum" });
-    if (!ticketId || !message) return res.status(400).json({ error: "ticketId ve mesaj zorunludur" });
+    if (!ticketId || !text) return res.status(400).json({ error: "ticketId ve mesaj zorunludur" });
     try {
       const db = getDb();
       const ticketRef = db.collection('tickets').doc(ticketId);
-      const ticketSnap = await ticketRef.get();
-      if (!ticketSnap.exists) return res.status(404).json({ error: "Talep bulunamadı" });
+      const snap = await ticketRef.get();
+      if (!snap.exists) return res.status(404).json({ error: "Talep bulunamadı" });
+      const data = snap.data();
+      if (data.createdBy !== realUsername) return res.status(403).json({ error: "Bu talebe yanıt verme yetkiniz yok" });
+      if (data.status === 'closed') return res.status(400).json({ error: "Kapatılmış talebe yanıt verilemez" });
 
-      const ticketData = ticketSnap.data();
-      if (ticketData.createdBy !== realUsername) {
-        return res.status(403).json({ error: "Bu talebe mesaj ekleme yetkiniz yok" });
-      }
-      if (ticketData.status === 'closed') {
-        return res.status(400).json({ error: "Kapatılmış taleplere mesaj eklenemez" });
-      }
-
+      const now = Date.now();
       await ticketRef.update({
-        messages: admin.firestore.FieldValue.arrayUnion({
-          sender: realUsername,
-          message,
-          timestamp: Date.now(),
-          isAdmin: false
-        }),
-        updatedAt: Date.now()
+        messages: FieldValue.arrayUnion({ from: realUsername, text, timestamp: now }),
+        lastUpdate: now,
+        status: (data.status === 'answered' || data.status === 'resolved') ? 'reviewing' : data.status
       });
 
       await sendNotificationToAdmin({
         type: 'ticket_message',
         title: '💬 Yeni Mesaj',
-        body: `@${realUsername} "${ticketData.subject}" talebine yeni mesaj gönderdi.`,
+        body: `@${realUsername} "${data.subject}" talebine yeni mesaj gönderdi.`,
         ticketId
       });
 
       return res.status(200).json({ success: true });
     } catch (e) {
+      console.error("reply_ticket hatası:", e);
       return res.status(500).json({ error: e.message });
     }
   }
 
   // ── Admin: Tüm Ticket'ları Getir ──────────────────────────────────────
-  if (action === 'admin_get_all_tickets') {
+  if (action === 'get_all_tickets') {
     const isAdmin = await verifyAdmin(accessToken);
     if (!isAdmin) return res.status(403).json({ error: "Yetki yok" });
     try {
       const db = getDb();
-      const { status, category } = req.body;
-      let query = db.collection('tickets').orderBy('updatedAt', 'desc');
-      if (status) query = query.where('status', '==', status);
-      if (category) query = query.where('category', '==', category);
-
-      const snap = await query.get();
+      const snap = await db.collection('tickets').get();
       const tickets = [];
-      snap.forEach(doc => tickets.push({ id: doc.id, ...doc.data() }));
+      snap.forEach(doc => {
+        const d = doc.data();
+        tickets.push({ id: doc.id, ...d, username: d.createdBy });
+      });
+      tickets.sort((a, b) => (b.lastUpdate || 0) - (a.lastUpdate || 0));
       return res.status(200).json({ success: true, tickets });
     } catch (e) {
+      console.error("get_all_tickets hatası:", e);
       return res.status(500).json({ error: e.message });
     }
   }
 
   // ── Admin: Ticket Durumunu Güncelle ────────────────────────────────────
-  if (action === 'admin_update_ticket_status') {
-    const { ticketId, newStatus, adminNote } = req.body;
+  if (action === 'update_ticket_status') {
+    const { ticketId, status } = req.body;
     const isAdmin = await verifyAdmin(accessToken);
     if (!isAdmin) return res.status(403).json({ error: "Yetki yok" });
-    if (!ticketId || !newStatus) return res.status(400).json({ error: "ticketId ve yeni durum zorunludur" });
-
     const validStatuses = ['new', 'reviewing', 'answered', 'resolved', 'closed'];
-    if (!validStatuses.includes(newStatus)) {
-      return res.status(400).json({ error: "Geçersiz durum" });
-    }
+    if (!ticketId || !validStatuses.includes(status)) return res.status(400).json({ error: "Geçersiz parametre" });
     try {
       const db = getDb();
       const ticketRef = db.collection('tickets').doc(ticketId);
-      const ticketSnap = await ticketRef.get();
-      if (!ticketSnap.exists) return res.status(404).json({ error: "Talep bulunamadı" });
+      const snap = await ticketRef.get();
+      if (!snap.exists) return res.status(404).json({ error: "Talep bulunamadı" });
+      const data = snap.data();
 
-      const ticketData = ticketSnap.data();
-      const updates = { status: newStatus, updatedAt: Date.now() };
-      if (adminNote) updates.adminNotes = adminNote;
+      await ticketRef.update({ status, lastUpdate: Date.now() });
 
-      await ticketRef.update(updates);
-
-      // Durum adımlarına göre bildirim mesajları
-      const statusMessages = {
-        'reviewing': { title: '🔍 Talebiniz İnceleniyor', body: `"${ticketData.subject}" konulu talebiniz incelenmeye başlandı.` },
-        'answered': { title: '💬 Geri Bildirim', body: `"${ticketData.subject}" konulu talebinize yanıt verildi. Lütfen kontrol edin.` },
-        'resolved': { title: '✅ Talep Çözüldü', body: `"${ticketData.subject}" konulu talebiniz çözüldü. Teşekkür ederiz!` },
-        'closed': { title: '📪 Talep Kapatıldı', body: `"${ticketData.subject}" konulu talep kapatıldı.` }
+      const statusMsgs = {
+        reviewing: { title: '🔍 Talebiniz İnceleniyor', body: `"${data.subject}" konulu talebiniz incelenmeye başlandı.` },
+        answered: { title: '💬 Talebiniz Yanıtlandı', body: `"${data.subject}" konulu talebinize yanıt verildi.` },
+        resolved: { title: '✅ Talep Çözüldü', body: `"${data.subject}" konulu talebiniz çözüldü.` },
+        closed: { title: '📪 Talep Kapatıldı', body: `"${data.subject}" konulu talep kapatıldı.` }
       };
-
-      const msg = statusMessages[newStatus];
-      if (msg) {
-        await sendNotification(ticketData.createdBy, {
-          type: 'ticket_status_update',
-          title: msg.title,
-          body: msg.body,
-          ticketId,
-          status: newStatus
-        });
-      }
+      const msg = statusMsgs[status];
+      if (msg) await sendNotification(data.createdBy, { type: 'ticket_status_update', ...msg, ticketId, status });
 
       return res.status(200).json({ success: true });
     } catch (e) {
+      console.error("update_ticket_status hatası:", e);
       return res.status(500).json({ error: e.message });
     }
   }
 
-  // ── Admin: Ticket'a Cevap Yaz ─────────────────────────────────────────
+  // ── Admin: Ticket'a Yanıt Yaz ──────────────────────────────────────────
   if (action === 'admin_reply_ticket') {
-    const { ticketId, message } = req.body;
+    const { ticketId, text } = req.body;
     const isAdmin = await verifyAdmin(accessToken);
     if (!isAdmin) return res.status(403).json({ error: "Yetki yok" });
-    if (!ticketId || !message) return res.status(400).json({ error: "ticketId ve mesaj zorunludur" });
+    if (!ticketId || !text) return res.status(400).json({ error: "ticketId ve mesaj zorunludur" });
     try {
       const db = getDb();
       const ticketRef = db.collection('tickets').doc(ticketId);
-      const ticketSnap = await ticketRef.get();
-      if (!ticketSnap.exists) return res.status(404).json({ error: "Talep bulunamadı" });
+      const snap = await ticketRef.get();
+      if (!snap.exists) return res.status(404).json({ error: "Talep bulunamadı" });
+      const data = snap.data();
 
-      const ticketData = ticketSnap.data();
-      if (ticketData.status === 'closed') {
-        return res.status(400).json({ error: "Kapatılmış taleplere cevap yazılamaz" });
-      }
-
+      const now = Date.now();
       await ticketRef.update({
-        messages: admin.firestore.FieldValue.arrayUnion({
-          sender: ADMIN_USERNAME,
-          message,
-          timestamp: Date.now(),
-          isAdmin: true
-        }),
+        messages: FieldValue.arrayUnion({ from: 'admin', text, timestamp: now }),
         status: 'answered',
-        updatedAt: Date.now()
+        lastUpdate: now
       });
 
-      await sendNotification(ticketData.createdBy, {
+      await sendNotification(data.createdBy, {
         type: 'ticket_admin_reply',
-        title: '💬 Yöneticiden Yeni Mesaj',
-        body: `"${ticketData.subject}" talebinize yönetici tarafından yanıt verildi.`,
+        title: '💬 Yöneticiden Yanıt',
+        body: `"${data.subject}" talebinize yönetici yanıt verdi.`,
         ticketId
       });
 
       return res.status(200).json({ success: true });
     } catch (e) {
+      console.error("admin_reply_ticket hatası:", e);
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  // ── Admin: Ticket'ı Üzerine Al / Bırak ─────────────────────────────────
+  if (action === 'assign_ticket') {
+    const { ticketId, assign } = req.body;
+    const isAdmin = await verifyAdmin(accessToken);
+    if (!isAdmin) return res.status(403).json({ error: "Yetki yok" });
+    if (!ticketId) return res.status(400).json({ error: "ticketId zorunludur" });
+    try {
+      const db = getDb();
+      const ticketRef = db.collection('tickets').doc(ticketId);
+      const snap = await ticketRef.get();
+      if (!snap.exists) return res.status(404).json({ error: "Talep bulunamadı" });
+
+      await ticketRef.update({ assignedTo: assign ? ADMIN_USERNAME : null, lastUpdate: Date.now() });
+      return res.status(200).json({ success: true });
+    } catch (e) {
+      console.error("assign_ticket hatası:", e);
       return res.status(500).json({ error: e.message });
     }
   }
@@ -1125,7 +1102,6 @@ export default async function handler(req, res) {
       const profileSnap = await db.collection('user_profiles').doc(realUsername).get();
       const profileData = profileSnap.exists ? profileSnap.data() : { points: 0, badge: null };
 
-      // totalSpent sadece global_sales'ten hesaplanıyor (daha güvenilir)
       const salesSnap = await db.collection('global_sales').where('user', '==', realUsername).get();
       let totalSpent = 0;
       const purchases = [];
@@ -1233,18 +1209,18 @@ export default async function handler(req, res) {
           userOwnedVolume += price;
           if (data.sellerUsername === ADMIN_USERNAME) {
             adminOwnEarnings += price;
-            adminOwnSoldDomains.push({ 
-              name: d.id, 
-              price: data.price, 
-              buyer: data.buyer || null 
+            adminOwnSoldDomains.push({
+              name: d.id,
+              price: data.price,
+              buyer: data.buyer || null
             });
           }
         } else {
           adminOwnEarnings += price;
-          adminOwnSoldDomains.push({ 
-            name: d.id, 
-            price: data.price, 
-            buyer: data.buyer || null 
+          adminOwnSoldDomains.push({
+            name: d.id,
+            price: data.price,
+            buyer: data.buyer || null
           });
         }
       });
