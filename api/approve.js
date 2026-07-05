@@ -747,12 +747,12 @@ export default async function handler(req, res) {
       if (!existingReq.empty) return res.status(400).json({ error: "Bu domain için zaten bekleyen bir öneriniz var" });
 
       const requestRef = db.collection('sell_requests').doc();
-      // Eski reddedilmiş kaydı sil (edit mode)
-      if (body.editMode && body.oldRequestId) {
-        await db.collection('sell_requests').doc(body.oldRequestId).delete();
+            // Eski reddedilmiş kaydı sil (edit mode)
+      if (req.body.editMode && req.body.oldRequestId) {
+        await db.collection('sell_requests').doc(req.body.oldRequestId).delete();
       }
 
-      await requestRef.set({
+await requestRef.set({
         domainName: reqDomainName,
         price: priceNum,
         domainType: domainType || 'genel',
@@ -816,11 +816,6 @@ export default async function handler(req, res) {
         deleted: false, deletedAt: null,
         createdAt: Date.now()
       });
-      // Eski reddedilmiş kaydı sil (edit mode)
-      if (body.editMode && body.oldRequestId) {
-        await db.collection('sell_requests').doc(body.oldRequestId).delete();
-      }
-
       await requestRef.set({ status: 'approved', resolvedAt: Date.now() }, { merge: true });
 
       await sendNotification(reqData.submittedBy, {
@@ -849,11 +844,6 @@ export default async function handler(req, res) {
       const requestRef = db.collection('sell_requests').doc(requestId);
       const requestSnap = await requestRef.get();
       const reqData = requestSnap.data();
-      // Eski reddedilmiş kaydı sil (edit mode)
-      if (body.editMode && body.oldRequestId) {
-        await db.collection('sell_requests').doc(body.oldRequestId).delete();
-      }
-
       await requestRef.set({ status: 'rejected', resolvedAt: Date.now(), rejectReason: rejectReason || '' }, { merge: true });
 
       if (reqData?.submittedBy) {
@@ -1042,120 +1032,131 @@ export default async function handler(req, res) {
   // ══════════════════════════════════════════════════════════════════════
   //  Pi Ödeme Akışı (approve / complete / cancel)
   // ══════════════════════════════════════════════════════════════════════
-  const { paymentId, txid, username, domainName } = req.body;
+  // ── Pi Ödeme Akışı (sadece approve / complete / cancel action'ları için) ──
+  const allowedPaymentActions = ['approve', 'complete', 'cancel'];
 
-  if (!paymentId) return res.status(400).json({ error: "paymentId zorunludur" });
+  if (allowedPaymentActions.includes(action)) {
+    const { paymentId, txid, username, domainName } = req.body;
 
-  const allowedActions = ['approve', 'complete', 'cancel'];
-  if (!allowedActions.includes(action)) return res.status(400).json({ error: "Geçersiz action" });
+    if (!paymentId) return res.status(400).json({ error: "paymentId zorunludur" });
 
-  if (action === 'cancel') {
-    if (domainName && !username) {
-      return res.status(400).json({ error: "cancel işlemi için username gerekli" });
-    }
-  }
-
-  const PI_API_KEY = process.env.APP_SECRET;
-  const body = action === 'complete' ? { txid } : {};
-  const url = `https://api.minepi.com/v2/payments/${paymentId}/${action}`;
-
-  try {
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: { 'Authorization': `Key ${PI_API_KEY}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify(body)
-    });
-
-    let data;
-    try { data = await response.json(); } catch (e) { data = {}; }
-
-    if (!response.ok) {
-      console.error("Pi API hatası:", action, paymentId, data);
-      return res.status(response.status).json({ error: "Pi API hatası", details: data });
-    }
-
-    if (action === 'complete' && domainName && username) {
-      let purchaseCode = null;
-      try {
-        const db = getDb();
-        const domainRef = db.collection('domains').doc(domainName);
-        const domainSnap = await domainRef.get();
-        const realPrice = domainSnap.exists ? domainSnap.data().price : null;
-
-        if (typeof realPrice !== 'number')
-          return res.status(400).json({ error: "Geçersiz domain" });
-
-        if (domainSnap.data().sold !== true) {
-          purchaseCode = "WEB3-" + Math.random().toString(36).substr(2, 6).toUpperCase();
-          const sellerUsername = domainSnap.data().sellerUsername || null;
-          const previousBuyer = domainSnap.data().buyer || null;
-
-          await domainRef.set({
-            sold: true, price: realPrice,
-            txid: txid || null, buyer: username, at: Date.now()
-          }, { merge: true });
-
-          await db.collection('global_sales').doc(txid || paymentId).set({
-            user: username, domain: domainName, price: realPrice, at: Date.now(),
-            sellerUsername: sellerUsername || null
-          });
-
-          const today = new Date().toISOString().split('T')[0];
-          await db.collection('daily_stats').doc(today).set({
-            count: FieldValue.increment(1),
-            volume: FieldValue.increment(realPrice)
-          }, { merge: true });
-
-          await updateUserPoints(username, realPrice, 'purchase');
-
-          await sendNotification(username, {
-            type: 'purchase_success',
-            title: '🎉 Satın Alma Başarılı!',
-            body: `"${domainName}" domainini ${realPrice} Pi karşılığında satın aldınız!`,
-            domainName, txid
-          });
-
-          await sendNotificationToAdmin({
-            type: 'new_sale',
-            title: '💰 Yeni Satış!',
-            body: `@${username} tarafından "${domainName}" ${realPrice} Pi'ye satıldı.`,
-            domainName, buyer: username, price: realPrice
-          });
-
-          if (sellerUsername && sellerUsername !== username) {
-            await sendNotification(sellerUsername, {
-              type: 'your_domain_sold',
-              title: '🏆 Domaininiz Satıldı!',
-              body: `"${domainName}" domaininiz @${username} tarafından ${realPrice} Pi'ye satın alındı!`,
-              domainName, buyer: username, price: realPrice
-            });
-          }
-
-          if (previousBuyer && previousBuyer !== username) {
-            await sendNotification(previousBuyer, {
-              type: 'domain_resold',
-              title: 'ℹ️ Domain Yeniden Satıldı',
-              body: `Daha önce sahip olduğunuz "${domainName}" domaini, tekrar satışa çıkarıldıktan sonra @${username} tarafından satın alındı.`,
-              domainName, buyer: username, price: realPrice
-            });
-          }
-
-          const groupMsg = `🎉 *YENİ SATIŞ!*\n\n👤 @${username}, *${domainName}* domainini satın aldı! 🚀`;
-          await sendTG(TG_GROUP_ID, groupMsg);
-          await sendTG(TG_CHAT_ID, `✅ *SATIŞ TAMAMLANDI*\n\n👤 @${username}\n🌐 ${domainName}\n💰 ${realPrice} Pi\n🔑 ${purchaseCode}`);
-        } else {
-          console.warn("Domain zaten satılmış:", domainName);
-        }
-      } catch (firestoreErr) {
-        console.error("Firestore yazma hatası:", firestoreErr);
-        await sendTG(TG_CHAT_ID, `⚠️ *DİKKAT:* Ödeme tamamlandı (txid: ${txid}) ama Firestore'a yazılamadı. Domain: ${domainName}, @${username}`);
+    if (action === 'cancel') {
+      if (domainName && !username) {
+        return res.status(400).json({ error: "cancel işlemi için username gerekli" });
       }
-      return res.status(200).json({ ...data, purchaseCode, success: true });
     }
 
-    return res.status(200).json({ ...data, success: true });
-  } catch (e) {
-    console.error("Sunucu hatası:", e);
-    return res.status(500).json({ error: e.message });
+    const PI_API_KEY = process.env.APP_SECRET;
+    const body = action === 'complete' ? { txid } : {};
+    const url = `https://api.minepi.com/v2/payments/${paymentId}/${action}`;
+
+    try {
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: { 'Authorization': `Key ${PI_API_KEY}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      });
+
+      let data;
+      try { data = await response.json(); } catch (e) { data = {}; }
+
+      if (!response.ok) {
+        console.error("Pi API hatası:", action, paymentId, data);
+        return res.status(response.status).json({ error: "Pi API hatası", details: data });
+      }
+
+      if (action === 'complete' && domainName && username) {
+        let purchaseCode = null;
+        try {
+          const db = getDb();
+          const domainRef = db.collection('domains').doc(domainName);
+          const domainSnap = await domainRef.get();
+          const realPrice = domainSnap.exists ? domainSnap.data().price : null;
+
+          if (typeof realPrice !== 'number')
+            return res.status(400).json({ error: "Geçersiz domain" });
+
+          if (domainSnap.data().sold !== true) {
+            purchaseCode = "WEB3-" + Math.random().toString(36).substr(2, 6).toUpperCase();
+            const sellerUsername = domainSnap.data().sellerUsername || null;
+            const previousBuyer = domainSnap.data().buyer || null;
+
+            await domainRef.set({
+              sold: true, price: realPrice,
+              txid: txid || null, buyer: username, at: Date.now()
+            }, { merge: true });
+
+            await db.collection('global_sales').doc(txid || paymentId).set({
+              user: username, domain: domainName, price: realPrice, at: Date.now(),
+              sellerUsername: sellerUsername || null
+            });
+
+            const today = new Date().toISOString().split('T')[0];
+            await db.collection('daily_stats').doc(today).set({
+              count: FieldValue.increment(1),
+              volume: FieldValue.increment(realPrice)
+            }, { merge: true });
+
+            await updateUserPoints(username, realPrice, 'purchase');
+
+            await sendNotification(username, {
+              type: 'purchase_success',
+              title: '🎉 Satın Alma Başarılı!',
+              body: `"${domainName}" domainini ${realPrice} Pi karşılığında satın aldınız!`,
+              domainName, txid
+            });
+
+            await sendNotificationToAdmin({
+              type: 'new_sale',
+              title: '💰 Yeni Satış!',
+              body: `@${username} tarafından "${domainName}" ${realPrice} Pi'ye satıldı.`,
+              domainName, buyer: username, price: realPrice
+            });
+
+            if (sellerUsername && sellerUsername !== username) {
+              await sendNotification(sellerUsername, {
+                type: 'your_domain_sold',
+                title: '🏆 Domaininiz Satıldı!',
+                body: `"${domainName}" domaininiz @${username} tarafından ${realPrice} Pi'ye satın alındı!`,
+                domainName, buyer: username, price: realPrice
+              });
+            }
+
+            if (previousBuyer && previousBuyer !== username) {
+              await sendNotification(previousBuyer, {
+                type: 'domain_resold',
+                title: 'ℹ️ Domain Yeniden Satıldı',
+                body: `Daha önce sahip olduğunuz "${domainName}" domaini, tekrar satışa çıkarıldıktan sonra @${username} tarafından satın alındı.`,
+                domainName, buyer: username, price: realPrice
+              });
+            }
+
+            const groupMsg = `🎉 *YENİ SATIŞ!*
+
+👤 @${username}, *${domainName}* domainini satın aldı! 🚀`;
+            await sendTG(TG_GROUP_ID, groupMsg);
+            await sendTG(TG_CHAT_ID, `✅ *SATIŞ TAMAMLANDI*
+
+👤 @${username}
+🌐 ${domainName}
+💰 ${realPrice} Pi
+🔑 ${purchaseCode}`);
+          } else {
+            console.warn("Domain zaten satılmış:", domainName);
+          }
+        } catch (firestoreErr) {
+          console.error("Firestore yazma hatası:", firestoreErr);
+          await sendTG(TG_CHAT_ID, `⚠️ *DİKKAT:* Ödeme tamamlandı (txid: ${txid}) ama Firestore'a yazılamadı. Domain: ${domainName}, @${username}`);
+        }
+        return res.status(200).json({ ...data, purchaseCode, success: true });
+      }
+
+      return res.status(200).json({ ...data, success: true });
+    } catch (e) {
+      console.error("Sunucu hatası:", e);
+      return res.status(500).json({ error: e.message });
+    }
   }
-}
+
+  // Bilinmeyen action
+  return res.status(400).json({ error: "Geçersiz action" });}
