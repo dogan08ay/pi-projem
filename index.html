@@ -343,9 +343,28 @@
   white-space: nowrap;
 }
 
+.ticket-card-preview-box {
+  border: 1.5px solid var(--preview-accent, rgba(99,102,241,0.25));
+  background: rgba(99,102,241,0.05);
+  border-radius: 7px;
+  padding: 6px 8px;
+  margin-bottom: 8px;
+}
+
+.ticket-card-preview-label {
+  font-size: 0.6em;
+  font-weight: 800;
+  text-transform: uppercase;
+  color: var(--preview-accent, #818cf8);
+  margin-bottom: 3px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
 .ticket-card-preview {
   font-size: 0.72em;
-  color: #94a3b8;
+  color: #cbd5e1;
   line-height: 1.45;
   display: -webkit-box;
   -webkit-line-clamp: 2;
@@ -3425,7 +3444,11 @@ function renderTicketList() {
         const created = ticket.createdAt ? new Date(ticket.createdAt).toLocaleDateString(locale, { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '-';
         const lastUpdate = ticket.lastUpdate ? new Date(ticket.lastUpdate).toLocaleDateString(locale, { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : created;
         const replyCount = ticket.messages ? ticket.messages.length - 1 : 0;
-        const preview = ticket.messages && ticket.messages[0] ? ticket.messages[0].text : '';
+        const lastMsg = ticket.messages && ticket.messages.length ? ticket.messages[ticket.messages.length - 1] : null;
+        const isLastFromAdmin = lastMsg && lastMsg.from === 'admin';
+        const preview = lastMsg ? lastMsg.text : '';
+        const previewAccent = isLastFromAdmin ? '#818cf8' : '#64748b';
+        const previewLabel = isLastFromAdmin ? ('👤 ' + t('ticketReplyFromAdmin')) : ('🗣️ ' + t('ticketReplyFromYou'));
 
         return `<div class="ticket-card status-${ticket.status}" onclick="openTicketDetail('${ticket.id}')">
             <div class="ticket-card-header">
@@ -3440,7 +3463,10 @@ function renderTicketList() {
                 <span class="ticket-chip">📅 ${created}</span>
                 <span class="ticket-chip">💬 ${replyCount} ${t('ticketReplies')}</span>
             </div>
-            <div class="ticket-card-preview">${escapeHtml(preview)}</div>
+            <div class="ticket-card-preview-box" style="--preview-accent:${previewAccent};">
+                <div class="ticket-card-preview-label">${previewLabel}</div>
+                <div class="ticket-card-preview">${escapeHtml(preview)}</div>
+            </div>
             <div class="ticket-card-footer">
                 <span class="ticket-priority ${priorityClass[ticket.priority] || 'priority-normal'}">${priorityLabel[ticket.priority] || ticket.priority}</span>
                 <span class="ticket-card-time">🔄 ${lastUpdate}</span>
