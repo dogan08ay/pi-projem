@@ -700,7 +700,7 @@ export default async function handler(req, res) {
     if (!checkRateLimit(clientIp, 'submit_sell_request', 3, 60000))
       return res.status(429).json({ error: "Çok fazla istek. 1 dakika bekleyin." });
 
-    const { domainName: reqDomainName, price: reqPrice, domainType, imgPath: reqImgPath, sellerWallet, description } = req.body;
+    const { domainName: reqDomainName, price: reqPrice, domainType, imgPath: reqImgPath, sellerWallet, description, editMode, oldRequestId } = req.body;
     const realUsername = await getRealUsername(accessToken);
     if (!realUsername) return res.status(403).json({ error: "Geçerli Pi oturumu bulunamadı" });
 
@@ -718,12 +718,31 @@ export default async function handler(req, res) {
         });
       }
 
+      // ── Düzenle & Yeniden Gönder (editMode) ──────────────────────────
+      // Kullanıcı reddedilmiş bir ilanı düzenleyip yeniden gönderdiğinde,
+      // eski reddedilmiş kaydı sil. Böylece hem listede tekrar görünmez
+      // hem de yeni istek onaylandığında ortada "hayalet" reddedilmiş
+      // kayıt kalmaz.
+      let oldReqRef = null;
+      if (editMode && oldRequestId) {
+        oldReqRef = db.collection('sell_requests').doc(oldRequestId);
+        const oldReqSnap = await oldReqRef.get();
+        if (!oldReqSnap.exists) return res.status(404).json({ error: "Düzenlenecek ilan talebi bulunamadı" });
+        const oldReqData = oldReqSnap.data();
+        if (oldReqData.submittedBy !== realUsername) return res.status(403).json({ error: "Bu talebi düzenleme yetkiniz yok" });
+        if (oldReqData.status !== 'rejected') return res.status(400).json({ error: "Sadece reddedilmiş talepler düzenlenebilir" });
+      }
+
       const existingReq = await db.collection('sell_requests')
         .where('submittedBy', '==', realUsername)
         .where('status', '==', 'pending')
         .where('domainName', '==', reqDomainName)
         .get();
       if (!existingReq.empty) return res.status(400).json({ error: "Bu domain için zaten bekleyen bir öneriniz var" });
+
+      if (oldReqRef) {
+        await oldReqRef.delete();
+      }
 
       const requestRef = db.collection('sell_requests').doc();
       await requestRef.set({
