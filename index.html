@@ -239,7 +239,7 @@
   background: rgba(15,23,42,0.9);
   border: 1.5px solid rgba(99,102,241,0.15);
   border-radius: 10px;
-  padding: 10px;
+  padding: 11px 12px;
   cursor: pointer;
   transition: all 0.2s;
   position: relative;
@@ -303,17 +303,29 @@
 
 .ticket-card-meta {
   display: flex;
-  gap: 10px;
-  font-size: 0.65em;
-  color: #64748b;
-  margin-bottom: 6px;
+  gap: 6px;
+  margin-bottom: 8px;
   flex-wrap: wrap;
+}
+
+.ticket-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 0.62em;
+  font-weight: 700;
+  color: #94a3b8;
+  background: rgba(99,102,241,0.08);
+  border: 1px solid rgba(99,102,241,0.15);
+  padding: 2px 7px;
+  border-radius: 6px;
+  white-space: nowrap;
 }
 
 .ticket-card-preview {
   font-size: 0.72em;
   color: #94a3b8;
-  line-height: 1.4;
+  line-height: 1.45;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
@@ -324,9 +336,15 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-top: 8px;
+  margin-top: 9px;
   padding-top: 8px;
   border-top: 1px solid rgba(99,102,241,0.1);
+}
+
+.ticket-card-time {
+  font-size: 0.62em;
+  color: #64748b;
+  font-weight: 600;
 }
 
 .ticket-priority {
@@ -3394,14 +3412,14 @@ function renderTicketList() {
                 <span class="ticket-status-badge status-badge-${ticket.status}">${statusMap[ticket.status] || ticket.status}</span>
             </div>
             <div class="ticket-card-meta">
-                <span>#${ticket.ticketNumber || ticket.id.slice(-6).toUpperCase()}</span>
-                <span>📅 ${created}</span>
-                <span>💬 ${replyCount} ${t('ticketReplies')}</span>
+                <span class="ticket-chip">🔑 #${ticket.ticketNumber || ticket.id.slice(-6).toUpperCase()}</span>
+                <span class="ticket-chip">📅 ${created}</span>
+                <span class="ticket-chip">💬 ${replyCount} ${t('ticketReplies')}</span>
             </div>
             <div class="ticket-card-preview">${escapeHtml(preview)}</div>
             <div class="ticket-card-footer">
                 <span class="ticket-priority ${priorityClass[ticket.priority] || 'priority-normal'}">${priorityLabel[ticket.priority] || ticket.priority}</span>
-                <span style="font-size:0.6em;color:#64748b;">🔄 ${lastUpdate}</span>
+                <span class="ticket-card-time">🔄 ${lastUpdate}</span>
             </div>
         </div>`;
     }).join('') + `</div>`;
