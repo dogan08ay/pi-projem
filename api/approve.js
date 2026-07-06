@@ -963,9 +963,36 @@ export default async function handler(req, res) {
       const tickets = [];
       snap.forEach(doc => tickets.push({ id: doc.id, ...doc.data() }));
       tickets.sort((a, b) => (b.lastUpdate || 0) - (a.lastUpdate || 0));
-      return res.status(200).json({ success: true, tickets });
+
+      // Kullanıcının en son ne zaman kendi taleplerini görüntülediğini kontrol et.
+      // Bir talebe admin'den yanıt geldiyse ve kullanıcı henüz görmediyse
+      // "okunmamış" say (kendi gönderdiği mesajlar sayaca dahil edilmez).
+      const seenSnap = await db.collection('system_config').doc(`user_ticket_seen_${realUsername}`).get();
+      const seenAt = seenSnap.exists ? (seenSnap.data().seenAt || 0) : 0;
+      const unseenCount = tickets.filter(tk => {
+        if ((tk.lastUpdate || 0) <= seenAt) return false;
+        const lastMsg = tk.messages && tk.messages.length ? tk.messages[tk.messages.length - 1] : null;
+        return lastMsg && lastMsg.from === 'admin';
+      }).length;
+
+      return res.status(200).json({ success: true, tickets, unseenCount, seenAt });
     } catch (e) {
       console.error("get_my_tickets hatası:", e);
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  // ── Kullanıcı: Kendi Ticket Bildirimlerini Görüldü Olarak İşaretle ─────
+  if (action === 'mark_my_tickets_seen') {
+    const realUsername = await getRealUsername(accessToken);
+    if (!realUsername) return res.status(403).json({ error: "Geçersiz oturum" });
+    try {
+      const db = getDb();
+      const now = Date.now();
+      await db.collection('system_config').doc(`user_ticket_seen_${realUsername}`).set({ seenAt: now }, { merge: true });
+      return res.status(200).json({ success: true, seenAt: now });
+    } catch (e) {
+      console.error("mark_my_tickets_seen hatası:", e);
       return res.status(500).json({ error: e.message });
     }
   }
