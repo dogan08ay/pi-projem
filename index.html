@@ -745,18 +745,20 @@
 }
 
 /* Admin ticket tablosu — kullanıcı/konu/tarih/durum çizgili tablo */
-.ticket-table{display:flex;flex-direction:column;border:1px solid rgba(99,102,241,0.25);border-radius:10px;overflow:hidden;}
-.ticket-table-header{display:grid;grid-template-columns:0.9fr 1.5fr 0.85fr 0.9fr;gap:0;padding:0;background:rgba(99,102,241,0.18);font-size:0.6em;font-weight:900;color:#a5b4fc;text-transform:uppercase;letter-spacing:0.3px;border-bottom:1.5px solid rgba(99,102,241,0.3);}
-.ticket-table-header > div{padding:7px 8px;border-right:1px solid rgba(99,102,241,0.25);}
+.ticket-table{display:flex;flex-direction:column;border:1.5px solid rgba(129,140,248,0.45);border-radius:10px;overflow:hidden;box-shadow:0 4px 14px rgba(0,0,0,0.25);}
+.ticket-table-header{display:grid;grid-template-columns:0.9fr 1.5fr 0.85fr 0.9fr;gap:0;padding:0;background:linear-gradient(180deg,rgba(99,102,241,0.35) 0%,rgba(99,102,241,0.22) 100%);font-size:0.6em;font-weight:900;color:#c7d2fe;text-transform:uppercase;letter-spacing:0.3px;border-bottom:2px solid rgba(129,140,248,0.55);}
+.ticket-table-header > div{padding:7px 8px;border-right:1.5px solid rgba(129,140,248,0.4);}
 .ticket-table-header > div:last-child{border-right:none;}
-.ticket-table-entry{cursor:pointer;transition:background 0.15s;border-bottom:1px solid rgba(99,102,241,0.2);}
+.ticket-table-entry{cursor:pointer;transition:background 0.15s;border-bottom:1.5px solid rgba(99,102,241,0.35);border-left:4px solid var(--row-accent,rgba(99,102,241,0.5));}
 .ticket-table-entry:last-child{border-bottom:none;}
-.ticket-table-entry:nth-child(even){background:rgba(15,23,42,0.4);}
-.ticket-table-entry:hover{background:rgba(99,102,241,0.12);}
+.ticket-table-entry:nth-child(even){background:rgba(99,102,241,0.055);}
+.ticket-table-entry:nth-child(odd){background:rgba(15,23,42,0.35);}
+.ticket-table-entry:hover{background:rgba(99,102,241,0.18);}
 .ticket-table-row{display:grid;grid-template-columns:0.9fr 1.5fr 0.85fr 0.9fr;gap:0;padding:0;font-size:0.68em;color:#e2e8f0;align-items:stretch;}
-.ticket-table-row > div{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:8px;border-right:1px solid rgba(99,102,241,0.15);display:flex;align-items:center;}
+.ticket-table-row > div{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:8px;border-right:1.5px solid rgba(129,140,248,0.28);display:flex;align-items:center;}
 .ticket-table-row > div:last-child{border-right:none;}
-.ticket-table-desc{margin:0 8px 8px 8px;padding:6px 8px;font-size:0.66em;color:#94a3b8;line-height:1.45;background:rgba(99,102,241,0.05);border:1px solid rgba(99,102,241,0.15);border-radius:6px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
+.ticket-table-desc{margin:0 8px 8px 8px;padding:6px 8px;font-size:0.66em;color:#94a3b8;line-height:1.45;background:rgba(99,102,241,0.07);border:1px solid rgba(129,140,248,0.3);border-radius:6px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
+
 
 </style>
 <base target="_blank">
@@ -3818,6 +3820,14 @@ function renderAdminTicketList() {
         closed: t('ticketStatusClosed')
     };
 
+    const statusColor = {
+        new: '#3b82f6',
+        reviewing: '#f59e0b',
+        answered: '#a855f7',
+        resolved: '#10b981',
+        closed: '#64748b'
+    };
+
     const priorityLabel = { low: t('ticketPriorityLow'), normal: t('ticketPriorityNormal'), high: t('ticketPriorityHigh'), urgent: t('ticketPriorityUrgent') };
     const priorityColor = { low: '#10b981', normal: '#fbbf24', high: '#ef4444', urgent: '#b91c1c' };
 
@@ -3833,10 +3843,11 @@ function renderAdminTicketList() {
             const user = ticket.username || ticket.createdBy || '?';
             const pColor = priorityColor[ticket.priority] || '#6366f1';
             const pLabel = priorityLabel[ticket.priority] || ticket.priority || '-';
+            const rowAccent = statusColor[ticket.status] || '#6366f1';
             const lastMsg = ticket.messages && ticket.messages.length ? ticket.messages[ticket.messages.length - 1] : null;
             const lastMsgText = lastMsg ? lastMsg.text : '';
             const lastMsgFromLabel = lastMsg ? (lastMsg.from === 'admin' ? ('👤 ' + t('ticketReplyFromAdmin')) : ('🗣️ @' + lastMsg.from)) : '';
-            return `<div class="ticket-table-entry" onclick="renderAdminTicketDetail('${ticket.id}')">
+            return `<div class="ticket-table-entry" style="--row-accent:${rowAccent};" onclick="renderAdminTicketDetail('${ticket.id}')">
                 <div class="ticket-table-row">
                     <div title="@${user}">@${user}</div>
                     <div title="${escapeHtml(ticket.subject)}" style="flex-direction:column;align-items:flex-start;gap:2px;">
