@@ -272,8 +272,28 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 6px;
+  margin-bottom: 8px;
   gap: 8px;
+}
+
+.ticket-card-subject-box {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+  min-width: 0;
+  border: 1.5px solid rgba(236,72,153,0.3);
+  background: rgba(236,72,153,0.06);
+  border-radius: 7px;
+  padding: 4px 8px;
+}
+
+.ticket-card-subject-label {
+  font-size: 0.6em;
+  font-weight: 800;
+  color: #f472b6;
+  text-transform: uppercase;
+  flex-shrink: 0;
 }
 
 .ticket-card-subject {
@@ -284,6 +304,7 @@
   text-overflow: ellipsis;
   white-space: nowrap;
   flex: 1;
+  min-width: 0;
 }
 
 .ticket-status-badge {
@@ -3408,7 +3429,10 @@ function renderTicketList() {
 
         return `<div class="ticket-card status-${ticket.status}" onclick="openTicketDetail('${ticket.id}')">
             <div class="ticket-card-header">
-                <span class="ticket-card-subject">${escapeHtml(ticket.subject)}</span>
+                <div class="ticket-card-subject-box">
+                    <span class="ticket-card-subject-label">📌 ${t('ticketSubjectLabel')}:</span>
+                    <span class="ticket-card-subject">${escapeHtml(ticket.subject)}</span>
+                </div>
                 <span class="ticket-status-badge status-badge-${ticket.status}">${statusMap[ticket.status] || ticket.status}</span>
             </div>
             <div class="ticket-card-meta">
@@ -3509,6 +3533,7 @@ window.openTicketDetail = async function(ticketId) {
         </div>
         <div class="ticket-info">
             <div class="ticket-info-row" style="--row-accent:#6366f1;"><span class="ticket-info-label">🔑 ${t('ticketCodeLabel')}</span><span class="ticket-info-value">#${ticket.ticketNumber || ticket.id.slice(-6).toUpperCase()}</span></div>
+            <div class="ticket-info-row" style="--row-accent:#ec4899;"><span class="ticket-info-label">📌 ${t('ticketSubjectLabel')}</span><span class="ticket-info-value" style="white-space:normal;text-align:right;">${escapeHtml(ticket.subject)}</span></div>
             <div class="ticket-info-row" style="--row-accent:#3b82f6;"><span class="ticket-info-label">📅 ${t('ticketCreated')}</span><span class="ticket-info-value">${ticket.createdAt ? new Date(ticket.createdAt).toLocaleDateString(locale) : '-'}</span></div>
             <div class="ticket-info-row" style="--row-accent:#a855f7;"><span class="ticket-info-label">🏷️ ${t('ticketCategoryLabel')}</span><span class="ticket-info-value">${categoryLabel[ticket.category] || ticket.category}</span></div>
             <div class="ticket-info-row" style="--row-accent:${priorityColor[ticket.priority] || '#6366f1'};"><span class="ticket-info-label">🔔 ${t('ticketPriorityLabel')}</span><span class="ticket-info-value">${priorityLabel[ticket.priority] || ticket.priority}</span></div>
@@ -3763,6 +3788,7 @@ window.renderAdminTicketDetail = async function(ticketId) {
         </div>
         <div class="ticket-info">
             <div class="ticket-info-row" style="--row-accent:#6366f1;"><span class="ticket-info-label">🔑 ${t('ticketCodeLabel')}</span><span class="ticket-info-value">#${ticket.ticketNumber || ticket.id.slice(-6).toUpperCase()}</span></div>
+            <div class="ticket-info-row" style="--row-accent:#ec4899;"><span class="ticket-info-label">📌 ${t('ticketSubjectLabel')}</span><span class="ticket-info-value" style="white-space:normal;text-align:right;">${escapeHtml(ticket.subject)}</span></div>
             <div class="ticket-info-row" style="--row-accent:#10b981;"><span class="ticket-info-label">👤 ${t('ticketUserLabel')}</span><span class="ticket-info-value">@${user}</span></div>
             <div class="ticket-info-row" style="--row-accent:#3b82f6;"><span class="ticket-info-label">📅 ${t('ticketCreated')}</span><span class="ticket-info-value">${ticket.createdAt ? new Date(ticket.createdAt).toLocaleDateString(locale) : '-'}</span></div>
             <div class="ticket-info-row" style="--row-accent:#a855f7;"><span class="ticket-info-label">🏷️ ${t('ticketCategoryLabel')}</span><span class="ticket-info-value">${categoryLabel[ticket.category] || ticket.category}</span></div>
