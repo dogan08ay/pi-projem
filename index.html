@@ -85,15 +85,17 @@
         .lang-option{display:flex;align-items:center;gap:6px;padding:5px 7px;color:#f1f5f9;font-size:0.75em;font-weight:700;cursor:pointer;border-radius:8px;margin:2px 0;border:none;background:transparent;width:100%;box-sizing:border-box;transition:background 0.15s;}
         .lang-option:hover,.lang-option.active{background:rgba(99,102,241,0.2);}
         .lang-option.active{color:#a5b4fc;}
-        .admin-tabs{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;margin-bottom:8px;padding-bottom:3px;width:100%;box-sizing:border-box;}
+        .admin-tabs{display:grid;grid-template-columns:repeat(3,1fr);gap:5px;margin-bottom:8px;padding-bottom:3px;width:100%;box-sizing:border-box;}
         .admin-tabs::-webkit-scrollbar{height:0;display:none;}
-        .admin-tab-btn{background:linear-gradient(135deg,#1e1b4b 0%,#0f172a 100%);border:1.5px solid #4c1d95;color:#a5b4fc;padding:6px 2px;border-radius:8px;font-size:0.62em;text-align:center;display:flex;align-items:center;justify-content:center;white-space:nowrap;font-weight:800;cursor:pointer;gap:3px;transition:all 0.2s;box-shadow:0 2px 8px rgba(0,0,0,0.3);overflow:hidden;min-width:0;}
+        .admin-tab-btn{background:linear-gradient(135deg,#1e1b4b 0%,#0f172a 100%);border:1.5px solid #4c1d95;color:#a5b4fc;padding:8px 3px;border-radius:8px;font-size:0.62em;text-align:center;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;white-space:normal;line-height:1.25;font-weight:800;cursor:pointer;transition:all 0.2s;box-shadow:0 2px 8px rgba(0,0,0,0.3);overflow:hidden;min-width:0;position:relative;min-height:44px;}
+        .admin-tab-btn span[data-i18n]{overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;word-break:break-word;}
         .admin-tab-btn.active{background:linear-gradient(135deg,rgba(99,102,241,0.25),rgba(129,140,248,0.15));border-color:#818cf8;color:#c7d2fe;box-shadow:0 0 12px rgba(99,102,241,0.4);}
         .admin-tab-panel{display:none;}
         .admin-tab-panel.active{display:block;animation:card-rise 0.3s ease backwards;}
-        .pending-badge{background:#ef4444;color:#fff;font-size:0.55em;font-weight:900;border-radius:6px;padding:1px 4px;margin-left:2px;flex-shrink:0;min-width:14px;text-align:center;line-height:1.2;display:inline-block;}
-        .user-tabs{display:flex;gap:3px;margin-bottom:6px;width:100%;box-sizing:border-box;}
-        .user-tab-btn{flex:1 1 0;min-width:0;background:linear-gradient(135deg,#064e3b 0%,#0f172a 100%);border:1.5px solid #059669;color:#6ee7b7;padding:6px 2px;border-radius:8px;font-size:0.62em;font-weight:800;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;transition:all 0.2s;text-align:center;box-shadow:0 2px 8px rgba(0,0,0,0.3);}
+        .pending-badge{background:#ef4444;color:#fff;font-size:0.6em;font-weight:900;border-radius:8px;padding:1px 5px;flex-shrink:0;min-width:15px;text-align:center;line-height:1.3;position:absolute;top:3px;right:4px;box-shadow:0 0 6px rgba(239,68,68,0.6);}
+        .user-tabs{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;margin-bottom:6px;width:100%;box-sizing:border-box;}
+        .user-tab-btn{min-width:0;background:linear-gradient(135deg,#064e3b 0%,#0f172a 100%);border:1.5px solid #059669;color:#6ee7b7;padding:7px 3px;border-radius:8px;font-size:0.62em;font-weight:800;cursor:pointer;white-space:normal;line-height:1.25;transition:all 0.2s;text-align:center;box-shadow:0 2px 8px rgba(0,0,0,0.3);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;min-height:40px;position:relative;}
+        .user-tab-btn span[data-i18n]{overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;word-break:break-word;}
         .user-tab-btn.active{background:rgba(16,185,129,0.15);border-color:#10b981;color:#6ee7b7;}
         .user-tab-panel{display:none;}
         .user-tab-panel.active{display:block;animation:card-rise 0.3s ease backwards;}
@@ -999,17 +1001,18 @@
             <div class="income-box"><div style="font-size:0.7em;color:#6ee7b7;font-weight:800;margin-bottom:4px;" data-i18n="totalEarned"></div><div class="income-value" id="up-earned">0 Pi</div><div style="font-size:0.65em;color:#94a3b8;margin-top:6px;" data-i18n="earnedNote"></div></div>
             <div id="my-sold-list" style="text-align:left;"></div>
         </div>
-    </div>
         <div class="user-tab-panel" id="utab-tickets">
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
-                <span style="font-size:0.72em;color:#fbbf24;font-weight:800;">🎫 <span data-i18n="myTickets"></span></span>
-                <button class="pi-btn" style="animation:none;padding:6px 12px;font-size:0.72em;margin:0;" onclick="showCreateTicketForm()">➕ <span data-i18n="newTicket"></span></button>
-            </div>
-            <div id="ticket-list-container">
-                <p style="font-size:0.75em;opacity:0.5;text-align:center;"><span data-i18n="loadingTickets"></span></p>
+            <div style="background:#1e1b3a;border:2px solid #6366f1;border-radius:12px;padding:10px;">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;padding-bottom:7px;border-bottom:1px solid #312e81;">
+                    <span style="display:flex;align-items:center;gap:6px;font-size:0.72em;color:#a5b4fc;font-weight:800;text-transform:uppercase;">🎫 <span data-i18n="myTickets"></span></span>
+                    <button class="pi-btn" style="animation:none;padding:6px 12px;font-size:0.68em;margin:0;" onclick="showCreateTicketForm()">➕ <span data-i18n="newTicket"></span></button>
+                </div>
+                <div id="ticket-list-container">
+                    <p style="font-size:0.75em;opacity:0.5;text-align:center;"><span data-i18n="loadingTickets"></span></p>
+                </div>
             </div>
         </div>
-
+    </div>
 
     <!-- Admin Paneli -->
     <div class="card" id="admin-panel" style="display:none;border:2px solid #6366f1;box-shadow:0 0 12px rgba(99,102,241,0.2);padding:5px;box-sizing:border-box;width:calc(100% - 16px);margin-left:auto;margin-right:auto;">
@@ -1021,7 +1024,7 @@
             <button class="admin-tab-btn" data-tab="tab-prices" onclick="switchAdminTab('tab-prices')">💰<span data-i18n="priceManagement" style="font-size:0.9em;"></span></button>
             <button class="admin-tab-btn" data-tab="tab-add" onclick="switchAdminTab('tab-add')">➕<span data-i18n="addDomain" style="font-size:0.9em;"></span></button>
             <button class="admin-tab-btn" data-tab="tab-earnings" onclick="switchAdminTab('tab-earnings')">🏦<span data-i18n="earningsTab" style="font-size:0.9em;"></span></button>
-            <button class="admin-tab-btn" data-tab="tab-tickets" onclick="switchAdminTab('tab-tickets')">🎫<span data-i18n="ticketManagement" style="font-size:0.9em;"></span></button>
+            <button class="admin-tab-btn" data-tab="tab-tickets" onclick="switchAdminTab('tab-tickets')">🎫<span data-i18n="ticketManagement" style="font-size:0.9em;"></span><span class="pending-badge" id="ticket-count-badge" style="display:none;">0</span></button>
 
         </div>
         <div class="admin-tab-panel active" id="tab-users">
@@ -1119,16 +1122,19 @@
         </div>
     
         <div class="admin-tab-panel" id="tab-tickets">
-            <div class="ticket-admin-filters" id="ticket-admin-filters">
-                <button class="ticket-filter-btn active" data-status="all" onclick="adminFilterTickets('all')" data-i18n="ticketFilterAll">Tümü</button>
-                <button class="ticket-filter-btn" data-status="new" onclick="adminFilterTickets('new')" data-i18n="ticketFilterNew">Yeni</button>
-                <button class="ticket-filter-btn" data-status="reviewing" onclick="adminFilterTickets('reviewing')" data-i18n="ticketFilterReviewing">İnceleniyor</button>
-                <button class="ticket-filter-btn" data-status="answered" onclick="adminFilterTickets('answered')" data-i18n="ticketFilterAnswered">Yanıtlandı</button>
-                <button class="ticket-filter-btn" data-status="resolved" onclick="adminFilterTickets('resolved')" data-i18n="ticketFilterResolved">Çözüldü</button>
-            </div>
-            <div class="ticket-admin-stats" id="ticket-admin-stats"></div>
-            <div id="ticket-admin-list">
-                <p style="font-size:0.75em;opacity:0.5;text-align:center;"><span data-i18n="loadingTickets"></span></p>
+            <div style="background:#0a0f1e;border:2px solid #6366f1;border-radius:12px;padding:10px;">
+                <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;padding-bottom:7px;border-bottom:1px solid #312e81;"><span>🎫</span><span style="font-size:0.72em;color:#a5b4fc;font-weight:800;text-transform:uppercase;" data-i18n="ticketManagement"></span></div>
+                <div class="ticket-admin-filters" id="ticket-admin-filters">
+                    <button class="ticket-filter-btn active" data-status="all" onclick="adminFilterTickets('all')" data-i18n="ticketFilterAll">Tümü</button>
+                    <button class="ticket-filter-btn" data-status="new" onclick="adminFilterTickets('new')" data-i18n="ticketFilterNew">Yeni</button>
+                    <button class="ticket-filter-btn" data-status="reviewing" onclick="adminFilterTickets('reviewing')" data-i18n="ticketFilterReviewing">İnceleniyor</button>
+                    <button class="ticket-filter-btn" data-status="answered" onclick="adminFilterTickets('answered')" data-i18n="ticketFilterAnswered">Yanıtlandı</button>
+                    <button class="ticket-filter-btn" data-status="resolved" onclick="adminFilterTickets('resolved')" data-i18n="ticketFilterResolved">Çözüldü</button>
+                </div>
+                <div class="ticket-admin-stats" id="ticket-admin-stats"></div>
+                <div id="ticket-admin-list">
+                    <p style="font-size:0.75em;opacity:0.5;text-align:center;"><span data-i18n="loadingTickets"></span></p>
+                </div>
             </div>
         </div>
 </div>
@@ -1800,6 +1806,7 @@ window.openProfileModal=function(){
 window.handleLogout=async function(){
     if(currentUser) try{await deleteDoc(doc(db,"active_users",currentUser));}catch(e){}
     stopNotifPolling();
+    stopTicketBadgePolling();
     stopListeningToMyOwnSellRequests();
     currentUser=null;piAccessToken=null;isAuth=false;userFirstSeen=null;
     userProfile={points:0,badge:null};userSellRequests=[];userSoldDomains=[];userActiveListings=[];userTotalSpent=0;userTotalEarned=0;
@@ -1834,7 +1841,7 @@ window.switchAdminTab=function(tabId){
     document.querySelectorAll('.admin-tab-panel').forEach(p=>p.classList.toggle('active',p.id===tabId));
     if(tabId==='tab-earnings') loadAdminEarnings();
     if(tabId==='tab-stats') loadAllSalesDetail();
-    if(tabId==='tab-tickets') adminLoadTickets();
+    if(tabId==='tab-tickets'){ adminLoadTickets(); markTicketsSeen(); }
 };
 window.switchUserTab=function(tabId){
     document.querySelectorAll('.user-tab-btn').forEach(b=>b.classList.toggle('active',b.dataset.utab===tabId));
@@ -1971,6 +1978,15 @@ function startNotifPolling(){
 }
 function stopNotifPolling(){
     if(notifPollInterval){clearInterval(notifPollInterval);notifPollInterval=null;}
+}
+let ticketBadgePollInterval=null;
+function startTicketBadgePolling(){
+    stopTicketBadgePolling();
+    adminLoadTickets();
+    ticketBadgePollInterval=setInterval(()=>{ adminLoadTickets(); },20000);
+}
+function stopTicketBadgePolling(){
+    if(ticketBadgePollInterval){clearInterval(ticketBadgePollInterval);ticketBadgePollInterval=null;}
 }
 window.toggleUserMenu=function(){
     const menu=document.getElementById('user-menu-dropdown');
@@ -2875,7 +2891,7 @@ window.loginWithPi = async function() {
             if (isAdmin) {
                 loadUniqueBadgeCount();
                 listenToPendingDomains();
-                adminLoadTickets();
+                startTicketBadgePolling();
                 const today = new Date().toISOString().split("T")[0];
                 const dateInput = document.getElementById("admin-date-input");
                 dateInput.value = today;
@@ -3489,9 +3505,37 @@ async function adminLoadTickets() {
         if (result.success) {
             adminTickets = result.tickets || [];
             renderAdminTicketList();
+            updateTicketBadge(result.unseenCount || 0);
         }
     } catch (e) {
         console.error("Admin ticket listesi yüklenemedi:", e);
+    }
+}
+
+// ── ADMIN: Bekleyen destek talebi rozetini güncelle ─────────────────────
+function updateTicketBadge(count) {
+    const badge = document.getElementById('ticket-count-badge');
+    if (!badge) return;
+    if (count > 0) {
+        badge.style.display = 'inline-block';
+        badge.textContent = count > 99 ? '99+' : count;
+    } else {
+        badge.style.display = 'none';
+    }
+}
+
+// ── ADMIN: Ticket bildirimlerini görüldü olarak işaretle (rozeti kapat) ──
+async function markTicketsSeen() {
+    if (!isAuth || currentUser !== APP_CONFIG.adminUsername) return;
+    updateTicketBadge(0);
+    try {
+        await fetch('/api/approve', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'mark_tickets_seen', accessToken: piAccessToken })
+        });
+    } catch (e) {
+        console.error("mark_tickets_seen hatası:", e);
     }
 }
 
