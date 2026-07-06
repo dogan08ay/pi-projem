@@ -627,40 +627,58 @@
   flex: 1;
 }
 
-/* Ticket info grid — çizgilerle ayrılmış tablo görünümü */
+/* Ticket info tablosu — her satır kendi renginde belirgin sol kenarlıkla ayrılır */
 .ticket-info {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 0;
-  font-size: 0.72em;
+  display: flex;
+  flex-direction: column;
+  font-size: 0.74em;
   color: #94a3b8;
   margin: 8px 0;
-  border: 1px solid rgba(99,102,241,0.18);
-  border-radius: 8px;
+  border: 1.5px solid rgba(99,102,241,0.5);
+  border-radius: 10px;
   overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.15);
 }
 
-.ticket-info p {
-  margin: 0;
-  padding: 6px 8px;
-  border-bottom: 1px solid rgba(99,102,241,0.12);
-  border-right: 1px solid rgba(99,102,241,0.12);
+.ticket-info-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 10px;
+  border-bottom: 1px solid rgba(148,163,184,0.15);
+  border-left: 4px solid var(--row-accent, #6366f1);
 }
 
-.ticket-info p:nth-child(odd) {
-  border-right: 1px solid rgba(99,102,241,0.12);
-}
-
-.ticket-info p:nth-child(even) {
-  border-right: none;
-}
-
-.ticket-info p:nth-last-child(-n+2) {
+.ticket-info-row:last-child {
   border-bottom: none;
 }
 
-.ticket-info strong {
+.ticket-info-row:nth-child(even) {
+  background: rgba(15,23,42,0.55);
+}
+
+.ticket-info-row:nth-child(odd) {
+  background: rgba(30,41,59,0.35);
+}
+
+.ticket-info-label {
   color: #cbd5e1;
+  font-weight: 800;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  white-space: nowrap;
+}
+
+.ticket-info-value {
+  color: #f1f5f9;
+  font-weight: 700;
+  text-align: right;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* Admin ticket tablosu — kullanıcı/konu/tarih/durum çizgili tablo */
@@ -1474,6 +1492,9 @@ const i18n = {
     newTicketSubtitle:"Sorununuzu detaylı açıklayın, en kısa sürede yanıtlayacağız.",
     ticketSubjectLabel:"Konu",
     ticketSubjectPlaceholder:"Talep konusunu kısaca yazın...",
+    ticketCodeLabel:"Kod",
+    ticketUserLabel:"Kullanıcı",
+    ticketLastUpdateLabel:"Son Güncelleme",
     ticketCategoryLabel:"Kategori",
     ticketCatGeneral:"Genel Soru",
     ticketCatTechnical:"Teknik Sorun",
@@ -1701,6 +1722,9 @@ const i18n = {
     newTicketSubtitle:"Describe your issue in detail, we will respond as soon as possible.",
     ticketSubjectLabel:"Subject",
     ticketSubjectPlaceholder:"Briefly write the ticket subject...",
+    ticketCodeLabel:"Code",
+    ticketUserLabel:"User",
+    ticketLastUpdateLabel:"Last Update",
     ticketCategoryLabel:"Category",
     ticketCatGeneral:"General Question",
     ticketCatTechnical:"Technical Issue",
@@ -3455,6 +3479,10 @@ window.openTicketDetail = async function(ticketId) {
         closed: t('ticketStatusClosed')
     };
 
+    const categoryLabel = { general: t('ticketCatGeneral'), technical: t('ticketCatTechnical'), payment: t('ticketCatPayment'), domain: t('ticketCatDomain'), other: t('ticketCatOther') };
+    const priorityLabel = { low: t('ticketPriorityLow'), normal: t('ticketPriorityNormal'), high: t('ticketPriorityHigh'), urgent: t('ticketPriorityUrgent') };
+    const priorityColor = { low: '#10b981', normal: '#fbbf24', high: '#ef4444', urgent: '#b91c1c' };
+
     const header = document.getElementById('ticket-detail-header');
     header.innerHTML = `
         <div class="ticket-detail-header">
@@ -3462,10 +3490,11 @@ window.openTicketDetail = async function(ticketId) {
             <span class="ticket-status-badge status-badge-${ticket.status}">${statusMap[ticket.status]}</span>
         </div>
         <div class="ticket-info">
-            <p><strong>📅</strong> ${t('ticketCreated')}: ${ticket.createdAt ? new Date(ticket.createdAt).toLocaleDateString(locale) : '-'}</p>
-            <p><strong>🏷️</strong> ${ticket.category}</p>
-            <p><strong>🔔</strong> ${ticket.priority}</p>
-            <p><strong>🔄</strong> ${ticket.lastUpdate ? new Date(ticket.lastUpdate).toLocaleDateString(locale, { hour: '2-digit', minute: '2-digit' }) : '-'}</p>
+            <div class="ticket-info-row" style="--row-accent:#6366f1;"><span class="ticket-info-label">🔑 ${t('ticketCodeLabel')}</span><span class="ticket-info-value">#${ticket.ticketNumber || ticket.id.slice(-6).toUpperCase()}</span></div>
+            <div class="ticket-info-row" style="--row-accent:#3b82f6;"><span class="ticket-info-label">📅 ${t('ticketCreated')}</span><span class="ticket-info-value">${ticket.createdAt ? new Date(ticket.createdAt).toLocaleDateString(locale) : '-'}</span></div>
+            <div class="ticket-info-row" style="--row-accent:#a855f7;"><span class="ticket-info-label">🏷️ ${t('ticketCategoryLabel')}</span><span class="ticket-info-value">${categoryLabel[ticket.category] || ticket.category}</span></div>
+            <div class="ticket-info-row" style="--row-accent:${priorityColor[ticket.priority] || '#6366f1'};"><span class="ticket-info-label">🔔 ${t('ticketPriorityLabel')}</span><span class="ticket-info-value">${priorityLabel[ticket.priority] || ticket.priority}</span></div>
+            <div class="ticket-info-row" style="--row-accent:#64748b;"><span class="ticket-info-label">🔄 ${t('ticketLastUpdateLabel')}</span><span class="ticket-info-value">${ticket.lastUpdate ? new Date(ticket.lastUpdate).toLocaleDateString(locale, { hour: '2-digit', minute: '2-digit' }) : '-'}</span></div>
         </div>
         <div class="ticket-timeline">
             <div class="ticket-timeline-item ${ticket.status === 'new' ? 'active' : 'completed'}"><div class="ticket-timeline-dot"></div>${t('ticketStatusNew')}</div>
@@ -3704,6 +3733,9 @@ window.renderAdminTicketDetail = async function(ticketId) {
     };
 
     const user = ticket.username || ticket.createdBy || '?';
+    const categoryLabel = { general: t('ticketCatGeneral'), technical: t('ticketCatTechnical'), payment: t('ticketCatPayment'), domain: t('ticketCatDomain'), other: t('ticketCatOther') };
+    const priorityLabel = { low: t('ticketPriorityLow'), normal: t('ticketPriorityNormal'), high: t('ticketPriorityHigh'), urgent: t('ticketPriorityUrgent') };
+    const priorityColor = { low: '#10b981', normal: '#fbbf24', high: '#ef4444', urgent: '#b91c1c' };
 
     const header = document.getElementById('admin-ticket-detail-header');
     header.innerHTML = `
@@ -3712,10 +3744,11 @@ window.renderAdminTicketDetail = async function(ticketId) {
             <span class="ticket-status-badge status-badge-${ticket.status}">${statusMap[ticket.status]}</span>
         </div>
         <div class="ticket-info">
-            <p><strong>👤</strong> @${user}</p>
-            <p><strong>📅</strong> ${ticket.createdAt ? new Date(ticket.createdAt).toLocaleDateString(locale) : '-'}</p>
-            <p><strong>🏷️</strong> ${ticket.category}</p>
-            <p><strong>🔔</strong> ${ticket.priority}</p>
+            <div class="ticket-info-row" style="--row-accent:#6366f1;"><span class="ticket-info-label">🔑 ${t('ticketCodeLabel')}</span><span class="ticket-info-value">#${ticket.ticketNumber || ticket.id.slice(-6).toUpperCase()}</span></div>
+            <div class="ticket-info-row" style="--row-accent:#10b981;"><span class="ticket-info-label">👤 ${t('ticketUserLabel')}</span><span class="ticket-info-value">@${user}</span></div>
+            <div class="ticket-info-row" style="--row-accent:#3b82f6;"><span class="ticket-info-label">📅 ${t('ticketCreated')}</span><span class="ticket-info-value">${ticket.createdAt ? new Date(ticket.createdAt).toLocaleDateString(locale) : '-'}</span></div>
+            <div class="ticket-info-row" style="--row-accent:#a855f7;"><span class="ticket-info-label">🏷️ ${t('ticketCategoryLabel')}</span><span class="ticket-info-value">${categoryLabel[ticket.category] || ticket.category}</span></div>
+            <div class="ticket-info-row" style="--row-accent:${priorityColor[ticket.priority] || '#6366f1'};"><span class="ticket-info-label">🔔 ${t('ticketPriorityLabel')}</span><span class="ticket-info-value">${priorityLabel[ticket.priority] || ticket.priority}</span></div>
         </div>`;
 
     const messagesContainer = document.getElementById('admin-ticket-detail-messages');
