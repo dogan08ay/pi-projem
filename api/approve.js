@@ -1000,9 +1000,32 @@ export default async function handler(req, res) {
         tickets.push({ id: doc.id, ...d, username: d.createdBy });
       });
       tickets.sort((a, b) => (b.lastUpdate || 0) - (a.lastUpdate || 0));
-      return res.status(200).json({ success: true, tickets });
+
+      const seenSnap = await db.collection('system_config').doc('admin_ticket_seen').get();
+      const seenAt = seenSnap.exists ? (seenSnap.data().seenAt || 0) : 0;
+      // Kapatılmış talepler bildirim sayacına dahil edilmez; kullanıcıdan
+      // gelen yeni mesaj/talep sonrası lastUpdate, admin'in son görme
+      // zamanından yeniyse "okunmamış" sayılır.
+      const unseenCount = tickets.filter(tk => tk.status !== 'closed' && (tk.lastUpdate || 0) > seenAt).length;
+
+      return res.status(200).json({ success: true, tickets, unseenCount, seenAt });
     } catch (e) {
       console.error("get_all_tickets hatası:", e);
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  // ── Admin: Ticket Bildirimlerini Görüldü Olarak İşaretle ───────────────
+  if (action === 'mark_tickets_seen') {
+    const isAdmin = await verifyAdmin(accessToken);
+    if (!isAdmin) return res.status(403).json({ error: "Yetki yok" });
+    try {
+      const db = getDb();
+      const now = Date.now();
+      await db.collection('system_config').doc('admin_ticket_seen').set({ seenAt: now }, { merge: true });
+      return res.status(200).json({ success: true, seenAt: now });
+    } catch (e) {
+      console.error("mark_tickets_seen hatası:", e);
       return res.status(500).json({ error: e.message });
     }
   }
