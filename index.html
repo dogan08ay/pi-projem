@@ -286,6 +286,7 @@
   background: rgba(236,72,153,0.06);
   border-radius: 7px;
   padding: 4px 8px;
+  text-align: left;
 }
 
 .ticket-card-subject-label {
@@ -294,6 +295,7 @@
   color: #f472b6;
   text-transform: uppercase;
   flex-shrink: 0;
+  text-align: left;
 }
 
 .ticket-card-subject {
@@ -305,6 +307,7 @@
   white-space: nowrap;
   flex: 1;
   min-width: 0;
+  text-align: left;
 }
 
 .ticket-status-badge {
@@ -349,6 +352,7 @@
   border-radius: 7px;
   padding: 6px 8px;
   margin-bottom: 8px;
+  text-align: left;
 }
 
 .ticket-card-preview-label {
@@ -508,6 +512,7 @@
 .ticket-stat-badge.reviewing { border: 1.5px solid rgba(245,158,11,0.3); color: #fbbf24; }
 .ticket-stat-badge.answered { border: 1.5px solid rgba(168,85,247,0.3); color: #c084fc; }
 .ticket-stat-badge.resolved { border: 1.5px solid rgba(16,185,129,0.3); color: #34d399; }
+.ticket-stat-badge.closed { border: 1.5px solid rgba(100,116,139,0.3); color: #94a3b8; }
 
 /* Admin Actions */
 .ticket-admin-actions {
@@ -740,14 +745,17 @@
 }
 
 /* Admin ticket tablosu — kullanıcı/konu/tarih/durum çizgili tablo */
-.ticket-table{display:flex;flex-direction:column;border:1px solid rgba(99,102,241,0.2);border-radius:10px;overflow:hidden;}
-.ticket-table-header{display:grid;grid-template-columns:0.9fr 1.5fr 0.85fr 0.9fr;gap:4px;padding:7px 8px;background:rgba(99,102,241,0.18);font-size:0.6em;font-weight:900;color:#a5b4fc;text-transform:uppercase;letter-spacing:0.3px;border-bottom:1.5px solid rgba(99,102,241,0.3);}
-.ticket-table-entry{cursor:pointer;transition:background 0.15s;border-bottom:1px solid rgba(99,102,241,0.12);}
+.ticket-table{display:flex;flex-direction:column;border:1px solid rgba(99,102,241,0.25);border-radius:10px;overflow:hidden;}
+.ticket-table-header{display:grid;grid-template-columns:0.9fr 1.5fr 0.85fr 0.9fr;gap:0;padding:0;background:rgba(99,102,241,0.18);font-size:0.6em;font-weight:900;color:#a5b4fc;text-transform:uppercase;letter-spacing:0.3px;border-bottom:1.5px solid rgba(99,102,241,0.3);}
+.ticket-table-header > div{padding:7px 8px;border-right:1px solid rgba(99,102,241,0.25);}
+.ticket-table-header > div:last-child{border-right:none;}
+.ticket-table-entry{cursor:pointer;transition:background 0.15s;border-bottom:1px solid rgba(99,102,241,0.2);}
 .ticket-table-entry:last-child{border-bottom:none;}
 .ticket-table-entry:nth-child(even){background:rgba(15,23,42,0.4);}
 .ticket-table-entry:hover{background:rgba(99,102,241,0.12);}
-.ticket-table-row{display:grid;grid-template-columns:0.9fr 1.5fr 0.85fr 0.9fr;gap:4px;padding:8px;font-size:0.68em;color:#e2e8f0;align-items:center;}
-.ticket-table-row > div{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.ticket-table-row{display:grid;grid-template-columns:0.9fr 1.5fr 0.85fr 0.9fr;gap:0;padding:0;font-size:0.68em;color:#e2e8f0;align-items:stretch;}
+.ticket-table-row > div{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:8px;border-right:1px solid rgba(99,102,241,0.15);display:flex;align-items:center;}
+.ticket-table-row > div:last-child{border-right:none;}
 .ticket-table-desc{margin:0 8px 8px 8px;padding:6px 8px;font-size:0.66em;color:#94a3b8;line-height:1.45;background:rgba(99,102,241,0.05);border:1px solid rgba(99,102,241,0.15);border-radius:6px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
 
 </style>
@@ -805,9 +813,10 @@
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fbbf24" stroke-width="2"><path d="M12 2v20M2 12h20"/></svg>
         <span data-i18n="sellMyDomain"></span>
     </button>
-    <button class="side-menu-item" onclick="scrollToTicketPanel();toggleSideMenu();">
+    <button class="side-menu-item" style="position:relative;" onclick="scrollToTicketPanel();toggleSideMenu();">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fbbf24" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
         <span data-i18n="myTickets"></span>
+        <span class="pending-badge" id="user-ticket-menu-badge" style="display:none;">0</span>
     </button>
 
     <div class="side-menu-section-label" data-i18n="preferences"></div>
@@ -1066,7 +1075,7 @@
             <button class="user-tab-btn" data-utab="utab-purchases" onclick="switchUserTab('utab-purchases')">🛒 <span data-i18n="myPurchases"></span></button>
             <button class="user-tab-btn" data-utab="utab-listings" onclick="switchUserTab('utab-listings')">🏷️<span data-i18n="myListings"></span></button>
             <button class="user-tab-btn" data-utab="utab-income" onclick="switchUserTab('utab-income')">💰<span data-i18n="myIncome"></span></button>
-            <button class="user-tab-btn" data-utab="utab-tickets" onclick="switchUserTab('utab-tickets')">🎫<span data-i18n="myTickets"></span></button>
+            <button class="user-tab-btn" style="position:relative;" data-utab="utab-tickets" onclick="switchUserTab('utab-tickets')">🎫<span data-i18n="myTickets"></span><span class="pending-badge" id="user-ticket-tab-badge" style="display:none;">0</span></button>
 
         </div>
         <div class="user-tab-panel active" id="utab-overview">
@@ -1253,6 +1262,7 @@
                     <button class="ticket-filter-btn" data-status="reviewing" onclick="adminFilterTickets('reviewing')" data-i18n="ticketFilterReviewing">İnceleniyor</button>
                     <button class="ticket-filter-btn" data-status="answered" onclick="adminFilterTickets('answered')" data-i18n="ticketFilterAnswered">Yanıtlandı</button>
                     <button class="ticket-filter-btn" data-status="resolved" onclick="adminFilterTickets('resolved')" data-i18n="ticketFilterResolved">Çözüldü</button>
+                    <button class="ticket-filter-btn" data-status="closed" onclick="adminFilterTickets('closed')" data-i18n="ticketFilterClosed">Kapatıldı</button>
                 </div>
                 <div class="ticket-admin-stats" id="ticket-admin-stats"></div>
                 <div id="ticket-admin-list">
@@ -1548,6 +1558,7 @@ const i18n = {
     ticketFilterReviewing:"İnceleniyor",
     ticketFilterAnswered:"Yanıtlandı",
     ticketFilterResolved:"Çözüldü",
+    ticketFilterClosed:"Kapatıldı",
     newTicketTitle:"Yeni Destek Talebi",
     newTicketSubtitle:"Sorununuzu detaylı açıklayın, en kısa sürede yanıtlayacağız.",
     ticketSubjectLabel:"Konu",
@@ -1585,6 +1596,7 @@ const i18n = {
     ticketReplyFrom:"den yanıt",
     ticketReplyFromAdmin:"Yönetici yanıtı",
     ticketReplyFromYou:"Sizin yanıtınız",
+    ticketLastMessageLabel:"Son Mesaj",
     ticketCloseConfirm:"Bu talebi kapatmak istediğinize emin misiniz?",
     ticketClosedSuccess:"Talep kapatıldı.",
     ticketSubmitSuccess:"Destek talebiniz oluşturuldu!",
@@ -1778,6 +1790,7 @@ const i18n = {
     ticketFilterReviewing:"Reviewing",
     ticketFilterAnswered:"Answered",
     ticketFilterResolved:"Resolved",
+    ticketFilterClosed:"Closed",
     newTicketTitle:"New Support Ticket",
     newTicketSubtitle:"Describe your issue in detail, we will respond as soon as possible.",
     ticketSubjectLabel:"Subject",
@@ -1815,6 +1828,7 @@ const i18n = {
     ticketReplyFrom:"replied",
     ticketReplyFromAdmin:"Admin reply",
     ticketReplyFromYou:"Your reply",
+    ticketLastMessageLabel:"Last Message",
     ticketCloseConfirm:"Are you sure you want to close this ticket?",
     ticketClosedSuccess:"Ticket closed.",
     ticketSubmitSuccess:"Support ticket created!",
@@ -1990,7 +2004,7 @@ window.switchAdminTab=function(tabId){
 window.switchUserTab=function(tabId){
     document.querySelectorAll('.user-tab-btn').forEach(b=>b.classList.toggle('active',b.dataset.utab===tabId));
     document.querySelectorAll('.user-tab-panel').forEach(p=>p.classList.toggle('active',p.id===tabId));
-    if(tabId==='utab-tickets') loadMyTickets();
+    if(tabId==='utab-tickets'){ loadMyTickets(); markMyTicketsSeen(); }
 };
 
 // FILTER
@@ -2127,7 +2141,7 @@ let ticketBadgePollInterval=null;
 function startTicketBadgePolling(){
     stopTicketBadgePolling();
     adminLoadTickets();
-    ticketBadgePollInterval=setInterval(()=>{ adminLoadTickets(); },20000);
+    ticketBadgePollInterval=setInterval(()=>{ adminLoadTickets(); },5000);
 }
 function stopTicketBadgePolling(){
     if(ticketBadgePollInterval){clearInterval(ticketBadgePollInterval);ticketBadgePollInterval=null;}
@@ -2136,7 +2150,7 @@ let userTicketPollInterval=null;
 function startUserTicketPolling(){
     stopUserTicketPolling();
     loadMyTickets();
-    userTicketPollInterval=setInterval(()=>{ loadMyTickets(); },12000);
+    userTicketPollInterval=setInterval(()=>{ loadMyTickets(); },5000);
 }
 function stopUserTicketPolling(){
     if(userTicketPollInterval){clearInterval(userTicketPollInterval);userTicketPollInterval=null;}
@@ -3396,6 +3410,7 @@ async function loadMyTickets() {
         if (result.success) {
             myTickets = result.tickets || [];
             renderTicketList();
+            updateUserTicketBadge(result.unseenCount || 0);
             // Açık olan bir talep detayı varsa, onu da sessizce tazele
             // (durum "İnceleniyor"/"Yanıtlandı" gibi değiştiyse sayfa
             // yenilemeden anında görünsün).
@@ -3413,6 +3428,36 @@ async function loadMyTickets() {
         console.error("Ticket listesi yüklenemedi:", e);
         const container = document.getElementById('ticket-list-container');
         if (container) container.innerHTML = `<p style="font-size:0.75em;opacity:0.5;text-align:center;">${t('loadingTickets')}</p>`;
+    }
+}
+
+// ── KULLANICI: Bekleyen (görülmemiş) destek talebi rozetini güncelle ────
+function updateUserTicketBadge(count) {
+    const menuBadge = document.getElementById('user-ticket-menu-badge');
+    const tabBadge = document.getElementById('user-ticket-tab-badge');
+    [menuBadge, tabBadge].forEach(badge => {
+        if (!badge) return;
+        if (count > 0) {
+            badge.style.display = 'inline-block';
+            badge.textContent = count > 99 ? '99+' : count;
+        } else {
+            badge.style.display = 'none';
+        }
+    });
+}
+
+// ── KULLANICI: Ticket bildirimlerini görüldü olarak işaretle (rozeti kapat) ──
+async function markMyTicketsSeen() {
+    if (!isAuth || !piAccessToken) return;
+    updateUserTicketBadge(0);
+    try {
+        await fetch('/api/approve', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'mark_my_tickets_seen', accessToken: piAccessToken })
+        });
+    } catch (e) {
+        console.error("mark_my_tickets_seen hatası:", e);
     }
 }
 
@@ -3689,6 +3734,18 @@ async function adminLoadTickets() {
             adminTickets = result.tickets || [];
             renderAdminTicketList();
             updateTicketBadge(result.unseenCount || 0);
+
+            // Açık olan bir talep detayı varsa, sessizce tazele
+            // (kullanıcıdan yeni mesaj/durum değişikliği anında görünsün).
+            const detailModal = document.getElementById('admin-ticket-detail-modal');
+            if (currentTicketId && detailModal && detailModal.style.display === 'flex') {
+                const stillExists = adminTickets.find(tk => tk.id === currentTicketId);
+                if (stillExists) {
+                    renderAdminTicketDetail(currentTicketId);
+                } else {
+                    closeAdminTicketDetailModal();
+                }
+            }
         }
     } catch (e) {
         console.error("Admin ticket listesi yüklenemedi:", e);
@@ -3738,6 +3795,7 @@ function renderAdminTicketList() {
             <span class="ticket-stat-badge reviewing">${t('ticketStatusReviewing')}: ${counts.reviewing}</span>
             <span class="ticket-stat-badge answered">${t('ticketStatusAnswered')}: ${counts.answered}</span>
             <span class="ticket-stat-badge resolved">${t('ticketStatusResolved')}: ${counts.resolved}</span>
+            <span class="ticket-stat-badge closed">${t('ticketStatusClosed')}: ${counts.closed}</span>
         `;
     }
 
@@ -3760,6 +3818,9 @@ function renderAdminTicketList() {
         closed: t('ticketStatusClosed')
     };
 
+    const priorityLabel = { low: t('ticketPriorityLow'), normal: t('ticketPriorityNormal'), high: t('ticketPriorityHigh'), urgent: t('ticketPriorityUrgent') };
+    const priorityColor = { low: '#10b981', normal: '#fbbf24', high: '#ef4444', urgent: '#b91c1c' };
+
     container.innerHTML = `<div class="ticket-table">
         <div class="ticket-table-header">
             <div>${t('ticketTableUser')}</div>
@@ -3770,15 +3831,22 @@ function renderAdminTicketList() {
         ${filtered.map(ticket => {
             const created = ticket.createdAt ? new Date(ticket.createdAt).toLocaleDateString(locale, { day: '2-digit', month: '2-digit' }) + ' ' + new Date(ticket.createdAt).toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' }) : '-';
             const user = ticket.username || ticket.createdBy || '?';
-            const firstMsg = ticket.messages && ticket.messages[0] ? ticket.messages[0].text : '';
+            const pColor = priorityColor[ticket.priority] || '#6366f1';
+            const pLabel = priorityLabel[ticket.priority] || ticket.priority || '-';
+            const lastMsg = ticket.messages && ticket.messages.length ? ticket.messages[ticket.messages.length - 1] : null;
+            const lastMsgText = lastMsg ? lastMsg.text : '';
+            const lastMsgFromLabel = lastMsg ? (lastMsg.from === 'admin' ? ('👤 ' + t('ticketReplyFromAdmin')) : ('🗣️ @' + lastMsg.from)) : '';
             return `<div class="ticket-table-entry" onclick="renderAdminTicketDetail('${ticket.id}')">
                 <div class="ticket-table-row">
                     <div title="@${user}">@${user}</div>
-                    <div title="${escapeHtml(ticket.subject)}">${escapeHtml(ticket.subject)}</div>
+                    <div title="${escapeHtml(ticket.subject)}" style="flex-direction:column;align-items:flex-start;gap:2px;">
+                        <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%;">${escapeHtml(ticket.subject)}</span>
+                        <span style="font-size:0.85em;font-weight:800;color:${pColor};white-space:nowrap;">🔔 ${pLabel}</span>
+                    </div>
                     <div>${created}</div>
                     <div><span class="ticket-status-badge status-badge-${ticket.status}">${statusMap[ticket.status]}</span></div>
                 </div>
-                ${firstMsg ? `<div class="ticket-table-desc">📝 ${escapeHtml(firstMsg)}</div>` : ''}
+                ${lastMsgText ? `<div class="ticket-table-desc"><strong style="color:#818cf8;">📝 ${t('ticketLastMessageLabel')} (${lastMsgFromLabel}):</strong> ${escapeHtml(lastMsgText)}</div>` : ''}
             </div>`;
         }).join('')}
     </div>`;
