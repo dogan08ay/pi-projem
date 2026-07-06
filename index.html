@@ -266,7 +266,7 @@
 .ticket-card.status-reviewing::before { background: #f59e0b; }
 .ticket-card.status-answered::before { background: #a855f7; }
 .ticket-card.status-resolved::before { background: #10b981; }
-.ticket-card.status-closed::before { background: #64748b; }
+.ticket-card.status-closed::before { background: linear-gradient(180deg, #ef4444, #b91c1c); box-shadow: 0 0 8px rgba(239,68,68,0.6); }
 
 .ticket-card-header {
   display: flex;
@@ -323,7 +323,8 @@
 .status-badge-reviewing { background: rgba(245,158,11,0.15); color: #fbbf24; border: 1px solid rgba(245,158,11,0.3); }
 .status-badge-answered { background: rgba(168,85,247,0.15); color: #c084fc; border: 1px solid rgba(168,85,247,0.3); }
 .status-badge-resolved { background: rgba(16,185,129,0.15); color: #34d399; border: 1px solid rgba(16,185,129,0.3); }
-.status-badge-closed { background: rgba(100,116,139,0.15); color: #94a3b8; border: 1px solid rgba(100,116,139,0.3); }
+.status-badge-closed { background: linear-gradient(135deg, #ef4444 0%, #b91c1c 100%); color: #fff; border: 1px solid #f87171; font-weight: 900; letter-spacing: 0.5px; box-shadow: 0 0 6px rgba(239,68,68,0.6); animation: closed-badge-pulse 1.8s ease-in-out infinite; }
+@keyframes closed-badge-pulse { 0%,100% { box-shadow: 0 0 6px rgba(239,68,68,0.55); } 50% { box-shadow: 0 0 14px rgba(239,68,68,0.95), 0 0 26px rgba(239,68,68,0.4); } }
 
 .ticket-card-meta {
   display: flex;
@@ -447,10 +448,11 @@
 
 .ticket-message.admin {
   align-self: flex-start;
-  background: rgba(99,102,241,0.12);
-  color: #c7d2fe;
-  border: 1px solid rgba(99,102,241,0.2);
+  background: linear-gradient(135deg, #ffffff 0%, #f0fdf9 100%);
+  color: #0f172a;
+  border: 1.5px solid #34d399;
   border-bottom-left-radius: 3px;
+  box-shadow: 0 3px 10px rgba(16,185,129,0.3);
 }
 
 .ticket-message-header {
@@ -464,11 +466,23 @@
   border-radius: 10px 10px 0 0;
 }
 
+.ticket-message.admin .ticket-message-header {
+  background: linear-gradient(90deg, #059669, #0d9488);
+  color: #ffffff;
+  border-bottom: 1px solid rgba(255,255,255,0.25);
+}
+
 .ticket-message-text {
-  font-size: 0.88em;
+  font-size: 0.92em;
+  font-weight: 700;
   line-height: 1.5;
   word-break: break-word;
   overflow-wrap: anywhere;
+}
+
+.ticket-message.admin .ticket-message-text {
+  color: #0f172a;
+  font-weight: 800;
 }
 
 .ticket-reply-area {
@@ -752,7 +766,7 @@
 
 /* Admin ticket tablosu — kullanıcı/konu/tarih/durum çizgili tablo */
 .ticket-table{display:flex;flex-direction:column;border:1.5px solid rgba(129,140,248,0.45);border-radius:10px;overflow:hidden;box-shadow:0 4px 14px rgba(0,0,0,0.25);width:100%;box-sizing:border-box;}
-.ticket-table-header{display:grid;grid-template-columns:0.9fr 1.5fr 0.85fr 0.9fr;gap:0;padding:0;background:linear-gradient(180deg,rgba(99,102,241,0.35) 0%,rgba(99,102,241,0.22) 100%);font-size:0.6em;font-weight:900;color:#c7d2fe;text-transform:uppercase;letter-spacing:0.3px;border-bottom:2px solid rgba(129,140,248,0.55);}
+.ticket-table-header{display:grid;grid-template-columns:1.3fr 1.05fr 0.8fr 0.85fr;gap:0;padding:0;background:linear-gradient(180deg,rgba(99,102,241,0.35) 0%,rgba(99,102,241,0.22) 100%);font-size:0.6em;font-weight:900;color:#c7d2fe;text-transform:uppercase;letter-spacing:0.3px;border-bottom:2px solid rgba(129,140,248,0.55);}
 .ticket-table-header > div{padding:7px 6px;border-right:1.5px solid rgba(129,140,248,0.4);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:center;}
 .ticket-table-header > div:nth-child(2){text-align:left;}
 .ticket-table-header > div:last-child{border-right:none;}
@@ -761,28 +775,17 @@
 .ticket-table-entry:nth-child(even){background:rgba(99,102,241,0.055);}
 .ticket-table-entry:nth-child(odd){background:rgba(15,23,42,0.35);}
 .ticket-table-entry:hover{background:rgba(99,102,241,0.18);}
-.ticket-table-row{display:grid;grid-template-columns:0.9fr 1.5fr 0.85fr 0.9fr;gap:0;padding:0;font-size:0.68em;color:#e2e8f0;align-items:stretch;width:100%;box-sizing:border-box;}
+.ticket-table-row{display:grid;grid-template-columns:1.3fr 1.05fr 0.8fr 0.85fr;gap:0;padding:0;font-size:0.68em;color:#e2e8f0;align-items:stretch;width:100%;box-sizing:border-box;}
 .ticket-table-row > div{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:8px 6px;border-right:1.5px solid rgba(129,140,248,0.28);display:flex;align-items:center;justify-content:center;text-align:center;min-width:0;}
 .ticket-table-row > div:last-child{border-right:none;}
 .ticket-table-row > div:nth-child(2){justify-content:flex-start;text-align:left;}
 .ticket-table-lastmsg{margin:0 8px 8px 8px;display:flex;flex-direction:column;}
-.ticket-table-lastmsg-title{font-size:0.6em;font-weight:800;color:#a5b4fc;background:rgba(99,102,241,0.16);border:1px solid rgba(129,140,248,0.4);border-bottom:none;border-radius:6px 6px 0 0;padding:5px 8px;display:flex;align-items:center;gap:4px;flex-wrap:wrap;text-align:left;}
-.ticket-table-lastmsg-from{color:#818cf8;font-weight:900;}
-.ticket-table-lastmsg-text{font-size:0.68em;color:#cbd5e1;line-height:1.5;background:rgba(15,23,42,0.55);border:1px solid rgba(129,140,248,0.25);border-radius:0 0 6px 6px;padding:7px 8px;text-align:left;word-break:break-word;overflow-wrap:anywhere;white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
+.ticket-table-lastmsg-title{font-size:0.62em;font-weight:900;color:#fbbf24;background:linear-gradient(90deg,rgba(139,92,246,0.28) 0%,rgba(236,72,153,0.2) 100%);border:1px solid rgba(196,181,253,0.55);border-bottom:none;border-radius:6px 6px 0 0;padding:5px 8px;display:flex;align-items:center;gap:4px;flex-wrap:wrap;text-align:left;letter-spacing:0.2px;}
+.ticket-table-lastmsg-from{color:#f472b6;font-weight:900;}
+.ticket-table-lastmsg-text{font-size:0.7em;color:#f1f5f9;font-weight:600;line-height:1.5;background:rgba(15,23,42,0.75);border:1px solid rgba(196,181,253,0.4);border-radius:0 0 6px 6px;padding:7px 8px;text-align:left;word-break:break-word;overflow-wrap:anywhere;white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
 
 
 </style>
-<base target="_blank">
-<base target="_blank">
-<base target="_blank">
-<base target="_blank">
-<base target="_blank">
-<base target="_blank">
-<base target="_blank">
-<base target="_blank">
-<base target="_blank">
-<base target="_blank">
-<base target="_blank">
 </head>
 <body style="margin:0;padding:0;width:100%;min-width:320px;overflow-x:hidden;position:relative;box-sizing:border-box;">
 <div class="side-menu-overlay" id="side-menu-overlay" onclick="toggleSideMenu()"></div>
@@ -858,9 +861,9 @@
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg><span style="color:#38bdf8;" data-i18n="telegramGroup">TELEGRAM GRUBUMUZ</span>
     </a>
     <div style="display:flex;gap:8px;padding:4px 12px;">
-        <a href="privacy.html" target="_blank" rel="noopener noreferrer" style="color:#f87171;font-size:0.65em;font-weight:700;" data-i18n="privacyPolicy">GİZLİLİK POLİTİKASI</a>
+        <a href="privacy.html" style="color:#f87171;font-size:0.65em;font-weight:700;" data-i18n="privacyPolicy">GİZLİLİK POLİTİKASI</a>
         <span style="color:#334155;">|</span>
-        <a href="terms.html" target="_blank" rel="noopener noreferrer" style="color:#f87171;font-size:0.65em;font-weight:700;" data-i18n="termsOfUse">KULLANIM ŞARTLARI</a>
+        <a href="terms.html" style="color:#f87171;font-size:0.65em;font-weight:700;" data-i18n="termsOfUse">KULLANIM ŞARTLARI</a>
     </div>
     <div class="side-menu-divider"></div>
     <button class="side-menu-item" id="side-menu-logout-btn" onclick="handleLogout()" style="display:none;color:#fca5a5;">
@@ -1337,7 +1340,7 @@
   <div class="footer-section" style="position:sticky;bottom:0;z-index:50;padding:4px 8px;">
       <div class="footer-row" style="font-size:0.65em;margin-bottom:2px;">📩 <span data-i18n="contactUs"></span>: <a href="mailto:doganay08@hotmail.com" onclick="window.location.href=this.href;return false;">doganay08@hotmail.com</a></div>
       <div class="footer-row" style="font-size:0.65em;margin-bottom:2px;">💬 <span data-i18n="community"></span>: <a href="https://t.me/+5jZi9vrcNMM2NGVk" target="_blank" rel="noopener noreferrer" data-i18n="telegramGroup">TELEGRAM GRUBUMUZ</a></div>
-      <div style="margin-top:2px;font-size:0.6em;"><a href="privacy.html" target="_blank" rel="noopener noreferrer" data-i18n="privacyPolicy">GİZLİLİK POLİTİKASI</a> | <a href="terms.html" target="_blank" rel="noopener noreferrer" data-i18n="termsOfUse">KULLANIM ŞARTLARI</a></div>
+      <div style="margin-top:2px;font-size:0.6em;"><a href="privacy.html" data-i18n="privacyPolicy">GİZLİLİK POLİTİKASI</a> | <a href="terms.html" data-i18n="termsOfUse">KULLANIM ŞARTLARI</a></div>
   </div>
 </div>
 <script type="module">
@@ -3836,7 +3839,7 @@ function renderAdminTicketList() {
         reviewing: '#f59e0b',
         answered: '#a855f7',
         resolved: '#10b981',
-        closed: '#64748b'
+        closed: '#ef4444'
     };
 
     const priorityLabel = { low: t('ticketPriorityLow'), normal: t('ticketPriorityNormal'), high: t('ticketPriorityHigh'), urgent: t('ticketPriorityUrgent') };
