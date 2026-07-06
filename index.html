@@ -94,7 +94,7 @@
         .admin-tab-panel.active{display:block;animation:card-rise 0.3s ease backwards;}
         .pending-badge{background:#ef4444;color:#fff;font-size:0.6em;font-weight:900;border-radius:8px;padding:1px 5px;flex-shrink:0;min-width:15px;text-align:center;line-height:1.3;position:absolute;top:3px;right:4px;box-shadow:0 0 6px rgba(239,68,68,0.6);}
         .user-tabs{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;margin-bottom:6px;width:100%;box-sizing:border-box;}
-        .user-tab-btn{min-width:0;background:linear-gradient(135deg,#064e3b 0%,#0f172a 100%);border:1.5px solid #059669;color:#6ee7b7;padding:7px 3px;border-radius:8px;font-size:0.62em;font-weight:800;cursor:pointer;white-space:normal;line-height:1.25;transition:all 0.2s;text-align:center;box-shadow:0 2px 8px rgba(0,0,0,0.3);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;min-height:40px;position:relative;}
+        .user-tab-btn{min-width:0;background:linear-gradient(135deg,#1e293b 0%,#0f172a 100%);border:1.5px solid #334155;color:#94a3b8;padding:7px 3px;border-radius:8px;font-size:0.62em;font-weight:800;cursor:pointer;white-space:normal;line-height:1.25;transition:all 0.2s;text-align:center;box-shadow:0 2px 8px rgba(0,0,0,0.3);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;min-height:40px;position:relative;}
         .user-tab-btn span[data-i18n]{overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;word-break:break-word;}
         .user-tab-btn.active{background:rgba(16,185,129,0.15);border-color:#10b981;color:#6ee7b7;}
         .user-tab-panel{display:none;}
@@ -454,8 +454,8 @@
 /* Admin Actions */
 .ticket-admin-actions {
   display: flex;
-  gap: 6px;
   flex-wrap: wrap;
+  gap: 7px;
   margin: 10px 0;
   padding: 10px;
   background: rgba(15,23,42,0.6);
@@ -464,27 +464,45 @@
 }
 
 .ticket-admin-actions button {
-  padding: 5px 10px;
-  border-radius: 6px;
+  flex: 1 1 28%;
+  min-width: 78px;
+  padding: 9px 6px;
+  border-radius: 7px;
   border: none;
   cursor: pointer;
-  font-size: 0.65em;
+  font-size: 0.68em;
   font-weight: 800;
+  line-height: 1.3;
+  white-space: normal;
+  word-break: keep-all;
+  text-align: center;
   transition: all 0.2s;
-  flex: 1;
-  min-width: 0;
 }
 
-.ticket-btn-status-new { background: rgba(59,130,246,0.15); color: #60a5fa; border: 1px solid rgba(59,130,246,0.3); }
-.ticket-btn-status-reviewing { background: rgba(245,158,11,0.15); color: #fbbf24; border: 1px solid rgba(245,158,11,0.3); }
-.ticket-btn-status-answered { background: rgba(168,85,247,0.15); color: #c084fc; border: 1px solid rgba(168,85,247,0.3); }
-.ticket-btn-status-resolved { background: rgba(16,185,129,0.15); color: #34d399; border: 1px solid rgba(16,185,129,0.3); }
-.ticket-btn-status-closed { background: rgba(100,116,139,0.15); color: #94a3b8; border: 1px solid rgba(100,116,139,0.3); }
+.ticket-btn-status-new { background: rgba(59,130,246,0.15); color: #60a5fa; border: 1.5px solid rgba(59,130,246,0.3); }
+.ticket-btn-status-reviewing { background: rgba(245,158,11,0.15); color: #fbbf24; border: 1.5px solid rgba(245,158,11,0.3); }
+.ticket-btn-status-answered { background: rgba(168,85,247,0.15); color: #c084fc; border: 1.5px solid rgba(168,85,247,0.3); }
+.ticket-btn-status-resolved { background: rgba(16,185,129,0.15); color: #34d399; border: 1.5px solid rgba(16,185,129,0.3); }
+.ticket-btn-status-closed { background: rgba(100,116,139,0.15); color: #94a3b8; border: 1.5px solid rgba(100,116,139,0.3); flex-basis: 100%; }
+
+.ticket-btn-status-new.active,.ticket-btn-status-reviewing.active,.ticket-btn-status-answered.active,.ticket-btn-status-resolved.active,.ticket-btn-status-closed.active {
+  box-shadow: 0 0 0 2px currentColor inset;
+  filter: brightness(1.25);
+}
 
 .ticket-admin-actions button:hover {
   filter: brightness(1.3);
   transform: translateY(-1px);
 }
+
+/* Ticket Meta Table — kullanıcı/tarih/kategori bilgileri çizgili tablo görünümü */
+.ticket-meta-table{display:flex;flex-direction:column;margin:8px 0;border:1px solid rgba(99,102,241,0.18);border-radius:8px;overflow:hidden;}
+.ticket-meta-row{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:6px 10px;font-size:0.7em;border-bottom:1px solid rgba(99,102,241,0.14);}
+.ticket-meta-row:last-child{border-bottom:none;}
+.ticket-meta-row:nth-child(even){background:rgba(15,23,42,0.5);}
+.ticket-meta-row:nth-child(odd){background:rgba(30,41,59,0.35);}
+.ticket-meta-label{color:#818cf8;font-weight:800;flex-shrink:0;}
+.ticket-meta-value{color:#e2e8f0;font-weight:700;text-align:right;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 
 /* Timeline */
 .ticket-timeline {
@@ -609,23 +627,50 @@
   flex: 1;
 }
 
-/* Ticket info grid */
+/* Ticket info grid — çizgilerle ayrılmış tablo görünümü */
 .ticket-info {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 6px;
+  gap: 0;
   font-size: 0.72em;
   color: #94a3b8;
   margin: 8px 0;
+  border: 1px solid rgba(99,102,241,0.18);
+  border-radius: 8px;
+  overflow: hidden;
 }
 
 .ticket-info p {
   margin: 0;
+  padding: 6px 8px;
+  border-bottom: 1px solid rgba(99,102,241,0.12);
+  border-right: 1px solid rgba(99,102,241,0.12);
+}
+
+.ticket-info p:nth-child(odd) {
+  border-right: 1px solid rgba(99,102,241,0.12);
+}
+
+.ticket-info p:nth-child(even) {
+  border-right: none;
+}
+
+.ticket-info p:nth-last-child(-n+2) {
+  border-bottom: none;
 }
 
 .ticket-info strong {
   color: #cbd5e1;
 }
+
+/* Admin ticket tablosu — kullanıcı/konu/tarih/durum çizgili tablo */
+.ticket-table{display:flex;flex-direction:column;border:1px solid rgba(99,102,241,0.2);border-radius:10px;overflow:hidden;}
+.ticket-table-header{display:grid;grid-template-columns:0.9fr 1.5fr 0.85fr 0.9fr;gap:4px;padding:7px 8px;background:rgba(99,102,241,0.18);font-size:0.6em;font-weight:900;color:#a5b4fc;text-transform:uppercase;letter-spacing:0.3px;border-bottom:1.5px solid rgba(99,102,241,0.3);}
+.ticket-table-row{display:grid;grid-template-columns:0.9fr 1.5fr 0.85fr 0.9fr;gap:4px;padding:8px;font-size:0.68em;color:#e2e8f0;border-bottom:1px solid rgba(99,102,241,0.12);cursor:pointer;transition:background 0.15s;align-items:center;}
+.ticket-table-row:last-child{border-bottom:none;}
+.ticket-table-row:nth-child(even){background:rgba(15,23,42,0.4);}
+.ticket-table-row:hover{background:rgba(99,102,241,0.12);}
+.ticket-table-row > div{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 
 </style>
 <base target="_blank">
@@ -1388,6 +1433,12 @@ const i18n = {
     changelogV1_2:"v1.2 - Bildirim Sistemi",changelogV1_2Desc:"Gerçek zamanlı bildirim sistemi eklendi. Satın alma, onay ve satış bildirimleri anında ulaşıyor.",
     changelogV1_3:"v1.3 - Rozet Sistemi",changelogV1_3Desc:"Bronz, Gümüş, Altın ve Elmas rozetler eklendi. Puan kazanarak rozet yükseltebilirsiniz.",
     changelogV1_4:"v1.4 - Güvenli Ödeme",changelogV1_4Desc:"Güvenli ödeme onay ekranı eklendi. Test-Pi cüzdanı ile güvenli alım yapabilirsiniz.",
+    changelogV1_6:"v1.6 - Destek Talebi Sistemi",changelogV1_6Desc:"Uygulama içi destek/ticket sistemi eklendi. Kullanıcılar talep açıp yanıt yazabiliyor, admin talepleri anlık bildirimle görüp yönetebiliyor.",
+    changelogV1_6Item1:"Panelim ve Admin Panel içine 'Destek Talepleri' sekmesi eklendi — talep oluşturma, yanıtlama ve durum takibi tek ekranda",
+    changelogV1_6Item2:"Yeni destek talebi geldiğinde admin panelinde bildirim rozeti beliriyor, talep açılınca otomatik kayboluyor",
+    changelogV1_6Item3:"Talep durumu (Yeni/İnceleniyor/Yanıtlandı/Çözüldü) artık sayfa yenilemeden anında güncelleniyor",
+    changelogV1_6Item4:"Kullanıcılar kendi taleplerini, admin ise herhangi bir talebi kalıcı olarak silebiliyor",
+    changelogV1_6Item5:"Talep listesi kullanıcı/konu/tarih/durum bilgilerini net çizgilerle ayrılmış tablo düzeninde gösteriyor",
     changelogV1_5:"v1.5 - Arayüz ve Görsel İyileştirmeler",changelogV1_5Desc:"Arayüz ve çeşitli görsel iyileştirmeler yapıldı. Güvenli bağlantı bölümü yeniden düzenlendi, ikon konumlandırması optimize edildi, kullanıcı deneyimi geliştirildi.",
     changelogV1_5Item1:"Güvenli bağlantı bölümü tamamen yeniden tasarlandı — animasyonlu halka efektleri ve pulse glow eklendi",
     changelogV1_5Item2:"Yan menü, bildirimler ve kullanıcı paneli arayüzünde tutarlılık iyileştirmeleri yapıldı",
@@ -1468,10 +1519,11 @@ const i18n = {
     ticketAdminReply:"Yanıtla",
     ticketAdminClose:"Kapat",
     ticketAdminReopen:"Yeniden Aç",
-    ticketAdminAssign:"Üzerine Al",
-    ticketAdminUnassign:"Bırak",
-    ticketAssignedTo:"Atanan",
     ticketUnassigned:"Atanmamış",
+    ticketTableUser:"Kullanıcı",
+    ticketTableSubject:"Konu",
+    ticketTableDate:"Tarih",
+    ticketTableStatus:"Durum",
     ticketDeleteBtn:"Talebi Sil",
     ticketDeleteConfirm:"Bu destek talebini kalıcı olarak silmek istediğinize emin misiniz? Bu işlem geri alınamaz.",
     ticketDeleteSuccess:"Talep silindi.",
@@ -1608,6 +1660,12 @@ const i18n = {
     changelogV1_2:"v1.2 - Notification System",changelogV1_2Desc:"Real-time notification system added. Purchase, approval and sale notifications arrive instantly.",
     changelogV1_3:"v1.3 - Badge System",changelogV1_3Desc:"Bronze, Silver, Gold and Diamond badges added. Earn points to upgrade your badge.",
     changelogV1_4:"v1.4 - Secure Payment",changelogV1_4Desc:"Secure payment confirmation screen added. Make safe purchases with Test-Pi wallet.",
+    changelogV1_6:"v1.6 - Support Ticket System",changelogV1_6Desc:"In-app support/ticket system added. Users can open requests and reply, while admin can view and manage them with instant notifications.",
+    changelogV1_6Item1:"'Support Tickets' tab added to both My Panel and Admin Panel — create, reply, and track status in one screen",
+    changelogV1_6Item2:"A notification badge appears on the admin panel when a new ticket arrives, and disappears automatically once opened",
+    changelogV1_6Item3:"Ticket status (New/Reviewing/Answered/Resolved) now updates instantly without reloading the page",
+    changelogV1_6Item4:"Users can delete their own tickets, and admin can permanently delete any ticket",
+    changelogV1_6Item5:"Ticket list now shows user/subject/date/status in a clearly divided table layout",
     changelogV1_5:"v1.5 - UI & Visual Improvements",changelogV1_5Desc:"Interface and various visual improvements made. Secure connection section redesigned, icon positioning optimized, user experience enhanced.",
     changelogV1_5Item1:"Secure connection section fully redesigned — animated ring effects and pulse glow added",
     changelogV1_5Item2:"Consistency improvements across side menu, notifications and user panel interfaces",
@@ -1688,10 +1746,11 @@ const i18n = {
     ticketAdminReply:"Reply",
     ticketAdminClose:"Close",
     ticketAdminReopen:"Reopen",
-    ticketAdminAssign:"Assign to Me",
-    ticketAdminUnassign:"Unassign",
-    ticketAssignedTo:"Assigned to",
     ticketUnassigned:"Unassigned",
+    ticketTableUser:"User",
+    ticketTableSubject:"Subject",
+    ticketTableDate:"Date",
+    ticketTableStatus:"Status",
     ticketDeleteBtn:"Delete Ticket",
     ticketDeleteConfirm:"Are you sure you want to permanently delete this support ticket? This action cannot be undone.",
     ticketDeleteSuccess:"Ticket deleted.",
@@ -1807,6 +1866,7 @@ window.handleLogout=async function(){
     if(currentUser) try{await deleteDoc(doc(db,"active_users",currentUser));}catch(e){}
     stopNotifPolling();
     stopTicketBadgePolling();
+    stopUserTicketPolling();
     stopListeningToMyOwnSellRequests();
     currentUser=null;piAccessToken=null;isAuth=false;userFirstSeen=null;
     userProfile={points:0,badge:null};userSellRequests=[];userSoldDomains=[];userActiveListings=[];userTotalSpent=0;userTotalEarned=0;
@@ -1988,6 +2048,15 @@ function startTicketBadgePolling(){
 function stopTicketBadgePolling(){
     if(ticketBadgePollInterval){clearInterval(ticketBadgePollInterval);ticketBadgePollInterval=null;}
 }
+let userTicketPollInterval=null;
+function startUserTicketPolling(){
+    stopUserTicketPolling();
+    loadMyTickets();
+    userTicketPollInterval=setInterval(()=>{ loadMyTickets(); },12000);
+}
+function stopUserTicketPolling(){
+    if(userTicketPollInterval){clearInterval(userTicketPollInterval);userTicketPollInterval=null;}
+}
 window.toggleUserMenu=function(){
     const menu=document.getElementById('user-menu-dropdown');
     if(!menu)return;
@@ -2014,6 +2083,7 @@ window.openChangelogModal=function(){
     const list=document.getElementById('changelog-list');
     if(!list) return;
     const versions=[
+        {v:t('changelogV1_6'),items:[t('changelogV1_6Item1'),t('changelogV1_6Item2'),t('changelogV1_6Item3'),t('changelogV1_6Item4'),t('changelogV1_6Item5')],date:'2026-07-06',icon:'🎫',color:'#818cf8'},
         {v:t('changelogV1_5'),items:[t('changelogV1_5Item1'),t('changelogV1_5Item2'),t('changelogV1_5Item3')],date:'2026-07-04',icon:'✨',color:'#f59e0b'},
         {v:t('changelogV1_4'),items:[t('changelogV1_4Item1'),t('changelogV1_4Item2'),t('changelogV1_4Item3')],date:'2026-07-03',icon:'🛡️',color:'#10b981'},
         {v:t('changelogV1_3'),items:[t('changelogV1_3Item1'),t('changelogV1_3Item2'),t('changelogV1_3Item3')],date:'2026-06-28',icon:'💎',color:'#818cf8'},
@@ -2884,6 +2954,7 @@ window.loginWithPi = async function() {
             // ── 2. Bildirim ve admin kontrolleri (UI görünmeden önce) ─
             document.getElementById("notif-btn").style.visibility = "visible";
             startNotifPolling();
+            startUserTicketPolling();
 
             const isAdmin = currentUser === APP_CONFIG.adminUsername;
 
@@ -3241,6 +3312,18 @@ async function loadMyTickets() {
         if (result.success) {
             myTickets = result.tickets || [];
             renderTicketList();
+            // Açık olan bir talep detayı varsa, onu da sessizce tazele
+            // (durum "İnceleniyor"/"Yanıtlandı" gibi değiştiyse sayfa
+            // yenilemeden anında görünsün).
+            const detailModal = document.getElementById('ticket-detail-modal');
+            if (currentTicketId && detailModal && detailModal.style.display === 'flex') {
+                const stillExists = myTickets.find(tk => tk.id === currentTicketId);
+                if (stillExists) {
+                    openTicketDetail(currentTicketId);
+                } else {
+                    closeTicketDetailModal();
+                }
+            }
         }
     } catch (e) {
         console.error("Ticket listesi yüklenemedi:", e);
@@ -3577,22 +3660,24 @@ function renderAdminTicketList() {
         closed: t('ticketStatusClosed')
     };
 
-    container.innerHTML = `<div class="ticket-list">` + filtered.map(ticket => {
-        const created = ticket.createdAt ? new Date(ticket.createdAt).toLocaleDateString(locale, { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '-';
-        const user = ticket.username || ticket.createdBy || '?';
-        return `<div class="ticket-card status-${ticket.status}" onclick="renderAdminTicketDetail('${ticket.id}')">
-            <div class="ticket-card-header">
-                <span class="ticket-card-subject">${escapeHtml(ticket.subject)}</span>
-                <span class="ticket-status-badge status-badge-${ticket.status}">${statusMap[ticket.status]}</span>
-            </div>
-            <div class="ticket-card-meta">
-                <span>#${ticket.ticketNumber || ticket.id.slice(-6).toUpperCase()}</span>
-                <span>👤 @${user}</span>
-                <span>📅 ${created}</span>
-            </div>
-            <div class="ticket-card-preview">${escapeHtml(ticket.messages && ticket.messages[0] ? ticket.messages[0].text : '')}</div>
-        </div>`;
-    }).join('') + `</div>`;
+    container.innerHTML = `<div class="ticket-table">
+        <div class="ticket-table-header">
+            <div>${t('ticketTableUser')}</div>
+            <div>${t('ticketTableSubject')}</div>
+            <div>${t('ticketTableDate')}</div>
+            <div>${t('ticketTableStatus')}</div>
+        </div>
+        ${filtered.map(ticket => {
+            const created = ticket.createdAt ? new Date(ticket.createdAt).toLocaleDateString(locale, { day: '2-digit', month: '2-digit' }) + ' ' + new Date(ticket.createdAt).toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' }) : '-';
+            const user = ticket.username || ticket.createdBy || '?';
+            return `<div class="ticket-table-row" onclick="renderAdminTicketDetail('${ticket.id}')">
+                <div title="@${user}">@${user}</div>
+                <div title="${escapeHtml(ticket.subject)}">${escapeHtml(ticket.subject)}</div>
+                <div>${created}</div>
+                <div><span class="ticket-status-badge status-badge-${ticket.status}">${statusMap[ticket.status]}</span></div>
+            </div>`;
+        }).join('')}
+    </div>`;
 }
 
 window.adminFilterTickets = function(status) {
@@ -3631,7 +3716,6 @@ window.renderAdminTicketDetail = async function(ticketId) {
             <p><strong>📅</strong> ${ticket.createdAt ? new Date(ticket.createdAt).toLocaleDateString(locale) : '-'}</p>
             <p><strong>🏷️</strong> ${ticket.category}</p>
             <p><strong>🔔</strong> ${ticket.priority}</p>
-            <p><strong>👤</strong> ${t('ticketAssignedTo')}: ${ticket.assignedTo ? '@' + ticket.assignedTo : t('ticketUnassigned')}</p>
         </div>`;
 
     const messagesContainer = document.getElementById('admin-ticket-detail-messages');
@@ -3648,17 +3732,13 @@ window.renderAdminTicketDetail = async function(ticketId) {
         messagesContainer.innerHTML = '';
     }
 
-    // Admin actions
+    // Admin actions — durum değiştirme butonları (2 sütunlu düzenli grid)
     const actionsContainer = document.getElementById('admin-ticket-actions');
-    const statusButtons = ['new', 'reviewing', 'answered', 'resolved', 'closed'].map(s => 
+    const statusButtons = ['new', 'reviewing', 'answered', 'resolved', 'closed'].map(s =>
         `<button class="ticket-btn-status-${s} ${ticket.status === s ? 'active' : ''}" onclick="adminUpdateTicketStatus('${ticketId}', '${s}')">${statusMap[s]}</button>`
     ).join('');
 
-    const assignBtn = ticket.assignedTo === currentUser 
-        ? `<button onclick="adminAssignTicket('${ticketId}', false)" style="background:rgba(100,116,139,0.15);color:#94a3b8;border:1px solid rgba(100,116,139,0.3);">${t('ticketAdminUnassign')}</button>`
-        : `<button onclick="adminAssignTicket('${ticketId}', true)" style="background:rgba(99,102,241,0.15);color:#818cf8;border:1px solid rgba(99,102,241,0.3);">${t('ticketAdminAssign')}</button>`;
-
-    actionsContainer.innerHTML = statusButtons + assignBtn;
+    actionsContainer.innerHTML = statusButtons;
 
     setTimeout(() => { messagesContainer.scrollTop = messagesContainer.scrollHeight; }, 50);
     document.getElementById('admin-ticket-detail-modal').style.display = 'flex';
@@ -3713,27 +3793,6 @@ window.adminReplyTicket = async function() {
             renderAdminTicketDetail(currentTicketId);
         }
     } catch (e) { console.error("Admin yanıt hatası:", e); }
-};
-
-// ── ADMIN: Ticket ata/bırak ──────────────────────────────────────────
-window.adminAssignTicket = async function(ticketId, assign) {
-    try {
-        const r = await fetch('/api/approve', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                action: 'assign_ticket',
-                ticketId,
-                assign,
-                accessToken: piAccessToken
-            })
-        });
-        const result = await r.json();
-        if (result.success) {
-            await adminLoadTickets();
-            renderAdminTicketDetail(ticketId);
-        }
-    } catch (e) { console.error("Atama hatası:", e); }
 };
 
 // ── ADMIN: Ticket'ı kalıcı sil ─────────────────────────────────────────
