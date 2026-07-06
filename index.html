@@ -742,11 +742,13 @@
 /* Admin ticket tablosu — kullanıcı/konu/tarih/durum çizgili tablo */
 .ticket-table{display:flex;flex-direction:column;border:1px solid rgba(99,102,241,0.2);border-radius:10px;overflow:hidden;}
 .ticket-table-header{display:grid;grid-template-columns:0.9fr 1.5fr 0.85fr 0.9fr;gap:4px;padding:7px 8px;background:rgba(99,102,241,0.18);font-size:0.6em;font-weight:900;color:#a5b4fc;text-transform:uppercase;letter-spacing:0.3px;border-bottom:1.5px solid rgba(99,102,241,0.3);}
-.ticket-table-row{display:grid;grid-template-columns:0.9fr 1.5fr 0.85fr 0.9fr;gap:4px;padding:8px;font-size:0.68em;color:#e2e8f0;border-bottom:1px solid rgba(99,102,241,0.12);cursor:pointer;transition:background 0.15s;align-items:center;}
-.ticket-table-row:last-child{border-bottom:none;}
-.ticket-table-row:nth-child(even){background:rgba(15,23,42,0.4);}
-.ticket-table-row:hover{background:rgba(99,102,241,0.12);}
+.ticket-table-entry{cursor:pointer;transition:background 0.15s;border-bottom:1px solid rgba(99,102,241,0.12);}
+.ticket-table-entry:last-child{border-bottom:none;}
+.ticket-table-entry:nth-child(even){background:rgba(15,23,42,0.4);}
+.ticket-table-entry:hover{background:rgba(99,102,241,0.12);}
+.ticket-table-row{display:grid;grid-template-columns:0.9fr 1.5fr 0.85fr 0.9fr;gap:4px;padding:8px;font-size:0.68em;color:#e2e8f0;align-items:center;}
 .ticket-table-row > div{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.ticket-table-desc{margin:0 8px 8px 8px;padding:6px 8px;font-size:0.66em;color:#94a3b8;line-height:1.45;background:rgba(99,102,241,0.05);border:1px solid rgba(99,102,241,0.15);border-radius:6px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
 
 </style>
 <base target="_blank">
@@ -3768,11 +3770,15 @@ function renderAdminTicketList() {
         ${filtered.map(ticket => {
             const created = ticket.createdAt ? new Date(ticket.createdAt).toLocaleDateString(locale, { day: '2-digit', month: '2-digit' }) + ' ' + new Date(ticket.createdAt).toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' }) : '-';
             const user = ticket.username || ticket.createdBy || '?';
-            return `<div class="ticket-table-row" onclick="renderAdminTicketDetail('${ticket.id}')">
-                <div title="@${user}">@${user}</div>
-                <div title="${escapeHtml(ticket.subject)}">${escapeHtml(ticket.subject)}</div>
-                <div>${created}</div>
-                <div><span class="ticket-status-badge status-badge-${ticket.status}">${statusMap[ticket.status]}</span></div>
+            const firstMsg = ticket.messages && ticket.messages[0] ? ticket.messages[0].text : '';
+            return `<div class="ticket-table-entry" onclick="renderAdminTicketDetail('${ticket.id}')">
+                <div class="ticket-table-row">
+                    <div title="@${user}">@${user}</div>
+                    <div title="${escapeHtml(ticket.subject)}">${escapeHtml(ticket.subject)}</div>
+                    <div>${created}</div>
+                    <div><span class="ticket-status-badge status-badge-${ticket.status}">${statusMap[ticket.status]}</span></div>
+                </div>
+                ${firstMsg ? `<div class="ticket-table-desc">📝 ${escapeHtml(firstMsg)}</div>` : ''}
             </div>`;
         }).join('')}
     </div>`;
