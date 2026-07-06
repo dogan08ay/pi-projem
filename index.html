@@ -89,7 +89,7 @@
         .admin-tabs::-webkit-scrollbar{height:0;display:none;}
         .admin-tab-btn{background:linear-gradient(135deg,#1e1b4b 0%,#0f172a 100%);border:1.5px solid #4c1d95;color:#a5b4fc;padding:8px 3px;border-radius:8px;font-size:0.62em;text-align:center;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;white-space:normal;line-height:1.25;font-weight:800;cursor:pointer;transition:all 0.2s;box-shadow:0 2px 8px rgba(0,0,0,0.3);overflow:hidden;min-width:0;position:relative;min-height:44px;}
         .admin-tab-btn span[data-i18n]{overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;word-break:break-word;}
-        .admin-tab-btn.active{background:linear-gradient(135deg,rgba(99,102,241,0.25),rgba(129,140,248,0.15));border-color:#818cf8;color:#c7d2fe;box-shadow:0 0 12px rgba(99,102,241,0.4);}
+        .admin-tab-btn.active{background:linear-gradient(135deg,#6366f1 0%,#4338ca 100%);border-color:#c7d2fe;border-width:2px;color:#ffffff;box-shadow:0 0 0 2px rgba(199,210,254,0.55),0 4px 16px rgba(99,102,241,0.6);transform:translateY(-1px) scale(1.03);}
         .admin-tab-panel{display:none;}
         .admin-tab-panel.active{display:block;animation:card-rise 0.3s ease backwards;}
         .pending-badge{background:#ef4444;color:#fff;font-size:0.6em;font-weight:900;border-radius:8px;padding:1px 5px;flex-shrink:0;min-width:15px;text-align:center;line-height:1.3;position:absolute;top:3px;right:4px;box-shadow:0 0 6px rgba(239,68,68,0.6);}
@@ -454,15 +454,21 @@
 }
 
 .ticket-message-header {
-  font-size: 0.72em;
-  opacity: 0.8;
-  margin-bottom: 3px;
-  font-weight: 700;
+  font-size: 0.68em;
+  opacity: 0.9;
+  margin: -8px -12px 6px -12px;
+  padding: 5px 12px;
+  font-weight: 800;
+  background: rgba(0,0,0,0.18);
+  border-bottom: 1px solid rgba(255,255,255,0.12);
+  border-radius: 10px 10px 0 0;
 }
 
 .ticket-message-text {
   font-size: 0.88em;
   line-height: 1.5;
+  word-break: break-word;
+  overflow-wrap: anywhere;
 }
 
 .ticket-reply-area {
@@ -745,19 +751,24 @@
 }
 
 /* Admin ticket tablosu — kullanıcı/konu/tarih/durum çizgili tablo */
-.ticket-table{display:flex;flex-direction:column;border:1.5px solid rgba(129,140,248,0.45);border-radius:10px;overflow:hidden;box-shadow:0 4px 14px rgba(0,0,0,0.25);}
+.ticket-table{display:flex;flex-direction:column;border:1.5px solid rgba(129,140,248,0.45);border-radius:10px;overflow:hidden;box-shadow:0 4px 14px rgba(0,0,0,0.25);width:100%;box-sizing:border-box;}
 .ticket-table-header{display:grid;grid-template-columns:0.9fr 1.5fr 0.85fr 0.9fr;gap:0;padding:0;background:linear-gradient(180deg,rgba(99,102,241,0.35) 0%,rgba(99,102,241,0.22) 100%);font-size:0.6em;font-weight:900;color:#c7d2fe;text-transform:uppercase;letter-spacing:0.3px;border-bottom:2px solid rgba(129,140,248,0.55);}
-.ticket-table-header > div{padding:7px 8px;border-right:1.5px solid rgba(129,140,248,0.4);}
+.ticket-table-header > div{padding:7px 6px;border-right:1.5px solid rgba(129,140,248,0.4);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:center;}
+.ticket-table-header > div:nth-child(2){text-align:left;}
 .ticket-table-header > div:last-child{border-right:none;}
-.ticket-table-entry{cursor:pointer;transition:background 0.15s;border-bottom:1.5px solid rgba(99,102,241,0.35);border-left:4px solid var(--row-accent,rgba(99,102,241,0.5));}
+.ticket-table-entry{cursor:pointer;transition:background 0.15s;border-bottom:1.5px solid rgba(99,102,241,0.35);border-left:4px solid var(--row-accent,rgba(99,102,241,0.5));max-width:100%;}
 .ticket-table-entry:last-child{border-bottom:none;}
 .ticket-table-entry:nth-child(even){background:rgba(99,102,241,0.055);}
 .ticket-table-entry:nth-child(odd){background:rgba(15,23,42,0.35);}
 .ticket-table-entry:hover{background:rgba(99,102,241,0.18);}
-.ticket-table-row{display:grid;grid-template-columns:0.9fr 1.5fr 0.85fr 0.9fr;gap:0;padding:0;font-size:0.68em;color:#e2e8f0;align-items:stretch;}
-.ticket-table-row > div{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:8px;border-right:1.5px solid rgba(129,140,248,0.28);display:flex;align-items:center;}
+.ticket-table-row{display:grid;grid-template-columns:0.9fr 1.5fr 0.85fr 0.9fr;gap:0;padding:0;font-size:0.68em;color:#e2e8f0;align-items:stretch;width:100%;box-sizing:border-box;}
+.ticket-table-row > div{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:8px 6px;border-right:1.5px solid rgba(129,140,248,0.28);display:flex;align-items:center;justify-content:center;text-align:center;min-width:0;}
 .ticket-table-row > div:last-child{border-right:none;}
-.ticket-table-desc{margin:0 8px 8px 8px;padding:6px 8px;font-size:0.66em;color:#94a3b8;line-height:1.45;background:rgba(99,102,241,0.07);border:1px solid rgba(129,140,248,0.3);border-radius:6px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
+.ticket-table-row > div:nth-child(2){justify-content:flex-start;text-align:left;}
+.ticket-table-lastmsg{margin:0 8px 8px 8px;display:flex;flex-direction:column;}
+.ticket-table-lastmsg-title{font-size:0.6em;font-weight:800;color:#a5b4fc;background:rgba(99,102,241,0.16);border:1px solid rgba(129,140,248,0.4);border-bottom:none;border-radius:6px 6px 0 0;padding:5px 8px;display:flex;align-items:center;gap:4px;flex-wrap:wrap;text-align:left;}
+.ticket-table-lastmsg-from{color:#818cf8;font-weight:900;}
+.ticket-table-lastmsg-text{font-size:0.68em;color:#cbd5e1;line-height:1.5;background:rgba(15,23,42,0.55);border:1px solid rgba(129,140,248,0.25);border-radius:0 0 6px 6px;padding:7px 8px;text-align:left;word-break:break-word;overflow-wrap:anywhere;white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
 
 
 </style>
@@ -3849,15 +3860,18 @@ function renderAdminTicketList() {
             const lastMsgFromLabel = lastMsg ? (lastMsg.from === 'admin' ? ('👤 ' + t('ticketReplyFromAdmin')) : ('🗣️ @' + lastMsg.from)) : '';
             return `<div class="ticket-table-entry" style="--row-accent:${rowAccent};" onclick="renderAdminTicketDetail('${ticket.id}')">
                 <div class="ticket-table-row">
-                    <div title="@${user}">@${user}</div>
-                    <div title="${escapeHtml(ticket.subject)}" style="flex-direction:column;align-items:flex-start;gap:2px;">
-                        <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%;">${escapeHtml(ticket.subject)}</span>
+                    <div title="@${user}" style="min-width:0;overflow:hidden;text-overflow:ellipsis;">@${user}</div>
+                    <div title="${escapeHtml(ticket.subject)}" style="flex-direction:column;align-items:flex-start;gap:2px;min-width:0;overflow:hidden;">
+                        <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%;display:block;width:100%;">${escapeHtml(ticket.subject)}</span>
                         <span style="font-size:0.85em;font-weight:800;color:${pColor};white-space:nowrap;">🔔 ${pLabel}</span>
                     </div>
-                    <div>${created}</div>
-                    <div><span class="ticket-status-badge status-badge-${ticket.status}">${statusMap[ticket.status]}</span></div>
+                    <div style="min-width:0;overflow:hidden;text-overflow:ellipsis;">${created}</div>
+                    <div style="min-width:0;overflow:hidden;"><span class="ticket-status-badge status-badge-${ticket.status}">${statusMap[ticket.status]}</span></div>
                 </div>
-                ${lastMsgText ? `<div class="ticket-table-desc"><strong style="color:#818cf8;">📝 ${t('ticketLastMessageLabel')} (${lastMsgFromLabel}):</strong> ${escapeHtml(lastMsgText)}</div>` : ''}
+                ${lastMsgText ? `<div class="ticket-table-lastmsg">
+                    <div class="ticket-table-lastmsg-title">📝 ${t('ticketLastMessageLabel')} <span class="ticket-table-lastmsg-from">(${lastMsgFromLabel})</span></div>
+                    <div class="ticket-table-lastmsg-text">${escapeHtml(lastMsgText)}</div>
+                </div>` : ''}
             </div>`;
         }).join('')}
     </div>`;
