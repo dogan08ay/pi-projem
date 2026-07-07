@@ -916,6 +916,22 @@
 </style>
 </head>
 <body style="margin:0;padding:0;width:100%;min-width:320px;overflow-x:hidden;position:relative;box-sizing:border-box;">
+<!-- ═══════════════════════════════════════════════════════════════
+     GÜVEN / BİLGİLENDİRME EKRANI (İLK AÇILIŞ)
+     Uygulama satın alma ve cüzdan bağlantısı içerdiği için ilk ziyarette
+     kullanıcıya kısa bir güven mesajı gösterilir. Sadece ilk kez görülür
+     (localStorage'da flag varsa bir daha otomatik açılmaz); "Güvenlik
+     Bilgisi" rozeti üzerinden giriş ekranından her zaman tekrar açılabilir.
+     ═══════════════════════════════════════════════════════════════ -->
+<div id="trust-intro-modal" style="display:none;position:fixed;inset:0;z-index:100000;background:rgba(5,8,20,0.92);backdrop-filter:blur(6px);align-items:center;justify-content:center;padding:16px;box-sizing:border-box;">
+    <div style="width:100%;max-width:400px;background:linear-gradient(165deg,#0a0f1e 0%,#0f172a 30%,#1e1b4b 50%,#0f172a 70%,#0a0f1e 100%);border:1.5px solid rgba(99,102,241,0.3);border-radius:18px;padding:22px 20px;box-shadow:0 8px 32px rgba(0,0,0,0.5),0 0 20px rgba(99,102,241,0.15);max-height:90vh;overflow-y:auto;">
+        <div style="text-align:center;font-size:2.2em;margin-bottom:8px;">🛡️</div>
+        <div style="text-align:center;color:#c7d2fe;font-size:1.1em;font-weight:900;margin-bottom:12px;letter-spacing:0.3px;" data-i18n="trustIntroTitle"></div>
+        <div style="color:#e0e7ff;font-size:0.82em;line-height:1.7;font-weight:600;margin-bottom:14px;" data-i18n="trustIntroBody"></div>
+        <div style="color:#fbbf24;font-size:0.78em;font-weight:800;line-height:1.5;background:rgba(251,191,36,0.08);border:1px solid rgba(251,191,36,0.25);border-radius:8px;padding:8px 10px;margin-bottom:16px;" data-i18n="trustIntroWarning"></div>
+        <button onclick="window.closeTrustIntro()" style="width:100%;padding:12px;border:none;border-radius:10px;background:linear-gradient(135deg,#6366f1,#818cf8);color:#fff;font-weight:800;font-size:0.9em;cursor:pointer;box-shadow:0 4px 14px rgba(99,102,241,0.4);" data-i18n="trustIntroButton"></button>
+    </div>
+</div>
 <button id="tour-fab" onclick="window.startOnboardingTour()" title="Uygulama Turu" style="display:none;position:fixed;bottom:16px;right:14px;z-index:900;width:46px;height:46px;border-radius:50%;background:linear-gradient(135deg,#6366f1,#818cf8);border:2px solid rgba(255,255,255,0.25);box-shadow:0 6px 18px rgba(99,102,241,0.55);color:#fff;font-size:1.15em;font-weight:900;cursor:pointer;align-items:center;justify-content:center;animation:tour-fab-pulse 2.4s ease-in-out infinite;">?</button>
 <style>@keyframes tour-fab-pulse{0%,100%{box-shadow:0 6px 18px rgba(99,102,241,0.55);}50%{box-shadow:0 6px 26px rgba(99,102,241,0.9),0 0 0 6px rgba(99,102,241,0.15);}}</style>
 <div class="side-menu-overlay" id="side-menu-overlay" onclick="toggleSideMenu()"></div>
@@ -1456,6 +1472,7 @@
         </div>
         <div id="premium-lock" class="premium-lock-overlay">
 <div class="lock-title-box"><span data-i18n="joinWeb3"></span></div>
+<button onclick="window.openTrustInfo()" style="display:block;margin:0 auto 10px auto;padding:6px 14px;border-radius:20px;border:1.5px solid rgba(251,191,36,0.4);background:rgba(251,191,36,0.08);color:#fbbf24;font-size:0.68em;font-weight:800;cursor:pointer;letter-spacing:0.2px;" data-i18n="trustMiniBadge"></button>
             <div class="secure-badge" style="background:linear-gradient(165deg,#0a0f1e 0%,#0f172a 30%,#1e1b4b 50%,#0f172a 70%,#0a0f1e 100%);border:1.5px solid rgba(99,102,241,0.25);border-radius:16px;padding:20px 18px;box-shadow:0 4px 20px rgba(0,0,0,0.4),0 0 15px rgba(99,102,241,0.1),inset 0 1px 0 rgba(255,255,255,0.05);width:92%;margin:8px 0;backdrop-filter:blur(10px);">
             <div style="display:flex;justify-content:center;margin-bottom:12px;">
                 <div style="position:relative;width:110px;height:110px;">
@@ -1633,6 +1650,11 @@ const i18n = {
     newDomainPricePlaceholder:"Fiyat (Pİ)",newDomainImgPlaceholder:"Görsel yolu (opsiyonel)",
     availableDomains:"Satın Alabileceğiniz Domainler",filterAll:"Hepsi",
     joinWeb3:"Ayrıcalıklı Web3 Dünyasına Katılın",secureConnection:"Güvenli Bağlantı",
+    trustIntroTitle:"Devam Etmeden Önce Bilgilendirme",
+    trustIntroBody:"Bu uygulama, Pi Network üzerinden domain alım-satımı yapılan bir Web3 pazar yeridir. Cüzdanınızı bağladığınızda özel anahtarınız, şifreniz veya seed ifadeniz <b>asla</b> istenmez ya da saklanmaz — bağlantı tamamen resmi Pi SDK üzerinden, sizin onayınızla gerçekleşir.",
+    trustIntroWarning:"⚠️ Sistemimiz şu anda TEST-Pİ ağında çalışmaktadır. Gerçek Pi bakiyeniz kesinlikle kullanılmaz.",
+    trustIntroButton:"Anladım, Devam Et",
+    trustMiniBadge:"🛡️ Güvenlik ve Gizlilik Bilgisi",
     testNetBadgeBody:"<span style=\"white-space:nowrap;\">Sistemimiz şu anda <span class=\"blink-yellow\">TEST-Pİ</span> ağında çalışmaktadır.</span>",
     testNetWarning:"<span class=\"blink-yellow\">GERÇEK Pİ BAKİYENİZ KESİNLİKLE<br>KULLANILMAZ!</span>",
     connectPrompt:"Web3 domain sahibi olmak ve güvenli bağlantı kurmak için,",useButton:"👇 aşağıdaki Pi ile Bağlan butonunu kullanın.",
@@ -1904,6 +1926,11 @@ const i18n = {
     newDomainPricePlaceholder:"Price (PI)",newDomainImgPlaceholder:"Image path (optional)",
     availableDomains:"Domains Available for Purchase",filterAll:"All",
     joinWeb3:"Join the Exclusive Web3 World",secureConnection:"Secure Connection",
+    trustIntroTitle:"Before You Continue",
+    trustIntroBody:"This app is a Web3 marketplace for buying and selling domains via Pi Network. When you connect your wallet, your private key, password, or seed phrase is <b>never</b> requested or stored — the connection happens entirely through the official Pi SDK, with your approval.",
+    trustIntroWarning:"⚠️ Our system currently runs on the TEST-PI network. Your real Pi balance will never be used.",
+    trustIntroButton:"Got it, Continue",
+    trustMiniBadge:"🛡️ Security & Privacy Info",
     testNetBadgeBody:"<span style=\"white-space:nowrap;\">Our system runs on <span class=\"blink-yellow\">TEST-PI</span> network.</span>",
     testNetWarning:"<span class=\"blink-yellow\">YOUR REAL PI BALANCE<br>WILL NOT BE USED!</span>",
     connectPrompt:"To own a Web3 domain and establish a secure connection,",useButton:"👇 use the Connect with Pi button below.",
@@ -3669,6 +3696,22 @@ function debouncedRender(){clearTimeout(renderTimeout);renderTimeout=setTimeout(
 // durumuyla (aşağıdaki "domain-list-loading" göstergesi).
 domains.forEach(d=>{if(!domainData[d.name]) domainData[d.name]={sold:false,price:d.price};});
 applyTranslations();
+
+// ── GÜVEN / BİLGİLENDİRME EKRANI ──────────────────────────────────────
+// Sadece ilk ziyarette otomatik açılır (localStorage flag kontrolüyle);
+// login ekranındaki "🛡️ Güvenlik ve Gizlilik Bilgisi" rozeti üzerinden
+// istenildiğinde tekrar açılabilir.
+window.closeTrustIntro = function(){
+    localStorage.setItem('w3dg_trust_intro_seen','1');
+    document.getElementById('trust-intro-modal').style.display='none';
+};
+window.openTrustInfo = function(){
+    document.getElementById('trust-intro-modal').style.display='flex';
+};
+if(!localStorage.getItem('w3dg_trust_intro_seen')){
+    document.getElementById('trust-intro-modal').style.display='flex';
+}
+
 let firstDomainsSnapshotReceived=false;
 window.addEventListener("load",()=>{
     configReady.then(()=>applyConfigToDOM());setInterval(updateActiveStatus,15000);document.querySelector('.main-scroll').style.maxHeight='calc(100vh - 50px)';});
