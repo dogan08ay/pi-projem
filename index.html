@@ -1639,6 +1639,10 @@ const i18n = {
     profileLoginRequired:"Profili görmek için önce Pi ile bağlanmalısınız.",
     sellLoginRequired:"Domain satışa çıkarmak için önce Pi ile bağlanmalısınız.",
     domainNamePriceRequired:"Domain adı ve geçerli bir fiyat girin.",
+    domainNameRequiredWarn:"Lütfen bir domain adı girin.",
+    domainNameMustEndPi:"Domain adı '.pi' ile bitmelidir. Örnek: ornek.pi",
+    descriptionRequiredWarn:"Lütfen domain hakkında kısa bir açıklama yazın.",
+    imageRequiredWarn:"Lütfen bir domain görseli seçin.",
     sellSubmitSuccess:"Domain öneriniz admin onayına gönderildi!",
     sellSubmitFail:"Gönderim başarısız: ",sellSubmitError:"Bir hata oluştu.",
     approveConfirm:"Bu domain önerisini onaylamak istediğinize emin misiniz?",
@@ -1892,6 +1896,10 @@ const i18n = {
     profileLoginRequired:"You must connect with Pi first to view your profile.",
     sellLoginRequired:"You must connect with Pi first to list a domain.",
     domainNamePriceRequired:"Please enter a domain name and a valid price.",
+    domainNameRequiredWarn:"Please enter a domain name.",
+    domainNameMustEndPi:"Domain name must end with '.pi'. Example: example.pi",
+    descriptionRequiredWarn:"Please write a short description about the domain.",
+    imageRequiredWarn:"Please select a domain image.",
     sellSubmitSuccess:"Your domain has been sent for admin approval!",
     sellSubmitFail:"Submission failed: ",sellSubmitError:"An error occurred.",
     approveConfirm:"Are you sure you want to approve this domain?",
@@ -2262,13 +2270,52 @@ window.openSellDomainModal=function(){
     document.getElementById('sell-domain-modal').style.display='flex';
     if(document.getElementById('side-menu').classList.contains('open')) toggleSideMenu();
 };
+function highlightInvalidField(el, message){
+    if(!el) { alert(message); return; }
+    alert(message);
+    el.style.border='2px solid #ef4444';
+    el.style.boxShadow='0 0 0 3px rgba(239,68,68,0.25)';
+    el.scrollIntoView({behavior:'smooth', block:'center'});
+    try{ el.focus(); }catch(e){}
+    clearTimeout(el._invalidFieldTimeout);
+    el._invalidFieldTimeout = setTimeout(()=>{ el.style.border=''; el.style.boxShadow=''; }, 5000);
+}
+
 window.handleSubmitSellRequest=async function(){
-    const name=document.getElementById('sell-domain-name').value.trim();
+    const nameInput=document.getElementById('sell-domain-name');
+    const descInput=document.getElementById('sell-domain-desc');
+    const name=nameInput.value.trim();
     const price=Number(document.getElementById('sell-domain-price').value);
     const type=document.getElementById('sell-domain-type').value;
-    const desc=document.getElementById('sell-domain-desc').value.trim();
+    const desc=descInput.value.trim();
     const wallet=document.getElementById('sell-domain-wallet').value.trim();
-    if(!name||!price||price<=0){alert(t('domainNamePriceRequired'));return;}
+
+    // Alan bazlı doğrulama — eksik/hatalı olan alana net bir uyarı gösterip yönlendirir
+    if(!name){
+        highlightInvalidField(nameInput, t('domainNameRequiredWarn'));
+        return;
+    }
+    if(!/\.pi$/i.test(name)){
+        highlightInvalidField(nameInput, t('domainNameMustEndPi'));
+        return;
+    }
+    if(!price||price<=0){
+        alert(t('domainNamePriceRequired'));
+        document.getElementById('sell-domain-price')?.focus();
+        return;
+    }
+    if(!desc){
+        highlightInvalidField(descInput, t('descriptionRequiredWarn'));
+        return;
+    }
+    const isEditMode0 = !!window._editingRejectedRequestId;
+    const hasExistingImage = isEditMode0 && window._editingRejectedRequestOldImg;
+    if(!selectedImageBase64 && !hasExistingImage){
+        alert(t('imageRequiredWarn'));
+        document.querySelector('.img-upload-area')?.scrollIntoView({behavior:'smooth', block:'center'});
+        return;
+    }
+
     let imgUrl='assets/default.jpeg';
     if(selectedImageBase64){
         const hint=document.getElementById('img-upload-hint');
@@ -3626,7 +3673,7 @@ window.openLink = function(url, isExternal) {
 //  sayfa hiç terk edilmiyor.
 // ═══════════════════════════════════════════════════════════════════════
 const legalPageCache = {};
-async function openLegalModal(type) {
+window.openLegalModal = async function openLegalModal(type) {
     const url = type === 'privacy' ? 'privacy.html' : 'terms.html';
     const titleMap = {
         privacy: { tr: 'GİZLİLİK POLİTİKASI', en: 'PRIVACY POLICY' },
@@ -3689,66 +3736,67 @@ function tourFinish() {
 
 function tourReposition() {
     if (!tourEls) return;
-    const step = TOUR_STEPS[tourStepIndex];
-    const target = document.querySelector(step.selector);
-    if (!target) { tourNextStep(); return; }
-    const rect = target.getBoundingClientRect();
-    const vh = window.innerHeight, vw = window.innerWidth;
+    try {
+        const step = TOUR_STEPS[tourStepIndex];
+        const target = document.querySelector(step.selector);
+        if (!target) return;
+        const rect = target.getBoundingClientRect();
+        const vh = window.innerHeight, vw = window.innerWidth;
+        const pad = 6;
 
-    // Hedef görünür değilse veya boyutsuzsa (henüz render olmamış / ekran dışında)
-    // turu güvenle sonlandır — karanlık overlay'in ekranda asılı kalmasını önler.
-    if (rect.width < 10 || rect.height < 10 || rect.bottom < 0 || rect.top > vh) {
-        tourFinish();
-        return;
+        // Çok uzun elementlerde (ör. domain listesi) spotlight'ı görünür alanla sınırla
+        const visTop = Math.max(rect.top, 0);
+        const visBottom = Math.min(rect.bottom, vh);
+        const clampedHeight = Math.max(40, Math.min(rect.height, visBottom - visTop || rect.height));
+
+        Object.assign(tourEls.highlight.style, {
+            top: (visTop - pad) + 'px',
+            left: (rect.left - pad) + 'px',
+            width: (rect.width + pad * 2) + 'px',
+            height: (clampedHeight + pad * 2) + 'px'
+        });
+
+        const tooltip = tourEls.tooltip;
+        let top, left = Math.min(Math.max(12, rect.left), vw - 292);
+        const anchorTop = visTop, anchorBottom = visTop + clampedHeight;
+        if (step.placement === 'bottom') {
+            top = anchorBottom + 14;
+        } else {
+            top = anchorTop - 14 - tooltip.offsetHeight;
+        }
+        // Ekran dışına taşarsa yönü çevir
+        if (top < 8) top = anchorBottom + 14;
+        if (top + tooltip.offsetHeight > vh - 8) top = Math.max(8, anchorTop - 14 - tooltip.offsetHeight);
+        Object.assign(tooltip.style, { top: top + 'px', left: left + 'px' });
+    } catch (e) {
+        console.error('Tour reposition hatası:', e);
+        tourCleanup();
     }
-
-    const pad = 6;
-    // Çok uzun elementlerde (ör. domain listesi) spotlight'ı görünür alanla sınırla
-    const visTop = Math.max(rect.top, 0);
-    const visBottom = Math.min(rect.bottom, vh);
-    const clampedHeight = Math.min(rect.height, Math.max(120, visBottom - visTop));
-
-    Object.assign(tourEls.highlight.style, {
-        top: (visTop - pad) + 'px',
-        left: (rect.left - pad) + 'px',
-        width: (rect.width + pad * 2) + 'px',
-        height: (clampedHeight + pad * 2) + 'px'
-    });
-
-    const tooltip = tourEls.tooltip;
-    let top, left = Math.min(Math.max(12, rect.left), vw - 292);
-    const anchorTop = visTop, anchorBottom = visTop + clampedHeight;
-    if (step.placement === 'bottom') {
-        top = anchorBottom + 14;
-    } else {
-        top = anchorTop - 14 - tooltip.offsetHeight;
-    }
-    // Ekran dışına taşarsa yönü çevir
-    if (top < 8) top = anchorBottom + 14;
-    if (top + tooltip.offsetHeight > vh - 8) top = Math.max(8, anchorTop - 14 - tooltip.offsetHeight);
-    Object.assign(tooltip.style, { top: top + 'px', left: left + 'px' });
 }
 
 function tourRenderStep() {
-    const step = TOUR_STEPS[tourStepIndex];
-    const target = document.querySelector(step.selector);
-    if (!target) { tourNextStep(); return; }
-    const rect = target.getBoundingClientRect();
-    if (rect.width < 10 || rect.height < 10) { tourNextStep(); return; }
+    try {
+        const step = TOUR_STEPS[tourStepIndex];
+        const target = document.querySelector(step.selector);
+        if (!target) { tourNextStep(); return; }
 
-    const isLast = tourStepIndex === TOUR_STEPS.length - 1;
-    const dots = TOUR_STEPS.map((_, i) => `<div class="tour-dot ${i === tourStepIndex ? 'active' : ''}"></div>`).join('');
+        const isLast = tourStepIndex === TOUR_STEPS.length - 1;
+        const dots = TOUR_STEPS.map((_, i) => `<div class="tour-dot ${i === tourStepIndex ? 'active' : ''}"></div>`).join('');
 
-    tourEls.tooltip.innerHTML = `
-        <h4>${t(step.titleKey)}</h4>
-        <p>${t(step.descKey)}</p>
-        <div class="tour-dots">${dots}</div>
-        <div class="tour-actions">
-            <button class="tour-skip" onclick="event.stopPropagation();window.tourFinish()">${t('tourSkip')}</button>
-            <button class="tour-next" onclick="event.stopPropagation();window.tourNextStep()">${isLast ? t('tourFinish') : t('tourNext')}</button>
-        </div>`;
+        tourEls.tooltip.innerHTML = `
+            <h4>${t(step.titleKey)}</h4>
+            <p>${t(step.descKey)}</p>
+            <div class="tour-dots">${dots}</div>
+            <div class="tour-actions">
+                <button class="tour-skip" onclick="event.stopPropagation();window.tourFinish()">${t('tourSkip')}</button>
+                <button class="tour-next" onclick="event.stopPropagation();window.tourNextStep()">${isLast ? t('tourFinish') : t('tourNext')}</button>
+            </div>`;
 
-    requestAnimationFrame(tourReposition);
+        requestAnimationFrame(tourReposition);
+    } catch (e) {
+        console.error('Tour render hatası:', e);
+        tourCleanup();
+    }
 }
 
 window.tourNextStep = function() {
@@ -3759,14 +3807,12 @@ window.tourNextStep = function() {
 window.tourFinish = tourFinish;
 
 function startOnboardingTour() {
-    // Hedef elementlerden en az biri yoksa turu başlatma (ör. giriş yapılmamış)
-    const firstTarget = document.querySelector(TOUR_STEPS[0].selector);
-    if (!firstTarget) return;
-    const firstRect = firstTarget.getBoundingClientRect();
-    // İlk hedef henüz render olmadıysa (0 boyut) turu başlatma — karanlık ekran riskini önle
-    if (firstRect.width < 10 || firstRect.height < 10) return;
-
+    // Her ihtimale karşı, önceki (varsa asılı kalmış) tur elementlerini temizle
     tourCleanup();
+
+    // Hedef elementlerden en az biri yoksa turu başlatma (ör. giriş yapılmamış)
+    if (!document.querySelector(TOUR_STEPS[0].selector)) return;
+
     tourStepIndex = 0;
 
     const overlay = document.createElement('div');
@@ -3795,6 +3841,7 @@ function maybeStartOnboardingTour() {
         requestAnimationFrame(() => requestAnimationFrame(startOnboardingTour));
     }, 900);
 }
+
 
 
 // ═══════════════════════════════════════════════════════════════════════
