@@ -932,6 +932,7 @@
         <button onclick="window.closeTrustIntro()" style="width:100%;padding:12px;border:none;border-radius:10px;background:linear-gradient(135deg,#6366f1,#818cf8);color:#fff;font-weight:800;font-size:0.9em;cursor:pointer;box-shadow:0 4px 14px rgba(99,102,241,0.4);" data-i18n="trustIntroButton"></button>
     </div>
 </div>
+<button id="trust-fab" onclick="window.openTrustInfo()" title="Güvenlik ve Gizlilik Bilgisi" style="position:fixed;bottom:16px;left:14px;z-index:900;width:46px;height:46px;border-radius:50%;background:linear-gradient(135deg,#f59e0b,#fbbf24);border:2px solid rgba(255,255,255,0.25);box-shadow:0 6px 18px rgba(245,158,11,0.55);color:#1e1b4b;font-size:1.3em;font-weight:900;cursor:pointer;display:flex;align-items:center;justify-content:center;animation:tour-fab-pulse 2.4s ease-in-out infinite;">🛡️</button>
 <button id="tour-fab" onclick="window.startOnboardingTour()" title="Uygulama Turu" style="display:none;position:fixed;bottom:16px;right:14px;z-index:900;width:46px;height:46px;border-radius:50%;background:linear-gradient(135deg,#6366f1,#818cf8);border:2px solid rgba(255,255,255,0.25);box-shadow:0 6px 18px rgba(99,102,241,0.55);color:#fff;font-size:1.15em;font-weight:900;cursor:pointer;align-items:center;justify-content:center;animation:tour-fab-pulse 2.4s ease-in-out infinite;">?</button>
 <style>@keyframes tour-fab-pulse{0%,100%{box-shadow:0 6px 18px rgba(99,102,241,0.55);}50%{box-shadow:0 6px 26px rgba(99,102,241,0.9),0 0 0 6px rgba(99,102,241,0.15);}}</style>
 <div class="side-menu-overlay" id="side-menu-overlay" onclick="toggleSideMenu()"></div>
@@ -1476,7 +1477,6 @@
         </div>
         <div id="premium-lock" class="premium-lock-overlay">
 <div class="lock-title-box"><span data-i18n="joinWeb3"></span></div>
-<button onclick="window.openTrustInfo()" style="display:block;margin:0 auto 10px auto;padding:6px 14px;border-radius:20px;border:1.5px solid rgba(251,191,36,0.4);background:rgba(251,191,36,0.08);color:#fbbf24;font-size:0.68em;font-weight:800;cursor:pointer;letter-spacing:0.2px;" data-i18n="trustMiniBadge"></button>
             <div class="secure-badge" style="background:linear-gradient(165deg,#0a0f1e 0%,#0f172a 30%,#1e1b4b 50%,#0f172a 70%,#0a0f1e 100%);border:1.5px solid rgba(99,102,241,0.25);border-radius:16px;padding:20px 18px;box-shadow:0 4px 20px rgba(0,0,0,0.4),0 0 15px rgba(99,102,241,0.1),inset 0 1px 0 rgba(255,255,255,0.05);width:92%;margin:8px 0;backdrop-filter:blur(10px);">
             <div style="display:flex;justify-content:center;margin-bottom:12px;">
                 <div style="position:relative;width:110px;height:110px;">
@@ -3704,18 +3704,21 @@ domains.forEach(d=>{if(!domainData[d.name]) domainData[d.name]={sold:false,price
 applyTranslations();
 
 // ── GÜVEN / BİLGİLENDİRME EKRANI ──────────────────────────────────────
-// Sadece ilk ziyarette otomatik açılır (localStorage flag kontrolüyle);
-// login ekranındaki "🛡️ Güvenlik ve Gizlilik Bilgisi" rozeti üzerinden
-// istenildiğinde tekrar açılabilir.
+// Kimseyi zorla karşılamıyoruz: sol-alt köşedeki 🛡️ baloncuğu her zaman
+// orada duruyor, isteyen tıklayıp bilgiyi okuyor, istemeyen direkt
+// "Pi ile Bağlan"a basıp devam edebiliyor. Baloncuk ilk kez tıklanana kadar
+// dikkat çekmek için hafifçe "nabız" gibi atıyor; bir kez açıldıktan sonra
+// (localStorage flag) sakinleşiyor ama buton kalıcı olarak erişilebilir kalıyor.
 window.closeTrustIntro = function(){
-    localStorage.setItem('w3dg_trust_intro_seen','1');
     document.getElementById('trust-intro-modal').style.display='none';
 };
 window.openTrustInfo = function(){
     document.getElementById('trust-intro-modal').style.display='flex';
+    localStorage.setItem('w3dg_trust_intro_seen','1');
+    document.getElementById('trust-fab')?.style.setProperty('animation','none');
 };
-if(!localStorage.getItem('w3dg_trust_intro_seen')){
-    document.getElementById('trust-intro-modal').style.display='flex';
+if(localStorage.getItem('w3dg_trust_intro_seen')){
+    document.getElementById('trust-fab')?.style.setProperty('animation','none');
 }
 
 let firstDomainsSnapshotReceived=false;
