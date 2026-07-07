@@ -801,6 +801,13 @@
 .ticket-table-lastmsg-from{color:#f472b6;font-weight:900;}
 .ticket-table-lastmsg-text{font-size:0.7em;color:#f1f5f9;font-weight:600;line-height:1.5;background:rgba(15,23,42,0.75);border:1px solid rgba(196,181,253,0.4);border-radius:0 0 6px 6px;padding:7px 8px;text-align:left;word-break:break-word;overflow-wrap:anywhere;white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
 
+/* Kullanıcı panelindeki destek talebi tablosu — admin tablosuyla aynı görünüm,
+   ama 'kullanıcı' sütunu yok (zaten kendi talepleri); onun yerine son hareket
+   tarihi/saati ve toplam mesaj sayısı ekstra bir bilgi şeridi olarak ekleniyor. */
+.ticket-table-header.uview,.ticket-table-row.uview{grid-template-columns:1.6fr 0.95fr 0.85fr;}
+.ticket-table-extra{margin:0 8px 8px 8px;display:flex;gap:6px;flex-wrap:wrap;}
+.ticket-table-extra-chip{font-size:0.62em;font-weight:800;color:#a5b4fc;background:rgba(99,102,241,0.14);border:1px solid rgba(99,102,241,0.35);border-radius:6px;padding:4px 8px;display:flex;align-items:center;gap:4px;white-space:nowrap;}
+
 /* ═══════════════════════════════════════════════════════════════════
    MOBİL UYUMLULUK — çok küçük telefonlar ve tabletler için ek kurallar
    Not: mevcut yapı zaten minmax(0,1fr) ve min-width:0 kullanıyor,
@@ -1811,6 +1818,8 @@ const i18n = {
     ticketTableSubject:"Konu",
     ticketTableDate:"Tarih",
     ticketTableStatus:"Durum",
+    ticketLastActivityLabel:"Son Hareket",
+    ticketTotalMessagesLabel:"Toplam Mesaj",
     ticketDeleteBtn:"Talebi Sil",
     ticketDeleteConfirm:"Bu destek talebini kalıcı olarak silmek istediğinize emin misiniz? Bu işlem geri alınamaz.",
     ticketDeleteSuccess:"Talep silindi.",
@@ -2068,6 +2077,8 @@ const i18n = {
     ticketTableSubject:"Subject",
     ticketTableDate:"Date",
     ticketTableStatus:"Status",
+    ticketLastActivityLabel:"Last Activity",
+    ticketTotalMessagesLabel:"Total Messages",
     ticketDeleteBtn:"Delete Ticket",
     ticketDeleteConfirm:"Are you sure you want to permanently delete this support ticket? This action cannot be undone.",
     ticketDeleteSuccess:"Ticket deleted.",
@@ -3940,42 +3951,50 @@ function renderTicketList() {
         resolved: t('ticketStatusResolved'),
         closed: t('ticketStatusClosed')
     };
-    const priorityClass = { low: 'priority-low', normal: 'priority-normal', high: 'priority-high', urgent: 'priority-urgent' };
-    const priorityLabel = { low: t('ticketPriorityLow'), normal: t('ticketPriorityNormal'), high: t('ticketPriorityHigh'), urgent: t('ticketPriorityUrgent') };
+    const statusColor = {
+        new: '#3b82f6',
+        reviewing: '#f59e0b',
+        answered: '#a855f7',
+        resolved: '#10b981',
+        closed: '#ef4444'
+    };
 
-    container.innerHTML = `<div class="ticket-list">` + myTickets.map(ticket => {
-        const created = ticket.createdAt ? new Date(ticket.createdAt).toLocaleDateString(locale, { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '-';
-        const lastUpdate = ticket.lastUpdate ? new Date(ticket.lastUpdate).toLocaleDateString(locale, { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : created;
-        const replyCount = ticket.messages ? ticket.messages.length - 1 : 0;
-        const lastMsg = ticket.messages && ticket.messages.length ? ticket.messages[ticket.messages.length - 1] : null;
-        const isLastFromAdmin = lastMsg && lastMsg.from === 'admin';
-        const preview = lastMsg ? lastMsg.text : '';
-        const previewAccent = isLastFromAdmin ? '#818cf8' : '#64748b';
-        const previewLabel = isLastFromAdmin ? ('👤 ' + t('ticketReplyFromAdmin')) : ('🗣️ ' + t('ticketReplyFromYou'));
+    container.innerHTML = `<div class="ticket-table">
+        <div class="ticket-table-header uview">
+            <div>${t('ticketTableSubject')}</div>
+            <div>${t('ticketTableDate')}</div>
+            <div>${t('ticketTableStatus')}</div>
+        </div>
+        ${myTickets.map(ticket => {
+            const created = ticket.createdAt ? new Date(ticket.createdAt).toLocaleDateString(locale, { day: '2-digit', month: '2-digit' }) + ' ' + new Date(ticket.createdAt).toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' }) : '-';
+            const lastUpdate = ticket.lastUpdate ? new Date(ticket.lastUpdate).toLocaleDateString(locale, { day: '2-digit', month: '2-digit' }) + ' ' + new Date(ticket.lastUpdate).toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' }) : created;
+            const totalMessages = ticket.messages ? ticket.messages.length : 0;
+            const rowAccent = statusColor[ticket.status] || '#6366f1';
+            const lastMsg = ticket.messages && ticket.messages.length ? ticket.messages[ticket.messages.length - 1] : null;
+            const lastMsgText = lastMsg ? lastMsg.text : '';
+            const isLastFromAdmin = lastMsg && lastMsg.from === 'admin';
+            const lastMsgFromLabel = lastMsg ? (isLastFromAdmin ? ('👤 ' + t('ticketReplyFromAdmin')) : ('🗣️ ' + t('ticketReplyFromYou'))) : '';
 
-        return `<div class="ticket-card status-${ticket.status}" onclick="openTicketDetail('${ticket.id}')">
-            <div class="ticket-card-header">
-                <div class="ticket-card-subject-box">
-                    <span class="ticket-card-subject-label">📌 ${t('ticketSubjectLabel')}:</span>
-                    <span class="ticket-card-subject">${escapeHtml(ticket.subject)}</span>
+            return `<div class="ticket-table-entry" style="--row-accent:${rowAccent};" onclick="openTicketDetail('${ticket.id}')">
+                <div class="ticket-table-row uview">
+                    <div title="${escapeHtml(ticket.subject)}" style="flex-direction:column;align-items:flex-start;gap:2px;min-width:0;overflow:hidden;">
+                        <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%;display:block;width:100%;">📌 ${escapeHtml(ticket.subject)}</span>
+                        <span style="font-size:0.85em;font-weight:800;color:#818cf8;white-space:nowrap;">🔑 #${ticket.ticketNumber || ticket.id.slice(-6).toUpperCase()}</span>
+                    </div>
+                    <div style="min-width:0;overflow:hidden;text-overflow:ellipsis;">${created}</div>
+                    <div style="min-width:0;overflow:hidden;"><span class="ticket-status-badge status-badge-${ticket.status}">${statusMap[ticket.status] || ticket.status}</span></div>
                 </div>
-                <span class="ticket-status-badge status-badge-${ticket.status}">${statusMap[ticket.status] || ticket.status}</span>
-            </div>
-            <div class="ticket-card-meta">
-                <span class="ticket-chip">🔑 #${ticket.ticketNumber || ticket.id.slice(-6).toUpperCase()}</span>
-                <span class="ticket-chip">📅 ${created}</span>
-                <span class="ticket-chip">💬 ${replyCount} ${t('ticketReplies')}</span>
-            </div>
-            <div class="ticket-card-preview-box" style="--preview-accent:${previewAccent};">
-                <div class="ticket-card-preview-label">${previewLabel}</div>
-                <div class="ticket-card-preview">${escapeHtml(preview)}</div>
-            </div>
-            <div class="ticket-card-footer">
-                <span class="ticket-priority ${priorityClass[ticket.priority] || 'priority-normal'}">${priorityLabel[ticket.priority] || ticket.priority}</span>
-                <span class="ticket-card-time">🔄 ${lastUpdate}</span>
-            </div>
-        </div>`;
-    }).join('') + `</div>`;
+                ${lastMsgText ? `<div class="ticket-table-lastmsg">
+                    <div class="ticket-table-lastmsg-title">📝 ${t('ticketLastMessageLabel')} <span class="ticket-table-lastmsg-from">(${lastMsgFromLabel})</span></div>
+                    <div class="ticket-table-lastmsg-text">${escapeHtml(lastMsgText)}</div>
+                </div>` : ''}
+                <div class="ticket-table-extra">
+                    <span class="ticket-table-extra-chip">🔄 ${t('ticketLastActivityLabel')}: ${lastUpdate}</span>
+                    <span class="ticket-table-extra-chip">💬 ${t('ticketTotalMessagesLabel')}: ${totalMessages}</span>
+                </div>
+            </div>`;
+        }).join('')}
+    </div>`;
 }
 
 function escapeHtml(text) {
