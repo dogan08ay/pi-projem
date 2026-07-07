@@ -235,6 +235,21 @@
   box-shadow: 0 0 10px rgba(99,102,241,0.3);
 }
 
+.ticket-filter-count {
+  display: inline-block;
+  margin-left: 4px;
+  padding: 0 5px;
+  border-radius: 8px;
+  background: rgba(255,255,255,0.18);
+  font-size: 0.92em;
+  font-weight: 800;
+}
+
+.ticket-filter-btn:not(.active) .ticket-filter-count {
+  background: rgba(99,102,241,0.18);
+  color: #a5b4fc;
+}
+
 .ticket-list {
   display: flex;
   flex-direction: column;
@@ -801,6 +816,8 @@
 .ticket-table-lastmsg-title{font-size:0.62em;font-weight:900;color:#fbbf24;background:linear-gradient(90deg,rgba(139,92,246,0.28) 0%,rgba(236,72,153,0.2) 100%);border:1px solid rgba(196,181,253,0.55);border-bottom:none;border-radius:6px 6px 0 0;padding:5px 8px;display:flex;align-items:center;gap:4px;flex-wrap:wrap;text-align:left;letter-spacing:0.2px;}
 .ticket-table-lastmsg-from{color:#f472b6;font-weight:900;}
 .ticket-table-lastmsg-text{font-size:0.7em;color:#f1f5f9;font-weight:600;line-height:1.5;background:rgba(15,23,42,0.75);border:1px solid rgba(196,181,253,0.4);border-radius:0 0 6px 6px;padding:7px 8px;text-align:left;word-break:break-word;overflow-wrap:anywhere;white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
+.ticket-table-metabar{margin:0 8px 8px 8px;display:flex;gap:6px;flex-wrap:wrap;}
+.ticket-table-metachip{font-size:0.6em;font-weight:800;color:#94a3b8;background:rgba(99,102,241,0.12);border:1px solid rgba(129,140,248,0.3);border-radius:6px;padding:3px 7px;display:inline-flex;align-items:center;gap:3px;}
 
 /* ═══════════════════════════════════════════════════════════════════
    MOBİL UYUMLULUK — çok küçük telefonlar ve tabletler için ek kurallar
@@ -1402,14 +1419,13 @@
             <div style="background:#0a0f1e;border:2px solid #6366f1;border-radius:12px;padding:10px;">
                 <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;padding-bottom:7px;border-bottom:1px solid #312e81;"><span>🎫</span><span style="font-size:0.72em;color:#a5b4fc;font-weight:800;text-transform:uppercase;" data-i18n="ticketManagement"></span></div>
                 <div class="ticket-admin-filters" id="ticket-admin-filters">
-                    <button class="ticket-filter-btn active" data-status="all" onclick="adminFilterTickets('all')" data-i18n="ticketFilterAll">Tümü</button>
-                    <button class="ticket-filter-btn" data-status="new" onclick="adminFilterTickets('new')" data-i18n="ticketFilterNew">Yeni</button>
-                    <button class="ticket-filter-btn" data-status="reviewing" onclick="adminFilterTickets('reviewing')" data-i18n="ticketFilterReviewing">İnceleniyor</button>
-                    <button class="ticket-filter-btn" data-status="answered" onclick="adminFilterTickets('answered')" data-i18n="ticketFilterAnswered">Yanıtlandı</button>
-                    <button class="ticket-filter-btn" data-status="resolved" onclick="adminFilterTickets('resolved')" data-i18n="ticketFilterResolved">Çözüldü</button>
-                    <button class="ticket-filter-btn" data-status="closed" onclick="adminFilterTickets('closed')" data-i18n="ticketFilterClosed">Kapatıldı</button>
+                    <button class="ticket-filter-btn active" data-status="all" onclick="adminFilterTickets('all')">Tümü</button>
+                    <button class="ticket-filter-btn" data-status="new" onclick="adminFilterTickets('new')">Yeni</button>
+                    <button class="ticket-filter-btn" data-status="reviewing" onclick="adminFilterTickets('reviewing')">İnceleniyor</button>
+                    <button class="ticket-filter-btn" data-status="answered" onclick="adminFilterTickets('answered')">Yanıtlandı</button>
+                    <button class="ticket-filter-btn" data-status="resolved" onclick="adminFilterTickets('resolved')">Çözüldü</button>
+                    <button class="ticket-filter-btn" data-status="closed" onclick="adminFilterTickets('closed')">Kapatıldı</button>
                 </div>
-                <div class="ticket-admin-stats" id="ticket-admin-stats"></div>
                 <div id="ticket-admin-list">
                     <div class="skeleton-ticket-row"><div class="skeleton" style="width:34px;height:34px;border-radius:8px;"></div><div style="flex:1;"><div class="skeleton skeleton-line" style="width:60%;margin:0 0 6px 0;"></div><div class="skeleton skeleton-line" style="width:35%;height:8px;margin:0;"></div></div></div>
                     <div class="skeleton-ticket-row"><div class="skeleton" style="width:34px;height:34px;border-radius:8px;"></div><div style="flex:1;"><div class="skeleton skeleton-line" style="width:52%;margin:0 0 6px 0;"></div><div class="skeleton skeleton-line" style="width:30%;height:8px;margin:0;"></div></div></div>
@@ -1813,6 +1829,9 @@ const i18n = {
     ticketTableSubject:"Konu",
     ticketTableDate:"Tarih",
     ticketTableStatus:"Durum",
+    ticketTableCode:"Kod",
+    ticketMetaLastActivity:"Son Hareket",
+    ticketMetaTotalMessages:"Toplam Mesaj",
     ticketDeleteBtn:"Talebi Sil",
     ticketDeleteConfirm:"Bu destek talebini kalıcı olarak silmek istediğinize emin misiniz? Bu işlem geri alınamaz.",
     ticketDeleteSuccess:"Talep silindi.",
@@ -1830,6 +1849,14 @@ const i18n = {
     tourStep3Desc:"Domain onayı, satış ve destek talebi güncellemeleri gibi bildirimleriniz burada birikir.",
     tourStep4Title:"Destek Talepleri",
     tourStep4Desc:"Bir sorununuz mu var? Buradan destek talebi açıp ekibimizle doğrudan yazışabilirsiniz.",
+    tourStepOverviewTitle:"Genel Panel",
+    tourStepOverviewDesc:"Hesap özetinizi, bakiyenizi ve genel istatistiklerinizi burada tek bakışta görürsünüz.",
+    tourStepPurchasesTitle:"Alımlarım",
+    tourStepPurchasesDesc:"Satın aldığınız tüm domainlerin listesine ve durumlarına buradan ulaşabilirsiniz.",
+    tourStepIncomeTitle:"Gelirim",
+    tourStepIncomeDesc:"Domain satışlarınızdan elde ettiğiniz geliri ve ödeme geçmişinizi burada takip edersiniz.",
+    tourStepListingsTitle:"İlan Verme",
+    tourStepListingsDesc:"Domainlerinizi satışa çıkarabilir ve mevcut ilanlarınızı buradan yönetebilirsiniz.",
     tourNext:"İleri",
     tourFinish:"Anladım",
     tourSkip:"Geç",
@@ -2072,6 +2099,9 @@ const i18n = {
     ticketTableSubject:"Subject",
     ticketTableDate:"Date",
     ticketTableStatus:"Status",
+    ticketTableCode:"Code",
+    ticketMetaLastActivity:"Last Activity",
+    ticketMetaTotalMessages:"Total Messages",
     ticketDeleteBtn:"Delete Ticket",
     ticketDeleteConfirm:"Are you sure you want to permanently delete this support ticket? This action cannot be undone.",
     ticketDeleteSuccess:"Ticket deleted.",
@@ -2089,6 +2119,14 @@ const i18n = {
     tourStep3Desc:"Updates about approvals, sales, and support tickets show up here.",
     tourStep4Title:"Support Tickets",
     tourStep4Desc:"Have an issue? Open a support ticket here and chat directly with our team.",
+    tourStepOverviewTitle:"Overview",
+    tourStepOverviewDesc:"See your account summary, balance, and overall stats here at a glance.",
+    tourStepPurchasesTitle:"My Purchases",
+    tourStepPurchasesDesc:"Find the list and status of every domain you've bought here.",
+    tourStepIncomeTitle:"My Income",
+    tourStepIncomeDesc:"Track the income from your domain sales and your payment history here.",
+    tourStepListingsTitle:"My Listings",
+    tourStepListingsDesc:"List your domains for sale and manage your existing listings here.",
     tourNext:"Next",
     tourFinish:"Got it",
     tourSkip:"Skip",
@@ -2113,7 +2151,7 @@ function applyTranslations() {
         if(statusTextEl) statusTextEl.textContent=t('connectedPrefix')+currentUser;
     }
 }
-window.setLang=function(lang){ currentLang=lang; localStorage.setItem('w3dg_lang',lang); applyTranslations(); debouncedRender(); document.getElementById('lang-picker').style.display='none'; };
+window.setLang=function(lang){ currentLang=lang; localStorage.setItem('w3dg_lang',lang); applyTranslations(); debouncedRender(); if(typeof adminTickets!=='undefined'&&adminTickets.length) renderAdminTicketList(); if(typeof myTickets!=='undefined'&&myTickets.length) renderTicketList(); document.getElementById('lang-picker').style.display='none'; };
 // STATE
 let currentUser=null,piAccessToken=null,isAuth=false;
 let domainData={},pendingDomain=null,pendingPrice=0;
@@ -3711,7 +3749,11 @@ const TOUR_STEPS = [
     { selector: '#domain-list', titleKey: 'tourStep1Title', descKey: 'tourStep1Desc', placement: 'top' },
     { selector: '#hamburger-btn', titleKey: 'tourStep2Title', descKey: 'tourStep2Desc', placement: 'bottom' },
     { selector: '#notif-btn', titleKey: 'tourStep3Title', descKey: 'tourStep3Desc', placement: 'bottom' },
-    { selector: '[data-utab="utab-tickets"]', titleKey: 'tourStep4Title', descKey: 'tourStep4Desc', placement: 'top' }
+    { selector: '[data-utab="utab-overview"]', titleKey: 'tourStepOverviewTitle', descKey: 'tourStepOverviewDesc', placement: 'top', before: () => window.switchUserTab && window.switchUserTab('utab-overview') },
+    { selector: '[data-utab="utab-purchases"]', titleKey: 'tourStepPurchasesTitle', descKey: 'tourStepPurchasesDesc', placement: 'top', before: () => window.switchUserTab && window.switchUserTab('utab-purchases') },
+    { selector: '[data-utab="utab-income"]', titleKey: 'tourStepIncomeTitle', descKey: 'tourStepIncomeDesc', placement: 'top', before: () => window.switchUserTab && window.switchUserTab('utab-income') },
+    { selector: '[data-utab="utab-listings"]', titleKey: 'tourStepListingsTitle', descKey: 'tourStepListingsDesc', placement: 'top', before: () => window.switchUserTab && window.switchUserTab('utab-listings') },
+    { selector: '[data-utab="utab-tickets"]', titleKey: 'tourStep4Title', descKey: 'tourStep4Desc', placement: 'top', before: () => window.switchUserTab && window.switchUserTab('utab-tickets') }
 ];
 let tourStepIndex = 0;
 let tourEls = null;
@@ -3807,6 +3849,7 @@ async function tourRenderStep() {
     if (!tourEls) return; // bu arada tur kapatılmış olabilir (ör. skip)
     tourEnsurePrereqs();
     const step = TOUR_STEPS[tourStepIndex];
+    if (typeof step.before === 'function') { try { step.before(); } catch (e) {} }
     const stepIndexAtStart = tourStepIndex;
     // Hedefi anında aramak yerine, hazır olması için kısa süre bekle.
     // Önceki mantık hedefi bulamayınca ANINDA bir sonraki adıma atlıyordu; bu da
@@ -3985,42 +4028,52 @@ function renderTicketList() {
         resolved: t('ticketStatusResolved'),
         closed: t('ticketStatusClosed')
     };
-    const priorityClass = { low: 'priority-low', normal: 'priority-normal', high: 'priority-high', urgent: 'priority-urgent' };
+    const statusColor = {
+        new: '#3b82f6', reviewing: '#f59e0b', answered: '#a855f7', resolved: '#10b981', closed: '#ef4444'
+    };
     const priorityLabel = { low: t('ticketPriorityLow'), normal: t('ticketPriorityNormal'), high: t('ticketPriorityHigh'), urgent: t('ticketPriorityUrgent') };
+    const priorityColor = { low: '#10b981', normal: '#fbbf24', high: '#ef4444', urgent: '#b91c1c' };
 
-    container.innerHTML = `<div class="ticket-list">` + myTickets.map(ticket => {
-        const created = ticket.createdAt ? new Date(ticket.createdAt).toLocaleDateString(locale, { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '-';
-        const lastUpdate = ticket.lastUpdate ? new Date(ticket.lastUpdate).toLocaleDateString(locale, { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : created;
-        const replyCount = ticket.messages ? ticket.messages.length - 1 : 0;
-        const lastMsg = ticket.messages && ticket.messages.length ? ticket.messages[ticket.messages.length - 1] : null;
-        const isLastFromAdmin = lastMsg && lastMsg.from === 'admin';
-        const preview = lastMsg ? lastMsg.text : '';
-        const previewAccent = isLastFromAdmin ? '#818cf8' : '#64748b';
-        const previewLabel = isLastFromAdmin ? ('👤 ' + t('ticketReplyFromAdmin')) : ('🗣️ ' + t('ticketReplyFromYou'));
-
-        return `<div class="ticket-card status-${ticket.status}" onclick="openTicketDetail('${ticket.id}')">
-            <div class="ticket-card-header">
-                <div class="ticket-card-subject-box">
-                    <span class="ticket-card-subject-label">📌 ${t('ticketSubjectLabel')}:</span>
-                    <span class="ticket-card-subject">${escapeHtml(ticket.subject)}</span>
+    // Admin panelindeki liste görünümüyle aynı tablo stilini kullanıyoruz;
+    // ek olarak "son hareket" ve "toplam mesaj sayısı" bilgilerini extra chip olarak ekliyoruz.
+    container.innerHTML = `<div class="ticket-table">
+        <div class="ticket-table-header">
+            <div>${t('ticketTableCode')}</div>
+            <div>${t('ticketTableSubject')}</div>
+            <div>${t('ticketTableDate')}</div>
+            <div>${t('ticketTableStatus')}</div>
+        </div>
+        ${myTickets.map(ticket => {
+            const created = ticket.createdAt ? new Date(ticket.createdAt).toLocaleDateString(locale, { day: '2-digit', month: '2-digit' }) + ' ' + new Date(ticket.createdAt).toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' }) : '-';
+            const lastUpdate = ticket.lastUpdate ? new Date(ticket.lastUpdate).toLocaleDateString(locale, { day: '2-digit', month: '2-digit' }) + ' ' + new Date(ticket.lastUpdate).toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' }) : created;
+            const totalMsgCount = ticket.messages ? ticket.messages.length : 0;
+            const pColor = priorityColor[ticket.priority] || '#6366f1';
+            const pLabel = priorityLabel[ticket.priority] || ticket.priority || '-';
+            const rowAccent = statusColor[ticket.status] || '#6366f1';
+            const lastMsg = ticket.messages && ticket.messages.length ? ticket.messages[ticket.messages.length - 1] : null;
+            const lastMsgText = lastMsg ? lastMsg.text : '';
+            const lastMsgFromLabel = lastMsg ? (lastMsg.from === 'admin' ? ('👤 ' + t('ticketReplyFromAdmin')) : ('🗣️ ' + t('ticketReplyFromYou'))) : '';
+            return `<div class="ticket-table-entry" style="--row-accent:${rowAccent};" onclick="openTicketDetail('${ticket.id}')">
+                <div class="ticket-table-row">
+                    <div title="#${ticket.ticketNumber || ticket.id.slice(-6).toUpperCase()}" style="min-width:0;overflow:hidden;text-overflow:ellipsis;">🔑 #${ticket.ticketNumber || ticket.id.slice(-6).toUpperCase()}</div>
+                    <div title="${escapeHtml(ticket.subject)}" style="flex-direction:column;align-items:flex-start;gap:2px;min-width:0;overflow:hidden;">
+                        <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%;display:block;width:100%;">${escapeHtml(ticket.subject)}</span>
+                        <span style="font-size:0.85em;font-weight:800;color:${pColor};white-space:nowrap;">🔔 ${pLabel}</span>
+                    </div>
+                    <div style="min-width:0;overflow:hidden;text-overflow:ellipsis;">${created}</div>
+                    <div style="min-width:0;overflow:hidden;"><span class="ticket-status-badge status-badge-${ticket.status}">${statusMap[ticket.status] || ticket.status}</span></div>
                 </div>
-                <span class="ticket-status-badge status-badge-${ticket.status}">${statusMap[ticket.status] || ticket.status}</span>
-            </div>
-            <div class="ticket-card-meta">
-                <span class="ticket-chip">🔑 #${ticket.ticketNumber || ticket.id.slice(-6).toUpperCase()}</span>
-                <span class="ticket-chip">📅 ${created}</span>
-                <span class="ticket-chip">💬 ${replyCount} ${t('ticketReplies')}</span>
-            </div>
-            <div class="ticket-card-preview-box" style="--preview-accent:${previewAccent};">
-                <div class="ticket-card-preview-label">${previewLabel}</div>
-                <div class="ticket-card-preview">${escapeHtml(preview)}</div>
-            </div>
-            <div class="ticket-card-footer">
-                <span class="ticket-priority ${priorityClass[ticket.priority] || 'priority-normal'}">${priorityLabel[ticket.priority] || ticket.priority}</span>
-                <span class="ticket-card-time">🔄 ${lastUpdate}</span>
-            </div>
-        </div>`;
-    }).join('') + `</div>`;
+                ${lastMsgText ? `<div class="ticket-table-lastmsg">
+                    <div class="ticket-table-lastmsg-title">📝 ${t('ticketLastMessageLabel')} <span class="ticket-table-lastmsg-from">(${lastMsgFromLabel})</span></div>
+                    <div class="ticket-table-lastmsg-text">${escapeHtml(lastMsgText)}</div>
+                </div>` : ''}
+                <div class="ticket-table-metabar">
+                    <span class="ticket-table-metachip">🔄 ${t('ticketMetaLastActivity')}: ${lastUpdate}</span>
+                    <span class="ticket-table-metachip">💬 ${t('ticketMetaTotalMessages')}: ${totalMsgCount}</span>
+                </div>
+            </div>`;
+        }).join('')}
+    </div>`;
 }
 
 function escapeHtml(text) {
@@ -4284,26 +4337,25 @@ async function markTicketsSeen() {
 // ── ADMIN: Ticket listesini render et ─────────────────────────────────
 function renderAdminTicketList() {
     const container = document.getElementById('ticket-admin-list');
-    const statsContainer = document.getElementById('ticket-admin-stats');
     if (!container) return;
 
-    // Stats
+    // Durum sayaçlarını artık ayrı bir satırda tekrarlamak yerine,
+    // doğrudan ilgili filtre butonunun içine yerleştiriyoruz (tek, sade satır).
     const counts = { new: 0, reviewing: 0, answered: 0, resolved: 0, closed: 0 };
-    adminTickets.forEach(t => { counts[t.status] = (counts[t.status] || 0) + 1; });
-
-    if (statsContainer) {
-        statsContainer.innerHTML = `
-            <span class="ticket-stat-badge new">${t('ticketStatusNew')}: ${counts.new}</span>
-            <span class="ticket-stat-badge reviewing">${t('ticketStatusReviewing')}: ${counts.reviewing}</span>
-            <span class="ticket-stat-badge answered">${t('ticketStatusAnswered')}: ${counts.answered}</span>
-            <span class="ticket-stat-badge resolved">${t('ticketStatusResolved')}: ${counts.resolved}</span>
-            <span class="ticket-stat-badge closed">${t('ticketStatusClosed')}: ${counts.closed}</span>
-        `;
-    }
+    adminTickets.forEach(tk => { counts[tk.status] = (counts[tk.status] || 0) + 1; });
+    const filterLabels = {
+        all: t('ticketFilterAll'), new: t('ticketFilterNew'), reviewing: t('ticketFilterReviewing'),
+        answered: t('ticketFilterAnswered'), resolved: t('ticketFilterResolved'), closed: t('ticketFilterClosed')
+    };
+    document.querySelectorAll('#ticket-admin-filters .ticket-filter-btn').forEach(btn => {
+        const st = btn.dataset.status;
+        const count = st === 'all' ? adminTickets.length : (counts[st] || 0);
+        btn.innerHTML = `${filterLabels[st] || st}<span class="ticket-filter-count">${count}</span>`;
+    });
 
     let filtered = adminTickets;
     if (adminTicketFilter !== 'all') {
-        filtered = adminTickets.filter(t => t.status === adminTicketFilter);
+        filtered = adminTickets.filter(tk => tk.status === adminTicketFilter);
     }
 
     if (!filtered.length) {
@@ -4340,6 +4392,8 @@ function renderAdminTicketList() {
         </div>
         ${filtered.map(ticket => {
             const created = ticket.createdAt ? new Date(ticket.createdAt).toLocaleDateString(locale, { day: '2-digit', month: '2-digit' }) + ' ' + new Date(ticket.createdAt).toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' }) : '-';
+            const lastUpdate = ticket.lastUpdate ? new Date(ticket.lastUpdate).toLocaleDateString(locale, { day: '2-digit', month: '2-digit' }) + ' ' + new Date(ticket.lastUpdate).toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' }) : created;
+            const totalMsgCount = ticket.messages ? ticket.messages.length : 0;
             const user = ticket.username || ticket.createdBy || '?';
             const pColor = priorityColor[ticket.priority] || '#6366f1';
             const pLabel = priorityLabel[ticket.priority] || ticket.priority || '-';
@@ -4361,6 +4415,10 @@ function renderAdminTicketList() {
                     <div class="ticket-table-lastmsg-title">📝 ${t('ticketLastMessageLabel')} <span class="ticket-table-lastmsg-from">(${lastMsgFromLabel})</span></div>
                     <div class="ticket-table-lastmsg-text">${escapeHtml(lastMsgText)}</div>
                 </div>` : ''}
+                <div class="ticket-table-metabar">
+                    <span class="ticket-table-metachip">🔄 ${t('ticketMetaLastActivity')}: ${lastUpdate}</span>
+                    <span class="ticket-table-metachip">💬 ${t('ticketMetaTotalMessages')}: ${totalMsgCount}</span>
+                </div>
             </div>`;
         }).join('')}
     </div>`;
