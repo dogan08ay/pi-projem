@@ -114,6 +114,7 @@
         .filter-chip{flex-shrink:0;background:#2a3a52;border:1.5px solid #3f5575;color:#cbd5e1;padding:3px 8px;border-radius:12px;font-size:0.65em;font-weight:700;cursor:pointer;transition:all 0.15s;}
         .filter-chip.active{background:linear-gradient(135deg,#6366f1,#818cf8);border-color:#818cf8;color:#fff;box-shadow:0 0 10px rgba(99,102,241,0.4);}
         .sell-form-input{background:#0f172a;color:#fff;border:1.5px solid #f59e0b;padding:5px;border-radius:6px;font-size:0.8em;width:100%;box-sizing:border-box;outline:none;margin-bottom:4px;}
+        .sell-form-input.field-error, .img-upload-area.field-error{border-color:#ef4444 !important;box-shadow:0 0 0 2px rgba(239,68,68,0.35);}
         .admin-date-picker{background:#0f172a;color:#fff;border:1.5px solid #6366f1;padding:4px;border-radius:6px;font-size:0.8em;margin-bottom:5px;width:100%;box-sizing:border-box;outline:none;}
         .pending-domain-item{background:#1c1917;border:2px solid #f59e0b;border-radius:9px;padding:6px;margin-bottom:8px;text-align:left;}
         #log-list{max-height:85px;overflow-y:auto;}
@@ -801,13 +802,6 @@
 .ticket-table-lastmsg-from{color:#f472b6;font-weight:900;}
 .ticket-table-lastmsg-text{font-size:0.7em;color:#f1f5f9;font-weight:600;line-height:1.5;background:rgba(15,23,42,0.75);border:1px solid rgba(196,181,253,0.4);border-radius:0 0 6px 6px;padding:7px 8px;text-align:left;word-break:break-word;overflow-wrap:anywhere;white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
 
-/* Kullanıcı panelindeki destek talebi tablosu — admin tablosuyla aynı görünüm,
-   ama 'kullanıcı' sütunu yok (zaten kendi talepleri); onun yerine son hareket
-   tarihi/saati ve toplam mesaj sayısı ekstra bir bilgi şeridi olarak ekleniyor. */
-.ticket-table-header.uview,.ticket-table-row.uview{grid-template-columns:1.6fr 0.95fr 0.85fr;}
-.ticket-table-extra{margin:0 8px 8px 8px;display:flex;gap:6px;flex-wrap:wrap;}
-.ticket-table-extra-chip{font-size:0.62em;font-weight:800;color:#a5b4fc;background:rgba(99,102,241,0.14);border:1px solid rgba(99,102,241,0.35);border-radius:6px;padding:4px 8px;display:flex;align-items:center;gap:4px;white-space:nowrap;}
-
 /* ═══════════════════════════════════════════════════════════════════
    MOBİL UYUMLULUK — çok küçük telefonlar ve tabletler için ek kurallar
    Not: mevcut yapı zaten minmax(0,1fr) ve min-width:0 kullanıyor,
@@ -1022,9 +1016,9 @@
         <h2 style="color:#fbbf24;margin:4px 0 2px 0;font-size:1.1em;font-weight:900;" data-i18n="listDomainTitle"></h2>
         <div style="font-size:0.72em;color:#94a3b8;" data-i18n="listDomainSubtitle"></div></div>
         <label style="font-size:0.72em;color:#cbd5e1;font-weight:700;" data-i18n="domainName"></label>
-        <input type="text" id="sell-domain-name" class="sell-form-input" data-i18n-placeholder="domainNamePlaceholder">
+        <input type="text" id="sell-domain-name" class="sell-form-input" data-i18n-placeholder="domainNamePlaceholder" oninput="this.classList.remove('field-error')">
         <label style="font-size:0.72em;color:#cbd5e1;font-weight:700;" data-i18n="priceLabel"></label>
-        <input type="number" id="sell-domain-price" class="sell-form-input" placeholder="100">
+        <input type="number" id="sell-domain-price" class="sell-form-input" placeholder="100" oninput="this.classList.remove('field-error')">
         <label style="font-size:0.72em;color:#cbd5e1;font-weight:700;" data-i18n="domainType"></label>
         <select id="sell-domain-type" class="sell-form-input">
             <option value="genel" data-i18n="typeGeneral"></option>
@@ -1040,7 +1034,7 @@
             <option value="diger" data-i18n="typeOther"></option>
         </select>
         <label style="font-size:0.72em;color:#cbd5e1;font-weight:700;" data-i18n="descriptionLabel"></label>
-        <textarea id="sell-domain-desc" class="sell-form-input" rows="2" style="resize:none;" data-i18n-placeholder="descriptionPlaceholder"></textarea>
+        <textarea id="sell-domain-desc" class="sell-form-input" rows="2" style="resize:none;" data-i18n-placeholder="descriptionPlaceholder" oninput="this.classList.remove('field-error')"></textarea>
         <label style="font-size:0.72em;color:#cbd5e1;font-weight:700;" data-i18n="imageUploadLabel"></label>
         <div class="img-upload-area" onclick="document.getElementById('sell-img-input').click()">
             <div id="img-upload-hint" data-i18n="imageUploadHint"></div>
@@ -1646,10 +1640,11 @@ const i18n = {
     profileLoginRequired:"Profili görmek için önce Pi ile bağlanmalısınız.",
     sellLoginRequired:"Domain satışa çıkarmak için önce Pi ile bağlanmalısınız.",
     domainNamePriceRequired:"Domain adı ve geçerli bir fiyat girin.",
-    domainNameRequiredWarn:"Lütfen bir domain adı girin.",
-    domainNameMustEndPi:"Domain adı '.pi' ile bitmelidir. Örnek: ornek.pi",
-    descriptionRequiredWarn:"Lütfen domain hakkında kısa bir açıklama yazın.",
-    imageRequiredWarn:"Lütfen bir domain görseli seçin.",
+    errDomainNameRequired:"Lütfen bir domain adı girin.",
+    errDomainNeedsPiSuffix:"Domain adı \".pi\" ile bitmelidir. Örnek: ornek.pi",
+    errPriceRequired:"Lütfen geçerli bir fiyat girin (0'dan büyük).",
+    errDescriptionRequired:"Lütfen domain için kısa bir açıklama yazın.",
+    errImageRequired:"Lütfen domain için bir görsel seçin.",
     sellSubmitSuccess:"Domain öneriniz admin onayına gönderildi!",
     sellSubmitFail:"Gönderim başarısız: ",sellSubmitError:"Bir hata oluştu.",
     approveConfirm:"Bu domain önerisini onaylamak istediğinize emin misiniz?",
@@ -1818,8 +1813,6 @@ const i18n = {
     ticketTableSubject:"Konu",
     ticketTableDate:"Tarih",
     ticketTableStatus:"Durum",
-    ticketLastActivityLabel:"Son Hareket",
-    ticketTotalMessagesLabel:"Toplam Mesaj",
     ticketDeleteBtn:"Talebi Sil",
     ticketDeleteConfirm:"Bu destek talebini kalıcı olarak silmek istediğinize emin misiniz? Bu işlem geri alınamaz.",
     ticketDeleteSuccess:"Talep silindi.",
@@ -1841,6 +1834,7 @@ const i18n = {
     tourFinish:"Anladım",
     tourSkip:"Geç",
     tourReplay:"Uygulama Turu",
+    tourNotReady:"Uygulama turu şu anda başlatılamadı. Lütfen sayfanın tamamen yüklenmesini bekleyip tekrar deneyin.",
   },
   en: {
     menu:"Menu",account:"Account",preferences:"Preferences",connected:"Connected",
@@ -1905,10 +1899,11 @@ const i18n = {
     profileLoginRequired:"You must connect with Pi first to view your profile.",
     sellLoginRequired:"You must connect with Pi first to list a domain.",
     domainNamePriceRequired:"Please enter a domain name and a valid price.",
-    domainNameRequiredWarn:"Please enter a domain name.",
-    domainNameMustEndPi:"Domain name must end with '.pi'. Example: example.pi",
-    descriptionRequiredWarn:"Please write a short description about the domain.",
-    imageRequiredWarn:"Please select a domain image.",
+    errDomainNameRequired:"Please enter a domain name.",
+    errDomainNeedsPiSuffix:"The domain name must end with \".pi\". Example: example.pi",
+    errPriceRequired:"Please enter a valid price (greater than 0).",
+    errDescriptionRequired:"Please write a short description for the domain.",
+    errImageRequired:"Please select an image for the domain.",
     sellSubmitSuccess:"Your domain has been sent for admin approval!",
     sellSubmitFail:"Submission failed: ",sellSubmitError:"An error occurred.",
     approveConfirm:"Are you sure you want to approve this domain?",
@@ -2077,8 +2072,6 @@ const i18n = {
     ticketTableSubject:"Subject",
     ticketTableDate:"Date",
     ticketTableStatus:"Status",
-    ticketLastActivityLabel:"Last Activity",
-    ticketTotalMessagesLabel:"Total Messages",
     ticketDeleteBtn:"Delete Ticket",
     ticketDeleteConfirm:"Are you sure you want to permanently delete this support ticket? This action cannot be undone.",
     ticketDeleteSuccess:"Ticket deleted.",
@@ -2100,6 +2093,7 @@ const i18n = {
     tourFinish:"Got it",
     tourSkip:"Skip",
     tourReplay:"App Tour",
+    tourNotReady:"The app tour couldn't start right now. Please wait for the page to fully load and try again.",
   }
 };
 let currentLang = localStorage.getItem('w3dg_lang') || 'tr';
@@ -2271,6 +2265,7 @@ window.handleImageSelect=function(event){
         selectedImageBase64=result.split(',')[1]; selectedImageMime=file.type; selectedImageName=file.name;
         const preview=document.getElementById('sell-img-preview');
         preview.src=result; preview.style.display='block';
+        document.querySelector('#sell-domain-modal .img-upload-area')?.classList.remove('field-error');
     };
     reader.readAsDataURL(file);
 };
@@ -2281,51 +2276,40 @@ window.openSellDomainModal=function(){
     document.getElementById('sell-domain-modal').style.display='flex';
     if(document.getElementById('side-menu').classList.contains('open')) toggleSideMenu();
 };
-function highlightInvalidField(el, message){
-    if(!el) { alert(message); return; }
-    alert(message);
-    el.style.border='2px solid #ef4444';
-    el.style.boxShadow='0 0 0 3px rgba(239,68,68,0.25)';
-    el.scrollIntoView({behavior:'smooth', block:'center'});
-    try{ el.focus(); }catch(e){}
-    clearTimeout(el._invalidFieldTimeout);
-    el._invalidFieldTimeout = setTimeout(()=>{ el.style.border=''; el.style.boxShadow=''; }, 5000);
+// Formdaki eksik/hatalı alanı görsel olarak vurgular, o alana kaydırır ve
+// kullanıcıya ne eksik olduğunu net şekilde söyler.
+function sellFormClearErrors(){
+    document.querySelectorAll('#sell-domain-modal .field-error').forEach(el=>el.classList.remove('field-error'));
 }
-
+function sellFormFail(el,message){
+    if(el){
+        el.classList.add('field-error');
+        el.scrollIntoView({behavior:'smooth',block:'center'});
+        if(typeof el.focus==='function') el.focus();
+    }
+    alert(message);
+}
 window.handleSubmitSellRequest=async function(){
+    sellFormClearErrors();
     const nameInput=document.getElementById('sell-domain-name');
+    const priceInput=document.getElementById('sell-domain-price');
     const descInput=document.getElementById('sell-domain-desc');
+    const uploadArea=document.querySelector('#sell-domain-modal .img-upload-area');
+
     const name=nameInput.value.trim();
-    const price=Number(document.getElementById('sell-domain-price').value);
+    const price=Number(priceInput.value);
     const type=document.getElementById('sell-domain-type').value;
     const desc=descInput.value.trim();
-    const wallet=document.getElementById('sell-domain-wallet').value.trim();
+    const wallet=document.getElementById('sell-domain-wallet').value.trim(); // Test aşaması: cüzdan alanı zorunlu değil, kullanıcı inisiyatifinde.
 
-    // Alan bazlı doğrulama — eksik/hatalı olan alana net bir uyarı gösterip yönlendirir
-    if(!name){
-        highlightInvalidField(nameInput, t('domainNameRequiredWarn'));
-        return;
-    }
-    if(!/\.pi$/i.test(name)){
-        highlightInvalidField(nameInput, t('domainNameMustEndPi'));
-        return;
-    }
-    if(!price||price<=0){
-        alert(t('domainNamePriceRequired'));
-        document.getElementById('sell-domain-price')?.focus();
-        return;
-    }
-    if(!desc){
-        highlightInvalidField(descInput, t('descriptionRequiredWarn'));
-        return;
-    }
-    const isEditMode0 = !!window._editingRejectedRequestId;
-    const hasExistingImage = isEditMode0 && window._editingRejectedRequestOldImg;
-    if(!selectedImageBase64 && !hasExistingImage){
-        alert(t('imageRequiredWarn'));
-        document.querySelector('.img-upload-area')?.scrollIntoView({behavior:'smooth', block:'center'});
-        return;
-    }
+    const hasExistingImage = !!(window._editingRejectedRequestId && window._editingRejectedRequestOldImg);
+
+    // Sırayla doğrula: hangi alan eksikse tam olarak o alanı işaretleyip kullanıcıyı oraya yönlendir.
+    if(!name){ sellFormFail(nameInput, t('errDomainNameRequired')); return; }
+    if(!/\.pi$/i.test(name)){ sellFormFail(nameInput, t('errDomainNeedsPiSuffix')); return; }
+    if(!price||price<=0){ sellFormFail(priceInput, t('errPriceRequired')); return; }
+    if(!desc){ sellFormFail(descInput, t('errDescriptionRequired')); return; }
+    if(!selectedImageBase64 && !hasExistingImage){ sellFormFail(uploadArea, t('errImageRequired')); return; }
 
     let imgUrl='assets/default.jpeg';
     if(selectedImageBase64){
@@ -2338,7 +2322,7 @@ window.handleSubmitSellRequest=async function(){
             if(result.success&&result.url) imgUrl=result.url;
             else{alert(t('imageUploadFailed'));if(hint)hint.textContent=t('imageUploadHint');return;}
         }catch(e){alert(t('imageUploadFailed'));return;}
-    }else if(window._editingRejectedRequestId&&window._editingRejectedRequestOldImg){
+    }else if(hasExistingImage){
         imgUrl=window._editingRejectedRequestOldImg;
     }
 
@@ -3745,85 +3729,136 @@ function tourFinish() {
     tourCleanup();
 }
 
-function tourReposition() {
-    if (!tourEls) return;
-    try {
-        const step = TOUR_STEPS[tourStepIndex];
-        const target = document.querySelector(step.selector);
-        if (!target) return;
-        const rect = target.getBoundingClientRect();
-        const vh = window.innerHeight, vw = window.innerWidth;
-        const pad = 6;
+// Hedef elementin DOM'da belirip anlamlı bir boyut kazanmasını kısa süre bekleyerek kontrol eder.
+// Panel açılış animasyonları / veri yüklemeleri yüzünden eleman anlık olarak hazır olmayabilir;
+// bu fonksiyon olmadan tur bir adım sonra hedefi bulamayınca sessizce kapanıyordu.
+function tourWaitForTarget(selector, maxAttempts = 15, interval = 120) {
+    return new Promise(resolve => {
+        let attempts = 0;
+        (function check() {
+            const el = document.querySelector(selector);
+            if (el) {
+                const r = el.getBoundingClientRect();
+                if (r.width >= 10 && r.height >= 10) { resolve(el); return; }
+            }
+            attempts++;
+            if (attempts >= maxAttempts) { resolve(null); return; }
+            setTimeout(check, interval);
+        })();
+    });
+}
 
-        // Çok uzun elementlerde (ör. domain listesi) spotlight'ı görünür alanla sınırla
-        const visTop = Math.max(rect.top, 0);
-        const visBottom = Math.min(rect.bottom, vh);
-        const clampedHeight = Math.max(40, Math.min(rect.height, visBottom - visTop || rect.height));
-
-        Object.assign(tourEls.highlight.style, {
-            top: (visTop - pad) + 'px',
-            left: (rect.left - pad) + 'px',
-            width: (rect.width + pad * 2) + 'px',
-            height: (clampedHeight + pad * 2) + 'px'
-        });
-
-        const tooltip = tourEls.tooltip;
-        let top, left = Math.min(Math.max(12, rect.left), vw - 292);
-        const anchorTop = visTop, anchorBottom = visTop + clampedHeight;
-        if (step.placement === 'bottom') {
-            top = anchorBottom + 14;
-        } else {
-            top = anchorTop - 14 - tooltip.offsetHeight;
-        }
-        // Ekran dışına taşarsa yönü çevir
-        if (top < 8) top = anchorBottom + 14;
-        if (top + tooltip.offsetHeight > vh - 8) top = Math.max(8, anchorTop - 14 - tooltip.offsetHeight);
-        Object.assign(tooltip.style, { top: top + 'px', left: left + 'px' });
-    } catch (e) {
-        console.error('Tour reposition hatası:', e);
-        tourCleanup();
+// Turun ihtiyaç duyduğu paneli (kullanıcı paneli) — henüz kapalıysa — anında görünür yapar.
+// Böylece "Destek Talepleri" adımı, panel kullanıcı tarafından açılmamış olsa bile çalışır.
+function tourEnsurePrereqs() {
+    const up = document.getElementById('user-panel');
+    if (up && up.style.display === 'none') {
+        up.style.display = 'block';
+        up.style.opacity = '1';
+        up.style.transform = 'none';
     }
 }
 
-function tourRenderStep() {
-    try {
-        const step = TOUR_STEPS[tourStepIndex];
-        const target = document.querySelector(step.selector);
-        if (!target) { tourNextStep(); return; }
+function tourReposition() {
+    if (!tourEls) return;
+    const step = TOUR_STEPS[tourStepIndex];
+    const target = document.querySelector(step.selector);
+    if (!target) { tourNextStep(); return; }
+    const rect = target.getBoundingClientRect();
+    const vh = window.innerHeight, vw = window.innerWidth;
 
-        const isLast = tourStepIndex === TOUR_STEPS.length - 1;
-        const dots = TOUR_STEPS.map((_, i) => `<div class="tour-dot ${i === tourStepIndex ? 'active' : ''}"></div>`).join('');
-
-        tourEls.tooltip.innerHTML = `
-            <h4>${t(step.titleKey)}</h4>
-            <p>${t(step.descKey)}</p>
-            <div class="tour-dots">${dots}</div>
-            <div class="tour-actions">
-                <button class="tour-skip" onclick="event.stopPropagation();window.tourFinish()">${t('tourSkip')}</button>
-                <button class="tour-next" onclick="event.stopPropagation();window.tourNextStep()">${isLast ? t('tourFinish') : t('tourNext')}</button>
-            </div>`;
-
-        requestAnimationFrame(tourReposition);
-    } catch (e) {
-        console.error('Tour render hatası:', e);
-        tourCleanup();
+    // Hedef ekran dışındaysa (yukarı/aşağı kaydırılmış), kapatmak yerine
+    // görünür alana kaydırıp yeniden konumlandır — turun aniden kaybolmasını önler.
+    if (rect.width < 10 || rect.height < 10) { tourNextStep(); return; }
+    if (rect.bottom < 0 || rect.top > vh) {
+        target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        setTimeout(tourReposition, 300);
+        return;
     }
+
+    const pad = 6;
+    // Çok uzun elementlerde (ör. domain listesi) spotlight'ı görünür alanla sınırla
+    const visTop = Math.max(rect.top, 0);
+    const visBottom = Math.min(rect.bottom, vh);
+    const clampedHeight = Math.min(rect.height, Math.max(120, visBottom - visTop));
+
+    Object.assign(tourEls.highlight.style, {
+        top: (visTop - pad) + 'px',
+        left: (rect.left - pad) + 'px',
+        width: (rect.width + pad * 2) + 'px',
+        height: (clampedHeight + pad * 2) + 'px'
+    });
+
+    const tooltip = tourEls.tooltip;
+    let top, left = Math.min(Math.max(12, rect.left), vw - 292);
+    const anchorTop = visTop, anchorBottom = visTop + clampedHeight;
+    if (step.placement === 'bottom') {
+        top = anchorBottom + 14;
+    } else {
+        top = anchorTop - 14 - tooltip.offsetHeight;
+    }
+    // Ekran dışına taşarsa yönü çevir
+    if (top < 8) top = anchorBottom + 14;
+    if (top + tooltip.offsetHeight > vh - 8) top = Math.max(8, anchorTop - 14 - tooltip.offsetHeight);
+    Object.assign(tooltip.style, { top: top + 'px', left: left + 'px' });
+}
+
+async function tourRenderStep() {
+    if (!tourEls) return; // bu arada tur kapatılmış olabilir (ör. skip)
+    tourEnsurePrereqs();
+    const step = TOUR_STEPS[tourStepIndex];
+    const stepIndexAtStart = tourStepIndex;
+    // Hedefi anında aramak yerine, hazır olması için kısa süre bekle.
+    // Önceki mantık hedefi bulamayınca ANINDA bir sonraki adıma atlıyordu; bu da
+    // panelin henüz açılmadığı durumlarda arka arkaya adım atlayıp turun
+    // "İleri" denince aniden kapanmasına sebep oluyordu.
+    const target = await tourWaitForTarget(step.selector);
+    if (!tourEls || tourStepIndex !== stepIndexAtStart) return; // bu süre zarfında tur değişti/kapandı
+    if (!target) {
+        // Bu adımın hedefi gerçekten bulunamadıysa turu aniden kapatmak yerine
+        // sessizce bir sonraki adıma geç; sadece son adımdaysak ve hiçbir hedef
+        // yoksa turu düzgünce sonlandır.
+        if (tourStepIndex >= TOUR_STEPS.length - 1) { tourFinish(); return; }
+        tourStepIndex++;
+        tourRenderStep();
+        return;
+    }
+
+    const isLast = tourStepIndex === TOUR_STEPS.length - 1;
+    const dots = TOUR_STEPS.map((_, i) => `<div class="tour-dot ${i === tourStepIndex ? 'active' : ''}"></div>`).join('');
+
+    tourEls.tooltip.innerHTML = `
+        <h4>${t(step.titleKey)}</h4>
+        <p>${t(step.descKey)}</p>
+        <div class="tour-dots">${dots}</div>
+        <div class="tour-actions">
+            <button class="tour-skip" onclick="event.stopPropagation();window.tourFinish()">${t('tourSkip')}</button>
+            <button class="tour-next" onclick="event.stopPropagation();window.tourNextStep()">${isLast ? t('tourFinish') : t('tourNext')}</button>
+        </div>`;
+
+    requestAnimationFrame(tourReposition);
 }
 
 window.tourNextStep = function() {
+    if (!tourEls) return;
     tourStepIndex++;
     if (tourStepIndex >= TOUR_STEPS.length) { tourFinish(); return; }
     tourRenderStep();
 };
 window.tourFinish = tourFinish;
 
-function startOnboardingTour() {
-    // Her ihtimale karşı, önceki (varsa asılı kalmış) tur elementlerini temizle
+async function startOnboardingTour() {
+    tourEnsurePrereqs();
+    // Hedefi anında aramak yerine kısa süre bekleyerek ara: sayfa/panel
+    // henüz render olmamış olabilir. Önceden bu durumda tur hiç açılmadan
+    // sessizce iptal oluyordu ("tıklayınca açılmıyor").
+    const firstTarget = await tourWaitForTarget(TOUR_STEPS[0].selector);
+    if (!firstTarget) {
+        alert(t('tourNotReady'));
+        return;
+    }
+
     tourCleanup();
-
-    // Hedef elementlerden en az biri yoksa turu başlatma (ör. giriş yapılmamış)
-    if (!document.querySelector(TOUR_STEPS[0].selector)) return;
-
     tourStepIndex = 0;
 
     const overlay = document.createElement('div');
@@ -3852,7 +3887,6 @@ function maybeStartOnboardingTour() {
         requestAnimationFrame(() => requestAnimationFrame(startOnboardingTour));
     }, 900);
 }
-
 
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -3951,50 +3985,42 @@ function renderTicketList() {
         resolved: t('ticketStatusResolved'),
         closed: t('ticketStatusClosed')
     };
-    const statusColor = {
-        new: '#3b82f6',
-        reviewing: '#f59e0b',
-        answered: '#a855f7',
-        resolved: '#10b981',
-        closed: '#ef4444'
-    };
+    const priorityClass = { low: 'priority-low', normal: 'priority-normal', high: 'priority-high', urgent: 'priority-urgent' };
+    const priorityLabel = { low: t('ticketPriorityLow'), normal: t('ticketPriorityNormal'), high: t('ticketPriorityHigh'), urgent: t('ticketPriorityUrgent') };
 
-    container.innerHTML = `<div class="ticket-table">
-        <div class="ticket-table-header uview">
-            <div>${t('ticketTableSubject')}</div>
-            <div>${t('ticketTableDate')}</div>
-            <div>${t('ticketTableStatus')}</div>
-        </div>
-        ${myTickets.map(ticket => {
-            const created = ticket.createdAt ? new Date(ticket.createdAt).toLocaleDateString(locale, { day: '2-digit', month: '2-digit' }) + ' ' + new Date(ticket.createdAt).toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' }) : '-';
-            const lastUpdate = ticket.lastUpdate ? new Date(ticket.lastUpdate).toLocaleDateString(locale, { day: '2-digit', month: '2-digit' }) + ' ' + new Date(ticket.lastUpdate).toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' }) : created;
-            const totalMessages = ticket.messages ? ticket.messages.length : 0;
-            const rowAccent = statusColor[ticket.status] || '#6366f1';
-            const lastMsg = ticket.messages && ticket.messages.length ? ticket.messages[ticket.messages.length - 1] : null;
-            const lastMsgText = lastMsg ? lastMsg.text : '';
-            const isLastFromAdmin = lastMsg && lastMsg.from === 'admin';
-            const lastMsgFromLabel = lastMsg ? (isLastFromAdmin ? ('👤 ' + t('ticketReplyFromAdmin')) : ('🗣️ ' + t('ticketReplyFromYou'))) : '';
+    container.innerHTML = `<div class="ticket-list">` + myTickets.map(ticket => {
+        const created = ticket.createdAt ? new Date(ticket.createdAt).toLocaleDateString(locale, { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '-';
+        const lastUpdate = ticket.lastUpdate ? new Date(ticket.lastUpdate).toLocaleDateString(locale, { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : created;
+        const replyCount = ticket.messages ? ticket.messages.length - 1 : 0;
+        const lastMsg = ticket.messages && ticket.messages.length ? ticket.messages[ticket.messages.length - 1] : null;
+        const isLastFromAdmin = lastMsg && lastMsg.from === 'admin';
+        const preview = lastMsg ? lastMsg.text : '';
+        const previewAccent = isLastFromAdmin ? '#818cf8' : '#64748b';
+        const previewLabel = isLastFromAdmin ? ('👤 ' + t('ticketReplyFromAdmin')) : ('🗣️ ' + t('ticketReplyFromYou'));
 
-            return `<div class="ticket-table-entry" style="--row-accent:${rowAccent};" onclick="openTicketDetail('${ticket.id}')">
-                <div class="ticket-table-row uview">
-                    <div title="${escapeHtml(ticket.subject)}" style="flex-direction:column;align-items:flex-start;gap:2px;min-width:0;overflow:hidden;">
-                        <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%;display:block;width:100%;">📌 ${escapeHtml(ticket.subject)}</span>
-                        <span style="font-size:0.85em;font-weight:800;color:#818cf8;white-space:nowrap;">🔑 #${ticket.ticketNumber || ticket.id.slice(-6).toUpperCase()}</span>
-                    </div>
-                    <div style="min-width:0;overflow:hidden;text-overflow:ellipsis;">${created}</div>
-                    <div style="min-width:0;overflow:hidden;"><span class="ticket-status-badge status-badge-${ticket.status}">${statusMap[ticket.status] || ticket.status}</span></div>
+        return `<div class="ticket-card status-${ticket.status}" onclick="openTicketDetail('${ticket.id}')">
+            <div class="ticket-card-header">
+                <div class="ticket-card-subject-box">
+                    <span class="ticket-card-subject-label">📌 ${t('ticketSubjectLabel')}:</span>
+                    <span class="ticket-card-subject">${escapeHtml(ticket.subject)}</span>
                 </div>
-                ${lastMsgText ? `<div class="ticket-table-lastmsg">
-                    <div class="ticket-table-lastmsg-title">📝 ${t('ticketLastMessageLabel')} <span class="ticket-table-lastmsg-from">(${lastMsgFromLabel})</span></div>
-                    <div class="ticket-table-lastmsg-text">${escapeHtml(lastMsgText)}</div>
-                </div>` : ''}
-                <div class="ticket-table-extra">
-                    <span class="ticket-table-extra-chip">🔄 ${t('ticketLastActivityLabel')}: ${lastUpdate}</span>
-                    <span class="ticket-table-extra-chip">💬 ${t('ticketTotalMessagesLabel')}: ${totalMessages}</span>
-                </div>
-            </div>`;
-        }).join('')}
-    </div>`;
+                <span class="ticket-status-badge status-badge-${ticket.status}">${statusMap[ticket.status] || ticket.status}</span>
+            </div>
+            <div class="ticket-card-meta">
+                <span class="ticket-chip">🔑 #${ticket.ticketNumber || ticket.id.slice(-6).toUpperCase()}</span>
+                <span class="ticket-chip">📅 ${created}</span>
+                <span class="ticket-chip">💬 ${replyCount} ${t('ticketReplies')}</span>
+            </div>
+            <div class="ticket-card-preview-box" style="--preview-accent:${previewAccent};">
+                <div class="ticket-card-preview-label">${previewLabel}</div>
+                <div class="ticket-card-preview">${escapeHtml(preview)}</div>
+            </div>
+            <div class="ticket-card-footer">
+                <span class="ticket-priority ${priorityClass[ticket.priority] || 'priority-normal'}">${priorityLabel[ticket.priority] || ticket.priority}</span>
+                <span class="ticket-card-time">🔄 ${lastUpdate}</span>
+            </div>
+        </div>`;
+    }).join('') + `</div>`;
 }
 
 function escapeHtml(text) {
