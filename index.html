@@ -144,6 +144,18 @@
         .sale-detail-arrow{transition:transform 0.2s;color:#60a5fa;font-size:0.85em;}
         .sale-detail-arrow.rotated{transform:rotate(180deg);}
         @keyframes icon-pulse-btn{0%,100%{filter:drop-shadow(0 0 4px rgba(99,102,241,0.6));transform:scale(1);}50%{filter:drop-shadow(0 0 10px rgba(165,180,252,0.9));transform:scale(1.12);}}
+
+        /* ── Panel Yenileme Butonu (Panelim + Admin Panel) ────────────── */
+        .panel-refresh-btn{position:absolute;right:8px;top:50%;transform:translateY(-50%);width:30px;height:30px;border-radius:50%;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;z-index:2;background:linear-gradient(135deg,var(--refresh-c1),var(--refresh-c2));box-shadow:0 2px 10px var(--refresh-glow),inset 0 1px 0 rgba(255,255,255,0.25);animation:refresh-idle-glow 2.6s ease-in-out infinite;transition:transform 0.15s ease;}
+        .panel-refresh-btn svg{width:16px;height:16px;transition:transform 0.6s cubic-bezier(0.34,1.56,0.64,1);}
+        .panel-refresh-btn:hover{transform:translateY(-50%) scale(1.1);}
+        .panel-refresh-btn:active{transform:translateY(-50%) scale(0.88);}
+        .panel-refresh-btn.spinning{animation:refresh-ripple 0.7s ease-out;}
+        .panel-refresh-btn.spinning svg{transform:rotate(360deg);}
+        @keyframes refresh-idle-glow{0%,100%{box-shadow:0 2px 10px var(--refresh-glow),inset 0 1px 0 rgba(255,255,255,0.25);}50%{box-shadow:0 2px 18px var(--refresh-glow-strong),inset 0 1px 0 rgba(255,255,255,0.35);}}
+        @keyframes refresh-ripple{0%{box-shadow:0 0 0 0 var(--refresh-glow-strong),0 2px 10px var(--refresh-glow);}70%{box-shadow:0 0 0 12px rgba(0,0,0,0),0 2px 10px var(--refresh-glow);}100%{box-shadow:0 0 0 0 rgba(0,0,0,0),0 2px 10px var(--refresh-glow);}}
+        #user-panel-refresh-btn{--refresh-c1:#10b981;--refresh-c2:#34d399;--refresh-glow:rgba(16,185,129,0.55);--refresh-glow-strong:rgba(16,185,129,0.5);}
+        #admin-panel-refresh-btn{--refresh-c1:#6366f1;--refresh-c2:#a855f7;--refresh-glow:rgba(99,102,241,0.55);--refresh-glow-strong:rgba(99,102,241,0.5);}
         @keyframes icon-pulse-chart{0%,100%{filter:drop-shadow(0 0 4px rgba(74,222,128,0.5));transform:scale(1);}50%{filter:drop-shadow(0 0 10px rgba(74,222,128,0.9));transform:scale(1.12);}}
         @keyframes icon-pulse-green{0%,100%{filter:drop-shadow(0 0 4px rgba(52,211,153,0.5));transform:scale(1);}50%{filter:drop-shadow(0 0 10px rgba(52,211,153,0.9));transform:scale(1.12);}}
 @keyframes connected-pulse{0%,100%{box-shadow:0 0 8px rgba(16,185,129,0.3);}50%{box-shadow:0 0 16px rgba(16,185,129,0.6),0 0 4px rgba(52,211,153,0.4);}}
@@ -1249,7 +1261,9 @@
     <div class="card" id="user-panel" style="display:none;border:2px solid #10b981;box-shadow:0 0 12px rgba(16,185,129,0.2);padding:5px;box-sizing:border-box;width:calc(100% - 16px);margin-left:auto;margin-right:auto;">
         <h3 style="color:#10b981;margin:-4px -4px 6px -4px;padding:6px 4px;font-size:0.9em;display:flex;align-items:center;justify-content:center;position:relative;background:linear-gradient(135deg,rgba(16,185,129,0.18) 0%,rgba(5,150,105,0.1) 100%);border-bottom:1.5px solid rgba(16,185,129,0.35);border-radius:12px 12px 0 0;font-weight:900;">
             <span style="display:flex;align-items:center;gap:5px;">👤 <span data-i18n="myPanel"></span></span>
-            <button onclick="refreshUserPanel()" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);background:rgba(16,185,129,0.2);border:1.5px solid #10b981;color:#6ee7b7;width:24px;height:24px;border-radius:6px;font-size:0.85em;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;" title="Yenile"><span id="refresh-icon" style="display:inline-block;transition:transform 0.5s ease;">↻</span></button>
+            <button id="user-panel-refresh-btn" class="panel-refresh-btn" onclick="window.refreshUserPanel()" title="Yenile">
+                <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+            </button>
         </h3>
         
         <div class="user-tabs">
@@ -1331,7 +1345,11 @@
 
     <!-- Admin Paneli -->
     <div class="card" id="admin-panel" style="display:none;border:2px solid #6366f1;box-shadow:0 0 12px rgba(99,102,241,0.2);padding:5px;box-sizing:border-box;width:calc(100% - 16px);margin-left:auto;margin-right:auto;">
-        <h3 style="color:#fbbf24;margin:-5px -5px 8px -5px;padding:8px 5px;font-size:0.95em;display:flex;align-items:center;justify-content:center;gap:6px;background:linear-gradient(135deg,rgba(99,102,241,0.2) 0%,rgba(67,56,202,0.1) 100%);border-bottom:1.5px solid rgba(99,102,241,0.4);border-radius:14px 14px 0 0;font-weight:900;">🛠 Admin Panel</h3>
+        <h3 style="color:#fbbf24;margin:-5px -5px 8px -5px;padding:8px 5px;font-size:0.95em;display:flex;align-items:center;justify-content:center;gap:6px;background:linear-gradient(135deg,rgba(99,102,241,0.2) 0%,rgba(67,56,202,0.1) 100%);border-bottom:1.5px solid rgba(99,102,241,0.4);border-radius:14px 14px 0 0;font-weight:900;position:relative;">🛠 Admin Panel
+            <button id="admin-panel-refresh-btn" class="panel-refresh-btn" onclick="window.refreshAdminPanel()" title="Yenile">
+                <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+            </button>
+        </h3>
         <div class="admin-tabs">
             <button class="admin-tab-btn active" data-tab="tab-users" onclick="switchAdminTab('tab-users')">👥<span data-i18n="users" style="font-size:0.9em;"></span></button>
             <button class="admin-tab-btn" data-tab="tab-stats" onclick="switchAdminTab('tab-stats')">📈<span data-i18n="salesStats" style="font-size:0.9em;"></span></button>
@@ -2980,11 +2998,27 @@ async function loadUserProfile(){
 }
 
 window.refreshUserPanel=async function(){
-    const icon=document.getElementById('refresh-icon');
-    if(icon){icon.style.transition='transform 0.5s ease';icon.style.transform='rotate(360deg)';}
+    const btn=document.getElementById('user-panel-refresh-btn');
+    if(btn){btn.classList.add('spinning');setTimeout(()=>btn.classList.remove('spinning'),700);}
     await loadUserProfile();
     debouncedRender();
-    setTimeout(()=>{if(icon){icon.style.transform='';}},600);
+};
+
+// ── ADMIN PANEL YENİLEME ──────────────────────────────────────────────
+// Kullanıcı panelindeki ile aynı görsel dilde: buton tıklanınca ripple +
+// dönme animasyonu oynar, arka planda admin verileri (biletler, benzersiz
+// kullanıcı sayısı, fiyat listesi, domain/onay listesi) tazelenir.
+window.refreshAdminPanel=async function(){
+    const btn=document.getElementById('admin-panel-refresh-btn');
+    if(btn){btn.classList.add('spinning');setTimeout(()=>btn.classList.remove('spinning'),700);}
+    try{
+        await Promise.all([
+            adminLoadTickets(),
+            loadUniqueBadgeCount()
+        ]);
+        renderAdminPriceList();
+        debouncedRender();
+    }catch(e){console.error('Admin panel yenileme hatası:',e);}
 };
 
 // USER PANEL RENDER
