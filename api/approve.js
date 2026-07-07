@@ -1013,13 +1013,15 @@ export default async function handler(req, res) {
       if (data.status === 'closed') return res.status(400).json({ error: "Kapatılmış talebe yanıt verilemez" });
 
       const now = Date.now();
-      // "Çözüldü" olarak işaretlenmiş bir talebe kullanıcı yeniden yazarsa, bunu
-      // sıradan bir "inceleniyor" durumuna değil — admin'in gözünden kolayca kaçmaması
-      // için — net bir şekilde "yeniden açıldı" anlamına gelen 'new' durumuna alıyoruz.
+      // "Çözüldü" olarak işaretlenmiş bir talebe kullanıcı yanıt yazdığında (ör. teşekkür mesajı),
+      // bunu "yeni" duruma — yani sıfırdan başlıyormuş gibi — almak mantıksız: talep zaten
+      // çözülmüş durumda, kullanıcı sadece kapanış onayı/teşekkür niteliğinde yazmış oluyor.
+      // Bu yüzden akışın doğal son adımı olarak talebi doğrudan 'closed' durumuna alıyoruz.
+      // Gerçekten yeni bir sorun varsa kullanıcı yeni bir destek talebi açmalı.
       // "Yanıtlandı" durumundaki normal karşılıklı yazışma akışında ise 'reviewing'e
       // dönmeye devam ediyor (bu, olağan bir takip mesajı).
       const wasResolved = data.status === 'resolved';
-      const newStatus = wasResolved ? 'new' : (data.status === 'answered' ? 'reviewing' : data.status);
+      const newStatus = wasResolved ? 'closed' : (data.status === 'answered' ? 'reviewing' : data.status);
 
       await ticketRef.update({
         messages: FieldValue.arrayUnion({ from: realUsername, text, timestamp: now }),
@@ -1029,9 +1031,9 @@ export default async function handler(req, res) {
 
       await sendNotificationToAdmin({
         type: 'ticket_message',
-        title: wasResolved ? '🔄 Çözülen Talep Yeniden Açıldı' : '💬 Yeni Mesaj',
+        title: wasResolved ? '✅ Talep Kapatıldı' : '💬 Yeni Mesaj',
         body: wasResolved
-          ? `@${realUsername} çözüldü olarak işaretlenen "${data.subject}" talebine yeni mesaj gönderdi, talep yeniden açıldı.`
+          ? `@${realUsername} çözüldü olarak işaretlenen "${data.subject}" talebine yanıt verdi, talep kapatıldı.`
           : `@${realUsername} "${data.subject}" talebine yeni mesaj gönderdi.`,
         ticketId
       });
