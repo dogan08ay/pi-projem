@@ -55,6 +55,11 @@
         @keyframes dot-pulse{0%,100%{transform:scale(1);opacity:1;}50%{transform:scale(1.35);opacity:0.65;}}
         .modal-overlay{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.92);display:flex;justify-content:center;align-items:center;z-index:9999;padding:10px;box-sizing:border-box;}
         .modal-content{background:var(--card);padding:12px;border-radius:14px;border:2px solid #fbbf24;width:100%;max-width:380px;box-sizing:border-box;text-align:center;max-height:90vh;overflow-y:auto;}
+        #legal-modal-body h1{color:#a5b4fc;font-size:1.15em;margin:0 0 8px 0;}
+        #legal-modal-body h2{color:#818cf8;font-size:0.95em;margin-top:20px;margin-bottom:6px;}
+        #legal-modal-body p,#legal-modal-body li{color:#cbd5e1;font-size:0.95em;}
+        #legal-modal-body a{color:#38bdf8;}
+        #legal-modal-body .updated{color:#64748b;font-size:0.85em;margin-bottom:16px;}
         .item-row{display:flex;align-items:center;margin-bottom:4px;text-align:left;}
         .item-title{color:#60a5fa;font-weight:800;width:105px;flex-shrink:0;font-size:0.85em;}
         .item-red-val-small{color:#ef4444;font-weight:900;flex:1;white-space:nowrap;font-size:0.88em;}
@@ -456,20 +461,32 @@
 }
 
 .ticket-message-header {
-  font-size: 0.68em;
-  opacity: 0.9;
-  margin: -8px -12px 6px -12px;
-  padding: 5px 12px;
-  font-weight: 800;
-  background: rgba(0,0,0,0.18);
-  border-bottom: 1px solid rgba(255,255,255,0.12);
+  font-size: 0.82em;
+  opacity: 1;
+  margin: -8px -12px 8px -12px;
+  padding: 7px 12px;
+  font-weight: 900;
+  letter-spacing: 0.2px;
+  text-transform: uppercase;
+  background: rgba(0,0,0,0.3);
+  border-bottom: 1px solid rgba(255,255,255,0.18);
   border-radius: 10px 10px 0 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
 }
 
 .ticket-message.admin .ticket-message-header {
   background: linear-gradient(90deg, #059669, #0d9488);
   color: #ffffff;
-  border-bottom: 1px solid rgba(255,255,255,0.25);
+  border-bottom: 1px solid rgba(255,255,255,0.3);
+  text-shadow: 0 1px 1px rgba(0,0,0,0.25);
+}
+
+.ticket-message.user .ticket-message-header {
+  color: #ffffff;
+  text-shadow: 0 1px 1px rgba(0,0,0,0.25);
 }
 
 .ticket-message-text {
@@ -784,10 +801,104 @@
 .ticket-table-lastmsg-from{color:#f472b6;font-weight:900;}
 .ticket-table-lastmsg-text{font-size:0.7em;color:#f1f5f9;font-weight:600;line-height:1.5;background:rgba(15,23,42,0.75);border:1px solid rgba(196,181,253,0.4);border-radius:0 0 6px 6px;padding:7px 8px;text-align:left;word-break:break-word;overflow-wrap:anywhere;white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
 
+/* ═══════════════════════════════════════════════════════════════════
+   MOBİL UYUMLULUK — çok küçük telefonlar ve tabletler için ek kurallar
+   Not: mevcut yapı zaten minmax(0,1fr) ve min-width:0 kullanıyor,
+   burada uç noktalar (küçük telefon / geniş tablet) için ince ayar var.
+   ═══════════════════════════════════════════════════════════════════ */
+@media (max-width: 340px) {
+  .domain-grid{gap:4px;}
+  .stats-bar{font-size:0.48em;gap:0;}
+  .user-tabs{gap:3px;}
+  .user-tab-btn{font-size:0.58em;padding:6px 2px;min-height:36px;}
+  .ticket-table-header,.ticket-table-row{font-size:0.58em;}
+  .ticket-table-header > div,.ticket-table-row > div{padding:6px 3px;}
+  .side-menu{width:88%;}
+  .app-title{font-size:1.2em;}
+  .modal-content{padding:10px;}
+}
+
+@media (min-width: 700px) {
+  .container{max-width:760px;}
+  .domain-grid{grid-template-columns:repeat(3,minmax(0,1fr));}
+  .modal-content{max-width:480px;}
+  .side-menu{max-width:360px;}
+  .ticket-modal-content{max-width:520px;}
+}
+
+@media (min-width: 1024px) {
+  .domain-grid{grid-template-columns:repeat(4,minmax(0,1fr));}
+  .container{max-width:900px;}
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   SKELETON SCREENS — veri gelmeden önce içerik iskeleti gösterir
+   ═══════════════════════════════════════════════════════════════════ */
+@keyframes skeleton-shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+.skeleton {
+  background: linear-gradient(90deg, rgba(148,163,184,0.08) 25%, rgba(148,163,184,0.2) 37%, rgba(148,163,184,0.08) 63%);
+  background-size: 400% 100%;
+  animation: skeleton-shimmer 1.4s ease-in-out infinite;
+  border-radius: 8px;
+}
+.skeleton-domain-card {
+  background: linear-gradient(145deg,#1a2332 0%,#141d2b 50%,#1a1a3e 100%);
+  padding: 5px 8px 8px 8px;
+  border-radius: 12px;
+  border: 1.5px solid rgba(74,93,122,0.5);
+  box-sizing: border-box;
+}
+.skeleton-domain-img { width:100%; height:52px; margin-bottom:4px; border-radius:8px; }
+.skeleton-line { height: 10px; margin: 6px auto; border-radius: 5px; }
+.skeleton-ticket-row {
+  display:flex; align-items:center; gap:10px; padding:10px 8px;
+  border-bottom:1px solid rgba(99,102,241,0.15);
+}
+.skeleton-ticket-row .skeleton{flex-shrink:0;}
+
+/* ═══════════════════════════════════════════════════════════════════
+   ONBOARDING TOUR — yeni kullanıcı rehberi
+   ═══════════════════════════════════════════════════════════════════ */
+.tour-overlay {
+  position: fixed; inset: 0; z-index: 10000;
+  background: transparent;
+  pointer-events: none;
+}
+.tour-highlight {
+  position: fixed; z-index: 10001;
+  border-radius: 14px;
+  box-shadow: 0 0 0 4000px rgba(2,6,23,0.82), 0 0 0 3px #818cf8, 0 0 24px rgba(129,140,248,0.6);
+  transition: top 0.35s ease, left 0.35s ease, width 0.35s ease, height 0.35s ease;
+  pointer-events: none;
+}
+.tour-tooltip {
+  position: fixed; z-index: 10002;
+  background: linear-gradient(160deg,#1e1b4b 0%,#0f172a 100%);
+  border: 1.5px solid #6366f1;
+  border-radius: 14px;
+  padding: 14px 16px;
+  width: min(280px, 82vw);
+  box-shadow: 0 12px 30px rgba(0,0,0,0.5);
+  transition: top 0.35s ease, left 0.35s ease;
+  box-sizing: border-box;
+}
+.tour-tooltip h4 { margin: 0 0 6px 0; font-size: 0.95em; color: #a5b4fc; font-weight: 900; }
+.tour-tooltip p { margin: 0 0 12px 0; font-size: 0.8em; color: #cbd5e1; line-height: 1.5; }
+.tour-dots { display:flex; gap:5px; margin-bottom: 10px; }
+.tour-dot { width:6px; height:6px; border-radius:50%; background:rgba(148,163,184,0.35); }
+.tour-dot.active { background:#818cf8; width:16px; border-radius:4px; }
+.tour-actions { display:flex; justify-content:space-between; align-items:center; gap:8px; }
+.tour-skip { background:none; border:none; color:#64748b; font-size:0.72em; font-weight:700; cursor:pointer; padding:6px 4px; }
+.tour-next { background:linear-gradient(135deg,#6366f1,#818cf8); border:none; color:#fff; font-size:0.75em; font-weight:800; cursor:pointer; padding:8px 16px; border-radius:8px; }
 
 </style>
 </head>
 <body style="margin:0;padding:0;width:100%;min-width:320px;overflow-x:hidden;position:relative;box-sizing:border-box;">
+<button id="tour-fab" onclick="window.startOnboardingTour()" title="Uygulama Turu" style="display:none;position:fixed;bottom:16px;right:14px;z-index:900;width:46px;height:46px;border-radius:50%;background:linear-gradient(135deg,#6366f1,#818cf8);border:2px solid rgba(255,255,255,0.25);box-shadow:0 6px 18px rgba(99,102,241,0.55);color:#fff;font-size:1.15em;font-weight:900;cursor:pointer;align-items:center;justify-content:center;animation:tour-fab-pulse 2.4s ease-in-out infinite;">?</button>
+<style>@keyframes tour-fab-pulse{0%,100%{box-shadow:0 6px 18px rgba(99,102,241,0.55);}50%{box-shadow:0 6px 26px rgba(99,102,241,0.9),0 0 0 6px rgba(99,102,241,0.15);}}</style>
 <div class="side-menu-overlay" id="side-menu-overlay" onclick="toggleSideMenu()"></div>
 
 <!-- Side Menu -->
@@ -852,6 +963,10 @@
         <span style="color:#fbbf24;" data-i18n="whatsNew"></span>
         <span style="margin-left:auto;font-size:0.6em;background:#ef4444;color:#fff;padding:1px 6px;border-radius:10px;font-weight:900;">NEW</span>
     </button>
+    <button class="side-menu-item" onclick="toggleSideMenu();setTimeout(()=>window.startOnboardingTour(),350);">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#818cf8" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 2-3 4"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+        <span style="color:#818cf8;" data-i18n="tourReplay"></span>
+    </button>
     <div class="side-menu-divider"></div>
     <div class="side-menu-section-label" data-i18n="contactSection"></div>
     <a href="mailto:doganay08@hotmail.com" class="side-menu-item" style="text-decoration:none;color:#38bdf8;display:flex;align-items:center;gap:8px;padding:8px 8px;border-radius:7px;font-weight:700;font-size:0.88em;cursor:pointer;margin-bottom:4px;text-align:left;background:transparent;border:none;width:100%;box-sizing:border-box;transition:background 0.15s;">
@@ -861,9 +976,9 @@
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg><span style="color:#38bdf8;" data-i18n="telegramGroup">TELEGRAM GRUBUMUZ</span>
     </a>
     <div style="display:flex;gap:8px;padding:4px 12px;">
-        <a href="privacy.html" style="color:#f87171;font-size:0.65em;font-weight:700;" data-i18n="privacyPolicy">GİZLİLİK POLİTİKASI</a>
+        <a href="#" onclick="openLegalModal('privacy');return false;" style="color:#f87171;font-size:0.65em;font-weight:700;cursor:pointer;" data-i18n="privacyPolicy">GİZLİLİK POLİTİKASI</a>
         <span style="color:#334155;">|</span>
-        <a href="terms.html" style="color:#f87171;font-size:0.65em;font-weight:700;" data-i18n="termsOfUse">KULLANIM ŞARTLARI</a>
+        <a href="#" onclick="openLegalModal('terms');return false;" style="color:#f87171;font-size:0.65em;font-weight:700;cursor:pointer;" data-i18n="termsOfUse">KULLANIM ŞARTLARI</a>
     </div>
     <div class="side-menu-divider"></div>
     <button class="side-menu-item" id="side-menu-logout-btn" onclick="handleLogout()" style="display:none;color:#fca5a5;">
@@ -1034,6 +1149,17 @@
         <button class="pi-btn" style="background:#6366f1;animation:none;padding:10px;margin:0;width:100%;" onclick="document.getElementById('unique-users-modal').style.display='none'" data-i18n="close"></button>
     </div>
 </div>
+<div id="legal-modal" class="modal-overlay" style="display:none;">
+    <div class="modal-content" style="border-color:#f87171;max-height:85vh;text-align:left;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+            <h2 id="legal-modal-title" style="color:#f87171;margin:0;font-size:1.05em;font-weight:900;"></h2>
+            <button onclick="document.getElementById('legal-modal').style.display='none'" style="background:rgba(248,113,113,0.15);border:1px solid rgba(248,113,113,0.4);color:#f87171;width:28px;height:28px;border-radius:8px;font-size:0.9em;cursor:pointer;font-weight:900;line-height:1;">✕</button>
+        </div>
+        <div id="legal-modal-body" style="max-height:65vh;overflow-y:auto;font-size:0.85em;line-height:1.6;color:#cbd5e1;"></div>
+        <button class="pi-btn" style="background:#f87171;animation:none;padding:10px;margin:12px 0 0 0;width:100%;" onclick="document.getElementById('legal-modal').style.display='none'" data-i18n="close"></button>
+    </div>
+</div>
+
 <!-- ANA İÇERİK -->
 <div class="container">
   <div class="main-scroll">
@@ -1042,7 +1168,7 @@
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#c7d2fe" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
             <span class="notif-badge" id="notif-badge">0</span>
         </div>
-        <button onclick="toggleSideMenu()" style="position:absolute;top:4px;right:8px;z-index:10;background:transparent;border:none;padding:4px;cursor:pointer;display:flex;flex-direction:column;gap:4px;width:32px;height:32px;align-items:center;justify-content:center;">
+        <button id="hamburger-btn" onclick="toggleSideMenu()" style="position:absolute;top:4px;right:8px;z-index:10;background:transparent;border:none;padding:4px;cursor:pointer;display:flex;flex-direction:column;gap:4px;width:32px;height:32px;align-items:center;justify-content:center;">
             <span style="display:block;width:20px;height:2px;background:#cbd5e1;border-radius:2px;"></span>
             <span style="display:block;width:20px;height:2px;background:#cbd5e1;border-radius:2px;"></span>
             <span style="display:block;width:20px;height:2px;background:#cbd5e1;border-radius:2px;"></span>
@@ -1156,7 +1282,8 @@
                     <button class="pi-btn" style="animation:none;padding:6px 12px;font-size:0.68em;margin:0;" onclick="showCreateTicketForm()">➕ <span data-i18n="newTicket"></span></button>
                 </div>
                 <div id="ticket-list-container">
-                    <p style="font-size:0.75em;opacity:0.5;text-align:center;"><span data-i18n="loadingTickets"></span></p>
+                    <div class="skeleton-ticket-row"><div class="skeleton" style="width:34px;height:34px;border-radius:8px;"></div><div style="flex:1;"><div class="skeleton skeleton-line" style="width:60%;margin:0 0 6px 0;"></div><div class="skeleton skeleton-line" style="width:35%;height:8px;margin:0;"></div></div></div>
+                    <div class="skeleton-ticket-row"><div class="skeleton" style="width:34px;height:34px;border-radius:8px;"></div><div style="flex:1;"><div class="skeleton skeleton-line" style="width:48%;margin:0 0 6px 0;"></div><div class="skeleton skeleton-line" style="width:28%;height:8px;margin:0;"></div></div></div>
                 </div>
             </div>
         </div>
@@ -1282,7 +1409,9 @@
                 </div>
                 <div class="ticket-admin-stats" id="ticket-admin-stats"></div>
                 <div id="ticket-admin-list">
-                    <p style="font-size:0.75em;opacity:0.5;text-align:center;"><span data-i18n="loadingTickets"></span></p>
+                    <div class="skeleton-ticket-row"><div class="skeleton" style="width:34px;height:34px;border-radius:8px;"></div><div style="flex:1;"><div class="skeleton skeleton-line" style="width:60%;margin:0 0 6px 0;"></div><div class="skeleton skeleton-line" style="width:35%;height:8px;margin:0;"></div></div></div>
+                    <div class="skeleton-ticket-row"><div class="skeleton" style="width:34px;height:34px;border-radius:8px;"></div><div style="flex:1;"><div class="skeleton skeleton-line" style="width:52%;margin:0 0 6px 0;"></div><div class="skeleton skeleton-line" style="width:30%;height:8px;margin:0;"></div></div></div>
+                    <div class="skeleton-ticket-row"><div class="skeleton" style="width:34px;height:34px;border-radius:8px;"></div><div style="flex:1;"><div class="skeleton skeleton-line" style="width:45%;margin:0 0 6px 0;"></div><div class="skeleton skeleton-line" style="width:25%;height:8px;margin:0;"></div></div></div>
                 </div>
             </div>
         </div>
@@ -1332,7 +1461,14 @@
             <button class="pi-btn" onclick="window.loginWithPi()" data-i18n="connectWithPi"></button>
         </div>
         <div class="domain-grid locked-content" id="domain-list">
-            <div id="domain-list-loading" style="grid-column:1/-1;text-align:center;padding:24px 0;color:#64748b;font-size:0.8em;">⏳ <span data-i18n="loadingDomains"></span></div>
+            <div id="domain-list-loading" style="display:contents;">
+                <div class="skeleton-domain-card"><div class="skeleton skeleton-domain-img"></div><div class="skeleton skeleton-line" style="width:75%;"></div><div class="skeleton skeleton-line" style="width:45%;height:8px;"></div></div>
+                <div class="skeleton-domain-card"><div class="skeleton skeleton-domain-img"></div><div class="skeleton skeleton-line" style="width:60%;"></div><div class="skeleton skeleton-line" style="width:40%;height:8px;"></div></div>
+                <div class="skeleton-domain-card"><div class="skeleton skeleton-domain-img"></div><div class="skeleton skeleton-line" style="width:70%;"></div><div class="skeleton skeleton-line" style="width:50%;height:8px;"></div></div>
+                <div class="skeleton-domain-card"><div class="skeleton skeleton-domain-img"></div><div class="skeleton skeleton-line" style="width:65%;"></div><div class="skeleton skeleton-line" style="width:35%;height:8px;"></div></div>
+                <div class="skeleton-domain-card"><div class="skeleton skeleton-domain-img"></div><div class="skeleton skeleton-line" style="width:80%;"></div><div class="skeleton skeleton-line" style="width:45%;height:8px;"></div></div>
+                <div class="skeleton-domain-card"><div class="skeleton skeleton-domain-img"></div><div class="skeleton skeleton-line" style="width:55%;"></div><div class="skeleton skeleton-line" style="width:40%;height:8px;"></div></div>
+            </div>
         </div>
     </div>
   </div>
@@ -1340,10 +1476,40 @@
   <div class="footer-section" style="position:sticky;bottom:0;z-index:50;padding:4px 8px;">
       <div class="footer-row" style="font-size:0.65em;margin-bottom:2px;">📩 <span data-i18n="contactUs"></span>: <a href="mailto:doganay08@hotmail.com" onclick="window.location.href=this.href;return false;">doganay08@hotmail.com</a></div>
       <div class="footer-row" style="font-size:0.65em;margin-bottom:2px;">💬 <span data-i18n="community"></span>: <a href="https://t.me/+5jZi9vrcNMM2NGVk" target="_blank" rel="noopener noreferrer" data-i18n="telegramGroup">TELEGRAM GRUBUMUZ</a></div>
-      <div style="margin-top:2px;font-size:0.6em;"><a href="privacy.html" data-i18n="privacyPolicy">GİZLİLİK POLİTİKASI</a> | <a href="terms.html" data-i18n="termsOfUse">KULLANIM ŞARTLARI</a></div>
+      <div style="margin-top:2px;font-size:0.6em;"><a href="#" onclick="openLegalModal('privacy');return false;" style="cursor:pointer;" data-i18n="privacyPolicy">GİZLİLİK POLİTİKASI</a> | <a href="#" onclick="openLegalModal('terms');return false;" style="cursor:pointer;" data-i18n="termsOfUse">KULLANIM ŞARTLARI</a></div>
   </div>
 </div>
 <script type="module">
+// ═══════════════════════════════════════════════════════════════════════
+//  SKELETON SCREEN HELPERS — yükleme sırasında boş ekran yerine iskelet
+// ═══════════════════════════════════════════════════════════════════════
+function skeletonDomainCardsHTML(n = 6) {
+    const widths = [75, 60, 70, 65, 80, 55, 68, 58];
+    let html = '';
+    for (let i = 0; i < n; i++) {
+        const w = widths[i % widths.length];
+        html += `<div class="skeleton-domain-card">
+            <div class="skeleton skeleton-domain-img"></div>
+            <div class="skeleton skeleton-line" style="width:${w}%;"></div>
+            <div class="skeleton skeleton-line" style="width:${Math.max(30, w - 25)}%;height:8px;"></div>
+        </div>`;
+    }
+    return html;
+}
+function skeletonTicketRowsHTML(n = 3) {
+    let html = '';
+    for (let i = 0; i < n; i++) {
+        html += `<div class="skeleton-ticket-row">
+            <div class="skeleton" style="width:34px;height:34px;border-radius:8px;"></div>
+            <div style="flex:1;">
+                <div class="skeleton skeleton-line" style="width:${60 - i * 8}%;margin:0 0 6px 0;"></div>
+                <div class="skeleton skeleton-line" style="width:${35 - i * 4}%;height:8px;margin:0;"></div>
+            </div>
+        </div>`;
+    }
+    return html;
+}
+
 // ═══════════════════════════════════════════════════════════════════════
 //  GLOBAL CONFIG — /api/config'den çekilir, başarısız olursa fallback
 // ═══════════════════════════════════════════════════════════════════════
@@ -1543,6 +1709,13 @@ const i18n = {
     changelogV1_6Item3:"Talep durumu (Yeni/İnceleniyor/Yanıtlandı/Çözüldü) artık sayfa yenilemeden anında güncelleniyor",
     changelogV1_6Item4:"Kullanıcılar kendi taleplerini, admin ise herhangi bir talebi kalıcı olarak silebiliyor",
     changelogV1_6Item5:"Talep listesi kullanıcı/konu/tarih/durum bilgilerini net çizgilerle ayrılmış tablo düzeninde gösteriyor",
+
+    changelogV1_7:"v1.7 - Deneyim ve Erişilebilirlik Güncellemesi",
+    changelogV1_7Item1:"Destek talebi mesajlarında yanıtın kime ait olduğu (Yönetici / Siz) artık çok daha büyük ve belirgin bir başlıkla gösteriliyor",
+    changelogV1_7Item2:"Gizlilik Politikası ve Kullanım Şartları artık sayfa yenilenmeden, uygulama içinde pencere olarak açılıyor — 'beyaz ekran / yükleniyor' takılması tamamen giderildi",
+    changelogV1_7Item3:"Mobil uyumluluk iyileştirildi: çok küçük telefon ekranları ve tabletler için düzen ince ayarları yapıldı",
+    changelogV1_7Item4:"Domain listesi ve destek talepleri yüklenirken artık boş ekran yerine 'iskelet ekran' (skeleton) efekti gösteriliyor",
+    changelogV1_7Item5:"Yeni kullanıcılar için adım adım 'Uygulama Turu' rehberi eklendi; sağ alt köşedeki sabit yardım butonuyla istenildiğinde tekrar açılabiliyor",
     changelogV1_5:"v1.5 - Arayüz ve Görsel İyileştirmeler",changelogV1_5Desc:"Arayüz ve çeşitli görsel iyileştirmeler yapıldı. Güvenli bağlantı bölümü yeniden düzenlendi, ikon konumlandırması optimize edildi, kullanıcı deneyimi geliştirildi.",
     changelogV1_5Item1:"Güvenli bağlantı bölümü tamamen yeniden tasarlandı — animasyonlu halka efektleri ve pulse glow eklendi",
     changelogV1_5Item2:"Yan menü, bildirimler ve kullanıcı paneli arayüzünde tutarlılık iyileştirmeleri yapıldı",
@@ -1640,6 +1813,20 @@ const i18n = {
     ticketAdminDeleteBtn:"Talebi Kalıcı Sil",
     ticketAdminDeleteConfirm:"Bu destek talebini kalıcı olarak silmek istediğinize emin misiniz? Kullanıcı ve tüm mesaj geçmişi silinecek. Bu işlem geri alınamaz.",
     ticketAdminDeleteFail:"Talep silinemedi: ",
+
+    // Onboarding tour
+    tourStep1Title:"Domain Pazarı",
+    tourStep1Desc:"Satıştaki tüm domainleri burada görebilir, üzerine dokunarak detaylarını inceleyip satın alabilirsiniz.",
+    tourStep2Title:"Menü",
+    tourStep2Desc:"Hesabınıza, gizlilik/kullanım şartlarına ve iletişim bilgilerine buradan ulaşabilirsiniz.",
+    tourStep3Title:"Bildirimler",
+    tourStep3Desc:"Domain onayı, satış ve destek talebi güncellemeleri gibi bildirimleriniz burada birikir.",
+    tourStep4Title:"Destek Talepleri",
+    tourStep4Desc:"Bir sorununuz mu var? Buradan destek talebi açıp ekibimizle doğrudan yazışabilirsiniz.",
+    tourNext:"İleri",
+    tourFinish:"Anladım",
+    tourSkip:"Geç",
+    tourReplay:"Uygulama Turu",
   },
   en: {
     menu:"Menu",account:"Account",preferences:"Preferences",connected:"Connected",
@@ -1775,6 +1962,13 @@ const i18n = {
     changelogV1_6Item3:"Ticket status (New/Reviewing/Answered/Resolved) now updates instantly without reloading the page",
     changelogV1_6Item4:"Users can delete their own tickets, and admin can permanently delete any ticket",
     changelogV1_6Item5:"Ticket list now shows user/subject/date/status in a clearly divided table layout",
+
+    changelogV1_7:"v1.7 - Experience & Accessibility Update",
+    changelogV1_7Item1:"Support ticket messages now show who the reply is from (Admin / You) with a much bigger, clearer header",
+    changelogV1_7Item2:"Privacy Policy and Terms of Use now open as an in-app window instead of a full page reload — the 'white screen / loading' flash is completely gone",
+    changelogV1_7Item3:"Improved mobile compatibility with layout fine-tuning for very small phone screens and tablets",
+    changelogV1_7Item4:"Domain listings and support tickets now show a skeleton loading effect instead of a blank screen while loading",
+    changelogV1_7Item5:"Added a step-by-step 'App Tour' for new users, reachable anytime via the fixed help button in the bottom-right corner",
     changelogV1_5:"v1.5 - UI & Visual Improvements",changelogV1_5Desc:"Interface and various visual improvements made. Secure connection section redesigned, icon positioning optimized, user experience enhanced.",
     changelogV1_5Item1:"Secure connection section fully redesigned — animated ring effects and pulse glow added",
     changelogV1_5Item2:"Consistency improvements across side menu, notifications and user panel interfaces",
@@ -1872,6 +2066,20 @@ const i18n = {
     ticketAdminDeleteBtn:"Permanently Delete Ticket",
     ticketAdminDeleteConfirm:"Are you sure you want to permanently delete this ticket? The user and full message history will be removed. This action cannot be undone.",
     ticketAdminDeleteFail:"Failed to delete ticket: ",
+
+    // Onboarding tour
+    tourStep1Title:"Domain Marketplace",
+    tourStep1Desc:"Browse all domains listed for sale here — tap one to see details and buy.",
+    tourStep2Title:"Menu",
+    tourStep2Desc:"Access your account, privacy/terms, and contact info from here.",
+    tourStep3Title:"Notifications",
+    tourStep3Desc:"Updates about approvals, sales, and support tickets show up here.",
+    tourStep4Title:"Support Tickets",
+    tourStep4Desc:"Have an issue? Open a support ticket here and chat directly with our team.",
+    tourNext:"Next",
+    tourFinish:"Got it",
+    tourSkip:"Skip",
+    tourReplay:"App Tour",
   }
 };
 let currentLang = localStorage.getItem('w3dg_lang') || 'tr';
@@ -1991,6 +2199,7 @@ window.handleLogout=async function(){
     const ap=document.getElementById("admin-panel"); if(ap){ap.style.display="none";ap.style.opacity='';ap.style.transform='';}
     const nb=document.getElementById("notif-btn"); if(nb) nb.style.visibility="hidden";
     const uab=document.getElementById("user-avatar-btn"); if(uab){uab.style.display="none";if(uab._userMenuTimeout){clearTimeout(uab._userMenuTimeout);}}
+    const tfab=document.getElementById("tour-fab"); if(tfab) tfab.style.display="none";
     const umd=document.getElementById("user-menu-dropdown"); if(umd) umd.style.display="none";
     // Menü açıksa kapat
     const sm=document.getElementById('side-menu'); const smo=document.getElementById('side-menu-overlay');
@@ -2197,6 +2406,7 @@ window.openChangelogModal=function(){
     const list=document.getElementById('changelog-list');
     if(!list) return;
     const versions=[
+        {v:t('changelogV1_7'),items:[t('changelogV1_7Item1'),t('changelogV1_7Item2'),t('changelogV1_7Item3'),t('changelogV1_7Item4'),t('changelogV1_7Item5')],date:'2026-07-07',icon:'🧭',color:'#f87171'},
         {v:t('changelogV1_6'),items:[t('changelogV1_6Item1'),t('changelogV1_6Item2'),t('changelogV1_6Item3'),t('changelogV1_6Item4'),t('changelogV1_6Item5')],date:'2026-07-06',icon:'🎫',color:'#818cf8'},
         {v:t('changelogV1_5'),items:[t('changelogV1_5Item1'),t('changelogV1_5Item2'),t('changelogV1_5Item3')],date:'2026-07-04',icon:'✨',color:'#f59e0b'},
         {v:t('changelogV1_4'),items:[t('changelogV1_4Item1'),t('changelogV1_4Item2'),t('changelogV1_4Item3')],date:'2026-07-03',icon:'🛡️',color:'#10b981'},
@@ -2841,7 +3051,7 @@ function render(){
             list.innerHTML = '';
             return;
         }
-        list.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:24px 0;color:#64748b;font-size:0.8em;">⏳ ${t('loadingDomains')}</div>`;
+        list.innerHTML = skeletonDomainCardsHTML(6);
         return;
     }
 
@@ -3060,6 +3270,9 @@ window.loginWithPi = async function() {
             // Kullanıcı avatarını göster
             const avatarBtn=document.getElementById('user-avatar-btn');
             if(avatarBtn) avatarBtn.style.display='block';
+            // Uygulama turu butonunu her zaman erişilebilir yap (admin dahil)
+            const tourFab=document.getElementById('tour-fab');
+            if(tourFab) tourFab.style.display='flex';
             const menuName=document.getElementById('user-menu-name');
             if(menuName&&currentUser) menuName.textContent='@'+currentUser;
             const menuTime=document.getElementById('user-menu-time');
@@ -3185,6 +3398,7 @@ window.loginWithPi = async function() {
                     setTimeout(() => {
                         userPanel.style.opacity = '1';
                         userPanel.style.transform = 'translateY(0)';
+                        maybeStartOnboardingTour();
                     }, isAdmin ? 200 : 80);
                 });
             });
@@ -3402,7 +3616,158 @@ window.openLink = function(url, isExternal) {
     }
 };
 
+// ═══════════════════════════════════════════════════════════════════════
+//  GİZLİLİK / ŞARTLAR — modal içinde açma (tam sayfa geçişini önler)
+//  Önceden bu linkler sekme içinde privacy.html / terms.html'e yönlendiriyordu.
+//  Bu, ağır uygulamanın (Firebase, Pi SDK vb.) geri dönüşte sıfırdan
+//  yeniden yüklenmesine ve "beyaz ekran / yükleniyor" yanıp sönmesine
+//  sebep oluyordu. Artık içerik fetch ile çekilip modalda gösteriliyor,
+//  sayfa hiç terk edilmiyor.
+// ═══════════════════════════════════════════════════════════════════════
+const legalPageCache = {};
+async function openLegalModal(type) {
+    const url = type === 'privacy' ? 'privacy.html' : 'terms.html';
+    const titleMap = {
+        privacy: { tr: 'GİZLİLİK POLİTİKASI', en: 'PRIVACY POLICY' },
+        terms: { tr: 'KULLANIM ŞARTLARI', en: 'TERMS OF USE' }
+    };
+    const modal = document.getElementById('legal-modal');
+    const titleEl = document.getElementById('legal-modal-title');
+    const bodyEl = document.getElementById('legal-modal-body');
 
+    titleEl.textContent = titleMap[type][currentLang === 'en' ? 'en' : 'tr'];
+    bodyEl.innerHTML = '<div style="text-align:center;padding:20px 0;color:#64748b;">⏳ ...</div>';
+    modal.style.display = 'flex';
+
+    try {
+        let html = legalPageCache[type];
+        if (!html) {
+            const res = await fetch(url);
+            const text = await res.text();
+            const parsed = new DOMParser().parseFromString(text, 'text/html');
+            const container = parsed.querySelector('.container');
+            html = container ? container.innerHTML : text;
+            legalPageCache[type] = html;
+        }
+        bodyEl.innerHTML = html;
+    } catch (e) {
+        console.error('Legal modal yükleme hatası:', e);
+        // Fetch başarısız olursa (ör. CORS), yeni sekmede aç — en azından SPA'yı bozmaz
+        bodyEl.innerHTML = '<div style="text-align:center;padding:20px 0;color:#f87171;">Yüklenemedi. Yeni sekmede açılıyor...</div>';
+        window.openLink(url, true);
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+//  KULLANICI REHBERİ (ONBOARDING TOUR)
+//  İlk girişte temel özellikleri tanıtan adım adım rehber.
+//  localStorage'da 'w3dg_tour_done' varsa tekrar otomatik gösterilmez;
+//  yan menüdeki "Uygulama Turu" ile istenildiğinde tekrar açılabilir.
+// ═══════════════════════════════════════════════════════════════════════
+const TOUR_STEPS = [
+    { selector: '#domain-list', titleKey: 'tourStep1Title', descKey: 'tourStep1Desc', placement: 'top' },
+    { selector: '#hamburger-btn', titleKey: 'tourStep2Title', descKey: 'tourStep2Desc', placement: 'bottom' },
+    { selector: '#notif-btn', titleKey: 'tourStep3Title', descKey: 'tourStep3Desc', placement: 'bottom' },
+    { selector: '[data-utab="utab-tickets"]', titleKey: 'tourStep4Title', descKey: 'tourStep4Desc', placement: 'top' }
+];
+let tourStepIndex = 0;
+let tourEls = null;
+
+function tourCleanup() {
+    tourEls?.overlay?.remove();
+    tourEls?.highlight?.remove();
+    tourEls?.tooltip?.remove();
+    tourEls = null;
+    window.removeEventListener('resize', tourReposition);
+}
+
+function tourFinish() {
+    localStorage.setItem('w3dg_tour_done', '1');
+    tourCleanup();
+}
+
+function tourReposition() {
+    if (!tourEls) return;
+    const step = TOUR_STEPS[tourStepIndex];
+    const target = document.querySelector(step.selector);
+    if (!target) { tourNextStep(); return; }
+    const rect = target.getBoundingClientRect();
+    const pad = 6;
+    Object.assign(tourEls.highlight.style, {
+        top: (rect.top - pad) + 'px',
+        left: (rect.left - pad) + 'px',
+        width: (rect.width + pad * 2) + 'px',
+        height: (rect.height + pad * 2) + 'px'
+    });
+
+    const tooltip = tourEls.tooltip;
+    const vh = window.innerHeight, vw = window.innerWidth;
+    let top, left = Math.min(Math.max(12, rect.left), vw - 292);
+    if (step.placement === 'bottom') {
+        top = rect.bottom + 14;
+    } else {
+        top = rect.top - 14 - tooltip.offsetHeight;
+    }
+    // Ekran dışına taşarsa yönü çevir
+    if (top < 8) top = rect.bottom + 14;
+    if (top + tooltip.offsetHeight > vh - 8) top = Math.max(8, rect.top - 14 - tooltip.offsetHeight);
+    Object.assign(tooltip.style, { top: top + 'px', left: left + 'px' });
+}
+
+function tourRenderStep() {
+    const step = TOUR_STEPS[tourStepIndex];
+    const target = document.querySelector(step.selector);
+    if (!target) { tourNextStep(); return; }
+
+    const isLast = tourStepIndex === TOUR_STEPS.length - 1;
+    const dots = TOUR_STEPS.map((_, i) => `<div class="tour-dot ${i === tourStepIndex ? 'active' : ''}"></div>`).join('');
+
+    tourEls.tooltip.innerHTML = `
+        <h4>${t(step.titleKey)}</h4>
+        <p>${t(step.descKey)}</p>
+        <div class="tour-dots">${dots}</div>
+        <div class="tour-actions">
+            <button class="tour-skip" onclick="window.tourFinish()">${t('tourSkip')}</button>
+            <button class="tour-next" onclick="window.tourNextStep()">${isLast ? t('tourFinish') : t('tourNext')}</button>
+        </div>`;
+
+    requestAnimationFrame(tourReposition);
+}
+
+window.tourNextStep = function() {
+    tourStepIndex++;
+    if (tourStepIndex >= TOUR_STEPS.length) { tourFinish(); return; }
+    tourRenderStep();
+};
+window.tourFinish = tourFinish;
+
+function startOnboardingTour() {
+    // Hedef elementlerden en az biri yoksa turu başlatma (ör. giriş yapılmamış)
+    if (!document.querySelector(TOUR_STEPS[0].selector)) return;
+    tourCleanup();
+    tourStepIndex = 0;
+
+    const overlay = document.createElement('div');
+    overlay.className = 'tour-overlay';
+    const highlight = document.createElement('div');
+    highlight.className = 'tour-highlight';
+    const tooltip = document.createElement('div');
+    tooltip.className = 'tour-tooltip';
+
+    document.body.appendChild(overlay);
+    document.body.appendChild(highlight);
+    document.body.appendChild(tooltip);
+    tourEls = { overlay, highlight, tooltip };
+
+    window.addEventListener('resize', tourReposition);
+    tourRenderStep();
+}
+window.startOnboardingTour = startOnboardingTour;
+
+function maybeStartOnboardingTour() {
+    if (localStorage.getItem('w3dg_tour_done')) return;
+    setTimeout(startOnboardingTour, 700);
+}
 
 // ═══════════════════════════════════════════════════════════════════════
 //  DESTEK / TICKET SİSTEMİ
@@ -3641,8 +4006,9 @@ window.openTicketDetail = async function(ticketId) {
             const isAdmin = msg.from === 'admin';
             const isUser = msg.from === currentUser;
             const time = msg.timestamp ? new Date(msg.timestamp).toLocaleString(locale, { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '';
+            const senderLabel = isAdmin ? '👤 ' + t('ticketReplyFromAdmin') : (isUser ? '👤 ' + t('ticketReplyFromYou') : '👤 @' + msg.from);
             return `<div class="ticket-message ${isAdmin ? 'admin' : 'user'}">
-                <div class="ticket-message-header">${isAdmin ? '👤 ' + t('ticketReplyFromAdmin') : (isUser ? '👤 ' + t('ticketReplyFromYou') : '@' + msg.from)} — ${time}</div>
+                <div class="ticket-message-header"><span>${senderLabel}</span><span style="font-weight:700;text-transform:none;opacity:0.85;">${time}</span></div>
                 <div class="ticket-message-text">${escapeHtml(msg.text)}</div>
             </div>`;
         }).join('');
@@ -3928,8 +4294,9 @@ window.renderAdminTicketDetail = async function(ticketId) {
         messagesContainer.innerHTML = ticket.messages.map((msg, idx) => {
             const isAdmin = msg.from === 'admin';
             const time = msg.timestamp ? new Date(msg.timestamp).toLocaleString(locale, { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '';
+            const senderLabel = isAdmin ? '👤 ' + t('ticketReplyFromAdmin') : '👤 @' + msg.from;
             return `<div class="ticket-message ${isAdmin ? 'admin' : 'user'}">
-                <div class="ticket-message-header">${isAdmin ? '👤 ' + t('ticketReplyFromAdmin') : '@' + msg.from} — ${time}</div>
+                <div class="ticket-message-header"><span>${senderLabel}</span><span style="font-weight:700;text-transform:none;opacity:0.85;">${time}</span></div>
                 <div class="ticket-message-text">${escapeHtml(msg.text)}</div>
             </div>`;
         }).join('');
