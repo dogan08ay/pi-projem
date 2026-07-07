@@ -1013,21 +1013,26 @@ export default async function handler(req, res) {
       if (data.status === 'closed') return res.status(400).json({ error: "Kapatılmış talebe yanıt verilemez" });
 
       const now = Date.now();
+      // "Çözüldü" olarak işaretlenmiş bir talebe kullanıcı yeniden yazarsa, bunu
+      // sıradan bir "inceleniyor" durumuna değil — admin'in gözünden kolayca kaçmaması
+      // için — net bir şekilde "yeniden açıldı" anlamına gelen 'new' durumuna alıyoruz.
+      // "Yanıtlandı" durumundaki normal karşılıklı yazışma akışında ise 'reviewing'e
+      // dönmeye devam ediyor (bu, olağan bir takip mesajı).
+      const wasResolved = data.status === 'resolved';
+      const newStatus = wasResolved ? 'new' : (data.status === 'answered' ? 'reviewing' : data.status);
+
       await ticketRef.update({
         messages: FieldValue.arrayUnion({ from: realUsername, text, timestamp: now }),
-        lastUpdate: now
-        // NOT: Durum artık burada değiştirilmiyor. Önceden "answered"/"resolved"
-        // bir talebe kullanıcı yazınca otomatik "reviewing"e çekiliyordu — bu,
-        // sadece "teşekkürler" gibi mesajlarda bile talebi admin'in aktif
-        // kuyruğuna geri düşürüyordu. Artık durum admin manuel değiştirmedikçe
-        // sabit kalıyor; admin yine de mevcut "okunmamış" rozeti ve bildirim
-        // (aşağıda) üzerinden yeni mesajdan haberdar oluyor.
+        lastUpdate: now,
+        status: newStatus
       });
 
       await sendNotificationToAdmin({
         type: 'ticket_message',
-        title: '💬 Yeni Mesaj',
-        body: `@${realUsername} "${data.subject}" talebine yeni mesaj gönderdi.`,
+        title: wasResolved ? '🔄 Çözülen Talep Yeniden Açıldı' : '💬 Yeni Mesaj',
+        body: wasResolved
+          ? `@${realUsername} çözüldü olarak işaretlenen "${data.subject}" talebine yeni mesaj gönderdi, talep yeniden açıldı.`
+          : `@${realUsername} "${data.subject}" talebine yeni mesaj gönderdi.`,
         ticketId
       });
 
