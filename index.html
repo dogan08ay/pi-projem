@@ -865,12 +865,13 @@
 .tour-overlay {
   position: fixed; inset: 0; z-index: 10000;
   background: transparent;
-  pointer-events: none;
+  pointer-events: auto;
+  cursor: pointer;
 }
 .tour-highlight {
   position: fixed; z-index: 10001;
   border-radius: 14px;
-  box-shadow: 0 0 0 4000px rgba(2,6,23,0.82), 0 0 0 3px #818cf8, 0 0 24px rgba(129,140,248,0.6);
+  box-shadow: 0 0 0 4000px rgba(2,6,23,0.6), 0 0 0 3px #818cf8, 0 0 24px rgba(129,140,248,0.6);
   transition: top 0.35s ease, left 0.35s ease, width 0.35s ease, height 0.35s ease;
   pointer-events: none;
 }
@@ -3692,25 +3693,39 @@ function tourReposition() {
     const target = document.querySelector(step.selector);
     if (!target) { tourNextStep(); return; }
     const rect = target.getBoundingClientRect();
+    const vh = window.innerHeight, vw = window.innerWidth;
+
+    // Hedef görünür değilse veya boyutsuzsa (henüz render olmamış / ekran dışında)
+    // turu güvenle sonlandır — karanlık overlay'in ekranda asılı kalmasını önler.
+    if (rect.width < 10 || rect.height < 10 || rect.bottom < 0 || rect.top > vh) {
+        tourFinish();
+        return;
+    }
+
     const pad = 6;
+    // Çok uzun elementlerde (ör. domain listesi) spotlight'ı görünür alanla sınırla
+    const visTop = Math.max(rect.top, 0);
+    const visBottom = Math.min(rect.bottom, vh);
+    const clampedHeight = Math.min(rect.height, Math.max(120, visBottom - visTop));
+
     Object.assign(tourEls.highlight.style, {
-        top: (rect.top - pad) + 'px',
+        top: (visTop - pad) + 'px',
         left: (rect.left - pad) + 'px',
         width: (rect.width + pad * 2) + 'px',
-        height: (rect.height + pad * 2) + 'px'
+        height: (clampedHeight + pad * 2) + 'px'
     });
 
     const tooltip = tourEls.tooltip;
-    const vh = window.innerHeight, vw = window.innerWidth;
     let top, left = Math.min(Math.max(12, rect.left), vw - 292);
+    const anchorTop = visTop, anchorBottom = visTop + clampedHeight;
     if (step.placement === 'bottom') {
-        top = rect.bottom + 14;
+        top = anchorBottom + 14;
     } else {
-        top = rect.top - 14 - tooltip.offsetHeight;
+        top = anchorTop - 14 - tooltip.offsetHeight;
     }
     // Ekran dışına taşarsa yönü çevir
-    if (top < 8) top = rect.bottom + 14;
-    if (top + tooltip.offsetHeight > vh - 8) top = Math.max(8, rect.top - 14 - tooltip.offsetHeight);
+    if (top < 8) top = anchorBottom + 14;
+    if (top + tooltip.offsetHeight > vh - 8) top = Math.max(8, anchorTop - 14 - tooltip.offsetHeight);
     Object.assign(tooltip.style, { top: top + 'px', left: left + 'px' });
 }
 
@@ -3718,6 +3733,8 @@ function tourRenderStep() {
     const step = TOUR_STEPS[tourStepIndex];
     const target = document.querySelector(step.selector);
     if (!target) { tourNextStep(); return; }
+    const rect = target.getBoundingClientRect();
+    if (rect.width < 10 || rect.height < 10) { tourNextStep(); return; }
 
     const isLast = tourStepIndex === TOUR_STEPS.length - 1;
     const dots = TOUR_STEPS.map((_, i) => `<div class="tour-dot ${i === tourStepIndex ? 'active' : ''}"></div>`).join('');
@@ -3727,8 +3744,8 @@ function tourRenderStep() {
         <p>${t(step.descKey)}</p>
         <div class="tour-dots">${dots}</div>
         <div class="tour-actions">
-            <button class="tour-skip" onclick="window.tourFinish()">${t('tourSkip')}</button>
-            <button class="tour-next" onclick="window.tourNextStep()">${isLast ? t('tourFinish') : t('tourNext')}</button>
+            <button class="tour-skip" onclick="event.stopPropagation();window.tourFinish()">${t('tourSkip')}</button>
+            <button class="tour-next" onclick="event.stopPropagation();window.tourNextStep()">${isLast ? t('tourFinish') : t('tourNext')}</button>
         </div>`;
 
     requestAnimationFrame(tourReposition);
@@ -3743,16 +3760,23 @@ window.tourFinish = tourFinish;
 
 function startOnboardingTour() {
     // Hedef elementlerden en az biri yoksa turu başlatma (ör. giriş yapılmamış)
-    if (!document.querySelector(TOUR_STEPS[0].selector)) return;
+    const firstTarget = document.querySelector(TOUR_STEPS[0].selector);
+    if (!firstTarget) return;
+    const firstRect = firstTarget.getBoundingClientRect();
+    // İlk hedef henüz render olmadıysa (0 boyut) turu başlatma — karanlık ekran riskini önle
+    if (firstRect.width < 10 || firstRect.height < 10) return;
+
     tourCleanup();
     tourStepIndex = 0;
 
     const overlay = document.createElement('div');
     overlay.className = 'tour-overlay';
+    overlay.addEventListener('click', tourFinish); // ekrana dokununca turu kapat (güvenlik ağı)
     const highlight = document.createElement('div');
     highlight.className = 'tour-highlight';
     const tooltip = document.createElement('div');
     tooltip.className = 'tour-tooltip';
+    tooltip.addEventListener('click', (e) => e.stopPropagation());
 
     document.body.appendChild(overlay);
     document.body.appendChild(highlight);
@@ -3766,8 +3790,12 @@ window.startOnboardingTour = startOnboardingTour;
 
 function maybeStartOnboardingTour() {
     if (localStorage.getItem('w3dg_tour_done')) return;
-    setTimeout(startOnboardingTour, 700);
+    // Sayfa içeriğinin (domain kartları / layout) oturması için biraz daha uzun bekle
+    setTimeout(() => {
+        requestAnimationFrame(() => requestAnimationFrame(startOnboardingTour));
+    }, 900);
 }
+
 
 // ═══════════════════════════════════════════════════════════════════════
 //  DESTEK / TICKET SİSTEMİ
