@@ -1015,8 +1015,13 @@ export default async function handler(req, res) {
       const now = Date.now();
       await ticketRef.update({
         messages: FieldValue.arrayUnion({ from: realUsername, text, timestamp: now }),
-        lastUpdate: now,
-        status: (data.status === 'answered' || data.status === 'resolved') ? 'reviewing' : data.status
+        lastUpdate: now
+        // NOT: Durum artık burada değiştirilmiyor. Önceden "answered"/"resolved"
+        // bir talebe kullanıcı yazınca otomatik "reviewing"e çekiliyordu — bu,
+        // sadece "teşekkürler" gibi mesajlarda bile talebi admin'in aktif
+        // kuyruğuna geri düşürüyordu. Artık durum admin manuel değiştirmedikçe
+        // sabit kalıyor; admin yine de mevcut "okunmamış" rozeti ve bildirim
+        // (aşağıda) üzerinden yeni mesajdan haberdar oluyor.
       });
 
       await sendNotificationToAdmin({
