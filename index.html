@@ -3355,7 +3355,7 @@ async function handleIncompletePayment(payment){
 //  - "Bağlanıyor..." spinner'ı buton üzerinde göster, sayfa
 //    genelinde değil.
 // ═══════════════════════════════════════════════════════════════════════
-window.loginWithPi = async function() {
+async function performPiConnect() {
     await waitForPi();
     await new Promise(r => setTimeout(r, 300));
 
@@ -3551,6 +3551,21 @@ window.loginWithPi = async function() {
 
     const success = await attemptLogin(false);
     if (!success) alert(t('loginError'));
+}
+
+// ── GERÇEK "PI İLE BAĞLAN" TETİKLEYİCİSİ ──────────────────────────────
+// Bankacılık uygulamalarındaki mantığa benzer şekilde: güven mesajı, sayfa
+// açılışında değil, kullanıcı gerçekten bağlanma eylemini başlattığı anda
+// (riskin/aksiyonun tam öncesinde) gösterilir. Sadece kullanıcının bu
+// cihazda İLK bağlanma denemesinde araya girer; onayladıktan sonra bir
+// daha çıkmaz ve bağlantı akışı kesintisiz devam eder.
+window.loginWithPi = function() {
+    if (localStorage.getItem('w3dg_trust_intro_seen')) {
+        performPiConnect();
+    } else {
+        pendingPiConnectAfterTrust = true;
+        document.getElementById('trust-intro-modal').style.display = 'flex';
+    }
 };
 
 document.getElementById("confirm-buy-btn").onclick=async()=>{
@@ -3704,18 +3719,25 @@ domains.forEach(d=>{if(!domainData[d.name]) domainData[d.name]={sold:false,price
 applyTranslations();
 
 // ── GÜVEN / BİLGİLENDİRME EKRANI ──────────────────────────────────────
-// Kimseyi zorla karşılamıyoruz: sol-alt köşedeki 🛡️ baloncuğu her zaman
-// orada duruyor, isteyen tıklayıp bilgiyi okuyor, istemeyen direkt
-// "Pi ile Bağlan"a basıp devam edebiliyor. Baloncuk ilk kez tıklanana kadar
-// dikkat çekmek için hafifçe "nabız" gibi atıyor; bir kez açıldıktan sonra
-// (localStorage flag) sakinleşiyor ama buton kalıcı olarak erişilebilir kalıyor.
+// Kimseyi sayfa açılışında zorla karşılamıyoruz. İki gösterim yolu var:
+// 1) Bilgi amaçlı: 🛡️ baloncuk veya yan menüden — istendiğinde açılır/kapanır.
+// 2) Bağlantı kapısı: kullanıcı "Pi ile Bağlan"a bastığında, bu cihazda
+//    daha önce hiç onaylanmamışsa araya girer; "Anladım" ile kapatılınca
+//    gerçek bağlantı akışı otomatik başlar. Bir kez onaylandıktan sonra
+//    bir daha çıkmaz.
+let pendingPiConnectAfterTrust = false;
 window.closeTrustIntro = function(){
     document.getElementById('trust-intro-modal').style.display='none';
-};
-window.openTrustInfo = function(){
-    document.getElementById('trust-intro-modal').style.display='flex';
     localStorage.setItem('w3dg_trust_intro_seen','1');
     document.getElementById('trust-fab')?.style.setProperty('animation','none');
+    if (pendingPiConnectAfterTrust) {
+        pendingPiConnectAfterTrust = false;
+        performPiConnect();
+    }
+};
+window.openTrustInfo = function(){
+    pendingPiConnectAfterTrust = false; // sadece bilgi amaçlı açılış; bağlantıyı tetiklemesin
+    document.getElementById('trust-intro-modal').style.display='flex';
 };
 if(localStorage.getItem('w3dg_trust_intro_seen')){
     document.getElementById('trust-fab')?.style.setProperty('animation','none');
