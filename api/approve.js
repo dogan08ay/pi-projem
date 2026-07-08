@@ -2,6 +2,24 @@ import { initializeApp, getApps, cert } from 'firebase-admin/app';
 import { getFirestore, FieldValue } from 'firebase-admin/firestore';
 import { getStorage } from 'firebase-admin/storage';
 import { getDatabase } from 'firebase-admin/database';
+import PiNetwork from 'pi-backend'; // npm install --save pi-backend  (resmi Pi Network Node.js SDK'sı)
+
+// ─── Escrow / A2U (App-to-User) Ödeme İstemcisi ────────────────────────────
+// PI_WALLET_PRIVATE_SEED: Uygulama cüzdanınızın Stellar private seed'i ("S..." ile başlar).
+// Bunu ASLA koda gömmeyin — sadece ortam değişkeni (env var) olarak saklayın.
+// APP_SECRET zaten var olan Pi API Key'iniz.
+const ESCROW_COMMISSION_RATE = 0.03; // %3 platform komisyonu
+let _piClient = null;
+function getPiClient() {
+  if (_piClient) return _piClient;
+  const apiKey = process.env.APP_SECRET;
+  const walletSeed = process.env.PI_WALLET_PRIVATE_SEED;
+  if (!apiKey || !walletSeed) {
+    throw new Error("APP_SECRET veya PI_WALLET_PRIVATE_SEED tanımlı değil — escrow ödemesi gönderilemez.");
+  }
+  _piClient = new PiNetwork(apiKey, walletSeed);
+  return _piClient;
+}
 
 // ─── Admin Config ───────────────────────────────────────────────────────
 const ADMIN_USERNAME = process.env.ADMIN_USERNAME || 'doganay0808';
@@ -65,9 +83,15 @@ const userCache = new Map();
 const USER_CACHE_TTL = 5 * 60 * 1000;
 
 async function getRealUsername(accessToken) {
+  const info = await getRealUserIdentity(accessToken);
+  return info ? info.username : null;
+}
+
+// uid, A2U (escrow) ödemesi gönderebilmek için gereklidir — sadece username yeterli değildir.
+async function getRealUserIdentity(accessToken) {
   if (!accessToken) return null;
   const cached = userCache.get(accessToken);
-  if (cached && Date.now() - cached.ts < USER_CACHE_TTL) return cached.username;
+  if (cached && Date.now() - cached.ts < USER_CACHE_TTL) return { username: cached.username, uid: cached.uid };
   try {
     const response = await fetch('https://api.minepi.com/v2/me', {
       headers: { 'Authorization': `Bearer ${accessToken}` }
@@ -75,8 +99,18 @@ async function getRealUsername(accessToken) {
     if (!response.ok) return null;
     const userDto = await response.json();
     const username = userDto.username || null;
-    userCache.set(accessToken, { username, ts: Date.now() });
-    return username;
+    const uid = userDto.uid || null;
+    userCache.set(accessToken, { username, uid, ts: Date.now() });
+    // Escrow ödemesi için gereken uid'yi kalıcı olarak da saklıyoruz.
+    if (username && uid) {
+      try {
+        const db = getDb();
+        await db.collection('user_profiles').doc(username).set({ piUid: uid }, { merge: true });
+      } catch (e) {
+        console.error(`piUid kaydedilemedi (@${username}):`, e.message || e);
+      }
+    }
+    return { username, uid };
   } catch (e) {
     console.error("Pi /v2/me kullanıcı doğrulama hatası:", e);
     return null;
@@ -953,6 +987,279 @@ export default async function handler(req, res) {
     }
   }
 
+  // ══════════════════════════════════════════════════════════════════════
+  //  MARKA / TELİF HAKKI BİLDİRİM FORMU
+  //  Not: Talep sahibi (marka/telif sahibi) platform kullanıcısı olmak
+  //  zorunda değildir, bu yüzden accessToken zorunlu tutulmuyor.
+  // ══════════════════════════════════════════════════════════════════════
+  if (action === 'submit_trademark_claim') {
+    if (!checkRateLimit(clientIp, 'submit_trademark_claim', 5, 60000))
+      return res.status(429).json({ error: "Çok fazla istek. Lütfen bekleyin." });
+
+    const { claimantName, claimantEmail, regNumber, domainName, evidence } = req.body;
+    const emailOk = typeof claimantEmail === 'string' && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(claimantEmail);
+
+    if (!claimantName || !emailOk || !domainName || !evidence) {
+      return res.status(400).json({ error: "Zorunlu alanlar eksik veya e-posta geçersiz" });
+    }
+    if (String(claimantName).length > 120 || String(domainName).length > 100 || String(evidence).length > 2000) {
+      return res.status(400).json({ error: "Alan uzunluğu sınırı aşıldı" });
+    }
+
+    try {
+      const db = getDb();
+      const claimRef = db.collection('trademark_claims').doc();
+      const now = Date.now();
+      const submitterUsername = await getRealUsername(accessToken); // null olabilir, sorun değil
+
+      await claimRef.set({
+        claimantName: String(claimantName).trim(),
+        claimantEmail: String(claimantEmail).trim(),
+        regNumber: regNumber ? String(regNumber).trim().slice(0, 80) : null,
+        domainName: String(domainName).trim(),
+        evidence: String(evidence).trim(),
+        status: 'pending', // pending | reviewing | upheld | rejected
+        submitterUsername: submitterUsername || null,
+        submittedIp: clientIp,
+        createdAt: now,
+        adminNote: null,
+        resolvedAt: null
+      });
+
+      await sendNotificationToAdmin({
+        type: 'new_trademark_claim',
+        title: '⚖️ Yeni Marka/Telif Bildirimi',
+        body: `"${domainName}" domaini için ${claimantName} tarafından marka/telif hakkı bildirimi yapıldı.`,
+        claimId: claimRef.id
+      });
+
+      await sendTG(TG_CHAT_ID, `⚖️ *YENİ MARKA/TELİF BİLDİRİMİ*\n\n👤 ${claimantName} (${claimantEmail})\n🌐 Domain: ${domainName}\n🆔 Talep ID: ${claimRef.id}`);
+
+      return res.status(200).json({ success: true, claimId: claimRef.id });
+    } catch (e) {
+      console.error("Marka talebi kaydetme hatası:", e);
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  // ── Admin: Tüm Marka/Telif Bildirimlerini Getir ────────────────────────
+  if (action === 'get_trademark_claims') {
+    const isAdmin = await verifyAdmin(accessToken);
+    if (!isAdmin) return res.status(403).json({ error: "Yetki yok" });
+    try {
+      const db = getDb();
+      const snap = await db.collection('trademark_claims').orderBy('createdAt', 'desc').get();
+      const claims = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      return res.status(200).json({ success: true, claims });
+    } catch (e) {
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  // ── Admin: Bildirimi Sonuçlandır (upheld → domain otomatik kaldırılır) ─
+  if (action === 'resolve_trademark_claim') {
+    const isAdmin = await verifyAdmin(accessToken);
+    if (!isAdmin) return res.status(403).json({ error: "Yetki yok" });
+
+    const { claimId, resolution, adminNote } = req.body; // resolution: 'upheld' | 'rejected'
+    if (!claimId || !['upheld', 'rejected'].includes(resolution)) {
+      return res.status(400).json({ error: "Geçersiz istek" });
+    }
+
+    try {
+      const db = getDb();
+      const claimRef = db.collection('trademark_claims').doc(claimId);
+      const claimSnap = await claimRef.get();
+      if (!claimSnap.exists) return res.status(404).json({ error: "Talep bulunamadı" });
+      const claim = claimSnap.data();
+
+      await claimRef.set({
+        status: resolution,
+        adminNote: adminNote || null,
+        resolvedAt: Date.now()
+      }, { merge: true });
+
+      // Talep haklı bulunduysa ve domain hâlâ satışta/yayındaysa listeden kaldır.
+      if (resolution === 'upheld' && claim.domainName) {
+        const domainRef = db.collection('domains').doc(claim.domainName);
+        const domainSnap = await domainRef.get();
+        if (domainSnap.exists && domainSnap.data().sold !== true) {
+          await domainRef.set({
+            deleted: true,
+            deletedReason: `trademark_claim:${claimId}`
+          }, { merge: true });
+        }
+      }
+
+      return res.status(200).json({ success: true });
+    } catch (e) {
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  // ══════════════════════════════════════════════════════════════════════
+  //  ESCROW (GÜVENLİ HAVUZ) YÖNETİMİ
+  //  Akış: U2A ödeme zaten App Wallet'a girdi (createPayment/complete akışı,
+  //  yukarıda). Para burada 'held' durumunda bekler. Domain transferini biz
+  //  otomatik doğrulayamayız (registrar'a göre değişir) — bu yüzden admin
+  //  transferi elle kontrol edip serbest bırakır. Serbest bırakma, resmi
+  //  Pi Node.js SDK'sı (pi-backend) ile gerçek bir A2U ödemesidir.
+  // ══════════════════════════════════════════════════════════════════════
+
+  // ── Admin: Havuzda bekleyen (held) tüm satışları listele ───────────────
+  if (action === 'get_pending_escrows') {
+    const isAdmin = await verifyAdmin(accessToken);
+    if (!isAdmin) return res.status(403).json({ error: "Yetki yok" });
+    try {
+      const db = getDb();
+      const snap = await db.collection('domains').where('escrowStatus', '==', 'held').get();
+      const pending = snap.docs.map(d => ({ name: d.id, ...d.data() }));
+      return res.status(200).json({ success: true, pending });
+    } catch (e) {
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  // ── Admin: Domain transferi manuel doğrulandı → satıcıya %97 gönder ────
+  if (action === 'release_escrow_payment') {
+    const isAdmin = await verifyAdmin(accessToken);
+    if (!isAdmin) return res.status(403).json({ error: "Yetki yok" });
+
+    const { domainName: escrowDomainName } = req.body;
+    if (!escrowDomainName) return res.status(400).json({ error: "domainName zorunludur" });
+
+    try {
+      const db = getDb();
+      const domainRef = db.collection('domains').doc(escrowDomainName);
+      const domainSnap = await domainRef.get();
+      if (!domainSnap.exists) return res.status(404).json({ error: "Domain bulunamadı" });
+      const domain = domainSnap.data();
+
+      if (domain.escrowStatus !== 'held') {
+        return res.status(400).json({ error: `Bu domain serbest bırakılamaz (durum: ${domain.escrowStatus || 'yok'})` });
+      }
+      const sellerUsername = domain.sellerUsername;
+      if (!sellerUsername) return res.status(400).json({ error: "Satıcı bilgisi yok" });
+
+      const sellerProfileSnap = await db.collection('user_profiles').doc(sellerUsername).get();
+      const sellerUid = sellerProfileSnap.exists ? sellerProfileSnap.data().piUid : null;
+      if (!sellerUid) {
+        return res.status(400).json({
+          error: "Satıcının Pi uid bilgisi yok. Satıcının uygulamaya en az bir kez Pi ile giriş yapmış olması gerekir."
+        });
+      }
+
+      const commissionRate = typeof domain.escrowCommissionRate === 'number' ? domain.escrowCommissionRate : ESCROW_COMMISSION_RATE;
+      const grossAmount = domain.escrowAmount;
+      const commission = Math.round(grossAmount * commissionRate * 1e7) / 1e7;
+      const netAmount = Math.round((grossAmount - commission) * 1e7) / 1e7;
+
+      const pi = getPiClient();
+
+      // 1) Uygulama sunucusunda A2U ödeme kaydı oluştur
+      const paymentId = await pi.createPayment({
+        amount: netAmount,
+        memo: `Domain satışı: ${escrowDomainName}`.slice(0, 28), // Pi memo kısa tutulmalı
+        metadata: { domainName: escrowDomainName, type: 'escrow_release', sellerUsername },
+        uid: sellerUid
+      });
+
+      // Aynı domain'e ikinci kez ödeme yapılmasın diye paymentId'yi hemen kaydet
+      await domainRef.set({ escrowStatus: 'releasing', escrowPaymentId: paymentId }, { merge: true });
+
+      // 2) İşlemi Pi Blockchain'e gönder
+      const txid = await pi.submitPayment(paymentId);
+      await domainRef.set({ escrowPayoutTxid: txid }, { merge: true });
+
+      // 3) Ödemeyi Pi sunucusunda tamamla
+      await pi.completePayment(paymentId, txid);
+
+      await domainRef.set({
+        escrowStatus: 'released',
+        escrowReleasedAt: Date.now(),
+        escrowNetAmount: netAmount,
+        escrowCommissionAmount: commission
+      }, { merge: true });
+
+      await sendNotification(sellerUsername, {
+        type: 'escrow_released',
+        title: '💸 Ödemeniz Gönderildi',
+        body: `"${escrowDomainName}" satışınız için ${netAmount} Pi cüzdanınıza gönderildi (komisyon: ${commission} Pi).`,
+        domainName: escrowDomainName, txid
+      });
+
+      await sendTG(TG_CHAT_ID, `💸 *ESCROW SERBEST BIRAKILDI*\n\n🌐 ${escrowDomainName}\n👤 @${sellerUsername}\n💰 Net: ${netAmount} Pi (Komisyon: ${commission} Pi)\n🔗 txid: ${txid}`);
+
+      return res.status(200).json({ success: true, txid, netAmount, commission });
+    } catch (e) {
+      console.error("Escrow serbest bırakma hatası:", e);
+      // Hata durumunda durumu 'held' olarak geri almıyoruz otomatik — admin'in
+      // pi.getIncompleteServerPayments() ile manuel kontrol etmesi gerekebilir,
+      // aksi halde aynı satış için çift ödeme riski oluşur.
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  // ── Admin: Anlaşmazlık/iade — parayı satıcı yerine alıcıya geri gönder ─
+  if (action === 'refund_escrow_payment') {
+    const isAdmin = await verifyAdmin(accessToken);
+    if (!isAdmin) return res.status(403).json({ error: "Yetki yok" });
+
+    const { domainName: escrowDomainName, reason } = req.body;
+    if (!escrowDomainName) return res.status(400).json({ error: "domainName zorunludur" });
+
+    try {
+      const db = getDb();
+      const domainRef = db.collection('domains').doc(escrowDomainName);
+      const domainSnap = await domainRef.get();
+      if (!domainSnap.exists) return res.status(404).json({ error: "Domain bulunamadı" });
+      const domain = domainSnap.data();
+
+      if (domain.escrowStatus !== 'held') {
+        return res.status(400).json({ error: `Bu domain iade edilemez (durum: ${domain.escrowStatus || 'yok'})` });
+      }
+      const buyerUsername = domain.buyer;
+      if (!buyerUsername) return res.status(400).json({ error: "Alıcı bilgisi yok" });
+
+      const buyerProfileSnap = await db.collection('user_profiles').doc(buyerUsername).get();
+      const buyerUid = buyerProfileSnap.exists ? buyerProfileSnap.data().piUid : null;
+      if (!buyerUid) {
+        return res.status(400).json({ error: "Alıcının Pi uid bilgisi yok, iade otomatik gönderilemiyor." });
+      }
+
+      const pi = getPiClient();
+      const paymentId = await pi.createPayment({
+        amount: domain.escrowAmount,
+        memo: `İade: ${escrowDomainName}`.slice(0, 28),
+        metadata: { domainName: escrowDomainName, type: 'escrow_refund', buyerUsername },
+        uid: buyerUid
+      });
+      await domainRef.set({ escrowStatus: 'refunding', escrowPaymentId: paymentId }, { merge: true });
+      const txid = await pi.submitPayment(paymentId);
+      await pi.completePayment(paymentId, txid);
+
+      await domainRef.set({
+        escrowStatus: 'refunded',
+        escrowReleasedAt: Date.now(),
+        escrowPayoutTxid: txid,
+        escrowRefundReason: reason || null,
+        sold: false, buyer: null // domain yeniden satışa açılabilir
+      }, { merge: true });
+
+      await sendNotification(buyerUsername, {
+        type: 'escrow_refunded',
+        title: '↩️ Ödemeniz İade Edildi',
+        body: `"${escrowDomainName}" için ödediğiniz ${domain.escrowAmount} Pi cüzdanınıza iade edildi.`,
+        domainName: escrowDomainName, txid
+      });
+
+      return res.status(200).json({ success: true, txid });
+    } catch (e) {
+      console.error("Escrow iade hatası:", e);
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
   // ── Kullanıcı: Kendi Ticket'larını Getir ──────────────────────────────
   if (action === 'get_my_tickets') {
     const realUsername = await getRealUsername(accessToken);
@@ -1431,9 +1738,20 @@ export default async function handler(req, res) {
           const sellerUsername = domainSnap.data().sellerUsername || null;
           const previousBuyer = domainSnap.data().buyer || null;
 
+          // ── Escrow: Pi zaten U2A akışıyla App Wallet'a girdi. Kullanıcı
+          // tarafından listelenen domainlerde para, admin domain transferini
+          // manuel onaylayana kadar 'held' durumunda kalır. Admin'in kendi
+          // domainlerinde (sellerUsername yok) escrow'a gerek yoktur.
           await domainRef.set({
             sold: true, price: realPrice,
-            txid: txid || null, buyer: username, at: Date.now()
+            txid: txid || null, buyer: username, at: Date.now(),
+            ...(sellerUsername ? {
+              escrowStatus: 'held',
+              escrowAmount: realPrice,
+              escrowCommissionRate: ESCROW_COMMISSION_RATE,
+              escrowReleasedAt: null,
+              escrowPayoutTxid: null
+            } : {})
           }, { merge: true });
 
           await db.collection('global_sales').doc(txid || paymentId).set({
