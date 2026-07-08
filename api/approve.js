@@ -1266,8 +1266,16 @@ export default async function handler(req, res) {
       const sellerDoc = await db.collection('users').doc(sale.sellerUsername).get();
       const sellerUid = sellerDoc.exists ? sellerDoc.data().piUid : null;
       if (!sellerUid) {
+        // Satıcıyı sessizce beklemek yerine, ödemesini alabilmesi için
+        // tekrar giriş yapması gerektiğini otomatik olarak bildiriyoruz.
+        await sendNotification(sale.sellerUsername, {
+          type: 'payout_needs_login',
+          title: '💰 Ödemenizi Almak İçin Giriş Yapın',
+          body: `"${sale.domain}" domaininiz satıldı ve ödemeniz hazır! Ödemenin Pi hesabınıza gönderilebilmesi için lütfen uygulamaya bir kez daha Pi ile giriş yapın.`,
+          domainName: sale.domain
+        });
         return res.status(400).json({
-          error: `@${sale.sellerUsername} henüz Pi hesabını uygulamaya bağlamamış (giriş yapmamış). Ödeme, satıcı en az bir kez giriş yapana kadar sistem cüzdanında bekleyecek.`
+          error: `@${sale.sellerUsername} henüz Pi hesabını uygulamaya bağlamamış (giriş yapmamış). Kendisine giriş yapması gerektiğine dair bildirim gönderildi. Ödeme, satıcı giriş yapana kadar sistem cüzdanında bekleyecek.`
         });
       }
 
