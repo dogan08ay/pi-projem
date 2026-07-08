@@ -1032,9 +1032,6 @@
         <span style="color:#334155;">|</span>
         <a href="#" onclick="openLegalModal('terms');return false;" style="color:#f87171;font-size:0.65em;font-weight:700;cursor:pointer;" data-i18n="termsOfUse">KULLANIM ŞARTLARI</a>
     </div>
-    <div style="padding:0 12px 4px 12px;">
-        <a href="#" onclick="window.openTrademarkModal();return false;" style="color:#94a3b8;font-size:0.65em;font-weight:700;cursor:pointer;" data-i18n="trademarkClaim">MARKA / TELİF HAKKI BİLDİRİMİ</a>
-    </div>
     <div class="side-menu-divider"></div>
     <button class="side-menu-item" id="side-menu-logout-btn" onclick="handleLogout()" style="display:none;color:#fca5a5;">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fca5a5" stroke-width="2"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9"/></svg>
@@ -1215,48 +1212,6 @@
     </div>
 </div>
 
-<!-- Marka / Telif Hakkı Bildirim Formu -->
-<div id="trademark-modal" class="modal-overlay" style="display:none;">
-    <div class="modal-content" style="border-color:#94a3b8;max-height:88vh;text-align:left;">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
-            <h2 style="color:#e2e8f0;margin:0;font-size:1.02em;font-weight:900;" data-i18n="trademarkModalTitle"></h2>
-            <button onclick="document.getElementById('trademark-modal').style.display='none'" style="background:rgba(148,163,184,0.15);border:1px solid rgba(148,163,184,0.4);color:#cbd5e1;width:28px;height:28px;border-radius:8px;font-size:0.9em;cursor:pointer;font-weight:900;line-height:1;flex-shrink:0;">✕</button>
-        </div>
-        <div style="font-size:0.78em;color:#94a3b8;margin-bottom:10px;line-height:1.4;" data-i18n="trademarkModalDesc"></div>
-        <div style="max-height:60vh;overflow-y:auto;padding-right:2px;">
-            <div class="ticket-form-group">
-                <label data-i18n="trademarkClaimantName"></label>
-                <input type="text" id="tm-claimant-name" maxlength="120" data-i18n-placeholder="trademarkClaimantNamePh">
-            </div>
-            <div class="ticket-form-group">
-                <label data-i18n="trademarkClaimantEmail"></label>
-                <input type="email" id="tm-claimant-email" maxlength="150" data-i18n-placeholder="trademarkClaimantEmailPh">
-            </div>
-            <div class="ticket-form-group">
-                <label data-i18n="trademarkRegNumber"></label>
-                <input type="text" id="tm-reg-number" maxlength="80" data-i18n-placeholder="trademarkRegNumberPh">
-            </div>
-            <div class="ticket-form-group">
-                <label data-i18n="trademarkDomain"></label>
-                <input type="text" id="tm-domain" maxlength="100" data-i18n-placeholder="trademarkDomainPh">
-            </div>
-            <div class="ticket-form-group">
-                <label data-i18n="trademarkEvidence"></label>
-                <textarea id="tm-evidence" rows="4" maxlength="2000" data-i18n-placeholder="trademarkEvidencePh"></textarea>
-            </div>
-            <label style="display:flex;gap:8px;align-items:flex-start;font-size:0.72em;color:#cbd5e1;margin:8px 0;cursor:pointer;line-height:1.35;">
-                <input type="checkbox" id="tm-declaration" style="margin-top:2px;flex-shrink:0;">
-                <span data-i18n="trademarkDeclaration"></span>
-            </label>
-            <div id="tm-form-msg" style="font-size:0.75em;font-weight:700;margin-bottom:6px;display:none;"></div>
-        </div>
-        <div style="display:flex;gap:8px;margin-top:6px;">
-            <button class="pi-btn" style="background:#475569;flex:1;animation:none;padding:10px;margin:0;" onclick="document.getElementById('trademark-modal').style.display='none'" data-i18n="cancel"></button>
-            <button class="pi-btn" id="tm-submit-btn" style="background:#6366f1;flex:1;animation:none;padding:10px;margin:0;" onclick="window.submitTrademarkClaim()" data-i18n="trademarkSubmit"></button>
-        </div>
-    </div>
-</div>
-
 <!-- ANA İÇERİK -->
 <div class="container">
   <div class="main-scroll">
@@ -1403,8 +1358,6 @@
             <button class="admin-tab-btn" data-tab="tab-add" onclick="switchAdminTab('tab-add')">➕<span data-i18n="addDomain" style="font-size:0.9em;"></span></button>
             <button class="admin-tab-btn" data-tab="tab-earnings" onclick="switchAdminTab('tab-earnings')">🏦<span data-i18n="earningsTab" style="font-size:0.9em;"></span></button>
             <button class="admin-tab-btn" data-tab="tab-tickets" onclick="switchAdminTab('tab-tickets')">🎫<span data-i18n="ticketManagement" style="font-size:0.9em;"></span><span class="pending-badge" id="ticket-count-badge" style="display:none;">0</span></button>
-            <button class="admin-tab-btn" data-tab="tab-escrow" onclick="switchAdminTab('tab-escrow');window.loadPendingEscrows();">🔒<span style="font-size:0.9em;">ESCROW</span><span class="pending-badge" id="escrow-count-badge" style="display:none;">0</span></button>
-            <button class="admin-tab-btn" data-tab="tab-trademark" onclick="switchAdminTab('tab-trademark');window.loadTrademarkClaims();">⚖️<span style="font-size:0.9em;">MARKA TALEPLERİ</span><span class="pending-badge" id="trademark-count-badge" style="display:none;">0</span></button>
 
         </div>
         <div class="admin-tab-panel active" id="tab-users">
@@ -1519,31 +1472,7 @@
                 </div>
             </div>
         </div>
-
-        <!-- Escrow Yönetimi -->
-        <div class="admin-tab-panel" id="tab-escrow">
-            <div style="background:#0a0f1e;border:2px solid #6366f1;border-radius:12px;padding:10px;">
-                <div style="display:flex;align-items:center;justify-content:space-between;gap:6px;margin-bottom:8px;padding-bottom:7px;border-bottom:1px solid #312e81;">
-                    <div style="display:flex;align-items:center;gap:6px;"><span>🔒</span><span style="font-size:0.72em;color:#a5b4fc;font-weight:800;text-transform:uppercase;">Havuzda Bekleyen Satışlar (Escrow)</span></div>
-                    <button onclick="window.loadPendingEscrows()" style="background:rgba(99,102,241,0.15);border:1px solid rgba(99,102,241,0.4);color:#a5b4fc;padding:4px 8px;border-radius:6px;font-size:0.65em;cursor:pointer;font-weight:800;">🔄 Yenile</button>
-                </div>
-                <div style="font-size:0.68em;color:#94a3b8;margin-bottom:8px;line-height:1.4;">Domainin gerçekten alıcıya devredildiğini kontrol ettikten sonra "Serbest Bırak" ile satıcıya ödeme gönderilir. Sorun varsa "İade Et" ile para alıcıya geri döner.</div>
-                <div id="escrow-list"><p style="font-size:0.75em;opacity:0.5;text-align:center;">Yükleniyor...</p></div>
-            </div>
-        </div>
-
-        <!-- Marka / Telif Hakkı Talepleri -->
-        <div class="admin-tab-panel" id="tab-trademark">
-            <div style="background:#0a0f1e;border:2px solid #6366f1;border-radius:12px;padding:10px;">
-                <div style="display:flex;align-items:center;justify-content:space-between;gap:6px;margin-bottom:8px;padding-bottom:7px;border-bottom:1px solid #312e81;">
-                    <div style="display:flex;align-items:center;gap:6px;"><span>⚖️</span><span style="font-size:0.72em;color:#a5b4fc;font-weight:800;text-transform:uppercase;">Marka / Telif Hakkı Bildirimleri</span></div>
-                    <button onclick="window.loadTrademarkClaims()" style="background:rgba(99,102,241,0.15);border:1px solid rgba(99,102,241,0.4);color:#a5b4fc;padding:4px 8px;border-radius:6px;font-size:0.65em;cursor:pointer;font-weight:800;">🔄 Yenile</button>
-                </div>
-                <div id="trademark-claims-list"><p style="font-size:0.75em;opacity:0.5;text-align:center;">Yükleniyor...</p></div>
-            </div>
-        </div>
 </div>
-
 
     <!-- Market -->
     <div class="card" id="market-card" style="position:relative;padding:5px;margin-bottom:2px;overflow:hidden;min-height:70px;background:linear-gradient(145deg,#0f172a 0%,#1e1b4b 50%,#0f172a 100%);border:1px solid #2a3a52;width:calc(100% - 16px);margin-left:auto;margin-right:auto;">
@@ -1604,7 +1533,7 @@
   <div class="footer-section" style="position:sticky;bottom:0;z-index:50;padding:4px 8px;">
       <div class="footer-row" style="font-size:0.65em;margin-bottom:2px;">📩 <span data-i18n="contactUs"></span>: <a href="mailto:doganay08@hotmail.com" onclick="window.location.href=this.href;return false;">doganay08@hotmail.com</a></div>
       <div class="footer-row" style="font-size:0.65em;margin-bottom:2px;">💬 <span data-i18n="community"></span>: <a href="https://t.me/+5jZi9vrcNMM2NGVk" target="_blank" rel="noopener noreferrer" data-i18n="telegramGroup">TELEGRAM GRUBUMUZ</a></div>
-      <div style="margin-top:2px;font-size:0.6em;"><a href="#" onclick="openLegalModal('privacy');return false;" style="cursor:pointer;" data-i18n="privacyPolicy">GİZLİLİK POLİTİKASI</a> | <a href="#" onclick="openLegalModal('terms');return false;" style="cursor:pointer;" data-i18n="termsOfUse">KULLANIM ŞARTLARI</a> | <a href="#" onclick="window.openTrademarkModal();return false;" style="cursor:pointer;" data-i18n="trademarkClaim">MARKA / TELİF HAKKI BİLDİRİMİ</a></div>
+      <div style="margin-top:2px;font-size:0.6em;"><a href="#" onclick="openLegalModal('privacy');return false;" style="cursor:pointer;" data-i18n="privacyPolicy">GİZLİLİK POLİTİKASI</a> | <a href="#" onclick="openLegalModal('terms');return false;" style="cursor:pointer;" data-i18n="termsOfUse">KULLANIM ŞARTLARI</a></div>
   </div>
 </div>
 <script type="module">
@@ -1764,19 +1693,6 @@ const i18n = {
     totalUniqueUsers:"TOPLAM BENZERSİZ KULLANICI",totalUniqueUsersDesc:"Bugüne kadar giriş yapmış toplam kullanıcı sayısı",
     contactUs:"SORULARINIZ İÇİN",community:"TOPLULUK GRUBUMUZ",
     telegramGroup:"TELEGRAM GRUBUMUZ",privacyPolicy:"GİZLİLİK POLİTİKASI",termsOfUse:"KULLANIM ŞARTLARI",
-    trademarkClaim:"MARKA / TELİF HAKKI BİLDİRİMİ",
-    trademarkModalTitle:"Marka / Telif Hakkı Bildirim Formu",
-    trademarkModalDesc:"Tescilli bir markanın veya telifli bir içeriğin, platformumuzda izinsiz kullanıldığını düşünüyorsanız bu formu doldurun. Talebiniz incelenip size e-posta ile dönüş yapılacaktır.",
-    trademarkClaimantName:"Ad Soyad / Şirket Unvanı",trademarkClaimantNamePh:"Marka sahibi veya yetkili temsilci",
-    trademarkClaimantEmail:"İletişim E-postası",trademarkClaimantEmailPh:"ornek@sirket.com",
-    trademarkRegNumber:"Marka Tescil Numarası (varsa)",trademarkRegNumberPh:"Örn: 2024/012345",
-    trademarkDomain:"İlgili Domain Adı",trademarkDomainPh:"ornek.pi",
-    trademarkEvidence:"Kanıt / Açıklama",trademarkEvidencePh:"Tescil belgesi linki, marka sahipliğinizi kanıtlayan bilgi ve talebinizin detayı...",
-    trademarkDeclaration:"Bu bildirimde verdiğim bilgilerin doğru olduğunu ve marka/telif hakkı sahibi ya da yetkili temsilcisi olduğumu iyi niyetle beyan ederim.",
-    trademarkSubmit:"BİLDİRİMİ GÖNDER",trademarkSubmitting:"Gönderiliyor...",
-    trademarkSuccess:"Bildiriminiz alındı. İnceleme sonrası e-posta ile bilgilendirileceksiniz.",
-    trademarkErrorFields:"Lütfen zorunlu alanları doldurun ve beyanı onaylayın.",
-    trademarkErrorGeneric:"Bildirim gönderilemedi, lütfen daha sonra tekrar deneyin.",
     notifications:"Bildirimler",markAllRead:"Tümünü Okundu Yap",noNotifications:"Henüz bildiriminiz yok.",
     verify:"🔍 DOĞRULA",verifyLocked:"🔒 DOĞRULA",buyNow:"SATIN AL",sold:"SATILDI",
     relistBtn:"↺ Tekrar Satılık Yap",detailBtn:"📋 DETAY",approveBtn:"✓ ONAYLA",rejectBtn:"✕ REDDET",
@@ -2053,19 +1969,6 @@ const i18n = {
     totalUniqueUsers:"TOTAL UNIQUE USERS",totalUniqueUsersDesc:"Total users who have logged in to date",
     contactUs:"CONTACT US",community:"OUR COMMUNITY",telegramGroup:"OUR TELEGRAM GROUP",
     privacyPolicy:"PRIVACY POLICY",termsOfUse:"TERMS OF USE",
-    trademarkClaim:"TRADEMARK / COPYRIGHT NOTICE",
-    trademarkModalTitle:"Trademark / Copyright Claim Form",
-    trademarkModalDesc:"If you believe a registered trademark or copyrighted content is being used on our platform without authorization, please fill out this form. We will review your claim and respond by email.",
-    trademarkClaimantName:"Full Name / Company Name",trademarkClaimantNamePh:"Trademark owner or authorized representative",
-    trademarkClaimantEmail:"Contact Email",trademarkClaimantEmailPh:"you@company.com",
-    trademarkRegNumber:"Trademark Registration Number (if any)",trademarkRegNumberPh:"e.g. 2024/012345",
-    trademarkDomain:"Related Domain Name",trademarkDomainPh:"example.pi",
-    trademarkEvidence:"Evidence / Description",trademarkEvidencePh:"Link to registration certificate, proof of ownership, and details of your claim...",
-    trademarkDeclaration:"I declare in good faith that the information provided is accurate and that I am the trademark/copyright owner or an authorized representative.",
-    trademarkSubmit:"SUBMIT NOTICE",trademarkSubmitting:"Submitting...",
-    trademarkSuccess:"Your notice has been received. We will contact you by email after review.",
-    trademarkErrorFields:"Please fill in the required fields and confirm the declaration.",
-    trademarkErrorGeneric:"Could not submit the notice, please try again later.",
     notifications:"Notifications",markAllRead:"Mark All Read",noNotifications:"No notifications yet.",
     verify:"🔍 VERIFY",verifyLocked:"🔒 VERIFY",buyNow:"BUY NOW",sold:"SOLD",
     relistBtn:"↺ Relist for Sale",detailBtn:"📋 DETAIL",approveBtn:"✓ APPROVE",rejectBtn:"✕ REJECT",
@@ -3943,205 +3846,6 @@ window.openLegalModal = async function openLegalModal(type) {
         window.openLink(url, true);
     }
 }
-
-// ═══════════════════════════════════════════════════════════════════════
-//  MARKA / TELİF HAKKI BİLDİRİM FORMU
-// ═══════════════════════════════════════════════════════════════════════
-window.openTrademarkModal = function openTrademarkModal() {
-    document.getElementById('tm-claimant-name').value = '';
-    document.getElementById('tm-claimant-email').value = '';
-    document.getElementById('tm-reg-number').value = '';
-    document.getElementById('tm-domain').value = '';
-    document.getElementById('tm-evidence').value = '';
-    document.getElementById('tm-declaration').checked = false;
-    const msg = document.getElementById('tm-form-msg');
-    msg.style.display = 'none';
-    document.getElementById('trademark-modal').style.display = 'flex';
-};
-
-window.submitTrademarkClaim = async function submitTrademarkClaim() {
-    const name = document.getElementById('tm-claimant-name').value.trim();
-    const email = document.getElementById('tm-claimant-email').value.trim();
-    const regNumber = document.getElementById('tm-reg-number').value.trim();
-    const domainName = document.getElementById('tm-domain').value.trim();
-    const evidence = document.getElementById('tm-evidence').value.trim();
-    const declared = document.getElementById('tm-declaration').checked;
-    const msg = document.getElementById('tm-form-msg');
-    const btn = document.getElementById('tm-submit-btn');
-
-    const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-    if (!name || !emailOk || !domainName || !evidence || !declared) {
-        msg.textContent = t('trademarkErrorFields');
-        msg.style.color = '#f87171';
-        msg.style.display = 'block';
-        return;
-    }
-
-    btn.disabled = true;
-    const originalText = btn.textContent;
-    btn.textContent = t('trademarkSubmitting');
-
-    try {
-        const r = await fetch('/api/approve', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                action: 'submit_trademark_claim',
-                claimantName: name,
-                claimantEmail: email,
-                regNumber: regNumber || null,
-                domainName,
-                evidence,
-                accessToken: (typeof piAccessToken !== 'undefined') ? piAccessToken : null
-            })
-        });
-        const data = await r.json();
-        if (!r.ok || !data.success) throw new Error(data.error || 'submit_failed');
-
-        msg.textContent = t('trademarkSuccess');
-        msg.style.color = '#34d399';
-        msg.style.display = 'block';
-        setTimeout(() => { document.getElementById('trademark-modal').style.display = 'none'; }, 2200);
-    } catch (e) {
-        console.error('Trademark claim gönderim hatası:', e);
-        msg.textContent = t('trademarkErrorGeneric');
-        msg.style.color = '#f87171';
-        msg.style.display = 'block';
-    } finally {
-        btn.disabled = false;
-        btn.textContent = originalText;
-    }
-};
-
-// ═══════════════════════════════════════════════════════════════════════
-//  ADMIN: ESCROW YÖNETİMİ
-// ═══════════════════════════════════════════════════════════════════════
-window.loadPendingEscrows = async function loadPendingEscrows() {
-    const listEl = document.getElementById('escrow-list');
-    listEl.innerHTML = '<p style="font-size:0.75em;opacity:0.5;text-align:center;">Yükleniyor...</p>';
-    try {
-        const r = await fetch('/api/approve', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'get_pending_escrows',accessToken:piAccessToken})});
-        const data = await r.json();
-        if (!r.ok || !data.success) throw new Error(data.error || 'load_failed');
-
-        const badge = document.getElementById('escrow-count-badge');
-        if (data.pending.length > 0) { badge.style.display='inline-block'; badge.textContent = data.pending.length; }
-        else { badge.style.display='none'; }
-
-        if (data.pending.length === 0) {
-            listEl.innerHTML = '<p style="font-size:0.75em;opacity:0.5;text-align:center;">Havuzda bekleyen satış yok.</p>';
-            return;
-        }
-
-        listEl.innerHTML = data.pending.map(d => {
-            const commission = d.escrowAmount * (d.escrowCommissionRate ?? 0.03);
-            const net = d.escrowAmount - commission;
-            return `
-            <div class="my-domain-item" style="flex-direction:column;align-items:stretch;gap:6px;">
-                <div style="display:flex;justify-content:space-between;align-items:center;">
-                    <span style="font-weight:800;color:#e2e8f0;font-size:0.85em;">${d.name}</span>
-                    <span style="color:#fbbf24;font-weight:800;font-size:0.8em;">${d.escrowAmount} Pi</span>
-                </div>
-                <div style="font-size:0.68em;color:#94a3b8;">Satıcı: @${d.sellerUsername||'-'} · Alıcı: @${d.buyer||'-'}</div>
-                <div style="font-size:0.68em;color:#64748b;">Net ödeme: <span style="color:#34d399;font-weight:700;">${net.toFixed(4)} Pi</span> (Komisyon: ${commission.toFixed(4)} Pi)</div>
-                <div style="display:flex;gap:6px;margin-top:4px;">
-                    <button onclick="window.releaseEscrow('${d.name}')" style="flex:1;background:#10b981;color:#fff;border:none;padding:8px;border-radius:6px;font-size:0.7em;font-weight:800;cursor:pointer;">✅ Serbest Bırak</button>
-                    <button onclick="window.refundEscrow('${d.name}')" style="flex:1;background:rgba(239,68,68,0.15);color:#f87171;border:1.5px solid rgba(239,68,68,0.4);padding:8px;border-radius:6px;font-size:0.7em;font-weight:800;cursor:pointer;">↩️ İade Et</button>
-                </div>
-            </div>`;
-        }).join('');
-    } catch (e) {
-        console.error('Escrow listesi yüklenemedi:', e);
-        listEl.innerHTML = '<p style="font-size:0.75em;color:#f87171;text-align:center;">Yüklenemedi: ' + e.message + '</p>';
-    }
-};
-
-window.releaseEscrow = async function releaseEscrow(domainName) {
-    if (!confirm(`"${domainName}" domaininin alıcıya gerçekten devredildiğini doğruladınız mı? Onaylarsanız satıcıya ödeme gönderilecek ve bu işlem GERİ ALINAMAZ.`)) return;
-    try {
-        const r = await fetch('/api/approve', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'release_escrow_payment',domainName,accessToken:piAccessToken})});
-        const data = await r.json();
-        if (!r.ok || !data.success) throw new Error(data.error || 'release_failed');
-        alert(`Ödeme gönderildi. Net: ${data.netAmount} Pi, Komisyon: ${data.commission} Pi\ntxid: ${data.txid}`);
-        window.loadPendingEscrows();
-    } catch (e) {
-        alert('Serbest bırakma başarısız: ' + e.message);
-    }
-};
-
-window.refundEscrow = async function refundEscrow(domainName) {
-    const reason = prompt(`"${domainName}" için iade sebebini yazın (alıcıya gösterilmez, sadece kayıt için):`);
-    if (reason === null) return;
-    if (!confirm(`Ödeme alıcıya iade edilecek ve domain yeniden satışa açılabilir hale gelecek. Emin misiniz?`)) return;
-    try {
-        const r = await fetch('/api/approve', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'refund_escrow_payment',domainName,reason,accessToken:piAccessToken})});
-        const data = await r.json();
-        if (!r.ok || !data.success) throw new Error(data.error || 'refund_failed');
-        alert(`İade gönderildi.\ntxid: ${data.txid}`);
-        window.loadPendingEscrows();
-    } catch (e) {
-        alert('İade başarısız: ' + e.message);
-    }
-};
-
-// ═══════════════════════════════════════════════════════════════════════
-//  ADMIN: MARKA / TELİF HAKKI TALEPLERİ
-// ═══════════════════════════════════════════════════════════════════════
-const TM_STATUS_LABEL = { pending:'Bekliyor', reviewing:'İnceleniyor', upheld:'Haklı Bulundu', rejected:'Reddedildi' };
-const TM_STATUS_COLOR = { pending:'#fbbf24', reviewing:'#38bdf8', upheld:'#ef4444', rejected:'#64748b' };
-
-window.loadTrademarkClaims = async function loadTrademarkClaims() {
-    const listEl = document.getElementById('trademark-claims-list');
-    listEl.innerHTML = '<p style="font-size:0.75em;opacity:0.5;text-align:center;">Yükleniyor...</p>';
-    try {
-        const r = await fetch('/api/approve', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'get_trademark_claims',accessToken:piAccessToken})});
-        const data = await r.json();
-        if (!r.ok || !data.success) throw new Error(data.error || 'load_failed');
-
-        const pendingCount = data.claims.filter(c => c.status === 'pending').length;
-        const badge = document.getElementById('trademark-count-badge');
-        if (pendingCount > 0) { badge.style.display='inline-block'; badge.textContent = pendingCount; }
-        else { badge.style.display='none'; }
-
-        if (data.claims.length === 0) {
-            listEl.innerHTML = '<p style="font-size:0.75em;opacity:0.5;text-align:center;">Henüz bildirim yok.</p>';
-            return;
-        }
-
-        listEl.innerHTML = data.claims.map(c => `
-            <div class="my-domain-item" style="flex-direction:column;align-items:stretch;gap:6px;">
-                <div style="display:flex;justify-content:space-between;align-items:center;">
-                    <span style="font-weight:800;color:#e2e8f0;font-size:0.85em;">${c.domainName}</span>
-                    <span style="color:${TM_STATUS_COLOR[c.status]||'#94a3b8'};font-weight:800;font-size:0.68em;text-transform:uppercase;">${TM_STATUS_LABEL[c.status]||c.status}</span>
-                </div>
-                <div style="font-size:0.7em;color:#cbd5e1;"><b>${c.claimantName}</b> — ${c.claimantEmail}</div>
-                ${c.regNumber ? `<div style="font-size:0.68em;color:#94a3b8;">Tescil No: ${c.regNumber}</div>` : ''}
-                <div style="font-size:0.7em;color:#94a3b8;white-space:pre-wrap;line-height:1.4;max-height:80px;overflow-y:auto;">${c.evidence}</div>
-                <div style="font-size:0.62em;color:#64748b;">${new Date(c.createdAt).toLocaleString('tr-TR')}${c.submitterUsername ? ' · @'+c.submitterUsername : ''}</div>
-                ${c.status === 'pending' || c.status === 'reviewing' ? `
-                <div style="display:flex;gap:6px;margin-top:4px;">
-                    <button onclick="window.resolveTrademarkClaim('${c.id}','upheld')" style="flex:1;background:#ef4444;color:#fff;border:none;padding:8px;border-radius:6px;font-size:0.68em;font-weight:800;cursor:pointer;">⚖️ Haklı Bul (Domaini Kaldır)</button>
-                    <button onclick="window.resolveTrademarkClaim('${c.id}','rejected')" style="flex:1;background:#475569;color:#fff;border:none;padding:8px;border-radius:6px;font-size:0.68em;font-weight:800;cursor:pointer;">✕ Reddet</button>
-                </div>` : (c.adminNote ? `<div style="font-size:0.65em;color:#64748b;font-style:italic;">Not: ${c.adminNote}</div>` : '')}
-            </div>`).join('');
-    } catch (e) {
-        console.error('Marka talepleri yüklenemedi:', e);
-        listEl.innerHTML = '<p style="font-size:0.75em;color:#f87171;text-align:center;">Yüklenemedi: ' + e.message + '</p>';
-    }
-};
-
-window.resolveTrademarkClaim = async function resolveTrademarkClaim(claimId, resolution) {
-    const label = resolution === 'upheld' ? 'HAKLI BULUNACAK ve ilgili domain (satılmadıysa) kaldırılacak' : 'REDDEDİLECEK';
-    const adminNote = prompt(`Bu talep ${label}. Not eklemek ister misiniz? (opsiyonel)`) || null;
-    try {
-        const r = await fetch('/api/approve', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'resolve_trademark_claim',claimId,resolution,adminNote,accessToken:piAccessToken})});
-        const data = await r.json();
-        if (!r.ok || !data.success) throw new Error(data.error || 'resolve_failed');
-        window.loadTrademarkClaims();
-    } catch (e) {
-        alert('İşlem başarısız: ' + e.message);
-    }
-};
 
 // ═══════════════════════════════════════════════════════════════════════
 //  KULLANICI REHBERİ (ONBOARDING TOUR)
