@@ -2,7 +2,17 @@ import { initializeApp, getApps, cert } from 'firebase-admin/app';
 import { getFirestore, FieldValue } from 'firebase-admin/firestore';
 import { getStorage } from 'firebase-admin/storage';
 import { getDatabase } from 'firebase-admin/database';
-import PiNetwork from 'pi-backend';
+import * as PiNetworkPkg from 'pi-backend';
+// FIX (kök neden): pi-backend paketi TypeScript'ten derlenmiş bir CJS
+// paketi olup `exports.default = PiNetwork` şeklinde dışa aktarım yapıyor.
+// Node'un native ESM'inde `import X from 'cjs-paketi'` söz dizimi, X'i
+// paketin .default'una DEĞİL, module.exports'un TAMAMINA bağlar. Yani
+// PiNetwork değişkeni aslında bir sınıf değil, içinde .default barındıran
+// düz bir nesne oluyordu — bu yüzden `new PiNetwork(...)` tam olarak
+// "PiNetwork is not a constructor" hatasını veriyordu. Paketi namespace
+// olarak import edip .default'u (yoksa paketin kendisini) kullanmak, hangi
+// export şeklini kullanırsa kullansın doğru sonucu garanti eder.
+const PiNetwork = PiNetworkPkg.default || PiNetworkPkg;
 
 // ─── Admin Config ───────────────────────────────────────────────────────
 const ADMIN_USERNAME = process.env.ADMIN_USERNAME || 'doganay0808';
@@ -913,7 +923,7 @@ export default async function handler(req, res) {
     }
   }
 
-  // ── Reddedilmiş İlan Talebini Sil ──────────────────────────────────────
+  // ── Reddedilmiş veya Geri Çekilmiş İlan Talebini Sil ───────────────────
   if (action === 'delete_rejected_request') {
     const { requestId } = req.body;
     const realUsername = await getRealUsername(accessToken);
@@ -926,7 +936,11 @@ export default async function handler(req, res) {
       if (!snap.exists) return res.status(404).json({ error: "İlan talebi bulunamadı" });
       const data = snap.data();
       if (data.submittedBy !== realUsername) return res.status(403).json({ error: "Bu talebi silme yetkiniz yok" });
-      if (data.status !== 'rejected') return res.status(400).json({ error: "Sadece reddedilmiş talepler silinebilir" });
+      // FIX: sadece 'rejected' değil, 'withdrawn' (kullanıcının kendi geri
+      // çektiği) talepler de artık silinebiliyor — daha önce bu durumda
+      // "İlanı Sil" butonu hiç görünmüyordu.
+      if (data.status !== 'rejected' && data.status !== 'withdrawn')
+        return res.status(400).json({ error: "Sadece reddedilmiş veya geri çekilmiş talepler silinebilir" });
 
       await requestRef.delete();
       return res.status(200).json({ success: true });
