@@ -26,16 +26,21 @@ const PiNetwork = PiBackendPkg.PiNetwork || PiBackendPkg.default?.PiNetwork || P
 
 let piClient = null;
 function getPiClient() {
-  if (piClient) return piClient;
+  if (piClient) return { client: piClient, error: null };
   const apiKey = process.env.APP_SECRET;
   const walletSeed = process.env.PI_WALLET_PRIVATE_SEED;
-  if (!apiKey || !walletSeed) return null;
+  const missing = [];
+  if (!apiKey) missing.push('APP_SECRET');
+  if (!walletSeed) missing.push('PI_WALLET_PRIVATE_SEED');
+  if (missing.length) {
+    return { client: null, error: `Ortam değişkeni eksik: ${missing.join(', ')}. Bunu hosting panelinizde (ör. Vercel → Project Settings → Environment Variables) ekleyip PROJEYİ YENİDEN DEPLOY ETMENİZ gerekir — sadece .env dosyası oluşturmak veya değişkeni panelde kaydetmek yetmez, yeni deploy şart.` };
+  }
   if (typeof PiNetwork !== 'function') {
-    console.error('[Escrow] PiNetwork sınıfı çözümlenemedi. pi-backend paketinin doğru kurulduğunu kontrol edin. Çözümlenen değer:', PiNetwork);
-    return null;
+    console.error('[Escrow] PiNetwork sınıfı çözümlenemedi. Çözümlenen değer:', PiNetwork);
+    return { client: null, error: `pi-backend paketi kurulu değil veya bozuk (PiNetwork bir sınıf/fonksiyon olarak bulunamadı). package.json'da "pi-backend" bağımlılığının olduğunu ve kurulumun başarılı geçtiğini kontrol edin.` };
   }
   piClient = new PiNetwork(apiKey, walletSeed);
-  return piClient;
+  return { client: piClient, error: null };
 }
 
 // ─── Firebase Admin Başlatma ───────────────────────────────────────────────
@@ -1516,11 +1521,9 @@ export default async function handler(req, res) {
         });
       }
 
-      const pi = getPiClient();
+      const { client: pi, error: piClientError } = getPiClient();
       if (!pi) {
-        return res.status(500).json({
-          error: "Sunucuda escrow ödeme istemcisi yapılandırılmamış (PI_WALLET_PRIVATE_SEED / pi-backend paketi eksik). Lütfen ortam değişkenlerini kontrol edin."
-        });
+        return res.status(500).json({ error: piClientError || "Sunucuda escrow ödeme istemcisi yapılandırılmamış." });
       }
 
       const payoutAmount = sale.payoutAmount || Math.round(sale.price * (1 - PLATFORM_COMMISSION_RATE) * 1e7) / 1e7;
@@ -1642,11 +1645,9 @@ export default async function handler(req, res) {
         });
       }
 
-      const pi = getPiClient();
+      const { client: pi, error: piClientError } = getPiClient();
       if (!pi) {
-        return res.status(500).json({
-          error: "Sunucuda escrow ödeme istemcisi yapılandırılmamış (PI_WALLET_PRIVATE_SEED / pi-backend paketi eksik)."
-        });
+        return res.status(500).json({ error: piClientError || "Sunucuda escrow ödeme istemcisi yapılandırılmamış." });
       }
 
       const refundAmount = sale.price;
