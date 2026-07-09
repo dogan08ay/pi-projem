@@ -2,7 +2,15 @@ import { initializeApp, getApps, cert } from 'firebase-admin/app';
 import { getFirestore, FieldValue } from 'firebase-admin/firestore';
 import { getStorage } from 'firebase-admin/storage';
 import { getDatabase } from 'firebase-admin/database';
-import PiNetwork from 'pi-backend';
+import PiNetworkImport from 'pi-backend';
+// FIX: "PiNetwork is not a constructor" hatası — Vercel'in native ESM
+// ortamında, CommonJS paketlerin (pi-backend gibi) default import'u bazen
+// sınıfın kendisi değil, { default: PiNetworkClass, __esModule: true }
+// şeklindeki modül nesnesinin tamamı olarak gelebiliyor. Bu durumda
+// `new PiNetwork(...)` çağrısı "is not a constructor" hatası verir.
+// Aşağıdaki satır, paket hangi şekilde export edilmiş olursa olsun
+// (doğrudan sınıf ya da .default içinde sarılı) doğru sınıfı bulur.
+const PiNetwork = (PiNetworkImport && PiNetworkImport.default) || PiNetworkImport;
 
 // ─── Admin Config ───────────────────────────────────────────────────────
 const ADMIN_USERNAME = process.env.ADMIN_USERNAME || 'doganay0808';
@@ -20,6 +28,15 @@ function getPiClient() {
   const apiKey = process.env.APP_SECRET;
   const walletSeed = process.env.PI_WALLET_PRIVATE_SEED;
   if (!apiKey || !walletSeed) return null;
+  if (typeof PiNetwork !== 'function') {
+    // Bu noktaya düşülmesi, pi-backend paketinin beklenmedik bir şekilde
+    // export edildiği ve yukarıdaki .default çözümlemesinin de yetersiz
+    // kaldığı anlamına gelir. Sessizce hata fırlatmak yerine anlaşılır bir
+    // mesajla loglayıp null döndürelim ki üst katman "İade/Ödeme
+    // gönderilemedi" diyerek Pi'lerin güvenli havuzda kaldığını bildirsin.
+    console.error("[PiNetwork] 'pi-backend' paketi geçerli bir constructor olarak çözümlenemedi. Paket sürümünü/exportunu kontrol edin.");
+    return null;
+  }
   piClient = new PiNetwork(apiKey, walletSeed);
   return piClient;
 }
