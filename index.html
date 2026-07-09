@@ -1368,8 +1368,8 @@
         </h3>
         <div id="maintenance-control-box" style="display:flex;align-items:center;gap:8px;background:#0a0f1e;border:1.5px solid #334155;border-radius:10px;padding:8px 10px;margin-bottom:8px;">
             <span id="maintenance-status-dot" style="width:9px;height:9px;border-radius:50%;background:#10b981;flex-shrink:0;box-shadow:0 0 6px #10b981;"></span>
-            <span id="maintenance-status-text" style="font-size:0.68em;color:#94a3b8;font-weight:700;flex:1;"></span>
-            <button id="maintenance-toggle-btn" onclick="window.toggleMaintenanceMode()" style="padding:6px 12px;border:none;border-radius:8px;background:linear-gradient(135deg,#ef4444,#f87171);color:#fff;font-size:0.65em;font-weight:800;cursor:pointer;white-space:nowrap;"></button>
+            <span id="maintenance-status-text" style="font-size:0.68em;color:#94a3b8;font-weight:700;flex:1;" data-i18n="maintenanceStatusLive"></span>
+            <button id="maintenance-toggle-btn" onclick="window.toggleMaintenanceMode()" style="padding:6px 12px;border:none;border-radius:8px;background:linear-gradient(135deg,#ef4444,#f87171);color:#fff;font-size:0.65em;font-weight:800;cursor:pointer;white-space:nowrap;" data-i18n="maintenanceEnableBtn"></button>
         </div>
         <div class="admin-tabs">
             <button class="admin-tab-btn active" data-tab="tab-users" onclick="switchAdminTab('tab-users')">👥<span data-i18n="users" style="font-size:0.9em;"></span></button>
@@ -1498,13 +1498,13 @@
 
         <div class="admin-tab-panel" id="tab-trademark">
             <div style="background:#0a0f1e;border:2px solid #ef4444;border-radius:12px;padding:10px;">
-                <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;padding-bottom:7px;border-bottom:1px solid #7f1d1d;"><span>🔖</span><span style="font-size:0.72em;color:#fca5a5;font-weight:800;text-transform:uppercase;" data-i18n="trademarkTabLabel"></span></div>
-                <div class="ticket-admin-filters" id="trademark-admin-filters">
-                    <button class="ticket-filter-btn active" data-status="all" onclick="adminFilterTrademarkClaims('all')" data-i18n="trademarkFilterAll"></button>
-                    <button class="ticket-filter-btn" data-status="pending" onclick="adminFilterTrademarkClaims('pending')" data-i18n="trademarkFilterPending"></button>
-                    <button class="ticket-filter-btn" data-status="resolved" onclick="adminFilterTrademarkClaims('resolved')" data-i18n="trademarkFilterResolved"></button>
-                    <button class="ticket-filter-btn" data-status="rejected" onclick="adminFilterTrademarkClaims('rejected')" data-i18n="trademarkFilterRejected"></button>
-                </div>
+                <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;padding-bottom:7px;border-bottom:1px solid #7f1d1d;"><span>🔖</span><span style="font-size:0.72em;color:#fca5a5;font-weight:800;text-transform:uppercase;flex:1;" data-i18n="trademarkTabLabel"></span></div>
+                <select id="trademark-filter-select" onchange="window.setTrademarkFilter(this.value)" style="width:100%;margin-bottom:8px;padding:7px 8px;border-radius:8px;border:1.5px solid #7f1d1d;background:#0f172a;color:#fca5a5;font-size:0.7em;font-weight:700;cursor:pointer;">
+                    <option value="all" data-i18n="trademarkFilterAll"></option>
+                    <option value="pending" data-i18n="trademarkFilterPending"></option>
+                    <option value="resolved" data-i18n="trademarkFilterResolved"></option>
+                    <option value="rejected" data-i18n="trademarkFilterRejected"></option>
+                </select>
                 <div id="trademark-admin-list">
                     <div class="skeleton-ticket-row"><div class="skeleton" style="width:34px;height:34px;border-radius:8px;"></div><div style="flex:1;"><div class="skeleton skeleton-line" style="width:60%;margin:0 0 6px 0;"></div><div class="skeleton skeleton-line" style="width:35%;height:8px;margin:0;"></div></div></div>
                     <div class="skeleton-ticket-row"><div class="skeleton" style="width:34px;height:34px;border-radius:8px;"></div><div style="flex:1;"><div class="skeleton skeleton-line" style="width:52%;margin:0 0 6px 0;"></div><div class="skeleton skeleton-line" style="width:30%;height:8px;margin:0;"></div></div></div>
@@ -1596,69 +1596,71 @@
 <div id="trademark-claim-modal" style="display:none;position:fixed;inset:0;z-index:99998;background:rgba(5,8,20,0.92);backdrop-filter:blur(6px);align-items:center;justify-content:center;padding:16px;box-sizing:border-box;">
     <div style="width:100%;max-width:440px;background:linear-gradient(165deg,#0a0f1e 0%,#0f172a 30%,#1e1b4b 50%,#0f172a 70%,#0a0f1e 100%);border:1.5px solid rgba(239,68,68,0.35);border-radius:18px;padding:0;box-shadow:0 8px 32px rgba(0,0,0,0.5);max-height:92vh;overflow-y:auto;">
 
-        <!-- Üst başlık bandı -->
-        <div style="padding:22px 20px 16px;text-align:center;border-bottom:1px solid rgba(239,68,68,0.2);background:rgba(239,68,68,0.05);">
-            <div style="font-size:2em;margin-bottom:6px;">🔖</div>
-            <div style="color:#fca5a5;font-size:1.08em;font-weight:900;margin-bottom:5px;" data-i18n="trademarkModalTitle"></div>
-            <div style="color:#94a3b8;font-size:0.72em;line-height:1.55;max-width:340px;margin:0 auto;" data-i18n="trademarkModalSubtitle"></div>
-            <div style="display:inline-flex;align-items:center;gap:5px;margin-top:10px;background:rgba(16,185,129,0.1);border:1px solid rgba(16,185,129,0.3);border-radius:20px;padding:4px 10px;">
-                <span style="font-size:0.7em;">🛡️</span>
-                <span style="font-size:0.62em;color:#6ee7b7;font-weight:700;" data-i18n="trademarkTrustBadge"></span>
+        <!-- Başlık şeridi -->
+        <div style="padding:20px 20px 14px 20px;border-bottom:1px solid rgba(239,68,68,0.25);background:rgba(239,68,68,0.05);">
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">
+                <div style="width:38px;height:38px;flex-shrink:0;border-radius:10px;background:rgba(239,68,68,0.15);border:1px solid rgba(239,68,68,0.35);display:flex;align-items:center;justify-content:center;font-size:1.25em;">⚖️</div>
+                <div>
+                    <div style="color:#fca5a5;font-size:1.02em;font-weight:900;line-height:1.2;" data-i18n="trademarkModalTitle"></div>
+                    <div style="color:#64748b;font-size:0.62em;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;" data-i18n="trademarkModalKicker"></div>
+                </div>
             </div>
+            <div style="color:#94a3b8;font-size:0.72em;line-height:1.55;" data-i18n="trademarkModalSubtitle"></div>
         </div>
 
-        <div style="padding:18px 18px 20px;">
-            <!-- Bölüm 1: Başvuran Kimliği -->
-            <div style="display:flex;align-items:center;gap:7px;margin-bottom:10px;">
-                <span style="width:20px;height:20px;border-radius:50%;background:rgba(239,68,68,0.15);border:1px solid rgba(239,68,68,0.4);color:#f87171;font-size:0.65em;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;">1</span>
-                <span style="font-size:0.68em;color:#fca5a5;font-weight:800;text-transform:uppercase;letter-spacing:0.03em;" data-i18n="trademarkSectionClaimant"></span>
+        <div style="padding:16px 18px 20px 18px;">
+
+            <!-- 1. Başvuran Bilgileri -->
+            <div style="display:flex;align-items:center;gap:6px;margin:2px 0 9px 0;">
+                <span style="width:18px;height:18px;border-radius:50%;background:rgba(239,68,68,0.18);color:#fca5a5;font-size:0.62em;font-weight:900;display:flex;align-items:center;justify-content:center;flex-shrink:0;">1</span>
+                <span style="font-size:0.68em;color:#fca5a5;font-weight:800;text-transform:uppercase;letter-spacing:0.04em;" data-i18n="trademarkSection1"></span>
+            </div>
+            <div style="background:rgba(15,23,42,0.5);border:1px solid rgba(148,163,184,0.15);border-radius:12px;padding:12px;margin-bottom:14px;">
+                <label style="display:block;color:#cbd5e1;font-size:0.7em;font-weight:700;margin-bottom:3px;" data-i18n="trademarkFieldName"></label>
+                <input type="text" id="trademark-claimant-name" class="sell-form-input" style="border-color:rgba(239,68,68,0.4);margin-bottom:8px;" oninput="this.classList.remove('field-error')">
+
+                <label style="display:block;color:#cbd5e1;font-size:0.7em;font-weight:700;margin-bottom:3px;" data-i18n="trademarkFieldCompany"></label>
+                <input type="text" id="trademark-company-name" class="sell-form-input" style="border-color:rgba(239,68,68,0.4);margin-bottom:8px;">
+
+                <label style="display:block;color:#cbd5e1;font-size:0.7em;font-weight:700;margin-bottom:3px;" data-i18n="trademarkFieldEmail"></label>
+                <input type="email" id="trademark-contact-email" class="sell-form-input" style="border-color:rgba(239,68,68,0.4);" oninput="this.classList.remove('field-error')">
             </div>
 
-            <label style="display:block;color:#cbd5e1;font-size:0.7em;font-weight:700;margin-bottom:3px;" data-i18n="trademarkFieldName"></label>
-            <input type="text" id="trademark-claimant-name" class="sell-form-input" style="border-color:rgba(239,68,68,0.4);margin-bottom:8px;" oninput="this.classList.remove('field-error')">
+            <!-- 2. İtiraz Konusu -->
+            <div style="display:flex;align-items:center;gap:6px;margin:2px 0 9px 0;">
+                <span style="width:18px;height:18px;border-radius:50%;background:rgba(239,68,68,0.18);color:#fca5a5;font-size:0.62em;font-weight:900;display:flex;align-items:center;justify-content:center;flex-shrink:0;">2</span>
+                <span style="font-size:0.68em;color:#fca5a5;font-weight:800;text-transform:uppercase;letter-spacing:0.04em;" data-i18n="trademarkSection2"></span>
+            </div>
+            <div style="background:rgba(15,23,42,0.5);border:1px solid rgba(148,163,184,0.15);border-radius:12px;padding:12px;margin-bottom:14px;">
+                <label style="display:block;color:#cbd5e1;font-size:0.7em;font-weight:700;margin-bottom:3px;" data-i18n="trademarkFieldDomain"></label>
+                <input type="text" id="trademark-domain-name" class="sell-form-input" style="border-color:rgba(239,68,68,0.4);margin-bottom:8px;" placeholder="ornek.pi" oninput="this.classList.remove('field-error')">
 
-            <label style="display:block;color:#cbd5e1;font-size:0.7em;font-weight:700;margin-bottom:3px;" data-i18n="trademarkFieldCompany"></label>
-            <input type="text" id="trademark-company-name" class="sell-form-input" style="border-color:rgba(239,68,68,0.4);margin-bottom:16px;">
-
-            <!-- Bölüm 2: İhlal Detayları -->
-            <div style="display:flex;align-items:center;gap:7px;margin-bottom:10px;padding-top:14px;border-top:1px solid rgba(148,163,184,0.12);">
-                <span style="width:20px;height:20px;border-radius:50%;background:rgba(239,68,68,0.15);border:1px solid rgba(239,68,68,0.4);color:#f87171;font-size:0.65em;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;">2</span>
-                <span style="font-size:0.68em;color:#fca5a5;font-weight:800;text-transform:uppercase;letter-spacing:0.03em;" data-i18n="trademarkSectionViolation"></span>
+                <label style="display:block;color:#cbd5e1;font-size:0.7em;font-weight:700;margin-bottom:3px;" data-i18n="trademarkFieldRegistration"></label>
+                <input type="text" id="trademark-registration-info" class="sell-form-input" style="border-color:rgba(239,68,68,0.4);">
             </div>
 
-            <label style="display:block;color:#cbd5e1;font-size:0.7em;font-weight:700;margin-bottom:3px;" data-i18n="trademarkFieldDomain"></label>
-            <input type="text" id="trademark-domain-name" class="sell-form-input" style="border-color:rgba(239,68,68,0.4);margin-bottom:8px;" placeholder="ornek.pi" oninput="this.classList.remove('field-error')">
-
-            <label style="display:block;color:#cbd5e1;font-size:0.7em;font-weight:700;margin-bottom:3px;" data-i18n="trademarkFieldRegistration"></label>
-            <input type="text" id="trademark-registration-info" class="sell-form-input" style="border-color:rgba(239,68,68,0.4);margin-bottom:3px;" placeholder="Örn: TÜRKPATENT No. 2019/012345">
-            <div style="font-size:0.6em;color:#64748b;margin-bottom:8px;line-height:1.4;" data-i18n="trademarkFieldRegistrationHint"></div>
-
-            <label style="display:block;color:#cbd5e1;font-size:0.7em;font-weight:700;margin-bottom:3px;" data-i18n="trademarkFieldDescription"></label>
-            <textarea id="trademark-description" class="sell-form-input" style="border-color:rgba(239,68,68,0.4);margin-bottom:16px;resize:none;" rows="4" oninput="this.classList.remove('field-error')" placeholder="Bu ismin markanızla ilişkisini ve neden izinsiz kullanıldığını düşündüğünüzü açıklayın..."></textarea>
-
-            <!-- Bölüm 3: İletişim & Beyan -->
-            <div style="display:flex;align-items:center;gap:7px;margin-bottom:10px;padding-top:14px;border-top:1px solid rgba(148,163,184,0.12);">
-                <span style="width:20px;height:20px;border-radius:50%;background:rgba(239,68,68,0.15);border:1px solid rgba(239,68,68,0.4);color:#f87171;font-size:0.65em;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;">3</span>
-                <span style="font-size:0.68em;color:#fca5a5;font-weight:800;text-transform:uppercase;letter-spacing:0.03em;" data-i18n="trademarkSectionContact"></span>
+            <!-- 3. Kanıt / Açıklama -->
+            <div style="display:flex;align-items:center;gap:6px;margin:2px 0 9px 0;">
+                <span style="width:18px;height:18px;border-radius:50%;background:rgba(239,68,68,0.18);color:#fca5a5;font-size:0.62em;font-weight:900;display:flex;align-items:center;justify-content:center;flex-shrink:0;">3</span>
+                <span style="font-size:0.68em;color:#fca5a5;font-weight:800;text-transform:uppercase;letter-spacing:0.04em;" data-i18n="trademarkSection3"></span>
+            </div>
+            <div style="background:rgba(15,23,42,0.5);border:1px solid rgba(148,163,184,0.15);border-radius:12px;padding:12px;margin-bottom:16px;">
+                <label style="display:block;color:#cbd5e1;font-size:0.7em;font-weight:700;margin-bottom:3px;" data-i18n="trademarkFieldDescription"></label>
+                <textarea id="trademark-description" class="sell-form-input" style="border-color:rgba(239,68,68,0.4);resize:none;" rows="4" oninput="this.classList.remove('field-error')"></textarea>
+                <div style="font-size:0.6em;color:#64748b;margin-top:5px;line-height:1.5;" data-i18n="trademarkEvidenceHint"></div>
             </div>
 
-            <label style="display:block;color:#cbd5e1;font-size:0.7em;font-weight:700;margin-bottom:3px;" data-i18n="trademarkFieldEmail"></label>
-            <input type="email" id="trademark-contact-email" class="sell-form-input" style="border-color:rgba(239,68,68,0.4);margin-bottom:14px;" placeholder="isim@sirket.com" oninput="this.classList.remove('field-error')">
-
-            <label style="display:flex;align-items:flex-start;gap:7px;background:rgba(239,68,68,0.06);border:1px solid rgba(239,68,68,0.25);border-radius:8px;padding:9px;margin-bottom:14px;cursor:pointer;">
+            <!-- Yasal beyan -->
+            <label style="display:flex;align-items:flex-start;gap:7px;background:rgba(239,68,68,0.06);border:1px solid rgba(239,68,68,0.25);border-radius:10px;padding:10px;margin-bottom:6px;cursor:pointer;">
                 <input type="checkbox" id="trademark-declaration-checkbox" onchange="document.getElementById('trademark-submit-btn').disabled=!this.checked;" style="margin-top:2px;flex-shrink:0;width:15px;height:15px;accent-color:#ef4444;cursor:pointer;">
                 <span style="font-size:0.68em;color:#cbd5e1;line-height:1.5;font-weight:600;" data-i18n="trademarkDeclarationText"></span>
             </label>
-
-            <div style="display:flex;align-items:flex-start;gap:6px;margin-bottom:16px;">
-                <span style="font-size:0.75em;flex-shrink:0;">⏱️</span>
-                <span style="font-size:0.62em;color:#64748b;line-height:1.5;" data-i18n="trademarkProcessNote"></span>
-            </div>
+            <div style="font-size:0.58em;color:#475569;line-height:1.5;margin-bottom:14px;padding:0 2px;" data-i18n="trademarkGoodFaithNote"></div>
 
             <div style="display:flex;gap:8px;">
-            <button onclick="window.closeTrademarkClaimModal()" style="flex:1;padding:11px;border:1.5px solid rgba(148,163,184,0.3);border-radius:10px;background:transparent;color:#94a3b8;font-weight:700;font-size:0.85em;cursor:pointer;" data-i18n="trademarkCancelBtn"></button>
-            <button id="trademark-submit-btn" onclick="window.submitTrademarkClaim()" disabled style="flex:2;padding:11px;border:none;border-radius:10px;background:linear-gradient(135deg,#ef4444,#f87171);color:#fff;font-weight:800;font-size:0.85em;transition:opacity 0.2s ease;" data-i18n="trademarkSubmitBtn"></button>
-        </div>
+                <button onclick="window.closeTrademarkClaimModal()" style="flex:1;padding:11px;border:1.5px solid rgba(148,163,184,0.3);border-radius:10px;background:transparent;color:#94a3b8;font-weight:700;font-size:0.85em;cursor:pointer;" data-i18n="trademarkCancelBtn"></button>
+                <button id="trademark-submit-btn" onclick="window.submitTrademarkClaim()" disabled style="flex:2;padding:11px;border:none;border-radius:10px;background:linear-gradient(135deg,#ef4444,#f87171);color:#fff;font-weight:800;font-size:0.85em;transition:opacity 0.2s ease;" data-i18n="trademarkSubmitBtn"></button>
+            </div>
         </div>
     </div>
 </div>
@@ -1668,25 +1670,6 @@
      Admin panelden açılıp kapatılır; açıkken admin dışındaki tüm
      ziyaretçilere tam ekran, kapatılamaz bir uyarı gösterilir.
      ═══════════════════════════════════════════════════════════════ -->
-<!-- FIX: Bakım moduna alındığında ilk açılışta kısa süreliğine giriş/uygulama
-     ekranının görünüp SONRA bakım uyarısının gelmesi sorunu — Firestore'daki
-     config/app_status dokümanı async olarak geldiği için o anlık boşluk
-     oluşuyordu. Bu blok sayfa daha JS bile çalıştırmadan (inline style ile)
-     her şeyin ÜSTÜNDE görünür durumda başlar; bakım durumu netleşince (canlı
-     ya da bakımda olsun) aşağıdaki JS ile kapatılır/bakım ekranına devredilir. -->
-<div id="boot-loader" style="display:flex;position:fixed;inset:0;z-index:250000;background:linear-gradient(165deg,#0a0f1e 0%,#1e1b4b 50%,#0a0f1e 100%);align-items:center;justify-content:center;padding:20px;box-sizing:border-box;">
-    <div style="width:34px;height:34px;border-radius:50%;border:3px solid rgba(129,140,248,0.25);border-top-color:#818cf8;animation:tour-fab-pulse 1s linear infinite,boot-spin 0.8s linear infinite;"></div>
-</div>
-<style>@keyframes boot-spin{to{transform:rotate(360deg);}}</style>
-<script>
-// Güvenlik: Firestore config/app_status yanıtı 5sn içinde gelmezse
-// (yavaş bağlantı, offline vb.) boot-loader'da sonsuza kadar takılı
-// kalmasın diye normal akışa (yayında kabul ederek) devam ediyoruz.
-window._bootLoaderSafetyTimer = setTimeout(function(){
-    var bl = document.getElementById('boot-loader');
-    if (bl) bl.style.display = 'none';
-}, 5000);
-</script>
 <div id="maintenance-overlay" style="display:none;position:fixed;inset:0;z-index:200000;background:linear-gradient(165deg,#0a0f1e 0%,#1e1b4b 50%,#0a0f1e 100%);align-items:center;justify-content:center;padding:20px;box-sizing:border-box;text-align:center;">
     <div style="max-width:380px;">
         <div style="font-size:3em;margin-bottom:14px;animation:tour-fab-pulse 2.4s ease-in-out infinite;">🛠️</div>
@@ -1695,6 +1678,23 @@ window._bootLoaderSafetyTimer = setTimeout(function(){
         <button onclick="window.openMaintenanceAdminLogin()" style="margin-top:22px;padding:8px 16px;border-radius:20px;border:1.5px solid rgba(99,102,241,0.3);background:rgba(99,102,241,0.08);color:#818cf8;font-size:0.68em;font-weight:700;cursor:pointer;" data-i18n="maintenanceAdminLoginBtn"></button>
     </div>
 </div>
+<script>
+// FIX: Bakım modu Firestore'dan onSnapshot ile geldiği için ilk açılışta
+// bir kaç yüz ms'lik bir gecikme var — bu sürede kullanıcı normal
+// giriş/uygulama ekranını görüp hemen ardından bakım ekranının
+// belirdiğini görüyordu ("flaş" etkisi). Çözüm: en son bilinen bakım
+// durumunu localStorage'a önbelleğe alıp, sayfa daha yüklenirken
+// (modül script'i beklemeden) senkron olarak hemen uygulamak. Firestore
+// verisi geldiğinde asıl doğru durum onSnapshot içinde zaten uygulanıyor.
+(function(){
+    try {
+        if (localStorage.getItem('w3dg_maintenance_cache') === '1') {
+            var ov = document.getElementById('maintenance-overlay');
+            if (ov) ov.style.display = 'flex';
+        }
+    } catch(e) {}
+})();
+</script>
 <script type="module">
 // ═══════════════════════════════════════════════════════════════════════
 //  SKELETON SCREEN HELPERS — yükleme sırasında boş ekran yerine iskelet
@@ -1841,13 +1841,13 @@ const i18n = {
     trustMiniBadgeMenu:"Güvenlik ve Gizlilik Bilgisi",
     trademarkClaimLink:"MARKA HAKKI BİLDİRİMİ",
     trademarkModalTitle:"Marka Hakkı / Telif Bildirimi",
-    trademarkModalSubtitle:"Tescilli bir markanın veya ismin platformumuzda izinsiz kullanıldığını düşünüyorsanız, aşağıdaki formu doldurun. Talebiniz ekibimiz tarafından incelenecektir.",
-    trademarkTrustBadge:"Talepler ekibimiz tarafından tek tek incelenir",
-    trademarkSectionClaimant:"Başvuran Bilgileri",
-    trademarkSectionViolation:"İhlal Detayları",
-    trademarkSectionContact:"İletişim & Beyan",
-    trademarkFieldRegistrationHint:"Marka tescil numarası, ülke/ofis bilgisi veya tescil belgesine bağlantı ekleyebilirsiniz — inceleme sürecini hızlandırır.",
-    trademarkProcessNote:"Talebiniz genellikle 3 iş günü içinde incelenir. Süreç boyunca durumunuzu \"Panelim\" menüsünden takip edebilir, gerekirse talebi geri çekebilirsiniz.",
+    trademarkModalKicker:"Resmi İtiraz Formu",
+    trademarkModalSubtitle:"Tescilli bir markanın veya ismin platformumuzda izinsiz kullanıldığını düşünüyorsanız, aşağıdaki formu eksiksiz doldurun. Talebiniz ekibimiz tarafından incelenecek ve size e-posta ile dönüş yapılacaktır.",
+    trademarkSection1:"Başvuran Bilgileri",
+    trademarkSection2:"İtiraz Konusu Domain",
+    trademarkSection3:"Kanıt ve Açıklama",
+    trademarkEvidenceHint:"Marka tescil numarası, resmi belge bağlantısı veya ihlali destekleyen diğer kanıtları buraya ekleyebilirsiniz.",
+    trademarkGoodFaithNote:"Kötü niyetli veya asılsız bildirimler, hesabınızın platformdan kısıtlanmasına yol açabilir.",
     trademarkFieldName:"Ad Soyad *",
     trademarkFieldCompany:"Şirket / Kurum Adı",
     trademarkFieldDomain:"İtiraz Edilen Domain Adı *",
@@ -1871,8 +1871,6 @@ const i18n = {
     trademarkStatusResolved:"Çözüldü",
     trademarkStatusRejected:"Reddedildi",
     trademarkAdminNoClaims:"Henüz marka hakkı talebi yok.",
-    trademarkFilterAll:"Hepsi",trademarkFilterPending:"Onay Bekleyen",trademarkFilterResolved:"Çözülen",trademarkFilterRejected:"Reddedilen",
-    trademarkAdminNoClaimsFiltered:"Bu filtreye uyan marka hakkı talebi yok.",
     trademarkStatusWithdrawn:"Geri Çekildi",
     trademarkDeleteBtn:"Talebi Sil",
     trademarkDeleteConfirm:"Bu reddedilmiş talebi kalıcı olarak silmek istediğinize emin misiniz?",
@@ -1889,6 +1887,11 @@ const i18n = {
     trademarkRejectConfirm:"Bu marka hakkı talebini reddetmek istediğinize emin misiniz?",
     trademarkDomainRemovedNote:"Domain platformdan kaldırıldı.",
     trademarkDomainAlreadyGoneNote:"Domain zaten platformda mevcut değildi.",
+    trademarkFilterAll:"Tümü",
+    trademarkFilterPending:"Onay Bekleyen",
+    trademarkFilterResolved:"Çözülen",
+    trademarkFilterRejected:"Reddedilen",
+    trademarkFilterEmpty:"Bu filtreye uyan talep yok.",
     payoutsTabLabel:"Bekleyen Ödemeler",
     payoutsExplainer:"Bir domain satışı tamamlandığında ödeme, komisyon kesilmeden önce burada bekler. Satıcının domaini alıcıya devrettiğini teyit ettikten sonra 'Transfer Tamam, Öde' butonuna basın — komisyon düşülmüş tutar otomatik olarak satıcının Pi hesabına gönderilir.",
     payoutStatusPending:"Havuzda Bekliyor",
@@ -2198,13 +2201,13 @@ const i18n = {
     trustMiniBadgeMenu:"Security & Privacy Info",
     trademarkClaimLink:"TRADEMARK CLAIM",
     trademarkModalTitle:"Trademark / Copyright Claim",
-    trademarkModalSubtitle:"If you believe a registered trademark or name is being used without permission on our platform, fill out the form below. Our team will review your request.",
-    trademarkTrustBadge:"Claims are individually reviewed by our team",
-    trademarkSectionClaimant:"Claimant Information",
-    trademarkSectionViolation:"Violation Details",
-    trademarkSectionContact:"Contact & Declaration",
-    trademarkFieldRegistrationHint:"Add a registration number, country/office, or a link to the registration certificate — this speeds up review.",
-    trademarkProcessNote:"Claims are typically reviewed within 3 business days. You can track status and withdraw the claim any time from the \"My Panel\" menu.",
+    trademarkModalKicker:"Official Dispute Form",
+    trademarkModalSubtitle:"If you believe a registered trademark or name is being used without permission on our platform, please complete the form below in full. Our team will review your request and follow up by email.",
+    trademarkSection1:"Claimant Information",
+    trademarkSection2:"Disputed Domain",
+    trademarkSection3:"Evidence & Description",
+    trademarkEvidenceHint:"You may include a trademark registration number, a link to an official document, or other evidence supporting the infringement.",
+    trademarkGoodFaithNote:"Bad-faith or false claims may result in restrictions on your account.",
     trademarkFieldName:"Full Name *",
     trademarkFieldCompany:"Company / Organization",
     trademarkFieldDomain:"Disputed Domain Name *",
@@ -2228,8 +2231,6 @@ const i18n = {
     trademarkStatusResolved:"Resolved",
     trademarkStatusRejected:"Rejected",
     trademarkAdminNoClaims:"No trademark claims yet.",
-    trademarkFilterAll:"All",trademarkFilterPending:"Pending",trademarkFilterResolved:"Resolved",trademarkFilterRejected:"Rejected",
-    trademarkAdminNoClaimsFiltered:"No trademark claims match this filter.",
     trademarkStatusWithdrawn:"Withdrawn",
     trademarkDeleteBtn:"Delete Claim",
     trademarkDeleteConfirm:"Are you sure you want to permanently delete this rejected claim?",
@@ -2246,6 +2247,11 @@ const i18n = {
     trademarkRejectConfirm:"Are you sure you want to reject this trademark claim?",
     trademarkDomainRemovedNote:"Domain removed from the platform.",
     trademarkDomainAlreadyGoneNote:"The domain was already not on the platform.",
+    trademarkFilterAll:"All",
+    trademarkFilterPending:"Pending",
+    trademarkFilterResolved:"Resolved",
+    trademarkFilterRejected:"Rejected",
+    trademarkFilterEmpty:"No claims match this filter.",
     payoutsTabLabel:"Pending Payouts",
     payoutsExplainer:"When a domain sale completes, the payment waits here before the commission is deducted. After confirming the seller has transferred the domain to the buyer, click 'Confirm Transfer, Pay' — the amount minus commission is sent automatically to the seller's Pi account.",
     payoutStatusPending:"Held in Escrow",
@@ -2514,6 +2520,11 @@ function applyTranslations() {
     document.getElementById('lang-btn-tr')?.classList.toggle('active',currentLang==='tr');
     document.getElementById('lang-btn-en')?.classList.toggle('active',currentLang==='en');
     document.documentElement.lang=currentLang;
+    // FIX: maintenance-status-text elementinin data-i18n'i sabit "canlı" metnine
+    // işaret ediyor; render() her çağrıldığında applyTranslations() bu satırı
+    // çalıştırıp gerçek bakım durumunu eziyordu ("bakıma al" sonrası metin
+    // değişmiyor gibi görünüyordu). En sonda gerçek duruma göre düzeltiyoruz.
+    if (typeof updateMaintenanceControlBox === 'function') updateMaintenanceControlBox();
     applyConfigToDOM();
     // user-status-text span'ı dil değişiminde güncelle
     if(isAuth&&currentUser){
@@ -3670,16 +3681,23 @@ function listenToPendingDomains(){
 //  dinleyicisi (onSnapshot) kullanılıyor — sıfır gecikme.
 // ══════════════════════════════════════════════════════════════════════
 let trademarkClaimsUnsubscribe=null;
-let allTrademarkClaims=[]; // FIX: filtre butonları için tüm talepleri önbellekte tutuyoruz
-let trademarkClaimFilter='all';
+let _allTrademarkClaims=[];
+let trademarkFilter=localStorage.getItem('w3dg_trademark_filter')||'all';
+window.setTrademarkFilter=function(val){
+    trademarkFilter=val;
+    localStorage.setItem('w3dg_trademark_filter',val);
+    renderAdminTrademarkClaims(_allTrademarkClaims);
+};
 function listenToTrademarkClaims(){
     if(trademarkClaimsUnsubscribe) trademarkClaimsUnsubscribe();
     trademarkClaimsUnsubscribe=onSnapshot(collection(db,"trademark_claims"),(snapshot)=>{
         const claims=[];
         snapshot.forEach(docSnap=>claims.push({id:docSnap.id,...docSnap.data()}));
         claims.sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
-        allTrademarkClaims=claims;
-        renderAdminTrademarkClaims(applyTrademarkClaimFilter(claims));
+        _allTrademarkClaims=claims;
+        const sel=document.getElementById('trademark-filter-select');
+        if(sel&&sel.value!==trademarkFilter) sel.value=trademarkFilter;
+        renderAdminTrademarkClaims(claims);
         const openCount=claims.filter(c=>c.status==='new'||c.status==='reviewing').length;
         const badge=document.getElementById('trademark-count-badge');
         if(badge){
@@ -3813,13 +3831,9 @@ window.toggleMaintenanceMode = async function(){
 onSnapshot(doc(db,"config","app_status"),(snap)=>{
     const data = snap.exists() ? snap.data() : {};
     _maintenanceModeOn = !!data.maintenanceMode;
+    // Sonraki sayfa açılışında "giriş ekranı flaşı"nı önlemek için önbelleğe al
+    try { localStorage.setItem('w3dg_maintenance_cache', _maintenanceModeOn ? '1' : '0'); } catch(e){}
     updateMaintenanceOverlay();
-    // FIX: Gerçek bakım durumu netleşti — artık login/uygulama ekranının
-    // (varsa bakım ekranının altında) bir anlığına görünmesine gerek yok,
-    // boot-loader'ı kapatabiliriz. Güvenlik zaman aşımını da iptal et.
-    if (window._bootLoaderSafetyTimer) { clearTimeout(window._bootLoaderSafetyTimer); window._bootLoaderSafetyTimer = null; }
-    const bl = document.getElementById('boot-loader');
-    if (bl) bl.style.display = 'none';
 });
 window.openMaintenanceAdminLogin = function(){
     window.loginWithPi();
@@ -4210,8 +4224,8 @@ onSnapshot(collection(db,"domains"),(snapshot)=>{
             createdAt:docData.createdAt||0,
             deleted:docData.deleted===true, // FIX: soft-delete bayrağı
             deletedAt:docData.deletedAt||null, // FIX: silinme tarihi eksikti, eklendi
-            hidden:docData.hidden===true, // FIX: "Gizle" butonu çalışmıyordu çünkü bu alan hiç okunmuyordu — backend hidden:true yazıyordu ama her snapshot'ta domainData yeniden kurulurken bu alan atlanıp undefined'a (gizli değil) dönüyordu.
-            payoutStatus:docData.payoutStatus||null // FIX: "Onay Aşamasında" rozeti de aynı nedenle her snapshot'ta sıfırlanıp direkt "SATILDI" görünüyordu.
+            hidden:docData.hidden===true, // FIX: eksikti — "Gizle" butonu bu yüzden hiç etkili olmuyordu
+            payoutStatus:docData.payoutStatus||null // FIX: eksikti — "Onay Aşamasında" durumu bu yüzden hiç görünmüyor, direkt "SATILDI" gösteriliyordu
         };
         if(!defaultDomain){
             domains.unshift({name,img:docData.img||'assets/default.jpeg',price:docData.price||0,type:docData.type||'genel',description:docData.description||''});
@@ -5004,32 +5018,26 @@ async function adminLoadTickets() {
 //  (Yükleme artık listenToTrademarkClaims() ile canlı/anlık yapılıyor;
 //  bu bölümde sadece render + aksiyon fonksiyonları kalıyor.)
 // ══════════════════════════════════════════════════════════════════════
-// Filtre: "pending" = henüz sonuçlanmamış (new + reviewing) talepler.
-function applyTrademarkClaimFilter(claims) {
-    if (trademarkClaimFilter === 'all') return claims;
-    if (trademarkClaimFilter === 'pending') return claims.filter(c => c.status === 'new' || c.status === 'reviewing');
-    return claims.filter(c => c.status === trademarkClaimFilter);
-}
-window.adminFilterTrademarkClaims = function(status) {
-    trademarkClaimFilter = status;
-    document.querySelectorAll('#trademark-admin-filters .ticket-filter-btn').forEach(btn => {
-        btn.classList.toggle('active', btn.dataset.status === status);
-    });
-    renderAdminTrademarkClaims(applyTrademarkClaimFilter(allTrademarkClaims));
-};
 function renderAdminTrademarkClaims(claims) {
     const container = document.getElementById('trademark-admin-list');
     if (!container) return;
-    if (!claims.length) {
-        const msg = (allTrademarkClaims.length && trademarkClaimFilter !== 'all') ? t('trademarkAdminNoClaimsFiltered') : t('trademarkAdminNoClaims');
-        container.innerHTML = `<p style="font-size:0.75em;opacity:0.5;text-align:center;">${msg}</p>`;
+    // Aktif filtreye göre daralt — "Çözülen" kayıtlar artık kaybolmuyor,
+    // istenen filtreyle her zaman geri çağrılabiliyor.
+    const filtered = claims.filter(c => {
+        if (trademarkFilter === 'pending') return c.status === 'new' || c.status === 'reviewing';
+        if (trademarkFilter === 'resolved') return c.status === 'resolved';
+        if (trademarkFilter === 'rejected') return c.status === 'rejected';
+        return true; // 'all'
+    });
+    if (!filtered.length) {
+        container.innerHTML = `<p style="font-size:0.75em;opacity:0.5;text-align:center;">${claims.length ? t('trademarkFilterEmpty') : t('trademarkAdminNoClaims')}</p>`;
         return;
     }
     const locale = currentLang === 'en' ? 'en-GB' : 'tr-TR';
     const statusMap = { new: t('trademarkStatusNew'), reviewing: t('trademarkStatusReviewing'), resolved: t('trademarkStatusResolved'), rejected: t('trademarkStatusRejected'), withdrawn: t('trademarkStatusWithdrawn') };
     const statusColor = { new: '#3b82f6', reviewing: '#f59e0b', resolved: '#10b981', rejected: '#ef4444', withdrawn: '#64748b' };
 
-    container.innerHTML = claims.map(c => {
+    container.innerHTML = filtered.map(c => {
         const created = c.createdAt ? new Date(c.createdAt).toLocaleDateString(locale, { day: '2-digit', month: '2-digit' }) + ' ' + new Date(c.createdAt).toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' }) : '-';
         return `<div style="background:#0f172a;border:1px solid #334155;border-left:4px solid ${statusColor[c.status] || '#6366f1'};border-radius:10px;padding:10px;margin-bottom:8px;">
             <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:6px;margin-bottom:6px;">
