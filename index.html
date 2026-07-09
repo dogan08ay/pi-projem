@@ -3478,6 +3478,7 @@ function renderUserPanel(){
                 const dateStr=req.submittedAt?new Date(req.submittedAt).toLocaleDateString(locale,{day:'2-digit',month:'2-digit',year:'numeric'}):'-';
                 const isRejected=finalStatus==='rejected';
                 const isPending=finalStatus==='pending';
+                const isWithdrawn=finalStatus==='withdrawn';
 
                 return `<div style="background:#0f172a;border:1.5px solid ${finalColor};border-radius:12px;padding:10px;margin-bottom:8px;">
                     <!-- Üst satır: Domain adı + Durum etiketi -->
@@ -3521,6 +3522,9 @@ function renderUserPanel(){
                     </div>`:''}
                     ${isPending?`<div style="display:flex;gap:8px;margin-top:8px;padding-top:8px;border-top:1px solid #334155;">
                         <button onclick="handleWithdrawSellRequest('${req.id}')" style="width:100%;background:#475569;color:#cbd5e1;border:1px solid #64748b;padding:7px;border-radius:6px;font-size:0.7em;font-weight:800;cursor:pointer;">🚫 ${t('withdrawListing')}</button>
+                    </div>`:''}
+                    ${isWithdrawn?`<div style="display:flex;gap:8px;margin-top:8px;padding-top:8px;border-top:1px solid #334155;">
+                        <button onclick="handleDeleteRejectedRequest('${req.id}')" style="width:100%;background:#ef4444;color:#fff;border:none;padding:7px;border-radius:6px;font-size:0.7em;font-weight:800;cursor:pointer;">${t('deleteListingBtn')}</button>
                     </div>`:''}
                 </div>`;
             }).join('');
@@ -3640,7 +3644,15 @@ function render(){
     if(isAuth) updateSideMenuProfile();
     requestAnimationFrame(()=>{
         const mc=document.getElementById("market-card"); if(!mc) return;
-        if(!isAuth){mc.style.minHeight=Math.max(lock.scrollHeight||0,list.scrollHeight||0,300)+"px";}
+        // FIX: Giriş yapılmamışken market-card'ın boyu, ARKADA GİZLİ duran
+        // (blur'lu) domain-list'in yüksekliğine göre değil, SADECE görünen
+        // kilit ekranının (lock) kendi yüksekliğine göre ayarlanmalı.
+        // Önceden list.scrollHeight de hesaba katılıyordu — domain sayısı
+        // arttıkça (7+ ilan) bu, giriş ekranını gereksiz yere devasa
+        // boyutlara çıkarıyor, "Ayrıcalıklı Web3 Dünyasına Katılın" kutusunun
+        // görünüm dışına taşmasına ve alttaki iletişim bilgilerinin
+        // kaydırmadan görünmemesine sebep oluyordu.
+        if(!isAuth){mc.style.minHeight=Math.max(lock.scrollHeight||0,300)+"px";}
         else{mc.style.minHeight="";}
     });
 }
