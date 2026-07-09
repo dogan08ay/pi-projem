@@ -946,8 +946,8 @@
         <button onclick="window.closeTrustIntro()" style="width:100%;padding:12px;border:none;border-radius:10px;background:linear-gradient(135deg,#6366f1,#818cf8);color:#fff;font-weight:800;font-size:0.9em;cursor:pointer;box-shadow:0 4px 14px rgba(99,102,241,0.4);" data-i18n="trustIntroButton"></button>
     </div>
 </div>
-<button id="trust-fab" onclick="window.openTrustInfo()" title="Güvenlik ve Gizlilik Bilgisi" style="position:fixed;bottom:78px;left:14px;z-index:900;width:46px;height:46px;border-radius:50%;background:linear-gradient(135deg,#f59e0b,#fbbf24);border:2px solid rgba(255,255,255,0.25);box-shadow:0 6px 18px rgba(245,158,11,0.55);color:#1e1b4b;font-size:1.3em;font-weight:900;cursor:pointer;display:flex;align-items:center;justify-content:center;animation:tour-fab-pulse 2.4s ease-in-out infinite;">🛡️</button>
-<button id="tour-fab" onclick="window.startOnboardingTour()" title="Uygulama Turu" style="display:none;position:fixed;bottom:78px;right:14px;z-index:900;width:46px;height:46px;border-radius:50%;background:linear-gradient(135deg,#6366f1,#818cf8);border:2px solid rgba(255,255,255,0.25);box-shadow:0 6px 18px rgba(99,102,241,0.55);color:#fff;font-size:1.15em;font-weight:900;cursor:pointer;align-items:center;justify-content:center;animation:tour-fab-pulse 2.4s ease-in-out infinite;">?</button>
+<button id="trust-fab" onclick="window.openTrustInfo()" title="Güvenlik ve Gizlilik Bilgisi" style="display:none;position:fixed;bottom:16px;left:14px;z-index:900;width:46px;height:46px;border-radius:50%;background:linear-gradient(135deg,#f59e0b,#fbbf24);border:2px solid rgba(255,255,255,0.25);box-shadow:0 6px 18px rgba(245,158,11,0.55);color:#1e1b4b;font-size:1.3em;font-weight:900;cursor:pointer;align-items:center;justify-content:center;animation:tour-fab-pulse 2.4s ease-in-out infinite;">🛡️</button>
+<button id="tour-fab" onclick="window.startOnboardingTour()" title="Uygulama Turu" style="display:none;position:fixed;bottom:16px;right:14px;z-index:900;width:46px;height:46px;border-radius:50%;background:linear-gradient(135deg,#6366f1,#818cf8);border:2px solid rgba(255,255,255,0.25);box-shadow:0 6px 18px rgba(99,102,241,0.55);color:#fff;font-size:1.15em;font-weight:900;cursor:pointer;align-items:center;justify-content:center;animation:tour-fab-pulse 2.4s ease-in-out infinite;">?</button>
 <style>@keyframes tour-fab-pulse{0%,100%{box-shadow:0 6px 18px rgba(99,102,241,0.55);}50%{box-shadow:0 6px 26px rgba(99,102,241,0.9),0 0 0 6px rgba(99,102,241,0.15);}}</style>
 <div class="side-menu-overlay" id="side-menu-overlay" onclick="toggleSideMenu()"></div>
 
@@ -1780,7 +1780,7 @@ const i18n = {
     trustIntroButton:"Anladım, Devam Et",
     trustMiniBadge:"🛡️ Güvenlik ve Gizlilik Bilgisi",
     trustMiniBadgeMenu:"Güvenlik ve Gizlilik Bilgisi",
-    trademarkClaimLink:"MARKA HAKKI BİLDİRİMİ",
+    trademarkClaimLink:"MARKA HAKKI",
     trademarkModalTitle:"Marka Hakkı / Telif Bildirimi",
     trademarkModalSubtitle:"Tescilli bir markanın veya ismin platformumuzda izinsiz kullanıldığını düşünüyorsanız, aşağıdaki formu doldurun. Talebiniz ekibimiz tarafından incelenecektir.",
     trademarkFieldName:"Ad Soyad *",
@@ -1866,7 +1866,7 @@ const i18n = {
     notifications:"Bildirimler",markAllRead:"Tümünü Okundu Yap",noNotifications:"Henüz bildiriminiz yok.",
     verify:"🔍 DOĞRULA",verifyLocked:"🔒 DOĞRULA",buyNow:"SATIN AL",sold:"SATILDI",
     soldPendingConfirmation:"SATILDI - ONAY AŞAMASINDA",
-    hideBtn:"🙈 Gizle",unhideBtn:"👁 Satışa Çıkar",hiddenTag:"Gizli",hideToggleFail:"İşlem başarısız: ",
+    hideBtn:"🙈 Gizle",unhideBtn:"👁 Göster",hiddenTag:"Gizli",hideToggleFail:"İşlem başarısız: ",
     relistBtn:"↺ Tekrar Satılık Yap",detailBtn:"📋 DETAY",approveBtn:"✓ ONAYLA",rejectBtn:"✕ REDDET",
     sellRequestDetail:"Domain Detayı",
     loginRequired:"Bu özelliği kullanmak için önce Pi ile bağlanmalısınız.",
@@ -2214,7 +2214,7 @@ const i18n = {
     notifications:"Notifications",markAllRead:"Mark All Read",noNotifications:"No notifications yet.",
     verify:"🔍 VERIFY",verifyLocked:"🔒 VERIFY",buyNow:"BUY NOW",sold:"SOLD",
     soldPendingConfirmation:"SOLD - PENDING CONFIRMATION",
-    hideBtn:"🙈 Hide",unhideBtn:"👁 List for Sale",hiddenTag:"Hidden",hideToggleFail:"Action failed: ",
+    hideBtn:"🙈 Hide",unhideBtn:"👁 Show",hiddenTag:"Hidden",hideToggleFail:"Action failed: ",
     relistBtn:"↺ Relist for Sale",detailBtn:"📋 DETAIL",approveBtn:"✓ APPROVE",rejectBtn:"✕ REJECT",
     sellRequestDetail:"Domain Details",
     loginRequired:"You must connect with Pi first to use this feature.",
@@ -2537,6 +2537,8 @@ window.handleLogout=async function(){
     stopTicketBadgePolling();
     stopUserTicketPolling();
     stopListeningToMyOwnSellRequests();
+    if(typeof stopTrademarkBadgePolling==='function') stopTrademarkBadgePolling();
+    if(typeof stopPayoutsBadgePolling==='function') stopPayoutsBadgePolling();
     currentUser=null;piAccessToken=null;isAuth=false;userFirstSeen=null;
     userProfile={points:0,badge:null};userSellRequests=[];userSoldDomains=[];userActiveListings=[];userTotalSpent=0;userTotalEarned=0;
     cachedNotifications=[];
@@ -2547,12 +2549,13 @@ window.handleLogout=async function(){
     const nb=document.getElementById("notif-btn"); if(nb) nb.style.visibility="hidden";
     const uab=document.getElementById("user-avatar-btn"); if(uab){uab.style.display="none";if(uab._userMenuTimeout){clearTimeout(uab._userMenuTimeout);}}
     const tfab=document.getElementById("tour-fab"); if(tfab) tfab.style.display="none";
+    const trfab=document.getElementById("trust-fab"); if(trfab) trfab.style.display="none";
     const umd=document.getElementById("user-menu-dropdown"); if(umd) umd.style.display="none";
     // Menü açıksa kapat
     const sm=document.getElementById('side-menu'); const smo=document.getElementById('side-menu-overlay');
     if(sm&&sm.classList.contains('open')){sm.classList.remove('open');} if(smo) smo.classList.remove('open');
     // Logout sonrası scroll'u sınırla (footer görünsün)
-    const ms=document.querySelector('.main-scroll'); if(ms) ms.style.maxHeight='calc(100vh - 50px)';
+    const ms=document.querySelector('.main-scroll'); if(ms) ms.style.maxHeight='calc(100vh - 90px)';
     // GİRİŞ EKRANINA DÖN: premium-lock overlay'ı geri getir, domain-grid'i kilitle
     const lock=document.getElementById('premium-lock');
     const dlist=document.getElementById('domain-list');
@@ -3876,9 +3879,11 @@ async function performPiConnect() {
             // Kullanıcı avatarını göster
             const avatarBtn=document.getElementById('user-avatar-btn');
             if(avatarBtn) avatarBtn.style.display='block';
-            // Uygulama turu butonunu her zaman erişilebilir yap (admin dahil)
+            // Uygulama turu ve güvenlik butonlarını her zaman erişilebilir yap (admin dahil)
             const tourFab=document.getElementById('tour-fab');
             if(tourFab) tourFab.style.display='flex';
+            const trustFabEl=document.getElementById('trust-fab');
+            if(trustFabEl) trustFabEl.style.display='flex';
             const menuName=document.getElementById('user-menu-name');
             if(menuName&&currentUser) menuName.textContent='@'+currentUser;
             const menuTime=document.getElementById('user-menu-time');
@@ -4260,7 +4265,7 @@ if(localStorage.getItem('w3dg_trust_intro_seen')){
 
 let firstDomainsSnapshotReceived=false;
 window.addEventListener("load",()=>{
-    configReady.then(()=>applyConfigToDOM());setInterval(updateActiveStatus,15000);document.querySelector('.main-scroll').style.maxHeight='calc(100vh - 50px)';});
+    configReady.then(()=>applyConfigToDOM());setInterval(updateActiveStatus,15000);document.querySelector('.main-scroll').style.maxHeight='calc(100vh - 90px)';});
 
 // ═══════════════════════════════════════════════════════════════════════
 //  LINK OPEN HELPER — Pi Browser / iframe uyumluluğu için
