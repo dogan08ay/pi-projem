@@ -10,8 +10,16 @@
         *, *::before, *::after { box-sizing: inherit; }
         html { box-sizing: border-box; overflow-x:hidden; }
         html,body{height:100%;}
-        body{font-family:'Segoe UI',sans-serif;background:var(--bg);color:var(--text);margin:0;padding:0;width:100%;min-height:100vh;overflow-x:hidden;box-sizing:border-box;line-height:1.25;}
-        .container{max-width:600px;width:100%;min-width:320px;text-align:center;display:flex;flex-direction:column;min-height:100vh;padding:0;gap:2px;box-sizing:border-box;margin-left:auto;margin-right:auto;justify-content:space-between;}
+        /* FIX: Mobil tarayıcılarda "100vh" adres çubuğu/araç çubuğunu da
+           içine katar; gerçek görünür alan bundan daha kısa olur. Bu da
+           footer/iletişim bilgilerinin ve menü altındaki butonların (örn.
+           Çıkış Yap) ekran dışında kalıp kaydırma gerektirmesine sebep
+           olur. "100dvh" (dynamic viewport height) gerçek görünür alanı
+           yansıtır; destekleyen tarayıcılarda bu satır öncekini geçersiz
+           kılar, desteklemeyenlerde ise geçersiz değer olarak yok sayılıp
+           üstteki 100vh değeri kalır (progressive enhancement). */
+        body{font-family:'Segoe UI',sans-serif;background:var(--bg);color:var(--text);margin:0;padding:0;width:100%;min-height:100vh;min-height:100dvh;overflow-x:hidden;box-sizing:border-box;line-height:1.25;}
+        .container{max-width:600px;width:100%;min-width:320px;text-align:center;display:flex;flex-direction:column;min-height:100vh;min-height:100dvh;padding:0;gap:2px;box-sizing:border-box;margin-left:auto;margin-right:auto;justify-content:space-between;}
         .card{background:var(--card);padding:5px;border-radius:12px;box-shadow:0 5px 8px -3px rgba(0,0,0,0.3);margin-bottom:3px;position:relative;overflow:visible;box-sizing:border-box;width:100%;min-width:0;max-width:100%;}
         .app-logo{width:130px;height:130px;margin:22px auto 4px auto;display:block;border-radius:50%;box-shadow:0 0 40px rgba(99,102,241,0.9);border:3px solid #818cf8;object-fit:cover;animation:logo-pulse 3s ease-in-out infinite;}
         @keyframes logo-pulse{0%,100%{transform:scale(1);}50%{transform:scale(1.05);}}
@@ -76,8 +84,8 @@
         .notif-dot.read{background:transparent;border:1px solid #334155;}
         .hamburger-btn{position:absolute;top:4px;right:8px;z-index:10;background:transparent;border:none;padding:4px;cursor:pointer;display:flex;flex-direction:column;gap:4px;width:32px;height:32px;align-items:center;justify-content:center;}
         .hamburger-btn span{display:block;width:20px;height:2px;background:#cbd5e1;border-radius:2px;transition:all 0.3s;}
-        .side-menu-overlay{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.55);z-index:998;display:none;}
-        .side-menu{position:fixed;top:0;right:0;width:78%;max-width:320px;height:100%;background:linear-gradient(165deg,#1e1b4b 0%,#0f172a 100%);z-index:999;box-shadow:-8px 0 30px rgba(0,0,0,0.5);transform:translateX(100%);transition:transform 0.3s ease;display:flex;flex-direction:column;padding:10px;box-sizing:border-box;overflow-y:auto;}
+        .side-menu-overlay{position:fixed;top:0;left:0;width:100%;height:100%;height:100dvh;background:rgba(0,0,0,0.55);z-index:998;display:none;}
+        .side-menu{position:fixed;top:0;right:0;width:78%;max-width:320px;height:100%;height:100dvh;background:linear-gradient(165deg,#1e1b4b 0%,#0f172a 100%);z-index:999;box-shadow:-8px 0 30px rgba(0,0,0,0.5);transform:translateX(100%);transition:transform 0.3s ease;display:flex;flex-direction:column;padding:10px;box-sizing:border-box;overflow-y:auto;}
         .side-menu.open{transform:translateX(0);}
         .side-menu-overlay.open{display:block;}
         .side-menu-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;}
@@ -1650,6 +1658,20 @@
     </div>
 </div>
 <script type="module">
+// FIX: Üç farklı yerde (ilk yükleme, login, logout) .main-scroll'a
+// aynı yükseklik sınırı manuel olarak inline stille yazılıyordu ve hepsi
+// "100vh" kullanıyordu — mobil tarayıcılarda adres çubuğu yüzünden
+// gerçek görünür alandan daha büyük bir değer. Tek bir yardımcı fonksiyon
+// üzerinden, tarayıcı destekliyorsa "100dvh" (gerçek görünür yükseklik),
+// desteklemiyorsa "100vh" kullanılıyor.
+function applyMainScrollHeight(){
+    const ms=document.querySelector('.main-scroll');
+    if(!ms) return;
+    const unit=(window.CSS && CSS.supports && CSS.supports('height','100dvh'))?'100dvh':'100vh';
+    ms.style.maxHeight=`calc(${unit} - 50px)`;
+    ms.style.overflowY='auto';
+}
+window.applyMainScrollHeight=applyMainScrollHeight;
 // ═══════════════════════════════════════════════════════════════════════
 //  SKELETON SCREEN HELPERS — yükleme sırasında boş ekran yerine iskelet
 // ═══════════════════════════════════════════════════════════════════════
@@ -2569,7 +2591,7 @@ window.handleLogout=async function(){
     const sm=document.getElementById('side-menu'); const smo=document.getElementById('side-menu-overlay');
     if(sm&&sm.classList.contains('open')){sm.classList.remove('open');} if(smo) smo.classList.remove('open');
     // Logout sonrası scroll'u sınırla (footer görünsün)
-    const ms=document.querySelector('.main-scroll'); if(ms) ms.style.maxHeight='calc(100vh - 50px)';
+    const ms=document.querySelector('.main-scroll'); if(ms) window.applyMainScrollHeight();
     // GİRİŞ EKRANINA DÖN: premium-lock overlay'ı geri getir, domain-grid'i kilitle
     const lock=document.getElementById('premium-lock');
     const dlist=document.getElementById('domain-list');
@@ -3775,6 +3797,12 @@ onSnapshot(doc(db,"config","app_status"),(snap)=>{
     const data = snap.exists() ? snap.data() : {};
     _maintenanceModeOn = !!data.maintenanceMode;
     updateMaintenanceOverlay();
+},(err)=>{
+    // FIX: Bu listener'da da hata callback'i yoktu. Firestore kurallarında
+    // "config" koleksiyonu için okuma izni tanımlı değilse, admin butona
+    // basıp backend'e yazma işlemi başarıyla gitse bile bu dinleyici hiçbir
+    // zaman güncellenmiyor ve buton/durum metni hep "YAYINDA" görünüyordu.
+    console.error("[config/app_status] onSnapshot hatası (Firestore kurallarında 'config' için read:true tanımlı mı kontrol edin):", err);
 });
 window.openMaintenanceAdminLogin = function(){
     window.loginWithPi();
@@ -3929,8 +3957,7 @@ async function performPiConnect() {
             // aynı sınırı koruyoruz; böylece .main-scroll kendi içinde kayar,
             // footer her zaman görünür kalır ve kullanıcı ilk girişte aşağı
             // kaydırmak zorunda kalmaz.
-            document.querySelector('.main-scroll').style.maxHeight = 'calc(100vh - 50px)';
-            document.querySelector('.main-scroll').style.overflowY = 'auto';
+            document.querySelector('.main-scroll') && window.applyMainScrollHeight();
 
             // ── 6. BUTONU NORMALE DÖNDÜR (önemli: spinner'ı kaldır) ───
             if (connectBtn && originalBtnText) {
@@ -4265,7 +4292,14 @@ if(localStorage.getItem('w3dg_trust_intro_seen')){
 
 let firstDomainsSnapshotReceived=false;
 window.addEventListener("load",()=>{
-    configReady.then(()=>applyConfigToDOM());setInterval(updateActiveStatus,15000);document.querySelector('.main-scroll').style.maxHeight='calc(100vh - 50px)';});
+    configReady.then(()=>applyConfigToDOM());setInterval(updateActiveStatus,15000);window.applyMainScrollHeight();
+    // FIX: mobil tarayıcılarda adres çubuğu gizlenip/gösterildiğinde
+    // gerçek görünür yükseklik değişir (resize/orientationchange); bu
+    // durumda footer'ın tekrar viewport dışına kaymaması için yeniden
+    // hesaplıyoruz.
+    window.addEventListener('resize',window.applyMainScrollHeight);
+    window.addEventListener('orientationchange',window.applyMainScrollHeight);
+});
 
 // ═══════════════════════════════════════════════════════════════════════
 //  LINK OPEN HELPER — Pi Browser / iframe uyumluluğu için
