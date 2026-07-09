@@ -946,8 +946,8 @@
         <button onclick="window.closeTrustIntro()" style="width:100%;padding:12px;border:none;border-radius:10px;background:linear-gradient(135deg,#6366f1,#818cf8);color:#fff;font-weight:800;font-size:0.9em;cursor:pointer;box-shadow:0 4px 14px rgba(99,102,241,0.4);" data-i18n="trustIntroButton"></button>
     </div>
 </div>
-<button id="trust-fab" onclick="window.openTrustInfo()" title="Güvenlik ve Gizlilik Bilgisi" style="position:fixed;bottom:16px;left:14px;z-index:900;width:46px;height:46px;border-radius:50%;background:linear-gradient(135deg,#f59e0b,#fbbf24);border:2px solid rgba(255,255,255,0.25);box-shadow:0 6px 18px rgba(245,158,11,0.55);color:#1e1b4b;font-size:1.3em;font-weight:900;cursor:pointer;display:flex;align-items:center;justify-content:center;animation:tour-fab-pulse 2.4s ease-in-out infinite;">🛡️</button>
-<button id="tour-fab" onclick="window.startOnboardingTour()" title="Uygulama Turu" style="display:none;position:fixed;bottom:16px;right:14px;z-index:900;width:46px;height:46px;border-radius:50%;background:linear-gradient(135deg,#6366f1,#818cf8);border:2px solid rgba(255,255,255,0.25);box-shadow:0 6px 18px rgba(99,102,241,0.55);color:#fff;font-size:1.15em;font-weight:900;cursor:pointer;align-items:center;justify-content:center;animation:tour-fab-pulse 2.4s ease-in-out infinite;">?</button>
+<button id="trust-fab" onclick="window.openTrustInfo()" title="Güvenlik ve Gizlilik Bilgisi" style="position:fixed;bottom:78px;left:14px;z-index:900;width:46px;height:46px;border-radius:50%;background:linear-gradient(135deg,#f59e0b,#fbbf24);border:2px solid rgba(255,255,255,0.25);box-shadow:0 6px 18px rgba(245,158,11,0.55);color:#1e1b4b;font-size:1.3em;font-weight:900;cursor:pointer;display:flex;align-items:center;justify-content:center;animation:tour-fab-pulse 2.4s ease-in-out infinite;">🛡️</button>
+<button id="tour-fab" onclick="window.startOnboardingTour()" title="Uygulama Turu" style="display:none;position:fixed;bottom:78px;right:14px;z-index:900;width:46px;height:46px;border-radius:50%;background:linear-gradient(135deg,#6366f1,#818cf8);border:2px solid rgba(255,255,255,0.25);box-shadow:0 6px 18px rgba(99,102,241,0.55);color:#fff;font-size:1.15em;font-weight:900;cursor:pointer;align-items:center;justify-content:center;animation:tour-fab-pulse 2.4s ease-in-out infinite;">?</button>
 <style>@keyframes tour-fab-pulse{0%,100%{box-shadow:0 6px 18px rgba(99,102,241,0.55);}50%{box-shadow:0 6px 26px rgba(99,102,241,0.9),0 0 0 6px rgba(99,102,241,0.15);}}</style>
 <div class="side-menu-overlay" id="side-menu-overlay" onclick="toggleSideMenu()"></div>
 
@@ -2572,6 +2572,8 @@ window.switchAdminTab=function(tabId){
     if(tabId==='tab-earnings') loadAdminEarnings();
     if(tabId==='tab-stats') loadAllSalesDetail();
     if(tabId==='tab-tickets'){ adminLoadTickets(); markTicketsSeen(); }
+    if(tabId==='tab-trademark'){ adminLoadTrademarkClaims(); }
+    if(tabId==='tab-payouts'){ adminLoadPendingPayouts(); }
 };
 window.switchUserTab=function(tabId){
     document.querySelectorAll('.user-tab-btn').forEach(b=>b.classList.toggle('active',b.dataset.utab===tabId));
@@ -3290,7 +3292,9 @@ window.refreshAdminPanel=async function(){
     try{
         await Promise.all([
             adminLoadTickets(),
-            loadUniqueBadgeCount()
+            loadUniqueBadgeCount(),
+            adminLoadTrademarkClaims(),
+            adminLoadPendingPayouts()
         ]);
         renderAdminPriceList();
         debouncedRender();
@@ -3588,47 +3592,71 @@ function listenToPendingDomains(){
 }
 
 // ══════════════════════════════════════════════════════════════════════
-//  ADMIN: MARKA HAKKI TALEPLERİ VE BEKLEYEN ÖDEMELER — CANLI DİNLEYİCİLER
-//  Bu iki sekme yeni eklendiği için, admin sekmeyi hiç açmasa bile yeni bir
-//  talep/ödeme geldiği an rozet (badge) anında düşsün istendi. Diğer admin
-//  verileri gibi periyodik "polling" yerine doğrudan Firestore canlı
-//  dinleyicisi (onSnapshot) kullanılıyor — sıfır gecikme.
+//  ADMIN: MARKA HAKKI TALEPLERİ VE BEKLEYEN ÖDEMELER — GÜVENİLİR YÜKLEME
+//  NOT: Bu iki koleksiyon (trademark_claims, global_sales) için doğrudan
+//  istemci taraflı Firestore dinleyicisi (onSnapshot) kullanmıyoruz —
+//  Firestore güvenlik kuralları bu yeni koleksiyonlara izin vermeyebilir
+//  ve bu durumda dinleyici SESSİZCE hiçbir şey döndürmez (admin panelde
+//  veri hiç görünmez). Bunun yerine, destek talepleri rozetinde zaten
+//  kanıtlanmış olan yöntemi kullanıyoruz: sunucu tarafında (Admin SDK ile,
+//  güvenlik kurallarını atlayarak) doğrulanmış bir fetch + kısa aralıklı
+//  polling (5 sn) — bu, kurallardan tamamen bağımsız şekilde her zaman
+//  çalışır.
 // ══════════════════════════════════════════════════════════════════════
-let trademarkClaimsUnsubscribe=null;
-function listenToTrademarkClaims(){
-    if(trademarkClaimsUnsubscribe) trademarkClaimsUnsubscribe();
-    trademarkClaimsUnsubscribe=onSnapshot(collection(db,"trademark_claims"),(snapshot)=>{
-        const claims=[];
-        snapshot.forEach(docSnap=>claims.push({id:docSnap.id,...docSnap.data()}));
-        claims.sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
-        renderAdminTrademarkClaims(claims);
-        const openCount=claims.filter(c=>c.status==='new'||c.status==='reviewing').length;
-        const badge=document.getElementById('trademark-count-badge');
-        if(badge){
-            if(openCount>0){badge.style.display='inline-block';badge.textContent=openCount>99?'99+':openCount;}
-            else badge.style.display='none';
+async function adminLoadTrademarkClaims(){
+    if(!isAuth||currentUser!==APP_CONFIG.adminUsername) return;
+    try{
+        const r=await fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},
+            body:JSON.stringify({action:'get_trademark_claims',accessToken:piAccessToken})});
+        const result=await r.json();
+        if(result.success){
+            const claims=result.claims||[];
+            renderAdminTrademarkClaims(claims);
+            const openCount=claims.filter(c=>c.status==='new'||c.status==='reviewing').length;
+            const badge=document.getElementById('trademark-count-badge');
+            if(badge){
+                if(openCount>0){badge.style.display='inline-block';badge.textContent=openCount>99?'99+':openCount;}
+                else badge.style.display='none';
+            }
         }
-    });
+    }catch(e){console.error('Marka hakkı talepleri yüklenemedi:',e);}
+}
+let trademarkBadgePollInterval=null;
+function startTrademarkBadgePolling(){
+    stopTrademarkBadgePolling();
+    adminLoadTrademarkClaims();
+    trademarkBadgePollInterval=setInterval(()=>{ adminLoadTrademarkClaims(); },5000);
+}
+function stopTrademarkBadgePolling(){
+    if(trademarkBadgePollInterval){clearInterval(trademarkBadgePollInterval);trademarkBadgePollInterval=null;}
 }
 
-let pendingPayoutsUnsubscribe=null;
-function listenToPendingPayouts(){
-    if(pendingPayoutsUnsubscribe) pendingPayoutsUnsubscribe();
-    pendingPayoutsUnsubscribe=onSnapshot(collection(db,"global_sales"),(snapshot)=>{
-        const payouts=[];
-        snapshot.forEach(docSnap=>{
-            const d=docSnap.data();
-            if(d.payoutStatus) payouts.push({id:docSnap.id,...d}); // sadece escrow'a giren (satıcılı) satışlar
-        });
-        payouts.sort((a,b)=>(b.at||0)-(a.at||0));
-        renderAdminPayouts(payouts);
-        const pendingCount=payouts.filter(p=>p.payoutStatus==='pending').length;
-        const badge=document.getElementById('payouts-count-badge');
-        if(badge){
-            if(pendingCount>0){badge.style.display='inline-block';badge.textContent=pendingCount>99?'99+':pendingCount;}
-            else badge.style.display='none';
+async function adminLoadPendingPayouts(){
+    if(!isAuth||currentUser!==APP_CONFIG.adminUsername) return;
+    try{
+        const r=await fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},
+            body:JSON.stringify({action:'get_pending_payouts',accessToken:piAccessToken})});
+        const result=await r.json();
+        if(result.success){
+            const payouts=result.payouts||[];
+            renderAdminPayouts(payouts);
+            const pendingCount=payouts.filter(p=>p.payoutStatus==='pending').length;
+            const badge=document.getElementById('payouts-count-badge');
+            if(badge){
+                if(pendingCount>0){badge.style.display='inline-block';badge.textContent=pendingCount>99?'99+':pendingCount;}
+                else badge.style.display='none';
+            }
         }
-    });
+    }catch(e){console.error('Bekleyen ödemeler yüklenemedi:',e);}
+}
+let payoutsBadgePollInterval=null;
+function startPayoutsBadgePolling(){
+    stopPayoutsBadgePolling();
+    adminLoadPendingPayouts();
+    payoutsBadgePollInterval=setInterval(()=>{ adminLoadPendingPayouts(); },5000);
+}
+function stopPayoutsBadgePolling(){
+    if(payoutsBadgePollInterval){clearInterval(payoutsBadgePollInterval);payoutsBadgePollInterval=null;}
 }
 
 // FIX: reject_sell_request durumunda domains koleksiyonunda HİÇBİR
@@ -3725,18 +3753,38 @@ window.toggleMaintenanceMode = async function(){
             body:JSON.stringify({action:'set_maintenance_mode',enabled:turningOn,accessToken:piAccessToken})});
         const result = await r.json();
         if(!result.success){ alert(result.error || 'Hata'); return; }
-        // _maintenanceModeOn zaten canlı onSnapshot dinleyicisi tarafından güncellenecek;
-        // burada ekstra bir şey yapmaya gerek yok.
+        // Kendi ekranımızda anında yansıt; diğer ziyaretçiler bir sonraki
+        // pollingde (en geç ~20 sn içinde) otomatik görecek.
+        _maintenanceModeOn = turningOn;
+        updateMaintenanceOverlay();
     }catch(e){
         console.error('Bakım modu değiştirilemedi:', e);
         alert('Bakım modu değiştirilemedi.');
     }
 };
-onSnapshot(doc(db,"config","app_status"),(snap)=>{
-    const data = snap.exists() ? snap.data() : {};
-    _maintenanceModeOn = !!data.maintenanceMode;
-    updateMaintenanceOverlay();
-});
+
+// NOT: Bilerek doğrudan istemci taraflı Firestore dinleyicisi (onSnapshot)
+// KULLANMIYORUZ — bu, herkese açık yeni bir koleksiyon olduğu için
+// Firestore güvenlik kuralları izin vermeyebilir ve bu durumda hiçbir
+// ziyaretçi bakım durumunu göremez (sessiz başarısızlık). Bunun yerine
+// sunucu üzerinden (kurallardan bağımsız, her zaman çalışan) kısa
+// aralıklı bir kontrol yapıyoruz.
+async function checkMaintenanceStatus(){
+    try{
+        const r = await fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},
+            body:JSON.stringify({action:'get_app_status'})});
+        const result = await r.json();
+        if(result.success){
+            _maintenanceModeOn = !!result.maintenanceMode;
+            updateMaintenanceOverlay();
+        }
+    }catch(e){
+        console.warn('Bakım modu durumu kontrol edilemedi:', e);
+    }
+}
+checkMaintenanceStatus();
+setInterval(checkMaintenanceStatus, 20000);
+
 window.openMaintenanceAdminLogin = function(){
     window.loginWithPi();
 };
@@ -3848,8 +3896,8 @@ async function performPiConnect() {
                 loadUniqueBadgeCount();
                 listenToPendingDomains();
                 startTicketBadgePolling();
-                listenToTrademarkClaims();
-                listenToPendingPayouts();
+                startTrademarkBadgePolling();
+                startPayoutsBadgePolling();
                 const today = new Date().toISOString().split("T")[0];
                 const dateInput = document.getElementById("admin-date-input");
                 dateInput.value = today;
@@ -4125,7 +4173,9 @@ onSnapshot(collection(db,"domains"),(snapshot)=>{
             sellerUsername:docData.sellerUsername||null,
             createdAt:docData.createdAt||0,
             deleted:docData.deleted===true, // FIX: soft-delete bayrağı
-            deletedAt:docData.deletedAt||null // FIX: silinme tarihi eksikti, eklendi
+            deletedAt:docData.deletedAt||null, // FIX: silinme tarihi eksikti, eklendi
+            hidden:docData.hidden===true, // FIX: 'gizle' butonu bu alan okunmadığı için hiç çalışmıyordu
+            payoutStatus:docData.payoutStatus||null // FIX: escrow onay durumu okunmuyordu (SATILDI/ONAY AŞAMASINDA ayrımı için gerekli)
         };
         if(!defaultDomain){
             domains.unshift({name,img:docData.img||'assets/default.jpeg',price:docData.price||0,type:docData.type||'genel',description:docData.description||''});
@@ -4914,9 +4964,8 @@ async function adminLoadTickets() {
 }
 
 // ══════════════════════════════════════════════════════════════════════
-//  ADMIN: MARKA HAKKI / TELİF TALEPLERİ
-//  (Yükleme artık listenToTrademarkClaims() ile canlı/anlık yapılıyor;
-//  bu bölümde sadece render + aksiyon fonksiyonları kalıyor.)
+//  ADMIN: MARKA HAKKI / TELİF TALEPLERİ — render fonksiyonu
+//  (Yükleme adminLoadTrademarkClaims() ile — bkz. yukarıdaki polling.)
 // ══════════════════════════════════════════════════════════════════════
 function renderAdminTrademarkClaims(claims) {
     const container = document.getElementById('trademark-admin-list');
@@ -4962,8 +5011,8 @@ window.adminUpdateTrademarkStatus = async function(claimId, status) {
             body: JSON.stringify({ action: 'update_trademark_claim_status', claimId, status, accessToken: piAccessToken })
         });
         const result = await r.json();
-        if (!result.success) alert(result.error || t('trademarkError'));
-        // Liste zaten canlı dinleyici (onSnapshot) ile anında güncellenir.
+        if (result.success) adminLoadTrademarkClaims();
+        else alert(result.error || t('trademarkError'));
     } catch (e) {
         console.error("Marka hakkı durumu güncellenemedi:", e);
     }
@@ -4981,6 +5030,7 @@ window.adminApproveTrademarkClaim = async function(claimId, domainName) {
         const result = await r.json();
         if (result.success) {
             alert(result.domainRemoved ? t('trademarkApproveSuccessRemoved') : t('trademarkApproveSuccessNotFound'));
+            adminLoadTrademarkClaims();
         } else {
             alert(result.error || t('trademarkError'));
         }
@@ -5004,7 +5054,8 @@ window.adminDeleteTrademarkClaim = async function(claimId) {
             body: JSON.stringify({ action: 'delete_trademark_claim', claimId, accessToken: piAccessToken })
         });
         const result = await r.json();
-        if (!result.success) alert(result.error || t('trademarkError'));
+        if (result.success) adminLoadTrademarkClaims();
+        else alert(result.error || t('trademarkError'));
     } catch (e) {
         console.error("Marka hakkı talebi silinemedi:", e);
     }
@@ -5089,8 +5140,8 @@ window.withdrawMyTrademarkClaim = async function(claimId) {
 };
 
 // ══════════════════════════════════════════════════════════════════════
-//  ADMIN: ESCROW — BEKLEYEN SATICI ÖDEMELERİ
-//  (Yükleme artık listenToPendingPayouts() ile canlı/anlık yapılıyor.)
+//  ADMIN: ESCROW — BEKLEYEN SATICI ÖDEMELERİ — render fonksiyonu
+//  (Yükleme adminLoadPendingPayouts() ile — bkz. yukarıdaki polling.)
 // ══════════════════════════════════════════════════════════════════════
 function renderAdminPayouts(payouts) {
     const container = document.getElementById('payouts-admin-list');
@@ -5142,6 +5193,7 @@ window.adminReleasePayout = async function(saleId, domainName, sellerUsername) {
         const result = await r.json();
         if (result.success) {
             alert(`✅ ${result.payoutAmount} Pi @${sellerUsername} kullanıcısına gönderildi.`);
+            adminLoadPendingPayouts();
         } else {
             alert(result.error || t('trademarkError'));
         }
@@ -5164,6 +5216,7 @@ window.adminRefundPayout = async function(saleId, domainName, buyerUsername) {
         const result = await r.json();
         if (result.success) {
             alert(`✅ ${result.refundAmount} Pi @${buyerUsername} kullanıcısına iade edildi.`);
+            adminLoadPendingPayouts();
         } else {
             alert(result.error || t('trademarkError'));
         }
