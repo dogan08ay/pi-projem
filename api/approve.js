@@ -2,7 +2,7 @@ import { initializeApp, getApps, cert } from 'firebase-admin/app';
 import { getFirestore, FieldValue } from 'firebase-admin/firestore';
 import { getStorage } from 'firebase-admin/storage';
 import { getDatabase } from 'firebase-admin/database';
-import PiNetwork from 'pi-backend';
+import * as PiBackendPkg from 'pi-backend';
 
 // ─── Admin Config ───────────────────────────────────────────────────────
 const ADMIN_USERNAME = process.env.ADMIN_USERNAME || 'doganay0808';
@@ -14,12 +14,26 @@ const PLATFORM_COMMISSION_RATE = 0.05; // %5 komisyon
 // gerekir. PI_WALLET_PRIVATE_SEED, uygulamanızın kendi Pi cüzdanının
 // "S..." ile başlayan private seed'idir (Developer Portal / cüzdan
 // kurulumunuzdan alınır) — ASLA istemciye/tarayıcıya gönderilmemelidir.
+//
+// FIX ("PiNetwork is not a constructor"): pi-backend saf CommonJS bir
+// paket (`module.exports = PiNetwork`). Kullanılan derleyiciye/çalışma
+// zamanına göre `import PiNetwork from 'pi-backend'` bazen sınıfın
+// kendisini değil, sarmalanmış modül nesnesini (ör. { default: ... }
+// veya { PiNetwork: ... }) verebiliyor — bu da "constructor değil"
+// hatasına yol açıyor. Bunu tüm olası şekillere karşı güvenli şekilde
+// çözüyoruz.
+const PiNetwork = PiBackendPkg.PiNetwork || PiBackendPkg.default?.PiNetwork || PiBackendPkg.default || PiBackendPkg;
+
 let piClient = null;
 function getPiClient() {
   if (piClient) return piClient;
   const apiKey = process.env.APP_SECRET;
   const walletSeed = process.env.PI_WALLET_PRIVATE_SEED;
   if (!apiKey || !walletSeed) return null;
+  if (typeof PiNetwork !== 'function') {
+    console.error('[Escrow] PiNetwork sınıfı çözümlenemedi. pi-backend paketinin doğru kurulduğunu kontrol edin. Çözümlenen değer:', PiNetwork);
+    return null;
+  }
   piClient = new PiNetwork(apiKey, walletSeed);
   return piClient;
 }
@@ -1172,6 +1186,26 @@ export default async function handler(req, res) {
     } catch (e) {
       console.error("set_maintenance_mode hatası:", e);
       return res.status(500).json({ error: e.message });
+    }
+  }
+
+  // ══════════════════════════════════════════════════════════════════════
+  //  HERKESE AÇIK: Bakım Modu Durumunu Kontrol Et
+  //  NOT: Bilerek doğrudan istemci taraflı Firestore okuması (onSnapshot)
+  //  KULLANMIYORUZ — yeni bir koleksiyon olduğu için Firestore güvenlik
+  //  kuralları buna izin vermeyebilir ve bu durumda ziyaretçi hiçbir şey
+  //  alamaz (sessiz başarısızlık). Bunun yerine Admin SDK ile (kurallardan
+  //  bağımsız, her zaman çalışan) sunucu üzerinden kontrol ediyoruz.
+  // ══════════════════════════════════════════════════════════════════════
+  if (action === 'get_app_status') {
+    try {
+      const db = getDb();
+      const snap = await db.collection('config').doc('app_status').get();
+      const data = snap.exists ? snap.data() : {};
+      return res.status(200).json({ success: true, maintenanceMode: !!data.maintenanceMode });
+    } catch (e) {
+      console.error("get_app_status hatası:", e);
+      return res.status(200).json({ success: true, maintenanceMode: false }); // hata durumunda siteyi kilitleme
     }
   }
 
