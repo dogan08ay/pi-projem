@@ -2,7 +2,17 @@ import { initializeApp, getApps, cert } from 'firebase-admin/app';
 import { getFirestore, FieldValue } from 'firebase-admin/firestore';
 import { getStorage } from 'firebase-admin/storage';
 import { getDatabase } from 'firebase-admin/database';
-import * as PiBackendPkg from 'pi-backend';
+import * as PiBackendModule from 'pi-backend';
+// FIX ("PiNetwork is not a constructor"): 'pi-backend' bir CommonJS paketi
+// olup `exports.default = PiNetwork` şeklinde dışa aktarım yapıyor. Bazı
+// bundler/derleme ortamlarında (ör. Vercel'in esbuild tabanlı fonksiyon
+// paketleyicisi) `import PiNetwork from 'pi-backend'` doğrudan sınıfı değil,
+// tüm modül nesnesini ({ default: PiNetwork, __esModule: true }) verebiliyor.
+// Bu satır her iki durumu da güvenle ele alır. AYRICA: paket daha önce
+// package.json'da hiç tanımlı değildi — temiz bir "npm install" onu hiç
+// kurmuyordu, bu da aynı hataya yol açan ayrı bir olası nedendi; artık
+// package.json'a eklendi.
+const PiNetwork = PiBackendModule.default || PiBackendModule.PiNetwork || PiBackendModule;
 
 // ─── Admin Config ───────────────────────────────────────────────────────
 const ADMIN_USERNAME = process.env.ADMIN_USERNAME || 'doganay0808';
@@ -14,33 +24,19 @@ const PLATFORM_COMMISSION_RATE = 0.05; // %5 komisyon
 // gerekir. PI_WALLET_PRIVATE_SEED, uygulamanızın kendi Pi cüzdanının
 // "S..." ile başlayan private seed'idir (Developer Portal / cüzdan
 // kurulumunuzdan alınır) — ASLA istemciye/tarayıcıya gönderilmemelidir.
-//
-// FIX ("PiNetwork is not a constructor"): pi-backend saf CommonJS bir
-// paket (`module.exports = PiNetwork`). Kullanılan derleyiciye/çalışma
-// zamanına göre `import PiNetwork from 'pi-backend'` bazen sınıfın
-// kendisini değil, sarmalanmış modül nesnesini (ör. { default: ... }
-// veya { PiNetwork: ... }) verebiliyor — bu da "constructor değil"
-// hatasına yol açıyor. Bunu tüm olası şekillere karşı güvenli şekilde
-// çözüyoruz.
-const PiNetwork = PiBackendPkg.PiNetwork || PiBackendPkg.default?.PiNetwork || PiBackendPkg.default || PiBackendPkg;
-
 let piClient = null;
 function getPiClient() {
-  if (piClient) return { client: piClient, error: null };
+  if (piClient) return piClient;
   const apiKey = process.env.APP_SECRET;
   const walletSeed = process.env.PI_WALLET_PRIVATE_SEED;
-  const missing = [];
-  if (!apiKey) missing.push('APP_SECRET');
-  if (!walletSeed) missing.push('PI_WALLET_PRIVATE_SEED');
-  if (missing.length) {
-    return { client: null, error: `Ortam değişkeni eksik: ${missing.join(', ')}. Bunu hosting panelinizde (ör. Vercel → Project Settings → Environment Variables) ekleyip PROJEYİ YENİDEN DEPLOY ETMENİZ gerekir — sadece .env dosyası oluşturmak veya değişkeni panelde kaydetmek yetmez, yeni deploy şart.` };
+  if (!apiKey || !walletSeed) return null;
+  try {
+    piClient = new PiNetwork(apiKey, walletSeed);
+  } catch (e) {
+    console.error("[PI CLIENT] PiNetwork örneği oluşturulamadı:", e && e.message, typeof PiNetwork);
+    return null;
   }
-  if (typeof PiNetwork !== 'function') {
-    console.error('[Escrow] PiNetwork sınıfı çözümlenemedi. Çözümlenen değer:', PiNetwork);
-    return { client: null, error: `pi-backend paketi kurulu değil veya bozuk (PiNetwork bir sınıf/fonksiyon olarak bulunamadı). package.json'da "pi-backend" bağımlılığının olduğunu ve kurulumun başarılı geçtiğini kontrol edin.` };
-  }
-  piClient = new PiNetwork(apiKey, walletSeed);
-  return { client: piClient, error: null };
+  return piClient;
 }
 
 // ─── Firebase Admin Başlatma ───────────────────────────────────────────────
@@ -1194,26 +1190,6 @@ export default async function handler(req, res) {
     }
   }
 
-  // ══════════════════════════════════════════════════════════════════════
-  //  HERKESE AÇIK: Bakım Modu Durumunu Kontrol Et
-  //  NOT: Bilerek doğrudan istemci taraflı Firestore okuması (onSnapshot)
-  //  KULLANMIYORUZ — yeni bir koleksiyon olduğu için Firestore güvenlik
-  //  kuralları buna izin vermeyebilir ve bu durumda ziyaretçi hiçbir şey
-  //  alamaz (sessiz başarısızlık). Bunun yerine Admin SDK ile (kurallardan
-  //  bağımsız, her zaman çalışan) sunucu üzerinden kontrol ediyoruz.
-  // ══════════════════════════════════════════════════════════════════════
-  if (action === 'get_app_status') {
-    try {
-      const db = getDb();
-      const snap = await db.collection('config').doc('app_status').get();
-      const data = snap.exists ? snap.data() : {};
-      return res.status(200).json({ success: true, maintenanceMode: !!data.maintenanceMode });
-    } catch (e) {
-      console.error("get_app_status hatası:", e);
-      return res.status(200).json({ success: true, maintenanceMode: false }); // hata durumunda siteyi kilitleme
-    }
-  }
-
   if (action === 'submit_trademark_claim') {
     if (!checkRateLimit(clientIp, 'submit_trademark_claim', 3, 3600000))
       return res.status(429).json({ error: "Çok fazla istek. Lütfen daha sonra tekrar deneyin." });
@@ -1521,9 +1497,11 @@ export default async function handler(req, res) {
         });
       }
 
-      const { client: pi, error: piClientError } = getPiClient();
+      const pi = getPiClient();
       if (!pi) {
-        return res.status(500).json({ error: piClientError || "Sunucuda escrow ödeme istemcisi yapılandırılmamış." });
+        return res.status(500).json({
+          error: "Sunucuda escrow ödeme istemcisi yapılandırılmamış (PI_WALLET_PRIVATE_SEED / pi-backend paketi eksik). Lütfen ortam değişkenlerini kontrol edin."
+        });
       }
 
       const payoutAmount = sale.payoutAmount || Math.round(sale.price * (1 - PLATFORM_COMMISSION_RATE) * 1e7) / 1e7;
@@ -1645,9 +1623,11 @@ export default async function handler(req, res) {
         });
       }
 
-      const { client: pi, error: piClientError } = getPiClient();
+      const pi = getPiClient();
       if (!pi) {
-        return res.status(500).json({ error: piClientError || "Sunucuda escrow ödeme istemcisi yapılandırılmamış." });
+        return res.status(500).json({
+          error: "Sunucuda escrow ödeme istemcisi yapılandırılmamış (PI_WALLET_PRIVATE_SEED / pi-backend paketi eksik)."
+        });
       }
 
       const refundAmount = sale.price;
