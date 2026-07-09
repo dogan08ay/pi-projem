@@ -4,15 +4,23 @@ import { getStorage } from 'firebase-admin/storage';
 import { getDatabase } from 'firebase-admin/database';
 import * as PiBackendModule from 'pi-backend';
 // FIX ("PiNetwork is not a constructor"): 'pi-backend' bir CommonJS paketi
-// olup `exports.default = PiNetwork` şeklinde dışa aktarım yapıyor. Bazı
-// bundler/derleme ortamlarında (ör. Vercel'in esbuild tabanlı fonksiyon
-// paketleyicisi) `import PiNetwork from 'pi-backend'` doğrudan sınıfı değil,
-// tüm modül nesnesini ({ default: PiNetwork, __esModule: true }) verebiliyor.
-// Bu satır her iki durumu da güvenle ele alır. AYRICA: paket daha önce
-// package.json'da hiç tanımlı değildi — temiz bir "npm install" onu hiç
-// kurmuyordu, bu da aynı hataya yol açan ayrı bir olası nedendi; artık
-// package.json'a eklendi.
-const PiNetwork = PiBackendModule.default || PiBackendModule.PiNetwork || PiBackendModule;
+// olup `exports.default = PiNetwork` + `__esModule:true` şeklinde dışa
+// aktarım yapıyor. Node'un ESM/CJS interop katmanı bu paketi Vercel'in
+// çalışma ortamında ÇİFT SARMALANMIŞ hâlde veriyor:
+//   import * as m from 'pi-backend'  →  m.default = { default: [class PiNetwork] }
+// yani gerçek sınıf `m.default.default` içinde, `m.default` içinde DEĞİL.
+// Bu durum yerel bir test projesinde (npm install pi-backend@0.1.3, Node 22,
+// "type":"module") birebir üretilip doğrulandı. Aşağıdaki resolver, hangi
+// interop şekli gelirse gelsin (tek sarmalı / çift sarmalı / düz fonksiyon)
+// gerçek constructor'ı bulup kullanır.
+function resolvePiNetworkClass(mod) {
+  const candidates = [mod, mod && mod.default, mod && mod.default && mod.default.default, mod && mod.PiNetwork];
+  for (const c of candidates) {
+    if (typeof c === 'function') return c;
+  }
+  return null;
+}
+const PiNetwork = resolvePiNetworkClass(PiBackendModule);
 
 // ─── Admin Config ───────────────────────────────────────────────────────
 const ADMIN_USERNAME = process.env.ADMIN_USERNAME || 'doganay0808';
@@ -25,15 +33,27 @@ const PLATFORM_COMMISSION_RATE = 0.05; // %5 komisyon
 // "S..." ile başlayan private seed'idir (Developer Portal / cüzdan
 // kurulumunuzdan alınır) — ASLA istemciye/tarayıcıya gönderilmemelidir.
 let piClient = null;
+let piClientInitError = null; // FIX: teşhisi kolaylaştırmak için son hatayı sakla
 function getPiClient() {
   if (piClient) return piClient;
   const apiKey = process.env.APP_SECRET;
   const walletSeed = process.env.PI_WALLET_PRIVATE_SEED;
-  if (!apiKey || !walletSeed) return null;
+  if (!apiKey || !walletSeed) {
+    const missing = [!apiKey && 'APP_SECRET', !walletSeed && 'PI_WALLET_PRIVATE_SEED'].filter(Boolean).join(', ');
+    piClientInitError = `Ortam değişkeni eksik: ${missing}. Vercel'de Project Settings → Environment Variables altında bu değişken(ler)in "Production" ortamına eklendiğinden ve deploy'un o değişkenler eklendikten SONRA yapıldığından emin olun.`;
+    return null;
+  }
+  if (!PiNetwork) {
+    piClientInitError = `pi-backend paketinden PiNetwork sınıfı bulunamadı. Modül şekli: ${JSON.stringify(Object.keys(PiBackendModule || {}))}. Vercel deploy loglarında 'npm install' adımında pi-backend'in kurulduğunu doğrulayın.`;
+    console.error("[PI CLIENT]", piClientInitError);
+    return null;
+  }
   try {
     piClient = new PiNetwork(apiKey, walletSeed);
+    piClientInitError = null;
   } catch (e) {
-    console.error("[PI CLIENT] PiNetwork örneği oluşturulamadı:", e && e.message, typeof PiNetwork);
+    piClientInitError = `PiNetwork örneği oluşturulamadı (paket: ${typeof PiNetwork}): ${e && e.message}`;
+    console.error("[PI CLIENT]", piClientInitError);
     return null;
   }
   return piClient;
@@ -1500,7 +1520,7 @@ export default async function handler(req, res) {
       const pi = getPiClient();
       if (!pi) {
         return res.status(500).json({
-          error: "Sunucuda escrow ödeme istemcisi yapılandırılmamış (PI_WALLET_PRIVATE_SEED / pi-backend paketi eksik). Lütfen ortam değişkenlerini kontrol edin."
+          error: "Sunucuda escrow ödeme istemcisi yapılandırılmamış. " + (piClientInitError || "Sebep tespit edilemedi.")
         });
       }
 
@@ -1626,7 +1646,7 @@ export default async function handler(req, res) {
       const pi = getPiClient();
       if (!pi) {
         return res.status(500).json({
-          error: "Sunucuda escrow ödeme istemcisi yapılandırılmamış (PI_WALLET_PRIVATE_SEED / pi-backend paketi eksik)."
+          error: "Sunucuda escrow ödeme istemcisi yapılandırılmamış. " + (piClientInitError || "Sebep tespit edilemedi.")
         });
       }
 
