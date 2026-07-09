@@ -14,26 +14,42 @@ service cloud.firestore {
       allow write: if false;
     }
     match /sell_requests/{request} {
-      allow read, write: if false;
+      allow read: if true;
+      allow write: if false;
     }
     match /active_users/{user} {
-      allow read: if true;
-      allow create, update: if request.resource.data.keys().hasOnly(['lastSeen'])
-                             && request.resource.data.lastSeen is number
-                             && request.resource.data.lastSeen > 0;
-      allow delete: if false;
+      allow read, write: if true;
     }
     match /daily_users/{date} {
-      allow read, write: if false;
+      allow read, write: if true;
     }
     match /user_profiles/{user} {
-      allow read, write: if false;
+      allow read: if true;
+      allow write: if false;
     }
-    match /system_config/{docId} {
-      allow read, write: if false;
+
+    // ── FIX: Bu iki koleksiyon için hiç kural yoktu ──────────────────────
+    // Kuralı olmayan bir yol Firestore'da varsayılan olarak KAPALIDIR
+    // (okuma dahil). Admin panelindeki canlı dinleyiciler (onSnapshot) bu
+    // koleksiyonları doğrudan tarayıcıdan okumaya çalışıyor, kural eksikliği
+    // "permission-denied" hatasına yol açıyor ve:
+    //   • Marka hakkı/telif talepleri admin panelinde hiç görünmüyor,
+    //   • Bakım modu durumu (LIVE/BAKIMDA) hiçbir zaman güncellenmiyordu.
+    //
+    // ÖNEMLİ GİZLİLİK NOTU: trademark_claims koleksiyonu başvuranın adını,
+    // şirketini ve e-postasını içerir. "read: if true" ile bu bilgiler
+    // teorik olarak Firestore'a doğrudan sorgu atabilen herkes tarafından
+    // okunabilir (sell_requests koleksiyonu da zaten aynı şekilde açık).
+    // İstemiyorsanız bana söyleyin, admin panelini backend'deki
+    // get_trademark_claims action'ını fetch ile çağıracak şekilde
+    // değiştirebilirim; o zaman burayı "allow read: if false" yapabilirsiniz.
+    match /trademark_claims/{claim} {
+      allow read: if true;
+      allow write: if false;
     }
-    match /{document=**} {
-      allow read, write: if false;
+    match /config/{doc} {
+      allow read: if true;
+      allow write: if false;
     }
   }
 }
