@@ -1262,10 +1262,95 @@ export default async function handler(req, res) {
     if (!claimId || !validStatuses.includes(status)) return res.status(400).json({ error: "Geçersiz parametre" });
     try {
       const db = getDb();
-      await db.collection('trademark_claims').doc(claimId).set({ status, updatedAt: Date.now() }, { merge: true });
+      const claimRef = db.collection('trademark_claims').doc(claimId);
+      await claimRef.set({ status, updatedAt: Date.now() }, { merge: true });
+
+      if (status === 'rejected') {
+        const claimSnap = await claimRef.get();
+        const claim = claimSnap.data();
+        if (claim && claim.submittedByUsername) {
+          await sendNotification(claim.submittedByUsername, {
+            type: 'trademark_claim_rejected',
+            title: '❌ Marka Hakkı Talebiniz Reddedildi',
+            body: `"${claim.domainName}" domaini hakkındaki marka hakkı talebiniz incelendi ve reddedildi.`,
+            domainName: claim.domainName
+          });
+        }
+      }
+
       return res.status(200).json({ success: true });
     } catch (e) {
       console.error("update_trademark_claim_status hatası:", e);
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  // ══════════════════════════════════════════════════════════════════════
+  //  ADMIN: Marka Hakkı Talebini "Haklı Bul" — Domaini Kaldır
+  //  Talep haklı bulunduğunda, sadece durumu güncellemekle kalmıyoruz —
+  //  itiraz edilen domaini gerçekten pazarlıktan kaldırıyoruz (satın
+  //  alınamaz/satılamaz hale getiriyoruz). Domain zaten satılmışsa,
+  //  kaldırmadan önce alıcı/satıcıya bilgi veriyoruz.
+  // ══════════════════════════════════════════════════════════════════════
+  if (action === 'approve_trademark_claim') {
+    const { claimId } = req.body;
+    const isAdmin = await verifyAdmin(accessToken);
+    if (!isAdmin) return res.status(403).json({ error: "Yetki yok" });
+    if (!claimId) return res.status(400).json({ error: "claimId zorunludur" });
+    try {
+      const db = getDb();
+      const claimRef = db.collection('trademark_claims').doc(claimId);
+      const claimSnap = await claimRef.get();
+      if (!claimSnap.exists) return res.status(404).json({ error: "Talep bulunamadı" });
+      const claim = claimSnap.data();
+
+      const domainName = String(claim.domainName || '').trim();
+      let domainRemoved = false;
+      let domainNotFoundNote = '';
+
+      if (domainName) {
+        const domainRef = db.collection('domains').doc(domainName);
+        const domainSnap = await domainRef.get();
+        if (domainSnap.exists) {
+          const domainData = domainSnap.data();
+          // Domain satılmışsa ilgili tarafları bilgilendir.
+          if (domainData.buyer) {
+            await sendNotification(domainData.buyer, {
+              type: 'domain_removed_trademark',
+              title: '⚠️ Domain Marka Hakkı İhlali Nedeniyle Kaldırıldı',
+              body: `"${domainName}" domaini, geçerli bir marka hakkı talebi nedeniyle platformdan kaldırıldı. Destek talebi açarak durumunuzu iletebilirsiniz.`,
+              domainName
+            });
+          }
+          if (domainData.sellerUsername) {
+            await sendNotification(domainData.sellerUsername, {
+              type: 'domain_removed_trademark',
+              title: '⚠️ İlanınız Marka Hakkı İhlali Nedeniyle Kaldırıldı',
+              body: `"${domainName}" isimli ilanınız, geçerli bulunan bir marka hakkı talebi nedeniyle platformdan kaldırıldı.`,
+              domainName
+            });
+          }
+          await domainRef.delete();
+          domainRemoved = true;
+        } else {
+          domainNotFoundNote = 'Domain zaten platformda mevcut değildi (muhtemelen daha önce kaldırılmış).';
+        }
+      }
+
+      await claimRef.set({ status: 'resolved', updatedAt: Date.now(), domainRemoved }, { merge: true });
+
+      if (claim.submittedByUsername) {
+        await sendNotification(claim.submittedByUsername, {
+          type: 'trademark_claim_resolved',
+          title: '✅ Marka Hakkı Talebiniz Haklı Bulundu',
+          body: `"${domainName}" domaini hakkındaki talebiniz incelendi ve haklı bulundu. Domain platformdan kaldırıldı.`,
+          domainName
+        });
+      }
+
+      return res.status(200).json({ success: true, domainRemoved, note: domainNotFoundNote });
+    } catch (e) {
+      console.error("approve_trademark_claim hatası:", e);
       return res.status(500).json({ error: e.message });
     }
   }
@@ -1480,6 +1565,120 @@ export default async function handler(req, res) {
         await getDb().collection('global_sales').doc(saleId).set({ payoutStatus: 'failed', payoutError: e.message, payoutFailedAt: Date.now() }, { merge: true });
       } catch (_) {}
       return res.status(500).json({ error: "Ödeme gönderilemedi: " + e.message });
+    }
+  }
+
+  // ══════════════════════════════════════════════════════════════════════
+  //  ADMIN: ESCROW — Ödemeyi Alıcıya İade Et
+  //  Domain devrinde bir sorun varsa (satıcı devretmiyor, anlaşmazlık vb.),
+  //  admin satıcıya ödeme göndermek yerine parayı doğrudan alıcıya iade
+  //  edebilir. Aynı adım-adım kurtarma mantığı burada da geçerli.
+  // ══════════════════════════════════════════════════════════════════════
+  if (action === 'refund_buyer_payment') {
+    const { saleId } = req.body;
+    const isAdmin = await verifyAdmin(accessToken);
+    if (!isAdmin) return res.status(403).json({ error: "Yetki yok" });
+    if (!saleId) return res.status(400).json({ error: "saleId zorunludur" });
+
+    try {
+      const db = getDb();
+      const saleRef = db.collection('global_sales').doc(saleId);
+      const saleSnap = await saleRef.get();
+      if (!saleSnap.exists) return res.status(404).json({ error: "Satış kaydı bulunamadı" });
+      const sale = saleSnap.data();
+
+      if (sale.payoutStatus === 'released')
+        return res.status(400).json({ error: "Bu ödeme zaten satıcıya gönderilmiş, artık iade edilemez." });
+      if (sale.payoutStatus === 'refunded')
+        return res.status(400).json({ error: "Bu ödeme zaten alıcıya iade edilmiş." });
+      if (!sale.user)
+        return res.status(400).json({ error: "Bu satışın kayıtlı bir alıcısı yok." });
+
+      const buyerDoc = await db.collection('users').doc(sale.user).get();
+      const buyerUid = buyerDoc.exists ? buyerDoc.data().piUid : null;
+      if (!buyerUid) {
+        await sendNotification(sale.user, {
+          type: 'refund_needs_login',
+          title: '💰 İadenizi Almak İçin Giriş Yapın',
+          body: `"${sale.domain}" domaini için ödemeniz iade edilecek! İadenin Pi hesabınıza gönderilebilmesi için lütfen uygulamaya bir kez daha Pi ile giriş yapın.`,
+          domainName: sale.domain
+        });
+        return res.status(400).json({
+          error: `@${sale.user} henüz Pi hesabını uygulamaya bağlamamış (giriş yapmamış). Kendisine giriş yapması gerektiğine dair bildirim gönderildi. İade, alıcı giriş yapana kadar sistem cüzdanında bekleyecek.`
+        });
+      }
+
+      const pi = getPiClient();
+      if (!pi) {
+        return res.status(500).json({
+          error: "Sunucuda escrow ödeme istemcisi yapılandırılmamış (PI_WALLET_PRIVATE_SEED / pi-backend paketi eksik)."
+        });
+      }
+
+      const refundAmount = sale.price;
+      let paymentId = sale.refundPaymentId || null;
+      let txid = sale.refundTxid || null;
+
+      try {
+        if (!paymentId) {
+          paymentId = await pi.createPayment({
+            amount: refundAmount,
+            memo: `İade: ${sale.domain} (domain devri gerçekleşmedi)`,
+            metadata: { saleId, domainName: sale.domain, type: 'buyer_refund' },
+            uid: buyerUid
+          });
+          await saleRef.set({ payoutStatus: 'refund_processing', refundPaymentId: paymentId }, { merge: true });
+        }
+
+        if (!txid) {
+          txid = await pi.submitPayment(paymentId);
+          await saleRef.set({ refundTxid: txid }, { merge: true });
+        }
+
+        await pi.completePayment(paymentId, txid);
+
+        await saleRef.set({
+          payoutStatus: 'refunded',
+          refundAt: Date.now(),
+          refundTxid: txid,
+          refundPaymentId: paymentId,
+          refundIssuedBy: await getRealUsername(accessToken)
+        }, { merge: true });
+
+        // Domaini tekrar satışa aç (devir gerçekleşmediği için) ve alıcının
+        // puanlarını/istatistiklerini geri al — ama satış kaydını (audit
+        // izi için) SİLMİYORUZ, sadece 'refunded' olarak işaretliyoruz.
+        if (sale.domain) {
+          await db.collection('domains').doc(sale.domain).set({
+            sold: false, buyer: null, at: null, txid: null, payoutStatus: null
+          }, { merge: true });
+          try { await updateUserPoints(sale.user, -sale.price, `refund_${sale.domain}`); } catch (_) {}
+        }
+
+        await sendNotification(sale.user, {
+          type: 'refund_issued',
+          title: '💸 Ödemeniz İade Edildi',
+          body: `"${sale.domain}" domaini için ödediğiniz ${refundAmount} Pi, Pi hesabınıza iade edildi.`,
+          domainName: sale.domain, amount: refundAmount
+        });
+        await sendTG(TG_CHAT_ID, `↩️ *ÖDEME İADE EDİLDİ*\n\n🌐 ${sale.domain}\n👤 @${sale.user}\n💰 ${refundAmount} Pi\n🔑 txid: ${txid}`);
+
+        return res.status(200).json({ success: true, txid, refundAmount });
+      } catch (stepError) {
+        await saleRef.set({
+          payoutStatus: 'refund_failed',
+          refundError: stepError.message,
+          refundFailedAt: Date.now(),
+          refundPaymentId: paymentId || null,
+          refundTxid: txid || null
+        }, { merge: true });
+        return res.status(500).json({
+          error: `İade tamamlanamadı ama Pi'ler kaybolmadı, güvenli havuzda bekliyor: ${stepError.message}. Aynı butona tekrar basarak kaldığı yerden devam ettirebilirsiniz.`
+        });
+      }
+    } catch (e) {
+      console.error("refund_buyer_payment hatası:", e);
+      return res.status(500).json({ error: "İade gönderilemedi: " + e.message });
     }
   }
 
