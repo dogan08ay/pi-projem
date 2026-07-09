@@ -946,7 +946,7 @@
         <button onclick="window.closeTrustIntro()" style="width:100%;padding:12px;border:none;border-radius:10px;background:linear-gradient(135deg,#6366f1,#818cf8);color:#fff;font-weight:800;font-size:0.9em;cursor:pointer;box-shadow:0 4px 14px rgba(99,102,241,0.4);" data-i18n="trustIntroButton"></button>
     </div>
 </div>
-<button id="trust-fab" onclick="window.openTrustInfo()" title="Güvenlik ve Gizlilik Bilgisi" style="display:none;position:fixed;bottom:16px;left:14px;z-index:900;width:46px;height:46px;border-radius:50%;background:linear-gradient(135deg,#f59e0b,#fbbf24);border:2px solid rgba(255,255,255,0.25);box-shadow:0 6px 18px rgba(245,158,11,0.55);color:#1e1b4b;font-size:1.3em;font-weight:900;cursor:pointer;align-items:center;justify-content:center;animation:tour-fab-pulse 2.4s ease-in-out infinite;">🛡️</button>
+<button id="trust-fab" onclick="window.openTrustInfo()" title="Güvenlik ve Gizlilik Bilgisi" style="position:fixed;bottom:16px;left:14px;z-index:900;width:46px;height:46px;border-radius:50%;background:linear-gradient(135deg,#f59e0b,#fbbf24);border:2px solid rgba(255,255,255,0.25);box-shadow:0 6px 18px rgba(245,158,11,0.55);color:#1e1b4b;font-size:1.3em;font-weight:900;cursor:pointer;display:flex;align-items:center;justify-content:center;animation:tour-fab-pulse 2.4s ease-in-out infinite;">🛡️</button>
 <button id="tour-fab" onclick="window.startOnboardingTour()" title="Uygulama Turu" style="display:none;position:fixed;bottom:16px;right:14px;z-index:900;width:46px;height:46px;border-radius:50%;background:linear-gradient(135deg,#6366f1,#818cf8);border:2px solid rgba(255,255,255,0.25);box-shadow:0 6px 18px rgba(99,102,241,0.55);color:#fff;font-size:1.15em;font-weight:900;cursor:pointer;align-items:center;justify-content:center;animation:tour-fab-pulse 2.4s ease-in-out infinite;">?</button>
 <style>@keyframes tour-fab-pulse{0%,100%{box-shadow:0 6px 18px rgba(99,102,241,0.55);}50%{box-shadow:0 6px 26px rgba(99,102,241,0.9),0 0 0 6px rgba(99,102,241,0.15);}}</style>
 <div class="side-menu-overlay" id="side-menu-overlay" onclick="toggleSideMenu()"></div>
@@ -1368,8 +1368,8 @@
         </h3>
         <div id="maintenance-control-box" style="display:flex;align-items:center;gap:8px;background:#0a0f1e;border:1.5px solid #334155;border-radius:10px;padding:8px 10px;margin-bottom:8px;">
             <span id="maintenance-status-dot" style="width:9px;height:9px;border-radius:50%;background:#10b981;flex-shrink:0;box-shadow:0 0 6px #10b981;"></span>
-            <span id="maintenance-status-text" style="font-size:0.68em;color:#94a3b8;font-weight:700;flex:1;" data-i18n="maintenanceStatusLive"></span>
-            <button id="maintenance-toggle-btn" onclick="window.toggleMaintenanceMode()" style="padding:6px 12px;border:none;border-radius:8px;background:linear-gradient(135deg,#ef4444,#f87171);color:#fff;font-size:0.65em;font-weight:800;cursor:pointer;white-space:nowrap;" data-i18n="maintenanceEnableBtn"></button>
+            <span id="maintenance-status-text" style="font-size:0.68em;color:#94a3b8;font-weight:700;flex:1;"></span>
+            <button id="maintenance-toggle-btn" onclick="window.toggleMaintenanceMode()" style="padding:6px 12px;border:none;border-radius:8px;background:linear-gradient(135deg,#ef4444,#f87171);color:#fff;font-size:0.65em;font-weight:800;cursor:pointer;white-space:nowrap;"></button>
         </div>
         <div class="admin-tabs">
             <button class="admin-tab-btn active" data-tab="tab-users" onclick="switchAdminTab('tab-users')">👥<span data-i18n="users" style="font-size:0.9em;"></span></button>
@@ -1499,6 +1499,12 @@
         <div class="admin-tab-panel" id="tab-trademark">
             <div style="background:#0a0f1e;border:2px solid #ef4444;border-radius:12px;padding:10px;">
                 <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;padding-bottom:7px;border-bottom:1px solid #7f1d1d;"><span>🔖</span><span style="font-size:0.72em;color:#fca5a5;font-weight:800;text-transform:uppercase;" data-i18n="trademarkTabLabel"></span></div>
+                <div class="ticket-admin-filters" id="trademark-admin-filters">
+                    <button class="ticket-filter-btn active" data-status="all" onclick="adminFilterTrademarkClaims('all')" data-i18n="trademarkFilterAll"></button>
+                    <button class="ticket-filter-btn" data-status="pending" onclick="adminFilterTrademarkClaims('pending')" data-i18n="trademarkFilterPending"></button>
+                    <button class="ticket-filter-btn" data-status="resolved" onclick="adminFilterTrademarkClaims('resolved')" data-i18n="trademarkFilterResolved"></button>
+                    <button class="ticket-filter-btn" data-status="rejected" onclick="adminFilterTrademarkClaims('rejected')" data-i18n="trademarkFilterRejected"></button>
+                </div>
                 <div id="trademark-admin-list">
                     <div class="skeleton-ticket-row"><div class="skeleton" style="width:34px;height:34px;border-radius:8px;"></div><div style="flex:1;"><div class="skeleton skeleton-line" style="width:60%;margin:0 0 6px 0;"></div><div class="skeleton skeleton-line" style="width:35%;height:8px;margin:0;"></div></div></div>
                     <div class="skeleton-ticket-row"><div class="skeleton" style="width:34px;height:34px;border-radius:8px;"></div><div style="flex:1;"><div class="skeleton skeleton-line" style="width:52%;margin:0 0 6px 0;"></div><div class="skeleton skeleton-line" style="width:30%;height:8px;margin:0;"></div></div></div>
@@ -1588,37 +1594,71 @@
      kendi isimlerini geri talep edebileceği herkese açık form.
      ═══════════════════════════════════════════════════════════════ -->
 <div id="trademark-claim-modal" style="display:none;position:fixed;inset:0;z-index:99998;background:rgba(5,8,20,0.92);backdrop-filter:blur(6px);align-items:center;justify-content:center;padding:16px;box-sizing:border-box;">
-    <div style="width:100%;max-width:420px;background:linear-gradient(165deg,#0a0f1e 0%,#0f172a 30%,#1e1b4b 50%,#0f172a 70%,#0a0f1e 100%);border:1.5px solid rgba(239,68,68,0.35);border-radius:18px;padding:20px 18px;box-shadow:0 8px 32px rgba(0,0,0,0.5);max-height:92vh;overflow-y:auto;">
-        <div style="text-align:center;font-size:2em;margin-bottom:6px;">🔖</div>
-        <div style="text-align:center;color:#fca5a5;font-size:1.05em;font-weight:900;margin-bottom:4px;" data-i18n="trademarkModalTitle"></div>
-        <div style="text-align:center;color:#94a3b8;font-size:0.72em;margin-bottom:14px;line-height:1.5;" data-i18n="trademarkModalSubtitle"></div>
+    <div style="width:100%;max-width:440px;background:linear-gradient(165deg,#0a0f1e 0%,#0f172a 30%,#1e1b4b 50%,#0f172a 70%,#0a0f1e 100%);border:1.5px solid rgba(239,68,68,0.35);border-radius:18px;padding:0;box-shadow:0 8px 32px rgba(0,0,0,0.5);max-height:92vh;overflow-y:auto;">
 
-        <label style="display:block;color:#cbd5e1;font-size:0.7em;font-weight:700;margin-bottom:3px;" data-i18n="trademarkFieldName"></label>
-        <input type="text" id="trademark-claimant-name" class="sell-form-input" style="border-color:rgba(239,68,68,0.4);margin-bottom:8px;" oninput="this.classList.remove('field-error')">
+        <!-- Üst başlık bandı -->
+        <div style="padding:22px 20px 16px;text-align:center;border-bottom:1px solid rgba(239,68,68,0.2);background:rgba(239,68,68,0.05);">
+            <div style="font-size:2em;margin-bottom:6px;">🔖</div>
+            <div style="color:#fca5a5;font-size:1.08em;font-weight:900;margin-bottom:5px;" data-i18n="trademarkModalTitle"></div>
+            <div style="color:#94a3b8;font-size:0.72em;line-height:1.55;max-width:340px;margin:0 auto;" data-i18n="trademarkModalSubtitle"></div>
+            <div style="display:inline-flex;align-items:center;gap:5px;margin-top:10px;background:rgba(16,185,129,0.1);border:1px solid rgba(16,185,129,0.3);border-radius:20px;padding:4px 10px;">
+                <span style="font-size:0.7em;">🛡️</span>
+                <span style="font-size:0.62em;color:#6ee7b7;font-weight:700;" data-i18n="trademarkTrustBadge"></span>
+            </div>
+        </div>
 
-        <label style="display:block;color:#cbd5e1;font-size:0.7em;font-weight:700;margin-bottom:3px;" data-i18n="trademarkFieldCompany"></label>
-        <input type="text" id="trademark-company-name" class="sell-form-input" style="border-color:rgba(239,68,68,0.4);margin-bottom:8px;">
+        <div style="padding:18px 18px 20px;">
+            <!-- Bölüm 1: Başvuran Kimliği -->
+            <div style="display:flex;align-items:center;gap:7px;margin-bottom:10px;">
+                <span style="width:20px;height:20px;border-radius:50%;background:rgba(239,68,68,0.15);border:1px solid rgba(239,68,68,0.4);color:#f87171;font-size:0.65em;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;">1</span>
+                <span style="font-size:0.68em;color:#fca5a5;font-weight:800;text-transform:uppercase;letter-spacing:0.03em;" data-i18n="trademarkSectionClaimant"></span>
+            </div>
 
-        <label style="display:block;color:#cbd5e1;font-size:0.7em;font-weight:700;margin-bottom:3px;" data-i18n="trademarkFieldDomain"></label>
-        <input type="text" id="trademark-domain-name" class="sell-form-input" style="border-color:rgba(239,68,68,0.4);margin-bottom:8px;" placeholder="ornek.pi" oninput="this.classList.remove('field-error')">
+            <label style="display:block;color:#cbd5e1;font-size:0.7em;font-weight:700;margin-bottom:3px;" data-i18n="trademarkFieldName"></label>
+            <input type="text" id="trademark-claimant-name" class="sell-form-input" style="border-color:rgba(239,68,68,0.4);margin-bottom:8px;" oninput="this.classList.remove('field-error')">
 
-        <label style="display:block;color:#cbd5e1;font-size:0.7em;font-weight:700;margin-bottom:3px;" data-i18n="trademarkFieldRegistration"></label>
-        <input type="text" id="trademark-registration-info" class="sell-form-input" style="border-color:rgba(239,68,68,0.4);margin-bottom:8px;">
+            <label style="display:block;color:#cbd5e1;font-size:0.7em;font-weight:700;margin-bottom:3px;" data-i18n="trademarkFieldCompany"></label>
+            <input type="text" id="trademark-company-name" class="sell-form-input" style="border-color:rgba(239,68,68,0.4);margin-bottom:16px;">
 
-        <label style="display:block;color:#cbd5e1;font-size:0.7em;font-weight:700;margin-bottom:3px;" data-i18n="trademarkFieldDescription"></label>
-        <textarea id="trademark-description" class="sell-form-input" style="border-color:rgba(239,68,68,0.4);margin-bottom:8px;resize:none;" rows="4" oninput="this.classList.remove('field-error')"></textarea>
+            <!-- Bölüm 2: İhlal Detayları -->
+            <div style="display:flex;align-items:center;gap:7px;margin-bottom:10px;padding-top:14px;border-top:1px solid rgba(148,163,184,0.12);">
+                <span style="width:20px;height:20px;border-radius:50%;background:rgba(239,68,68,0.15);border:1px solid rgba(239,68,68,0.4);color:#f87171;font-size:0.65em;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;">2</span>
+                <span style="font-size:0.68em;color:#fca5a5;font-weight:800;text-transform:uppercase;letter-spacing:0.03em;" data-i18n="trademarkSectionViolation"></span>
+            </div>
 
-        <label style="display:block;color:#cbd5e1;font-size:0.7em;font-weight:700;margin-bottom:3px;" data-i18n="trademarkFieldEmail"></label>
-        <input type="email" id="trademark-contact-email" class="sell-form-input" style="border-color:rgba(239,68,68,0.4);margin-bottom:14px;" oninput="this.classList.remove('field-error')">
+            <label style="display:block;color:#cbd5e1;font-size:0.7em;font-weight:700;margin-bottom:3px;" data-i18n="trademarkFieldDomain"></label>
+            <input type="text" id="trademark-domain-name" class="sell-form-input" style="border-color:rgba(239,68,68,0.4);margin-bottom:8px;" placeholder="ornek.pi" oninput="this.classList.remove('field-error')">
 
-        <label style="display:flex;align-items:flex-start;gap:7px;background:rgba(239,68,68,0.06);border:1px solid rgba(239,68,68,0.25);border-radius:8px;padding:9px;margin-bottom:14px;cursor:pointer;">
-            <input type="checkbox" id="trademark-declaration-checkbox" onchange="document.getElementById('trademark-submit-btn').disabled=!this.checked;" style="margin-top:2px;flex-shrink:0;width:15px;height:15px;accent-color:#ef4444;cursor:pointer;">
-            <span style="font-size:0.68em;color:#cbd5e1;line-height:1.5;font-weight:600;" data-i18n="trademarkDeclarationText"></span>
-        </label>
+            <label style="display:block;color:#cbd5e1;font-size:0.7em;font-weight:700;margin-bottom:3px;" data-i18n="trademarkFieldRegistration"></label>
+            <input type="text" id="trademark-registration-info" class="sell-form-input" style="border-color:rgba(239,68,68,0.4);margin-bottom:3px;" placeholder="Örn: TÜRKPATENT No. 2019/012345">
+            <div style="font-size:0.6em;color:#64748b;margin-bottom:8px;line-height:1.4;" data-i18n="trademarkFieldRegistrationHint"></div>
 
-        <div style="display:flex;gap:8px;">
+            <label style="display:block;color:#cbd5e1;font-size:0.7em;font-weight:700;margin-bottom:3px;" data-i18n="trademarkFieldDescription"></label>
+            <textarea id="trademark-description" class="sell-form-input" style="border-color:rgba(239,68,68,0.4);margin-bottom:16px;resize:none;" rows="4" oninput="this.classList.remove('field-error')" placeholder="Bu ismin markanızla ilişkisini ve neden izinsiz kullanıldığını düşündüğünüzü açıklayın..."></textarea>
+
+            <!-- Bölüm 3: İletişim & Beyan -->
+            <div style="display:flex;align-items:center;gap:7px;margin-bottom:10px;padding-top:14px;border-top:1px solid rgba(148,163,184,0.12);">
+                <span style="width:20px;height:20px;border-radius:50%;background:rgba(239,68,68,0.15);border:1px solid rgba(239,68,68,0.4);color:#f87171;font-size:0.65em;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;">3</span>
+                <span style="font-size:0.68em;color:#fca5a5;font-weight:800;text-transform:uppercase;letter-spacing:0.03em;" data-i18n="trademarkSectionContact"></span>
+            </div>
+
+            <label style="display:block;color:#cbd5e1;font-size:0.7em;font-weight:700;margin-bottom:3px;" data-i18n="trademarkFieldEmail"></label>
+            <input type="email" id="trademark-contact-email" class="sell-form-input" style="border-color:rgba(239,68,68,0.4);margin-bottom:14px;" placeholder="isim@sirket.com" oninput="this.classList.remove('field-error')">
+
+            <label style="display:flex;align-items:flex-start;gap:7px;background:rgba(239,68,68,0.06);border:1px solid rgba(239,68,68,0.25);border-radius:8px;padding:9px;margin-bottom:14px;cursor:pointer;">
+                <input type="checkbox" id="trademark-declaration-checkbox" onchange="document.getElementById('trademark-submit-btn').disabled=!this.checked;" style="margin-top:2px;flex-shrink:0;width:15px;height:15px;accent-color:#ef4444;cursor:pointer;">
+                <span style="font-size:0.68em;color:#cbd5e1;line-height:1.5;font-weight:600;" data-i18n="trademarkDeclarationText"></span>
+            </label>
+
+            <div style="display:flex;align-items:flex-start;gap:6px;margin-bottom:16px;">
+                <span style="font-size:0.75em;flex-shrink:0;">⏱️</span>
+                <span style="font-size:0.62em;color:#64748b;line-height:1.5;" data-i18n="trademarkProcessNote"></span>
+            </div>
+
+            <div style="display:flex;gap:8px;">
             <button onclick="window.closeTrademarkClaimModal()" style="flex:1;padding:11px;border:1.5px solid rgba(148,163,184,0.3);border-radius:10px;background:transparent;color:#94a3b8;font-weight:700;font-size:0.85em;cursor:pointer;" data-i18n="trademarkCancelBtn"></button>
             <button id="trademark-submit-btn" onclick="window.submitTrademarkClaim()" disabled style="flex:2;padding:11px;border:none;border-radius:10px;background:linear-gradient(135deg,#ef4444,#f87171);color:#fff;font-weight:800;font-size:0.85em;transition:opacity 0.2s ease;" data-i18n="trademarkSubmitBtn"></button>
+        </div>
         </div>
     </div>
 </div>
@@ -1628,6 +1668,25 @@
      Admin panelden açılıp kapatılır; açıkken admin dışındaki tüm
      ziyaretçilere tam ekran, kapatılamaz bir uyarı gösterilir.
      ═══════════════════════════════════════════════════════════════ -->
+<!-- FIX: Bakım moduna alındığında ilk açılışta kısa süreliğine giriş/uygulama
+     ekranının görünüp SONRA bakım uyarısının gelmesi sorunu — Firestore'daki
+     config/app_status dokümanı async olarak geldiği için o anlık boşluk
+     oluşuyordu. Bu blok sayfa daha JS bile çalıştırmadan (inline style ile)
+     her şeyin ÜSTÜNDE görünür durumda başlar; bakım durumu netleşince (canlı
+     ya da bakımda olsun) aşağıdaki JS ile kapatılır/bakım ekranına devredilir. -->
+<div id="boot-loader" style="display:flex;position:fixed;inset:0;z-index:250000;background:linear-gradient(165deg,#0a0f1e 0%,#1e1b4b 50%,#0a0f1e 100%);align-items:center;justify-content:center;padding:20px;box-sizing:border-box;">
+    <div style="width:34px;height:34px;border-radius:50%;border:3px solid rgba(129,140,248,0.25);border-top-color:#818cf8;animation:tour-fab-pulse 1s linear infinite,boot-spin 0.8s linear infinite;"></div>
+</div>
+<style>@keyframes boot-spin{to{transform:rotate(360deg);}}</style>
+<script>
+// Güvenlik: Firestore config/app_status yanıtı 5sn içinde gelmezse
+// (yavaş bağlantı, offline vb.) boot-loader'da sonsuza kadar takılı
+// kalmasın diye normal akışa (yayında kabul ederek) devam ediyoruz.
+window._bootLoaderSafetyTimer = setTimeout(function(){
+    var bl = document.getElementById('boot-loader');
+    if (bl) bl.style.display = 'none';
+}, 5000);
+</script>
 <div id="maintenance-overlay" style="display:none;position:fixed;inset:0;z-index:200000;background:linear-gradient(165deg,#0a0f1e 0%,#1e1b4b 50%,#0a0f1e 100%);align-items:center;justify-content:center;padding:20px;box-sizing:border-box;text-align:center;">
     <div style="max-width:380px;">
         <div style="font-size:3em;margin-bottom:14px;animation:tour-fab-pulse 2.4s ease-in-out infinite;">🛠️</div>
@@ -1780,9 +1839,15 @@ const i18n = {
     trustIntroButton:"Anladım, Devam Et",
     trustMiniBadge:"🛡️ Güvenlik ve Gizlilik Bilgisi",
     trustMiniBadgeMenu:"Güvenlik ve Gizlilik Bilgisi",
-    trademarkClaimLink:"MARKA HAKKI",
+    trademarkClaimLink:"MARKA HAKKI BİLDİRİMİ",
     trademarkModalTitle:"Marka Hakkı / Telif Bildirimi",
     trademarkModalSubtitle:"Tescilli bir markanın veya ismin platformumuzda izinsiz kullanıldığını düşünüyorsanız, aşağıdaki formu doldurun. Talebiniz ekibimiz tarafından incelenecektir.",
+    trademarkTrustBadge:"Talepler ekibimiz tarafından tek tek incelenir",
+    trademarkSectionClaimant:"Başvuran Bilgileri",
+    trademarkSectionViolation:"İhlal Detayları",
+    trademarkSectionContact:"İletişim & Beyan",
+    trademarkFieldRegistrationHint:"Marka tescil numarası, ülke/ofis bilgisi veya tescil belgesine bağlantı ekleyebilirsiniz — inceleme sürecini hızlandırır.",
+    trademarkProcessNote:"Talebiniz genellikle 3 iş günü içinde incelenir. Süreç boyunca durumunuzu \"Panelim\" menüsünden takip edebilir, gerekirse talebi geri çekebilirsiniz.",
     trademarkFieldName:"Ad Soyad *",
     trademarkFieldCompany:"Şirket / Kurum Adı",
     trademarkFieldDomain:"İtiraz Edilen Domain Adı *",
@@ -1806,6 +1871,8 @@ const i18n = {
     trademarkStatusResolved:"Çözüldü",
     trademarkStatusRejected:"Reddedildi",
     trademarkAdminNoClaims:"Henüz marka hakkı talebi yok.",
+    trademarkFilterAll:"Hepsi",trademarkFilterPending:"Onay Bekleyen",trademarkFilterResolved:"Çözülen",trademarkFilterRejected:"Reddedilen",
+    trademarkAdminNoClaimsFiltered:"Bu filtreye uyan marka hakkı talebi yok.",
     trademarkStatusWithdrawn:"Geri Çekildi",
     trademarkDeleteBtn:"Talebi Sil",
     trademarkDeleteConfirm:"Bu reddedilmiş talebi kalıcı olarak silmek istediğinize emin misiniz?",
@@ -1866,7 +1933,7 @@ const i18n = {
     notifications:"Bildirimler",markAllRead:"Tümünü Okundu Yap",noNotifications:"Henüz bildiriminiz yok.",
     verify:"🔍 DOĞRULA",verifyLocked:"🔒 DOĞRULA",buyNow:"SATIN AL",sold:"SATILDI",
     soldPendingConfirmation:"SATILDI - ONAY AŞAMASINDA",
-    hideBtn:"🙈 Gizle",unhideBtn:"👁 Göster",hiddenTag:"Gizli",hideToggleFail:"İşlem başarısız: ",
+    hideBtn:"🙈 Gizle",unhideBtn:"👁 Satışa Çıkar",hiddenTag:"Gizli",hideToggleFail:"İşlem başarısız: ",
     relistBtn:"↺ Tekrar Satılık Yap",detailBtn:"📋 DETAY",approveBtn:"✓ ONAYLA",rejectBtn:"✕ REDDET",
     sellRequestDetail:"Domain Detayı",
     loginRequired:"Bu özelliği kullanmak için önce Pi ile bağlanmalısınız.",
@@ -2132,6 +2199,12 @@ const i18n = {
     trademarkClaimLink:"TRADEMARK CLAIM",
     trademarkModalTitle:"Trademark / Copyright Claim",
     trademarkModalSubtitle:"If you believe a registered trademark or name is being used without permission on our platform, fill out the form below. Our team will review your request.",
+    trademarkTrustBadge:"Claims are individually reviewed by our team",
+    trademarkSectionClaimant:"Claimant Information",
+    trademarkSectionViolation:"Violation Details",
+    trademarkSectionContact:"Contact & Declaration",
+    trademarkFieldRegistrationHint:"Add a registration number, country/office, or a link to the registration certificate — this speeds up review.",
+    trademarkProcessNote:"Claims are typically reviewed within 3 business days. You can track status and withdraw the claim any time from the \"My Panel\" menu.",
     trademarkFieldName:"Full Name *",
     trademarkFieldCompany:"Company / Organization",
     trademarkFieldDomain:"Disputed Domain Name *",
@@ -2155,6 +2228,8 @@ const i18n = {
     trademarkStatusResolved:"Resolved",
     trademarkStatusRejected:"Rejected",
     trademarkAdminNoClaims:"No trademark claims yet.",
+    trademarkFilterAll:"All",trademarkFilterPending:"Pending",trademarkFilterResolved:"Resolved",trademarkFilterRejected:"Rejected",
+    trademarkAdminNoClaimsFiltered:"No trademark claims match this filter.",
     trademarkStatusWithdrawn:"Withdrawn",
     trademarkDeleteBtn:"Delete Claim",
     trademarkDeleteConfirm:"Are you sure you want to permanently delete this rejected claim?",
@@ -2214,7 +2289,7 @@ const i18n = {
     notifications:"Notifications",markAllRead:"Mark All Read",noNotifications:"No notifications yet.",
     verify:"🔍 VERIFY",verifyLocked:"🔒 VERIFY",buyNow:"BUY NOW",sold:"SOLD",
     soldPendingConfirmation:"SOLD - PENDING CONFIRMATION",
-    hideBtn:"🙈 Hide",unhideBtn:"👁 Show",hiddenTag:"Hidden",hideToggleFail:"Action failed: ",
+    hideBtn:"🙈 Hide",unhideBtn:"👁 List for Sale",hiddenTag:"Hidden",hideToggleFail:"Action failed: ",
     relistBtn:"↺ Relist for Sale",detailBtn:"📋 DETAIL",approveBtn:"✓ APPROVE",rejectBtn:"✕ REJECT",
     sellRequestDetail:"Domain Details",
     loginRequired:"You must connect with Pi first to use this feature.",
@@ -2537,8 +2612,6 @@ window.handleLogout=async function(){
     stopTicketBadgePolling();
     stopUserTicketPolling();
     stopListeningToMyOwnSellRequests();
-    if(typeof stopTrademarkBadgePolling==='function') stopTrademarkBadgePolling();
-    if(typeof stopPayoutsBadgePolling==='function') stopPayoutsBadgePolling();
     currentUser=null;piAccessToken=null;isAuth=false;userFirstSeen=null;
     userProfile={points:0,badge:null};userSellRequests=[];userSoldDomains=[];userActiveListings=[];userTotalSpent=0;userTotalEarned=0;
     cachedNotifications=[];
@@ -2549,13 +2622,12 @@ window.handleLogout=async function(){
     const nb=document.getElementById("notif-btn"); if(nb) nb.style.visibility="hidden";
     const uab=document.getElementById("user-avatar-btn"); if(uab){uab.style.display="none";if(uab._userMenuTimeout){clearTimeout(uab._userMenuTimeout);}}
     const tfab=document.getElementById("tour-fab"); if(tfab) tfab.style.display="none";
-    const trfab=document.getElementById("trust-fab"); if(trfab) trfab.style.display="none";
     const umd=document.getElementById("user-menu-dropdown"); if(umd) umd.style.display="none";
     // Menü açıksa kapat
     const sm=document.getElementById('side-menu'); const smo=document.getElementById('side-menu-overlay');
     if(sm&&sm.classList.contains('open')){sm.classList.remove('open');} if(smo) smo.classList.remove('open');
     // Logout sonrası scroll'u sınırla (footer görünsün)
-    const ms=document.querySelector('.main-scroll'); if(ms) ms.style.maxHeight='calc(100vh - 90px)';
+    const ms=document.querySelector('.main-scroll'); if(ms) ms.style.maxHeight='calc(100vh - 50px)';
     // GİRİŞ EKRANINA DÖN: premium-lock overlay'ı geri getir, domain-grid'i kilitle
     const lock=document.getElementById('premium-lock');
     const dlist=document.getElementById('domain-list');
@@ -2575,8 +2647,6 @@ window.switchAdminTab=function(tabId){
     if(tabId==='tab-earnings') loadAdminEarnings();
     if(tabId==='tab-stats') loadAllSalesDetail();
     if(tabId==='tab-tickets'){ adminLoadTickets(); markTicketsSeen(); }
-    if(tabId==='tab-trademark'){ adminLoadTrademarkClaims(); }
-    if(tabId==='tab-payouts'){ adminLoadPendingPayouts(); }
 };
 window.switchUserTab=function(tabId){
     document.querySelectorAll('.user-tab-btn').forEach(b=>b.classList.toggle('active',b.dataset.utab===tabId));
@@ -3295,9 +3365,7 @@ window.refreshAdminPanel=async function(){
     try{
         await Promise.all([
             adminLoadTickets(),
-            loadUniqueBadgeCount(),
-            adminLoadTrademarkClaims(),
-            adminLoadPendingPayouts()
+            loadUniqueBadgeCount()
         ]);
         renderAdminPriceList();
         debouncedRender();
@@ -3595,71 +3663,50 @@ function listenToPendingDomains(){
 }
 
 // ══════════════════════════════════════════════════════════════════════
-//  ADMIN: MARKA HAKKI TALEPLERİ VE BEKLEYEN ÖDEMELER — GÜVENİLİR YÜKLEME
-//  NOT: Bu iki koleksiyon (trademark_claims, global_sales) için doğrudan
-//  istemci taraflı Firestore dinleyicisi (onSnapshot) kullanmıyoruz —
-//  Firestore güvenlik kuralları bu yeni koleksiyonlara izin vermeyebilir
-//  ve bu durumda dinleyici SESSİZCE hiçbir şey döndürmez (admin panelde
-//  veri hiç görünmez). Bunun yerine, destek talepleri rozetinde zaten
-//  kanıtlanmış olan yöntemi kullanıyoruz: sunucu tarafında (Admin SDK ile,
-//  güvenlik kurallarını atlayarak) doğrulanmış bir fetch + kısa aralıklı
-//  polling (5 sn) — bu, kurallardan tamamen bağımsız şekilde her zaman
-//  çalışır.
+//  ADMIN: MARKA HAKKI TALEPLERİ VE BEKLEYEN ÖDEMELER — CANLI DİNLEYİCİLER
+//  Bu iki sekme yeni eklendiği için, admin sekmeyi hiç açmasa bile yeni bir
+//  talep/ödeme geldiği an rozet (badge) anında düşsün istendi. Diğer admin
+//  verileri gibi periyodik "polling" yerine doğrudan Firestore canlı
+//  dinleyicisi (onSnapshot) kullanılıyor — sıfır gecikme.
 // ══════════════════════════════════════════════════════════════════════
-async function adminLoadTrademarkClaims(){
-    if(!isAuth||currentUser!==APP_CONFIG.adminUsername) return;
-    try{
-        const r=await fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},
-            body:JSON.stringify({action:'get_trademark_claims',accessToken:piAccessToken})});
-        const result=await r.json();
-        if(result.success){
-            const claims=result.claims||[];
-            renderAdminTrademarkClaims(claims);
-            const openCount=claims.filter(c=>c.status==='new'||c.status==='reviewing').length;
-            const badge=document.getElementById('trademark-count-badge');
-            if(badge){
-                if(openCount>0){badge.style.display='inline-block';badge.textContent=openCount>99?'99+':openCount;}
-                else badge.style.display='none';
-            }
+let trademarkClaimsUnsubscribe=null;
+let allTrademarkClaims=[]; // FIX: filtre butonları için tüm talepleri önbellekte tutuyoruz
+let trademarkClaimFilter='all';
+function listenToTrademarkClaims(){
+    if(trademarkClaimsUnsubscribe) trademarkClaimsUnsubscribe();
+    trademarkClaimsUnsubscribe=onSnapshot(collection(db,"trademark_claims"),(snapshot)=>{
+        const claims=[];
+        snapshot.forEach(docSnap=>claims.push({id:docSnap.id,...docSnap.data()}));
+        claims.sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
+        allTrademarkClaims=claims;
+        renderAdminTrademarkClaims(applyTrademarkClaimFilter(claims));
+        const openCount=claims.filter(c=>c.status==='new'||c.status==='reviewing').length;
+        const badge=document.getElementById('trademark-count-badge');
+        if(badge){
+            if(openCount>0){badge.style.display='inline-block';badge.textContent=openCount>99?'99+':openCount;}
+            else badge.style.display='none';
         }
-    }catch(e){console.error('Marka hakkı talepleri yüklenemedi:',e);}
-}
-let trademarkBadgePollInterval=null;
-function startTrademarkBadgePolling(){
-    stopTrademarkBadgePolling();
-    adminLoadTrademarkClaims();
-    trademarkBadgePollInterval=setInterval(()=>{ adminLoadTrademarkClaims(); },5000);
-}
-function stopTrademarkBadgePolling(){
-    if(trademarkBadgePollInterval){clearInterval(trademarkBadgePollInterval);trademarkBadgePollInterval=null;}
+    });
 }
 
-async function adminLoadPendingPayouts(){
-    if(!isAuth||currentUser!==APP_CONFIG.adminUsername) return;
-    try{
-        const r=await fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},
-            body:JSON.stringify({action:'get_pending_payouts',accessToken:piAccessToken})});
-        const result=await r.json();
-        if(result.success){
-            const payouts=result.payouts||[];
-            renderAdminPayouts(payouts);
-            const pendingCount=payouts.filter(p=>p.payoutStatus==='pending').length;
-            const badge=document.getElementById('payouts-count-badge');
-            if(badge){
-                if(pendingCount>0){badge.style.display='inline-block';badge.textContent=pendingCount>99?'99+':pendingCount;}
-                else badge.style.display='none';
-            }
+let pendingPayoutsUnsubscribe=null;
+function listenToPendingPayouts(){
+    if(pendingPayoutsUnsubscribe) pendingPayoutsUnsubscribe();
+    pendingPayoutsUnsubscribe=onSnapshot(collection(db,"global_sales"),(snapshot)=>{
+        const payouts=[];
+        snapshot.forEach(docSnap=>{
+            const d=docSnap.data();
+            if(d.payoutStatus) payouts.push({id:docSnap.id,...d}); // sadece escrow'a giren (satıcılı) satışlar
+        });
+        payouts.sort((a,b)=>(b.at||0)-(a.at||0));
+        renderAdminPayouts(payouts);
+        const pendingCount=payouts.filter(p=>p.payoutStatus==='pending').length;
+        const badge=document.getElementById('payouts-count-badge');
+        if(badge){
+            if(pendingCount>0){badge.style.display='inline-block';badge.textContent=pendingCount>99?'99+':pendingCount;}
+            else badge.style.display='none';
         }
-    }catch(e){console.error('Bekleyen ödemeler yüklenemedi:',e);}
-}
-let payoutsBadgePollInterval=null;
-function startPayoutsBadgePolling(){
-    stopPayoutsBadgePolling();
-    adminLoadPendingPayouts();
-    payoutsBadgePollInterval=setInterval(()=>{ adminLoadPendingPayouts(); },5000);
-}
-function stopPayoutsBadgePolling(){
-    if(payoutsBadgePollInterval){clearInterval(payoutsBadgePollInterval);payoutsBadgePollInterval=null;}
+    });
 }
 
 // FIX: reject_sell_request durumunda domains koleksiyonunda HİÇBİR
@@ -3756,38 +3803,24 @@ window.toggleMaintenanceMode = async function(){
             body:JSON.stringify({action:'set_maintenance_mode',enabled:turningOn,accessToken:piAccessToken})});
         const result = await r.json();
         if(!result.success){ alert(result.error || 'Hata'); return; }
-        // Kendi ekranımızda anında yansıt; diğer ziyaretçiler bir sonraki
-        // pollingde (en geç ~20 sn içinde) otomatik görecek.
-        _maintenanceModeOn = turningOn;
-        updateMaintenanceOverlay();
+        // _maintenanceModeOn zaten canlı onSnapshot dinleyicisi tarafından güncellenecek;
+        // burada ekstra bir şey yapmaya gerek yok.
     }catch(e){
         console.error('Bakım modu değiştirilemedi:', e);
         alert('Bakım modu değiştirilemedi.');
     }
 };
-
-// NOT: Bilerek doğrudan istemci taraflı Firestore dinleyicisi (onSnapshot)
-// KULLANMIYORUZ — bu, herkese açık yeni bir koleksiyon olduğu için
-// Firestore güvenlik kuralları izin vermeyebilir ve bu durumda hiçbir
-// ziyaretçi bakım durumunu göremez (sessiz başarısızlık). Bunun yerine
-// sunucu üzerinden (kurallardan bağımsız, her zaman çalışan) kısa
-// aralıklı bir kontrol yapıyoruz.
-async function checkMaintenanceStatus(){
-    try{
-        const r = await fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},
-            body:JSON.stringify({action:'get_app_status'})});
-        const result = await r.json();
-        if(result.success){
-            _maintenanceModeOn = !!result.maintenanceMode;
-            updateMaintenanceOverlay();
-        }
-    }catch(e){
-        console.warn('Bakım modu durumu kontrol edilemedi:', e);
-    }
-}
-checkMaintenanceStatus();
-setInterval(checkMaintenanceStatus, 20000);
-
+onSnapshot(doc(db,"config","app_status"),(snap)=>{
+    const data = snap.exists() ? snap.data() : {};
+    _maintenanceModeOn = !!data.maintenanceMode;
+    updateMaintenanceOverlay();
+    // FIX: Gerçek bakım durumu netleşti — artık login/uygulama ekranının
+    // (varsa bakım ekranının altında) bir anlığına görünmesine gerek yok,
+    // boot-loader'ı kapatabiliriz. Güvenlik zaman aşımını da iptal et.
+    if (window._bootLoaderSafetyTimer) { clearTimeout(window._bootLoaderSafetyTimer); window._bootLoaderSafetyTimer = null; }
+    const bl = document.getElementById('boot-loader');
+    if (bl) bl.style.display = 'none';
+});
 window.openMaintenanceAdminLogin = function(){
     window.loginWithPi();
 };
@@ -3879,11 +3912,9 @@ async function performPiConnect() {
             // Kullanıcı avatarını göster
             const avatarBtn=document.getElementById('user-avatar-btn');
             if(avatarBtn) avatarBtn.style.display='block';
-            // Uygulama turu ve güvenlik butonlarını her zaman erişilebilir yap (admin dahil)
+            // Uygulama turu butonunu her zaman erişilebilir yap (admin dahil)
             const tourFab=document.getElementById('tour-fab');
             if(tourFab) tourFab.style.display='flex';
-            const trustFabEl=document.getElementById('trust-fab');
-            if(trustFabEl) trustFabEl.style.display='flex';
             const menuName=document.getElementById('user-menu-name');
             if(menuName&&currentUser) menuName.textContent='@'+currentUser;
             const menuTime=document.getElementById('user-menu-time');
@@ -3901,8 +3932,8 @@ async function performPiConnect() {
                 loadUniqueBadgeCount();
                 listenToPendingDomains();
                 startTicketBadgePolling();
-                startTrademarkBadgePolling();
-                startPayoutsBadgePolling();
+                listenToTrademarkClaims();
+                listenToPendingPayouts();
                 const today = new Date().toISOString().split("T")[0];
                 const dateInput = document.getElementById("admin-date-input");
                 dateInput.value = today;
@@ -4179,8 +4210,8 @@ onSnapshot(collection(db,"domains"),(snapshot)=>{
             createdAt:docData.createdAt||0,
             deleted:docData.deleted===true, // FIX: soft-delete bayrağı
             deletedAt:docData.deletedAt||null, // FIX: silinme tarihi eksikti, eklendi
-            hidden:docData.hidden===true, // FIX: 'gizle' butonu bu alan okunmadığı için hiç çalışmıyordu
-            payoutStatus:docData.payoutStatus||null // FIX: escrow onay durumu okunmuyordu (SATILDI/ONAY AŞAMASINDA ayrımı için gerekli)
+            hidden:docData.hidden===true, // FIX: "Gizle" butonu çalışmıyordu çünkü bu alan hiç okunmuyordu — backend hidden:true yazıyordu ama her snapshot'ta domainData yeniden kurulurken bu alan atlanıp undefined'a (gizli değil) dönüyordu.
+            payoutStatus:docData.payoutStatus||null // FIX: "Onay Aşamasında" rozeti de aynı nedenle her snapshot'ta sıfırlanıp direkt "SATILDI" görünüyordu.
         };
         if(!defaultDomain){
             domains.unshift({name,img:docData.img||'assets/default.jpeg',price:docData.price||0,type:docData.type||'genel',description:docData.description||''});
@@ -4265,7 +4296,7 @@ if(localStorage.getItem('w3dg_trust_intro_seen')){
 
 let firstDomainsSnapshotReceived=false;
 window.addEventListener("load",()=>{
-    configReady.then(()=>applyConfigToDOM());setInterval(updateActiveStatus,15000);document.querySelector('.main-scroll').style.maxHeight='calc(100vh - 90px)';});
+    configReady.then(()=>applyConfigToDOM());setInterval(updateActiveStatus,15000);document.querySelector('.main-scroll').style.maxHeight='calc(100vh - 50px)';});
 
 // ═══════════════════════════════════════════════════════════════════════
 //  LINK OPEN HELPER — Pi Browser / iframe uyumluluğu için
@@ -4969,14 +5000,29 @@ async function adminLoadTickets() {
 }
 
 // ══════════════════════════════════════════════════════════════════════
-//  ADMIN: MARKA HAKKI / TELİF TALEPLERİ — render fonksiyonu
-//  (Yükleme adminLoadTrademarkClaims() ile — bkz. yukarıdaki polling.)
+//  ADMIN: MARKA HAKKI / TELİF TALEPLERİ
+//  (Yükleme artık listenToTrademarkClaims() ile canlı/anlık yapılıyor;
+//  bu bölümde sadece render + aksiyon fonksiyonları kalıyor.)
 // ══════════════════════════════════════════════════════════════════════
+// Filtre: "pending" = henüz sonuçlanmamış (new + reviewing) talepler.
+function applyTrademarkClaimFilter(claims) {
+    if (trademarkClaimFilter === 'all') return claims;
+    if (trademarkClaimFilter === 'pending') return claims.filter(c => c.status === 'new' || c.status === 'reviewing');
+    return claims.filter(c => c.status === trademarkClaimFilter);
+}
+window.adminFilterTrademarkClaims = function(status) {
+    trademarkClaimFilter = status;
+    document.querySelectorAll('#trademark-admin-filters .ticket-filter-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.status === status);
+    });
+    renderAdminTrademarkClaims(applyTrademarkClaimFilter(allTrademarkClaims));
+};
 function renderAdminTrademarkClaims(claims) {
     const container = document.getElementById('trademark-admin-list');
     if (!container) return;
     if (!claims.length) {
-        container.innerHTML = `<p style="font-size:0.75em;opacity:0.5;text-align:center;">${t('trademarkAdminNoClaims')}</p>`;
+        const msg = (allTrademarkClaims.length && trademarkClaimFilter !== 'all') ? t('trademarkAdminNoClaimsFiltered') : t('trademarkAdminNoClaims');
+        container.innerHTML = `<p style="font-size:0.75em;opacity:0.5;text-align:center;">${msg}</p>`;
         return;
     }
     const locale = currentLang === 'en' ? 'en-GB' : 'tr-TR';
@@ -5016,8 +5062,8 @@ window.adminUpdateTrademarkStatus = async function(claimId, status) {
             body: JSON.stringify({ action: 'update_trademark_claim_status', claimId, status, accessToken: piAccessToken })
         });
         const result = await r.json();
-        if (result.success) adminLoadTrademarkClaims();
-        else alert(result.error || t('trademarkError'));
+        if (!result.success) alert(result.error || t('trademarkError'));
+        // Liste zaten canlı dinleyici (onSnapshot) ile anında güncellenir.
     } catch (e) {
         console.error("Marka hakkı durumu güncellenemedi:", e);
     }
@@ -5035,7 +5081,6 @@ window.adminApproveTrademarkClaim = async function(claimId, domainName) {
         const result = await r.json();
         if (result.success) {
             alert(result.domainRemoved ? t('trademarkApproveSuccessRemoved') : t('trademarkApproveSuccessNotFound'));
-            adminLoadTrademarkClaims();
         } else {
             alert(result.error || t('trademarkError'));
         }
@@ -5059,8 +5104,7 @@ window.adminDeleteTrademarkClaim = async function(claimId) {
             body: JSON.stringify({ action: 'delete_trademark_claim', claimId, accessToken: piAccessToken })
         });
         const result = await r.json();
-        if (result.success) adminLoadTrademarkClaims();
-        else alert(result.error || t('trademarkError'));
+        if (!result.success) alert(result.error || t('trademarkError'));
     } catch (e) {
         console.error("Marka hakkı talebi silinemedi:", e);
     }
@@ -5145,8 +5189,8 @@ window.withdrawMyTrademarkClaim = async function(claimId) {
 };
 
 // ══════════════════════════════════════════════════════════════════════
-//  ADMIN: ESCROW — BEKLEYEN SATICI ÖDEMELERİ — render fonksiyonu
-//  (Yükleme adminLoadPendingPayouts() ile — bkz. yukarıdaki polling.)
+//  ADMIN: ESCROW — BEKLEYEN SATICI ÖDEMELERİ
+//  (Yükleme artık listenToPendingPayouts() ile canlı/anlık yapılıyor.)
 // ══════════════════════════════════════════════════════════════════════
 function renderAdminPayouts(payouts) {
     const container = document.getElementById('payouts-admin-list');
@@ -5198,7 +5242,6 @@ window.adminReleasePayout = async function(saleId, domainName, sellerUsername) {
         const result = await r.json();
         if (result.success) {
             alert(`✅ ${result.payoutAmount} Pi @${sellerUsername} kullanıcısına gönderildi.`);
-            adminLoadPendingPayouts();
         } else {
             alert(result.error || t('trademarkError'));
         }
@@ -5221,7 +5264,6 @@ window.adminRefundPayout = async function(saleId, domainName, buyerUsername) {
         const result = await r.json();
         if (result.success) {
             alert(`✅ ${result.refundAmount} Pi @${buyerUsername} kullanıcısına iade edildi.`);
-            adminLoadPendingPayouts();
         } else {
             alert(result.error || t('trademarkError'));
         }
