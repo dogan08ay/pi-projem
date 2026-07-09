@@ -2,28 +2,7 @@ import { initializeApp, getApps, cert } from 'firebase-admin/app';
 import { getFirestore, FieldValue } from 'firebase-admin/firestore';
 import { getStorage } from 'firebase-admin/storage';
 import { getDatabase } from 'firebase-admin/database';
-import PiNetworkImport from 'pi-backend';
-// FIX: "PiNetwork is not a constructor" hatası — Vercel'in native ESM
-// ortamında, CommonJS paketlerin (pi-backend gibi) default import'u bazen
-// sınıfın kendisi değil, { default: PiNetworkClass, __esModule: true }
-// şeklindeki modül nesnesinin tamamı olarak gelebiliyor. Bu durumda
-// `new PiNetwork(...)` çağrısı "is not a constructor" hatası verir.
-// Aşağıdaki satır, paket hangi şekilde export edilmiş olursa olsun
-// (doğrudan sınıf ya da .default içinde sarılı) doğru sınıfı bulur.
-const PiNetwork = (PiNetworkImport && PiNetworkImport.default) || PiNetworkImport;
-
-// FIX: A2U (createPayment/submitPayment/completePayment) çağrıları Pi
-// Platform API'sine gider ve "401 Unauthorized" dönerse bunun kod
-// içinde düzeltilebilecek bir hata OLMADIĞI, sunucu ortam değişkenlerinin
-// (APP_SECRET / PI_WALLET_PRIVATE_SEED) hatalı/eksik/yanlış app'e ait
-// olduğu anlamına geldiği admin'e açıkça belirtiliyor.
-function explain401(message) {
-  if (message && /401/.test(String(message))) {
-    return `${message} — Bu "401 Unauthorized" hatası Pi Platform API'sinden geliyor: APP_SECRET (Pi API Key) veya PI_WALLET_PRIVATE_SEED ortam değişkenleri hatalı, eksik ya da farklı bir uygulamaya ait olabilir. Developer Portal'daki değerlerle Vercel ortam değişkenlerini karşılaştırın.`;
-  }
-  return message;
-}
-
+import PiNetwork from 'pi-backend';
 
 // ─── Admin Config ───────────────────────────────────────────────────────
 const ADMIN_USERNAME = process.env.ADMIN_USERNAME || 'doganay0808';
@@ -41,15 +20,6 @@ function getPiClient() {
   const apiKey = process.env.APP_SECRET;
   const walletSeed = process.env.PI_WALLET_PRIVATE_SEED;
   if (!apiKey || !walletSeed) return null;
-  if (typeof PiNetwork !== 'function') {
-    // Bu noktaya düşülmesi, pi-backend paketinin beklenmedik bir şekilde
-    // export edildiği ve yukarıdaki .default çözümlemesinin de yetersiz
-    // kaldığı anlamına gelir. Sessizce hata fırlatmak yerine anlaşılır bir
-    // mesajla loglayıp null döndürelim ki üst katman "İade/Ödeme
-    // gönderilemedi" diyerek Pi'lerin güvenli havuzda kaldığını bildirsin.
-    console.error("[PiNetwork] 'pi-backend' paketi geçerli bir constructor olarak çözümlenemedi. Paket sürümünü/exportunu kontrol edin.");
-    return null;
-  }
   piClient = new PiNetwork(apiKey, walletSeed);
   return piClient;
 }
@@ -1586,7 +1556,7 @@ export default async function handler(req, res) {
           payoutTxid: txid || null
         }, { merge: true });
         return res.status(500).json({
-          error: `Ödeme tamamlanamadı ama Pi'ler kaybolmadı, güvenli havuzda bekliyor: ${explain401(stepError.message)}. Aynı butona tekrar basarak kaldığı yerden devam ettirebilirsiniz.`
+          error: `Ödeme tamamlanamadı ama Pi'ler kaybolmadı, güvenli havuzda bekliyor: ${stepError.message}. Aynı butona tekrar basarak kaldığı yerden devam ettirebilirsiniz.`
         });
       }
     } catch (e) {
@@ -1703,7 +1673,7 @@ export default async function handler(req, res) {
           refundTxid: txid || null
         }, { merge: true });
         return res.status(500).json({
-          error: `İade tamamlanamadı ama Pi'ler kaybolmadı, güvenli havuzda bekliyor: ${explain401(stepError.message)}. Aynı butona tekrar basarak kaldığı yerden devam ettirebilirsiniz.`
+          error: `İade tamamlanamadı ama Pi'ler kaybolmadı, güvenli havuzda bekliyor: ${stepError.message}. Aynı butona tekrar basarak kaldığı yerden devam ettirebilirsiniz.`
         });
       }
     } catch (e) {
