@@ -1184,6 +1184,19 @@
     </div>
 </div>
 
+<!-- FIX: Ödeme onaylandıktan sonra (Pi cüzdanı işlemi imzalarken/blockchain
+     onayı beklerken) ekranda hiçbir görsel geri bildirim yoktu; kullanıcı
+     "hiçbir şey olmuyor, buton çalışmıyor" sanıyordu ve arada geçen tek
+     durum doğrudan "SATILDI" oluyordu. Bu modal, onay bekleme adımını
+     görünür kılar. -->
+<div id="purchase-processing-modal" class="modal-overlay" style="display:none;">
+    <div class="modal-content" style="border-color:#6366f1;text-align:center;">
+        <div style="font-size:2.2em;margin-bottom:10px;animation:dot-pulse 1.2s ease-in-out infinite;">⏳</div>
+        <h2 style="color:#818cf8;margin-top:0;font-size:1.1em;font-weight:900;" data-i18n="purchaseProcessingTitle"></h2>
+        <p style="color:#cbd5e1;font-size:0.85em;line-height:1.5;font-weight:600;" data-i18n="purchaseProcessingBody"></p>
+    </div>
+</div>
+
 <div id="success-modal" class="modal-overlay" style="display:none;">
     <div class="modal-content" style="border-color:#10b981;text-align:center;">
         <div style="font-size:2.5em;margin-bottom:10px;">✅</div>
@@ -1848,6 +1861,8 @@ const i18n = {
     maintenanceDisableBtn:"🚀 Yayına Al",
     maintenanceConfirmEnable:"Uygulamayı bakım moduna almak üzeresiniz. Siz hariç tüm ziyaretçiler bakım ekranını görecek. Devam edilsin mi?",
     maintenanceConfirmDisable:"Uygulamayı tekrar yayına almak üzeresiniz. Devam edilsin mi?",
+    purchaseProcessingTitle:"⏳ Ödemeniz İşleniyor",
+    purchaseProcessingBody:"Pi cüzdanınızda işlemi onaylayın ve bu ekranı kapatmadan bekleyin. Blockchain onayı birkaç saniyeden bir dakikaya kadar sürebilir.",
     testNetBadgeBody:"<span style=\"white-space:nowrap;\">Sistemimiz şu anda <span class=\"blink-yellow\">TEST-Pİ</span> ağında çalışmaktadır.</span>",
     testNetWarning:"<span class=\"blink-yellow\">GERÇEK Pİ BAKİYENİZ KESİNLİKLE<br>KULLANILMAZ!</span>",
     connectPrompt:"Web3 domain sahibi olmak ve güvenli bağlantı kurmak için,",useButton:"👇 aşağıdaki Pi ile Bağlan butonunu kullanın.",
@@ -2197,6 +2212,8 @@ const i18n = {
     maintenanceDisableBtn:"🚀 Go Live",
     maintenanceConfirmEnable:"You're about to put the app into maintenance mode. All visitors except you will see the maintenance screen. Continue?",
     maintenanceConfirmDisable:"You're about to bring the app back live. Continue?",
+    purchaseProcessingTitle:"⏳ Processing Your Payment",
+    purchaseProcessingBody:"Please confirm the transaction in your Pi wallet and keep this screen open. Blockchain confirmation can take a few seconds to a minute.",
     testNetBadgeBody:"<span style=\"white-space:nowrap;\">Our system runs on <span class=\"blink-yellow\">TEST-PI</span> network.</span>",
     testNetWarning:"<span class=\"blink-yellow\">YOUR REAL PI BALANCE<br>WILL NOT BE USED!</span>",
     connectPrompt:"To own a Web3 domain and establish a secure connection,",useButton:"👇 use the Connect with Pi button below.",
@@ -3145,9 +3162,20 @@ window.handleRelist=async function(domainName){
 // saklanır (render() içindeki listeleme filtresine bakınız). Admin
 // istediği an "Satışa Çıkar" ile tekrar herkese görünür yapabilir.
 window.handleToggleHideDomain=async function(domainName,hide){
-    const r=await fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'toggle_hide_domain',domainName,hide,accessToken:piAccessToken})});
-    const result=await r.json();
-    if(!r.ok||!result.success) alert(t('hideToggleFail')+(result.error||''));
+    // FIX: try/catch yoktu; fetch başarısız olursa (ağ hatası) veya sunucu
+    // JSON olmayan bir hata sayfası döndürürse (r.json() patlar) fonksiyon
+    // sessizce reddedilen bir Promise ile bitiyordu — kullanıcı hiçbir şey
+    // görmüyor, buton "çalışmıyormuş" gibi duruyordu. Artık her hata
+    // konsola loglanıp kullanıcıya da gösteriliyor.
+    try{
+        const r=await fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'toggle_hide_domain',domainName,hide,accessToken:piAccessToken})});
+        let result;
+        try{ result=await r.json(); }catch(parseErr){ throw new Error(`Sunucu geçersiz yanıt döndürdü (HTTP ${r.status})`); }
+        if(!r.ok||!result.success) alert(t('hideToggleFail')+(result.error||`HTTP ${r.status}`));
+    }catch(e){
+        console.error('handleToggleHideDomain hatası:',e);
+        alert(t('hideToggleFail')+(e.message||e));
+    }
 };
 
 // ── ADMIN KAZANÇ / CÜZDAN ÖZETİ ────────────────────────────────────────
@@ -3608,6 +3636,15 @@ function listenToTrademarkClaims(){
             if(openCount>0){badge.style.display='inline-block';badge.textContent=openCount>99?'99+':openCount;}
             else badge.style.display='none';
         }
+    },(err)=>{
+        // FIX: Bu listener'da hata callback'i yoktu; Firestore güvenlik
+        // kuralları "trademark_claims" koleksiyonuna admin'in Firebase
+        // oturumuyla okuma izni vermiyorsa onSnapshot sessizce başarısız
+        // oluyor ve panel boş kalıyordu (talepler "düşmüyor" gibi
+        // görünüyordu). Artık hata konsola ve admin'e görünür yapılıyor.
+        console.error("[trademark_claims] onSnapshot hatası (Firestore kuralarını kontrol edin):",err);
+        const container=document.getElementById('trademark-admin-list');
+        if(container) container.innerHTML=`<p style="font-size:0.75em;color:#f87171;text-align:center;">⚠️ Talepler yüklenemedi: ${err.message||err.code||'bilinmeyen hata'}. Firestore güvenlik kurallarında 'trademark_claims' koleksiyonu için admin okuma izni olduğundan emin olun.</p>`;
     });
 }
 
@@ -3628,6 +3665,8 @@ function listenToPendingPayouts(){
             if(pendingCount>0){badge.style.display='inline-block';badge.textContent=pendingCount>99?'99+':pendingCount;}
             else badge.style.display='none';
         }
+    },(err)=>{
+        console.error("[global_sales] onSnapshot hatası (Firestore kurallarını kontrol edin):",err);
     });
 }
 
@@ -3884,7 +3923,13 @@ async function performPiConnect() {
 
 
             // ── 5. Scroll düzeltmesi ───────────────────────────────────
-            document.querySelector('.main-scroll').style.maxHeight = 'none';
+            // FIX: maxHeight'ı 'none' yapmak .main-scroll'un içeriğe göre
+            // sınırsız büyümesine (ve footer/iletişim bilgilerinin viewport
+            // dışına itilmesine) sebep oluyordu. Sayfa yüklenirken uygulanan
+            // aynı sınırı koruyoruz; böylece .main-scroll kendi içinde kayar,
+            // footer her zaman görünür kalır ve kullanıcı ilk girişte aşağı
+            // kaydırmak zorunda kalmaz.
+            document.querySelector('.main-scroll').style.maxHeight = 'calc(100vh - 50px)';
             document.querySelector('.main-scroll').style.overflowY = 'auto';
 
             // ── 6. BUTONU NORMALE DÖNDÜR (önemli: spinner'ı kaldır) ───
@@ -4017,6 +4062,8 @@ window.loginWithPi = function() {
 document.getElementById("confirm-buy-btn").onclick=async()=>{
     document.getElementById('pre-buy-modal').style.display='none';
     await new Promise(r=>setTimeout(r,150));
+    // FIX: Onay/blockchain bekleme adımlarında görsel geri bildirim yoktu.
+    document.getElementById('purchase-processing-modal').style.display='flex';
     try{
         await Pi.createPayment(
             {amount:Number(pendingPrice),memo:"Domain: "+pendingDomain,metadata:{domain:pendingDomain}},
@@ -4028,18 +4075,26 @@ document.getElementById("confirm-buy-btn").onclick=async()=>{
                 onReadyForServerCompletion:async(id,txid)=>{
                     await fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},
                         body:JSON.stringify({paymentId:id,action:'complete',txid,username:currentUser,domainName:pendingDomain})});
+                    document.getElementById('purchase-processing-modal').style.display='none';
                     document.getElementById("success-modal").style.display="flex";
                     await loadUserProfile();
                     fetchNotifications(true);
                     debouncedRender();
                 },
                 onCancel:async(id)=>{
+                    document.getElementById('purchase-processing-modal').style.display='none';
                     try{await fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({paymentId:id,action:'cancel'})});}catch(e){}
                 },
-                onError:(e)=>{console.error("Payment error:",e);alert(t('paymentError'));}
+                onError:(e)=>{
+                    document.getElementById('purchase-processing-modal').style.display='none';
+                    console.error("Payment error:",e);alert(t('paymentError'));
+                }
             }
         );
-    }catch(e){console.error(e);}
+    }catch(e){
+        document.getElementById('purchase-processing-modal').style.display='none';
+        console.error(e);
+    }
 };
 
 document.getElementById("share-tg-btn").onclick=()=>{
