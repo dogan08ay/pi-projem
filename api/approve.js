@@ -441,6 +441,25 @@ export default async function handler(req, res) {
     }
   }
 
+  // ── Admin: Domain Gizle/Göster ─────────────────────────────────────────
+  // Gizli domainler, herkese açık listelemede admin dışındaki kimseye
+  // gösterilmez (frontend tarafında filtrelenir). Satılmış olsun ya da
+  // olmasın herhangi bir domain gizlenebilir/tekrar gösterilebilir.
+  if (action === 'toggle_hide_domain') {
+    const { domainName, hide } = req.body;
+    const isAdmin = await verifyAdmin(accessToken);
+    if (!isAdmin) return res.status(403).json({ error: "Yetki yok" });
+    if (!domainName) return res.status(400).json({ error: "Geçersiz domain adı" });
+    try {
+      const db = getDb();
+      await db.collection('domains').doc(domainName).set({ hidden: !!hide }, { merge: true });
+      return res.status(200).json({ success: true, hidden: !!hide });
+    } catch (e) {
+      console.error("toggle_hide_domain hatası:", e);
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
   // ── Fiyat Güncelle ────────────────────────────────────────────────────
   if (action === 'update_price') {
     const { domainName: dName, newPrice } = req.body;
@@ -1134,6 +1153,28 @@ export default async function handler(req, res) {
     }
   }
 
+  // ══════════════════════════════════════════════════════════════════════
+  //  ADMIN: BAKIM MODU (Maintenance Mode)
+  // ══════════════════════════════════════════════════════════════════════
+  if (action === 'set_maintenance_mode') {
+    const { enabled } = req.body;
+    const isAdmin = await verifyAdmin(accessToken);
+    if (!isAdmin) return res.status(403).json({ error: "Yetki yok" });
+    try {
+      const db = getDb();
+      const realUsername = await getRealUsername(accessToken);
+      await db.collection('config').doc('app_status').set({
+        maintenanceMode: !!enabled,
+        updatedAt: Date.now(),
+        updatedBy: realUsername
+      }, { merge: true });
+      return res.status(200).json({ success: true, maintenanceMode: !!enabled });
+    } catch (e) {
+      console.error("set_maintenance_mode hatası:", e);
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
   if (action === 'submit_trademark_claim') {
     if (!checkRateLimit(clientIp, 'submit_trademark_claim', 3, 3600000))
       return res.status(429).json({ error: "Çok fazla istek. Lütfen daha sonra tekrar deneyin." });
@@ -1156,6 +1197,16 @@ export default async function handler(req, res) {
     try {
       const db = getDb();
       const now = Date.now();
+
+      // Başvuran o an Pi ile giriş yapmışsa (accessToken varsa), talebi kendi
+      // hesabına bağlıyoruz ki "Panelim" kısmından süreci takip edebilsin.
+      // Giriş yapmamış (Pi hesabı olmayan) marka sahipleri için bu alan boş
+      // kalır — sadece e-posta üzerinden bilgilendirilirler.
+      let submittedByUsername = null;
+      if (accessToken) {
+        submittedByUsername = await getRealUsername(accessToken);
+      }
+
       const claimRef = db.collection('trademark_claims').doc();
       await claimRef.set({
         claimantName: String(claimantName).trim(),
@@ -1166,7 +1217,8 @@ export default async function handler(req, res) {
         contactEmail: String(contactEmail).trim(),
         status: 'new',
         createdAt: now,
-        ip: clientIp
+        ip: clientIp,
+        submittedByUsername: submittedByUsername || null
       });
 
       await sendNotificationToAdmin({
@@ -1206,7 +1258,7 @@ export default async function handler(req, res) {
     const { claimId, status } = req.body;
     const isAdmin = await verifyAdmin(accessToken);
     if (!isAdmin) return res.status(403).json({ error: "Yetki yok" });
-    const validStatuses = ['new', 'reviewing', 'resolved', 'rejected'];
+    const validStatuses = ['new', 'reviewing', 'resolved', 'rejected', 'withdrawn'];
     if (!claimId || !validStatuses.includes(status)) return res.status(400).json({ error: "Geçersiz parametre" });
     try {
       const db = getDb();
@@ -1214,6 +1266,72 @@ export default async function handler(req, res) {
       return res.status(200).json({ success: true });
     } catch (e) {
       console.error("update_trademark_claim_status hatası:", e);
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  // ── Admin: Reddedilmiş Marka Hakkı Talebini Sil ────────────────────────
+  // Güvenlik için sadece 'rejected' durumundaki talepler silinebilir —
+  // aktif/çözülmüş bir talebin kaza sonucu silinmesini engeller.
+  if (action === 'delete_trademark_claim') {
+    const { claimId } = req.body;
+    const isAdmin = await verifyAdmin(accessToken);
+    if (!isAdmin) return res.status(403).json({ error: "Yetki yok" });
+    if (!claimId) return res.status(400).json({ error: "claimId zorunludur" });
+    try {
+      const db = getDb();
+      const claimRef = db.collection('trademark_claims').doc(claimId);
+      const snap = await claimRef.get();
+      if (!snap.exists) return res.status(404).json({ error: "Talep bulunamadı" });
+      if (snap.data().status !== 'rejected')
+        return res.status(400).json({ error: "Sadece reddedilmiş talepler silinebilir." });
+      await claimRef.delete();
+      return res.status(200).json({ success: true });
+    } catch (e) {
+      console.error("delete_trademark_claim hatası:", e);
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  // ── Kullanıcı: Kendi Marka Hakkı Taleplerini Listele (Panelim) ─────────
+  if (action === 'get_my_trademark_claims') {
+    const realUsername = await getRealUsername(accessToken);
+    if (!realUsername) return res.status(401).json({ error: "Geçersiz oturum" });
+    try {
+      const db = getDb();
+      const snap = await db.collection('trademark_claims').where('submittedByUsername', '==', realUsername).get();
+      const claims = [];
+      snap.forEach(doc => claims.push({ id: doc.id, ...doc.data() }));
+      claims.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+      return res.status(200).json({ success: true, claims });
+    } catch (e) {
+      console.error("get_my_trademark_claims hatası:", e);
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  // ── Kullanıcı: Kendi Marka Hakkı Talebini Geri Çek ─────────────────────
+  // Sadece 'new' veya 'reviewing' durumundaki talepler geri çekilebilir;
+  // zaten sonuçlanmış (çözüldü/reddedildi) bir talep geri çekilemez.
+  if (action === 'withdraw_trademark_claim') {
+    const { claimId } = req.body;
+    const realUsername = await getRealUsername(accessToken);
+    if (!realUsername) return res.status(401).json({ error: "Geçersiz oturum" });
+    if (!claimId) return res.status(400).json({ error: "claimId zorunludur" });
+    try {
+      const db = getDb();
+      const claimRef = db.collection('trademark_claims').doc(claimId);
+      const snap = await claimRef.get();
+      if (!snap.exists) return res.status(404).json({ error: "Talep bulunamadı" });
+      const claim = snap.data();
+      if (claim.submittedByUsername !== realUsername)
+        return res.status(403).json({ error: "Bu talep size ait değil." });
+      if (claim.status !== 'new' && claim.status !== 'reviewing')
+        return res.status(400).json({ error: "Bu talep artık geri çekilemez (sonuçlanmış)." });
+      await claimRef.set({ status: 'withdrawn', updatedAt: Date.now() }, { merge: true });
+      return res.status(200).json({ success: true });
+    } catch (e) {
+      console.error("withdraw_trademark_claim hatası:", e);
       return res.status(500).json({ error: e.message });
     }
   }
@@ -1288,34 +1406,74 @@ export default async function handler(req, res) {
 
       const payoutAmount = sale.payoutAmount || Math.round(sale.price * (1 - PLATFORM_COMMISSION_RATE) * 1e7) / 1e7;
 
-      const paymentData = {
-        amount: payoutAmount,
-        memo: `Domain satışı: ${sale.domain} (komisyon sonrası)`,
-        metadata: { saleId, domainName: sale.domain, type: 'seller_payout' },
-        uid: sellerUid
-      };
+      // ══════════════════════════════════════════════════════════════════
+      //  KURTARMA (RESCUE/RECOVERY) MEKANİZMASI
+      //  Her adım BAŞARILI OLDUĞU AN Firestore'a yazılır. Bir sonraki adım
+      //  hata verirse (ağ kopması, sunucu zaman aşımı vb.), admin butona
+      //  tekrar bastığında işlem SIFIRDAN değil, KALDIĞI YERDEN devam eder:
+      //  - paymentId zaten varsa yeniden oluşturulmaz (çift ödeme riski yok)
+      //  - txid zaten varsa yeniden gönderilmez
+      //  Böylece Pi'ler asla "arada" kaybolmaz; en kötü ihtimalle 'failed'
+      //  durumunda beklemeye devam eder ve aynı butonla güvenle tekrar denenir.
+      // ══════════════════════════════════════════════════════════════════
+      let paymentId = sale.payoutPaymentId || null;
+      let txid = sale.payoutTxid || null;
 
-      const paymentId = await pi.createPayment(paymentData);
-      const txid = await pi.submitPayment(paymentId);
-      const completedPayment = await pi.completePayment(paymentId, txid);
+      try {
+        if (!paymentId) {
+          paymentId = await pi.createPayment({
+            amount: payoutAmount,
+            memo: `Domain satışı: ${sale.domain} (komisyon sonrası)`,
+            metadata: { saleId, domainName: sale.domain, type: 'seller_payout' },
+            uid: sellerUid
+          });
+          await saleRef.set({ payoutStatus: 'processing', payoutPaymentId: paymentId }, { merge: true });
+        }
 
-      await saleRef.set({
-        payoutStatus: 'released',
-        payoutAt: Date.now(),
-        payoutTxid: txid,
-        payoutPaymentId: paymentId,
-        payoutReleasedBy: await getRealUsername(accessToken)
-      }, { merge: true });
+        if (!txid) {
+          txid = await pi.submitPayment(paymentId);
+          await saleRef.set({ payoutTxid: txid }, { merge: true });
+        }
 
-      await sendNotification(sale.sellerUsername, {
-        type: 'payout_released',
-        title: '💸 Ödemeniz Gönderildi!',
-        body: `"${sale.domain}" domain satışınıza ait ${payoutAmount} Pi (komisyon düşülmüş), Pi hesabınıza gönderildi.`,
-        domainName: sale.domain, amount: payoutAmount
-      });
-      await sendTG(TG_CHAT_ID, `💸 *ÖDEME SERBEST BIRAKILDI*\n\n🌐 ${sale.domain}\n👤 @${sale.sellerUsername}\n💰 ${payoutAmount} Pi\n🔑 txid: ${txid}`);
+        await pi.completePayment(paymentId, txid);
 
-      return res.status(200).json({ success: true, txid, payoutAmount });
+        await saleRef.set({
+          payoutStatus: 'released',
+          payoutAt: Date.now(),
+          payoutTxid: txid,
+          payoutPaymentId: paymentId,
+          payoutReleasedBy: await getRealUsername(accessToken)
+        }, { merge: true });
+
+        // Domain kaydını da güncelle: liste ekranında artık "Onay Aşamasında"
+        // değil, kesin "SATILDI" olarak görünsün.
+        if (sale.domain) {
+          await db.collection('domains').doc(sale.domain).set({ payoutStatus: 'released' }, { merge: true });
+        }
+
+        await sendNotification(sale.sellerUsername, {
+          type: 'payout_released',
+          title: '💸 Ödemeniz Gönderildi!',
+          body: `"${sale.domain}" domain satışınıza ait ${payoutAmount} Pi (komisyon düşülmüş), Pi hesabınıza gönderildi.`,
+          domainName: sale.domain, amount: payoutAmount
+        });
+        await sendTG(TG_CHAT_ID, `💸 *ÖDEME SERBEST BIRAKILDI*\n\n🌐 ${sale.domain}\n👤 @${sale.sellerUsername}\n💰 ${payoutAmount} Pi\n🔑 txid: ${txid}`);
+
+        return res.status(200).json({ success: true, txid, payoutAmount });
+      } catch (stepError) {
+        // Hangi adımda kaldığını (paymentId/txid) kaydediyoruz ki bir sonraki
+        // deneme sıfırdan başlamasın — Pi'ler güvende, sadece işlem yarım kaldı.
+        await saleRef.set({
+          payoutStatus: 'failed',
+          payoutError: stepError.message,
+          payoutFailedAt: Date.now(),
+          payoutPaymentId: paymentId || null,
+          payoutTxid: txid || null
+        }, { merge: true });
+        return res.status(500).json({
+          error: `Ödeme tamamlanamadı ama Pi'ler kaybolmadı, güvenli havuzda bekliyor: ${stepError.message}. Aynı butona tekrar basarak kaldığı yerden devam ettirebilirsiniz.`
+        });
+      }
     } catch (e) {
       console.error("release_seller_payment hatası:", e);
       try {
@@ -1571,6 +1729,12 @@ export default async function handler(req, res) {
               price: data.price,
               buyer: data.buyer || null
             });
+          } else {
+            // Platform cüzdanı: SADECE başka kullanıcılar tarafından listelenip
+            // satılan domainlerden alınan %5 komisyon kesintisi. Satıcının payı
+            // (kalan %95), escrow serbest bırakıldığında kendisine gider —
+            // platform cüzdanına dahil edilmez.
+            platformEarnings += price * PLATFORM_COMMISSION_RATE;
           }
         } else {
           adminOwnEarnings += price;
@@ -1582,7 +1746,7 @@ export default async function handler(req, res) {
         }
       });
 
-      platformEarnings = 0;
+      platformEarnings = Math.round(platformEarnings * 1e7) / 1e7;
 
       allSalesDetail.sort((a, b) => (b.at || 0) - (a.at || 0));
 
@@ -1668,9 +1832,15 @@ export default async function handler(req, res) {
           const sellerUsername = domainSnap.data().sellerUsername || null;
           const previousBuyer = domainSnap.data().buyer || null;
 
+          const payoutStatusForDomain = sellerUsername ? 'pending' : 'no_seller';
           await domainRef.set({
             sold: true, price: realPrice,
-            txid: txid || null, buyer: username, at: Date.now()
+            txid: txid || null, buyer: username, at: Date.now(),
+            sellerUsername: sellerUsername || null,
+            // Escrow onayı tamamlanana kadar liste ekranında "Onay Aşamasında"
+            // gösterilir; satıcısı yoksa (sistem domaini) zaten beklemeye
+            // gerek olmadığından direkt kesin "SATILDI" gösterilir.
+            payoutStatus: payoutStatusForDomain
           }, { merge: true });
 
           await db.collection('global_sales').doc(txid || paymentId).set({
