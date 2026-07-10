@@ -466,6 +466,16 @@ export default async function handler(req, res) {
         return res.status(400).json({ error: "Bu domain zaten satılık durumda" });
 
       const soldData = domainSnap.data();
+
+      // Ödemesi satıcıya zaten gönderilmiş (gerçek Pi el değiştirmiş) bir
+      // satışı asla tekrar satılığa çıkarmıyoruz — aksi halde aynı domain
+      // ikinci bir alıcıya satılabilir ve ilk alıcı gerçek bir Pi iadesi
+      // almadan ortada kalır. Bu domainler zaten otomatik olarak pasife
+      // alınıp gizlenmiş durumda (bkz. release_seller_payment).
+      if (soldData.payoutStatus === 'released') {
+        return res.status(400).json({ error: "Bu domainin ödemesi satıcıya zaten gönderildi, tekrar satışa çıkarılamaz. Domain otomatik olarak pasife alındı. Gerçek bir iptal gerekiyorsa önce alıcıya gerçek bir Pi iadesi yapılmalı (bu, mevcut sistemde otomatikleştirilmemiştir, elle değerlendirilmelidir)." });
+      }
+
       const soldPrice = Number(soldData.price || 0);
       const soldAt = soldData.at;
       const prevBuyer = soldData.buyer;
@@ -630,16 +640,14 @@ export default async function handler(req, res) {
 
       const domainDataForDelete = domainSnap.data();
 
-      if (domainDataForDelete.sold === true) {
-        const prevBuyer = domainDataForDelete.buyer;
-        const soldPrice = Number(domainDataForDelete.price || 0);
-        const soldAt = domainDataForDelete.at;
-
-        if (prevBuyer && soldPrice > 0) {
-          await reverseSaleAndPoints(db, delName, prevBuyer, soldPrice, soldAt);
-        }
-      }
-
+      // FIX (kök neden): Daha önce burada satılmış bir domain için ÖNCE
+      // reverseSaleAndPoints() çalışıyor (puanlar geri alınıyor, alıcıya
+      // "Pi'niz iade edildi" bildirimi gönderiliyor) SONRA aynı koşul tekrar
+      // kontrol edilip hata döndürülüyordu — yani hiçbir şey silinmediği
+      // halde puan/istatistik/bildirim tarafında geri dönüşü olmayan yan
+      // etkiler zaten gerçekleşmiş oluyordu. Artık satılmış bir domaine hiç
+      // dokunmuyoruz; admin önce "Tekrar Satılık Yap" ile satıştan
+      // kaldırmalı (o da artık ödemesi kesinleşmiş satışları engelliyor).
       if (domainDataForDelete.sold === true) {
         return res.status(400).json({ error: "Satılmış domain önce 'Tekrar Satılık Yap' ile satıştan kaldırılmalı" });
       }
@@ -1587,9 +1595,13 @@ export default async function handler(req, res) {
         }, { merge: true });
 
         // Domain kaydını da güncelle: liste ekranında artık "Onay Aşamasında"
-        // değil, kesin "SATILDI" olarak görünsün.
+        // değil, kesin "SATILDI" olarak görünsün. Ödeme kesinleştiği için
+        // domain otomatik olarak PASİFE ALINIR (hidden) — gerçek Pi el
+        // değiştirdiğinden bu domain bir daha asla normal listede veya
+        // "Tekrar Satılık Yap" ile ikinci kez satışa çıkarılamaz; sadece
+        // admin'in "Pasife Alınmış" filtresinde görünür.
         if (sale.domain) {
-          await db.collection('domains').doc(sale.domain).set({ payoutStatus: 'released' }, { merge: true });
+          await db.collection('domains').doc(sale.domain).set({ payoutStatus: 'released', hidden: true }, { merge: true });
         }
 
         await sendNotification(sale.sellerUsername, {
