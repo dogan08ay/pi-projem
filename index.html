@@ -3208,11 +3208,12 @@ function renderAdminPriceList(){
     container.innerHTML=activeDomains.map(d=>{
         const data=domainData[d.name]||{price:d.price,sold:false};
         const isSold=data.sold===true;
+        const canDelete=!isSold||data.payoutStatus==='released';
         return `<div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;background:#0f172a;padding:6px 8px;border-radius:8px;">
             <span style="flex:1;font-size:0.8em;font-weight:bold;color:#e2e8f0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${d.name}${isSold?' 🔒':''}</span>
             <input type="number" id="price-input-${d.name}" value="${data.price}" ${isSold?'disabled':''} style="width:70px;background:#1e293b;border:1px solid #6366f1;color:#fff;border-radius:6px;padding:4px 6px;font-size:0.8em;">
             <button onclick="handlePriceUpdate('${d.name}')" ${isSold?'disabled':''} style="background:#6366f1;color:#fff;border:none;padding:5px 8px;border-radius:6px;font-size:0.7em;font-weight:bold;cursor:pointer;opacity:${isSold?'0.4':'1'};">${t('updateBtn')}</button>
-            ${!isSold?`<button onclick="handleDeleteDomain('${d.name}')" style="background:#ef4444;color:#fff;border:none;padding:5px 8px;border-radius:6px;font-size:0.7em;font-weight:bold;cursor:pointer;">${t('deleteBtn')}</button>`:''}
+            ${canDelete?`<button onclick="handleDeleteDomain('${d.name}')" style="background:#ef4444;color:#fff;border:none;padding:5px 8px;border-radius:6px;font-size:0.7em;font-weight:bold;cursor:pointer;">${t('deleteBtn')}</button>`:''}
         </div>`;}).join('');
 
     // Silinmiş domainler bölümü
@@ -3695,10 +3696,17 @@ function render(){
                     // Ödeme kesinleşmiş — tekrar satışa çıkarılamaz (backend de
                     // engelliyor). İkinci bir alıcıya satılıp ilk alıcının
                     // gerçek Pi iadesi almadan ortada kalmasını önlemek için.
+                    // Yine de test/arşiv temizliği için SİLİNEBİLİR.
                     const note=document.createElement('div');
                     note.style.cssText='font-size:0.6em;color:#6ee7b7;margin-top:4px;line-height:1.3;font-weight:700;';
                     note.innerText='🔒 '+t('finalizedSaleNote');
                     card.appendChild(note);
+
+                    const delBtn=document.createElement('button');
+                    delBtn.className='btn-buy';delBtn.style.background='#ef4444';delBtn.style.marginTop='4px';
+                    delBtn.innerText=t('deleteBtn');
+                    delBtn.onclick=(e)=>{e.stopPropagation();handleDeleteDomain(d.name);};
+                    card.appendChild(delBtn);
                 } else {
                     const relistBtn=document.createElement('button');
                     relistBtn.className='btn-buy';relistBtn.style.background='#f59e0b';relistBtn.style.marginTop='4px';
