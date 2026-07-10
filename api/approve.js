@@ -785,6 +785,12 @@ export default async function handler(req, res) {
       }
       if (opCount > 0) await batch.commit();
 
+      // Kalıcı gelir defterini de sıfırla — aksi halde Kazanç ekranı reset
+      // sonrası hâlâ eski (silinmiş) satışlardan gelen toplamları gösterir.
+      await db.collection('config').doc('platform_stats').set({
+        totalVolume: 0, userOwnedVolume: 0, platformEarnings: 0, adminOwnEarnings: 0, resetAt: Date.now()
+      });
+
       const resetTimestamp = Date.now();
       await db.collection('system_config').doc('reset_epoch').set({
         resetAt: resetTimestamp,
@@ -1601,6 +1607,19 @@ export default async function handler(req, res) {
           payoutReleasedBy: await getRealUsername(accessToken)
         }, { merge: true });
 
+        // ── KALICI GELİR DEFTERİ ──────────────────────────────────────
+        // %5 komisyon, tam olarak ödeme satıcıya serbest bırakıldığı bu anda
+        // "kazanılmış" sayılır ve kalıcı bir belgeye eklenir — domain daha
+        // sonra silinse bile bu rakam asla etkilenmez. (Admin'in kendi
+        // domaini ise geliri zaten satın alma anında tam tutarla
+        // kaydedilmişti, burada tekrar sayılmaz.)
+        if (sale.sellerUsername && sale.sellerUsername !== ADMIN_USERNAME) {
+          const commissionAmt = Math.round((sale.price - payoutAmount) * 1e7) / 1e7;
+          await db.collection('config').doc('platform_stats').set({
+            platformEarnings: FieldValue.increment(commissionAmt)
+          }, { merge: true });
+        }
+
         // Domain kaydını da güncelle: liste ekranında artık "Onay Aşamasında"
         // değil, kesin "SATILDI" olarak görünsün. Ödeme kesinleştiği için
         // domain otomatik olarak PASİFE ALINIR (hidden) — gerçek Pi el
@@ -1972,21 +1991,19 @@ export default async function handler(req, res) {
 
       const allDomainsSnap = await db.collection('domains').get();
 
-      let totalVolume = 0;
-      let userOwnedVolume = 0;
-      let adminOwnEarnings = 0;
-      let platformEarnings = 0;
       const salesByDomain = {};
       const adminOwnSoldDomains = [];
       const allSalesDetail = [];
 
+      // Bu döngü artık KÜMÜLATİF kazanç toplamlarını hesaplamıyor (o kalıcı
+      // deftere taşındı) — sadece hâlâ var olan/silinmemiş satışların anlık
+      // bir listesini (Satış İstatistikleri sekmesi için) oluşturuyor.
       allDomainsSnap.forEach(d => {
         const data = d.data();
         const price = Number(data.price || 0);
 
         if (data.deleted === true || data.sold !== true) return;
 
-        totalVolume += price;
         salesByDomain[d.id] = (salesByDomain[d.id] || 0) + price;
 
         allSalesDetail.push({
@@ -1998,24 +2015,7 @@ export default async function handler(req, res) {
           type: data.type || 'genel'
         });
 
-        if (data.sellerUsername) {
-          userOwnedVolume += price;
-          if (data.sellerUsername === ADMIN_USERNAME) {
-            adminOwnEarnings += price;
-            adminOwnSoldDomains.push({
-              name: d.id,
-              price: data.price,
-              buyer: data.buyer || null
-            });
-          } else {
-            // Platform cüzdanı: SADECE başka kullanıcılar tarafından listelenip
-            // satılan domainlerden alınan %5 komisyon kesintisi. Satıcının payı
-            // (kalan %95), escrow serbest bırakıldığında kendisine gider —
-            // platform cüzdanına dahil edilmez.
-            platformEarnings += price * PLATFORM_COMMISSION_RATE;
-          }
-        } else {
-          adminOwnEarnings += price;
+        if (!data.sellerUsername || data.sellerUsername === ADMIN_USERNAME) {
           adminOwnSoldDomains.push({
             name: d.id,
             price: data.price,
@@ -2024,7 +2024,41 @@ export default async function handler(req, res) {
         }
       });
 
-      platformEarnings = Math.round(platformEarnings * 1e7) / 1e7;
+      // ── KALICI GELİR DEFTERİ ────────────────────────────────────────────
+      // İlk kez okunuyorsa (belge hiç yoksa), MEVCUT durumu eski (canlı
+      // tarama) yöntemiyle bir kereliğine hesaplayıp kalıcı belgeye yazıyoruz
+      // — böylece o ana kadar zaten kazanılmış gerçek gelir kaybolmuyor.
+      // Sonraki her satış/ödeme serbest bırakma bu belgeyi artırarak devam
+      // eder ve domain silinse bile bu toplamlar bir daha asla değişmez.
+      const statsRef = db.collection('config').doc('platform_stats');
+      const statsSnap = await statsRef.get();
+      let totalVolume, userOwnedVolume, platformEarnings, adminOwnEarnings;
+
+      if (statsSnap.exists) {
+        const s = statsSnap.data();
+        totalVolume = Number(s.totalVolume || 0);
+        userOwnedVolume = Number(s.userOwnedVolume || 0);
+        platformEarnings = Number(s.platformEarnings || 0);
+        adminOwnEarnings = Number(s.adminOwnEarnings || 0);
+      } else {
+        totalVolume = 0; userOwnedVolume = 0; adminOwnEarnings = 0; platformEarnings = 0;
+        allDomainsSnap.forEach(d => {
+          const data = d.data();
+          const price = Number(data.price || 0);
+          if (data.deleted === true || data.sold !== true) return;
+          totalVolume += price;
+          if (data.sellerUsername) {
+            userOwnedVolume += price;
+            if (data.sellerUsername === ADMIN_USERNAME) adminOwnEarnings += price;
+            else platformEarnings += price * PLATFORM_COMMISSION_RATE;
+          } else {
+            adminOwnEarnings += price;
+          }
+        });
+        platformEarnings = Math.round(platformEarnings * 1e7) / 1e7;
+        await statsRef.set({ totalVolume, userOwnedVolume, platformEarnings, adminOwnEarnings, backfilledAt: Date.now() });
+        console.log('[platform_stats] İlk kez oluşturuldu (backfill):', { totalVolume, userOwnedVolume, platformEarnings, adminOwnEarnings });
+      }
 
       allSalesDetail.sort((a, b) => (b.at || 0) - (a.at || 0));
 
@@ -2139,6 +2173,27 @@ export default async function handler(req, res) {
             count: FieldValue.increment(1),
             volume: FieldValue.increment(realPrice)
           }, { merge: true });
+
+          // ── KALICI GELİR DEFTERİ ────────────────────────────────────
+          // Bu rakamlar domain kaydına DEĞİL, ayrı ve kalıcı bir belgeye
+          // yazılıyor — domain daha sonra silinse bile (test temizliği ya
+          // da arşivleme) bu toplamlar ASLA etkilenmez.
+          // Üçüncü taraf bir satıcı varsa, %5 komisyon burada değil,
+          // ödeme gerçekten satıcıya serbest bırakıldığında (release_seller_
+          // payment) kayda geçiyor — çünkü o ana kadar komisyon henüz
+          // "kazanılmış" sayılmaz, Pi hâlâ havuzda bekliyor.
+          const statsIncrement = { totalVolume: FieldValue.increment(realPrice) };
+          if (sellerUsername) {
+            statsIncrement.userOwnedVolume = FieldValue.increment(realPrice);
+            if (sellerUsername === ADMIN_USERNAME) {
+              statsIncrement.adminOwnEarnings = FieldValue.increment(realPrice);
+            }
+          } else {
+            // Sistem domaini (satıcısız) — escrow/serbest bırakma adımı hiç
+            // yok, tutarın tamamı satış anında kesinleşmiş sayılır.
+            statsIncrement.adminOwnEarnings = FieldValue.increment(realPrice);
+          }
+          await db.collection('config').doc('platform_stats').set(statsIncrement, { merge: true });
 
           await updateUserPoints(username, realPrice, 'purchase');
 
