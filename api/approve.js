@@ -645,10 +645,17 @@ export default async function handler(req, res) {
       // "Pi'niz iade edildi" bildirimi gönderiliyor) SONRA aynı koşul tekrar
       // kontrol edilip hata döndürülüyordu — yani hiçbir şey silinmediği
       // halde puan/istatistik/bildirim tarafında geri dönüşü olmayan yan
-      // etkiler zaten gerçekleşmiş oluyordu. Artık satılmış bir domaine hiç
-      // dokunmuyoruz; admin önce "Tekrar Satılık Yap" ile satıştan
-      // kaldırmalı (o da artık ödemesi kesinleşmiş satışları engelliyor).
-      if (domainDataForDelete.sold === true) {
+      // etkiler zaten gerçekleşmiş oluyordu.
+      //
+      // Satılmış ama ödemesi HENÜZ kesinleşmemiş (havuzda bekleyen/işlemde
+      // olan gerçek Pi var) bir domaine hâlâ dokunmuyoruz — admin önce
+      // "Tekrar Satılık Yap" ile düzgünce ele almalı.
+      //
+      // Ödemesi KESİNLEŞMİŞ (payoutStatus:'released', zaten otomatik pasife
+      // alınmış) bir domain ise artık SİLİNEBİLİR — çünkü zaten piyasadan
+      // kalıcı olarak çekilmiş durumda, silinmesi çifte-satış riski
+      // yaratmaz; bu sadece test/arşiv temizliğidir.
+      if (domainDataForDelete.sold === true && domainDataForDelete.payoutStatus !== 'released') {
         return res.status(400).json({ error: "Satılmış domain önce 'Tekrar Satılık Yap' ile satıştan kaldırılmalı" });
       }
 
