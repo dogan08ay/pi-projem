@@ -57,6 +57,25 @@ function getPiClient() {
   return piClient;
 }
 
+// pi-backend (axios tabanlı) bir API hatası aldığında e.message sadece
+// "Request failed with status code 401" gibi genel bir metin veriyor —
+// gerçek sebep (örn. "invalid API key" veya "A2U not enabled") e.response.data
+// içinde saklı kalıyor ve loglanmazsa hiç görünmüyor. Bu fonksiyon o veriyi
+// çıkarıp okunabilir hale getiriyor ve Vercel Function Logs'a yazdırıyor.
+function describePiApiError(e) {
+  const status = e?.response?.status;
+  const data = e?.response?.data;
+  let detail = '';
+  if (data) {
+    detail = typeof data === 'string' ? data : JSON.stringify(data);
+  }
+  const full = status
+    ? `HTTP ${status}${detail ? ' — ' + detail : ''} (${e.message})`
+    : e?.message || String(e);
+  console.error('[PI-API HATA DETAYI]', full);
+  return full;
+}
+
 // ─── Firebase Admin Başlatma ───────────────────────────────────────────────
 function getAdminApp() {
   if (getApps().length > 0) return getApps()[0];
@@ -1583,25 +1602,27 @@ export default async function handler(req, res) {
 
         return res.status(200).json({ success: true, txid, payoutAmount });
       } catch (stepError) {
+        const detail = describePiApiError(stepError);
         // Hangi adımda kaldığını (paymentId/txid) kaydediyoruz ki bir sonraki
         // deneme sıfırdan başlamasın — Pi'ler güvende, sadece işlem yarım kaldı.
         await saleRef.set({
           payoutStatus: 'failed',
-          payoutError: stepError.message,
+          payoutError: detail,
           payoutFailedAt: Date.now(),
           payoutPaymentId: paymentId || null,
           payoutTxid: txid || null
         }, { merge: true });
         return res.status(500).json({
-          error: `Ödeme tamamlanamadı ama Pi'ler kaybolmadı, güvenli havuzda bekliyor: ${stepError.message}. Aynı butona tekrar basarak kaldığı yerden devam ettirebilirsiniz.`
+          error: `Ödeme tamamlanamadı ama Pi'ler kaybolmadı, güvenli havuzda bekliyor: ${detail}. Aynı butona tekrar basarak kaldığı yerden devam ettirebilirsiniz.`
         });
       }
     } catch (e) {
+      const detail = describePiApiError(e);
       console.error("release_seller_payment hatası:", e);
       try {
-        await getDb().collection('global_sales').doc(saleId).set({ payoutStatus: 'failed', payoutError: e.message, payoutFailedAt: Date.now() }, { merge: true });
+        await getDb().collection('global_sales').doc(saleId).set({ payoutStatus: 'failed', payoutError: detail, payoutFailedAt: Date.now() }, { merge: true });
       } catch (_) {}
-      return res.status(500).json({ error: "Ödeme gönderilemedi: " + e.message });
+      return res.status(500).json({ error: "Ödeme gönderilemedi: " + detail });
     }
   }
 
@@ -1702,20 +1723,22 @@ export default async function handler(req, res) {
 
         return res.status(200).json({ success: true, txid, refundAmount });
       } catch (stepError) {
+        const detail = describePiApiError(stepError);
         await saleRef.set({
           payoutStatus: 'refund_failed',
-          refundError: stepError.message,
+          refundError: detail,
           refundFailedAt: Date.now(),
           refundPaymentId: paymentId || null,
           refundTxid: txid || null
         }, { merge: true });
         return res.status(500).json({
-          error: `İade tamamlanamadı ama Pi'ler kaybolmadı, güvenli havuzda bekliyor: ${stepError.message}. Aynı butona tekrar basarak kaldığı yerden devam ettirebilirsiniz.`
+          error: `İade tamamlanamadı ama Pi'ler kaybolmadı, güvenli havuzda bekliyor: ${detail}. Aynı butona tekrar basarak kaldığı yerden devam ettirebilirsiniz.`
         });
       }
     } catch (e) {
+      const detail = describePiApiError(e);
       console.error("refund_buyer_payment hatası:", e);
-      return res.status(500).json({ error: "İade gönderilemedi: " + e.message });
+      return res.status(500).json({ error: "İade gönderilemedi: " + detail });
     }
   }
 
