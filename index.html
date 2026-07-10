@@ -1360,6 +1360,12 @@
                     <span style="display:flex;align-items:center;gap:6px;font-size:0.72em;color:#fca5a5;font-weight:800;text-transform:uppercase;">🔖 <span data-i18n="myTrademarkClaims"></span></span>
                 </div>
                 <div style="font-size:0.65em;color:#94a3b8;margin-bottom:8px;line-height:1.5;" data-i18n="myTrademarkClaimsNote"></div>
+                <select id="my-trademark-filter-select" onchange="window.setMyTrademarkFilter(this.value)" style="width:100%;margin-bottom:8px;padding:7px 8px;border-radius:8px;border:1.5px solid #7f1d1d;background:#0f172a;color:#fca5a5;font-size:0.7em;font-weight:700;cursor:pointer;">
+                    <option value="all" data-i18n="trademarkFilterAll"></option>
+                    <option value="pending" data-i18n="trademarkFilterPending"></option>
+                    <option value="resolved" data-i18n="trademarkFilterResolved"></option>
+                    <option value="rejected" data-i18n="trademarkFilterRejected"></option>
+                </select>
                 <div id="my-trademark-claims-list">
                     <div class="skeleton-ticket-row"><div class="skeleton" style="width:34px;height:34px;border-radius:8px;"></div><div style="flex:1;"><div class="skeleton skeleton-line" style="width:60%;margin:0 0 6px 0;"></div><div class="skeleton skeleton-line" style="width:35%;height:8px;margin:0;"></div></div></div>
                 </div>
@@ -1523,6 +1529,12 @@
             <div style="background:#0a0f1e;border:2px solid #10b981;border-radius:12px;padding:10px;">
                 <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;padding-bottom:7px;border-bottom:1px solid #065f46;"><span>💸</span><span style="font-size:0.72em;color:#6ee7b7;font-weight:800;text-transform:uppercase;" data-i18n="payoutsTabLabel"></span></div>
                 <div style="font-size:0.65em;color:#94a3b8;margin-bottom:8px;line-height:1.5;" data-i18n="payoutsExplainer"></div>
+                <select id="payouts-filter-select" onchange="window.setPayoutsFilter(this.value)" style="width:100%;margin-bottom:8px;padding:7px 8px;border-radius:8px;border:1.5px solid #065f46;background:#0f172a;color:#6ee7b7;font-size:0.7em;font-weight:700;cursor:pointer;">
+                    <option value="all" data-i18n="trademarkFilterAll"></option>
+                    <option value="pending" data-i18n="payoutsFilterPending"></option>
+                    <option value="resolved" data-i18n="trademarkFilterResolved"></option>
+                    <option value="rejected" data-i18n="payoutsFilterFailed"></option>
+                </select>
                 <div id="payouts-admin-list">
                     <div class="skeleton-ticket-row"><div class="skeleton" style="width:34px;height:34px;border-radius:8px;"></div><div style="flex:1;"><div class="skeleton skeleton-line" style="width:60%;margin:0 0 6px 0;"></div><div class="skeleton skeleton-line" style="width:35%;height:8px;margin:0;"></div></div></div>
                     <div class="skeleton-ticket-row"><div class="skeleton" style="width:34px;height:34px;border-radius:8px;"></div><div style="flex:1;"><div class="skeleton skeleton-line" style="width:52%;margin:0 0 6px 0;"></div><div class="skeleton skeleton-line" style="width:30%;height:8px;margin:0;"></div></div></div>
@@ -1902,6 +1914,23 @@ const i18n = {
     trademarkFilterResolved:"Çözülen",
     trademarkFilterRejected:"Reddedilen",
     trademarkFilterEmpty:"Bu filtreye uyan talep yok.",
+    trademarkStageReceived:"Talep Alındı",
+    trademarkStageReviewing:"İnceleniyor",
+    trademarkStageResolved:"Çözüldü",
+    trademarkColClaimant:"Başvuran",
+    trademarkColCompany:"Şirket",
+    trademarkColUser:"Kullanıcı",
+    trademarkColRegistration:"Tescil Bilgisi",
+    trademarkColDescription:"Açıklama",
+    trademarkColEmail:"E-posta",
+    trademarkColDate:"Tarih",
+    payoutsFilterPending:"Bekleme",
+    payoutsFilterFailed:"Reddedildi",
+    payoutColSeller:"Satıcı",
+    payoutColAmount:"Tutar",
+    payoutColNote:"Not",
+    payoutColError:"Hata",
+    payoutColTxid:"İşlem ID (txid)",
     payoutsTabLabel:"Bekleyen Ödemeler",
     payoutsExplainer:"Bir domain satışı tamamlandığında ödeme, komisyon kesilmeden önce burada bekler. Satıcının domaini alıcıya devrettiğini teyit ettikten sonra 'Transfer Tamam, Öde' butonuna basın — komisyon düşülmüş tutar otomatik olarak satıcının Pi hesabına gönderilir.",
     payoutStatusPending:"Havuzda Bekliyor",
@@ -2030,6 +2059,12 @@ const i18n = {
     changelogV1_6Item4:"Kullanıcılar kendi taleplerini, admin ise herhangi bir talebi kalıcı olarak silebiliyor",
     changelogV1_6Item5:"Talep listesi kullanıcı/konu/tarih/durum bilgilerini net çizgilerle ayrılmış tablo düzeninde gösteriyor",
 
+    changelogV1_8:"v1.8 - Ödeme Altyapısı ve Marka Hakkı Güncellemesi",
+    changelogV1_8Item1:"Satıcıya ödeme gönderme ve iade işlemlerindeki kritik hatalar giderildi — Pi ödemeleri artık güvenilir şekilde tamamlanıyor",
+    changelogV1_8Item2:"Marka hakkı bildirimleri için kullanıcı takip paneli eklendi: süreç adımları (Talep Alındı → İnceleniyor → Çözüldü) ve talebi geri çekme imkanı",
+    changelogV1_8Item3:"Admin panelinde Marka Hakkı ve Bekleyen Ödemeler bölümleri artık düzenli tablo görünümünde, durum filtreleriyle (Bekleyen/Çözülen/Reddedilen)",
+    changelogV1_8Item4:"Marka hakkı bildirim formu, resmi ve bölümlere ayrılmış profesyonel bir tasarıma kavuştu",
+    changelogV1_8Item5:"Giriş ekranı ve yan menüde çeşitli görünüm ve boşluk düzeltmeleri yapıldı",
     changelogV1_7:"v1.7 - Deneyim ve Erişilebilirlik Güncellemesi",
     changelogV1_7Item1:"Destek talebi mesajlarında yanıtın kime ait olduğu (Yönetici / Siz) artık çok daha büyük ve belirgin bir başlıkla gösteriliyor",
     changelogV1_7Item2:"Gizlilik Politikası ve Kullanım Şartları artık sayfa yenilenmeden, uygulama içinde pencere olarak açılıyor — 'beyaz ekran / yükleniyor' takılması tamamen giderildi",
@@ -2262,6 +2297,23 @@ const i18n = {
     trademarkFilterResolved:"Resolved",
     trademarkFilterRejected:"Rejected",
     trademarkFilterEmpty:"No claims match this filter.",
+    trademarkStageReceived:"Received",
+    trademarkStageReviewing:"Under Review",
+    trademarkStageResolved:"Resolved",
+    trademarkColClaimant:"Claimant",
+    trademarkColCompany:"Company",
+    trademarkColUser:"User",
+    trademarkColRegistration:"Registration Info",
+    trademarkColDescription:"Description",
+    trademarkColEmail:"Email",
+    trademarkColDate:"Date",
+    payoutsFilterPending:"Waiting",
+    payoutsFilterFailed:"Failed",
+    payoutColSeller:"Seller",
+    payoutColAmount:"Amount",
+    payoutColNote:"Note",
+    payoutColError:"Error",
+    payoutColTxid:"Transaction ID (txid)",
     payoutsTabLabel:"Pending Payouts",
     payoutsExplainer:"When a domain sale completes, the payment waits here before the commission is deducted. After confirming the seller has transferred the domain to the buyer, click 'Confirm Transfer, Pay' — the amount minus commission is sent automatically to the seller's Pi account.",
     payoutStatusPending:"Held in Escrow",
@@ -2389,6 +2441,12 @@ const i18n = {
     changelogV1_6Item4:"Users can delete their own tickets, and admin can permanently delete any ticket",
     changelogV1_6Item5:"Ticket list now shows user/subject/date/status in a clearly divided table layout",
 
+    changelogV1_8:"v1.8 - Payments & Trademark Update",
+    changelogV1_8Item1:"Fixed critical bugs in seller payouts and refunds — Pi payments now complete reliably",
+    changelogV1_8Item2:"Added a tracking panel for trademark claims: process steps (Received → Under Review → Resolved) and the ability to withdraw a claim",
+    changelogV1_8Item3:"The Trademark and Pending Payments sections in the admin panel now use a clean table layout with status filters (Pending/Resolved/Rejected)",
+    changelogV1_8Item4:"Redesigned the trademark claim form into a professional, sectioned layout",
+    changelogV1_8Item5:"Various layout and spacing fixes on the landing screen and side menu",
     changelogV1_7:"v1.7 - Experience & Accessibility Update",
     changelogV1_7Item1:"Support ticket messages now show who the reply is from (Admin / You) with a much bigger, clearer header",
     changelogV1_7Item2:"Privacy Policy and Terms of Use now open as an in-app window instead of a full page reload — the 'white screen / loading' flash is completely gone",
@@ -2899,6 +2957,7 @@ window.openChangelogModal=function(){
     const list=document.getElementById('changelog-list');
     if(!list) return;
     const versions=[
+        {v:t('changelogV1_8'),items:[t('changelogV1_8Item1'),t('changelogV1_8Item2'),t('changelogV1_8Item3'),t('changelogV1_8Item4'),t('changelogV1_8Item5')],date:'2026-07-10',icon:'💳',color:'#10b981'},
         {v:t('changelogV1_7'),items:[t('changelogV1_7Item1'),t('changelogV1_7Item2'),t('changelogV1_7Item3'),t('changelogV1_7Item4'),t('changelogV1_7Item5')],date:'2026-07-07',icon:'🧭',color:'#f87171'},
         {v:t('changelogV1_6'),items:[t('changelogV1_6Item1'),t('changelogV1_6Item2'),t('changelogV1_6Item3'),t('changelogV1_6Item4'),t('changelogV1_6Item5')],date:'2026-07-06',icon:'🎫',color:'#818cf8'},
         {v:t('changelogV1_5'),items:[t('changelogV1_5Item1'),t('changelogV1_5Item2'),t('changelogV1_5Item3')],date:'2026-07-04',icon:'✨',color:'#f59e0b'},
@@ -3732,6 +3791,13 @@ function listenToTrademarkClaims(){
 }
 
 let pendingPayoutsUnsubscribe=null;
+let _allPendingPayouts = [];
+let payoutsFilter = localStorage.getItem('w3dg_payouts_filter') || 'all';
+window.setPayoutsFilter = function(val) {
+    payoutsFilter = val;
+    localStorage.setItem('w3dg_payouts_filter', val);
+    renderAdminPayouts(_allPendingPayouts);
+};
 function listenToPendingPayouts(){
     if(pendingPayoutsUnsubscribe) pendingPayoutsUnsubscribe();
     pendingPayoutsUnsubscribe=onSnapshot(collection(db,"global_sales"),(snapshot)=>{
@@ -3741,6 +3807,9 @@ function listenToPendingPayouts(){
             if(d.payoutStatus) payouts.push({id:docSnap.id,...d}); // sadece escrow'a giren (satıcılı) satışlar
         });
         payouts.sort((a,b)=>(b.at||0)-(a.at||0));
+        _allPendingPayouts = payouts;
+        const sel=document.getElementById('payouts-filter-select');
+        if(sel&&sel.value!==payoutsFilter) sel.value=payoutsFilter;
         renderAdminPayouts(payouts);
         const pendingCount=payouts.filter(p=>p.payoutStatus==='pending').length;
         const badge=document.getElementById('payouts-count-badge');
@@ -5069,15 +5138,26 @@ function renderAdminTrademarkClaims(claims) {
 
     container.innerHTML = filtered.map(c => {
         const created = c.createdAt ? new Date(c.createdAt).toLocaleDateString(locale, { day: '2-digit', month: '2-digit' }) + ' ' + new Date(c.createdAt).toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' }) : '-';
+        const row = (label, value) => value ? `<tr><td style="padding:5px 8px 5px 0;font-size:0.62em;color:#94a3b8;font-weight:700;white-space:nowrap;vertical-align:top;width:1%;">${label}</td><td style="padding:5px 0;font-size:0.72em;color:#e2e8f0;word-break:break-word;">${value}</td></tr>` : '';
+        const tableHtml = `<table style="width:100%;border-collapse:collapse;margin-bottom:8px;">
+            <tbody style="display:block;">
+            ${[
+                row(t('trademarkColClaimant'), escapeHtml(c.claimantName)),
+                row(t('trademarkColCompany'), c.companyName ? escapeHtml(c.companyName) : ''),
+                row(t('trademarkColUser'), c.submittedByUsername ? '👤 @' + escapeHtml(c.submittedByUsername) : ''),
+                row(t('trademarkColRegistration'), c.trademarkInfo ? escapeHtml(c.trademarkInfo) : ''),
+                row(t('trademarkColDescription'), `<div style="background:rgba(15,23,42,0.6);border-radius:6px;padding:6px 8px;white-space:pre-wrap;">${escapeHtml(c.description)}</div>`),
+                row(t('trademarkColEmail'), `<a href="mailto:${escapeHtml(c.contactEmail)}" style="color:#818cf8;">${escapeHtml(c.contactEmail)}</a>`),
+                row(t('trademarkColDate'), created)
+            ].join('')}
+            </tbody>
+        </table>`;
         return `<div style="background:#0f172a;border:1px solid #334155;border-left:4px solid ${statusColor[c.status] || '#6366f1'};border-radius:10px;padding:10px;margin-bottom:8px;">
-            <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:6px;margin-bottom:6px;">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:6px;margin-bottom:6px;padding-bottom:6px;border-bottom:1px solid #334155;">
                 <div style="font-size:0.8em;font-weight:800;color:#fca5a5;">🔖 ${escapeHtml(c.domainName)}</div>
                 <span class="ticket-status-badge" style="background:${statusColor[c.status] || '#6366f1'}22;color:${statusColor[c.status] || '#6366f1'};border:1px solid ${statusColor[c.status] || '#6366f1'}55;">${statusMap[c.status] || c.status}</span>
             </div>
-            <div style="font-size:0.72em;color:#cbd5e1;margin-bottom:3px;"><b>${escapeHtml(c.claimantName)}</b>${c.companyName ? ' — ' + escapeHtml(c.companyName) : ''}${c.submittedByUsername ? ` · 👤 @${escapeHtml(c.submittedByUsername)}` : ''}</div>
-            ${c.trademarkInfo ? `<div style="font-size:0.68em;color:#94a3b8;margin-bottom:3px;">📄 ${escapeHtml(c.trademarkInfo)}</div>` : ''}
-            <div style="font-size:0.72em;color:#e2e8f0;background:rgba(15,23,42,0.6);border-radius:6px;padding:6px 8px;margin-bottom:6px;white-space:pre-wrap;word-break:break-word;">${escapeHtml(c.description)}</div>
-            <div style="font-size:0.65em;color:#64748b;margin-bottom:8px;">✉️ <a href="mailto:${escapeHtml(c.contactEmail)}" style="color:#818cf8;">${escapeHtml(c.contactEmail)}</a> · 🕓 ${created}</div>
+            ${tableHtml}
             ${c.status === 'rejected' ? `
             <button onclick="adminDeleteTrademarkClaim('${c.id}')" style="width:100%;padding:6px;border:1px solid #7f1d1d;background:rgba(127,29,29,0.25);color:#fca5a5;border-radius:6px;font-size:0.65em;font-weight:700;cursor:pointer;">🗑️ ${t('trademarkDeleteBtn')}</button>
             ` : c.status === 'resolved' ? `
@@ -5151,6 +5231,13 @@ window.adminDeleteTrademarkClaim = async function(claimId) {
 // ══════════════════════════════════════════════════════════════════════
 //  KULLANICI: KENDİ MARKA HAKKI TALEPLERİM (Panelim → 🔖 sekmesi)
 // ══════════════════════════════════════════════════════════════════════
+let _myTrademarkClaims = [];
+let myTrademarkFilter = localStorage.getItem('w3dg_my_trademark_filter') || 'all';
+window.setMyTrademarkFilter = function(val) {
+    myTrademarkFilter = val;
+    localStorage.setItem('w3dg_my_trademark_filter', val);
+    renderMyTrademarkClaims(_myTrademarkClaims);
+};
 async function loadMyTrademarkClaims() {
     if (!isAuth) return;
     try {
@@ -5161,8 +5248,11 @@ async function loadMyTrademarkClaims() {
         });
         const result = await r.json();
         if (result.success) {
-            renderMyTrademarkClaims(result.claims || []);
-            const openCount = (result.claims || []).filter(c => c.status === 'new' || c.status === 'reviewing').length;
+            _myTrademarkClaims = result.claims || [];
+            const sel = document.getElementById('my-trademark-filter-select');
+            if (sel && sel.value !== myTrademarkFilter) sel.value = myTrademarkFilter;
+            renderMyTrademarkClaims(_myTrademarkClaims);
+            const openCount = _myTrademarkClaims.filter(c => c.status === 'new' || c.status === 'reviewing').length;
             const badge = document.getElementById('user-trademark-tab-badge');
             if (badge) {
                 if (openCount > 0) { badge.style.display = 'inline-block'; badge.textContent = openCount > 99 ? '99+' : openCount; }
@@ -5177,8 +5267,15 @@ async function loadMyTrademarkClaims() {
 function renderMyTrademarkClaims(claims) {
     const container = document.getElementById('my-trademark-claims-list');
     if (!container) return;
-    if (!claims.length) {
-        container.innerHTML = `<div class="ticket-empty-state"><div class="empty-icon">🔖</div><div style="font-size:0.78em;color:#64748b;">${t('myTrademarkClaimsEmpty')}</div></div>`;
+    // Aktif filtreye göre daralt — çözülen talepler kaybolmuyor, filtreyle geri çağrılabiliyor.
+    const filtered = claims.filter(c => {
+        if (myTrademarkFilter === 'pending') return c.status === 'new' || c.status === 'reviewing';
+        if (myTrademarkFilter === 'resolved') return c.status === 'resolved';
+        if (myTrademarkFilter === 'rejected') return c.status === 'rejected';
+        return true; // 'all'
+    });
+    if (!filtered.length) {
+        container.innerHTML = `<div class="ticket-empty-state"><div class="empty-icon">🔖</div><div style="font-size:0.78em;color:#64748b;">${claims.length ? t('trademarkFilterEmpty') : t('myTrademarkClaimsEmpty')}</div></div>`;
         return;
     }
     const locale = currentLang === 'en' ? 'en-GB' : 'tr-TR';
@@ -5186,16 +5283,20 @@ function renderMyTrademarkClaims(claims) {
     const statusColor = { new: '#3b82f6', reviewing: '#f59e0b', resolved: '#10b981', rejected: '#ef4444', withdrawn: '#64748b' };
     // Aşama sırası: kullanıcıya süreci basit bir zaman çizelgesi gibi göstermek için.
     const stageOrder = ['new', 'reviewing', 'resolved'];
+    const stageLabels = [t('trademarkStageReceived'), t('trademarkStageReviewing'), t('trademarkStageResolved')];
 
-    container.innerHTML = claims.map(c => {
+    container.innerHTML = filtered.map(c => {
         const created = c.createdAt ? new Date(c.createdAt).toLocaleDateString(locale, { day: '2-digit', month: '2-digit' }) + ' ' + new Date(c.createdAt).toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' }) : '-';
         const canWithdraw = c.status === 'new' || c.status === 'reviewing';
         const currentStageIdx = stageOrder.indexOf(c.status);
         const isTerminal = c.status === 'rejected' || c.status === 'withdrawn';
         const timelineHtml = isTerminal ? '' : `
-            <div style="display:flex;align-items:center;gap:4px;margin:8px 0;">
+            <div style="display:flex;align-items:flex-start;gap:4px;margin:8px 0;">
                 ${stageOrder.map((st, i) => `
-                    <div style="flex:1;height:4px;border-radius:2px;background:${i <= currentStageIdx ? statusColor[c.status] : '#334155'};"></div>
+                    <div style="flex:1;text-align:center;">
+                        <div style="height:4px;border-radius:2px;background:${i <= currentStageIdx ? statusColor[c.status] : '#334155'};margin-bottom:4px;"></div>
+                        <div style="font-size:0.55em;font-weight:${i <= currentStageIdx ? '800' : '600'};color:${i <= currentStageIdx ? statusColor[c.status] : '#475569'};line-height:1.3;">${stageLabels[i]}</div>
+                    </div>
                 `).join('')}
             </div>`;
         return `<div style="background:#0f172a;border:1px solid #334155;border-left:4px solid ${statusColor[c.status] || '#6366f1'};border-radius:10px;padding:10px;margin-bottom:8px;">
@@ -5233,32 +5334,46 @@ window.withdrawMyTrademarkClaim = async function(claimId) {
 function renderAdminPayouts(payouts) {
     const container = document.getElementById('payouts-admin-list');
     if (!container) return;
-    if (!payouts.length) {
-        container.innerHTML = `<p style="font-size:0.75em;opacity:0.5;text-align:center;">${t('payoutsAdminNoPayouts')}</p>`;
+    const waitingStates = ['pending', 'no_seller', 'processing', 'refund_processing'];
+    const resolvedStates = ['released', 'refunded'];
+    const failedStates = ['failed', 'refund_failed'];
+    const filtered = payouts.filter(p => {
+        if (payoutsFilter === 'pending') return waitingStates.includes(p.payoutStatus);
+        if (payoutsFilter === 'resolved') return resolvedStates.includes(p.payoutStatus);
+        if (payoutsFilter === 'rejected') return failedStates.includes(p.payoutStatus);
+        return true; // 'all'
+    });
+    if (!filtered.length) {
+        container.innerHTML = `<p style="font-size:0.75em;opacity:0.5;text-align:center;">${payouts.length ? t('trademarkFilterEmpty') : t('payoutsAdminNoPayouts')}</p>`;
         return;
     }
     const locale = currentLang === 'en' ? 'en-GB' : 'tr-TR';
     const statusMap = { pending: t('payoutStatusPending'), released: t('payoutStatusReleased'), no_seller: t('payoutStatusNoSeller'), failed: t('payoutStatusFailed'), refund_processing: t('payoutStatusRefundProcessing'), refunded: t('payoutStatusRefunded'), refund_failed: t('payoutStatusRefundFailed') };
     const statusColor = { pending: '#f59e0b', released: '#10b981', no_seller: '#94a3b8', failed: '#ef4444', refund_processing: '#f59e0b', refunded: '#818cf8', refund_failed: '#ef4444' };
 
-    container.innerHTML = payouts.map(p => {
+    container.innerHTML = filtered.map(p => {
         const when = p.at ? new Date(p.at).toLocaleDateString(locale, { day: '2-digit', month: '2-digit' }) + ' ' + new Date(p.at).toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' }) : '-';
         const commissionAmt = Math.round((p.price - (p.payoutAmount || 0)) * 1e7) / 1e7;
         const canRelease = p.payoutStatus === 'pending' || p.payoutStatus === 'failed';
         const canRefund = p.payoutStatus === 'pending' || p.payoutStatus === 'failed' || p.payoutStatus === 'refund_failed';
+        const row = (label, value) => value ? `<tr><td style="padding:5px 8px 5px 0;font-size:0.62em;color:#94a3b8;font-weight:700;white-space:nowrap;vertical-align:top;width:1%;">${label}</td><td style="padding:5px 0;font-size:0.72em;color:#e2e8f0;word-break:break-word;">${value}</td></tr>` : '';
+        const tableHtml = `<table style="width:100%;border-collapse:collapse;margin-bottom:8px;"><tbody>
+            ${row(t('ticketTableUser'), `@${escapeHtml(p.user || '-')}`)}
+            ${row(t('payoutColSeller'), p.sellerUsername ? '🏷️ @' + escapeHtml(p.sellerUsername) : '—')}
+            ${row(t('payoutColAmount'), `${p.price} Pi &nbsp;→&nbsp; <span style="color:#6ee7b7;font-weight:700;">${p.payoutAmount != null ? p.payoutAmount : '-'} Pi</span> <span style="color:#64748b;">(%${Math.round((p.commissionRate || 0.05) * 100)}: ${commissionAmt} Pi)</span>`)}
+            ${p.payoutStatus === 'no_seller' ? row(t('payoutColNote'), `<span style="color:#94a3b8;">⚠️ ${t('payoutNoSellerWarning')}</span>`) : ''}
+            ${(p.payoutStatus === 'failed' && p.payoutError) ? row(t('payoutColError'), `<span style="color:#f87171;">${escapeHtml(p.payoutError)}</span>`) : ''}
+            ${(p.payoutStatus === 'refund_failed' && p.refundError) ? row(t('payoutColError'), `<span style="color:#f87171;">${escapeHtml(p.refundError)}</span>`) : ''}
+            ${p.payoutStatus === 'released' && p.payoutTxid ? row(t('payoutColTxid'), `<span style="font-size:0.85em;color:#64748b;word-break:break-all;">${escapeHtml(p.payoutTxid)}</span>`) : ''}
+            ${p.payoutStatus === 'refunded' && p.refundTxid ? row(t('payoutColTxid'), `<span style="font-size:0.85em;color:#64748b;word-break:break-all;">${escapeHtml(p.refundTxid)}</span>`) : ''}
+            ${row(t('trademarkColDate'), when)}
+        </tbody></table>`;
         return `<div style="background:#0f172a;border:1px solid #334155;border-left:4px solid ${statusColor[p.payoutStatus] || '#6366f1'};border-radius:10px;padding:10px;margin-bottom:8px;">
-            <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:6px;margin-bottom:6px;">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:6px;margin-bottom:6px;padding-bottom:6px;border-bottom:1px solid #334155;">
                 <div style="font-size:0.8em;font-weight:800;color:#e2e8f0;">🌐 ${escapeHtml(p.domain)}</div>
                 <span class="ticket-status-badge" style="background:${statusColor[p.payoutStatus] || '#6366f1'}22;color:${statusColor[p.payoutStatus] || '#6366f1'};border:1px solid ${statusColor[p.payoutStatus] || '#6366f1'}55;">${statusMap[p.payoutStatus] || p.payoutStatus}</span>
             </div>
-            <div style="font-size:0.72em;color:#cbd5e1;margin-bottom:3px;">👤 ${t('ticketTableUser')}: <b>@${p.user}</b> · 🏷️ ${p.sellerUsername ? `@${escapeHtml(p.sellerUsername)}` : '—'}</div>
-            <div style="font-size:0.72em;color:#94a3b8;margin-bottom:6px;">💰 ${p.price} Pi &nbsp;→&nbsp; <span style="color:#6ee7b7;font-weight:700;">${p.payoutAmount != null ? p.payoutAmount : '-'} Pi</span> <span style="color:#64748b;">(%${Math.round((p.commissionRate || 0.05) * 100)} komisyon: ${commissionAmt} Pi)</span></div>
-            ${p.payoutStatus === 'no_seller' ? `<div style="font-size:0.65em;color:#94a3b8;margin-bottom:8px;">⚠️ ${t('payoutNoSellerWarning')}</div>` : ''}
-            ${(p.payoutStatus === 'failed' && p.payoutError) ? `<div style="font-size:0.65em;color:#f87171;margin-bottom:8px;">⚠️ ${escapeHtml(p.payoutError)}</div>` : ''}
-            ${(p.payoutStatus === 'refund_failed' && p.refundError) ? `<div style="font-size:0.65em;color:#f87171;margin-bottom:8px;">⚠️ ${escapeHtml(p.refundError)}</div>` : ''}
-            ${p.payoutStatus === 'released' && p.payoutTxid ? `<div style="font-size:0.6em;color:#64748b;margin-bottom:8px;word-break:break-all;">🔑 txid: ${escapeHtml(p.payoutTxid)}</div>` : ''}
-            ${p.payoutStatus === 'refunded' && p.refundTxid ? `<div style="font-size:0.6em;color:#64748b;margin-bottom:8px;word-break:break-all;">🔑 txid: ${escapeHtml(p.refundTxid)}</div>` : ''}
-            <div style="font-size:0.6em;color:#64748b;margin-bottom:8px;">🕓 ${when}</div>
+            ${tableHtml}
             ${(canRelease || canRefund) ? `<div style="display:flex;gap:5px;">
                 ${canRelease ? `<button onclick="adminReleasePayout('${p.id}','${escapeHtml(p.domain)}','${p.sellerUsername || ''}')" style="flex:1;padding:8px;border:none;border-radius:8px;background:linear-gradient(135deg,#10b981,#34d399);color:#052e21;font-weight:800;font-size:0.68em;cursor:pointer;">${t('payoutReleaseBtn')}</button>` : ''}
                 ${canRefund ? `<button onclick="adminRefundPayout('${p.id}','${escapeHtml(p.domain)}','${escapeHtml(p.user || '')}')" style="flex:1;padding:8px;border:none;border-radius:8px;background:linear-gradient(135deg,#818cf8,#a5b4fc);color:#1e1b4b;font-weight:800;font-size:0.68em;cursor:pointer;">${t('payoutRefundBtn')}</button>` : ''}
