@@ -3,16 +3,32 @@ import { getFirestore, FieldValue } from 'firebase-admin/firestore';
 import { getStorage } from 'firebase-admin/storage';
 import { getDatabase } from 'firebase-admin/database';
 import * as PiNetworkPkg from 'pi-backend';
-// FIX (kök neden): pi-backend paketi TypeScript'ten derlenmiş bir CJS
-// paketi olup `exports.default = PiNetwork` şeklinde dışa aktarım yapıyor.
-// Node'un native ESM'inde `import X from 'cjs-paketi'` söz dizimi, X'i
-// paketin .default'una DEĞİL, module.exports'un TAMAMINA bağlar. Yani
-// PiNetwork değişkeni aslında bir sınıf değil, içinde .default barındıran
-// düz bir nesne oluyordu — bu yüzden `new PiNetwork(...)` tam olarak
-// "PiNetwork is not a constructor" hatasını veriyordu. Paketi namespace
-// olarak import edip .default'u (yoksa paketin kendisini) kullanmak, hangi
-// export şeklini kullanırsa kullansın doğru sonucu garanti eder.
-const PiNetwork = PiNetworkPkg.default || PiNetworkPkg;
+// pi-backend gerçek bir native ESM paketi (package.json'ında "type":"module"
+// ve doğru "exports" haritası var) — yani `import PiNetwork from 'pi-backend'`
+// normal şartlarda doğrudan çalışmalı. Yine de Vercel'in fonksiyon
+// derleyicisi (esbuild/ncc) ESM<->CJS arasında paketleme yaparken export
+// şeklini bozabiliyor; bu yüzden burada TÜM olası şekilleri sırayla deniyor
+// ve hangisinin işe yaradığını/yaramadığını sunucu loglarına (Vercel →
+// Functions → Logs) yazdırıyoruz. Bir sonraki hata olursa loglardan tam
+// olarak hangi export şeklinin geldiğini görüp kesin teşhis koyabiliriz.
+function resolvePiNetworkCtor() {
+  const candidates = {
+    'PiNetworkPkg.default': PiNetworkPkg && PiNetworkPkg.default,
+    'PiNetworkPkg.PiNetwork': PiNetworkPkg && PiNetworkPkg.PiNetwork,
+    'PiNetworkPkg (kendisi)': PiNetworkPkg,
+    'PiNetworkPkg.default.default': PiNetworkPkg && PiNetworkPkg.default && PiNetworkPkg.default.default,
+  };
+  for (const [label, candidate] of Object.entries(candidates)) {
+    if (typeof candidate === 'function') {
+      console.log(`[PI-BACKEND] Constructor bulundu: ${label}`);
+      return candidate;
+    }
+  }
+  console.error('[PI-BACKEND HATA] Hiçbir export şeklinde constructor bulunamadı. PiNetworkPkg içeriği:',
+    Object.keys(PiNetworkPkg || {}), 'tip:', typeof PiNetworkPkg);
+  return null;
+}
+const PiNetwork = resolvePiNetworkCtor();
 
 // ─── Admin Config ───────────────────────────────────────────────────────
 const ADMIN_USERNAME = process.env.ADMIN_USERNAME || 'doganay0808';
@@ -30,6 +46,13 @@ function getPiClient() {
   const apiKey = process.env.APP_SECRET;
   const walletSeed = process.env.PI_WALLET_PRIVATE_SEED;
   if (!apiKey || !walletSeed) return null;
+  if (typeof PiNetwork !== 'function') {
+    // Buraya düşüyorsak sorun 'new' çağrısında değil, pi-backend paketinin
+    // import edilme/derlenme şeklinde demektir. Vercel Function Logs'ta
+    // yukarıdaki "[PI-BACKEND HATA]" satırı hangi export şeklinin geldiğini
+    // gösterir.
+    throw new Error("pi-backend paketi doğru şekilde yüklenemedi (constructor bulunamadı) — Vercel Function Logs'a bakın.");
+  }
   piClient = new PiNetwork(apiKey, walletSeed);
   return piClient;
 }
