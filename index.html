@@ -3923,7 +3923,12 @@ async function performPiConnect() {
                 connectBtn.style.pointerEvents = 'none';
             }
 
-            const auth = await Pi.authenticate(['username', 'payments'], handleIncompletePayment);
+            // FIX (kök neden — A2U 401 "missing_scope" hatası): 'wallet_address'
+            // scope'u istenmiyordu. Satıcıya ödeme/iade (A2U) gönderebilmek için
+            // Pi'nin API'si, kullanıcı giriş yaparken bu izni açıkça vermiş
+            // olmasını şart koşuyor. Bu olmadan sunucu tarafında "User hasn't
+            // authorized wallet_address scope" hatası alınıyordu.
+            const auth = await Pi.authenticate(['username', 'payments', 'wallet_address'], handleIncompletePayment);
             currentUser = auth.user.username;
             piAccessToken = auth.accessToken;
             isAuth = true;
