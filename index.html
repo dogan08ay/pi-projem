@@ -1559,6 +1559,7 @@
                 <option value="saglik" data-i18n="typeHealth"></option>
                 <option value="egitim" data-i18n="typeEducation"></option>
                 <option value="gayrimenkul" data-i18n="typeRealEstate"></option>
+                <option value="pasif" id="filter-option-pasif" data-i18n="filterPasif" style="display:none;"></option>
             </select>
         </div>
         <div id="premium-lock" class="premium-lock-overlay">
@@ -1976,6 +1977,9 @@ const i18n = {
     verify:"🔍 DOĞRULA",verifyLocked:"🔒 DOĞRULA",buyNow:"SATIN AL",sold:"SATILDI",
     soldPendingConfirmation:"SATILDI - ONAY AŞAMASINDA",
     hideBtn:"🙈 Gizle",unhideBtn:"👁 Satışa Çıkar",hiddenTag:"Gizli",hideToggleFail:"İşlem başarısız: ",
+    filterPasif:"🔒 Pasife Alınmış",
+    finalizedSaleTag:"Ödemesi Onaylandı - Satıştan Kaldırıldı",
+    finalizedSaleNote:"Ödeme kesinleşti, bu domain kalıcı olarak pasife alındı.",
     relistBtn:"↺ Tekrar Satılık Yap",detailBtn:"📋 DETAY",approveBtn:"✓ ONAYLA",rejectBtn:"✕ REDDET",
     sellRequestDetail:"Domain Detayı",
     loginRequired:"Bu özelliği kullanmak için önce Pi ile bağlanmalısınız.",
@@ -2358,6 +2362,9 @@ const i18n = {
     verify:"🔍 VERIFY",verifyLocked:"🔒 VERIFY",buyNow:"BUY NOW",sold:"SOLD",
     soldPendingConfirmation:"SOLD - PENDING CONFIRMATION",
     hideBtn:"🙈 Hide",unhideBtn:"👁 List for Sale",hiddenTag:"Hidden",hideToggleFail:"Action failed: ",
+    filterPasif:"🔒 Deactivated",
+    finalizedSaleTag:"Payment Confirmed - Removed from Sale",
+    finalizedSaleNote:"Payment finalized — this domain has been permanently deactivated.",
     relistBtn:"↺ Relist for Sale",detailBtn:"📋 DETAIL",approveBtn:"✓ APPROVE",rejectBtn:"✕ REJECT",
     sellRequestDetail:"Domain Details",
     loginRequired:"You must connect with Pi first to use this feature.",
@@ -3651,10 +3658,18 @@ function render(){
 
     // ... gerisi aynı (domain-grid oluşturma kısmı değişmedi)
     let sortedDomains=[...domains].filter(d=>!domainData[d.name]?.deleted).sort((a,b)=>(domainData[b.name]?.createdAt||0)-(domainData[a.name]?.createdAt||0));
-    // Gizlenen domainler, admin dışındaki kullanıcılardan tamamen saklanır.
     const isAdminViewing=isAuth&&currentUser===APP_CONFIG.adminUsername;
-    if(!isAdminViewing) sortedDomains=sortedDomains.filter(d=>!domainData[d.name]?.hidden);
-    if(currentFilter!=='hepsi') sortedDomains=sortedDomains.filter(d=>(d.type||'genel')===currentFilter);
+    const pasifOpt=document.getElementById('filter-option-pasif');
+    if(pasifOpt) pasifOpt.style.display=isAdminViewing?'':'none';
+    if(currentFilter==='pasif'){
+        // Sadece admin görebilir: SADECE gizli/pasife alınmış domainler.
+        sortedDomains = isAdminViewing ? sortedDomains.filter(d=>domainData[d.name]?.hidden) : [];
+    } else {
+        // Gizli/pasif domainler, "Pasif" filtresi seçilmediği sürece hiç
+        // kimseye (admin dahil) normal listede gösterilmez.
+        sortedDomains = sortedDomains.filter(d=>!domainData[d.name]?.hidden);
+        if(currentFilter!=='hepsi') sortedDomains=sortedDomains.filter(d=>(d.type||'genel')===currentFilter);
+    }
 
     const fragment=document.createDocumentFragment();
     sortedDomains.forEach((d,index)=>{
@@ -3664,7 +3679,8 @@ function render(){
         card.style.animationDelay=(index*0.06)+'s';
         if(data.hidden){card.style.opacity='0.55';card.style.borderStyle='dashed';}
         const tTag=d.type?`<span class="domain-type-tag">${typeLabel(d.type)}</span>`:'';
-        const hiddenTag=data.hidden?`<span class="domain-type-tag" style="background:#475569;">🙈 ${t('hiddenTag')}</span>`:'';
+        const isFinalizedSale=data.hidden&&data.payoutStatus==='released';
+        const hiddenTag=isFinalizedSale?`<span class="domain-type-tag" style="background:#065f46;color:#6ee7b7;">✅ ${t('finalizedSaleTag')}</span>`:(data.hidden?`<span class="domain-type-tag" style="background:#475569;">🙈 ${t('hiddenTag')}</span>`:'');
         const imgSrc=data.img||d.img;
         card.innerHTML=`<img src="${imgSrc}" class="domain-img" onerror="this.src='data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMDAiIGhlaWdodD0iMTAwIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjNDc1NTY5Ii8+PC9zdmc+'">${tTag}${hiddenTag}<div class="domain-name">${d.name} <span style="color:#fbbf24;font-weight:800;">(${data.price} π)</span></div><div class="domain-price">${data.price} PI</div>`;
 
@@ -3675,17 +3691,27 @@ function render(){
             const isPendingConfirmation = data.sellerUsername && data.payoutStatus && data.payoutStatus !== 'released';
             card.innerHTML+=`<div class="btn-sold" style="${isPendingConfirmation?'background:#f59e0b;':''}">${isPendingConfirmation?t('soldPendingConfirmation'):t('sold')}</div>`;
             if(isAuth&&currentUser===APP_CONFIG.adminUsername){
-                const relistBtn=document.createElement('button');
-                relistBtn.className='btn-buy';relistBtn.style.background='#f59e0b';relistBtn.style.marginTop='4px';
-                relistBtn.innerText=t('relistBtn');
-                relistBtn.onclick=(e)=>{e.stopPropagation();handleRelist(d.name);};
-                card.appendChild(relistBtn);
+                if(data.payoutStatus==='released'){
+                    // Ödeme kesinleşmiş — tekrar satışa çıkarılamaz (backend de
+                    // engelliyor). İkinci bir alıcıya satılıp ilk alıcının
+                    // gerçek Pi iadesi almadan ortada kalmasını önlemek için.
+                    const note=document.createElement('div');
+                    note.style.cssText='font-size:0.6em;color:#6ee7b7;margin-top:4px;line-height:1.3;font-weight:700;';
+                    note.innerText='🔒 '+t('finalizedSaleNote');
+                    card.appendChild(note);
+                } else {
+                    const relistBtn=document.createElement('button');
+                    relistBtn.className='btn-buy';relistBtn.style.background='#f59e0b';relistBtn.style.marginTop='4px';
+                    relistBtn.innerText=t('relistBtn');
+                    relistBtn.onclick=(e)=>{e.stopPropagation();handleRelist(d.name);};
+                    card.appendChild(relistBtn);
 
-                const hideBtn=document.createElement('button');
-                hideBtn.className='btn-buy';hideBtn.style.background=data.hidden?'#10b981':'#64748b';hideBtn.style.marginTop='4px';
-                hideBtn.innerText=data.hidden?t('unhideBtn'):t('hideBtn');
-                hideBtn.onclick=(e)=>{e.stopPropagation();handleToggleHideDomain(d.name,!data.hidden);};
-                card.appendChild(hideBtn);
+                    const hideBtn=document.createElement('button');
+                    hideBtn.className='btn-buy';hideBtn.style.background=data.hidden?'#10b981':'#64748b';hideBtn.style.marginTop='4px';
+                    hideBtn.innerText=data.hidden?t('unhideBtn'):t('hideBtn');
+                    hideBtn.onclick=(e)=>{e.stopPropagation();handleToggleHideDomain(d.name,!data.hidden);};
+                    card.appendChild(hideBtn);
+                }
             }
         } else {
             const btn=document.createElement('button');
