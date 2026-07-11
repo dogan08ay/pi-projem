@@ -1527,7 +1527,7 @@ export default async function handler(req, res) {
     try {
       const db = getDb();
       const snap = await db.collection('global_sales')
-        .where('payoutStatus', 'in', ['pending', 'no_seller', 'released', 'failed'])
+        .where('payoutStatus', 'in', ['pending', 'no_seller', 'released', 'failed', 'processing', 'refund_processing', 'refunded', 'refund_failed'])
         .get();
       const payouts = [];
       snap.forEach(doc => payouts.push({ id: doc.id, ...doc.data() }));
@@ -1535,6 +1535,124 @@ export default async function handler(req, res) {
       return res.status(200).json({ success: true, payouts });
     } catch (e) {
       console.error("get_pending_payouts hatası:", e);
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  // ══════════════════════════════════════════════════════════════════════
+  //  ESCROW TEYİT AKIŞI — satıcı "devrettim" der, alıcı "aldım"/"itiraz"
+  //  ile karşılık verir. Admin'in release/refund kararı artık kör değil:
+  //  panelde bu teyitleri görerek karar veriyor. Gerçek Pi transferini yine
+  //  SADECE admin tetikler (release_seller_payment / refund_buyer_payment) —
+  //  burada sadece durum/teyit bilgisi Firestore'a yazılıyor.
+  // ══════════════════════════════════════════════════════════════════════
+
+  // ── Satıcı: "Domaini devrettim" bildirimi ──────────────────────────────
+  if (action === 'seller_claim_transfer') {
+    const { saleId, proofNote } = req.body;
+    const realUsername = await getRealUsername(accessToken);
+    if (!realUsername) return res.status(403).json({ error: "Geçersiz oturum" });
+    if (!saleId) return res.status(400).json({ error: "saleId zorunludur" });
+    if (proofNote && String(proofNote).length > 500) return res.status(400).json({ error: "Not en fazla 500 karakter olabilir" });
+    try {
+      const db = getDb();
+      const saleRef = db.collection('global_sales').doc(saleId);
+      const saleSnap = await saleRef.get();
+      if (!saleSnap.exists) return res.status(404).json({ error: "Satış bulunamadı" });
+      const sale = saleSnap.data();
+      if (sale.sellerUsername !== realUsername) return res.status(403).json({ error: "Bu satışın satıcısı siz değilsiniz" });
+      if (sale.payoutStatus !== 'pending') return res.status(400).json({ error: "Bu satış artık bu adımda değil" });
+      await saleRef.set({
+        sellerClaimedAt: Date.now(),
+        sellerProofNote: proofNote ? String(proofNote).slice(0, 500) : null,
+        buyerConfirmedAt: null, disputed: false, disputeReason: null
+      }, { merge: true });
+      if (sale.domain) {
+        await db.collection('domains').doc(sale.domain).set({
+          sellerClaimedAt: Date.now(),
+          sellerProofNote: proofNote ? String(proofNote).slice(0, 500) : null,
+          buyerConfirmedAt: null, disputed: false, disputeReason: null
+        }, { merge: true });
+      }
+      if (sale.user) {
+        await sendNotification(sale.user, {
+          type: 'seller_claimed_transfer',
+          title: '📦 Domain Devredildi mi?',
+          body: `"${sale.domain}" domainini satıcı devrettiğini bildirdi. Kontrol edip onaylayın ya da sorun varsa itiraz edin.`,
+          domainName: sale.domain, saleId
+        });
+      }
+      return res.status(200).json({ success: true });
+    } catch (e) {
+      console.error("seller_claim_transfer hatası:", e);
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  // ── Alıcı: "Domaini aldım, onaylıyorum" ────────────────────────────────
+  if (action === 'buyer_confirm_receipt') {
+    const { saleId } = req.body;
+    const realUsername = await getRealUsername(accessToken);
+    if (!realUsername) return res.status(403).json({ error: "Geçersiz oturum" });
+    if (!saleId) return res.status(400).json({ error: "saleId zorunludur" });
+    try {
+      const db = getDb();
+      const saleRef = db.collection('global_sales').doc(saleId);
+      const saleSnap = await saleRef.get();
+      if (!saleSnap.exists) return res.status(404).json({ error: "Satış bulunamadı" });
+      const sale = saleSnap.data();
+      if (sale.user !== realUsername) return res.status(403).json({ error: "Bu satışın alıcısı siz değilsiniz" });
+      if (sale.payoutStatus !== 'pending') return res.status(400).json({ error: "Bu satış artık bu adımda değil" });
+      await saleRef.set({ buyerConfirmedAt: Date.now(), disputed: false, disputeReason: null }, { merge: true });
+      if (sale.domain) {
+        await db.collection('domains').doc(sale.domain).set({ buyerConfirmedAt: Date.now(), disputed: false, disputeReason: null }, { merge: true });
+      }
+      await sendNotificationToAdmin({
+        type: 'buyer_confirmed_receipt',
+        title: '✅ Alıcı Teslimatı Onayladı',
+        body: `@${realUsername}, "${sale.domain}" domainini aldığını onayladı — ödeme satıcıya serbest bırakılabilir.`,
+        domainName: sale.domain, buyer: realUsername
+      });
+      return res.status(200).json({ success: true });
+    } catch (e) {
+      console.error("buyer_confirm_receipt hatası:", e);
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  // ── Alıcı: İtiraz — devir hiç yapılmadı / eksik / hatalı ───────────────
+  if (action === 'buyer_dispute_transfer') {
+    const { saleId, reason } = req.body;
+    const realUsername = await getRealUsername(accessToken);
+    if (!realUsername) return res.status(403).json({ error: "Geçersiz oturum" });
+    if (!saleId) return res.status(400).json({ error: "saleId zorunludur" });
+    if (!reason || !String(reason).trim()) return res.status(400).json({ error: "İtiraz gerekçesi zorunludur" });
+    try {
+      const db = getDb();
+      const saleRef = db.collection('global_sales').doc(saleId);
+      const saleSnap = await saleRef.get();
+      if (!saleSnap.exists) return res.status(404).json({ error: "Satış bulunamadı" });
+      const sale = saleSnap.data();
+      if (sale.user !== realUsername) return res.status(403).json({ error: "Bu satışın alıcısı siz değilsiniz" });
+      if (sale.payoutStatus !== 'pending') return res.status(400).json({ error: "Bu satış artık bu adımda değil" });
+      await saleRef.set({
+        disputed: true, disputeReason: String(reason).slice(0, 500), disputedAt: Date.now(), buyerConfirmedAt: null
+      }, { merge: true });
+      if (sale.domain) {
+        await db.collection('domains').doc(sale.domain).set({
+          disputed: true, disputeReason: String(reason).slice(0, 500), disputedAt: Date.now(), buyerConfirmedAt: null
+        }, { merge: true });
+      }
+      await sendNotificationToAdmin({
+        type: 'buyer_disputed_transfer',
+        title: '⚠️ İTİRAZ: Domain Devri Sorunlu',
+        body: `@${realUsername}, "${sale.domain}" domaini için itiraz açtı: "${String(reason).slice(0, 200)}"`,
+        domainName: sale.domain, buyer: realUsername
+      });
+      await sendTG(TG_CHAT_ID, `⚠️ *İTİRAZ AÇILDI*\n\n🌐 ${sale.domain}\n👤 @${realUsername}\n📝 ${String(reason).slice(0, 300)}`);
+      return res.status(200).json({ success: true });
+    } catch (e) {
+      console.error("buyer_dispute_transfer hatası:", e);
       return res.status(500).json({ error: e.message });
     }
   }
@@ -2107,6 +2225,61 @@ export default async function handler(req, res) {
         adminOwnSoldDomains,
         allSalesDetail,
         salesByDomain
+      });
+    } catch (e) {
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  // ── Admin: Kullanıcı Gözünden Gör (salt-okunur profil özeti) ───────────
+  // Admin kendi admin oturumuyla kalır; sadece hedef kullanıcının verisini
+  // getRealUsername/accessToken üzerinden DEĞİL, doğrudan Firestore'dan
+  // salt-okunur biçimde çekiyoruz. Hiçbir işlem bu kullanıcı adına
+  // gerçekleştirilemez — sadece görüntüleme.
+  if (action === 'admin_view_user_profile') {
+    const isAdmin = await verifyAdmin(accessToken);
+    if (!isAdmin) return res.status(403).json({ error: "Yetki yok" });
+    const { targetUsername } = req.body;
+    if (!targetUsername || typeof targetUsername !== 'string') {
+      return res.status(400).json({ error: "Kullanıcı adı gerekli" });
+    }
+    const ip = req.headers['x-forwarded-for'] || req.socket?.remoteAddress || 'unknown';
+    if (!checkRateLimit(ip, 'admin_view_user', 30, 60000)) {
+      return res.status(429).json({ error: "Çok fazla istek, biraz bekleyin" });
+    }
+    try {
+      const db = getDb();
+      const uname = targetUsername.trim();
+      const profileSnap = await db.collection('user_profiles').doc(uname).get();
+      const profileData = profileSnap.exists ? profileSnap.data() : { points: 0, badge: null };
+
+      const salesSnap = await db.collection('global_sales').where('user', '==', uname).get();
+      let totalSpent = 0;
+      const purchases = [];
+      salesSnap.forEach(d => { const data = d.data(); purchases.push(data); totalSpent += Number(data.price || 0); });
+
+      const sellReqSnap = await db.collection('sell_requests').where('submittedBy', '==', uname).get();
+      const sellRequests = [];
+      sellReqSnap.forEach(d => sellRequests.push({ id: d.id, ...d.data() }));
+
+      const domainsSnap = await db.collection('domains').where('sellerUsername', '==', uname).where('sold', '==', true).get();
+      let totalEarned = 0;
+      const soldDomains = [];
+      domainsSnap.forEach(d => { const data = d.data(); if (data.deleted === true) return; totalEarned += Number(data.price || 0); soldDomains.push({ name: d.id, ...data }); });
+
+      const activeListingsSnap = await db.collection('domains').where('sellerUsername', '==', uname).where('sold', '==', false).get();
+      const activeListings = [];
+      activeListingsSnap.forEach(d => { const data = d.data(); if (data.deleted === true) return; activeListings.push({ name: d.id, ...data }); });
+
+      const ticketsSnap = await db.collection('tickets').where('createdBy', '==', uname).get().catch(() => null);
+      const ticketCount = ticketsSnap ? ticketsSnap.size : null;
+
+      return res.status(200).json({
+        success: true,
+        username: uname,
+        profile: profileData,
+        purchases, sellRequests, soldDomains, activeListings,
+        totalSpent, totalEarned, ticketCount
       });
     } catch (e) {
       return res.status(500).json({ error: e.message });
