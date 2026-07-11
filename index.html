@@ -4055,6 +4055,24 @@ function render(){
 
     applyTranslations();
 
+    // FIX (kök neden): Giriş kilidi / "Pi ile Bağlan" ekranı ARTIK Firestore'dan
+    // domain verisi gelmesini BEKLEMEDEN, sadece isAuth durumuna göre hemen
+    // açılıp kapanıyor. Önceden bu blok, aşağıdaki "ilk snapshot gelmedi" erken
+    // return'ünün ARDINDA çalıştığı için, Firestore bağlantısı yavaş/başarısız
+    // olduğunda (ör. ağ/izin sorunu) #premium-lock hiçbir zaman "active" class'ı
+    // almıyordu. CSS'te bu overlay varsayılan olarak opacity:0/visibility:hidden
+    // olduğundan, "Pi ile Bağlan" butonu ve menü kullanıcıya SONSUZA KADAR hiç
+    // görünmüyordu — sadece statik HTML (logo, alt bilgi) kalıyordu. Artık bu
+    // ayar domain verisinden bağımsız, en başta yapılıyor.
+    const marketTitle=document.getElementById('market-title-box');
+    if(marketTitle) marketTitle.style.display=isAuth?'inline-block':'none';
+    const filterSection=document.getElementById('filter-section');
+    if(filterSection) filterSection.style.display=isAuth?'block':'none';
+
+    if(!isAuth){lock.classList.add("active");list.classList.add("locked-content");}
+    else{lock.classList.remove("active");list.classList.remove("locked-content");}
+    const jwb2=document.getElementById('join-web3-banner'); if(jwb2) jwb2.style.display=isAuth?'none':'block';
+
     // FIX 1: İlk açılışta Firebase'den gerçek veri gelmediyse 
     // sadece "yükleniyor" göster, DOM'u boşaltma.
     // Bu, "Yükleniyor → Boş Ekran → İçerik" yanıp sönmeyini (flickering)
@@ -4069,16 +4087,6 @@ function render(){
         list.innerHTML = skeletonDomainCardsHTML(6);
         return;
     }
-
-    // Market başlığı ve filtre SADECE giriş yapıldığında ve veri hazır olduğunda gösterilir
-    const marketTitle=document.getElementById('market-title-box');
-    if(marketTitle) marketTitle.style.display=isAuth?'inline-block':'none';
-    const filterSection=document.getElementById('filter-section');
-    if(filterSection) filterSection.style.display=isAuth?'block':'none';
-
-    if(!isAuth){lock.classList.add("active");list.classList.add("locked-content");}
-    else{lock.classList.remove("active");list.classList.remove("locked-content");}
-    const jwb2=document.getElementById('join-web3-banner'); if(jwb2) jwb2.style.display=isAuth?'none':'block';
 
     // ... gerisi aynı (domain-grid oluşturma kısmı değişmedi)
     let sortedDomains=[...domains].filter(d=>!domainData[d.name]?.deleted).sort((a,b)=>(domainData[b.name]?.createdAt||0)-(domainData[a.name]?.createdAt||0));
@@ -4409,7 +4417,14 @@ function renderViewAsUserBody(result){
     body.innerHTML = html;
 }
 
-
+// FIX (kök neden): Bu fonksiyonun tanım satırı ("window.openUniqueUsersModal =
+// async function(){") eksikti. Aşağıdaki gövde (return/await içeren kod)
+// modülün en üst seviyesinde, hiçbir fonksiyonun içinde olmadan kalmıştı.
+// "return" ifadesi fonksiyon dışında kullanılamayacağı için bu bir
+// SyntaxError'dı ve tarayıcı BÜTÜN module script'i parse edemiyordu —
+// bu yüzden sayfadaki hiçbir JS (çeviriler, menü, "Pi ile Bağlan" butonu,
+// render vs.) çalışmıyordu. Eksik tanım satırı geri eklendi.
+window.openUniqueUsersModal = async function(){
     document.getElementById('unique-users-modal').style.display='flex';
     if(cachedUniqueUsers){renderUniqueUsersList(cachedUniqueUsers);return;}
     try{renderUniqueUsersList(await fetchUniqueUsers());}
