@@ -4544,7 +4544,14 @@ async function handleIncompletePayment(payment){
 //  - "Bağlanıyor..." spinner'ı buton üzerinde göster, sayfa
 //    genelinde değil.
 // ═══════════════════════════════════════════════════════════════════════
+let lastLoginError = null; // FIX: konsola erişimi olmayan ortamlarda (ör. Pi
+// Browser içi webview) gerçek hatayı görebilmek için son hata burada
+// saklanıyor ve aşağıda alert içine yazdırılıyor.
 async function performPiConnect() {
+    if (typeof Pi === 'undefined') {
+        alert('Pi SDK yüklenemedi. Bu uygulama sadece Pi Browser içinde çalışır — normal bir tarayıcıda (Chrome/Safari) test ediyorsan giriş başarısız olur. Lütfen Pi Browser üzerinden açıp tekrar dene.');
+        return;
+    }
     await waitForPi();
     await new Promise(r => setTimeout(r, 300));
 
@@ -4731,6 +4738,13 @@ async function performPiConnect() {
 
         } catch (e) {
             console.error("Login error:", e);
+            // FIX: konsola erişimi olmayan ortamlarda teşhis edebilmek için
+            // hatayı (mümkün olduğunca okunabilir haliyle) sakla.
+            let readable = '';
+            try {
+                readable = (e && e.message) ? e.message : (typeof e === 'string' ? e : JSON.stringify(e));
+            } catch (_) { readable = String(e); }
+            lastLoginError = readable || 'Bilinmeyen hata';
             // Hata durumunda butonu mutlaka normale döndür
             if (connectBtn && originalBtnText) {
                 connectBtn.innerHTML = originalBtnText;
@@ -4760,7 +4774,7 @@ async function performPiConnect() {
     }
 
     const success = await attemptLogin(false);
-    if (!success) alert(t('loginError'));
+    if (!success) alert(t('loginError') + '\n\nDetay: ' + (lastLoginError || 'bilinmiyor'));
 }
 
 // ── GERÇEK "PI İLE BAĞLAN" TETİKLEYİCİSİ ──────────────────────────────
