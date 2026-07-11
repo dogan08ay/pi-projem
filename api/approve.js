@@ -1330,6 +1330,26 @@ export default async function handler(req, res) {
     }
   }
 
+  // ── Admin: Bekleyen İlan Taleplerini Getir ─────────────────────────────
+  // GÜVENLİK: sell_requests koleksiyonu (satıcı adayının cüzdan adresi dahil)
+  // artık Firestore'dan doğrudan okunmuyor; bu action üzerinden, admin
+  // doğrulamasından geçerek çekiliyor.
+  if (action === 'get_pending_sell_requests') {
+    const isAdmin = await verifyAdmin(accessToken);
+    if (!isAdmin) return res.status(403).json({ error: "Yetki yok" });
+    try {
+      const db = getDb();
+      const snap = await db.collection('sell_requests').get();
+      const requests = [];
+      snap.forEach(doc => requests.push({ id: doc.id, ...doc.data() }));
+      requests.sort((a, b) => (b.submittedAt || 0) - (a.submittedAt || 0));
+      return res.status(200).json({ success: true, requests });
+    } catch (e) {
+      console.error("get_pending_sell_requests hatası:", e);
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
   // ── Admin: Marka Hakkı Talebi Durumunu Güncelle ────────────────────────
   if (action === 'update_trademark_claim_status') {
     const { claimId, status } = req.body;
