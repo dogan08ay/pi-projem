@@ -788,7 +788,7 @@ export default async function handler(req, res) {
       // Kalıcı gelir defterini de sıfırla — aksi halde Kazanç ekranı reset
       // sonrası hâlâ eski (silinmiş) satışlardan gelen toplamları gösterir.
       await db.collection('config').doc('platform_stats').set({
-        totalVolume: 0, userOwnedVolume: 0, platformEarnings: 0, adminOwnEarnings: 0, resetAt: Date.now()
+        totalVolume: 0, userOwnedVolume: 0, platformEarnings: 0, adminOwnEarnings: 0, statsVersion: 2, resetAt: Date.now()
       });
 
       const resetTimestamp = Date.now();
@@ -810,7 +810,7 @@ export default async function handler(req, res) {
     if (!checkRateLimit(clientIp, 'submit_sell_request', 3, 60000))
       return res.status(429).json({ error: "Çok fazla istek. 1 dakika bekleyin." });
 
-    const { domainName: reqDomainName, price: reqPrice, domainType, imgPath: reqImgPath, sellerWallet, description, editMode, oldRequestId } = req.body;
+    const { domainName: reqDomainName, price: reqPrice, domainType, imgPath: reqImgPath, sellerNote, description, editMode, oldRequestId } = req.body;
     const realUsername = await getRealUsername(accessToken);
     if (!realUsername) return res.status(403).json({ error: "Geçerli Pi oturumu bulunamadı" });
 
@@ -860,7 +860,7 @@ export default async function handler(req, res) {
         price: priceNum,
         domainType: domainType || 'genel',
         img: reqImgPath || 'assets/default.jpeg',
-        sellerWallet: sellerWallet || null,
+        sellerNote: sellerNote || null,
         description: description || '',
         submittedBy: realUsername,
         status: 'pending',
@@ -914,7 +914,7 @@ export default async function handler(req, res) {
         img: reqData.img, type: reqData.domainType,
         description: reqData.description || '',
         sellerUsername: reqData.submittedBy,
-        sellerWallet: reqData.sellerWallet,
+        sellerNote: reqData.sellerNote,
         txid: null, buyer: null, at: null,
         deleted: false, deletedAt: null,
         createdAt: Date.now()
@@ -2054,7 +2054,13 @@ export default async function handler(req, res) {
       const statsSnap = await statsRef.get();
       let totalVolume, userOwnedVolume, platformEarnings, adminOwnEarnings;
 
-      if (statsSnap.exists) {
+      // FIX: statsVersion:2 öncesi oluşturulmuş kayıtlar, ödeme durumu
+      // kontrolü olmayan eski (hatalı) formülle hesaplanmış olabilir. Böyle
+      // bir kayıt bulunursa, bu istekte SESSİZCE ve BİR KEREYE MAHSUS doğru
+      // formülle yeniden hesaplanıp üzerine yazılır — elle müdahale gerekmez.
+      const needsRecalc = !statsSnap.exists || statsSnap.data().statsVersion !== 2;
+
+      if (statsSnap.exists && !needsRecalc) {
         const s = statsSnap.data();
         totalVolume = Number(s.totalVolume || 0);
         userOwnedVolume = Number(s.userOwnedVolume || 0);
@@ -2069,15 +2075,25 @@ export default async function handler(req, res) {
           totalVolume += price;
           if (data.sellerUsername) {
             userOwnedVolume += price;
-            if (data.sellerUsername === ADMIN_USERNAME) adminOwnEarnings += price;
-            else platformEarnings += price * PLATFORM_COMMISSION_RATE;
+            if (data.sellerUsername === ADMIN_USERNAME) {
+              // Admin'in kendi domaini: escrow/serbest bırakma adımı yok,
+              // satış anında kesinleşmiş sayılır.
+              adminOwnEarnings += price;
+            } else if (data.payoutStatus === 'released') {
+              // FIX: %5 komisyon SADECE ödeme satıcıya gerçekten serbest
+              // bırakılmışsa (payoutStatus:'released') kazanılmış sayılır.
+              // Önceden bu kontrol yoktu; havuzda bekleyen (henüz ödenmemiş)
+              // satışlar da komisyon olarak sayılıp toplamı şişiriyordu.
+              const releasedPayout = Number(data.payoutAmount || Math.round(price * (1 - PLATFORM_COMMISSION_RATE) * 1e7) / 1e7);
+              platformEarnings += (price - releasedPayout);
+            }
           } else {
             adminOwnEarnings += price;
           }
         });
         platformEarnings = Math.round(platformEarnings * 1e7) / 1e7;
-        await statsRef.set({ totalVolume, userOwnedVolume, platformEarnings, adminOwnEarnings, backfilledAt: Date.now() });
-        console.log('[platform_stats] İlk kez oluşturuldu (backfill):', { totalVolume, userOwnedVolume, platformEarnings, adminOwnEarnings });
+        await statsRef.set({ totalVolume, userOwnedVolume, platformEarnings, adminOwnEarnings, statsVersion: 2, backfilledAt: Date.now() });
+        console.log('[platform_stats] Hesaplandı/düzeltildi (statsVersion 2):', { totalVolume, userOwnedVolume, platformEarnings, adminOwnEarnings });
       }
 
       allSalesDetail.sort((a, b) => (b.at || 0) - (a.at || 0));
