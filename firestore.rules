@@ -5,18 +5,34 @@ service cloud.firestore {
       allow read: if true;
       allow write: if false;
     }
+
+    // ── GÜVENLİK FIX ─────────────────────────────────────────────────────
+    // global_sales: kim neyi ne zaman kaç Pi'ye aldı/sattı bilgisini (ve
+    // dolaylı olarak kullanıcıların finansal davranışını) içerir. Daha önce
+    // "allow read: if true" idi; Firebase config'i bilen herkes bu
+    // koleksiyonu doğrudan sorgulayabilirdi. Artık SADECE backend'den
+    // (approve.js → get_pending_payouts [admin] / get_user_profile [kendi
+    // satın alımların]) erişiliyor, ikisi de gerçek kimlik doğrulaması
+    // yapıyor. Bu yüzden read de false yapıldı.
     match /global_sales/{sale} {
-      allow read: if true;
+      allow read: if false;
       allow write: if false;
     }
+
     match /daily_stats/{date} {
       allow read: if true;
       allow write: if false;
     }
+
+    // ── GÜVENLİK FIX ─────────────────────────────────────────────────────
+    // sell_requests: satıcı adayının Pi cüzdan adresi (sellerWallet) dahil
+    // bilgiler içerir. Artık SADECE backend'den (get_pending_sell_requests
+    // [admin] / get_user_profile [kendi ilanların]) erişiliyor.
     match /sell_requests/{request} {
-      allow read: if true;
+      allow read: if false;
       allow write: if false;
     }
+
     match /active_users/{user} {
       allow read, write: if true;
     }
@@ -28,25 +44,21 @@ service cloud.firestore {
       allow write: if false;
     }
 
-    // ── FIX: Bu iki koleksiyon için hiç kural yoktu ──────────────────────
-    // Kuralı olmayan bir yol Firestore'da varsayılan olarak KAPALIDIR
-    // (okuma dahil). Admin panelindeki canlı dinleyiciler (onSnapshot) bu
-    // koleksiyonları doğrudan tarayıcıdan okumaya çalışıyor, kural eksikliği
-    // "permission-denied" hatasına yol açıyor ve:
-    //   • Marka hakkı/telif talepleri admin panelinde hiç görünmüyor,
-    //   • Bakım modu durumu (LIVE/BAKIMDA) hiçbir zaman güncellenmiyordu.
-    //
-    // ÖNEMLİ GİZLİLİK NOTU: trademark_claims koleksiyonu başvuranın adını,
-    // şirketini ve e-postasını içerir. "read: if true" ile bu bilgiler
-    // teorik olarak Firestore'a doğrudan sorgu atabilen herkes tarafından
-    // okunabilir (sell_requests koleksiyonu da zaten aynı şekilde açık).
-    // İstemiyorsanız bana söyleyin, admin panelini backend'deki
-    // get_trademark_claims action'ını fetch ile çağıracak şekilde
-    // değiştirebilirim; o zaman burayı "allow read: if false" yapabilirsiniz.
+    // ── GÜVENLİK FIX ─────────────────────────────────────────────────────
+    // trademark_claims: başvuranın adını, şirketini ve e-postasını içerir
+    // (KVKK/GDPR kapsamında kişisel veri). Daha önce "allow read: if true"
+    // idi — admin paneline hiç girmeden, Firebase config'i bilen HERKES bu
+    // bilgileri doğrudan Firestore sorgusuyla çekebilirdi. Artık SADECE
+    // backend'den (get_trademark_claims [admin] / get_my_trademark_claims
+    // [kendi taleplerin]) erişiliyor, ikisi de gerçek kimlik doğrulaması
+    // yapıyor. Frontend tarafında karşılık gelen değişiklik de yapıldı
+    // (doğrudan onSnapshot kaldırıldı, admin doğrulamalı polling'e
+    // çevrildi) — bu kuralı false yapmak artık admin panelini bozmaz.
     match /trademark_claims/{claim} {
-      allow read: if true;
+      allow read: if false;
       allow write: if false;
     }
+
     match /config/{doc} {
       allow read: if true;
       allow write: if false;
