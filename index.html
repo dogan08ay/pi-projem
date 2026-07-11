@@ -4774,7 +4774,7 @@ async function performPiConnect() {
     }
 
     const success = await attemptLogin(false);
-    if (!success) alert(t('loginError') + '\n\nDetay: ' + (lastLoginError || 'bilinmiyor'));
+    if (!success) alert(t('loginError') + ' [build-check-v2]\n\nDetay: ' + (lastLoginError || 'bilinmiyor'));
 }
 
 // ── GERÇEK "PI İLE BAĞLAN" TETİKLEYİCİSİ ──────────────────────────────
