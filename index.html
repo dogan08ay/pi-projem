@@ -1099,9 +1099,9 @@
             <img id="sell-img-preview" class="img-preview">
         </div>
         <input type="file" id="sell-img-input" accept="image/*" style="display:none;" onchange="handleImageSelect(event)">
-        <label style="font-size:0.72em;color:#cbd5e1;font-weight:700;" data-i18n="sellerNoteLabel"></label>
+        <label style="font-size:0.72em;color:#cbd5e1;font-weight:700;" data-i18n="walletLabel"></label>
         <div id="wallet-payout-status" style="border-radius:8px;padding:8px 9px;font-size:0.68em;font-weight:700;margin-bottom:6px;line-height:1.5;"></div>
-        <input type="text" id="sell-domain-note" class="sell-form-input" data-i18n-placeholder="sellerNotePlaceholder">
+        <input type="text" id="sell-domain-wallet" class="sell-form-input" data-i18n-placeholder="walletPlaceholder">
         <div style="background:rgba(99,102,241,0.1);border:1px dashed #6366f1;border-radius:8px;padding:8px;font-size:0.68em;color:#94a3b8;margin-bottom:10px;" data-i18n="walletNote"></div>
         <div style="display:flex;gap:8px;">
             <button class="pi-btn" style="background:#475569;flex:1;animation:none;padding:10px;margin:0;" onclick="closeSellDomainModal()" data-i18n="cancel"></button>
@@ -1347,14 +1347,6 @@
                     <span style="display:flex;align-items:center;gap:6px;font-size:0.72em;color:#a5b4fc;font-weight:800;text-transform:uppercase;">🎫 <span data-i18n="myTickets"></span></span>
                     <button class="pi-btn" style="animation:none;padding:6px 12px;font-size:0.68em;margin:0;" onclick="showCreateTicketForm()">➕ <span data-i18n="newTicket"></span></button>
                 </div>
-                <select id="ticket-filter-select" onchange="window.setTicketFilter(this.value)" style="width:100%;margin-bottom:8px;padding:7px 8px;border-radius:8px;border:1.5px solid #4338ca;background:#0f172a;color:#a5b4fc;font-size:0.7em;font-weight:700;cursor:pointer;">
-                    <option value="all" data-i18n="trademarkFilterAll"></option>
-                    <option value="new" data-i18n="ticketStatusNew"></option>
-                    <option value="reviewing" data-i18n="ticketStatusReviewing"></option>
-                    <option value="answered" data-i18n="ticketStatusAnswered"></option>
-                    <option value="resolved" data-i18n="ticketStatusResolved"></option>
-                    <option value="closed" data-i18n="ticketStatusClosed"></option>
-                </select>
                 <div id="ticket-list-container">
                     <div class="skeleton-ticket-row"><div class="skeleton" style="width:34px;height:34px;border-radius:8px;"></div><div style="flex:1;"><div class="skeleton skeleton-line" style="width:60%;margin:0 0 6px 0;"></div><div class="skeleton skeleton-line" style="width:35%;height:8px;margin:0;"></div></div></div>
                     <div class="skeleton-ticket-row"><div class="skeleton" style="width:34px;height:34px;border-radius:8px;"></div><div style="flex:1;"><div class="skeleton skeleton-line" style="width:48%;margin:0 0 6px 0;"></div><div class="skeleton skeleton-line" style="width:28%;height:8px;margin:0;"></div></div></div>
@@ -1555,27 +1547,20 @@
         <div class="section-title-box" id="market-title-box" style="display:none;" data-i18n="availableDomains"></div>
         <div class="filter-section" id="filter-section" style="display:none;">
             <div class="filter-section-label" data-i18n="filterSectionLabel"></div>
-            <button type="button" id="category-filter-btn" onclick="window.toggleCategoryFilterPanel()" class="category-select" style="display:flex;align-items:center;justify-content:space-between;cursor:pointer;">
-                <span id="category-filter-btn-label" data-i18n="filterAll"></span>
-                <span style="font-size:0.8em;">▾</span>
-            </button>
-            <div id="category-filter-panel" style="display:none;background:#0f172a;border:1.5px solid #6366f1;border-radius:10px;padding:8px;margin-top:4px;max-height:260px;overflow-y:auto;">
-                <label style="display:flex;align-items:center;gap:8px;padding:6px 4px;font-size:0.78em;font-weight:800;color:#a5b4fc;border-bottom:1px solid #334155;margin-bottom:4px;cursor:pointer;">
-                    <input type="checkbox" id="cat-check-hepsi" onchange="window.toggleAllCategoryFilters(this.checked)" style="width:16px;height:16px;accent-color:#6366f1;">
-                    <span data-i18n="filterAll"></span>
-                </label>
-                <label style="display:flex;align-items:center;gap:8px;padding:5px 4px;font-size:0.75em;color:#e2e8f0;cursor:pointer;"><input type="checkbox" class="cat-check-item" value="genel" onchange="window.onCategoryCheckChange()" style="width:15px;height:15px;accent-color:#6366f1;"><span data-i18n="typeGeneral"></span></label>
-                <label style="display:flex;align-items:center;gap:8px;padding:5px 4px;font-size:0.75em;color:#e2e8f0;cursor:pointer;"><input type="checkbox" class="cat-check-item" value="finans" onchange="window.onCategoryCheckChange()" style="width:15px;height:15px;accent-color:#6366f1;"><span data-i18n="typeFinance"></span></label>
-                <label style="display:flex;align-items:center;gap:8px;padding:5px 4px;font-size:0.75em;color:#e2e8f0;cursor:pointer;"><input type="checkbox" class="cat-check-item" value="bankacilik" onchange="window.onCategoryCheckChange()" style="width:15px;height:15px;accent-color:#6366f1;"><span data-i18n="typeBanking"></span></label>
-                <label style="display:flex;align-items:center;gap:8px;padding:5px 4px;font-size:0.75em;color:#e2e8f0;cursor:pointer;"><input type="checkbox" class="cat-check-item" value="eticaret" onchange="window.onCategoryCheckChange()" style="width:15px;height:15px;accent-color:#6366f1;"><span data-i18n="typeEcommerce"></span></label>
-                <label style="display:flex;align-items:center;gap:8px;padding:5px 4px;font-size:0.75em;color:#e2e8f0;cursor:pointer;"><input type="checkbox" class="cat-check-item" value="kisisel" onchange="window.onCategoryCheckChange()" style="width:15px;height:15px;accent-color:#6366f1;"><span data-i18n="typePersonal"></span></label>
-                <label style="display:flex;align-items:center;gap:8px;padding:5px 4px;font-size:0.75em;color:#e2e8f0;cursor:pointer;"><input type="checkbox" class="cat-check-item" value="teknoloji" onchange="window.onCategoryCheckChange()" style="width:15px;height:15px;accent-color:#6366f1;"><span data-i18n="typeTechnology"></span></label>
-                <label style="display:flex;align-items:center;gap:8px;padding:5px 4px;font-size:0.75em;color:#e2e8f0;cursor:pointer;"><input type="checkbox" class="cat-check-item" value="turizm" onchange="window.onCategoryCheckChange()" style="width:15px;height:15px;accent-color:#6366f1;"><span data-i18n="typeTourism"></span></label>
-                <label style="display:flex;align-items:center;gap:8px;padding:5px 4px;font-size:0.75em;color:#e2e8f0;cursor:pointer;"><input type="checkbox" class="cat-check-item" value="saglik" onchange="window.onCategoryCheckChange()" style="width:15px;height:15px;accent-color:#6366f1;"><span data-i18n="typeHealth"></span></label>
-                <label style="display:flex;align-items:center;gap:8px;padding:5px 4px;font-size:0.75em;color:#e2e8f0;cursor:pointer;"><input type="checkbox" class="cat-check-item" value="egitim" onchange="window.onCategoryCheckChange()" style="width:15px;height:15px;accent-color:#6366f1;"><span data-i18n="typeEducation"></span></label>
-                <label style="display:flex;align-items:center;gap:8px;padding:5px 4px;font-size:0.75em;color:#e2e8f0;cursor:pointer;"><input type="checkbox" class="cat-check-item" value="gayrimenkul" onchange="window.onCategoryCheckChange()" style="width:15px;height:15px;accent-color:#6366f1;"><span data-i18n="typeRealEstate"></span></label>
-                <label style="display:flex;align-items:center;gap:8px;padding:5px 4px;font-size:0.75em;color:#6ee7b7;cursor:pointer;border-top:1px solid #334155;margin-top:4px;padding-top:8px;"><input type="checkbox" class="cat-check-item" value="pasif" onchange="window.onCategoryCheckChange()" style="width:15px;height:15px;accent-color:#10b981;"><span data-i18n="filterPasif"></span></label>
-            </div>
+            <select id="category-filter-select" class="category-select" onchange="setDomainFilter(this.value)">
+                <option value="hepsi" data-i18n="filterAll"></option>
+                <option value="genel" data-i18n="typeGeneral"></option>
+                <option value="finans" data-i18n="typeFinance"></option>
+                <option value="bankacilik" data-i18n="typeBanking"></option>
+                <option value="eticaret" data-i18n="typeEcommerce"></option>
+                <option value="kisisel" data-i18n="typePersonal"></option>
+                <option value="teknoloji" data-i18n="typeTechnology"></option>
+                <option value="turizm" data-i18n="typeTourism"></option>
+                <option value="saglik" data-i18n="typeHealth"></option>
+                <option value="egitim" data-i18n="typeEducation"></option>
+                <option value="gayrimenkul" data-i18n="typeRealEstate"></option>
+                <option value="pasif" id="filter-option-pasif" data-i18n="filterPasif" style="display:none;"></option>
+            </select>
         </div>
         <div id="premium-lock" class="premium-lock-overlay">
             <div class="secure-badge" style="background:linear-gradient(165deg,#0a0f1e 0%,#0f172a 30%,#1e1b4b 50%,#0f172a 70%,#0a0f1e 100%);border:1.5px solid rgba(99,102,241,0.25);border-radius:16px;padding:20px 18px;box-shadow:0 4px 20px rgba(0,0,0,0.4),0 0 15px rgba(99,102,241,0.1),inset 0 1px 0 rgba(255,255,255,0.05);width:92%;margin:8px 0;backdrop-filter:blur(10px);">
@@ -1817,11 +1802,23 @@ const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
 // FIX 1: Pi SDK hazır olana kadar bekle — "giriş hatası" bug'ı
+// FIX 2: Sonsuz bekleme engeli — SDK 8sn içinde yüklenmezse net hata ver
 let piReady = false;
-function waitForPi() {
-    return new Promise(resolve => {
+function waitForPi(timeoutMs = 8000) {
+    return new Promise((resolve, reject) => {
         if (typeof Pi !== 'undefined') { if (!piReady) { Pi.init({ version:"2.0", sandbox:true }); piReady=true; } resolve(); return; }
-        const check = setInterval(() => { if (typeof Pi !== 'undefined') { clearInterval(check); if (!piReady) { Pi.init({ version:"2.0", sandbox:true }); piReady=true; } resolve(); } }, 100);
+        const check = setInterval(() => {
+            if (typeof Pi !== 'undefined') {
+                clearInterval(check); clearTimeout(timer);
+                if (!piReady) { Pi.init({ version:"2.0", sandbox:true }); piReady=true; }
+                resolve();
+            }
+        }, 100);
+        const timer = setTimeout(() => {
+            clearInterval(check);
+            console.error('[Pi SDK] sdk.minepi.com/pi-sdk.js yüklenemedi veya Pi Browser dışında açıldı.');
+            reject(new Error('PI_SDK_TIMEOUT'));
+        }, timeoutMs);
     });
 }
 const i18n = {
@@ -1840,7 +1837,7 @@ const i18n = {
     descriptionPlaceholder:"Domain hakkında kısa açıklama...",
     imageUploadLabel:"Domain Görseli",imageUploadHint:"📁 Görsel seçmek için tıklayın",
     imageUploadFormats:"JPG, PNG, WEBP — Maks. 2MB",
-    sellerNoteLabel:"Not (opsiyonel)",sellerNotePlaceholder:"Admin için eklemek istediğiniz bir not (isteğe bağlı)",
+    walletLabel:"Not (opsiyonel)",walletPlaceholder:"Varsa eklemek istediğiniz bir not",
     walletNote:"ℹ️ Ödemeniz, bu alana yazacağınız bir metne değil, ilanı verirken giriş yaptığınız Pi hesabına otomatik gönderilir. Bu domain satılırsa ve ödemenizin kendi Pi hesabınıza geçmesini istiyorsanız, satış anında bu hesapla bağlı/giriş yapmış olmanız yeterlidir — aksi takdirde ödeme, satıcı hesabı doğrulanana kadar sistem cüzdanında bekletilir.",
     walletConnectedAs:"Ödemeleriniz bu Pi hesabına gönderilecek:",
     walletNotConnectedWarning:"Pi hesabınız şu an tam doğrulanamadı. Bu domain satılırsa, ödemeniz hesabınız doğrulanana kadar sistem cüzdanında bekleyecektir. Sorun yaşarsanız çıkış yapıp tekrar Pi ile giriş yapmayı deneyin.",
@@ -1869,7 +1866,7 @@ const i18n = {
     salesCount:"SATIŞ ADEDİ",volumePi:"HACİM (Pİ)",noPendingDomains:"Bekleyen domain önerisi yok.",
     addDomainBtn:"Domain Ekle",newDomainPlaceholder:"domain-adi.pi",
     newDomainPricePlaceholder:"Fiyat (Pİ)",newDomainImgPlaceholder:"Görsel yolu (opsiyonel)",
-    availableDomains:"Satın Alabileceğiniz Domainler",filterAll:"Hepsi",filtersSelectedSuffix:"seçili",
+    availableDomains:"Satın Alabileceğiniz Domainler",filterAll:"Hepsi",
     joinWeb3:"Ayrıcalıklı Web3 Dünyasına Katılın",secureConnection:"Güvenli Bağlantı",
     trustIntroTitle:"Devam Etmeden Önce Bilgilendirme",
     trustIntroBody:"Bu uygulama, Pi Network üzerinden domain alım-satımı yapılan bir Web3 pazar yeridir. Cüzdanınızı bağladığınızda özel anahtarınız, şifreniz veya seed ifadeniz <b>asla</b> istenmez ya da saklanmaz — bağlantı tamamen resmi Pi SDK üzerinden, sizin onayınızla gerçekleşir.",
@@ -2029,7 +2026,7 @@ const i18n = {
     loginError:"GİRİŞ HATASI!",paymentError:"ÖDEME HATASI!",
     noRecord:"KAYIT BULUNAMADI.",noUsers:"Kayıt bulunamadı.",usersError:"Hata oluştu.",
     logoutBtn:"Çıkış",logoutBtnEn:"Logout",connectedPrefix:"BAĞLI: @",lastSeenPrefix:"Son: ",soldPiLabel:" Pİ ALINDI",
-    pendingSentBy:"Gönderen: @",pendingWallet:"Not: ",pendingWalletUnspecified:"belirtilmemiş",
+    pendingSentBy:"Gönderen: @",pendingWallet:"Cüzdan: ",pendingWalletUnspecified:"belirtilmemiş",
     updateBtn:"Güncelle",deleteBtn:"Sil",
     shareText:(d)=>`🚀 Web3 Domain Gateway üzerinden ${d} domainini satın aldım! Test-Pİ ile siz de katılın.`,
     badgeBronze:"🥉 Bronz",badgeSilver:"🥈 Gümüş",badgeGold:"🥇 Altın",badgeDiamond:"💎 Elmas",
@@ -2055,7 +2052,7 @@ const i18n = {
     resetSuccess:"Sıfırlama tamamlandı. Platform istatistikleri bugünden itibaren başlıyor.",
     resetFail:"Sıfırlama başarısız: ",
     detailFieldDomain:"Domain Adı",detailFieldPrice:"Fiyat",detailFieldType:"Tür",
-    detailFieldSeller:"Gönderen Kullanıcı",detailFieldWallet:"Not",
+    detailFieldSeller:"Gönderen Kullanıcı",detailFieldWallet:"Cüzdan Adresi",
     detailFieldDate:"Gönderim Tarihi",detailFieldDesc:"Açıklama",
     deletedDomainsTitle:"🗑️ Silinmiş Domainler",noDeletedDomains:"Silinmiş domain yok.",
     restoreBtn:"↩ Geri Getir",restoreConfirm:(n)=>`"${n}" domainini geri getirmek istediğinize emin misiniz? Eski verileri (açıklama, görsel, satıcı bilgisi) korunarak yeniden satışa eklenecek.`,
@@ -2228,7 +2225,7 @@ const i18n = {
     descriptionPlaceholder:"Short description about the domain...",
     imageUploadLabel:"Domain Image",imageUploadHint:"📁 Click to select an image",
     imageUploadFormats:"JPG, PNG, WEBP — Max 2MB",
-    sellerNoteLabel:"Note (optional)",sellerNotePlaceholder:"An optional note for the admin",
+    walletLabel:"Note (optional)",walletPlaceholder:"Any note you'd like to add",
     walletNote:"ℹ️ Your payment is sent automatically to the Pi account you're logged in with when you list — not to any text typed here. If this domain sells and you want the payment to reach your own Pi account, simply be logged in with that account at the time of sale — otherwise the payment will be held in the system wallet until the seller account is verified.",
     walletConnectedAs:"Your payment will be sent to this Pi account:",
     walletNotConnectedWarning:"Your Pi account couldn't be fully verified right now. If this domain sells, your payment will wait in the system wallet until your account is verified. If this persists, try logging out and back in with Pi.",
@@ -2255,7 +2252,7 @@ const i18n = {
     salesCount:"SALES COUNT",volumePi:"VOLUME (PI)",noPendingDomains:"No pending domain submissions.",
     addDomainBtn:"Add Domain",newDomainPlaceholder:"domain-name.pi",
     newDomainPricePlaceholder:"Price (PI)",newDomainImgPlaceholder:"Image path (optional)",
-    availableDomains:"Domains Available for Purchase",filterAll:"All",filtersSelectedSuffix:"selected",
+    availableDomains:"Domains Available for Purchase",filterAll:"All",
     joinWeb3:"Join the Exclusive Web3 World",secureConnection:"Secure Connection",
     trustIntroTitle:"Before You Continue",
     trustIntroBody:"This app is a Web3 marketplace for buying and selling domains via Pi Network. When you connect your wallet, your private key, password, or seed phrase is <b>never</b> requested or stored — the connection happens entirely through the official Pi SDK, with your approval.",
@@ -2414,7 +2411,7 @@ const i18n = {
     loginError:"LOGIN ERROR!",paymentError:"PAYMENT ERROR!",
     noRecord:"NO RECORDS FOUND.",noUsers:"No records found.",usersError:"An error occurred.",
     logoutBtn:"Çıkış",logoutBtnEn:"Logout",connectedPrefix:"CONNECTED: @",lastSeenPrefix:"Last: ",soldPiLabel:" PI PURCHASED",
-    pendingSentBy:"Submitted by: @",pendingWallet:"Note: ",pendingWalletUnspecified:"not specified",
+    pendingSentBy:"Submitted by: @",pendingWallet:"Wallet: ",pendingWalletUnspecified:"not specified",
     updateBtn:"Update",deleteBtn:"Delete",
     shareText:(d)=>`🚀 I just purchased the ${d} domain on Web3 Domain Gateway! Join with Test-PI.`,
     badgeBronze:"🥉 Bronze",badgeSilver:"🥈 Silver",badgeGold:"🥇 Gold",badgeDiamond:"💎 Diamond",
@@ -2440,7 +2437,7 @@ const i18n = {
     resetSuccess:"Reset complete. Platform statistics now start from today.",
     resetFail:"Reset failed: ",
     detailFieldDomain:"Domain Name",detailFieldPrice:"Price",detailFieldType:"Type",
-    detailFieldSeller:"Submitted By",detailFieldWallet:"Note",
+    detailFieldSeller:"Submitted By",detailFieldWallet:"Wallet Address",
     detailFieldDate:"Submission Date",detailFieldDesc:"Description",
     deletedDomainsTitle:"🗑️ Deleted Domains",noDeletedDomains:"No deleted domains.",
     restoreBtn:"↩ Restore",restoreConfirm:(n)=>`Are you sure you want to restore "${n}"? Its previous data (description, image, seller info) will be preserved and it will be relisted for sale.`,
@@ -2758,64 +2755,13 @@ window.switchUserTab=function(tabId){
 };
 
 // FILTER
-const ALL_DOMAIN_CATEGORIES=['genel','finans','bankacilik','eticaret','kisisel','teknoloji','turizm','saglik','egitim','gayrimenkul','pasif'];
-let selectedCategoryFilters=new Set(JSON.parse(localStorage.getItem('w3dg_category_filters')||'["hepsi"]'));
-
-window.toggleCategoryFilterPanel=function(){
-    const panel=document.getElementById('category-filter-panel');
-    if(!panel) return;
-    panel.style.display=panel.style.display==='none'?'block':'none';
-};
-document.addEventListener('click',(e)=>{
-    const panel=document.getElementById('category-filter-panel');
-    const btn=document.getElementById('category-filter-btn');
-    if(!panel||panel.style.display==='none') return;
-    if(!panel.contains(e.target)&&e.target!==btn&&!btn?.contains(e.target)){
-        panel.style.display='none';
-    }
-});
-window.toggleAllCategoryFilters=function(checked){
-    document.querySelectorAll('.cat-check-item').forEach(cb=>cb.checked=checked);
-    selectedCategoryFilters = checked ? new Set(['hepsi']) : new Set();
-    localStorage.setItem('w3dg_category_filters', JSON.stringify([...selectedCategoryFilters]));
-    updateCategoryFilterLabel();
+window.setDomainFilter=function(type){
+    currentFilter=type;
+    // Dropdown select değerini senkronize et
+    const sel=document.getElementById('category-filter-select');
+    if(sel&&sel.value!==type) sel.value=type;
     debouncedRender();
 };
-window.onCategoryCheckChange=function(){
-    const checked=[...document.querySelectorAll('.cat-check-item:checked')].map(cb=>cb.value);
-    selectedCategoryFilters = new Set(checked);
-    // "Hepsi" kutusu, tüm alt kategoriler tek tek işaretliyse otomatik işaretlenir.
-    const allChecked = ALL_DOMAIN_CATEGORIES.every(c=>selectedCategoryFilters.has(c));
-    const hepsiBox=document.getElementById('cat-check-hepsi');
-    if(hepsiBox) hepsiBox.checked = allChecked;
-    if(allChecked) selectedCategoryFilters=new Set(['hepsi']);
-    localStorage.setItem('w3dg_category_filters', JSON.stringify([...selectedCategoryFilters]));
-    updateCategoryFilterLabel();
-    debouncedRender();
-};
-const CATEGORY_I18N_KEY={genel:'typeGeneral',finans:'typeFinance',bankacilik:'typeBanking',eticaret:'typeEcommerce',kisisel:'typePersonal',teknoloji:'typeTechnology',turizm:'typeTourism',saglik:'typeHealth',egitim:'typeEducation',gayrimenkul:'typeRealEstate',pasif:'filterPasif'};
-function updateCategoryFilterLabel(){
-    const label=document.getElementById('category-filter-btn-label');
-    if(!label) return;
-    if(selectedCategoryFilters.has('hepsi')||selectedCategoryFilters.size===0){
-        label.textContent=t('filterAll');
-    } else if(selectedCategoryFilters.size===1){
-        const only=[...selectedCategoryFilters][0];
-        label.textContent = t(CATEGORY_I18N_KEY[only]||'filterAll');
-    } else {
-        label.textContent = `${selectedCategoryFilters.size} ${t('filtersSelectedSuffix')}`;
-    }
-}
-// Sayfa yüklendiğinde önceki seçimi checkbox'lara yansıt
-function syncCategoryFilterCheckboxes(){
-    const hepsiBox=document.getElementById('cat-check-hepsi');
-    const isHepsi=selectedCategoryFilters.has('hepsi');
-    if(hepsiBox) hepsiBox.checked=isHepsi;
-    document.querySelectorAll('.cat-check-item').forEach(cb=>{
-        cb.checked = isHepsi || selectedCategoryFilters.has(cb.value);
-    });
-    updateCategoryFilterLabel();
-}
 
 // GÖRSEL SEÇME
 window.handleImageSelect=function(event){
@@ -2881,7 +2827,7 @@ window.handleSubmitSellRequest=async function(){
     const price=Number(priceInput.value);
     const type=document.getElementById('sell-domain-type').value;
     const desc=descInput.value.trim();
-    const sellerNote=document.getElementById('sell-domain-note').value.trim(); // Cüzdan adresi ARTIK kullanılmıyor — bu alan sadece isteğe bağlı bir not.
+    const wallet=document.getElementById('sell-domain-wallet').value.trim(); // Test aşaması: cüzdan alanı zorunlu değil, kullanıcı inisiyatifinde.
 
     const hasExistingImage = !!(window._editingRejectedRequestId && window._editingRejectedRequestOldImg);
 
@@ -2917,7 +2863,7 @@ window.handleSubmitSellRequest=async function(){
             price: price,
             domainType: type,
             imgPath: imgUrl,
-            sellerNote: sellerNote,
+            sellerWallet: wallet,
             description: desc,
             accessToken: piAccessToken
         };
@@ -3125,7 +3071,7 @@ window.openEditRejectedRequest=function(requestId){
     document.getElementById('sell-domain-price').value=req.price||'';
     document.getElementById('sell-domain-type').value=req.domainType||'genel';
     document.getElementById('sell-domain-desc').value=req.description||'';
-    document.getElementById('sell-domain-note').value=req.sellerNote||'';
+    document.getElementById('sell-domain-wallet').value=req.sellerWallet||'';
     // Görsel önizlemesi
     selectedImageBase64=null;selectedImageMime=null;selectedImageName=null;
     const preview=document.getElementById('sell-img-preview');
@@ -3152,7 +3098,7 @@ window.openEditRejectedRequest=function(requestId){
 window.closeSellDomainModal=function(){
     document.getElementById('sell-domain-modal').style.display='none';
     // Alanları temizle
-    ['sell-domain-name','sell-domain-price','sell-domain-desc','sell-domain-note'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+    ['sell-domain-name','sell-domain-price','sell-domain-desc','sell-domain-wallet'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
     document.getElementById('sell-domain-name').readOnly=false;
     document.getElementById('sell-domain-name').style.background='';
     document.getElementById('sell-domain-name').style.color='';
@@ -3200,7 +3146,7 @@ window.openSellRequestDetail=function(requestId,dataStr){
         {label:t('detailFieldPrice'), value:`${p.price} Pi`, icon:'💰'},
         {label:t('detailFieldType'), value:typeLabel(p.domainType), icon:'🏷️'},
         {label:t('detailFieldSeller'), value:'@'+p.submittedBy, icon:'👤'},
-        {label:t('detailFieldWallet'), value:p.sellerNote||t('pendingWalletUnspecified'), icon:'📝'},
+        {label:t('detailFieldWallet'), value:p.sellerWallet||t('pendingWalletUnspecified'), icon:'💳'},
         {label:t('detailFieldDate'), value:p.submittedAt?new Date(p.submittedAt).toLocaleDateString(locale):'-', icon:'📅'},
     ];
     let html=`<img src="${p.img||'assets/default.jpeg'}" style="width:100%;max-height:110px;object-fit:contain;border-radius:8px;margin-bottom:12px;background:#334155;">`;
@@ -3242,7 +3188,7 @@ function renderPendingDomains(pendingList){
             </div>
             <div style="font-size:0.72em;color:#94a3b8;margin-bottom:8px;">
                 👤 ${t('pendingSentBy')}${p.submittedBy}<br>
-                📝 ${t('pendingWallet')}${p.sellerNote?(p.sellerNote.length>40?p.sellerNote.substring(0,40)+'...':p.sellerNote):t('pendingWalletUnspecified')}
+                💳 ${t('pendingWallet')}${p.sellerWallet?p.sellerWallet.substring(0,14)+'...':t('pendingWalletUnspecified')}
             </div>
             <div style="display:flex;gap:6px;">
                 <button onclick="openSellRequestDetail('${p.id}','${safe}')" style="flex:1;background:#6366f1;color:#fff;border:none;padding:7px;border-radius:8px;font-size:0.72em;font-weight:800;cursor:pointer;">${t('detailBtn')}</button>
@@ -3592,9 +3538,9 @@ function renderUserPanel(){
                             <span style="color:#64748b;flex-shrink:0;font-weight:700;min-width:90px;">📝 ${t('detailFieldDesc')}:</span>
                             <span style="color:#94a3b8;word-break:break-word;flex:1;">${d.description||'<span style="color:#475569;font-style:italic;">—</span>'}</span>
                         </div>
-                        ${d.sellerNote?`<div style="display:flex;gap:6px;align-items:baseline;word-break:break-all;">
-                            <span style="color:#64748b;flex-shrink:0;font-weight:700;min-width:90px;">🗒️ ${t('detailFieldWallet')}:</span>
-                            <span style="color:#60a5fa;font-size:0.9em;">${d.sellerNote}</span>
+                        ${d.sellerWallet?`<div style="display:flex;gap:6px;align-items:baseline;word-break:break-all;">
+                            <span style="color:#64748b;flex-shrink:0;font-weight:700;min-width:90px;">💳 ${t('detailFieldWallet')}:</span>
+                            <span style="color:#60a5fa;font-size:0.9em;">${d.sellerWallet}</span>
                         </div>`:''}
                     </div>
                     <!-- Withdraw listing button -->
@@ -3649,9 +3595,9 @@ function renderUserPanel(){
                             <span style="color:#64748b;flex-shrink:0;font-weight:700;min-width:90px;">📝 ${t('detailFieldDesc')}:</span>
                             <span style="color:#94a3b8;word-break:break-word;flex:1;">${req.description||'<span style="color:#475569;font-style:italic;">—</span>'}</span>
                         </div>
-                        ${req.sellerNote?`<div style="display:flex;gap:6px;align-items:baseline;word-break:break-all;">
-                            <span style="color:#64748b;flex-shrink:0;font-weight:700;min-width:90px;">🗒️ ${t('detailFieldWallet')}:</span>
-                            <span style="color:#60a5fa;font-size:0.9em;">${req.sellerNote}</span>
+                        ${req.sellerWallet?`<div style="display:flex;gap:6px;align-items:baseline;word-break:break-all;">
+                            <span style="color:#64748b;flex-shrink:0;font-weight:700;min-width:90px;">💳 ${t('detailFieldWallet')}:</span>
+                            <span style="color:#60a5fa;font-size:0.9em;">${req.sellerWallet}</span>
                         </div>`:''}
                         ${req.rejectReason?`<div style="display:flex;gap:6px;align-items:flex-start;margin-top:4px;padding:6px 8px;background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.3);border-radius:6px;">
                             <span style="color:#f87171;flex-shrink:0;font-weight:800;min-width:90px;">❌ ${t('rejectReasonLabel')}:</span>
@@ -3726,19 +3672,16 @@ function render(){
     // ... gerisi aynı (domain-grid oluşturma kısmı değişmedi)
     let sortedDomains=[...domains].filter(d=>!domainData[d.name]?.deleted).sort((a,b)=>(domainData[b.name]?.createdAt||0)-(domainData[a.name]?.createdAt||0));
     const isAdminViewing=isAuth&&currentUser===APP_CONFIG.adminUsername;
-    syncCategoryFilterCheckboxes();
-    // GÜVENLİK/GÖRÜNÜRLÜK: Pasife alınmış (ödemesi kesinleşmiş, satıştan
-    // kaldırılmış) domainler artık admin'e özel değil — herkes "Pasif"
-    // filtresini seçerek görebilir (satış arşivi/şeffaflık amaçlı).
-    // "Hepsi" seçiliyse pasif domainler de dahil, her şey gösterilir.
-    if(selectedCategoryFilters.has('hepsi')||selectedCategoryFilters.size===0){
-        // hepsi: filtre yok, hiçbir şey elenmez (pasif dahil)
+    const pasifOpt=document.getElementById('filter-option-pasif');
+    if(pasifOpt) pasifOpt.style.display=isAdminViewing?'':'none';
+    if(currentFilter==='pasif'){
+        // Sadece admin görebilir: SADECE gizli/pasife alınmış domainler.
+        sortedDomains = isAdminViewing ? sortedDomains.filter(d=>domainData[d.name]?.hidden) : [];
     } else {
-        sortedDomains = sortedDomains.filter(d=>{
-            const isHidden = !!domainData[d.name]?.hidden;
-            if(isHidden) return selectedCategoryFilters.has('pasif');
-            return selectedCategoryFilters.has(d.type||'genel');
-        });
+        // Gizli/pasif domainler, "Pasif" filtresi seçilmediği sürece hiç
+        // kimseye (admin dahil) normal listede gösterilmez.
+        sortedDomains = sortedDomains.filter(d=>!domainData[d.name]?.hidden);
+        if(currentFilter!=='hepsi') sortedDomains=sortedDomains.filter(d=>(d.type||'genel')===currentFilter);
     }
 
     const fragment=document.createDocumentFragment();
@@ -3948,7 +3891,7 @@ function listenToPendingPayouts(){
 // GÜVENLİK FIX: Bu dinleyici veriyi kendi kullanmıyordu (sadece "bir şey
 // değişti, profili yenile" tetikleyicisiydi), AMA Firestore'un canlı
 // dinleme protokolü, bir sorguya abone olurken belgelerin TAM içeriğini
-// (sellerNote dahil) yine de istemciye gönderiyordu. Bu da sell_requests
+// (sellerWallet dahil) yine de istemciye gönderiyordu. Bu da sell_requests
 // koleksiyonunun "allow read: if true" kalmasını gerektiriyordu. Artık
 // gerçek veri zaten güvenli get_user_profile action'ından geldiği için,
 // değişiklik tetikleyicisini de basit bir periyodik yenilemeye çevirdik.
@@ -4103,7 +4046,13 @@ async function handleIncompletePayment(payment){
 //    genelinde değil.
 // ═══════════════════════════════════════════════════════════════════════
 async function performPiConnect() {
-    await waitForPi();
+    try {
+        await waitForPi();
+    } catch (e) {
+        console.error('[performPiConnect] Pi SDK yüklenemedi:', e);
+        alert('Pi bağlantısı kurulamadı. Lütfen bu sayfayı Pi Browser uygulaması içinden açtığınızdan emin olun ve tekrar deneyin.');
+        return;
+    }
     await new Promise(r => setTimeout(r, 300));
 
     async function attemptLogin(isRetry) {
@@ -4445,7 +4394,6 @@ onSnapshot(collection(db,"domains"),(snapshot)=>{
             type:docData.type||(defaultDomain?defaultDomain.type:'genel'),
             description:docData.description||'',
             sellerUsername:docData.sellerUsername||null,
-            sellerNote:docData.sellerNote||null, // FIX: eksikti — not alanı domain kartında hiç görünmüyordu
             createdAt:docData.createdAt||0,
             deleted:docData.deleted===true, // FIX: soft-delete bayrağı
             deletedAt:docData.deletedAt||null, // FIX: silinme tarihi eksikti, eklendi
@@ -4936,21 +4884,10 @@ async function markMyTicketsSeen() {
     }
 }
 
-let ticketFilter = localStorage.getItem('w3dg_ticket_filter') || 'all';
-window.setTicketFilter = function(val) {
-    ticketFilter = val;
-    localStorage.setItem('w3dg_ticket_filter', val);
-    renderTicketList();
-};
-
 // ── KULLANICI: Ticket listesini render et ────────────────────────────
 function renderTicketList() {
     const container = document.getElementById('ticket-list-container');
     if (!container) return;
-
-    const sel = document.getElementById('ticket-filter-select');
-    if (sel && sel.value !== ticketFilter) sel.value = ticketFilter;
-    const filteredTickets = ticketFilter === 'all' ? myTickets : myTickets.filter(tk => tk.status === ticketFilter);
 
     if (!myTickets.length) {
         container.innerHTML = `
@@ -4959,10 +4896,6 @@ function renderTicketList() {
                 <div style="font-size:0.85em;font-weight:700;color:#94a3b8;margin-bottom:4px;">${t('noTickets')}</div>
                 <div style="font-size:0.72em;color:#64748b;">${t('newTicketSubtitle')}</div>
             </div>`;
-        return;
-    }
-    if (!filteredTickets.length) {
-        container.innerHTML = `<p style="font-size:0.75em;opacity:0.5;text-align:center;">${t('trademarkFilterEmpty')}</p>`;
         return;
     }
 
@@ -4989,7 +4922,7 @@ function renderTicketList() {
             <div>${t('ticketTableDate')}</div>
             <div>${t('ticketTableStatus')}</div>
         </div>
-        ${filteredTickets.map(ticket => {
+        ${myTickets.map(ticket => {
             const created = ticket.createdAt ? new Date(ticket.createdAt).toLocaleDateString(locale, { day: '2-digit', month: '2-digit' }) + ' ' + new Date(ticket.createdAt).toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' }) : '-';
             const lastUpdate = ticket.lastUpdate ? new Date(ticket.lastUpdate).toLocaleDateString(locale, { day: '2-digit', month: '2-digit' }) + ' ' + new Date(ticket.lastUpdate).toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' }) : created;
             const totalMsgCount = ticket.messages ? ticket.messages.length : 0;
@@ -5898,8 +5831,7 @@ document.addEventListener('input', function(e) {
 
 <!-- Ticket Detail Modal (User) -->
 <div id="ticket-detail-modal" class="modal-overlay" style="display:none;">
-    <div class="modal-content ticket-modal-content" style="text-align:left;position:relative;">
-        <button onclick="closeTicketDetailModal()" style="position:sticky;top:0;float:right;margin:-4px -4px 0 0;width:30px;height:30px;border-radius:50%;border:none;background:rgba(100,116,139,0.25);color:#e2e8f0;font-size:1.1em;font-weight:900;cursor:pointer;z-index:10;display:flex;align-items:center;justify-content:center;">✕</button>
+    <div class="modal-content ticket-modal-content" style="text-align:left;">
         <div id="ticket-detail-header"></div>
         <div id="ticket-detail-messages" class="ticket-messages"></div>
         <div class="ticket-reply-area">
@@ -5913,8 +5845,7 @@ document.addEventListener('input', function(e) {
 
 <!-- Admin Ticket Detail Modal -->
 <div id="admin-ticket-detail-modal" class="modal-overlay" style="display:none;">
-    <div class="modal-content ticket-modal-content" style="text-align:left;border-color:#f59e0b;position:relative;">
-        <button onclick="closeAdminTicketDetailModal()" style="position:sticky;top:0;float:right;margin:-4px -4px 0 0;width:30px;height:30px;border-radius:50%;border:none;background:rgba(100,116,139,0.25);color:#e2e8f0;font-size:1.1em;font-weight:900;cursor:pointer;z-index:10;display:flex;align-items:center;justify-content:center;">✕</button>
+    <div class="modal-content ticket-modal-content" style="text-align:left;border-color:#f59e0b;">
         <div id="admin-ticket-detail-header"></div>
         <div id="admin-ticket-detail-messages" class="ticket-messages"></div>
         <div class="ticket-admin-actions" id="admin-ticket-actions"></div>
