@@ -1144,8 +1144,8 @@
             <span id="detail-modal-price" style="color:#fbbf24;font-size:1.2em;font-weight:900;"></span>
             <span id="detail-modal-status" style="font-size:0.75em;font-weight:800;padding:3px 10px;border-radius:8px;"></span>
         </div>
-        <div id="detail-modal-desc" style="color:#94a3b8;font-size:0.82em;line-height:1.6;margin-bottom:12px;background:#0f172a;padding:10px;border-radius:10px;"></div>
-        <div id="detail-modal-seller" style="font-size:0.72em;color:#64748b;margin-bottom:12px;"></div>
+        <div id="detail-modal-desc" style="color:#e2e8f0;font-size:0.82em;line-height:1.6;margin-bottom:12px;background:#0f172a;padding:10px;border-radius:10px;border-left:3px solid #6366f1;"></div>
+        <div id="detail-modal-seller" style="font-size:0.78em;color:#c4b5fd;font-weight:800;margin-bottom:12px;background:rgba(99,102,241,0.1);display:inline-block;padding:4px 10px;border-radius:8px;"></div>
         <div id="detail-modal-action"></div>
         <button class="pi-btn" style="background:#475569;animation:none;padding:10px;margin:8px 0 0 0;width:100%;" onclick="document.getElementById('domain-detail-modal').style.display='none'" data-i18n="close"></button>
     </div>
@@ -1574,8 +1574,14 @@
                 <label style="display:flex;align-items:center;gap:8px;padding:5px 4px;font-size:0.75em;color:#e2e8f0;cursor:pointer;"><input type="checkbox" class="cat-check-item" value="saglik" onchange="window.onCategoryCheckChange()" style="width:15px;height:15px;accent-color:#6366f1;"><span data-i18n="typeHealth"></span></label>
                 <label style="display:flex;align-items:center;gap:8px;padding:5px 4px;font-size:0.75em;color:#e2e8f0;cursor:pointer;"><input type="checkbox" class="cat-check-item" value="egitim" onchange="window.onCategoryCheckChange()" style="width:15px;height:15px;accent-color:#6366f1;"><span data-i18n="typeEducation"></span></label>
                 <label style="display:flex;align-items:center;gap:8px;padding:5px 4px;font-size:0.75em;color:#e2e8f0;cursor:pointer;"><input type="checkbox" class="cat-check-item" value="gayrimenkul" onchange="window.onCategoryCheckChange()" style="width:15px;height:15px;accent-color:#6366f1;"><span data-i18n="typeRealEstate"></span></label>
-                <label style="display:flex;align-items:center;gap:8px;padding:5px 4px;font-size:0.75em;color:#6ee7b7;cursor:pointer;border-top:1px solid #334155;margin-top:4px;padding-top:8px;"><input type="checkbox" class="cat-check-item" value="pasif" onchange="window.onCategoryCheckChange()" style="width:15px;height:15px;accent-color:#10b981;"><span data-i18n="filterPasif"></span></label>
             </div>
+            <div class="filter-section-label" data-i18n="saleStatusFilterLabel" style="margin-top:6px;"></div>
+            <select id="sale-status-filter-select" onchange="window.setSaleStatusFilter(this.value)" style="width:100%;padding:7px 8px;border-radius:8px;border:1.5px solid #6366f1;background:#0f172a;color:#e2e8f0;font-size:0.75em;font-weight:700;cursor:pointer;">
+                <option value="hepsi" data-i18n="trademarkFilterAll"></option>
+                <option value="satista" data-i18n="saleStatusForSale"></option>
+                <option value="satildi" data-i18n="saleStatusSold"></option>
+                <option value="pasif" data-i18n="filterPasif"></option>
+            </select>
         </div>
         <div id="premium-lock" class="premium-lock-overlay">
             <div class="secure-badge" style="background:linear-gradient(165deg,#0a0f1e 0%,#0f172a 30%,#1e1b4b 50%,#0f172a 70%,#0a0f1e 100%);border:1.5px solid rgba(99,102,241,0.25);border-radius:16px;padding:20px 18px;box-shadow:0 4px 20px rgba(0,0,0,0.4),0 0 15px rgba(99,102,241,0.1),inset 0 1px 0 rgba(255,255,255,0.05);width:92%;margin:8px 0;backdrop-filter:blur(10px);">
@@ -1870,6 +1876,7 @@ const i18n = {
     addDomainBtn:"Domain Ekle",newDomainPlaceholder:"domain-adi.pi",
     newDomainPricePlaceholder:"Fiyat (Pİ)",newDomainImgPlaceholder:"Görsel yolu (opsiyonel)",
     availableDomains:"Satın Alabileceğiniz Domainler",filterAll:"Hepsi",filtersSelectedSuffix:"seçili",
+    saleStatusFilterLabel:"Satış Durumu",saleStatusForSale:"Satışta Olanlar",saleStatusSold:"Satılanlar",
     joinWeb3:"Ayrıcalıklı Web3 Dünyasına Katılın",secureConnection:"Güvenli Bağlantı",
     trustIntroTitle:"Devam Etmeden Önce Bilgilendirme",
     trustIntroBody:"Bu uygulama, Pi Network üzerinden domain alım-satımı yapılan bir Web3 pazar yeridir. Cüzdanınızı bağladığınızda özel anahtarınız, şifreniz veya seed ifadeniz <b>asla</b> istenmez ya da saklanmaz — bağlantı tamamen resmi Pi SDK üzerinden, sizin onayınızla gerçekleşir.",
@@ -2056,6 +2063,7 @@ const i18n = {
     resetFail:"Sıfırlama başarısız: ",
     detailFieldDomain:"Domain Adı",detailFieldPrice:"Fiyat",detailFieldType:"Tür",
     detailFieldSeller:"Gönderen Kullanıcı",detailFieldWallet:"Not",
+    detailFieldPaymentTo:"Cüzdan",paymentToUsernameNote:"Ödeme otomatik olarak {user} Pi hesabına gönderilecek",
     detailFieldDate:"Gönderim Tarihi",detailFieldDesc:"Açıklama",
     deletedDomainsTitle:"🗑️ Silinmiş Domainler",noDeletedDomains:"Silinmiş domain yok.",
     restoreBtn:"↩ Geri Getir",restoreConfirm:(n)=>`"${n}" domainini geri getirmek istediğinize emin misiniz? Eski verileri (açıklama, görsel, satıcı bilgisi) korunarak yeniden satışa eklenecek.`,
@@ -2256,6 +2264,7 @@ const i18n = {
     addDomainBtn:"Add Domain",newDomainPlaceholder:"domain-name.pi",
     newDomainPricePlaceholder:"Price (PI)",newDomainImgPlaceholder:"Image path (optional)",
     availableDomains:"Domains Available for Purchase",filterAll:"All",filtersSelectedSuffix:"selected",
+    saleStatusFilterLabel:"Sale Status",saleStatusForSale:"Available for Sale",saleStatusSold:"Sold",
     joinWeb3:"Join the Exclusive Web3 World",secureConnection:"Secure Connection",
     trustIntroTitle:"Before You Continue",
     trustIntroBody:"This app is a Web3 marketplace for buying and selling domains via Pi Network. When you connect your wallet, your private key, password, or seed phrase is <b>never</b> requested or stored — the connection happens entirely through the official Pi SDK, with your approval.",
@@ -2441,6 +2450,7 @@ const i18n = {
     resetFail:"Reset failed: ",
     detailFieldDomain:"Domain Name",detailFieldPrice:"Price",detailFieldType:"Type",
     detailFieldSeller:"Submitted By",detailFieldWallet:"Note",
+    detailFieldPaymentTo:"Wallet",paymentToUsernameNote:"Payment will be sent automatically to {user}'s Pi account",
     detailFieldDate:"Submission Date",detailFieldDesc:"Description",
     deletedDomainsTitle:"🗑️ Deleted Domains",noDeletedDomains:"No deleted domains.",
     restoreBtn:"↩ Restore",restoreConfirm:(n)=>`Are you sure you want to restore "${n}"? Its previous data (description, image, seller info) will be preserved and it will be relisted for sale.`,
@@ -2632,6 +2642,12 @@ let notifPollInterval=null;
 let currentFilter='hepsi',userFirstSeen=null;
 let userProfile={points:0,badge:null};
 let userSellRequests=[],userSoldDomains=[],userActiveListings=[],userTotalSpent=0,userTotalEarned=0;
+let myListingsStatusFilter=localStorage.getItem('w3dg_my_listings_filter')||'all';
+window.setMyListingsStatusFilter=function(val){
+    myListingsStatusFilter=val;
+    localStorage.setItem('w3dg_my_listings_filter',val);
+    renderUserPanel();
+};
 let selectedImageBase64=null,selectedImageMime=null,selectedImageName=null;
 let cachedNotifications=[];
 
@@ -2758,8 +2774,14 @@ window.switchUserTab=function(tabId){
 };
 
 // FILTER
-const ALL_DOMAIN_CATEGORIES=['genel','finans','bankacilik','eticaret','kisisel','teknoloji','turizm','saglik','egitim','gayrimenkul','pasif'];
+const ALL_DOMAIN_CATEGORIES=['genel','finans','bankacilik','eticaret','kisisel','teknoloji','turizm','saglik','egitim','gayrimenkul'];
 let selectedCategoryFilters=new Set(JSON.parse(localStorage.getItem('w3dg_category_filters')||'["hepsi"]'));
+let saleStatusFilter=localStorage.getItem('w3dg_sale_status_filter')||'hepsi';
+window.setSaleStatusFilter=function(val){
+    saleStatusFilter=val;
+    localStorage.setItem('w3dg_sale_status_filter',val);
+    debouncedRender();
+};
 
 window.toggleCategoryFilterPanel=function(){
     const panel=document.getElementById('category-filter-panel');
@@ -2815,6 +2837,8 @@ function syncCategoryFilterCheckboxes(){
         cb.checked = isHepsi || selectedCategoryFilters.has(cb.value);
     });
     updateCategoryFilterLabel();
+    const statusSel=document.getElementById('sale-status-filter-select');
+    if(statusSel&&statusSel.value!==saleStatusFilter) statusSel.value=saleStatusFilter;
 }
 
 // GÖRSEL SEÇME
@@ -3200,6 +3224,7 @@ window.openSellRequestDetail=function(requestId,dataStr){
         {label:t('detailFieldPrice'), value:`${p.price} Pi`, icon:'💰'},
         {label:t('detailFieldType'), value:typeLabel(p.domainType), icon:'🏷️'},
         {label:t('detailFieldSeller'), value:'@'+p.submittedBy, icon:'👤'},
+        {label:t('detailFieldPaymentTo'), value:t('paymentToUsernameNote').replace('{user}','@'+p.submittedBy), icon:'💳'},
         {label:t('detailFieldWallet'), value:p.sellerNote||t('pendingWalletUnspecified'), icon:'📝'},
         {label:t('detailFieldDate'), value:p.submittedAt?new Date(p.submittedAt).toLocaleDateString(locale):'-', icon:'📅'},
     ];
@@ -3605,13 +3630,27 @@ function renderUserPanel(){
         }
         // Tüm satış önerileri geçmişi + TÜM detaylar (YENİ SIRALAMA)
         html+=`<div style="display:inline-flex;align-items:center;gap:6px;background:linear-gradient(135deg,#78350f,#92400e);color:#fcd34d;font-size:0.68em;font-weight:800;text-transform:uppercase;margin:10px 0 6px 0;padding:4px 10px;border-radius:8px;border:1px solid #f59e0b;">${t('myListingsStatusTitle')}</div>`;
+        html+=`<select id="my-listings-status-filter" onchange="window.setMyListingsStatusFilter(this.value)" style="width:100%;margin-bottom:8px;padding:7px 8px;border-radius:8px;border:1.5px solid #92400e;background:#0f172a;color:#fcd34d;font-size:0.7em;font-weight:700;cursor:pointer;">
+            <option value="all" data-i18n="trademarkFilterAll">${t('trademarkFilterAll')}</option>
+            <option value="approved" data-i18n="statusApproved">${t('statusApproved')}</option>
+            <option value="pending" data-i18n="statusPending">${t('statusPending')}</option>
+            <option value="rejected" data-i18n="statusRejected">${t('statusRejected')}</option>
+        </select>`;
+        const filteredSellRequests = myListingsStatusFilter==='all' ? userSellRequests : userSellRequests.filter(req=>{
+            const isSoldReq = req.status==='approved' && domainData[req.domainName]?.sold===true;
+            const fStatus = isSoldReq ? 'sold' : req.status;
+            if(myListingsStatusFilter==='approved') return fStatus==='approved'||fStatus==='sold';
+            return fStatus===myListingsStatusFilter;
+        });
         if(!userSellRequests.length){
             html+=`<p style="font-size:0.75em;opacity:0.5;text-align:center;">${t('noListings')}</p>`;
+        } else if(!filteredSellRequests.length){
+            html+=`<p style="font-size:0.75em;opacity:0.5;text-align:center;">${t('trademarkFilterEmpty')}</p>`;
         } else {
             const statusMap={pending:t('statusPending'),approved:t('statusApproved'),rejected:t('statusRejected'),sold:t('statusSold'),withdrawn:t('statusWithdrawn')};
             const statusColor={pending:'#fbbf24',approved:'#10b981',rejected:'#ef4444',sold:'#ef4444',withdrawn:'#64748b'};
             const statusBg={pending:'rgba(251,191,36,0.1)',approved:'rgba(16,185,129,0.1)',rejected:'rgba(239,68,68,0.1)',sold:'rgba(239,68,68,0.1)',withdrawn:'rgba(100,116,139,0.1)'};
-            html+=userSellRequests.map(req=>{
+            html+=filteredSellRequests.map(req=>{
                 // Domain satıldı mı kontrol et
                 const domainInfo=domainData[req.domainName];
                 const isSold=domainInfo&&domainInfo.sold===true&&domainInfo.sellerUsername===currentUser;
@@ -3674,6 +3713,8 @@ function renderUserPanel(){
             }).join('');
         }
         myListingsEl.innerHTML=html;
+        const mlSel=document.getElementById('my-listings-status-filter');
+        if(mlSel) mlSel.value=myListingsStatusFilter;
     }
 
     // Gelirim — cüzdan bakiyesi gibi gösterim
@@ -3732,21 +3773,42 @@ function render(){
     // filtresini seçerek görebilir (satış arşivi/şeffaflık amaçlı).
     // "Hepsi" seçiliyse pasif domainler de dahil, her şey gösterilir.
     if(selectedCategoryFilters.has('hepsi')||selectedCategoryFilters.size===0){
-        // hepsi: filtre yok, hiçbir şey elenmez (pasif dahil)
+        // kategori filtresi yok
     } else {
+        sortedDomains = sortedDomains.filter(d=>selectedCategoryFilters.has(d.type||'genel'));
+    }
+    if(saleStatusFilter!=='hepsi'){
         sortedDomains = sortedDomains.filter(d=>{
             const isHidden = !!domainData[d.name]?.hidden;
-            if(isHidden) return selectedCategoryFilters.has('pasif');
-            return selectedCategoryFilters.has(d.type||'genel');
+            const isSold = !!domainData[d.name]?.sold;
+            if(saleStatusFilter==='pasif') return isHidden;
+            if(saleStatusFilter==='satildi') return isSold && !isHidden;
+            if(saleStatusFilter==='satista') return !isSold && !isHidden;
+            return true;
         });
     }
+    // "Hepsi" seçiliyse hiçbir ek eleme yapılmaz — pasif domainler dahil
+    // gerçekten HER ŞEY gösterilir (kullanıcının açık isteği).
 
     const fragment=document.createDocumentFragment();
+    if(typeof window._animatedDomainCards==='undefined') window._animatedDomainCards=new Set();
     sortedDomains.forEach((d,index)=>{
         const data=domainData[d.name]||{sold:false,price:d.price};
         const card=document.createElement('div');
         card.className='domain-card';
-        card.style.animationDelay=(index*0.06)+'s';
+        // FIX (yanıp sönme bug'ı): render() sık sık tetiklendiği için (her
+        // onSnapshot güncellemesinde) kartlar sürekli yeniden oluşturuluyor
+        // ve her seferinde "card-rise" giriş animasyonu baştan oynatılıyordu.
+        // Pasif/gizli kartlarda bu, opacity:0.55'ten 1'e (animasyon boyunca)
+        // sonra tekrar 0.55'e (animasyon bitince) dönüşe sebep oluyor —
+        // "renkleniyor, sonra buğulu hale dönüyor" olarak görünüyordu. Artık
+        // her domain sadece bir kere (ilk göründüğünde) animasyonla giriyor.
+        if(window._animatedDomainCards.has(d.name)){
+            card.style.animation='none';
+        } else {
+            card.style.animationDelay=(index*0.06)+'s';
+            window._animatedDomainCards.add(d.name);
+        }
         if(data.hidden){card.style.opacity='0.55';card.style.borderStyle='dashed';}
         const tTag=d.type?`<span class="domain-type-tag">${typeLabel(d.type)}</span>`:'';
         const isFinalizedSale=data.hidden&&data.payoutStatus==='released';
@@ -5899,7 +5961,6 @@ document.addEventListener('input', function(e) {
 <!-- Ticket Detail Modal (User) -->
 <div id="ticket-detail-modal" class="modal-overlay" style="display:none;">
     <div class="modal-content ticket-modal-content" style="text-align:left;position:relative;">
-        <button onclick="closeTicketDetailModal()" style="position:sticky;top:0;float:right;margin:-4px -4px 0 0;width:30px;height:30px;border-radius:50%;border:none;background:rgba(100,116,139,0.25);color:#e2e8f0;font-size:1.1em;font-weight:900;cursor:pointer;z-index:10;display:flex;align-items:center;justify-content:center;">✕</button>
         <div id="ticket-detail-header"></div>
         <div id="ticket-detail-messages" class="ticket-messages"></div>
         <div class="ticket-reply-area">
@@ -5914,7 +5975,6 @@ document.addEventListener('input', function(e) {
 <!-- Admin Ticket Detail Modal -->
 <div id="admin-ticket-detail-modal" class="modal-overlay" style="display:none;">
     <div class="modal-content ticket-modal-content" style="text-align:left;border-color:#f59e0b;position:relative;">
-        <button onclick="closeAdminTicketDetailModal()" style="position:sticky;top:0;float:right;margin:-4px -4px 0 0;width:30px;height:30px;border-radius:50%;border:none;background:rgba(100,116,139,0.25);color:#e2e8f0;font-size:1.1em;font-weight:900;cursor:pointer;z-index:10;display:flex;align-items:center;justify-content:center;">✕</button>
         <div id="admin-ticket-detail-header"></div>
         <div id="admin-ticket-detail-messages" class="ticket-messages"></div>
         <div class="ticket-admin-actions" id="admin-ticket-actions"></div>
