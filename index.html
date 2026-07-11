@@ -3780,24 +3780,34 @@ function listenToLogs(date){
         if(c) c.innerText=data.count||0; if(v) v.innerText=Math.round((data.volume||0)*100)/100;
     });
 }
+let pendingDomainsPollTimer=null;
 function listenToPendingDomains(){
-    if(pendingDomainsUnsubscribe) pendingDomainsUnsubscribe();
-    pendingDomainsUnsubscribe=onSnapshot(collection(db,"sell_requests"),(snapshot)=>{
-        const pending=[];
-        snapshot.forEach(docSnap=>{const d=docSnap.data();if(d.status==='pending')pending.push({id:docSnap.id,...d});});
-        pending.sort((a,b)=>(b.submittedAt||0)-(a.submittedAt||0));
-        renderPendingDomains(pending);
-    });
+    if(pendingDomainsPollTimer) clearInterval(pendingDomainsPollTimer);
+    const fetchOnce=async()=>{
+        try{
+            const r=await fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'get_pending_sell_requests',accessToken:piAccessToken})});
+            const result=await r.json();
+            if(result.success){
+                const pending=(result.requests||[]).filter(d=>d.status==='pending');
+                renderPendingDomains(pending);
+            }
+        }catch(e){console.error("Bekleyen ilan talepleri alınamadı:",e);}
+    };
+    fetchOnce();
+    pendingDomainsPollTimer=setInterval(fetchOnce,20000);
 }
 
 // ══════════════════════════════════════════════════════════════════════
-//  ADMIN: MARKA HAKKI TALEPLERİ VE BEKLEYEN ÖDEMELER — CANLI DİNLEYİCİLER
-//  Bu iki sekme yeni eklendiği için, admin sekmeyi hiç açmasa bile yeni bir
-//  talep/ödeme geldiği an rozet (badge) anında düşsün istendi. Diğer admin
-//  verileri gibi periyodik "polling" yerine doğrudan Firestore canlı
-//  dinleyicisi (onSnapshot) kullanılıyor — sıfır gecikme.
+//  ADMIN: MARKA HAKKI TALEPLERİ VE BEKLEYEN ÖDEMELER
+//  GÜVENLİK FIX: Bu iki koleksiyon (trademark_claims kişisel veri — isim/
+//  e-posta/şirket — içerir) daha önce doğrudan Firestore'dan (allow read:
+//  if true ile) okunuyordu; admin paneline hiç girmeden, Firebase config'i
+//  bilen HERKES bu veriyi tarayıcı konsolundan çekebilirdi. Artık admin
+//  doğrulamalı bir backend action üzerinden, periyodik olarak (polling)
+//  çekiliyor. Karşılığında firestore.rules'ta bu koleksiyonların "read"
+//  izni "false" yapılmalıdır.
 // ══════════════════════════════════════════════════════════════════════
-let trademarkClaimsUnsubscribe=null;
+let trademarkClaimsPollTimer=null;
 let _allTrademarkClaims=[];
 let trademarkFilter=localStorage.getItem('w3dg_trademark_filter')||'all';
 window.setTrademarkFilter=function(val){
@@ -3806,25 +3816,30 @@ window.setTrademarkFilter=function(val){
     renderAdminTrademarkClaims(_allTrademarkClaims);
 };
 function listenToTrademarkClaims(){
-    if(trademarkClaimsUnsubscribe) trademarkClaimsUnsubscribe();
-    trademarkClaimsUnsubscribe=onSnapshot(collection(db,"trademark_claims"),(snapshot)=>{
-        const claims=[];
-        snapshot.forEach(docSnap=>claims.push({id:docSnap.id,...docSnap.data()}));
-        claims.sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
-        _allTrademarkClaims=claims;
-        const sel=document.getElementById('trademark-filter-select');
-        if(sel&&sel.value!==trademarkFilter) sel.value=trademarkFilter;
-        renderAdminTrademarkClaims(claims);
-        const openCount=claims.filter(c=>c.status==='new'||c.status==='reviewing').length;
-        const badge=document.getElementById('trademark-count-badge');
-        if(badge){
-            if(openCount>0){badge.style.display='inline-block';badge.textContent=openCount>99?'99+':openCount;}
-            else badge.style.display='none';
-        }
-    });
+    if(trademarkClaimsPollTimer) clearInterval(trademarkClaimsPollTimer);
+    const fetchOnce=async()=>{
+        try{
+            const r=await fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'get_trademark_claims',accessToken:piAccessToken})});
+            const result=await r.json();
+            if(!result.success) return;
+            const claims=result.claims||[];
+            _allTrademarkClaims=claims;
+            const sel=document.getElementById('trademark-filter-select');
+            if(sel&&sel.value!==trademarkFilter) sel.value=trademarkFilter;
+            renderAdminTrademarkClaims(claims);
+            const openCount=claims.filter(c=>c.status==='new'||c.status==='reviewing').length;
+            const badge=document.getElementById('trademark-count-badge');
+            if(badge){
+                if(openCount>0){badge.style.display='inline-block';badge.textContent=openCount>99?'99+':openCount;}
+                else badge.style.display='none';
+            }
+        }catch(e){console.error("Marka hakkı talepleri alınamadı:",e);}
+    };
+    fetchOnce();
+    trademarkClaimsPollTimer=setInterval(fetchOnce,20000);
 }
 
-let pendingPayoutsUnsubscribe=null;
+let pendingPayoutsPollTimer=null;
 let _allPendingPayouts = [];
 let payoutsFilter = localStorage.getItem('w3dg_payouts_filter') || 'all';
 window.setPayoutsFilter = function(val) {
@@ -3833,25 +3848,27 @@ window.setPayoutsFilter = function(val) {
     renderAdminPayouts(_allPendingPayouts);
 };
 function listenToPendingPayouts(){
-    if(pendingPayoutsUnsubscribe) pendingPayoutsUnsubscribe();
-    pendingPayoutsUnsubscribe=onSnapshot(collection(db,"global_sales"),(snapshot)=>{
-        const payouts=[];
-        snapshot.forEach(docSnap=>{
-            const d=docSnap.data();
-            if(d.payoutStatus) payouts.push({id:docSnap.id,...d}); // sadece escrow'a giren (satıcılı) satışlar
-        });
-        payouts.sort((a,b)=>(b.at||0)-(a.at||0));
-        _allPendingPayouts = payouts;
-        const sel=document.getElementById('payouts-filter-select');
-        if(sel&&sel.value!==payoutsFilter) sel.value=payoutsFilter;
-        renderAdminPayouts(payouts);
-        const pendingCount=payouts.filter(p=>p.payoutStatus==='pending').length;
-        const badge=document.getElementById('payouts-count-badge');
-        if(badge){
-            if(pendingCount>0){badge.style.display='inline-block';badge.textContent=pendingCount>99?'99+':pendingCount;}
-            else badge.style.display='none';
-        }
-    });
+    if(pendingPayoutsPollTimer) clearInterval(pendingPayoutsPollTimer);
+    const fetchOnce=async()=>{
+        try{
+            const r=await fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'get_pending_payouts',accessToken:piAccessToken})});
+            const result=await r.json();
+            if(!result.success) return;
+            const payouts=result.payouts||[];
+            _allPendingPayouts = payouts;
+            const sel=document.getElementById('payouts-filter-select');
+            if(sel&&sel.value!==payoutsFilter) sel.value=payoutsFilter;
+            renderAdminPayouts(payouts);
+            const pendingCount=payouts.filter(p=>p.payoutStatus==='pending').length;
+            const badge=document.getElementById('payouts-count-badge');
+            if(badge){
+                if(pendingCount>0){badge.style.display='inline-block';badge.textContent=pendingCount>99?'99+':pendingCount;}
+                else badge.style.display='none';
+            }
+        }catch(e){console.error("Bekleyen ödemeler alınamadı:",e);}
+    };
+    fetchOnce();
+    pendingPayoutsPollTimer=setInterval(fetchOnce,20000);
 }
 
 // FIX: reject_sell_request durumunda domains koleksiyonunda HİÇBİR
@@ -3859,15 +3876,20 @@ function listenToPendingPayouts(){
 // onSnapshot tetikleyicisi bu senaryoyu yakalayamaz. Her kullanıcı kendi
 // sell_requests belgelerini doğrudan dinler ki "Onay Bekliyor" →
 // "Reddedildi"/"Onaylandı" geçişini sayfa yenilemeden anında görsün.
+// GÜVENLİK FIX: Bu dinleyici veriyi kendi kullanmıyordu (sadece "bir şey
+// değişti, profili yenile" tetikleyicisiydi), AMA Firestore'un canlı
+// dinleme protokolü, bir sorguya abone olurken belgelerin TAM içeriğini
+// (sellerWallet dahil) yine de istemciye gönderiyordu. Bu da sell_requests
+// koleksiyonunun "allow read: if true" kalmasını gerektiriyordu. Artık
+// gerçek veri zaten güvenli get_user_profile action'ından geldiği için,
+// değişiklik tetikleyicisini de basit bir periyodik yenilemeye çevirdik.
+let myOwnSellRequestsPollTimer=null;
 function listenToMyOwnSellRequests(username){
-    if(myOwnSellRequestsUnsubscribe) myOwnSellRequestsUnsubscribe();
-    const q=query(collection(db,"sell_requests"),where("submittedBy","==",username));
-    myOwnSellRequestsUnsubscribe=onSnapshot(q,()=>{
-        debouncedProfileRefresh();
-    });
+    if(myOwnSellRequestsPollTimer) clearInterval(myOwnSellRequestsPollTimer);
+    myOwnSellRequestsPollTimer=setInterval(()=>{ if(isAuth) debouncedProfileRefresh(); },20000);
 }
 function stopListeningToMyOwnSellRequests(){
-    if(myOwnSellRequestsUnsubscribe){myOwnSellRequestsUnsubscribe();myOwnSellRequestsUnsubscribe=null;}
+    if(myOwnSellRequestsPollTimer){clearInterval(myOwnSellRequestsPollTimer);myOwnSellRequestsPollTimer=null;}
 }
 
 // UNIQUE USERS
