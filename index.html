@@ -30,7 +30,7 @@
         .domain-price{color:var(--price);font-size:0.68em;font-weight:700;margin:0;display:none;}
         .domain-type-tag{font-size:0.58em;color:#94a3b8;background:rgba(148,163,184,0.15);border-radius:5px;padding:2px 6px;margin-bottom:3px;display:inline-block;}
         .btn-buy{background:var(--accent);color:white;border:none;padding:5px 6px;border-radius:6px;cursor:pointer;margin-top:4px;font-weight:bold;width:100%;font-size:0.72em;}
-        .btn-sold{background:rgba(239,68,68,0.1);color:var(--sold);border:1.5px solid var(--sold);padding:5px 6px;border-radius:6px;margin-top:4px;font-weight:bold;width:100%;font-size:0.68em;}
+        .btn-sold{background:linear-gradient(135deg,rgba(239,68,68,0.28),rgba(239,68,68,0.12));color:#fca5a5;border:2px solid var(--sold);padding:5px 6px;border-radius:6px;margin-top:4px;font-weight:900;width:100%;font-size:0.68em;box-shadow:0 0 10px rgba(239,68,68,0.45);letter-spacing:0.2px;}
         .pi-btn{background:linear-gradient(135deg,#0052FF 0%,#3b82f6 100%);color:#ffffff;padding:10px 24px;border-radius:50px;font-weight:900;font-size:0.9em;border:none;cursor:pointer;animation:pulse-blue 2s infinite;transition:0.3s;margin:3px 0;}
         @keyframes pulse-blue{0%{transform:scale(0.95);box-shadow:0 0 0 0 rgba(0,82,255,0.7);}70%{transform:scale(1);box-shadow:0 0 0 10px rgba(0,82,255,0);}100%{transform:scale(0.95);box-shadow:0 0 0 0 rgba(0,82,255,0);}}
         .section-title-box{background:linear-gradient(90deg,#fef3c7 0%,#fde68a 30%,#ffffff 45%,#ffffff 55%,#fde68a 70%,#fef3c7 100%);background-size:200% auto;color:#1e293b;padding:6px 18px;border-radius:10px;border:2.5px solid #f59e0b;font-size:0.95em;font-weight:900;letter-spacing:0.5px;box-shadow:0 0 15px rgba(245,158,11,0.4),0 4px 8px rgba(0,0,0,0.2);font-weight:900;display:inline-block;margin-bottom:6px;animation:title-glow 2.5s ease-in-out infinite,section-shimmer 3s linear infinite;}
@@ -248,6 +248,22 @@
   border-color: transparent;
   box-shadow: 0 0 10px rgba(99,102,241,0.3);
 }
+
+/* Öne çıkan filtre kutuları — tüm durum/kategori filtreleri için ortak vurgu stili */
+.filter-highlight-select{
+  width:100%;box-sizing:border-box;padding:9px 30px 9px 30px;border-radius:10px;font-size:0.75em;font-weight:800;cursor:pointer;
+  appearance:none;-webkit-appearance:none;
+  background-image:linear-gradient(180deg,rgba(255,255,255,0.06),rgba(255,255,255,0)),var(--fh-bg,linear-gradient(135deg,#1e1b4b,#312e81)),url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="%23a5b4fc"><path d="M5.5 7l4.5 4.5L14.5 7z"/></svg>');
+  background-repeat:no-repeat;background-position:right 10px center;background-size:14px;
+  border:2px solid var(--fh-border,#818cf8);
+  color:var(--fh-color,#e0e7ff);
+  box-shadow:0 0 0 1px rgba(255,255,255,0.04) inset,0 3px 10px rgba(0,0,0,0.35),0 0 14px var(--fh-glow,rgba(99,102,241,0.45));
+  transition:box-shadow 0.2s,transform 0.15s;
+}
+.filter-highlight-select:focus{outline:none;box-shadow:0 0 0 1px rgba(255,255,255,0.06) inset,0 3px 10px rgba(0,0,0,0.4),0 0 20px var(--fh-glow,rgba(99,102,241,0.7));}
+.filter-highlight-select:active{transform:scale(0.99);}
+.filter-highlight-wrap{position:relative;margin-bottom:8px;}
+.filter-highlight-wrap::before{content:"🔎";position:absolute;left:10px;top:50%;transform:translateY(-50%);font-size:0.9em;pointer-events:none;filter:drop-shadow(0 0 4px rgba(0,0,0,0.6));z-index:1;}
 
 .ticket-filter-count {
   display: inline-block;
@@ -946,7 +962,12 @@
         <button onclick="window.closeTrustIntro()" style="width:100%;padding:12px;border:none;border-radius:10px;background:linear-gradient(135deg,#6366f1,#818cf8);color:#fff;font-weight:800;font-size:0.9em;cursor:pointer;box-shadow:0 4px 14px rgba(99,102,241,0.4);" data-i18n="trustIntroButton"></button>
     </div>
 </div>
-<button id="trust-fab" onclick="window.openTrustInfo()" title="Güvenlik ve Gizlilik Bilgisi" style="position:fixed;bottom:16px;left:14px;z-index:900;width:46px;height:46px;border-radius:50%;background:linear-gradient(135deg,#f59e0b,#fbbf24);border:2px solid rgba(255,255,255,0.25);box-shadow:0 6px 18px rgba(245,158,11,0.55);color:#1e1b4b;font-size:1.3em;font-weight:900;cursor:pointer;display:flex;align-items:center;justify-content:center;animation:tour-fab-pulse 2.4s ease-in-out infinite;">🛡️</button>
+<button id="trust-fab" onclick="window.openTrustInfo()" title="Güvenlik ve Gizlilik Bilgisi" style="position:fixed;bottom:16px;left:14px;z-index:900;width:46px;height:46px;border-radius:50%;background:linear-gradient(135deg,#f59e0b,#fbbf24);border:2px solid rgba(255,255,255,0.25);box-shadow:0 6px 18px rgba(245,158,11,0.55);color:#1e1b4b;cursor:pointer;display:flex;align-items:center;justify-content:center;animation:tour-fab-pulse 2.4s ease-in-out infinite;">
+<svg viewBox="0 0 24 24" width="22" height="22" xmlns="http://www.w3.org/2000/svg" style="display:block;">
+    <path d="M12 2.5 L20 5.8 V11.5 C20 16.5 16.5 20.2 12 21.8 C7.5 20.2 4 16.5 4 11.5 V5.8 Z" fill="#1e1b4b" stroke="#1e1b4b" stroke-width="0.5"/>
+    <path d="M9.2 12.2 L11.3 14.3 L15 9.8" fill="none" stroke="#fde68a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
+</button>
 <button id="tour-fab" onclick="window.startOnboardingTour()" title="Uygulama Turu" style="display:none;position:fixed;bottom:16px;right:14px;z-index:900;width:46px;height:46px;border-radius:50%;background:linear-gradient(135deg,#6366f1,#818cf8);border:2px solid rgba(255,255,255,0.25);box-shadow:0 6px 18px rgba(99,102,241,0.55);color:#fff;font-size:1.15em;font-weight:900;cursor:pointer;align-items:center;justify-content:center;animation:tour-fab-pulse 2.4s ease-in-out infinite;">?</button>
 <style>@keyframes tour-fab-pulse{0%,100%{box-shadow:0 6px 18px rgba(99,102,241,0.55);}50%{box-shadow:0 6px 26px rgba(99,102,241,0.9),0 0 0 6px rgba(99,102,241,0.15);}}</style>
 <div class="side-menu-overlay" id="side-menu-overlay" onclick="toggleSideMenu()"></div>
@@ -1347,7 +1368,8 @@
                     <span style="display:flex;align-items:center;gap:6px;font-size:0.72em;color:#a5b4fc;font-weight:800;text-transform:uppercase;">🎫 <span data-i18n="myTickets"></span></span>
                     <button class="pi-btn" style="animation:none;padding:6px 12px;font-size:0.68em;margin:0;" onclick="showCreateTicketForm()">➕ <span data-i18n="newTicket"></span></button>
                 </div>
-                <select id="ticket-filter-select" onchange="window.setTicketFilter(this.value)" style="width:100%;margin-bottom:8px;padding:7px 8px;border-radius:8px;border:1.5px solid #4338ca;background:#0f172a;color:#a5b4fc;font-size:0.7em;font-weight:700;cursor:pointer;">
+                <div class="filter-highlight-wrap">
+                <select id="ticket-filter-select" onchange="window.setTicketFilter(this.value)" class="filter-highlight-select" style="--fh-border:#818cf8;--fh-bg:linear-gradient(135deg,#312e81,#4338ca);--fh-glow:rgba(99,102,241,0.55);--fh-color:#e0e7ff;">
                     <option value="all" data-i18n="trademarkFilterAll"></option>
                     <option value="new" data-i18n="ticketStatusNew"></option>
                     <option value="reviewing" data-i18n="ticketStatusReviewing"></option>
@@ -1355,6 +1377,7 @@
                     <option value="resolved" data-i18n="ticketStatusResolved"></option>
                     <option value="closed" data-i18n="ticketStatusClosed"></option>
                 </select>
+                </div>
                 <div id="ticket-list-container">
                     <div class="skeleton-ticket-row"><div class="skeleton" style="width:34px;height:34px;border-radius:8px;"></div><div style="flex:1;"><div class="skeleton skeleton-line" style="width:60%;margin:0 0 6px 0;"></div><div class="skeleton skeleton-line" style="width:35%;height:8px;margin:0;"></div></div></div>
                     <div class="skeleton-ticket-row"><div class="skeleton" style="width:34px;height:34px;border-radius:8px;"></div><div style="flex:1;"><div class="skeleton skeleton-line" style="width:48%;margin:0 0 6px 0;"></div><div class="skeleton skeleton-line" style="width:28%;height:8px;margin:0;"></div></div></div>
@@ -1368,12 +1391,14 @@
                     <span style="display:flex;align-items:center;gap:6px;font-size:0.72em;color:#fca5a5;font-weight:800;text-transform:uppercase;">🔖 <span data-i18n="myTrademarkClaims"></span></span>
                 </div>
                 <div style="font-size:0.65em;color:#94a3b8;margin-bottom:8px;line-height:1.5;" data-i18n="myTrademarkClaimsNote"></div>
-                <select id="my-trademark-filter-select" onchange="window.setMyTrademarkFilter(this.value)" style="width:100%;margin-bottom:8px;padding:7px 8px;border-radius:8px;border:1.5px solid #7f1d1d;background:#0f172a;color:#fca5a5;font-size:0.7em;font-weight:700;cursor:pointer;">
+                <div class="filter-highlight-wrap">
+                <select id="my-trademark-filter-select" onchange="window.setMyTrademarkFilter(this.value)" class="filter-highlight-select" style="--fh-border:#f87171;--fh-bg:linear-gradient(135deg,#450a0a,#7f1d1d);--fh-glow:rgba(239,68,68,0.55);--fh-color:#fecaca;">
                     <option value="all" data-i18n="trademarkFilterAll"></option>
                     <option value="pending" data-i18n="trademarkFilterPending"></option>
                     <option value="resolved" data-i18n="trademarkFilterResolved"></option>
                     <option value="rejected" data-i18n="trademarkFilterRejected"></option>
                 </select>
+                </div>
                 <div id="my-trademark-claims-list">
                     <div class="skeleton-ticket-row"><div class="skeleton" style="width:34px;height:34px;border-radius:8px;"></div><div style="flex:1;"><div class="skeleton skeleton-line" style="width:60%;margin:0 0 6px 0;"></div><div class="skeleton skeleton-line" style="width:35%;height:8px;margin:0;"></div></div></div>
                 </div>
@@ -1519,12 +1544,14 @@
         <div class="admin-tab-panel" id="tab-trademark">
             <div style="background:#0a0f1e;border:2px solid #ef4444;border-radius:12px;padding:10px;">
                 <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;padding-bottom:7px;border-bottom:1px solid #7f1d1d;"><span>🔖</span><span style="font-size:0.72em;color:#fca5a5;font-weight:800;text-transform:uppercase;flex:1;" data-i18n="trademarkTabLabel"></span></div>
-                <select id="trademark-filter-select" onchange="window.setTrademarkFilter(this.value)" style="width:100%;margin-bottom:8px;padding:7px 8px;border-radius:8px;border:1.5px solid #7f1d1d;background:#0f172a;color:#fca5a5;font-size:0.7em;font-weight:700;cursor:pointer;">
+                <div class="filter-highlight-wrap">
+                <select id="trademark-filter-select" onchange="window.setTrademarkFilter(this.value)" class="filter-highlight-select" style="--fh-border:#f87171;--fh-bg:linear-gradient(135deg,#450a0a,#7f1d1d);--fh-glow:rgba(239,68,68,0.55);--fh-color:#fecaca;">
                     <option value="all" data-i18n="trademarkFilterAll"></option>
                     <option value="pending" data-i18n="trademarkFilterPending"></option>
                     <option value="resolved" data-i18n="trademarkFilterResolved"></option>
                     <option value="rejected" data-i18n="trademarkFilterRejected"></option>
                 </select>
+                </div>
                 <div id="trademark-admin-list">
                     <div class="skeleton-ticket-row"><div class="skeleton" style="width:34px;height:34px;border-radius:8px;"></div><div style="flex:1;"><div class="skeleton skeleton-line" style="width:60%;margin:0 0 6px 0;"></div><div class="skeleton skeleton-line" style="width:35%;height:8px;margin:0;"></div></div></div>
                     <div class="skeleton-ticket-row"><div class="skeleton" style="width:34px;height:34px;border-radius:8px;"></div><div style="flex:1;"><div class="skeleton skeleton-line" style="width:52%;margin:0 0 6px 0;"></div><div class="skeleton skeleton-line" style="width:30%;height:8px;margin:0;"></div></div></div>
@@ -1537,12 +1564,14 @@
             <div style="background:#0a0f1e;border:2px solid #10b981;border-radius:12px;padding:10px;">
                 <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;padding-bottom:7px;border-bottom:1px solid #065f46;"><span>💸</span><span style="font-size:0.72em;color:#6ee7b7;font-weight:800;text-transform:uppercase;" data-i18n="payoutsTabLabel"></span></div>
                 <div style="font-size:0.65em;color:#94a3b8;margin-bottom:8px;line-height:1.5;" data-i18n="payoutsExplainer"></div>
-                <select id="payouts-filter-select" onchange="window.setPayoutsFilter(this.value)" style="width:100%;margin-bottom:8px;padding:7px 8px;border-radius:8px;border:1.5px solid #065f46;background:#0f172a;color:#6ee7b7;font-size:0.7em;font-weight:700;cursor:pointer;">
+                <div class="filter-highlight-wrap">
+                <select id="payouts-filter-select" onchange="window.setPayoutsFilter(this.value)" class="filter-highlight-select" style="--fh-border:#34d399;--fh-bg:linear-gradient(135deg,#022c22,#065f46);--fh-glow:rgba(16,185,129,0.55);--fh-color:#a7f3d0;">
                     <option value="all" data-i18n="trademarkFilterAll"></option>
                     <option value="pending" data-i18n="payoutsFilterPending"></option>
                     <option value="resolved" data-i18n="trademarkFilterResolved"></option>
                     <option value="rejected" data-i18n="payoutsFilterFailed"></option>
                 </select>
+                </div>
                 <div id="payouts-admin-list">
                     <div class="skeleton-ticket-row"><div class="skeleton" style="width:34px;height:34px;border-radius:8px;"></div><div style="flex:1;"><div class="skeleton skeleton-line" style="width:60%;margin:0 0 6px 0;"></div><div class="skeleton skeleton-line" style="width:35%;height:8px;margin:0;"></div></div></div>
                     <div class="skeleton-ticket-row"><div class="skeleton" style="width:34px;height:34px;border-radius:8px;"></div><div style="flex:1;"><div class="skeleton skeleton-line" style="width:52%;margin:0 0 6px 0;"></div><div class="skeleton skeleton-line" style="width:30%;height:8px;margin:0;"></div></div></div>
@@ -1576,12 +1605,14 @@
                 <label style="display:flex;align-items:center;gap:8px;padding:5px 4px;font-size:0.75em;color:#e2e8f0;cursor:pointer;"><input type="checkbox" class="cat-check-item" value="gayrimenkul" onchange="window.onCategoryCheckChange()" style="width:15px;height:15px;accent-color:#6366f1;"><span data-i18n="typeRealEstate"></span></label>
             </div>
             <div class="filter-section-label" data-i18n="saleStatusFilterLabel" style="margin-top:6px;"></div>
-            <select id="sale-status-filter-select" onchange="window.setSaleStatusFilter(this.value)" style="width:100%;padding:7px 8px;border-radius:8px;border:1.5px solid #6366f1;background:#0f172a;color:#e2e8f0;font-size:0.75em;font-weight:700;cursor:pointer;">
+            <div class="filter-highlight-wrap">
+            <select id="sale-status-filter-select" onchange="window.setSaleStatusFilter(this.value)" class="filter-highlight-select" style="--fh-border:#818cf8;--fh-bg:linear-gradient(135deg,#1e1b4b,#4338ca);--fh-glow:rgba(99,102,241,0.55);--fh-color:#e0e7ff;">
                 <option value="hepsi" data-i18n="trademarkFilterAll"></option>
                 <option value="satista" data-i18n="saleStatusForSale"></option>
                 <option value="satildi" data-i18n="saleStatusSold"></option>
                 <option value="pasif" data-i18n="filterPasif"></option>
             </select>
+            </div>
         </div>
         <div id="premium-lock" class="premium-lock-overlay">
             <div class="secure-badge" style="background:linear-gradient(165deg,#0a0f1e 0%,#0f172a 30%,#1e1b4b 50%,#0f172a 70%,#0a0f1e 100%);border:1.5px solid rgba(99,102,241,0.25);border-radius:16px;padding:20px 18px;box-shadow:0 4px 20px rgba(0,0,0,0.4),0 0 15px rgba(99,102,241,0.1),inset 0 1px 0 rgba(255,255,255,0.05);width:92%;margin:8px 0;backdrop-filter:blur(10px);">
@@ -3589,14 +3620,14 @@ function renderUserPanel(){
             html+=`<p style="font-size:0.72em;opacity:0.5;text-align:center;margin-bottom:10px;">${t('noActiveListings')}</p>`;
         } else {
             html+=userActiveListings.map(d=>`
-                <div style="background:#0f172a;border:1.5px solid #f59e0b;border-radius:12px;padding:10px;margin-bottom:8px;">
+                <div style="background:#0f172a;border:2px solid #f59e0b;border-radius:12px;padding:10px;margin-bottom:8px;box-shadow:0 0 14px rgba(245,158,11,0.4),0 3px 8px rgba(0,0,0,0.3);">
                     <!-- Top row: Domain name + Type + On Sale tag (top right) -->
                     <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;gap:8px;">
                         <div style="flex:1;min-width:0;">
                             <b style="color:#f1f5f9;font-size:0.9em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${d.name}">${d.name}</b>
                         </div>
                         <div style="display:flex;flex-direction:column;align-items:flex-end;gap:3px;flex-shrink:0;margin-left:8px;">
-                            <span style="font-size:0.58em;background:rgba(16,185,129,0.15);color:#6ee7b7;border:1px solid #10b981;border-radius:6px;padding:1px 6px;font-weight:700;white-space:nowrap;">✅ ${t('domainOnSale')}</span>
+                            <span style="font-size:0.62em;background:linear-gradient(135deg,rgba(16,185,129,0.32),rgba(16,185,129,0.14));color:#6ee7b7;border:1.5px solid #10b981;border-radius:8px;padding:2px 9px;font-weight:900;white-space:nowrap;box-shadow:0 0 10px rgba(16,185,129,0.5);letter-spacing:0.2px;">✅ ${t('domainOnSale')}</span>
                         </div>
                     </div>
                     <!-- Label:Value layout (like pending listings) -->
@@ -3621,6 +3652,10 @@ function renderUserPanel(){
                             <span style="color:#64748b;flex-shrink:0;font-weight:700;min-width:90px;">🗒️ ${t('detailFieldWallet')}:</span>
                             <span style="color:#60a5fa;font-size:0.9em;">${d.sellerNote}</span>
                         </div>`:''}
+                        <div style="display:flex;gap:6px;align-items:flex-start;margin-top:2px;padding:6px 8px;background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.3);border-radius:6px;">
+                            <span style="color:#34d399;flex-shrink:0;font-weight:800;min-width:90px;">💳 ${t('detailFieldPaymentTo')}:</span>
+                            <span style="color:#a7f3d0;word-break:break-word;flex:1;font-weight:600;">${t('paymentToUsernameNote').replace('{user}','@'+currentUser)}</span>
+                        </div>
                     </div>
                     <!-- Withdraw listing button -->
                     <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;">
@@ -3630,12 +3665,13 @@ function renderUserPanel(){
         }
         // Tüm satış önerileri geçmişi + TÜM detaylar (YENİ SIRALAMA)
         html+=`<div style="display:inline-flex;align-items:center;gap:6px;background:linear-gradient(135deg,#78350f,#92400e);color:#fcd34d;font-size:0.68em;font-weight:800;text-transform:uppercase;margin:10px 0 6px 0;padding:4px 10px;border-radius:8px;border:1px solid #f59e0b;">${t('myListingsStatusTitle')}</div>`;
-        html+=`<select id="my-listings-status-filter" onchange="window.setMyListingsStatusFilter(this.value)" style="width:100%;margin-bottom:8px;padding:7px 8px;border-radius:8px;border:1.5px solid #92400e;background:#0f172a;color:#fcd34d;font-size:0.7em;font-weight:700;cursor:pointer;">
+        html+=`<div class="filter-highlight-wrap">`;
+        html+=`<select id="my-listings-status-filter" onchange="window.setMyListingsStatusFilter(this.value)" class="filter-highlight-select" style="--fh-border:#fbbf24;--fh-bg:linear-gradient(135deg,#451a03,#92400e);--fh-glow:rgba(251,191,36,0.55);--fh-color:#fde68a;">
             <option value="all" data-i18n="trademarkFilterAll">${t('trademarkFilterAll')}</option>
             <option value="approved" data-i18n="statusApproved">${t('statusApproved')}</option>
             <option value="pending" data-i18n="statusPending">${t('statusPending')}</option>
             <option value="rejected" data-i18n="statusRejected">${t('statusRejected')}</option>
-        </select>`;
+        </select></div>`;
         const filteredSellRequests = myListingsStatusFilter==='all' ? userSellRequests : userSellRequests.filter(req=>{
             const isSoldReq = req.status==='approved' && domainData[req.domainName]?.sold===true;
             const fStatus = isSoldReq ? 'sold' : req.status;
@@ -3648,8 +3684,9 @@ function renderUserPanel(){
             html+=`<p style="font-size:0.75em;opacity:0.5;text-align:center;">${t('trademarkFilterEmpty')}</p>`;
         } else {
             const statusMap={pending:t('statusPending'),approved:t('statusApproved'),rejected:t('statusRejected'),sold:t('statusSold'),withdrawn:t('statusWithdrawn')};
-            const statusColor={pending:'#fbbf24',approved:'#10b981',rejected:'#ef4444',sold:'#ef4444',withdrawn:'#64748b'};
-            const statusBg={pending:'rgba(251,191,36,0.1)',approved:'rgba(16,185,129,0.1)',rejected:'rgba(239,68,68,0.1)',sold:'rgba(239,68,68,0.1)',withdrawn:'rgba(100,116,139,0.1)'};
+            const statusColor={pending:'#fbbf24',approved:'#10b981',rejected:'#ef4444',sold:'#ef4444',withdrawn:'#94a3b8'};
+            const statusBg={pending:'linear-gradient(135deg,rgba(251,191,36,0.28),rgba(251,191,36,0.12))',approved:'linear-gradient(135deg,rgba(16,185,129,0.28),rgba(16,185,129,0.12))',rejected:'linear-gradient(135deg,rgba(239,68,68,0.28),rgba(239,68,68,0.12))',sold:'linear-gradient(135deg,rgba(239,68,68,0.28),rgba(239,68,68,0.12))',withdrawn:'linear-gradient(135deg,rgba(148,163,184,0.22),rgba(148,163,184,0.1))'};
+            const statusGlow={pending:'rgba(251,191,36,0.5)',approved:'rgba(16,185,129,0.5)',rejected:'rgba(239,68,68,0.5)',sold:'rgba(239,68,68,0.5)',withdrawn:'rgba(148,163,184,0.35)'};
             html+=filteredSellRequests.map(req=>{
                 // Domain satıldı mı kontrol et
                 const domainInfo=domainData[req.domainName];
@@ -3658,16 +3695,17 @@ function renderUserPanel(){
                 const finalLabel=statusMap[finalStatus]||req.status;
                 const finalColor=statusColor[finalStatus]||'#94a3b8';
                 const finalBg=statusBg[finalStatus]||'transparent';
+                const finalGlow=statusGlow[finalStatus]||'rgba(148,163,184,0.35)';
                 const dateStr=req.submittedAt?new Date(req.submittedAt).toLocaleDateString(locale,{day:'2-digit',month:'2-digit',year:'numeric'}):'-';
                 const isRejected=finalStatus==='rejected';
                 const isPending=finalStatus==='pending';
                 const isWithdrawn=finalStatus==='withdrawn';
 
-                return `<div style="background:#0f172a;border:1.5px solid ${finalColor};border-radius:12px;padding:10px;margin-bottom:8px;">
+                return `<div style="background:#0f172a;border:2px solid ${finalColor};border-radius:12px;padding:10px;margin-bottom:8px;box-shadow:0 0 14px ${finalGlow},0 3px 8px rgba(0,0,0,0.3);">
                     <!-- Üst satır: Domain adı + Durum etiketi -->
                     <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;gap:8px;">
                         <b style="color:#f1f5f9;font-size:0.9em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:0;" title="${req.domainName}">${req.domainName}</b>
-                        <span style="background:${finalBg};color:${finalColor};font-size:0.6em;font-weight:800;padding:2px 8px;border-radius:6px;border:1px solid ${finalColor};flex-shrink:0;white-space:nowrap;">${finalLabel}</span>
+                        <span style="background:${finalBg};color:${finalColor};font-size:0.62em;font-weight:900;padding:3px 10px;border-radius:8px;border:1.5px solid ${finalColor};box-shadow:0 0 8px ${finalGlow};flex-shrink:0;white-space:nowrap;letter-spacing:0.3px;">${finalLabel}</span>
                     </div>
 
                     <!-- Etiket:Değer düzeni -->
@@ -3692,6 +3730,10 @@ function renderUserPanel(){
                             <span style="color:#64748b;flex-shrink:0;font-weight:700;min-width:90px;">🗒️ ${t('detailFieldWallet')}:</span>
                             <span style="color:#60a5fa;font-size:0.9em;">${req.sellerNote}</span>
                         </div>`:''}
+                        <div style="display:flex;gap:6px;align-items:flex-start;margin-top:2px;padding:6px 8px;background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.3);border-radius:6px;">
+                            <span style="color:#34d399;flex-shrink:0;font-weight:800;min-width:90px;">💳 ${t('detailFieldPaymentTo')}:</span>
+                            <span style="color:#a7f3d0;word-break:break-word;flex:1;font-weight:600;">${t('paymentToUsernameNote').replace('{user}','@'+currentUser)}</span>
+                        </div>
                         ${req.rejectReason?`<div style="display:flex;gap:6px;align-items:flex-start;margin-top:4px;padding:6px 8px;background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.3);border-radius:6px;">
                             <span style="color:#f87171;flex-shrink:0;font-weight:800;min-width:90px;">❌ ${t('rejectReasonLabel')}:</span>
                             <span style="color:#fca5a5;word-break:break-word;flex:1;font-weight:600;">${req.rejectReason}</span>
@@ -5961,6 +6003,7 @@ document.addEventListener('input', function(e) {
 <!-- Ticket Detail Modal (User) -->
 <div id="ticket-detail-modal" class="modal-overlay" style="display:none;">
     <div class="modal-content ticket-modal-content" style="text-align:left;position:relative;">
+        <button onclick="closeTicketDetailModal()" aria-label="Kapat" title="Kapat" style="position:sticky;top:0;float:right;margin:-4px -4px 4px 8px;background:rgba(239,68,68,0.18);color:#f87171;border:1.5px solid rgba(239,68,68,0.45);width:30px;height:30px;border-radius:50%;font-size:1em;font-weight:900;cursor:pointer;display:flex;align-items:center;justify-content:center;z-index:20;box-shadow:0 2px 8px rgba(0,0,0,0.4);">✕</button>
         <div id="ticket-detail-header"></div>
         <div id="ticket-detail-messages" class="ticket-messages"></div>
         <div class="ticket-reply-area">
@@ -5975,6 +6018,7 @@ document.addEventListener('input', function(e) {
 <!-- Admin Ticket Detail Modal -->
 <div id="admin-ticket-detail-modal" class="modal-overlay" style="display:none;">
     <div class="modal-content ticket-modal-content" style="text-align:left;border-color:#f59e0b;position:relative;">
+        <button onclick="closeAdminTicketDetailModal()" aria-label="Kapat" title="Kapat" style="position:sticky;top:0;float:right;margin:-4px -4px 4px 8px;background:rgba(239,68,68,0.18);color:#f87171;border:1.5px solid rgba(239,68,68,0.45);width:30px;height:30px;border-radius:50%;font-size:1em;font-weight:900;cursor:pointer;display:flex;align-items:center;justify-content:center;z-index:20;box-shadow:0 2px 8px rgba(0,0,0,0.4);">✕</button>
         <div id="admin-ticket-detail-header"></div>
         <div id="admin-ticket-detail-messages" class="ticket-messages"></div>
         <div class="ticket-admin-actions" id="admin-ticket-actions"></div>
