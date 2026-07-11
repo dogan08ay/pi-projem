@@ -2860,6 +2860,15 @@ function enhanceAllFilterSelects(){
 }
 
 
+// FIX (kök neden): currentUser, isAuth ve piAccessToken değişkenleri
+// dosyanın hiçbir yerinde tanımlanmamıştı (muhtemelen önceki bir
+// düzenlemede kazara silinmişti). Bu üçü tüm giriş/oturum mantığının
+// temelini oluşturuyor; module script strict-mode çalıştığından,
+// tanımsız bir değişkene atama yapmak (örn. performPiConnect içindeki
+// "currentUser = auth.user.username") anında "ReferenceError: currentUser
+// is not defined" fırlatıyor ve "Pi ile Bağlan" her denemede bu hatayla
+// başarısız oluyordu. Eksik tanımlar geri eklendi.
+let currentUser=null, isAuth=false, piAccessToken=null;
 let domainData={},pendingDomain=null,pendingPrice=0;
 let adminLogUnsubscribe=null,adminStatsUnsubscribe=null,pendingDomainsUnsubscribe=null;
 let myOwnSellRequestsUnsubscribe=null;
