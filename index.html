@@ -262,10 +262,33 @@
 }
 .filter-highlight-select:focus{outline:none;box-shadow:0 0 0 1px rgba(255,255,255,0.06) inset,0 3px 10px rgba(0,0,0,0.4),0 0 20px var(--fh-glow,rgba(99,102,241,0.7));}
 .filter-highlight-select:active{transform:scale(0.99);}
-/* Açılan seçenek listesi (option'lar) tarayıcı varsayılanıyla açık/beyaz zemine
-   düşüp select'in açık renkli metniyle karışıyordu — artık kendi koyu zemin
-   ve okunaklı metin rengiyle çiziliyor. */
+/* Yedek/fallback: bazı tarayıcılarda native option zeminini de boyar,
+   ama asıl çözüm aşağıdaki custom-select panelidir (WebView/iOS native
+   picker'da option CSS'i hiç uygulanmadığı için native select tek başına
+   güvenilir değil). */
 .filter-highlight-select option{background-color:#0f172a;color:#f1f5f9;font-weight:600;}
+.escrow-status-box{margin-top:6px;padding:7px 9px;border-radius:8px;font-size:0.68em;font-weight:700;line-height:1.5;}
+.escrow-status-neutral{background:rgba(148,163,184,0.1);border:1px solid #475569;color:#94a3b8;}
+.escrow-status-warn{background:rgba(251,191,36,0.12);border:1px solid #f59e0b;color:#fde68a;}
+.escrow-status-ok{background:rgba(16,185,129,0.12);border:1px solid #10b981;color:#6ee7b7;}
+.escrow-status-dispute{background:rgba(239,68,68,0.12);border:1px solid #ef4444;color:#fca5a5;}
+/* Gerçek select artık ekranda görünmüyor, sadece değeri/durumu ve mevcut
+   onchange="" mantığını korumak için DOM'da duruyor (JS ile senkronize
+   ediliyor). Görünen şey aşağıdaki custom-select-trigger + panel. */
+.filter-highlight-select.fh-native-hidden{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none;overflow:hidden;}
+.custom-select-trigger{width:100%;box-sizing:border-box;padding:9px 30px 9px 30px;border-radius:10px;font-size:0.75em;font-weight:800;cursor:pointer;text-align:left;
+  background-image:linear-gradient(180deg,rgba(255,255,255,0.06),rgba(255,255,255,0)),var(--fh-bg,linear-gradient(135deg,#1e1b4b,#312e81)),url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="%23a5b4fc"><path d="M5.5 7l4.5 4.5L14.5 7z"/></svg>');
+  background-repeat:no-repeat;background-position:right 10px center;background-size:14px;
+  border:2px solid var(--fh-border,#818cf8);color:var(--fh-color,#e0e7ff);
+  box-shadow:0 0 0 1px rgba(255,255,255,0.04) inset,0 3px 10px rgba(0,0,0,0.35),0 0 14px var(--fh-glow,rgba(99,102,241,0.45));
+  transition:box-shadow 0.2s,transform 0.15s;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.custom-select-trigger:active{transform:scale(0.99);}
+.custom-select-trigger.open{box-shadow:0 0 0 1px rgba(255,255,255,0.06) inset,0 3px 10px rgba(0,0,0,0.4),0 0 20px var(--fh-glow,rgba(99,102,241,0.7));}
+.custom-select-panel{position:absolute;left:0;right:0;top:calc(100% + 4px);z-index:60;background:#0f172a;border:2px solid var(--fh-border,#818cf8);border-radius:10px;padding:4px;box-shadow:0 10px 24px rgba(0,0,0,0.5),0 0 18px var(--fh-glow,rgba(99,102,241,0.35));max-height:240px;overflow-y:auto;display:none;}
+.custom-select-panel.open{display:block;}
+.custom-select-option{display:block;width:100%;box-sizing:border-box;text-align:left;background:transparent;border:none;color:#e2e8f0;font-size:0.78em;font-weight:700;padding:9px 10px;border-radius:7px;cursor:pointer;}
+.custom-select-option:hover,.custom-select-option:focus{background:rgba(255,255,255,0.08);}
+.custom-select-option.selected{background:var(--fh-bg,linear-gradient(135deg,#1e1b4b,#312e81));color:var(--fh-color,#e0e7ff);}
 .filter-highlight-wrap{position:relative;margin-bottom:8px;}
 .filter-highlight-wrap::before{content:"🔎";position:absolute;left:10px;top:50%;transform:translateY(-50%);font-size:0.9em;pointer-events:none;filter:drop-shadow(0 0 4px rgba(0,0,0,0.6));z-index:1;}
 
@@ -463,18 +486,20 @@
 .ticket-modal-content {
   border-color: #6366f1 !important;
   max-height: 85vh;
-  /* Eskiden bu kutunun tamamı tek parça olarak kayıyordu; mesajlar kendi
-     içinde de kaydığı için üstteki bilgi tablosu ve alttaki "Kapat/Sil"
-     butonları ekran dışına çıkabiliyordu. Artık dış kutu kaymıyor
-     (overflow:hidden), sadece .ticket-messages alanı esnek şekilde büyüyüp
-     kendi içinde kayıyor; başlık ve alt butonlar her zaman görünür kalıyor. */
+  /* Önceki sürümde dış kutu tamamen kilitliydi (overflow:hidden) — içerik
+     85vh'yi aşınca alt butonlar tamamen KESİLİYORDU (görünmez oluyordu),
+     bu da eski "kayan ama en azından erişilebilir" halinden daha kötüydü.
+     Şimdi: normal şartlarda SADECE mesaj alanı kayar (flex:1 + kendi
+     overflow-y'si), başlık ve alt butonlar sabit kalır; ama içerik yine de
+     taşarsa dış kutu son çare olarak kayabilir (auto) — yani hiçbir buton
+     asla tamamen kaybolmaz/erişilemez olmaz. */
   display: flex;
   flex-direction: column;
-  overflow: hidden;
+  overflow-y: auto;
 }
-.ticket-modal-content > *{ flex: 0 0 auto; }
-.ticket-modal-content .ticket-messages { flex: 1 1 auto; min-height: 90px; max-height: none; }
-.ticket-modal-content > button[aria-label="Kapat"] { align-self: flex-end; }
+.ticket-modal-content > * { flex: 0 0 auto; }
+.ticket-modal-content .ticket-messages { flex: 1 1 auto; min-height: 0; max-height: none; }
+.ticket-modal-content > button[aria-label="Kapat"] { align-self: flex-end; position: sticky; top: 0; z-index: 5; }
 
 .ticket-detail-content, .admin-ticket-detail-content {
   padding: 12px;
@@ -1444,6 +1469,14 @@
 
         </div>
         <div class="admin-tab-panel active" id="tab-users">
+            <div style="background:#1a1033;border:2px solid #a78bfa;border-radius:12px;padding:10px;margin-bottom:10px;">
+                <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;padding-bottom:7px;border-bottom:1px solid #4c1d95;"><span>👁️</span><span style="font-size:0.72em;color:#d8b4fe;font-weight:800;text-transform:uppercase;" data-i18n="viewAsUserTitle"></span></div>
+                <div style="font-size:0.65em;color:#94a3b8;margin-bottom:8px;line-height:1.5;" data-i18n="viewAsUserExplainer"></div>
+                <div style="display:flex;gap:6px;">
+                    <input type="text" id="view-as-username-input" data-i18n-placeholder="viewAsUserPlaceholder" class="admin-date-picker" style="margin-bottom:0;flex:1;" onkeydown="if(event.key==='Enter') window.openViewAsUser()">
+                    <button class="pi-btn" style="background:#8b5cf6;animation:none;padding:0 14px;margin:0;flex-shrink:0;" onclick="window.openViewAsUser()" data-i18n="viewAsUserBtn"></button>
+                </div>
+            </div>
             <button onclick="openUniqueUsersModal()" style="width:100%;box-sizing:border-box;background:linear-gradient(135deg,#1e1b4b 0%,#1e293b 100%);border:2px solid #6366f1;border-radius:14px;padding:12px 14px;cursor:pointer;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;box-shadow:0 4px 18px rgba(99,102,241,0.4);">
                 <div style="display:flex;align-items:center;gap:10px;"><div style="background:rgba(99,102,241,0.25);border:1.5px solid #818cf8;border-radius:10px;width:38px;height:38px;display:flex;align-items:center;justify-content:center;font-size:1.3em;animation:icon-pulse-btn 2.5s ease-in-out infinite;">👥</div>
                 <div style="text-align:left;"><div style="font-size:0.58em;color:#a5b4fc;font-weight:700;text-transform:uppercase;margin-bottom:2px;" data-i18n="totalLoggedInUsers"></div><div style="font-size:0.84em;color:#f1f5f9;font-weight:900;" data-i18n="uniqueUsers"></div></div></div>
@@ -2004,6 +2037,43 @@ const i18n = {
     payoutColTxid:"İşlem ID (txid)",
     payoutsTabLabel:"Bekleyen Ödemeler",
     payoutsExplainer:"Bir domain satışı tamamlandığında ödeme, komisyon kesilmeden önce burada bekler. Satıcının domaini alıcıya devrettiğini teyit ettikten sonra 'Transfer Tamam, Öde' butonuna basın — komisyon düşülmüş tutar otomatik olarak satıcının Pi hesabına gönderilir.",
+    viewAsUserTitle:"Kullanıcı Gözünden Gör",
+    viewAsUserExplainer:"Bir kullanıcı adı girip aramasını yapın — o kullanıcının ilan, satış, satın alma ve puan özetini salt-okunur şekilde görürsünüz. Hiçbir işlem onun adına gerçekleştirilmez, sadece görüntülenir.",
+    viewAsUserPlaceholder:"Kullanıcı adı (@ olmadan)",
+    viewAsUserBtn:"Görüntüle",
+    viewAsUserBanner:"👁️ Salt-okunur görüntüleme modu — burada yaptığınız hiçbir işlem bu kullanıcı adına gerçekleştirilmez.",
+    viewAsUserEmptyWarning:"Lütfen bir kullanıcı adı girin.",
+    viewAsUserPoints:"Puan",
+    viewAsUserTotalSpent:"Toplam Harcama",
+    viewAsUserTotalEarned:"Toplam Kazanç",
+    viewAsUserActiveListings:"Aktif İlanlar",
+    viewAsUserSoldDomains:"Satılan Domainler",
+    viewAsUserPurchases:"Satın Almalar",
+    viewAsUserTicketCount:"Destek Talebi Sayısı",
+    loading:"Yükleniyor...",
+    escrowDisputed:"İtiraz Var",
+    escrowBuyerConfirmed:"Alıcı Onayladı",
+    escrowSellerClaimed:"Satıcı Devretti",
+    escrowWaitingBothSides:"Satıcının devir bildirimi bekleniyor",
+    escrowReleaseWithoutConfirmWarning:"Alıcı henüz teslimatı onaylamadı. Yine de ödemeyi satıcıya göndermek istediğinize emin misiniz?",
+    escrowBuyerDisputedNote:"İtirazınız admin tarafından inceleniyor. Ödeme, itiraz çözülene kadar serbest bırakılmayacak.",
+    escrowBuyerConfirmedNote:"Teslimatı onayladınız. Ödeme admin tarafından satıcıya gönderilecek.",
+    escrowSellerClaimedNoteBuyer:"Satıcı domaini devrettiğini bildirdi. Kontrol edip aşağıdan onaylayın ya da sorun varsa itiraz edin.",
+    escrowWaitingSellerNote:"Satıcının domaini devrettiğini bildirmesi bekleniyor.",
+    escrowConfirmBtn:"Aldım, Onaylıyorum",
+    escrowDisputeBtn:"İtiraz Et",
+    escrowBuyerDisputedNoteSeller:"Alıcı bir itiraz açtı, ödeme admin incelemesi tamamlanana kadar bekletiliyor",
+    escrowWaitingBuyerNote:"Devir bildirdiniz, alıcının onayı bekleniyor.",
+    escrowSellerClaimBtn:"Domaini Devrettim, Bildir",
+    escrowNoSaleIdError:"Bu satış için işlem kimliği bulunamadı, lütfen destek ile iletişime geçin.",
+    escrowProofPrompt:"İsterseniz devri kanıtlayan bir not/kod ekleyin (opsiyonel, boş bırakabilirsiniz):",
+    escrowSellerClaimConfirm:(n)=>`"${n}" domainini alıcıya devrettiğinizi onaylıyor musunuz? Alıcı bunu görüp teyit edecek.`,
+    escrowSellerClaimSuccess:"Devir bildirdiniz, alıcıya bildirim gönderildi.",
+    escrowBuyerConfirmConfirm:(n)=>`"${n}" domainini gerçekten teslim aldığınızı onaylıyor musunuz?`,
+    escrowBuyerConfirmSuccess:"Teslimatı onayladınız, teşekkürler. Ödeme admin tarafından satıcıya gönderilecek.",
+    escrowDisputeReasonPrompt:"Sorunu kısaca açıklayın (örn: domain hâlâ elime geçmedi, yanlış hesaba devredildi vb.):",
+    escrowDisputeReasonRequired:"İtiraz için bir açıklama girmelisiniz.",
+    escrowDisputeSuccess:"İtirazınız alındı, admin en kısa sürede inceleyecek.",
     payoutStatusPending:"Havuzda Bekliyor",
     payoutStatusReleased:"Ödendi",
     payoutStatusNoSeller:"Satıcı Kaydı Yok",
@@ -2393,6 +2463,43 @@ const i18n = {
     payoutColTxid:"Transaction ID (txid)",
     payoutsTabLabel:"Pending Payouts",
     payoutsExplainer:"When a domain sale completes, the payment waits here before the commission is deducted. After confirming the seller has transferred the domain to the buyer, click 'Confirm Transfer, Pay' — the amount minus commission is sent automatically to the seller's Pi account.",
+    viewAsUserTitle:"View as User",
+    viewAsUserExplainer:"Search a username to see a read-only summary of their listings, sales, purchases and points. No action is ever performed on their behalf — this is view-only.",
+    viewAsUserPlaceholder:"Username (without @)",
+    viewAsUserBtn:"View",
+    viewAsUserBanner:"👁️ Read-only view mode — nothing you do here is performed on this user's behalf.",
+    viewAsUserEmptyWarning:"Please enter a username.",
+    viewAsUserPoints:"Points",
+    viewAsUserTotalSpent:"Total Spent",
+    viewAsUserTotalEarned:"Total Earned",
+    viewAsUserActiveListings:"Active Listings",
+    viewAsUserSoldDomains:"Sold Domains",
+    viewAsUserPurchases:"Purchases",
+    viewAsUserTicketCount:"Support Ticket Count",
+    loading:"Loading...",
+    escrowDisputed:"Disputed",
+    escrowBuyerConfirmed:"Buyer Confirmed",
+    escrowSellerClaimed:"Seller Claimed Transfer",
+    escrowWaitingBothSides:"Waiting for seller to report the transfer",
+    escrowReleaseWithoutConfirmWarning:"The buyer hasn't confirmed receipt yet. Are you sure you want to release payment to the seller anyway?",
+    escrowBuyerDisputedNote:"Your dispute is being reviewed by the admin. Payment won't be released until it's resolved.",
+    escrowBuyerConfirmedNote:"You confirmed receipt. The admin will release payment to the seller.",
+    escrowSellerClaimedNoteBuyer:"The seller reported that the domain was transferred. Please check and confirm below, or dispute if there's an issue.",
+    escrowWaitingSellerNote:"Waiting for the seller to report the transfer.",
+    escrowConfirmBtn:"I Received It, Confirm",
+    escrowDisputeBtn:"Dispute",
+    escrowBuyerDisputedNoteSeller:"The buyer opened a dispute, payment is on hold until admin review is complete",
+    escrowWaitingBuyerNote:"You reported the transfer, waiting for buyer confirmation.",
+    escrowSellerClaimBtn:"I Transferred the Domain, Report It",
+    escrowNoSaleIdError:"No transaction ID found for this sale, please contact support.",
+    escrowProofPrompt:"Optionally add a note/code proving the transfer (optional, can leave blank):",
+    escrowSellerClaimConfirm:(n)=>`Are you confirming that you transferred "${n}" to the buyer? The buyer will see this and confirm.`,
+    escrowSellerClaimSuccess:"Transfer reported, the buyer has been notified.",
+    escrowBuyerConfirmConfirm:(n)=>`Are you confirming that you actually received "${n}"?`,
+    escrowBuyerConfirmSuccess:"Receipt confirmed, thank you. The admin will release payment to the seller.",
+    escrowDisputeReasonPrompt:"Briefly describe the issue (e.g. domain not received yet, transferred to wrong account, etc.):",
+    escrowDisputeReasonRequired:"You must enter a description for the dispute.",
+    escrowDisputeSuccess:"Your dispute has been received, the admin will review it shortly.",
     payoutStatusPending:"Held in Escrow",
     payoutStatusReleased:"Paid",
     payoutStatusNoSeller:"No Seller Record",
@@ -2665,6 +2772,7 @@ function applyTranslations() {
     document.querySelectorAll('[data-i18n]').forEach(el => { const v=t(el.getAttribute('data-i18n')); if(typeof v==='string') el.innerHTML=v; });
     document.querySelectorAll('[data-i18n-placeholder]').forEach(el => { const v=t(el.getAttribute('data-i18n-placeholder')); if(typeof v==='string') el.placeholder=v; });
     document.querySelectorAll('select option[data-i18n]').forEach(el => { const v=t(el.getAttribute('data-i18n')); if(typeof v==='string') el.textContent=v; });
+    document.querySelectorAll('select.filter-highlight-select.fh-native-hidden').forEach(sel => syncFilterSelectUI(sel));
     const pill=document.getElementById('current-lang-pill'); if(pill) pill.textContent=currentLang.toUpperCase();
     document.getElementById('lang-btn-tr')?.classList.toggle('active',currentLang==='tr');
     document.getElementById('lang-btn-en')?.classList.toggle('active',currentLang==='en');
@@ -2682,8 +2790,76 @@ function applyTranslations() {
     }
 }
 window.setLang=function(lang){ currentLang=lang; localStorage.setItem('w3dg_lang',lang); applyTranslations(); debouncedRender(); if(typeof adminTickets!=='undefined'&&adminTickets.length) renderAdminTicketList(); if(typeof myTickets!=='undefined'&&myTickets.length) renderTicketList(); document.getElementById('lang-picker').style.display='none'; };
-// STATE
-let currentUser=null,piAccessToken=null,isAuth=false;
+// ─── Custom Select (filtre dropdown'ları) ──────────────────────────────────
+// Native <select> açılır listesi bazı WebView/mobil ortamlarda CSS'i hiç
+// uygulamıyor (option arka planı hep sistem varsayılanı kalıyor). Bu yüzden
+// filtre menülerinde görünen kısmı tamamen kendimiz çiziyoruz; asıl <select>
+// DOM'da (görünmez) kalmaya devam ediyor ki mevcut onchange="" ve .value
+// tabanlı tüm kod hiç değişmeden çalışmaya devam etsin.
+function enhanceFilterSelect(selectEl){
+    if(!selectEl || selectEl.dataset.fhEnhanced==='1') { syncFilterSelectUI(selectEl); return; }
+    selectEl.dataset.fhEnhanced='1';
+    selectEl.classList.add('fh-native-hidden');
+    const themeStyle = selectEl.getAttribute('style') || '';
+    const trigger = document.createElement('button');
+    trigger.type='button';
+    trigger.className='custom-select-trigger';
+    trigger.setAttribute('style', themeStyle);
+    trigger.setAttribute('aria-haspopup','listbox');
+    const panel = document.createElement('div');
+    panel.className='custom-select-panel';
+    panel.setAttribute('style', themeStyle);
+    panel.setAttribute('role','listbox');
+
+    function buildOptions(){
+        panel.innerHTML='';
+        Array.from(selectEl.options).forEach(opt=>{
+            const btn=document.createElement('button');
+            btn.type='button';
+            btn.className='custom-select-option'+(opt.value===selectEl.value?' selected':'');
+            btn.textContent=opt.textContent;
+            btn.setAttribute('role','option');
+            btn.onclick=function(e){
+                e.stopPropagation();
+                selectEl.value=opt.value;
+                selectEl.dispatchEvent(new Event('change',{bubbles:true}));
+                trigger.textContent=opt.textContent;
+                panel.querySelectorAll('.custom-select-option').forEach(b=>b.classList.remove('selected'));
+                btn.classList.add('selected');
+                closePanel();
+            };
+            panel.appendChild(btn);
+        });
+    }
+    function openPanel(){ buildOptions(); panel.classList.add('open'); trigger.classList.add('open'); }
+    function closePanel(){ panel.classList.remove('open'); trigger.classList.remove('open'); }
+    trigger.onclick=function(e){
+        e.stopPropagation();
+        document.querySelectorAll('.custom-select-panel.open').forEach(p=>{ if(p!==panel) p.classList.remove('open'); });
+        document.querySelectorAll('.custom-select-trigger.open').forEach(b=>{ if(b!==trigger) b.classList.remove('open'); });
+        panel.classList.contains('open') ? closePanel() : openPanel();
+    };
+    document.addEventListener('click', closePanel);
+
+    const current = selectEl.options[selectEl.selectedIndex];
+    trigger.textContent = current ? current.textContent : '';
+    selectEl.insertAdjacentElement('afterend', panel);
+    selectEl.insertAdjacentElement('afterend', trigger);
+}
+// Filtre kodu bir yerde sel.value='...' yaparak durumu programatik
+// değiştirdiğinde, görünen custom buton etiketini de güncelleriz.
+function syncFilterSelectUI(selectEl){
+    if(!selectEl) return;
+    const trigger = selectEl.nextElementSibling;
+    if(!trigger || !trigger.classList || !trigger.classList.contains('custom-select-trigger')) return;
+    const current = selectEl.options[selectEl.selectedIndex];
+    trigger.textContent = current ? current.textContent : '';
+}
+function enhanceAllFilterSelects(){
+    document.querySelectorAll('select.filter-highlight-select').forEach(enhanceFilterSelect);
+}
+
+
 let domainData={},pendingDomain=null,pendingPrice=0;
 let adminLogUnsubscribe=null,adminStatsUnsubscribe=null,pendingDomainsUnsubscribe=null;
 let myOwnSellRequestsUnsubscribe=null;
@@ -2888,6 +3064,7 @@ function syncCategoryFilterCheckboxes(){
     updateCategoryFilterLabel();
     const statusSel=document.getElementById('sale-status-filter-select');
     if(statusSel&&statusSel.value!==saleStatusFilter) statusSel.value=saleStatusFilter;
+    syncFilterSelectUI(statusSel);
 }
 
 // GÖRSEL SEÇME
@@ -3172,7 +3349,48 @@ window.handleWithdrawListing=async function(domainName){
     }catch(e){alert(t('withdrawError'));}
 };
 
-// ── KULLANICI: Reddedilmiş ilan işlemleri ──────────────────────────────
+// ── ESCROW TEYİT AKIŞI (satıcı devir bildirir, alıcı onaylar/itiraz eder) ──
+window.handleSellerClaimTransfer=async function(saleId,domainName){
+    if(!saleId){ alert(t('escrowNoSaleIdError')); return; }
+    const proofNote=prompt(t('escrowProofPrompt'))||'';
+    if(!confirm(t('escrowSellerClaimConfirm')(domainName))) return;
+    try{
+        const r=await fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'seller_claim_transfer',saleId,proofNote,accessToken:piAccessToken})});
+        const result=await r.json();
+        if(!r.ok||!result.success){alert(t('trademarkError')+(result.error?': '+result.error:''));return;}
+        alert(t('escrowSellerClaimSuccess'));
+        await loadUserProfile();
+        debouncedRender();
+    }catch(e){console.error('seller_claim_transfer hatası:',e);alert(t('trademarkError'));}
+};
+window.handleBuyerConfirmReceipt=async function(saleId,domainName){
+    if(!saleId){ alert(t('escrowNoSaleIdError')); return; }
+    if(!confirm(t('escrowBuyerConfirmConfirm')(domainName))) return;
+    try{
+        const r=await fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'buyer_confirm_receipt',saleId,accessToken:piAccessToken})});
+        const result=await r.json();
+        if(!r.ok||!result.success){alert(t('trademarkError')+(result.error?': '+result.error:''));return;}
+        alert(t('escrowBuyerConfirmSuccess'));
+        await loadUserProfile();
+        debouncedRender();
+    }catch(e){console.error('buyer_confirm_receipt hatası:',e);alert(t('trademarkError'));}
+};
+window.handleBuyerDisputeTransfer=async function(saleId,domainName){
+    if(!saleId){ alert(t('escrowNoSaleIdError')); return; }
+    const reason=prompt(t('escrowDisputeReasonPrompt'));
+    if(reason===null) return;
+    if(!reason.trim()){ alert(t('escrowDisputeReasonRequired')); return; }
+    try{
+        const r=await fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'buyer_dispute_transfer',saleId,reason,accessToken:piAccessToken})});
+        const result=await r.json();
+        if(!r.ok||!result.success){alert(t('trademarkError')+(result.error?': '+result.error:''));return;}
+        alert(t('escrowDisputeSuccess'));
+        await loadUserProfile();
+        debouncedRender();
+    }catch(e){console.error('buyer_dispute_transfer hatası:',e);alert(t('trademarkError'));}
+};
+
+
 window.handleDeleteRejectedRequest=async function(requestId){
     const confirmMsg=currentLang==='tr'?'Bu reddedilmiş ilanı tamamen silmek istediğinize emin misiniz? Bu işlem geri alınamaz.':'Are you sure you want to permanently delete this rejected listing? This action cannot be undone.';
     if(!confirm(confirmMsg)) return;
@@ -3619,11 +3837,32 @@ function renderUserPanel(){
         if(data?.sold&&data.buyer===currentUser){
             const date=data.at?new Date(data.at).toLocaleDateString(locale,{day:'2-digit',month:'2-digit',year:'numeric'})+' '+new Date(data.at).toLocaleTimeString(locale,{hour:'2-digit',minute:'2-digit'}):'-';
             const dogrulaBtn=data.txid?`<a href="https://blockexplorer.minepi.com/testnet/tx/${data.txid}" target="_blank" class="verify-btn" style="align-self:center;">${t('verify')}</a>`:`<span class="verify-btn-disabled" style="align-self:center;">${t('verifyLocked')}</span>`;
-            myHtml+=`<div class="my-domain-item"><div style="flex:1;min-width:0;"><b>${d.name}</b><br><small style="color:#fbbf24;font-weight:800;">${data.price}${t('soldPiLabel')}</small><br><small style="color:#64748b;">📅 ${date}</small></div>${dogrulaBtn}</div>`;
+            // ── Escrow teyit adımı (sadece satıcısı olan, ödemesi hâlâ
+            // havuzda bekleyen satışlarda gösterilir) ──────────────────────
+            let escrowRow = '';
+            if (data.payoutStatus === 'pending' && data.sellerUsername) {
+                const saleId = data.txid || '';
+                if (data.disputed) {
+                    escrowRow = `<div class="escrow-status-box escrow-status-dispute">⚠️ ${t('escrowBuyerDisputedNote')}</div>`;
+                } else if (data.buyerConfirmedAt) {
+                    escrowRow = `<div class="escrow-status-box escrow-status-ok">✅ ${t('escrowBuyerConfirmedNote')}</div>`;
+                } else if (data.sellerClaimedAt) {
+                    escrowRow = `<div class="escrow-status-box escrow-status-warn">📦 ${t('escrowSellerClaimedNoteBuyer')}
+                        <div style="display:flex;gap:6px;margin-top:6px;">
+                            <button onclick="window.handleBuyerConfirmReceipt('${saleId}','${escapeHtml(d.name)}')" style="flex:1;padding:7px;border:none;border-radius:7px;background:linear-gradient(135deg,#10b981,#34d399);color:#052e21;font-weight:800;font-size:0.68em;cursor:pointer;">✅ ${t('escrowConfirmBtn')}</button>
+                            <button onclick="window.handleBuyerDisputeTransfer('${saleId}','${escapeHtml(d.name)}')" style="flex:1;padding:7px;border:none;border-radius:7px;background:linear-gradient(135deg,#ef4444,#f87171);color:#fff;font-weight:800;font-size:0.68em;cursor:pointer;">❌ ${t('escrowDisputeBtn')}</button>
+                        </div>`
+                        + `</div>`;
+                } else {
+                    escrowRow = `<div class="escrow-status-box escrow-status-neutral">⏳ ${t('escrowWaitingSellerNote')}</div>`;
+                }
+            }
+            myHtml+=`<div class="my-domain-item" style="flex-wrap:wrap;"><div style="flex:1;min-width:0;"><b>${d.name}</b><br><small style="color:#fbbf24;font-weight:800;">${data.price}${t('soldPiLabel')}</small><br><small style="color:#64748b;">📅 ${date}</small></div>${dogrulaBtn}${escrowRow ? `<div style="flex-basis:100%;">${escrowRow}</div>` : ''}</div>`;
         }
     });
     const myDomainsEl=document.getElementById('my-domains-list');
     if(myDomainsEl) myDomainsEl.innerHTML=myHtml||`<p style="font-size:0.75em;opacity:0.5;text-align:center;">${t('noDomains')}</p>`;
+
 
     // İlanlarım — durum (onay bekliyor/onaylandı/reddedildi) gösterimi.
     // FIX: Onaylanmış olup şu an satıştaki domain'ler "myActiveListings"
@@ -3774,7 +4013,7 @@ function renderUserPanel(){
         }
         myListingsEl.innerHTML=html;
         const mlSel=document.getElementById('my-listings-status-filter');
-        if(mlSel) mlSel.value=myListingsStatusFilter;
+        if(mlSel){ mlSel.value=myListingsStatusFilter; enhanceFilterSelect(mlSel); }
     }
 
     // Gelirim — cüzdan bakiyesi gibi gösterim
@@ -3786,7 +4025,24 @@ function renderUserPanel(){
         if(!userSoldDomains.length){
             html+=`<p style="font-size:0.75em;opacity:0.5;text-align:center;">${t('noSoldDomains')}</p>`;
         } else {
-            html+=userSoldDomains.map(d=>`<div class="my-domain-item"><div><b>${d.name}</b><br><small style="color:#34d399;font-weight:800;">+${d.price} Pi</small><br><small style="color:#64748b;">👤 @${d.buyer||'?'}</small></div><span style="color:#10b981;font-size:0.8em;font-weight:800;">✅</span></div>`).join('');
+            html+=userSoldDomains.map(d=>{
+                let escrowRow='';
+                if (d.payoutStatus === 'pending') {
+                    const saleId = d.txid || '';
+                    if (d.disputed) {
+                        escrowRow = `<div class="escrow-status-box escrow-status-dispute">⚠️ ${t('escrowBuyerDisputedNoteSeller')}${d.disputeReason ? ': "' + escapeHtml(d.disputeReason) + '"' : ''}</div>`;
+                    } else if (d.buyerConfirmedAt) {
+                        escrowRow = `<div class="escrow-status-box escrow-status-ok">✅ ${t('escrowBuyerConfirmedNote')}</div>`;
+                    } else if (d.sellerClaimedAt) {
+                        escrowRow = `<div class="escrow-status-box escrow-status-warn">⏳ ${t('escrowWaitingBuyerNote')}</div>`;
+                    } else {
+                        escrowRow = `<div class="escrow-status-box escrow-status-neutral">
+                            <button onclick="window.handleSellerClaimTransfer('${saleId}','${escapeHtml(d.name)}')" style="width:100%;padding:7px;border:none;border-radius:7px;background:linear-gradient(135deg,#f59e0b,#fbbf24);color:#451a03;font-weight:800;font-size:0.68em;cursor:pointer;">📦 ${t('escrowSellerClaimBtn')}</button>
+                        </div>`;
+                    }
+                }
+                return `<div class="my-domain-item" style="flex-wrap:wrap;"><div style="flex:1;min-width:0;"><b>${d.name}</b><br><small style="color:#34d399;font-weight:800;">+${d.price} Pi</small><br><small style="color:#64748b;">👤 @${d.buyer||'?'}</small></div><span style="color:#10b981;font-size:0.8em;font-weight:800;">✅</span>${escrowRow?`<div style="flex-basis:100%;">${escrowRow}</div>`:''}</div>`;
+            }).join('');
         }
         mySoldEl.innerHTML=html;
     }
@@ -4017,6 +4273,7 @@ function listenToTrademarkClaims(){
             _allTrademarkClaims=claims;
             const sel=document.getElementById('trademark-filter-select');
             if(sel&&sel.value!==trademarkFilter) sel.value=trademarkFilter;
+            syncFilterSelectUI(sel);
             renderAdminTrademarkClaims(claims);
             const openCount=claims.filter(c=>c.status==='new'||c.status==='reviewing').length;
             const badge=document.getElementById('trademark-count-badge');
@@ -4049,6 +4306,7 @@ function listenToPendingPayouts(){
             _allPendingPayouts = payouts;
             const sel=document.getElementById('payouts-filter-select');
             if(sel&&sel.value!==payoutsFilter) sel.value=payoutsFilter;
+            syncFilterSelectUI(sel);
             renderAdminPayouts(payouts);
             const pendingCount=payouts.filter(p=>p.payoutStatus==='pending').length;
             const badge=document.getElementById('payouts-count-badge');
@@ -4104,7 +4362,54 @@ function renderUniqueUsersList(sorted){
     listEl.innerHTML=sorted.length===0?`<p style="font-size:0.8em;opacity:0.5;text-align:center;">${t('noUsers')}</p>`
         :sorted.map(([username,info])=>`<div class="log-item"><b>@${username}</b><span style="color:#94a3b8;font-size:0.85em;">${t('lastSeenPrefix')}${new Date(info.lastSeen).toLocaleDateString(locale,{day:'2-digit',month:'2-digit',year:'numeric'})}</span></div>`).join('');
 }
-window.openUniqueUsersModal=async function(){
+// ─── Admin: Kullanıcı Gözünden Gör ──────────────────────────────────────
+window.openViewAsUser = async function(){
+    const input = document.getElementById('view-as-username-input');
+    const uname = (input?.value || '').trim().replace(/^@/, '');
+    if (!uname) { alert(t('viewAsUserEmptyWarning')); return; }
+    document.getElementById('view-as-user-modal').style.display = 'flex';
+    const body = document.getElementById('view-as-user-body');
+    body.innerHTML = `<p style="font-size:0.75em;opacity:0.5;text-align:center;">${t('loading')}</p>`;
+    try {
+        const r = await fetch('/api/approve', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'admin_view_user_profile', targetUsername: uname, accessToken: piAccessToken }) });
+        const result = await r.json();
+        if (!result.success) { body.innerHTML = `<p style="font-size:0.78em;color:#f87171;text-align:center;">${escapeHtml(result.error || t('trademarkError'))}</p>`; return; }
+        renderViewAsUserBody(result);
+    } catch (e) {
+        console.error('view-as-user hatası:', e);
+        body.innerHTML = `<p style="font-size:0.78em;color:#f87171;text-align:center;">${t('trademarkError')}</p>`;
+    }
+};
+window.closeViewAsUser = function(){ document.getElementById('view-as-user-modal').style.display = 'none'; };
+function renderViewAsUserBody(result){
+    const body = document.getElementById('view-as-user-body');
+    const locale = currentLang === 'en' ? 'en-GB' : 'tr-TR';
+    const row = (label, value) => `<div style="display:flex;justify-content:space-between;background:#0f172a;border:1px solid #334155;border-radius:8px;padding:8px 10px;margin-bottom:6px;"><span style="font-size:0.68em;color:#94a3b8;font-weight:700;">${label}</span><span style="font-size:0.75em;color:#e2e8f0;font-weight:800;">${value}</span></div>`;
+    let html = `<div style="font-size:0.9em;font-weight:900;color:#f1f5f9;margin-bottom:8px;">👤 @${escapeHtml(result.username)}</div>`;
+    html += row(t('viewAsUserPoints'), `${result.profile?.points || 0}`);
+    html += row(t('viewAsUserTotalSpent'), `${result.totalSpent || 0} Pi`);
+    html += row(t('viewAsUserTotalEarned'), `${result.totalEarned || 0} Pi`);
+    html += row(t('viewAsUserActiveListings'), `${(result.activeListings || []).length}`);
+    html += row(t('viewAsUserSoldDomains'), `${(result.soldDomains || []).length}`);
+    html += row(t('viewAsUserPurchases'), `${(result.purchases || []).length}`);
+    if (result.ticketCount !== null && result.ticketCount !== undefined) html += row(t('viewAsUserTicketCount'), `${result.ticketCount}`);
+
+    const listBlock = (titleKey, items, mapFn) => {
+        if (!items || !items.length) return '';
+        return `<div style="font-size:0.68em;color:#a78bfa;font-weight:800;text-transform:uppercase;margin:10px 0 4px 0;">${t(titleKey)}</div>` +
+            items.map(mapFn).join('');
+    };
+    html += listBlock('viewAsUserActiveListings', result.activeListings, d => `<div style="background:#0f172a;border:1px solid #334155;border-radius:8px;padding:6px 10px;margin-bottom:5px;font-size:0.72em;color:#e2e8f0;">🌐 ${escapeHtml(d.name)} — <span style="color:#fbbf24;font-weight:800;">${d.price} Pi</span></div>`);
+    html += listBlock('viewAsUserSoldDomains', result.soldDomains, d => `<div style="background:#0f172a;border:1px solid #334155;border-radius:8px;padding:6px 10px;margin-bottom:5px;font-size:0.72em;color:#e2e8f0;">🌐 ${escapeHtml(d.name)} — <span style="color:#34d399;font-weight:800;">${d.price} Pi</span></div>`);
+    html += listBlock('viewAsUserPurchases', result.purchases, p => {
+        const when = p.at ? new Date(p.at).toLocaleDateString(locale, { day: '2-digit', month: '2-digit', year: 'numeric' }) : '-';
+        return `<div style="background:#0f172a;border:1px solid #334155;border-radius:8px;padding:6px 10px;margin-bottom:5px;font-size:0.72em;color:#e2e8f0;">🌐 ${escapeHtml(p.domain || '-')} — <span style="color:#818cf8;font-weight:800;">${p.price} Pi</span> <span style="color:#64748b;">(${when})</span></div>`;
+    });
+    body.innerHTML = html;
+}
+
+
     document.getElementById('unique-users-modal').style.display='flex';
     if(cachedUniqueUsers){renderUniqueUsersList(cachedUniqueUsers);return;}
     try{renderUniqueUsersList(await fetchUniqueUsers());}
@@ -4629,6 +4934,7 @@ function debouncedRender(){clearTimeout(renderTimeout);renderTimeout=setTimeout(
 // durumuyla (aşağıdaki "domain-list-loading" göstergesi).
 domains.forEach(d=>{if(!domainData[d.name]) domainData[d.name]={sold:false,price:d.price};});
 applyTranslations();
+enhanceAllFilterSelects();
 
 // ── GÜVEN / BİLGİLENDİRME EKRANI ──────────────────────────────────────
 // Kimseyi sayfa açılışında zorla karşılamıyoruz. İki gösterim yolu var:
@@ -5072,6 +5378,7 @@ function renderTicketList() {
 
     const sel = document.getElementById('ticket-filter-select');
     if (sel && sel.value !== ticketFilter) sel.value = ticketFilter;
+    syncFilterSelectUI(sel);
     const filteredTickets = ticketFilter === 'all' ? myTickets : myTickets.filter(tk => tk.status === ticketFilter);
 
     if (!myTickets.length) {
@@ -5514,6 +5821,7 @@ async function loadMyTrademarkClaims() {
             _myTrademarkClaims = result.claims || [];
             const sel = document.getElementById('my-trademark-filter-select');
             if (sel && sel.value !== myTrademarkFilter) sel.value = myTrademarkFilter;
+            syncFilterSelectUI(sel);
             renderMyTrademarkClaims(_myTrademarkClaims);
             const openCount = _myTrademarkClaims.filter(c => c.status === 'new' || c.status === 'reviewing').length;
             const badge = document.getElementById('user-trademark-tab-badge');
@@ -5618,8 +5926,24 @@ function renderAdminPayouts(payouts) {
     container.innerHTML = filtered.map(p => {
         const when = p.at ? new Date(p.at).toLocaleDateString(locale, { day: '2-digit', month: '2-digit' }) + ' ' + new Date(p.at).toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' }) : '-';
         const commissionAmt = Math.round((p.price - (p.payoutAmount || 0)) * 1e7) / 1e7;
-        const canRelease = p.payoutStatus === 'pending' || p.payoutStatus === 'failed';
+        const canRelease = (p.payoutStatus === 'pending' || p.payoutStatus === 'failed') && !p.disputed;
         const canRefund = p.payoutStatus === 'pending' || p.payoutStatus === 'failed' || p.payoutStatus === 'refund_failed';
+        // ── Escrow teyit rozetleri ──────────────────────────────────────
+        // Satıcı "devrettim" dedi mi, alıcı onayladı mı, yoksa itiraz mı
+        // var — admin artık bunu görmeden kör release/refund kararı
+        // vermiyor. İtiraz varken "Öde" butonu tamamen gizleniyor.
+        let escrowBadges = '';
+        if (p.payoutStatus === 'pending' || p.payoutStatus === 'failed') {
+            if (p.disputed) {
+                escrowBadges += `<div style="background:rgba(239,68,68,0.12);border:1px solid #ef4444;border-radius:8px;padding:7px 9px;margin-bottom:6px;font-size:0.68em;color:#fca5a5;font-weight:700;">⚠️ ${t('escrowDisputed')}${p.disputeReason ? ': "' + escapeHtml(p.disputeReason) + '"' : ''}</div>`;
+            } else if (p.buyerConfirmedAt) {
+                escrowBadges += `<div style="background:rgba(16,185,129,0.12);border:1px solid #10b981;border-radius:8px;padding:7px 9px;margin-bottom:6px;font-size:0.68em;color:#6ee7b7;font-weight:700;">✅ ${t('escrowBuyerConfirmed')}</div>`;
+            } else if (p.sellerClaimedAt) {
+                escrowBadges += `<div style="background:rgba(251,191,36,0.12);border:1px solid #f59e0b;border-radius:8px;padding:7px 9px;margin-bottom:6px;font-size:0.68em;color:#fde68a;font-weight:700;">📦 ${t('escrowSellerClaimed')}${p.sellerProofNote ? ' — "' + escapeHtml(p.sellerProofNote) + '"' : ''}</div>`;
+            } else {
+                escrowBadges += `<div style="background:rgba(148,163,184,0.1);border:1px solid #475569;border-radius:8px;padding:7px 9px;margin-bottom:6px;font-size:0.68em;color:#94a3b8;font-weight:700;">⏳ ${t('escrowWaitingBothSides')}</div>`;
+            }
+        }
         const row = (label, value) => value ? `<tr><td style="padding:5px 8px 5px 0;font-size:0.62em;color:#94a3b8;font-weight:700;white-space:nowrap;vertical-align:top;width:1%;">${label}</td><td style="padding:5px 0;font-size:0.72em;color:#e2e8f0;word-break:break-word;">${value}</td></tr>` : '';
         const tableHtml = `<table style="width:100%;border-collapse:collapse;margin-bottom:8px;"><tbody>
             ${row(t('ticketTableUser'), `@${escapeHtml(p.user || '-')}`)}
@@ -5638,6 +5962,7 @@ function renderAdminPayouts(payouts) {
                 <span class="ticket-status-badge" style="background:${statusColor[p.payoutStatus] || '#6366f1'}22;color:${statusColor[p.payoutStatus] || '#6366f1'};border:1px solid ${statusColor[p.payoutStatus] || '#6366f1'}55;">${statusMap[p.payoutStatus] || p.payoutStatus}</span>
             </div>
             ${tableHtml}
+            ${escrowBadges}
             ${(canRelease || canRefund) ? `<div style="display:flex;gap:5px;">
                 ${canRelease ? `<button onclick="adminReleasePayout('${p.id}','${escapeHtml(p.domain)}','${p.sellerUsername || ''}')" style="flex:1;padding:8px;border:none;border-radius:8px;background:linear-gradient(135deg,#10b981,#34d399);color:#052e21;font-weight:800;font-size:0.68em;cursor:pointer;">${t('payoutReleaseBtn')}</button>` : ''}
                 ${canRefund ? `<button onclick="adminRefundPayout('${p.id}','${escapeHtml(p.domain)}','${escapeHtml(p.user || '')}')" style="flex:1;padding:8px;border:none;border-radius:8px;background:linear-gradient(135deg,#818cf8,#a5b4fc);color:#1e1b4b;font-weight:800;font-size:0.68em;cursor:pointer;">${t('payoutRefundBtn')}</button>` : ''}
@@ -5648,6 +5973,10 @@ function renderAdminPayouts(payouts) {
 
 window.adminReleasePayout = async function(saleId, domainName, sellerUsername) {
     if (!sellerUsername) { alert(t('payoutNoSellerWarning')); return; }
+    const p = (_allPendingPayouts || []).find(x => x.id === saleId);
+    if (p && !p.buyerConfirmedAt) {
+        if (!confirm(`⚠️ ${t('escrowReleaseWithoutConfirmWarning')}`)) return;
+    }
     if (!confirm(`"${domainName}" ${t('payoutConfirmRelease')}`)) return;
 
     try {
@@ -6031,6 +6360,18 @@ document.addEventListener('input', function(e) {
         </div>
         <div id="ticket-detail-user-actions" style="margin-top:8px;"></div>
         <button class="pi-btn" style="background:#475569;animation:none;padding:10px;margin:8px 0 0 0;width:100%;" onclick="closeTicketDetailModal()" data-i18n="close"></button>
+    </div>
+</div>
+
+<!-- Admin: Kullanıcı Gözünden Gör Modal (salt-okunur) -->
+<div id="view-as-user-modal" class="modal-overlay" style="display:none;">
+    <div class="modal-content" style="text-align:left;border-color:#a78bfa;position:relative;max-width:480px;">
+        <button onclick="window.closeViewAsUser()" aria-label="Kapat" title="Kapat" style="position:sticky;top:0;float:right;margin:-4px -4px 4px 8px;background:rgba(239,68,68,0.18);color:#f87171;border:1.5px solid rgba(239,68,68,0.45);width:30px;height:30px;border-radius:50%;font-size:1em;font-weight:900;cursor:pointer;display:flex;align-items:center;justify-content:center;z-index:20;box-shadow:0 2px 8px rgba(0,0,0,0.4);">✕</button>
+        <div style="display:flex;align-items:center;gap:8px;background:rgba(167,139,250,0.12);border:1px solid #a78bfa;border-radius:10px;padding:8px 10px;margin-bottom:10px;">
+            <span style="font-size:1.2em;">👁️</span>
+            <div style="font-size:0.7em;color:#d8b4fe;font-weight:800;line-height:1.4;" data-i18n="viewAsUserBanner"></div>
+        </div>
+        <div id="view-as-user-body"><p style="font-size:0.75em;opacity:0.5;text-align:center;" data-i18n="loading"></p></div>
     </div>
 </div>
 
