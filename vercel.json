@@ -32,6 +32,10 @@
       "dest": "/terms.html"
     },
     {
+      "src": "/validation-key.txt",
+      "dest": "/validation-key.txt"
+    },
+    {
       "src": "/assets/(.*)",
       "dest": "/assets/$1"
     },
