@@ -253,6 +253,7 @@
 .filter-highlight-select{
   width:100%;box-sizing:border-box;padding:9px 30px 9px 30px;border-radius:10px;font-size:0.75em;font-weight:800;cursor:pointer;
   appearance:none;-webkit-appearance:none;
+  background-color:#1e1b4b;
   background-image:linear-gradient(180deg,rgba(255,255,255,0.06),rgba(255,255,255,0)),var(--fh-bg,linear-gradient(135deg,#1e1b4b,#312e81)),url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="%23a5b4fc"><path d="M5.5 7l4.5 4.5L14.5 7z"/></svg>');
   background-repeat:no-repeat;background-position:right 10px center;background-size:14px;
   border:2px solid var(--fh-border,#818cf8);
@@ -276,7 +277,21 @@
    onchange="" mantığını korumak için DOM'da duruyor (JS ile senkronize
    ediliyor). Görünen şey aşağıdaki custom-select-trigger + panel. */
 .filter-highlight-select.fh-native-hidden{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none;overflow:hidden;}
+/* FIX (kök neden — okunmayan filtre butonları): görünen filtre butonu
+   (.custom-select-trigger) gerçekte bir <button> elementi. appearance
+   sıfırlanmadan ve dolgu bir background-color olmadan, bazı mobil
+   WebView'lerde (Pi Browser dahil) native buton varsayılan AÇIK RENKLİ
+   zemini, üstündeki background-image gradyanının altından/kenarlarından
+   sızabiliyor — koyu tema için tasarlanmış soluk renkli yazı (--fh-color)
+   bu açık zeminde neredeyse hiç görünmüyordu. Artık hem appearance:none
+   hem de gradyanın altına dolgu bir koyu background-color eklendi;
+   böylece gradyan render olmasa bile metin her zaman okunabilir kalıyor.
+   Ayrıca açılan seçenek panelinin (.custom-select-panel) z-index'i,
+   altındaki liste kartlarının/menülerin İÇİNE gömülüp kaybolmaması için
+   belirgin şekilde yükseltildi. */
 .custom-select-trigger{width:100%;box-sizing:border-box;padding:9px 30px 9px 30px;border-radius:10px;font-size:0.75em;font-weight:800;cursor:pointer;text-align:left;
+  appearance:none;-webkit-appearance:none;-moz-appearance:none;
+  background-color:#1e1b4b;
   background-image:linear-gradient(180deg,rgba(255,255,255,0.06),rgba(255,255,255,0)),var(--fh-bg,linear-gradient(135deg,#1e1b4b,#312e81)),url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="%23a5b4fc"><path d="M5.5 7l4.5 4.5L14.5 7z"/></svg>');
   background-repeat:no-repeat;background-position:right 10px center;background-size:14px;
   border:2px solid var(--fh-border,#818cf8);color:var(--fh-color,#e0e7ff);
@@ -284,13 +299,14 @@
   transition:box-shadow 0.2s,transform 0.15s;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .custom-select-trigger:active{transform:scale(0.99);}
 .custom-select-trigger.open{box-shadow:0 0 0 1px rgba(255,255,255,0.06) inset,0 3px 10px rgba(0,0,0,0.4),0 0 20px var(--fh-glow,rgba(99,102,241,0.7));}
-.custom-select-panel{position:absolute;left:0;right:0;top:calc(100% + 4px);z-index:60;background:#0f172a;border:2px solid var(--fh-border,#818cf8);border-radius:10px;padding:4px;box-shadow:0 10px 24px rgba(0,0,0,0.5),0 0 18px var(--fh-glow,rgba(99,102,241,0.35));max-height:240px;overflow-y:auto;display:none;}
+.custom-select-panel{position:absolute;left:0;right:0;top:calc(100% + 4px);z-index:500;background:#0f172a;border:2px solid var(--fh-border,#818cf8);border-radius:10px;padding:4px;box-shadow:0 10px 24px rgba(0,0,0,0.5),0 0 18px var(--fh-glow,rgba(99,102,241,0.35));max-height:240px;overflow-y:auto;display:none;}
 .custom-select-panel.open{display:block;}
 .custom-select-option{display:block;width:100%;box-sizing:border-box;text-align:left;background:transparent;border:none;color:#e2e8f0;font-size:0.78em;font-weight:700;padding:9px 10px;border-radius:7px;cursor:pointer;}
 .custom-select-option:hover,.custom-select-option:focus{background:rgba(255,255,255,0.08);}
 .custom-select-option.selected{background:var(--fh-bg,linear-gradient(135deg,#1e1b4b,#312e81));color:var(--fh-color,#e0e7ff);}
-.filter-highlight-wrap{position:relative;margin-bottom:8px;}
+.filter-highlight-wrap{position:relative;margin-bottom:8px;z-index:50;}
 .filter-highlight-wrap::before{content:"🔎";position:absolute;left:10px;top:50%;transform:translateY(-50%);font-size:0.9em;pointer-events:none;filter:drop-shadow(0 0 4px rgba(0,0,0,0.6));z-index:1;}
+
 
 .ticket-filter-count {
   display: inline-block;
@@ -498,7 +514,7 @@
   overflow-y: auto;
 }
 .ticket-modal-content > * { flex: 0 0 auto; }
-.ticket-modal-content .ticket-messages { flex: 1 1 auto; min-height: 0; max-height: none; }
+.ticket-modal-content .ticket-messages { flex: 1 1 auto; min-height: 220px; max-height: none; }
 .ticket-modal-content > button[aria-label="Kapat"] { align-self: flex-end; position: sticky; top: 0; z-index: 5; }
 
 .ticket-detail-content, .admin-ticket-detail-content {
@@ -4154,7 +4170,7 @@ function render(){
             // bırakılana kadar "kesin SATILDI" değil, "Onay Aşamasında"
             // gösteriyoruz — gerçek mülkiyet devri henüz teyit edilmedi demek.
             const isPendingConfirmation = data.sellerUsername && data.payoutStatus && data.payoutStatus !== 'released';
-            card.innerHTML+=`<div class="btn-sold" style="${isPendingConfirmation?'background:#f59e0b;':''}">${isPendingConfirmation?t('soldPendingConfirmation'):t('sold')}</div>`;
+            card.innerHTML+=`<div class="btn-sold" style="${isPendingConfirmation?'background:#f59e0b;color:#451a03;text-shadow:none;':''}">${isPendingConfirmation?t('soldPendingConfirmation'):t('sold')}</div>`;
             if(isAuth&&currentUser===APP_CONFIG.adminUsername){
                 if(data.payoutStatus==='released'){
                     // Ödeme kesinleşmiş — tekrar satışa çıkarılamaz (backend de
