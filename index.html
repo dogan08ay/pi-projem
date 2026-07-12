@@ -1391,6 +1391,11 @@
             </div>
         </div>
     </div>
+    <div id="view-as-user-box" style="display:none;align-items:center;gap:8px;background:#0a0f1e;border:1.5px solid #6366f1;border-radius:10px;padding:8px 10px;margin:0 8px 8px 8px;width:calc(100% - 32px);box-sizing:border-box;">
+        <span style="font-size:1.1em;flex-shrink:0;">👁️</span>
+        <span style="font-size:0.68em;color:#94a3b8;font-weight:700;flex:1;" data-i18n="viewAsUserLabel"></span>
+        <button id="view-as-user-toggle-btn" onclick="window.toggleViewAsUser()" style="padding:6px 12px;border:none;border-radius:8px;background:linear-gradient(135deg,#6366f1,#818cf8);color:#fff;font-size:0.65em;font-weight:800;cursor:pointer;white-space:nowrap;"></button>
+    </div>
     <div class="card" id="admin-panel" style="display:none;border:2px solid #6366f1;box-shadow:0 0 12px rgba(99,102,241,0.2);padding:5px;box-sizing:border-box;width:calc(100% - 16px);margin-left:auto;margin-right:auto;">
         <h3 style="color:#fbbf24;margin:-5px -5px 8px -5px;padding:8px 5px;font-size:0.95em;display:flex;align-items:center;justify-content:center;gap:6px;background:linear-gradient(135deg,rgba(99,102,241,0.2) 0%,rgba(67,56,202,0.1) 100%);border-bottom:1.5px solid rgba(99,102,241,0.4);border-radius:14px 14px 0 0;font-weight:900;position:relative;">🛠 Admin Panel
             <button id="admin-panel-refresh-btn" class="panel-refresh-btn" onclick="window.refreshAdminPanel()" title="Yenile">
@@ -1401,11 +1406,6 @@
             <span id="maintenance-status-dot" style="width:9px;height:9px;border-radius:50%;background:#10b981;flex-shrink:0;box-shadow:0 0 6px #10b981;"></span>
             <span id="maintenance-status-text" style="font-size:0.68em;color:#94a3b8;font-weight:700;flex:1;" data-i18n="maintenanceStatusLive"></span>
             <button id="maintenance-toggle-btn" onclick="window.toggleMaintenanceMode()" style="padding:6px 12px;border:none;border-radius:8px;background:linear-gradient(135deg,#ef4444,#f87171);color:#fff;font-size:0.65em;font-weight:800;cursor:pointer;white-space:nowrap;" data-i18n="maintenanceEnableBtn"></button>
-        </div>
-        <div id="view-as-user-box" style="display:flex;align-items:center;gap:8px;background:#0a0f1e;border:1.5px solid #334155;border-radius:10px;padding:8px 10px;margin-bottom:8px;">
-            <span style="font-size:1.1em;flex-shrink:0;">👁️</span>
-            <span style="font-size:0.68em;color:#94a3b8;font-weight:700;flex:1;" data-i18n="viewAsUserLabel"></span>
-            <button id="view-as-user-toggle-btn" onclick="window.toggleViewAsUser()" style="padding:6px 12px;border:none;border-radius:8px;background:linear-gradient(135deg,#6366f1,#818cf8);color:#fff;font-size:0.65em;font-weight:800;cursor:pointer;white-space:nowrap;"></button>
         </div>
         <div class="admin-tabs">
             <button class="admin-tab-btn active" data-tab="tab-users" onclick="switchAdminTab('tab-users')">👥<span data-i18n="users" style="font-size:0.9em;"></span></button>
@@ -2056,6 +2056,15 @@ const i18n = {
     confirmSentConfirmDialog:(n)=>`"${n}" domainini alıcıya devrettiğinizi onaylıyor musunuz? Bu bilgi admin'in ödemenizi göndermesine yardımcı olacak.`,
     confirmTransferFail:"Onay gönderilemedi: ",
     confirmTransferError:"Bağlantı hatası, lütfen tekrar deneyin.",
+    confirmedStatus:"Onayladı",disputedStatus:"Sorun Bildirdi",waitingStatus:"Bekleniyor",
+    nudgeBuyerBtn:"Alıcıya Hatırlat",nudgeSellerBtn:"Satıcıya Hatırlat",
+    missingBothConfirm:"Ödeme onayı/iade için hem alıcının hem satıcının devri onaylaması gerekiyor.",
+    missingBuyerConfirm:"Ödeme onayı/iade için alıcının devri onaylaması bekleniyor.",
+    missingSellerConfirm:"Ödeme onayı/iade için satıcının devri onaylaması bekleniyor.",
+    nudgeConfirmDialog:(n,role)=>`"${n}" için ${role}ya hatırlatma bildirimi gönderilsin mi?`,
+    nudgeFail:"Hatırlatma gönderilemedi: ",
+    nudgeSuccess:"Hatırlatma bildirimi gönderildi.",
+    nudgeError:"Bağlantı hatası, lütfen tekrar deneyin.",
     withdrawFail:"İlan geri çekme başarısız: ",
     withdrawSuccess:(n)=>`"${n}" ilanı geri çekildi.`,
     withdrawError:"Bir hata oluştu.",
@@ -2117,6 +2126,12 @@ const i18n = {
     changelogV1_6Item4:"Kullanıcılar kendi taleplerini, admin ise herhangi bir talebi kalıcı olarak silebiliyor",
     changelogV1_6Item5:"Talep listesi kullanıcı/konu/tarih/durum bilgilerini net çizgilerle ayrılmış tablo düzeninde gösteriyor",
 
+    changelogV1_9:"v1.9 - Güvenli Escrow ve Yönetici Araçları Güncellemesi",
+    changelogV1_9Item1:"Escrow ödeme sürecine gerçek güven mekanizması eklendi: hem alıcı hem satıcı, domain devrini uygulama içinden onaylıyor",
+    changelogV1_9Item2:"Admin artık ödeme onayı/iade kararını, alıcı ve satıcının onayını görmeden veremiyor — eksik onay net şekilde uyarılıyor",
+    changelogV1_9Item3:"Onaylamayan tarafa admin panelinden tek tuşla hatırlatma bildirimi gönderilebiliyor",
+    changelogV1_9Item4:"Admin panelinde 'Kullanıcı Gözünden Gör' özelliği eklendi — admin, siteyi gerçek bir ziyaretçi gibi görebiliyor",
+    changelogV1_9Item5:"Bekleyen Ödemeler filtresine 'İade Edilen' seçeneği eklendi, cüzdan/ödeme alıcısı bilgisi netleştirildi",
     changelogV1_8:"v1.8 - Ödeme Altyapısı ve Marka Hakkı Güncellemesi",
     changelogV1_8Item1:"Satıcıya ödeme gönderme ve iade işlemlerindeki kritik hatalar giderildi — Pi ödemeleri artık güvenilir şekilde tamamlanıyor",
     changelogV1_8Item2:"Marka hakkı bildirimleri için kullanıcı takip paneli eklendi: süreç adımları (Talep Alındı → İnceleniyor → Çözüldü) ve talebi geri çekme imkanı",
@@ -2457,6 +2472,15 @@ const i18n = {
     confirmSentConfirmDialog:(n)=>`Confirm that you transferred "${n}" to the buyer? This helps the admin release your payment.`,
     confirmTransferFail:"Could not send confirmation: ",
     confirmTransferError:"Connection error, please try again.",
+    confirmedStatus:"Confirmed",disputedStatus:"Reported Issue",waitingStatus:"Waiting",
+    nudgeBuyerBtn:"Remind Buyer",nudgeSellerBtn:"Remind Seller",
+    missingBothConfirm:"Both the buyer and seller need to confirm the transfer before payment can be released or refunded.",
+    missingBuyerConfirm:"Waiting for the buyer to confirm the transfer before payment can be released or refunded.",
+    missingSellerConfirm:"Waiting for the seller to confirm the transfer before payment can be released or refunded.",
+    nudgeConfirmDialog:(n,role)=>`Send a reminder notification to the ${role} for "${n}"?`,
+    nudgeFail:"Could not send reminder: ",
+    nudgeSuccess:"Reminder notification sent.",
+    nudgeError:"Connection error, please try again.",
     withdrawFail:"Withdraw failed: ",
     withdrawSuccess:(n)=>`"${n}" listing has been withdrawn.`,
     withdrawError:"An error occurred.",
@@ -2518,6 +2542,12 @@ const i18n = {
     changelogV1_6Item4:"Users can delete their own tickets, and admin can permanently delete any ticket",
     changelogV1_6Item5:"Ticket list now shows user/subject/date/status in a clearly divided table layout",
 
+    changelogV1_9:"v1.9 - Secure Escrow & Admin Tools Update",
+    changelogV1_9Item1:"Added real trust mechanism to the escrow flow: both buyer and seller confirm the domain transfer directly in the app",
+    changelogV1_9Item2:"Admin can no longer release or refund a payment without seeing buyer/seller confirmation — missing confirmations are clearly flagged",
+    changelogV1_9Item3:"Admin can send a one-tap reminder notification to whichever party hasn't confirmed yet",
+    changelogV1_9Item4:"Added a 'View as User' mode to the admin panel — admins can see the site exactly as a regular visitor would",
+    changelogV1_9Item5:"Added a 'Refunded' filter to Pending Payments, and clarified who payment is actually sent to",
     changelogV1_8:"v1.8 - Payments & Trademark Update",
     changelogV1_8Item1:"Fixed critical bugs in seller payouts and refunds — Pi payments now complete reliably",
     changelogV1_8Item2:"Added a tracking panel for trademark claims: process steps (Received → Under Review → Resolved) and the ability to withdraw a claim",
@@ -2781,7 +2811,9 @@ window.handleLogout=async function(){
     piReady=false;
     // Tüm kullanıcı/admin UI elementlerini gizle
     const up=document.getElementById("user-panel"); if(up){up.style.display="none";up.style.opacity='';up.style.transform='';}
-    const ap=document.getElementById("admin-panel"); if(ap){ap.style.display="none";ap.style.opacity='';ap.style.transform='';}
+    const ap=document.getElementById("admin-panel"); if(ap){ap.style.display="none";ap.style.opacity='';ap.style.transform='';delete ap.dataset.hiddenByViewAsUser;}
+    const vab=document.getElementById("view-as-user-box"); if(vab) vab.style.display="none";
+    window._viewAsUserMode=false;
     const nb=document.getElementById("notif-btn"); if(nb) nb.style.visibility="hidden";
     const uab=document.getElementById("user-avatar-btn"); if(uab){uab.style.display="none";if(uab._userMenuTimeout){clearTimeout(uab._userMenuTimeout);}}
     const tfab=document.getElementById("tour-fab"); if(tfab) tfab.style.display="none";
@@ -3100,6 +3132,7 @@ window.openChangelogModal=function(){
     const list=document.getElementById('changelog-list');
     if(!list) return;
     const versions=[
+        {v:t('changelogV1_9'),items:[t('changelogV1_9Item1'),t('changelogV1_9Item2'),t('changelogV1_9Item3'),t('changelogV1_9Item4'),t('changelogV1_9Item5')],date:'2026-07-12',icon:'🤝',color:'#6366f1'},
         {v:t('changelogV1_8'),items:[t('changelogV1_8Item1'),t('changelogV1_8Item2'),t('changelogV1_8Item3'),t('changelogV1_8Item4'),t('changelogV1_8Item5')],date:'2026-07-10',icon:'💳',color:'#10b981'},
         {v:t('changelogV1_7'),items:[t('changelogV1_7Item1'),t('changelogV1_7Item2'),t('changelogV1_7Item3'),t('changelogV1_7Item4'),t('changelogV1_7Item5')],date:'2026-07-07',icon:'🧭',color:'#f87171'},
         {v:t('changelogV1_6'),items:[t('changelogV1_6Item1'),t('changelogV1_6Item2'),t('changelogV1_6Item3'),t('changelogV1_6Item4'),t('changelogV1_6Item5')],date:'2026-07-06',icon:'🎫',color:'#818cf8'},
@@ -4191,6 +4224,17 @@ function updateMaintenanceControlBox(){
 window.toggleViewAsUser = function(){
     window._viewAsUserMode = !window._viewAsUserMode;
     syncViewAsUserButton();
+    const adminPanel = document.getElementById('admin-panel');
+    if(adminPanel){
+        if(window._viewAsUserMode){
+            // Admin paneli tamamen gizle — normal bir kullanıcı bunu asla görmez.
+            adminPanel.dataset.hiddenByViewAsUser = 'true';
+            adminPanel.style.display = 'none';
+        } else if(adminPanel.dataset.hiddenByViewAsUser === 'true'){
+            adminPanel.style.display = 'block';
+            delete adminPanel.dataset.hiddenByViewAsUser;
+        }
+    }
     debouncedRender();
 };
 function syncViewAsUserButton(){
@@ -4421,6 +4465,8 @@ async function performPiConnect() {
 
                     // b) Admin panelini aç (eğer admin ise)
                     if (isAdmin) {
+                        const viewAsUserBox = document.getElementById('view-as-user-box');
+                        if (viewAsUserBox) viewAsUserBox.style.display = 'flex';
                         const adminPanel = document.getElementById("admin-panel");
                         adminPanel.style.display = "block";
                         adminPanel.style.opacity = '0';
@@ -5678,18 +5724,34 @@ function renderAdminPayouts(payouts) {
         // Devir onay durumu — admin, "Transfer Tamam Öde" ya da "İade Et"
         // kararını uygulama dışından gelen bilgiye değil, buradaki gerçek
         // alıcı/satıcı onayına bakarak verebilsin diye.
-        const confirmBadge = (label, confirmed, confirmedAt) => {
-            if (confirmed === true) return `<span style="color:#6ee7b7;font-weight:800;">✅ ${label} onayladı</span>`;
-            if (confirmed === false) return `<span style="color:#f87171;font-weight:800;">⚠️ ${label} sorun bildirdi</span>`;
-            return `<span style="color:#64748b;">⏳ ${label} henüz onaylamadı</span>`;
+        // Devir onay durumu — admin, "Transfer Tamam Öde" ya da "İade Et"
+        // kararını uygulama dışından gelen bilgiye değil, buradaki gerçek
+        // alıcı/satıcı onayına bakarak verebilsin diye.
+        const confirmBox = (label, confirmed) => {
+            let bg, border, color, text;
+            if (confirmed === true) { bg='rgba(16,185,129,0.12)'; border='#10b981'; color='#6ee7b7'; text='✅ '+t('confirmedStatus'); }
+            else if (confirmed === false) { bg='rgba(239,68,68,0.12)'; border='#ef4444'; color='#f87171'; text='⚠️ '+t('disputedStatus'); }
+            else { bg='rgba(100,116,139,0.12)'; border='#475569'; color='#94a3b8'; text='⏳ '+t('waitingStatus'); }
+            return `<div style="flex:1;background:${bg};border:1.5px solid ${border};border-radius:8px;padding:6px 8px;text-align:center;">
+                <div style="font-size:0.6em;color:#64748b;font-weight:700;text-transform:uppercase;margin-bottom:2px;">${label}</div>
+                <div style="font-size:0.68em;color:${color};font-weight:800;">${text}</div>
+            </div>`;
         };
+        const bothConfirmed = p.buyerConfirmed === true && p.sellerConfirmed === true;
         const showConfirmations = p.sellerUsername && (p.payoutStatus === 'pending' || p.payoutStatus === 'failed' || p.payoutStatus === 'processing');
+        const confirmBoxesHtml = showConfirmations ? `<div style="display:flex;gap:6px;margin-bottom:8px;">
+            ${confirmBox(t('roleBuyer'), p.buyerConfirmed)}
+            ${confirmBox(t('roleSeller'), p.sellerConfirmed)}
+        </div>
+        ${!bothConfirmed ? `<div style="display:flex;gap:6px;margin-bottom:8px;">
+            ${p.buyerConfirmed!==true?`<button onclick="adminNudgeConfirmation('${p.id}','buyer','${escapeHtml(p.domain)}')" style="flex:1;padding:6px;border:1px dashed #6366f1;border-radius:6px;background:rgba(99,102,241,0.08);color:#a5b4fc;font-size:0.6em;font-weight:700;cursor:pointer;">🔔 ${t('nudgeBuyerBtn')}</button>`:''}
+            ${p.sellerConfirmed!==true?`<button onclick="adminNudgeConfirmation('${p.id}','seller','${escapeHtml(p.domain)}')" style="flex:1;padding:6px;border:1px dashed #6366f1;border-radius:6px;background:rgba(99,102,241,0.08);color:#a5b4fc;font-size:0.6em;font-weight:700;cursor:pointer;">🔔 ${t('nudgeSellerBtn')}</button>`:''}
+        </div>` : ''}` : '';
         const tableHtml = `<table style="width:100%;border-collapse:collapse;margin-bottom:8px;"><tbody>
             ${row(t('ticketTableUser'), `@${escapeHtml(p.user || '-')}`)}
             ${row(t('payoutColSeller'), p.sellerUsername ? '🏷️ @' + escapeHtml(p.sellerUsername) : '—')}
             ${row(t('payoutColAmount'), `${p.price} Pi &nbsp;→&nbsp; <span style="color:#6ee7b7;font-weight:700;">${p.payoutAmount != null ? p.payoutAmount : '-'} Pi</span> <span style="color:#64748b;">(%${Math.round((p.commissionRate || 0.05) * 100)}: ${commissionAmt} Pi)</span>`)}
             ${p.sellerUsername ? row(t('detailFieldPaymentTo'), t('paymentToUsernameNote').replace('{user}','@'+escapeHtml(p.sellerUsername))) : ''}
-            ${showConfirmations ? row(t('transferConfirmStatus'), `${confirmBadge(t('roleBuyer'), p.buyerConfirmed, p.buyerConfirmedAt)}<br>${confirmBadge(t('roleSeller'), p.sellerConfirmed, p.sellerConfirmedAt)}`) : ''}
             ${p.payoutStatus === 'no_seller' ? row(t('payoutColNote'), `<span style="color:#94a3b8;">⚠️ ${t('payoutNoSellerWarning')}</span>`) : ''}
             ${(p.payoutStatus === 'failed' && p.payoutError) ? row(t('payoutColError'), `<span style="color:#f87171;">${escapeHtml(p.payoutError)}</span>`) : ''}
             ${(p.payoutStatus === 'refund_failed' && p.refundError) ? row(t('payoutColError'), `<span style="color:#f87171;">${escapeHtml(p.refundError)}</span>`) : ''}
@@ -5702,14 +5764,27 @@ function renderAdminPayouts(payouts) {
                 <div style="font-size:0.8em;font-weight:800;color:#e2e8f0;">🌐 ${escapeHtml(p.domain)}</div>
                 <span class="ticket-status-badge" style="background:${statusColor[p.payoutStatus] || '#6366f1'}22;color:${statusColor[p.payoutStatus] || '#6366f1'};border:1px solid ${statusColor[p.payoutStatus] || '#6366f1'}55;">${statusMap[p.payoutStatus] || p.payoutStatus}</span>
             </div>
+            ${confirmBoxesHtml}
             ${tableHtml}
-            ${(canRelease || canRefund) ? `<div style="display:flex;gap:5px;">
+            ${showConfirmations && !bothConfirmed ? `<div style="background:rgba(251,191,36,0.1);border:1.5px dashed #f59e0b;border-radius:8px;padding:8px;font-size:0.65em;color:#fbbf24;font-weight:700;text-align:center;">
+                ⏳ ${p.buyerConfirmed!==true && p.sellerConfirmed!==true ? t('missingBothConfirm') : (p.buyerConfirmed!==true ? t('missingBuyerConfirm') : t('missingSellerConfirm'))}
+            </div>` : (canRelease || canRefund) ? `<div style="display:flex;gap:5px;">
                 ${canRelease ? `<button onclick="adminReleasePayout('${p.id}','${escapeHtml(p.domain)}','${p.sellerUsername || ''}')" style="flex:1;padding:8px;border:none;border-radius:8px;background:linear-gradient(135deg,#10b981,#34d399);color:#052e21;font-weight:800;font-size:0.68em;cursor:pointer;">${t('payoutReleaseBtn')}</button>` : ''}
                 ${canRefund ? `<button onclick="adminRefundPayout('${p.id}','${escapeHtml(p.domain)}','${escapeHtml(p.user || '')}')" style="flex:1;padding:8px;border:none;border-radius:8px;background:linear-gradient(135deg,#818cf8,#a5b4fc);color:#1e1b4b;font-weight:800;font-size:0.68em;cursor:pointer;">${t('payoutRefundBtn')}</button>` : ''}
             </div>` : ''}
         </div>`;
     }).join('');
 }
+
+window.adminNudgeConfirmation = async function(saleId, role, domainName){
+    if(!confirm(t('nudgeConfirmDialog')(domainName, role==='buyer'?t('roleBuyer'):t('roleSeller')))) return;
+    try{
+        const r=await fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'nudge_confirmation',saleId,role,accessToken:piAccessToken})});
+        const result=await r.json();
+        if(!r.ok||!result.success){alert(t('nudgeFail')+(result.error||''));return;}
+        alert(t('nudgeSuccess'));
+    }catch(e){alert(t('nudgeError'));}
+};
 
 window.adminReleasePayout = async function(saleId, domainName, sellerUsername) {
     if (!sellerUsername) { alert(t('payoutNoSellerWarning')); return; }
