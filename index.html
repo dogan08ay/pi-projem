@@ -1402,6 +1402,11 @@
             <span id="maintenance-status-text" style="font-size:0.68em;color:#94a3b8;font-weight:700;flex:1;" data-i18n="maintenanceStatusLive"></span>
             <button id="maintenance-toggle-btn" onclick="window.toggleMaintenanceMode()" style="padding:6px 12px;border:none;border-radius:8px;background:linear-gradient(135deg,#ef4444,#f87171);color:#fff;font-size:0.65em;font-weight:800;cursor:pointer;white-space:nowrap;" data-i18n="maintenanceEnableBtn"></button>
         </div>
+        <div id="view-as-user-box" style="display:flex;align-items:center;gap:8px;background:#0a0f1e;border:1.5px solid #334155;border-radius:10px;padding:8px 10px;margin-bottom:8px;">
+            <span style="font-size:1.1em;flex-shrink:0;">👁️</span>
+            <span style="font-size:0.68em;color:#94a3b8;font-weight:700;flex:1;" data-i18n="viewAsUserLabel"></span>
+            <button id="view-as-user-toggle-btn" onclick="window.toggleViewAsUser()" style="padding:6px 12px;border:none;border-radius:8px;background:linear-gradient(135deg,#6366f1,#818cf8);color:#fff;font-size:0.65em;font-weight:800;cursor:pointer;white-space:nowrap;"></button>
+        </div>
         <div class="admin-tabs">
             <button class="admin-tab-btn active" data-tab="tab-users" onclick="switchAdminTab('tab-users')">👥<span data-i18n="users" style="font-size:0.9em;"></span></button>
             <button class="admin-tab-btn" data-tab="tab-stats" onclick="switchAdminTab('tab-stats')">📈<span data-i18n="salesStats" style="font-size:0.9em;"></span></button>
@@ -1552,6 +1557,7 @@
                     <option value="all" data-i18n="trademarkFilterAll"></option>
                     <option value="pending" data-i18n="payoutsFilterPending"></option>
                     <option value="resolved" data-i18n="trademarkFilterResolved"></option>
+                    <option value="refunded" data-i18n="payoutsFilterRefunded"></option>
                     <option value="rejected" data-i18n="payoutsFilterFailed"></option>
                 </select>
                 <div id="payouts-admin-list">
@@ -1959,12 +1965,13 @@ const i18n = {
     trademarkColEmail:"E-posta",
     trademarkColDate:"Tarih",
     payoutsFilterPending:"Bekleme",
-    payoutsFilterFailed:"Reddedildi",
+    payoutsFilterFailed:"Reddedildi",payoutsFilterRefunded:"İade Edilen",
     payoutColSeller:"Satıcı",
     payoutColAmount:"Tutar",
     payoutColNote:"Not",
     payoutColError:"Hata",
     payoutColTxid:"İşlem ID (txid)",
+    transferConfirmStatus:"Devir Onayı",roleBuyer:"Alıcı",roleSeller:"Satıcı",
     payoutsTabLabel:"Bekleyen Ödemeler",
     payoutsExplainer:"Bir domain satışı tamamlandığında ödeme, komisyon kesilmeden önce burada bekler. Satıcının domaini alıcıya devrettiğini teyit ettikten sonra 'Transfer Tamam, Öde' butonuna basın — komisyon düşülmüş tutar otomatik olarak satıcının Pi hesabına gönderilir.",
     payoutStatusPending:"Havuzda Bekliyor",
@@ -1988,6 +1995,7 @@ const i18n = {
     maintenanceStatusLive:"Uygulama şu anda YAYINDA",
     maintenanceStatusOff:"Uygulama şu anda BAKIM MODUNDA",
     maintenanceEnableBtn:"🔧 Bakıma Al",
+    viewAsUserLabel:"Kullanıcı Gözünden Gör",viewAsUserEnableBtn:"👁️ Aç",viewAsUserDisableBtn:"✖️ Kapat",
     maintenanceDisableBtn:"🚀 Yayına Al",
     maintenanceConfirmEnable:"Uygulamayı bakım moduna almak üzeresiniz. Siz hariç tüm ziyaretçiler bakım ekranını görecek. Devam edilsin mi?",
     maintenanceConfirmDisable:"Uygulamayı tekrar yayına almak üzeresiniz. Devam edilsin mi?",
@@ -2036,6 +2044,18 @@ const i18n = {
     priceUpdateFail:"Fiyat güncelleme başarısız: ",priceUpdateError:"Bir hata oluştu.",
     priceUpdateSuccess:(n,p)=>`"${n}" fiyatı ${p} Pİ olarak güncellendi.`,
     withdrawConfirm:(n)=>`"${n}" ilanını geri çekmek istediğinize emin misiniz? Bu işlem domaini satıştan kaldırır.`,
+    transferConfirmedByYou:"Devri onayladınız.",
+    transferDisputedByYou:"Bir sorun bildirdiniz. Admin inceleyecek.",
+    confirmTransferPrompt:"Domaini satıcıdan teslim aldınız mı?",
+    confirmReceivedBtn:"Evet, Aldım",
+    reportIssueBtn:"Sorun Var",
+    confirmTransferSellerPrompt:"Domaini alıcıya devrettiniz mi?",
+    confirmSentBtn:"Evet, Devrettim",
+    reportIssuePrompt:"Kısaca sorunu açıklayın (opsiyonel):",
+    confirmReceivedConfirmDialog:(n)=>`"${n}" domainini satıcıdan teslim aldığınızı onaylıyor musunuz? Bu bilgi admin'in ödemeyi satıcıya göndermesine yardımcı olacak.`,
+    confirmSentConfirmDialog:(n)=>`"${n}" domainini alıcıya devrettiğinizi onaylıyor musunuz? Bu bilgi admin'in ödemenizi göndermesine yardımcı olacak.`,
+    confirmTransferFail:"Onay gönderilemedi: ",
+    confirmTransferError:"Bağlantı hatası, lütfen tekrar deneyin.",
     withdrawFail:"İlan geri çekme başarısız: ",
     withdrawSuccess:(n)=>`"${n}" ilanı geri çekildi.`,
     withdrawError:"Bir hata oluştu.",
@@ -2347,12 +2367,13 @@ const i18n = {
     trademarkColEmail:"Email",
     trademarkColDate:"Date",
     payoutsFilterPending:"Waiting",
-    payoutsFilterFailed:"Failed",
+    payoutsFilterFailed:"Failed",payoutsFilterRefunded:"Refunded",
     payoutColSeller:"Seller",
     payoutColAmount:"Amount",
     payoutColNote:"Note",
     payoutColError:"Error",
     payoutColTxid:"Transaction ID (txid)",
+    transferConfirmStatus:"Transfer Confirmation",roleBuyer:"Buyer",roleSeller:"Seller",
     payoutsTabLabel:"Pending Payouts",
     payoutsExplainer:"When a domain sale completes, the payment waits here before the commission is deducted. After confirming the seller has transferred the domain to the buyer, click 'Confirm Transfer, Pay' — the amount minus commission is sent automatically to the seller's Pi account.",
     payoutStatusPending:"Held in Escrow",
@@ -2376,6 +2397,7 @@ const i18n = {
     maintenanceStatusLive:"App is currently LIVE",
     maintenanceStatusOff:"App is currently in MAINTENANCE MODE",
     maintenanceEnableBtn:"🔧 Enable Maintenance",
+    viewAsUserLabel:"View as User",viewAsUserEnableBtn:"👁️ Enable",viewAsUserDisableBtn:"✖️ Disable",
     maintenanceDisableBtn:"🚀 Go Live",
     maintenanceConfirmEnable:"You're about to put the app into maintenance mode. All visitors except you will see the maintenance screen. Continue?",
     maintenanceConfirmDisable:"You're about to bring the app back live. Continue?",
@@ -2423,6 +2445,18 @@ const i18n = {
     priceUpdateFail:"Price update failed: ",priceUpdateError:"An error occurred.",
     priceUpdateSuccess:(n,p)=>`"${n}" price updated to ${p} PI.`,
     withdrawConfirm:(n)=>`Are you sure you want to withdraw the "${n}" listing? This will remove it from sale.`,
+    transferConfirmedByYou:"You confirmed the transfer.",
+    transferDisputedByYou:"You reported an issue. Admin will review it.",
+    confirmTransferPrompt:"Did you receive the domain from the seller?",
+    confirmReceivedBtn:"Yes, Received",
+    reportIssueBtn:"Report Issue",
+    confirmTransferSellerPrompt:"Did you transfer the domain to the buyer?",
+    confirmSentBtn:"Yes, Transferred",
+    reportIssuePrompt:"Briefly describe the issue (optional):",
+    confirmReceivedConfirmDialog:(n)=>`Confirm that you received "${n}" from the seller? This helps the admin release the payment to the seller.`,
+    confirmSentConfirmDialog:(n)=>`Confirm that you transferred "${n}" to the buyer? This helps the admin release your payment.`,
+    confirmTransferFail:"Could not send confirmation: ",
+    confirmTransferError:"Connection error, please try again.",
     withdrawFail:"Withdraw failed: ",
     withdrawSuccess:(n)=>`"${n}" listing has been withdrawn.`,
     withdrawError:"An error occurred.",
@@ -2636,6 +2670,7 @@ function applyTranslations() {
     // çalıştırıp gerçek bakım durumunu eziyordu ("bakıma al" sonrası metin
     // değişmiyor gibi görünüyordu). En sonda gerçek duruma göre düzeltiyoruz.
     if (typeof updateMaintenanceControlBox === 'function') updateMaintenanceControlBox();
+    if (typeof syncViewAsUserButton === 'function') syncViewAsUserButton();
     applyConfigToDOM();
     // user-status-text span'ı dil değişiminde güncelle
     if(isAuth&&currentUser){
@@ -3134,6 +3169,25 @@ window.handleWithdrawListing=async function(domainName){
     }catch(e){alert(t('withdrawError'));}
 };
 
+// ── ESCROW: Alıcı/Satıcı devir onayı ────────────────────────────────────
+window.handleConfirmTransfer=async function(domainName,role,confirmed){
+    let note=null;
+    if(!confirmed){
+        note=prompt(t('reportIssuePrompt'))||'';
+        if(note===null) return; // kullanıcı iptal etti
+    } else {
+        if(!confirm(role==='buyer'?t('confirmReceivedConfirmDialog')(domainName):t('confirmSentConfirmDialog')(domainName))) return;
+    }
+    try{
+        const action = role==='buyer' ? 'confirm_transfer_buyer' : 'confirm_transfer_seller';
+        const r=await fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action,domainName,confirmed,note,accessToken:piAccessToken})});
+        const result=await r.json();
+        if(!r.ok||!result.success){alert(t('confirmTransferFail')+(result.error||''));return;}
+        await loadUserProfile();
+        debouncedRender();
+    }catch(e){alert(t('confirmTransferError'));}
+};
+
 // ── KULLANICI: Reddedilmiş ilan işlemleri ──────────────────────────────
 window.handleDeleteRejectedRequest=async function(requestId){
     const confirmMsg=currentLang==='tr'?'Bu reddedilmiş ilanı tamamen silmek istediğinize emin misiniz? Bu işlem geri alınamaz.':'Are you sure you want to permanently delete this rejected listing? This action cannot be undone.';
@@ -3581,7 +3635,22 @@ function renderUserPanel(){
         if(data?.sold&&data.buyer===currentUser){
             const date=data.at?new Date(data.at).toLocaleDateString(locale,{day:'2-digit',month:'2-digit',year:'numeric'})+' '+new Date(data.at).toLocaleTimeString(locale,{hour:'2-digit',minute:'2-digit'}):'-';
             const dogrulaBtn=data.txid?`<a href="https://blockexplorer.minepi.com/testnet/tx/${data.txid}" target="_blank" class="verify-btn" style="align-self:center;">${t('verify')}</a>`:`<span class="verify-btn-disabled" style="align-self:center;">${t('verifyLocked')}</span>`;
-            myHtml+=`<div class="my-domain-item"><div style="flex:1;min-width:0;"><b>${d.name}</b><br><small style="color:#fbbf24;font-weight:800;">${data.price}${t('soldPiLabel')}</small><br><small style="color:#64748b;">📅 ${date}</small></div>${dogrulaBtn}</div>`;
+            // Escrow devir onayı: gerçek bir satıcı varsa ve ödeme henüz
+            // sonuçlanmadıysa, alıcıdan domaini teslim alıp almadığını sorar.
+            const needsConfirm = data.sellerUsername && data.payoutStatus!=='released' && data.payoutStatus!=='refunded';
+            let confirmHtml='';
+            if(needsConfirm){
+                if(data.buyerConfirmed===true) confirmHtml=`<div style="margin-top:6px;font-size:0.65em;color:#6ee7b7;font-weight:700;">✅ ${t('transferConfirmedByYou')}</div>`;
+                else if(data.buyerConfirmed===false) confirmHtml=`<div style="margin-top:6px;font-size:0.65em;color:#f87171;font-weight:700;">⚠️ ${t('transferDisputedByYou')}</div>`;
+                else confirmHtml=`<div style="margin-top:8px;padding-top:8px;border-top:1px dashed #334155;">
+                    <div style="font-size:0.65em;color:#94a3b8;margin-bottom:5px;">${t('confirmTransferPrompt')}</div>
+                    <div style="display:flex;gap:6px;">
+                        <button onclick="handleConfirmTransfer('${d.name}','buyer',true)" style="flex:1;padding:7px;border:none;border-radius:6px;background:linear-gradient(135deg,#10b981,#34d399);color:#052e21;font-weight:800;font-size:0.65em;cursor:pointer;">✅ ${t('confirmReceivedBtn')}</button>
+                        <button onclick="handleConfirmTransfer('${d.name}','buyer',false)" style="flex:1;padding:7px;border:1px solid #ef4444;border-radius:6px;background:rgba(239,68,68,0.1);color:#f87171;font-weight:800;font-size:0.65em;cursor:pointer;">⚠️ ${t('reportIssueBtn')}</button>
+                    </div>
+                </div>`;
+            }
+            myHtml+=`<div class="my-domain-item" style="flex-wrap:wrap;"><div style="flex:1;min-width:0;"><b>${d.name}</b><br><small style="color:#fbbf24;font-weight:800;">${data.price}${t('soldPiLabel')}</small><br><small style="color:#64748b;">📅 ${date}</small>${confirmHtml}</div>${dogrulaBtn}</div>`;
         }
     });
     const myDomainsEl=document.getElementById('my-domains-list');
@@ -3737,7 +3806,22 @@ function renderUserPanel(){
         if(!userSoldDomains.length){
             html+=`<p style="font-size:0.75em;opacity:0.5;text-align:center;">${t('noSoldDomains')}</p>`;
         } else {
-            html+=userSoldDomains.map(d=>`<div class="my-domain-item"><div><b>${d.name}</b><br><small style="color:#34d399;font-weight:800;">+${d.price} Pi</small><br><small style="color:#64748b;">👤 @${d.buyer||'?'}</small></div><span style="color:#10b981;font-size:0.8em;font-weight:800;">✅</span></div>`).join('');
+            html+=userSoldDomains.map(d=>{
+                const needsConfirm = d.payoutStatus!=='released' && d.payoutStatus!=='refunded';
+                let confirmHtml='';
+                if(needsConfirm){
+                    if(d.sellerConfirmed===true) confirmHtml=`<div style="margin-top:6px;font-size:0.65em;color:#6ee7b7;font-weight:700;">✅ ${t('transferConfirmedByYou')}</div>`;
+                    else if(d.sellerConfirmed===false) confirmHtml=`<div style="margin-top:6px;font-size:0.65em;color:#f87171;font-weight:700;">⚠️ ${t('transferDisputedByYou')}</div>`;
+                    else confirmHtml=`<div style="margin-top:8px;padding-top:8px;border-top:1px dashed #334155;width:100%;">
+                        <div style="font-size:0.65em;color:#94a3b8;margin-bottom:5px;">${t('confirmTransferSellerPrompt')}</div>
+                        <div style="display:flex;gap:6px;">
+                            <button onclick="handleConfirmTransfer('${d.name}','seller',true)" style="flex:1;padding:7px;border:none;border-radius:6px;background:linear-gradient(135deg,#10b981,#34d399);color:#052e21;font-weight:800;font-size:0.65em;cursor:pointer;">✅ ${t('confirmSentBtn')}</button>
+                            <button onclick="handleConfirmTransfer('${d.name}','seller',false)" style="flex:1;padding:7px;border:1px solid #ef4444;border-radius:6px;background:rgba(239,68,68,0.1);color:#f87171;font-weight:800;font-size:0.65em;cursor:pointer;">⚠️ ${t('reportIssueBtn')}</button>
+                        </div>
+                    </div>`;
+                }
+                return `<div class="my-domain-item" style="flex-wrap:wrap;"><div style="flex:1;min-width:0;"><b>${d.name}</b><br><small style="color:#34d399;font-weight:800;">+${d.price} Pi</small><br><small style="color:#64748b;">👤 @${d.buyer||'?'}</small>${confirmHtml}</div><span style="color:#10b981;font-size:0.8em;font-weight:800;">✅</span></div>`;
+            }).join('');
         }
         mySoldEl.innerHTML=html;
     }
@@ -3777,7 +3861,7 @@ function render(){
 
     // ... gerisi aynı (domain-grid oluşturma kısmı değişmedi)
     let sortedDomains=[...domains].filter(d=>!domainData[d.name]?.deleted).sort((a,b)=>(domainData[b.name]?.createdAt||0)-(domainData[a.name]?.createdAt||0));
-    const isAdminViewing=isAuth&&currentUser===APP_CONFIG.adminUsername;
+    const isAdminViewing=isAuth&&currentUser===APP_CONFIG.adminUsername&&!window._viewAsUserMode;
     syncCategoryFilterCheckboxes();
     // GÜVENLİK/GÖRÜNÜRLÜK: Pasife alınmış (ödemesi kesinleşmiş, satıştan
     // kaldırılmış) domainler artık admin'e özel değil — herkes "Pasif"
@@ -4102,6 +4186,22 @@ function updateMaintenanceControlBox(){
         text.textContent = t('maintenanceStatusLive');
         btn.textContent = t('maintenanceEnableBtn');
         btn.style.background = 'linear-gradient(135deg,#ef4444,#f87171)';
+    }
+}
+window.toggleViewAsUser = function(){
+    window._viewAsUserMode = !window._viewAsUserMode;
+    syncViewAsUserButton();
+    debouncedRender();
+};
+function syncViewAsUserButton(){
+    const btn = document.getElementById('view-as-user-toggle-btn');
+    if(!btn) return;
+    if(window._viewAsUserMode){
+        btn.textContent = t('viewAsUserDisableBtn');
+        btn.style.background = 'linear-gradient(135deg,#64748b,#94a3b8)';
+    } else {
+        btn.textContent = t('viewAsUserEnableBtn');
+        btn.style.background = 'linear-gradient(135deg,#6366f1,#818cf8)';
     }
 }
 window.toggleMaintenanceMode = async function(){
@@ -4519,6 +4619,8 @@ onSnapshot(collection(db,"domains"),(snapshot)=>{
             description:docData.description||'',
             sellerUsername:docData.sellerUsername||null,
             sellerNote:docData.sellerNote||null, // FIX: eksikti — not alanı domain kartında hiç görünmüyordu
+            buyerConfirmed:docData.buyerConfirmed===true?true:(docData.buyerConfirmed===false?false:null),
+            sellerConfirmed:docData.sellerConfirmed===true?true:(docData.sellerConfirmed===false?false:null),
             createdAt:docData.createdAt||0,
             deleted:docData.deleted===true, // FIX: soft-delete bayrağı
             deletedAt:docData.deletedAt||null, // FIX: silinme tarihi eksikti, eklendi
@@ -5549,11 +5651,13 @@ function renderAdminPayouts(payouts) {
     const container = document.getElementById('payouts-admin-list');
     if (!container) return;
     const waitingStates = ['pending', 'no_seller', 'processing', 'refund_processing'];
-    const resolvedStates = ['released', 'refunded'];
+    const resolvedStates = ['released'];
+    const refundedStates = ['refunded'];
     const failedStates = ['failed', 'refund_failed'];
     const filtered = payouts.filter(p => {
         if (payoutsFilter === 'pending') return waitingStates.includes(p.payoutStatus);
         if (payoutsFilter === 'resolved') return resolvedStates.includes(p.payoutStatus);
+        if (payoutsFilter === 'refunded') return refundedStates.includes(p.payoutStatus);
         if (payoutsFilter === 'rejected') return failedStates.includes(p.payoutStatus);
         return true; // 'all'
     });
@@ -5571,10 +5675,21 @@ function renderAdminPayouts(payouts) {
         const canRelease = p.payoutStatus === 'pending' || p.payoutStatus === 'failed';
         const canRefund = p.payoutStatus === 'pending' || p.payoutStatus === 'failed' || p.payoutStatus === 'refund_failed';
         const row = (label, value) => value ? `<tr><td style="padding:5px 8px 5px 0;font-size:0.62em;color:#94a3b8;font-weight:700;white-space:nowrap;vertical-align:top;width:1%;">${label}</td><td style="padding:5px 0;font-size:0.72em;color:#e2e8f0;word-break:break-word;">${value}</td></tr>` : '';
+        // Devir onay durumu — admin, "Transfer Tamam Öde" ya da "İade Et"
+        // kararını uygulama dışından gelen bilgiye değil, buradaki gerçek
+        // alıcı/satıcı onayına bakarak verebilsin diye.
+        const confirmBadge = (label, confirmed, confirmedAt) => {
+            if (confirmed === true) return `<span style="color:#6ee7b7;font-weight:800;">✅ ${label} onayladı</span>`;
+            if (confirmed === false) return `<span style="color:#f87171;font-weight:800;">⚠️ ${label} sorun bildirdi</span>`;
+            return `<span style="color:#64748b;">⏳ ${label} henüz onaylamadı</span>`;
+        };
+        const showConfirmations = p.sellerUsername && (p.payoutStatus === 'pending' || p.payoutStatus === 'failed' || p.payoutStatus === 'processing');
         const tableHtml = `<table style="width:100%;border-collapse:collapse;margin-bottom:8px;"><tbody>
             ${row(t('ticketTableUser'), `@${escapeHtml(p.user || '-')}`)}
             ${row(t('payoutColSeller'), p.sellerUsername ? '🏷️ @' + escapeHtml(p.sellerUsername) : '—')}
             ${row(t('payoutColAmount'), `${p.price} Pi &nbsp;→&nbsp; <span style="color:#6ee7b7;font-weight:700;">${p.payoutAmount != null ? p.payoutAmount : '-'} Pi</span> <span style="color:#64748b;">(%${Math.round((p.commissionRate || 0.05) * 100)}: ${commissionAmt} Pi)</span>`)}
+            ${p.sellerUsername ? row(t('detailFieldPaymentTo'), t('paymentToUsernameNote').replace('{user}','@'+escapeHtml(p.sellerUsername))) : ''}
+            ${showConfirmations ? row(t('transferConfirmStatus'), `${confirmBadge(t('roleBuyer'), p.buyerConfirmed, p.buyerConfirmedAt)}<br>${confirmBadge(t('roleSeller'), p.sellerConfirmed, p.sellerConfirmedAt)}`) : ''}
             ${p.payoutStatus === 'no_seller' ? row(t('payoutColNote'), `<span style="color:#94a3b8;">⚠️ ${t('payoutNoSellerWarning')}</span>`) : ''}
             ${(p.payoutStatus === 'failed' && p.payoutError) ? row(t('payoutColError'), `<span style="color:#f87171;">${escapeHtml(p.payoutError)}</span>`) : ''}
             ${(p.payoutStatus === 'refund_failed' && p.refundError) ? row(t('payoutColError'), `<span style="color:#f87171;">${escapeHtml(p.refundError)}</span>`) : ''}
