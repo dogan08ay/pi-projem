@@ -1128,7 +1128,8 @@
             <button onclick="markAllNotifRead()" style="background:rgba(99,102,241,0.2);border:1px solid #6366f1;color:#a5b4fc;padding:5px 10px;border-radius:8px;font-size:0.7em;cursor:pointer;font-weight:700;" data-i18n="markAllRead"></button>
         </div>
         <div id="notif-list" style="max-height:60vh;overflow-y:auto;text-align:left;margin-bottom:12px;"></div>
-        <button class="pi-btn" style="background:#6366f1;animation:none;padding:10px;margin:0;width:100%;" onclick="document.getElementById('notif-modal').style.display='none'" data-i18n="close"></button>
+        <button class="pi-btn" style="background:#6366f1;animation:none;padding:10px;margin:0 0 8px 0;width:100%;" onclick="document.getElementById('notif-modal').style.display='none'" data-i18n="close"></button>
+        <button style="width:100%;padding:9px;border:1px solid #ef4444;background:rgba(239,68,68,0.1);color:#f87171;border-radius:10px;font-size:0.75em;font-weight:800;cursor:pointer;" onclick="clearAllNotifications()" data-i18n="clearAllNotifs"></button>
     </div>
 </div>
 
@@ -1942,6 +1943,7 @@ const i18n = {
     trademarkSubmittedOn:"Gönderim Tarihi",
     trademarkWithdrawBtn:"Talebi Geri Çek",
     trademarkWithdrawConfirm:"Bu marka hakkı talebini geri çekmek istediğinize emin misiniz?",
+    trademarkDeleteMyConfirm:"Bu çözülmüş talebi kalıcı olarak silmek istediğinize emin misiniz?",
     trademarkApproveBtn:"Haklı Bul (Domaini Kaldır)",
     trademarkApproveConfirm:"domainini talebi haklı bularak platformdan kaldırmak üzeresiniz. Bu işlem geri alınamaz. Devam edilsin mi?",
     trademarkApproveSuccessRemoved:"✅ Talep haklı bulundu, domain platformdan kaldırıldı.",
@@ -2015,6 +2017,10 @@ const i18n = {
     contactUs:"SORULARINIZ İÇİN",community:"TOPLULUK GRUBUMUZ",
     telegramGroup:"TELEGRAM GRUBUMUZ",privacyPolicy:"GİZLİLİK POLİTİKASI",termsOfUse:"KULLANIM ŞARTLARI",
     notifications:"Bildirimler",markAllRead:"Tümünü Okundu Yap",noNotifications:"Henüz bildiriminiz yok.",
+    clearAllNotifs:"🗑️ Tüm Bildirimleri Temizle",
+    clearAllNotifsConfirm:"Tüm bildirimleriniz kalıcı olarak silinecek. Emin misiniz?",
+    clearAllNotifsFail:"Bildirimler temizlenemedi: ",
+    clearAllNotifsError:"Bağlantı hatası, lütfen tekrar deneyin.",
     verify:"🔍 DOĞRULA",verifyLocked:"🔒 DOĞRULA",buyNow:"SATIN AL",sold:"SATILDI",
     soldPendingConfirmation:"SATILDI - ONAY AŞAMASINDA",
     hideBtn:"🙈 Gizle",unhideBtn:"👁 Satışa Çıkar",hiddenTag:"Gizli",hideToggleFail:"İşlem başarısız: ",
@@ -2057,6 +2063,8 @@ const i18n = {
     confirmSentConfirmDialog:(n)=>`"${n}" domainini alıcıya devrettiğinizi onaylıyor musunuz? Bu bilgi admin'in ödemenizi göndermesine yardımcı olacak.`,
     confirmTransferFail:"Onay gönderilemedi: ",
     confirmTransferError:"Bağlantı hatası, lütfen tekrar deneyin.",
+    adminResponseLabel:"Admin Yanıtı",
+    adminNudgedYou:(n)=>`Admin size ${n} kez hatırlatma gönderdi.`,
     confirmedStatus:"Onayladı",disputedStatus:"Sorun Bildirdi",waitingStatus:"Bekleniyor",
     nudgeBuyerBtn:"Alıcıya Hatırlat",nudgeSellerBtn:"Satıcıya Hatırlat",
     missingBothConfirm:"Ödeme onayı/iade için hem alıcının hem satıcının devri onaylaması gerekiyor.",
@@ -2366,6 +2374,7 @@ const i18n = {
     trademarkSubmittedOn:"Submitted On",
     trademarkWithdrawBtn:"Withdraw Claim",
     trademarkWithdrawConfirm:"Are you sure you want to withdraw this trademark claim?",
+    trademarkDeleteMyConfirm:"Are you sure you want to permanently delete this resolved claim?",
     trademarkApproveBtn:"Approve (Remove Domain)",
     trademarkApproveConfirm:"You're about to approve this claim and remove the domain from the platform. This cannot be undone. Continue?",
     trademarkApproveSuccessRemoved:"✅ Claim approved, domain removed from the platform.",
@@ -2438,6 +2447,10 @@ const i18n = {
     contactUs:"CONTACT US",community:"OUR COMMUNITY",telegramGroup:"OUR TELEGRAM GROUP",
     privacyPolicy:"PRIVACY POLICY",termsOfUse:"TERMS OF USE",
     notifications:"Notifications",markAllRead:"Mark All Read",noNotifications:"No notifications yet.",
+    clearAllNotifs:"🗑️ Clear All Notifications",
+    clearAllNotifsConfirm:"All your notifications will be permanently deleted. Are you sure?",
+    clearAllNotifsFail:"Could not clear notifications: ",
+    clearAllNotifsError:"Connection error, please try again.",
     verify:"🔍 VERIFY",verifyLocked:"🔒 VERIFY",buyNow:"BUY NOW",sold:"SOLD",
     soldPendingConfirmation:"SOLD - PENDING CONFIRMATION",
     hideBtn:"🙈 Hide",unhideBtn:"👁 List for Sale",hiddenTag:"Hidden",hideToggleFail:"Action failed: ",
@@ -2480,6 +2493,8 @@ const i18n = {
     confirmSentConfirmDialog:(n)=>`Confirm that you transferred "${n}" to the buyer? This helps the admin release your payment.`,
     confirmTransferFail:"Could not send confirmation: ",
     confirmTransferError:"Connection error, please try again.",
+    adminResponseLabel:"Admin Response",
+    adminNudgedYou:(n)=>`Admin sent you ${n} reminder${n>1?'s':''}.`,
     confirmedStatus:"Confirmed",disputedStatus:"Reported Issue",waitingStatus:"Waiting",
     nudgeBuyerBtn:"Remind Buyer",nudgeSellerBtn:"Remind Seller",
     missingBothConfirm:"Both the buyer and seller need to confirm the transfer before payment can be released or refunded.",
@@ -3162,7 +3177,7 @@ window.openChangelogModal=function(){
             <div style="font-size:1.6em;flex-shrink:0;display:flex;align-items:flex-start;padding-top:2px;min-width:36px;justify-content:center;">${item.icon}</div>
             <div style="flex:1;min-width:0;overflow:hidden;">
                 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;flex-wrap:wrap;gap:4px;">
-                    <b style="color:${item.color};font-size:0.88em;letter-spacing:0.3px;flex-shrink:0;">${item.v}</b>
+                    <b style="color:${item.color};font-size:0.88em;letter-spacing:0.3px;min-width:0;overflow-wrap:break-word;word-break:break-word;flex:1 1 auto;">${item.v}</b>
                     <span style="font-size:0.62em;color:#64748b;background:#1e293b;padding:2px 8px;border-radius:6px;font-weight:700;flex-shrink:0;">${item.date}</span>
                 </div>
                 <div style="display:flex;flex-direction:column;gap:6px;">
@@ -3180,6 +3195,20 @@ window.markAllNotifRead=async function(){
         cachedNotifications=cachedNotifications.map(n=>({...n,read:true}));
         renderNotifBadgeAndList();
     }catch(e){}
+};
+
+window.clearAllNotifications=async function(){
+    if(!piAccessToken) return;
+    if(!cachedNotifications.length){ document.getElementById('notif-modal').style.display='none'; return; }
+    if(!confirm(t('clearAllNotifsConfirm'))) return;
+    try{
+        const r=await fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'clear_all_notifications',accessToken:piAccessToken})});
+        const result=await r.json();
+        if(!r.ok||!result.success){alert(t('clearAllNotifsFail')+(result.error||''));return;}
+        cachedNotifications=[];
+        renderNotifBadgeAndList();
+        document.getElementById('notif-modal').style.display='none';
+    }catch(e){alert(t('clearAllNotifsError'));}
 };
 
 // DOMAIN DETAY
@@ -3691,13 +3720,18 @@ function renderUserPanel(){
             if(needsConfirm){
                 if(data.buyerConfirmed===true) confirmHtml=`<div style="margin-top:6px;font-size:0.65em;color:#6ee7b7;font-weight:700;">✅ ${t('transferConfirmedByYou')}</div>`;
                 else if(data.buyerConfirmed===false) confirmHtml=`<div style="margin-top:6px;font-size:0.65em;color:#f87171;font-weight:700;">⚠️ ${t('transferDisputedByYou')}</div>`;
-                else confirmHtml=`<div style="margin-top:8px;padding-top:8px;border-top:1px dashed #334155;">
+                else {
+                    const disputeMsg = data.buyerDisputeResolution ? `<div style="margin-bottom:6px;padding:6px 8px;background:rgba(99,102,241,0.12);border:1px solid #6366f1;border-radius:6px;font-size:0.62em;color:#c7d2fe;"><b>💬 ${t('adminResponseLabel')}:</b> "${escapeHtml(data.buyerDisputeResolution)}"</div>` : '';
+                    const nudgeMsg = (!data.buyerDisputeResolution && data.buyerNudgeCount>0) ? `<div style="margin-bottom:5px;font-size:0.6em;color:#a5b4fc;">🔔 ${t('adminNudgedYou')(data.buyerNudgeCount)}</div>` : '';
+                    confirmHtml=`<div style="margin-top:8px;padding-top:8px;border-top:1px dashed #334155;">
+                    ${disputeMsg}${nudgeMsg}
                     <div style="font-size:0.65em;color:#94a3b8;margin-bottom:5px;">${t('confirmTransferPrompt')}</div>
                     <div style="display:flex;gap:6px;">
                         <button onclick="handleConfirmTransfer('${d.name}','buyer',true)" style="flex:1;padding:7px;border:none;border-radius:6px;background:linear-gradient(135deg,#10b981,#34d399);color:#052e21;font-weight:800;font-size:0.65em;cursor:pointer;">✅ ${t('confirmReceivedBtn')}</button>
                         <button onclick="handleConfirmTransfer('${d.name}','buyer',false)" style="flex:1;padding:7px;border:1px solid #ef4444;border-radius:6px;background:rgba(239,68,68,0.1);color:#f87171;font-weight:800;font-size:0.65em;cursor:pointer;">⚠️ ${t('reportIssueBtn')}</button>
                     </div>
                 </div>`;
+                }
             }
             myHtml+=`<div class="my-domain-item" style="flex-wrap:wrap;"><div style="flex:1;min-width:0;"><b>${d.name}</b><br><small style="color:#fbbf24;font-weight:800;">${data.price}${t('soldPiLabel')}</small><br><small style="color:#64748b;">📅 ${date}</small>${confirmHtml}</div>${dogrulaBtn}</div>`;
         }
@@ -3821,6 +3855,10 @@ function renderUserPanel(){
                             <span style="color:#64748b;flex-shrink:0;font-weight:700;min-width:90px;">🗒️ ${t('detailFieldWallet')}:</span>
                             <span style="color:#60a5fa;font-size:0.9em;">${req.sellerNote}</span>
                         </div>`:''}
+                        <div style="display:flex;gap:6px;align-items:baseline;">
+                            <span style="color:#64748b;flex-shrink:0;font-weight:700;min-width:90px;">💳 ${t('detailFieldPaymentTo')}:</span>
+                            <span style="color:#6ee7b7;font-size:0.85em;">${t('paymentToUsernameNote').replace('{user}','@'+currentUser)}</span>
+                        </div>
                         ${req.rejectReason?`<div style="display:flex;gap:6px;align-items:flex-start;margin-top:4px;padding:6px 8px;background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.3);border-radius:6px;">
                             <span style="color:#f87171;flex-shrink:0;font-weight:800;min-width:90px;">❌ ${t('rejectReasonLabel')}:</span>
                             <span style="color:#fca5a5;word-break:break-word;flex:1;font-weight:600;">${req.rejectReason}</span>
@@ -3861,13 +3899,18 @@ function renderUserPanel(){
                 if(needsConfirm){
                     if(d.sellerConfirmed===true) confirmHtml=`<div style="margin-top:6px;font-size:0.65em;color:#6ee7b7;font-weight:700;">✅ ${t('transferConfirmedByYou')}</div>`;
                     else if(d.sellerConfirmed===false) confirmHtml=`<div style="margin-top:6px;font-size:0.65em;color:#f87171;font-weight:700;">⚠️ ${t('transferDisputedByYou')}</div>`;
-                    else confirmHtml=`<div style="margin-top:8px;padding-top:8px;border-top:1px dashed #334155;width:100%;">
+                    else {
+                        const disputeMsg = d.sellerDisputeResolution ? `<div style="margin-bottom:6px;padding:6px 8px;background:rgba(99,102,241,0.12);border:1px solid #6366f1;border-radius:6px;font-size:0.62em;color:#c7d2fe;width:100%;box-sizing:border-box;"><b>💬 ${t('adminResponseLabel')}:</b> "${escapeHtml(d.sellerDisputeResolution)}"</div>` : '';
+                        const nudgeMsg = (!d.sellerDisputeResolution && d.sellerNudgeCount>0) ? `<div style="margin-bottom:5px;font-size:0.6em;color:#a5b4fc;width:100%;">🔔 ${t('adminNudgedYou')(d.sellerNudgeCount)}</div>` : '';
+                        confirmHtml=`<div style="margin-top:8px;padding-top:8px;border-top:1px dashed #334155;width:100%;">
+                        ${disputeMsg}${nudgeMsg}
                         <div style="font-size:0.65em;color:#94a3b8;margin-bottom:5px;">${t('confirmTransferSellerPrompt')}</div>
                         <div style="display:flex;gap:6px;">
                             <button onclick="handleConfirmTransfer('${d.name}','seller',true)" style="flex:1;padding:7px;border:none;border-radius:6px;background:linear-gradient(135deg,#10b981,#34d399);color:#052e21;font-weight:800;font-size:0.65em;cursor:pointer;">✅ ${t('confirmSentBtn')}</button>
                             <button onclick="handleConfirmTransfer('${d.name}','seller',false)" style="flex:1;padding:7px;border:1px solid #ef4444;border-radius:6px;background:rgba(239,68,68,0.1);color:#f87171;font-weight:800;font-size:0.65em;cursor:pointer;">⚠️ ${t('reportIssueBtn')}</button>
                         </div>
                     </div>`;
+                    }
                 }
                 return `<div class="my-domain-item" style="flex-wrap:wrap;"><div style="flex:1;min-width:0;"><b>${d.name}</b><br><small style="color:#34d399;font-weight:800;">+${d.price} Pi</small><br><small style="color:#64748b;">👤 @${d.buyer||'?'}</small>${confirmHtml}</div><span style="color:#10b981;font-size:0.8em;font-weight:800;">✅</span></div>`;
             }).join('');
@@ -4069,7 +4112,7 @@ function listenToPendingDomains(){
         }catch(e){console.error("Bekleyen ilan talepleri alınamadı:",e);}
     };
     fetchOnce();
-    pendingDomainsPollTimer=setInterval(fetchOnce,20000);
+    pendingDomainsPollTimer=setInterval(fetchOnce,7000);
 }
 
 // ══════════════════════════════════════════════════════════════════════
@@ -4111,7 +4154,7 @@ function listenToTrademarkClaims(){
         }catch(e){console.error("Marka hakkı talepleri alınamadı:",e);}
     };
     fetchOnce();
-    trademarkClaimsPollTimer=setInterval(fetchOnce,20000);
+    trademarkClaimsPollTimer=setInterval(fetchOnce,7000);
 }
 
 let pendingPayoutsPollTimer=null;
@@ -4143,7 +4186,7 @@ function listenToPendingPayouts(){
         }catch(e){console.error("Bekleyen ödemeler alınamadı:",e);}
     };
     fetchOnce();
-    pendingPayoutsPollTimer=setInterval(fetchOnce,20000);
+    pendingPayoutsPollTimer=setInterval(fetchOnce,7000);
 }
 
 // FIX: reject_sell_request durumunda domains koleksiyonunda HİÇBİR
@@ -4161,7 +4204,7 @@ function listenToPendingPayouts(){
 let myOwnSellRequestsPollTimer=null;
 function listenToMyOwnSellRequests(username){
     if(myOwnSellRequestsPollTimer) clearInterval(myOwnSellRequestsPollTimer);
-    myOwnSellRequestsPollTimer=setInterval(()=>{ if(isAuth) debouncedProfileRefresh(); },20000);
+    myOwnSellRequestsPollTimer=setInterval(()=>{ if(isAuth) debouncedProfileRefresh(); },7000);
 }
 function stopListeningToMyOwnSellRequests(){
     if(myOwnSellRequestsPollTimer){clearInterval(myOwnSellRequestsPollTimer);myOwnSellRequestsPollTimer=null;}
@@ -4683,6 +4726,10 @@ onSnapshot(collection(db,"domains"),(snapshot)=>{
             sellerNote:docData.sellerNote||null, // FIX: eksikti — not alanı domain kartında hiç görünmüyordu
             buyerConfirmed:docData.buyerConfirmed===true?true:(docData.buyerConfirmed===false?false:null),
             sellerConfirmed:docData.sellerConfirmed===true?true:(docData.sellerConfirmed===false?false:null),
+            buyerNudgeCount:docData.buyerNudgeCount||0,
+            sellerNudgeCount:docData.sellerNudgeCount||0,
+            buyerDisputeResolution:docData.buyerDisputeResolution||null,
+            sellerDisputeResolution:docData.sellerDisputeResolution||null,
             createdAt:docData.createdAt||0,
             deleted:docData.deleted===true, // FIX: soft-delete bayrağı
             deletedAt:docData.deletedAt||null, // FIX: silinme tarihi eksikti, eklendi
@@ -5666,6 +5713,7 @@ function renderMyTrademarkClaims(claims) {
     container.innerHTML = filtered.map(c => {
         const created = c.createdAt ? new Date(c.createdAt).toLocaleDateString(locale, { day: '2-digit', month: '2-digit' }) + ' ' + new Date(c.createdAt).toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' }) : '-';
         const canWithdraw = c.status === 'new' || c.status === 'reviewing';
+        const canDelete = c.status === 'resolved';
         const currentStageIdx = stageOrder.indexOf(c.status);
         const isTerminal = c.status === 'rejected' || c.status === 'withdrawn';
         const timelineHtml = isTerminal ? '' : `
@@ -5685,9 +5733,26 @@ function renderMyTrademarkClaims(claims) {
             ${timelineHtml}
             <div style="font-size:0.65em;color:#64748b;margin-bottom:8px;">🕓 ${t('trademarkSubmittedOn')}: ${created}</div>
             ${canWithdraw ? `<button onclick="withdrawMyTrademarkClaim('${c.id}')" style="width:100%;padding:7px;border:1px solid #64748b;background:rgba(100,116,139,0.15);color:#cbd5e1;border-radius:6px;font-size:0.65em;font-weight:700;cursor:pointer;">↩️ ${t('trademarkWithdrawBtn')}</button>` : ''}
+            ${canDelete ? `<button onclick="deleteMyTrademarkClaim('${c.id}')" style="width:100%;padding:7px;border:1px solid #ef4444;background:rgba(239,68,68,0.12);color:#fca5a5;border-radius:6px;font-size:0.65em;font-weight:700;cursor:pointer;">🗑️ ${t('trademarkDeleteBtn')}</button>` : ''}
         </div>`;
     }).join('');
 }
+
+window.deleteMyTrademarkClaim = async function(claimId) {
+    if (!confirm(t('trademarkDeleteMyConfirm'))) return;
+    try {
+        const r = await fetch('/api/approve', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'delete_my_trademark_claim', claimId, accessToken: piAccessToken })
+        });
+        const result = await r.json();
+        if (result.success) loadMyTrademarkClaims();
+        else alert(result.error || t('trademarkError'));
+    } catch (e) {
+        console.error("Marka hakkı talebi silinemedi:", e);
+    }
+};
 
 window.withdrawMyTrademarkClaim = async function(claimId) {
     if (!confirm(t('trademarkWithdrawConfirm'))) return;
