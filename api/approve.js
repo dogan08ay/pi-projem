@@ -409,6 +409,19 @@ export default async function handler(req, res) {
     }
   }
 
+  // ── Tüm Bildirimleri Temizle ─────────────────────────────────────────────
+  if (action === 'clear_all_notifications') {
+    const realUsername = await getRealUsername(accessToken);
+    if (!realUsername) return res.status(403).json({ error: "Geçersiz oturum" });
+    try {
+      const rtdb = getRtdb();
+      await rtdb.ref(`notifications/${realUsername}`).remove();
+      return res.status(200).json({ success: true });
+    } catch (e) {
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
   // ── Giriş Bildirimi ────────────────────────────────────────────────────
   if (action === 'log_login') {
     const realUsername = await getRealUsername(accessToken);
@@ -1475,6 +1488,29 @@ export default async function handler(req, res) {
     }
   }
 
+  // ── Kullanıcı: Kendi Çözülmüş Marka Hakkı Talebini Sil ──────────────────
+  if (action === 'delete_my_trademark_claim') {
+    const { claimId } = req.body;
+    const realUsername = await getRealUsername(accessToken);
+    if (!realUsername) return res.status(403).json({ error: "Geçersiz oturum" });
+    if (!claimId) return res.status(400).json({ error: "claimId zorunludur" });
+    try {
+      const db = getDb();
+      const claimRef = db.collection('trademark_claims').doc(claimId);
+      const snap = await claimRef.get();
+      if (!snap.exists) return res.status(404).json({ error: "Talep bulunamadı" });
+      const claim = snap.data();
+      if (claim.submittedByUsername !== realUsername) return res.status(403).json({ error: "Bu talebi silme yetkiniz yok" });
+      if (claim.status !== 'resolved')
+        return res.status(400).json({ error: "Sadece çözülmüş talepler silinebilir." });
+      await claimRef.delete();
+      return res.status(200).json({ success: true });
+    } catch (e) {
+      console.error("delete_my_trademark_claim hatası:", e);
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
   // ── Kullanıcı: Kendi Marka Hakkı Taleplerini Listele (Panelim) ─────────
   if (action === 'get_my_trademark_claims') {
     const realUsername = await getRealUsername(accessToken);
@@ -1571,11 +1607,12 @@ export default async function handler(req, res) {
       await saleRef.set({
         buyerConfirmed: !!confirmed,
         buyerConfirmedAt: Date.now(),
-        buyerConfirmNote: note || null
+        buyerConfirmNote: note || null,
+        buyerDisputeResolution: null
       }, { merge: true });
       if (sale.domain) {
         await db.collection('domains').doc(sale.domain).set({
-          buyerConfirmed: !!confirmed, buyerConfirmedAt: Date.now()
+          buyerConfirmed: !!confirmed, buyerConfirmedAt: Date.now(), buyerDisputeResolution: null
         }, { merge: true });
       }
 
@@ -1612,10 +1649,11 @@ export default async function handler(req, res) {
       await saleRef.set({
         sellerConfirmed: !!confirmed,
         sellerConfirmedAt: Date.now(),
-        sellerConfirmNote: note || null
+        sellerConfirmNote: note || null,
+        sellerDisputeResolution: null
       }, { merge: true });
       await db.collection('domains').doc(transferDomainName).set({
-        sellerConfirmed: !!confirmed, sellerConfirmedAt: Date.now()
+        sellerConfirmed: !!confirmed, sellerConfirmedAt: Date.now(), sellerDisputeResolution: null
       }, { merge: true });
 
       await sendNotificationToAdmin({
@@ -1654,7 +1692,9 @@ export default async function handler(req, res) {
         : { sellerConfirmed: null, sellerConfirmNote: null, sellerDisputeResolution: message, sellerDisputeResolvedAt: Date.now() };
       await saleRef.set(updateData, { merge: true });
       if (sale.domain) {
-        const domainUpdate = role === 'buyer' ? { buyerConfirmed: null } : { sellerConfirmed: null };
+        const domainUpdate = role === 'buyer'
+          ? { buyerConfirmed: null, buyerDisputeResolution: message, buyerDisputeResolvedAt: Date.now() }
+          : { sellerConfirmed: null, sellerDisputeResolution: message, sellerDisputeResolvedAt: Date.now() };
         await db.collection('domains').doc(sale.domain).set(domainUpdate, { merge: true });
       }
 
@@ -1678,11 +1718,21 @@ export default async function handler(req, res) {
     if (!saleId || !role) return res.status(400).json({ error: "Geçersiz parametre" });
     try {
       const db = getDb();
-      const saleSnap = await db.collection('global_sales').doc(saleId).get();
+      const saleRef = db.collection('global_sales').doc(saleId);
+      const saleSnap = await saleRef.get();
       if (!saleSnap.exists) return res.status(404).json({ error: "Satış kaydı bulunamadı" });
       const sale = saleSnap.data();
       const targetUsername = role === 'buyer' ? sale.user : sale.sellerUsername;
       if (!targetUsername) return res.status(400).json({ error: "Hedef kullanıcı bulunamadı" });
+
+      // Hatırlatma sayısını takip et — kullanıcı kendi onay ekranında
+      // "admin size N kez hatırlattı" bilgisini görebilsin diye.
+      const countField = role === 'buyer' ? 'buyerNudgeCount' : 'sellerNudgeCount';
+      const newCount = (Number(sale[countField]) || 0) + 1;
+      await saleRef.set({ [countField]: newCount }, { merge: true });
+      if (sale.domain) {
+        await db.collection('domains').doc(sale.domain).set({ [countField]: newCount }, { merge: true });
+      }
 
       await sendNotification(targetUsername, {
         type: 'transfer_confirmation_reminder',
@@ -2421,7 +2471,15 @@ export default async function handler(req, res) {
 
           const groupMsg = `🎉 *YENİ SATIŞ!*\n\n👤 @${username}, *${domainName}* domainini satın aldı! 🚀`;
           await sendTG(TG_GROUP_ID, groupMsg);
-          await sendTG(TG_CHAT_ID, `✅ *SATIŞ TAMAMLANDI*\n\n👤 @${username}\n🌐 ${domainName}\n💰 ${realPrice} Pi\n🔑 ${purchaseCode}`);
+          // FIX: Üçüncü taraf bir satıcı varsa ödeme henüz escrow'da bekliyor
+          // demektir (satıcıya serbest bırakılana kadar "tamamlandı" değil) —
+          // bu yüzden mesaj artık gerçek duruma göre değişiyor. Satıcısız
+          // (admin'e ait) domainlerde escrow adımı hiç olmadığı için "TAMAMLANDI"
+          // hâlâ doğru.
+          const adminMsg = sellerUsername
+            ? `🔒 *YENİ SATIŞ — ESCROW'DA ONAY BEKLİYOR*\n\n👤 @${username}\n🌐 ${domainName}\n💰 ${realPrice} Pi\n🏷️ Satıcı: @${sellerUsername}\n🔑 ${purchaseCode}\n\nÖdeme, alıcı ve satıcının devri onaylaması sonrası "Bekleyen Ödemeler" panelinden serbest bırakılacak.`
+            : `✅ *SATIŞ TAMAMLANDI*\n\n👤 @${username}\n🌐 ${domainName}\n💰 ${realPrice} Pi\n🔑 ${purchaseCode}`;
+          await sendTG(TG_CHAT_ID, adminMsg);
         } else {
           console.warn("Domain zaten satılmış:", domainName);
         }
