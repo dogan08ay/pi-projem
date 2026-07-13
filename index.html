@@ -82,10 +82,10 @@
         .side-menu-overlay.open{display:block;}
         .side-menu-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;}
         .side-menu-close{background:rgba(99,102,241,0.2);border:1px solid #6366f1;color:#c7d2fe;width:26px;height:26px;border-radius:6px;font-size:1.1em;cursor:pointer;}
-        .side-menu-item{display:flex;align-items:center;gap:8px;padding:8px 8px;border-radius:7px;color:#e2e8f0;font-weight:700;font-size:0.88em;cursor:pointer;margin-bottom:4px;text-align:left;background:transparent;border:none;width:100%;box-sizing:border-box;transition:background 0.15s;}
+        .side-menu-item{display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:7px;color:#e2e8f0;font-weight:700;font-size:0.82em;cursor:pointer;margin-bottom:2px;text-align:left;background:transparent;border:none;width:100%;box-sizing:border-box;transition:background 0.15s;}
         .side-menu-item:hover,.side-menu-item:active{background:rgba(99,102,241,0.18);}
-        .side-menu-section-label{font-size:0.62em;color:#64748b;font-weight:800;letter-spacing:0.8px;text-transform:uppercase;margin:8px 0 3px 4px;text-align:left;}
-        .side-menu-divider{height:1px;background:rgba(99,102,241,0.2);margin:4px 0;}
+        .side-menu-section-label{font-size:0.6em;color:#64748b;font-weight:800;letter-spacing:0.8px;text-transform:uppercase;margin:5px 0 2px 4px;text-align:left;}
+        .side-menu-divider{height:1px;background:rgba(99,102,241,0.2);margin:2px 0;}
         .lang-pill{margin-left:auto;font-size:0.65em;background:rgba(99,102,241,0.3);padding:2px 8px;border-radius:8px;color:#a5b4fc;}
         .lang-option{display:flex;align-items:center;gap:6px;padding:5px 7px;color:#f1f5f9;font-size:0.75em;font-weight:700;cursor:pointer;border-radius:8px;margin:2px 0;border:none;background:transparent;width:100%;box-sizing:border-box;transition:background 0.15s;}
         .lang-option:hover,.lang-option.active{background:rgba(99,102,241,0.2);}
@@ -1547,10 +1547,9 @@
                 </div>
             </div>
         </div>
-</div>
 
         <div class="admin-tab-panel" id="tab-payouts">
-            <div style="background:#0a0f1e;border:2px solid #10b981;border-radius:12px;padding:10px;">
+            <div style="background:#0a0f1e;border:2px solid #10b981;border-radius:12px;padding:10px;box-sizing:border-box;max-width:100%;overflow-x:hidden;">
                 <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;padding-bottom:7px;border-bottom:1px solid #065f46;"><span>💸</span><span style="font-size:0.72em;color:#6ee7b7;font-weight:800;text-transform:uppercase;" data-i18n="payoutsTabLabel"></span></div>
                 <div style="font-size:0.65em;color:#94a3b8;margin-bottom:8px;line-height:1.5;" data-i18n="payoutsExplainer"></div>
                 <select id="payouts-filter-select" onchange="window.setPayoutsFilter(this.value)" class="filter-select-prominent" style="--filter-accent:#10b981;">
@@ -1560,12 +1559,13 @@
                     <option value="refunded" data-i18n="payoutsFilterRefunded"></option>
                     <option value="rejected" data-i18n="payoutsFilterFailed"></option>
                 </select>
-                <div id="payouts-admin-list">
+                <div id="payouts-admin-list" style="width:100%;box-sizing:border-box;overflow-x:hidden;">
                     <div class="skeleton-ticket-row"><div class="skeleton" style="width:34px;height:34px;border-radius:8px;"></div><div style="flex:1;"><div class="skeleton skeleton-line" style="width:60%;margin:0 0 6px 0;"></div><div class="skeleton skeleton-line" style="width:35%;height:8px;margin:0;"></div></div></div>
                     <div class="skeleton-ticket-row"><div class="skeleton" style="width:34px;height:34px;border-radius:8px;"></div><div style="flex:1;"><div class="skeleton skeleton-line" style="width:52%;margin:0 0 6px 0;"></div><div class="skeleton skeleton-line" style="width:30%;height:8px;margin:0;"></div></div></div>
                 </div>
             </div>
         </div>
+</div>
 
     <!-- Market -->
     <div class="card" id="market-card" style="position:relative;padding:5px;margin-bottom:2px;overflow:hidden;min-height:70px;background:linear-gradient(145deg,#0f172a 0%,#1e1b4b 50%,#0f172a 100%);border:1px solid #2a3a52;width:calc(100% - 16px);margin-left:auto;margin-right:auto;">
@@ -2051,7 +2051,8 @@ const i18n = {
     reportIssueBtn:"Sorun Var",
     confirmTransferSellerPrompt:"Domaini alıcıya devrettiniz mi?",
     confirmSentBtn:"Evet, Devrettim",
-    reportIssuePrompt:"Kısaca sorunu açıklayın (opsiyonel):",
+    reportIssuePrompt:"Sorunu kısaca açıklayın (admin'in görmesi için zorunlu):",
+    reportIssueEmptyWarning:"Sorun bildirmek için önce kısa bir açıklama yazmalısınız.",
     confirmReceivedConfirmDialog:(n)=>`"${n}" domainini satıcıdan teslim aldığınızı onaylıyor musunuz? Bu bilgi admin'in ödemeyi satıcıya göndermesine yardımcı olacak.`,
     confirmSentConfirmDialog:(n)=>`"${n}" domainini alıcıya devrettiğinizi onaylıyor musunuz? Bu bilgi admin'in ödemenizi göndermesine yardımcı olacak.`,
     confirmTransferFail:"Onay gönderilemedi: ",
@@ -2065,6 +2066,12 @@ const i18n = {
     nudgeFail:"Hatırlatma gönderilemedi: ",
     nudgeSuccess:"Hatırlatma bildirimi gönderildi.",
     nudgeError:"Bağlantı hatası, lütfen tekrar deneyin.",
+    resolveDisputeBtn:"Yanıtla / Çöz",
+    resolveDisputePrompt:(role)=>`${role} tarafına gönderilecek yanıtı yazın (sorunu nasıl çözdüğünüzü/ne yapılacağını açıklayın):`,
+    resolveDisputeEmptyWarning:"Yanıt göndermek için bir mesaj yazmalısınız.",
+    resolveDisputeFail:"Yanıt gönderilemedi: ",
+    resolveDisputeSuccess:"Yanıtınız gönderildi, kullanıcı tekrar onay verebilir.",
+    resolveDisputeError:"Bağlantı hatası, lütfen tekrar deneyin.",
     withdrawFail:"İlan geri çekme başarısız: ",
     withdrawSuccess:(n)=>`"${n}" ilanı geri çekildi.`,
     withdrawError:"Bir hata oluştu.",
@@ -2467,7 +2474,8 @@ const i18n = {
     reportIssueBtn:"Report Issue",
     confirmTransferSellerPrompt:"Did you transfer the domain to the buyer?",
     confirmSentBtn:"Yes, Transferred",
-    reportIssuePrompt:"Briefly describe the issue (optional):",
+    reportIssuePrompt:"Briefly describe the issue (required so admin can review it):",
+    reportIssueEmptyWarning:"Please write a short description before reporting an issue.",
     confirmReceivedConfirmDialog:(n)=>`Confirm that you received "${n}" from the seller? This helps the admin release the payment to the seller.`,
     confirmSentConfirmDialog:(n)=>`Confirm that you transferred "${n}" to the buyer? This helps the admin release your payment.`,
     confirmTransferFail:"Could not send confirmation: ",
@@ -2481,6 +2489,12 @@ const i18n = {
     nudgeFail:"Could not send reminder: ",
     nudgeSuccess:"Reminder notification sent.",
     nudgeError:"Connection error, please try again.",
+    resolveDisputeBtn:"Respond / Resolve",
+    resolveDisputePrompt:(role)=>`Write the response to send to the ${role} (explain how the issue was resolved / what happens next):`,
+    resolveDisputeEmptyWarning:"You must write a message to send a response.",
+    resolveDisputeFail:"Could not send response: ",
+    resolveDisputeSuccess:"Your response was sent, the user can now confirm again.",
+    resolveDisputeError:"Connection error, please try again.",
     withdrawFail:"Withdraw failed: ",
     withdrawSuccess:(n)=>`"${n}" listing has been withdrawn.`,
     withdrawError:"An error occurred.",
@@ -3206,8 +3220,10 @@ window.handleWithdrawListing=async function(domainName){
 window.handleConfirmTransfer=async function(domainName,role,confirmed){
     let note=null;
     if(!confirmed){
-        note=prompt(t('reportIssuePrompt'))||'';
-        if(note===null) return; // kullanıcı iptal etti
+        const raw=prompt(t('reportIssuePrompt'));
+        if(raw===null) return; // kullanıcı "İptal" ile çıktı — hiçbir şey gönderilmez
+        note=raw.trim();
+        if(!note){ alert(t('reportIssueEmptyWarning')); return; } // boş metinle "Tamam" da göndermez
     } else {
         if(!confirm(role==='buyer'?t('confirmReceivedConfirmDialog')(domainName):t('confirmSentConfirmDialog')(domainName))) return;
     }
@@ -3950,7 +3966,7 @@ function render(){
             // gösteriyoruz — gerçek mülkiyet devri henüz teyit edilmedi demek.
             const isPendingConfirmation = data.sellerUsername && data.payoutStatus && data.payoutStatus !== 'released';
             card.innerHTML+=`<div class="btn-sold" style="${isPendingConfirmation?'background:#f59e0b;':''}">${isPendingConfirmation?t('soldPendingConfirmation'):t('sold')}</div>`;
-            if(isAuth&&currentUser===APP_CONFIG.adminUsername){
+            if(isAdminViewing){
                 if(data.payoutStatus==='released'){
                     // Ödeme kesinleşmiş — tekrar satışa çıkarılamaz (backend de
                     // engelliyor). İkinci bir alıcıya satılıp ilk alıcının
@@ -3991,7 +4007,7 @@ function render(){
             };
             card.appendChild(btn);
 
-            if(isAuth&&currentUser===APP_CONFIG.adminUsername){
+            if(isAdminViewing){
                 const hideBtn=document.createElement('button');
                 hideBtn.className='btn-buy';hideBtn.style.background=data.hidden?'#10b981':'#64748b';hideBtn.style.marginTop='4px';
                 hideBtn.innerText=data.hidden?t('unhideBtn'):t('hideBtn');
@@ -5727,27 +5743,33 @@ function renderAdminPayouts(payouts) {
         // Devir onay durumu — admin, "Transfer Tamam Öde" ya da "İade Et"
         // kararını uygulama dışından gelen bilgiye değil, buradaki gerçek
         // alıcı/satıcı onayına bakarak verebilsin diye.
-        const confirmBox = (label, confirmed) => {
+        const confirmBox = (label, confirmed, note) => {
             let bg, border, color, text;
             if (confirmed === true) { bg='rgba(16,185,129,0.12)'; border='#10b981'; color='#6ee7b7'; text='✅ '+t('confirmedStatus'); }
             else if (confirmed === false) { bg='rgba(239,68,68,0.12)'; border='#ef4444'; color='#f87171'; text='⚠️ '+t('disputedStatus'); }
             else { bg='rgba(100,116,139,0.12)'; border='#475569'; color='#94a3b8'; text='⏳ '+t('waitingStatus'); }
-            return `<div style="flex:1;background:${bg};border:1.5px solid ${border};border-radius:8px;padding:6px 8px;text-align:center;">
-                <div style="font-size:0.6em;color:#64748b;font-weight:700;text-transform:uppercase;margin-bottom:2px;">${label}</div>
-                <div style="font-size:0.68em;color:${color};font-weight:800;">${text}</div>
+            return `<div style="flex:1;background:${bg};border:1.5px solid ${border};border-radius:8px;padding:6px 8px;">
+                <div style="font-size:0.6em;color:#64748b;font-weight:700;text-transform:uppercase;margin-bottom:2px;text-align:center;">${label}</div>
+                <div style="font-size:0.68em;color:${color};font-weight:800;text-align:center;">${text}</div>
+                ${confirmed===false&&note?`<div style="margin-top:4px;padding-top:4px;border-top:1px dashed ${border};font-size:0.62em;color:#fca5a5;font-style:italic;word-break:break-word;">"${escapeHtml(note)}"</div>`:''}
             </div>`;
         };
         const bothConfirmed = p.buyerConfirmed === true && p.sellerConfirmed === true;
         const showConfirmations = p.sellerUsername && (p.payoutStatus === 'pending' || p.payoutStatus === 'failed' || p.payoutStatus === 'processing');
-        const confirmBoxesHtml = showConfirmations ? `<div style="display:flex;gap:6px;margin-bottom:8px;">
-            ${confirmBox(t('roleBuyer'), p.buyerConfirmed)}
-            ${confirmBox(t('roleSeller'), p.sellerConfirmed)}
+        const actionBtn = (role, confirmed) => {
+            if (confirmed === false) return `<button onclick="adminResolveDispute('${p.id}','${role}','${escapeHtml(p.domain)}')" style="flex:1;padding:6px;border:1px solid #ef4444;border-radius:6px;background:rgba(239,68,68,0.1);color:#f87171;font-size:0.6em;font-weight:700;cursor:pointer;">💬 ${t('resolveDisputeBtn')}</button>`;
+            if (confirmed !== true) return `<button onclick="adminNudgeConfirmation('${p.id}','${role}','${escapeHtml(p.domain)}')" style="flex:1;padding:6px;border:1px dashed #6366f1;border-radius:6px;background:rgba(99,102,241,0.08);color:#a5b4fc;font-size:0.6em;font-weight:700;cursor:pointer;">🔔 ${role==='buyer'?t('nudgeBuyerBtn'):t('nudgeSellerBtn')}</button>`;
+            return '';
+        };
+        const confirmBoxesHtml = showConfirmations ? `<div style="display:flex;gap:6px;margin-bottom:6px;">
+            ${confirmBox(t('roleBuyer'), p.buyerConfirmed, p.buyerConfirmNote)}
+            ${confirmBox(t('roleSeller'), p.sellerConfirmed, p.sellerConfirmNote)}
         </div>
         ${!bothConfirmed ? `<div style="display:flex;gap:6px;margin-bottom:8px;">
-            ${p.buyerConfirmed!==true?`<button onclick="adminNudgeConfirmation('${p.id}','buyer','${escapeHtml(p.domain)}')" style="flex:1;padding:6px;border:1px dashed #6366f1;border-radius:6px;background:rgba(99,102,241,0.08);color:#a5b4fc;font-size:0.6em;font-weight:700;cursor:pointer;">🔔 ${t('nudgeBuyerBtn')}</button>`:''}
-            ${p.sellerConfirmed!==true?`<button onclick="adminNudgeConfirmation('${p.id}','seller','${escapeHtml(p.domain)}')" style="flex:1;padding:6px;border:1px dashed #6366f1;border-radius:6px;background:rgba(99,102,241,0.08);color:#a5b4fc;font-size:0.6em;font-weight:700;cursor:pointer;">🔔 ${t('nudgeSellerBtn')}</button>`:''}
+            ${actionBtn('buyer', p.buyerConfirmed)}
+            ${actionBtn('seller', p.sellerConfirmed)}
         </div>` : ''}` : '';
-        const tableHtml = `<table style="width:100%;border-collapse:collapse;margin-bottom:8px;"><tbody>
+        const tableHtml = `<table style="width:100%;border-collapse:collapse;margin-bottom:8px;table-layout:auto;"><tbody>
             ${row(t('ticketTableUser'), `@${escapeHtml(p.user || '-')}`)}
             ${row(t('payoutColSeller'), p.sellerUsername ? '🏷️ @' + escapeHtml(p.sellerUsername) : '—')}
             ${row(t('payoutColAmount'), `${p.price} Pi &nbsp;→&nbsp; <span style="color:#6ee7b7;font-weight:700;">${p.payoutAmount != null ? p.payoutAmount : '-'} Pi</span> <span style="color:#64748b;">(%${Math.round((p.commissionRate || 0.05) * 100)}: ${commissionAmt} Pi)</span>`)}
@@ -5759,7 +5781,7 @@ function renderAdminPayouts(payouts) {
             ${p.payoutStatus === 'refunded' && p.refundTxid ? row(t('payoutColTxid'), `<span style="font-size:0.85em;color:#64748b;word-break:break-all;">${escapeHtml(p.refundTxid)}</span>`) : ''}
             ${row(t('trademarkColDate'), when)}
         </tbody></table>`;
-        return `<div style="background:#0f172a;border:1px solid #334155;border-left:4px solid ${statusColor[p.payoutStatus] || '#6366f1'};border-radius:10px;padding:10px;margin-bottom:8px;">
+        return `<div style="background:#0f172a;border:1px solid #334155;border-left:4px solid ${statusColor[p.payoutStatus] || '#6366f1'};border-radius:10px;padding:10px;margin-bottom:8px;box-sizing:border-box;max-width:100%;overflow-x:hidden;">
             <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:6px;margin-bottom:6px;padding-bottom:6px;border-bottom:1px solid #334155;">
                 <div style="font-size:0.8em;font-weight:800;color:#e2e8f0;">🌐 ${escapeHtml(p.domain)}</div>
                 <span class="ticket-status-badge" style="background:${statusColor[p.payoutStatus] || '#6366f1'}22;color:${statusColor[p.payoutStatus] || '#6366f1'};border:1px solid ${statusColor[p.payoutStatus] || '#6366f1'}55;">${statusMap[p.payoutStatus] || p.payoutStatus}</span>
@@ -5775,6 +5797,19 @@ function renderAdminPayouts(payouts) {
         </div>`;
     }).join('');
 }
+
+window.adminResolveDispute = async function(saleId, role, domainName){
+    const message = prompt(t('resolveDisputePrompt')(role==='buyer'?t('roleBuyer'):t('roleSeller')));
+    if(message===null) return;
+    const trimmed = message.trim();
+    if(!trimmed){ alert(t('resolveDisputeEmptyWarning')); return; }
+    try{
+        const r=await fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'resolve_dispute',saleId,role,message:trimmed,accessToken:piAccessToken})});
+        const result=await r.json();
+        if(!r.ok||!result.success){alert(t('resolveDisputeFail')+(result.error||''));return;}
+        alert(t('resolveDisputeSuccess'));
+    }catch(e){alert(t('resolveDisputeError'));}
+};
 
 window.adminNudgeConfirmation = async function(saleId, role, domainName){
     if(!confirm(t('nudgeConfirmDialog')(domainName, role==='buyer'?t('roleBuyer'):t('roleSeller')))) return;
