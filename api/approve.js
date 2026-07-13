@@ -1632,6 +1632,45 @@ export default async function handler(req, res) {
   }
 
   // ── Admin: Devir Onayı İçin Hatırlatma Bildirimi Gönder ────────────────
+  // ── Admin: Anlaşmazlığı Yanıtla / Çöz ───────────────────────────────────
+  // Bir taraf "sorun var" dediğinde admin buradan cevap yazar; bu, ilgili
+  // tarafın onay durumunu sıfırlayıp tekrar onaylayabilmesini sağlar.
+  if (action === 'resolve_dispute') {
+    const { saleId, role, message } = req.body; // role: 'buyer' | 'seller'
+    const isAdmin = await verifyAdmin(accessToken);
+    if (!isAdmin) return res.status(403).json({ error: "Yetki yok" });
+    if (!saleId || !role || !message) return res.status(400).json({ error: "Geçersiz parametre" });
+    try {
+      const db = getDb();
+      const saleRef = db.collection('global_sales').doc(saleId);
+      const saleSnap = await saleRef.get();
+      if (!saleSnap.exists) return res.status(404).json({ error: "Satış kaydı bulunamadı" });
+      const sale = saleSnap.data();
+      const targetUsername = role === 'buyer' ? sale.user : sale.sellerUsername;
+      if (!targetUsername) return res.status(400).json({ error: "Hedef kullanıcı bulunamadı" });
+
+      const updateData = role === 'buyer'
+        ? { buyerConfirmed: null, buyerConfirmNote: null, buyerDisputeResolution: message, buyerDisputeResolvedAt: Date.now() }
+        : { sellerConfirmed: null, sellerConfirmNote: null, sellerDisputeResolution: message, sellerDisputeResolvedAt: Date.now() };
+      await saleRef.set(updateData, { merge: true });
+      if (sale.domain) {
+        const domainUpdate = role === 'buyer' ? { buyerConfirmed: null } : { sellerConfirmed: null };
+        await db.collection('domains').doc(sale.domain).set(domainUpdate, { merge: true });
+      }
+
+      await sendNotification(targetUsername, {
+        type: 'dispute_response',
+        title: '💬 Bildirdiğiniz Sorunla İlgili Yanıt',
+        body: `"${sale.domain}" ile ilgili bildirdiğiniz soruna admin şu yanıtı verdi: "${message}". Devam etmek için lütfen "Panelim" içinden tekrar onay verin.`,
+        domainName: sale.domain
+      });
+
+      return res.status(200).json({ success: true });
+    } catch (e) {
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
   if (action === 'nudge_confirmation') {
     const { saleId, role } = req.body; // role: 'buyer' | 'seller'
     const isAdmin = await verifyAdmin(accessToken);
