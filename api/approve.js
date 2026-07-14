@@ -648,7 +648,45 @@ export default async function handler(req, res) {
         }
       });
       if (updatedCount > 0) await batch.commit();
-      return res.status(200).json({ success: true, updatedCount, updatedNames });
+
+      // ── 2. Aşama: global_sales kayıtlarını domains ile eşitle ───────────
+      // "Panelim → Gelirim" listesi `domains` koleksiyonundan geliyor, ama
+      // "Devrettim" (confirm_transfer_seller) ve "Transfer Tamam Öde"
+      // (release_seller_payment) işlemleri `global_sales` koleksiyonundan
+      // okuyor. Firestore konsolundan elle `domains` içinde sellerUsername
+      // düzeltilmiş olsa bile, o satışın `global_sales` kaydı hâlâ eski
+      // (satıcısız) haliyle kalmışsa "Satış kaydı bulunamadı" hatası
+      // alınır. Bu adım, sold===true ve sellerUsername'i dolu olan her
+      // domain için, aynı isimdeki global_sales kaydında sellerUsername
+      // eksikse onu tamamlar — MEVCUT (zaten doğru) kayıtlara DOKUNMAZ,
+      // sadece eksik olanı doldurur.
+      const soldWithSeller = {};
+      allDomainsSnap.forEach(d => {
+        const data = d.data();
+        if (data.sold === true && data.sellerUsername) soldWithSeller[d.id] = data.sellerUsername;
+      });
+      let salesUpdated = 0;
+      const salesUpdatedNames = [];
+      if (Object.keys(soldWithSeller).length > 0) {
+        const salesSnap = await db.collection('global_sales').get();
+        const batch2 = db.batch();
+        salesSnap.forEach(s => {
+          const sd = s.data();
+          const seller = soldWithSeller[sd.domain];
+          if (seller && !sd.sellerUsername) {
+            const update = { sellerUsername: seller };
+            if (!sd.payoutStatus || sd.payoutStatus === 'no_seller') update.payoutStatus = 'pending';
+            if (!sd.commissionRate) update.commissionRate = PLATFORM_COMMISSION_RATE;
+            if (!sd.payoutAmount) update.payoutAmount = Math.round((sd.price || 0) * (1 - PLATFORM_COMMISSION_RATE) * 1e7) / 1e7;
+            batch2.set(s.ref, update, { merge: true });
+            salesUpdated++;
+            salesUpdatedNames.push(sd.domain);
+          }
+        });
+        if (salesUpdated > 0) await batch2.commit();
+      }
+
+      return res.status(200).json({ success: true, updatedCount, updatedNames, salesUpdated, salesUpdatedNames });
     } catch (e) {
       return res.status(500).json({ error: e.message });
     }
@@ -1550,8 +1588,8 @@ export default async function handler(req, res) {
       const claimRef = db.collection('trademark_claims').doc(claimId);
       const snap = await claimRef.get();
       if (!snap.exists) return res.status(404).json({ error: "Talep bulunamadı" });
-      if (snap.data().status !== 'rejected')
-        return res.status(400).json({ error: "Sadece reddedilmiş talepler silinebilir." });
+      if (snap.data().status !== 'rejected' && snap.data().status !== 'resolved')
+        return res.status(400).json({ error: "Sadece reddedilmiş veya çözülmüş talepler silinebilir." });
       await claimRef.delete();
       return res.status(200).json({ success: true });
     } catch (e) {
