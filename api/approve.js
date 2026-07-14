@@ -596,6 +596,38 @@ export default async function handler(req, res) {
     }
   }
 
+  // ── Geriye Dönük Düzeltme: Eski "satıcısız" admin domainlerine sahip ekle ─
+  // add_domain fix'inden ÖNCE eklenmiş, henüz SATILMAMIŞ domainlerde
+  // sellerUsername alanı yok. Bu action, sadece sold!==true ve deleted!==true
+  // olan ve sellerUsername'i hâlâ boş olan domainlere ADMIN_USERNAME yazar.
+  // Zaten satılmış domainlere DOKUNMAZ (o satışlar tamamlanmış sayılır,
+  // geriye dönük escrow'a sokmak alıcı/satıcı için kafa karıştırıcı olur).
+  // İdempotenttir: kaç kez çalıştırılırsa çalıştırılsın, sadece eksik olan
+  // kayıtları günceller, zaten sellerUsername'i olanlara dokunmaz.
+  if (action === 'backfill_seller_username') {
+    const isAdmin = await verifyAdmin(accessToken);
+    if (!isAdmin) return res.status(403).json({ error: "Yetki yok" });
+    try {
+      const db = getDb();
+      const allDomainsSnap = await db.collection('domains').get();
+      const batch = db.batch();
+      let updatedCount = 0;
+      const updatedNames = [];
+      allDomainsSnap.forEach(d => {
+        const data = d.data();
+        if (data.sold !== true && data.deleted !== true && !data.sellerUsername) {
+          batch.set(d.ref, { sellerUsername: ADMIN_USERNAME }, { merge: true });
+          updatedCount++;
+          updatedNames.push(d.id);
+        }
+      });
+      if (updatedCount > 0) await batch.commit();
+      return res.status(200).json({ success: true, updatedCount, updatedNames });
+    } catch (e) {
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
   // ── İlanı Geri Çek ────────────────────────────────────────────────────
   if (action === 'withdraw_listing') {
     const { domainName } = req.body;
