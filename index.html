@@ -164,6 +164,18 @@
         @keyframes refresh-ripple{0%{box-shadow:0 0 0 0 var(--refresh-glow-strong),0 2px 10px var(--refresh-glow);}70%{box-shadow:0 0 0 12px rgba(0,0,0,0),0 2px 10px var(--refresh-glow);}100%{box-shadow:0 0 0 0 rgba(0,0,0,0),0 2px 10px var(--refresh-glow);}}
         #user-panel-refresh-btn{--refresh-c1:#10b981;--refresh-c2:#34d399;--refresh-glow:rgba(16,185,129,0.55);--refresh-glow-strong:rgba(16,185,129,0.5);}
         #admin-panel-refresh-btn{--refresh-c1:#6366f1;--refresh-c2:#a855f7;--refresh-glow:rgba(99,102,241,0.55);--refresh-glow-strong:rgba(99,102,241,0.5);}
+        /* ── Genel amaçlı satır-içi (inline) yenile butonu efekti ─────── */
+        .refresh-effect-btn{position:relative;overflow:visible;transition:transform 0.15s ease;}
+        .refresh-effect-btn:active{transform:scale(0.94);}
+        .refresh-effect-icon{display:inline-block;transition:transform 0.6s cubic-bezier(0.34,1.56,0.64,1);}
+        .refresh-effect-btn.spinning .refresh-effect-icon{transform:rotate(360deg);}
+        .refresh-effect-btn.spinning{animation:refresh-ripple-generic 0.7s ease-out;}
+        @keyframes refresh-ripple-generic{0%{box-shadow:0 0 0 0 var(--refresh-ripple-color,rgba(99,102,241,0.6));}70%{box-shadow:0 0 0 14px rgba(0,0,0,0);}100%{box-shadow:0 0 0 0 rgba(0,0,0,0);}}
+        /* ── "Pi ile Bağlan" butonu: içerik (π simgesi / bağlanıyor animasyonu)
+           her zaman butonun kendi çerçevesinde tam ortalı dursun diye ─────── */
+        .pi-connect-btn{display:inline-flex;align-items:center;justify-content:center;}
+        @keyframes spin-ring-plain{0%{transform:rotate(0deg);}100%{transform:rotate(360deg);}}
+        .connect-spinner-colorful{display:inline-block;width:18px;height:18px;border-radius:50%;flex-shrink:0;background:conic-gradient(from 0deg,#fbbf24,#ef4444,#a855f7,#6366f1,#10b981,#fbbf24);animation:spin-ring-plain 0.8s linear infinite;-webkit-mask:radial-gradient(farthest-side,transparent calc(100% - 3px),#000 calc(100% - 3px));mask:radial-gradient(farthest-side,transparent calc(100% - 3px),#000 calc(100% - 3px));}
         @keyframes icon-pulse-chart{0%,100%{filter:drop-shadow(0 0 4px rgba(74,222,128,0.5));transform:scale(1);}50%{filter:drop-shadow(0 0 10px rgba(74,222,128,0.9));transform:scale(1.12);}}
         @keyframes icon-pulse-green{0%,100%{filter:drop-shadow(0 0 4px rgba(52,211,153,0.5));transform:scale(1);}50%{filter:drop-shadow(0 0 10px rgba(52,211,153,0.9));transform:scale(1.12);}}
 @keyframes connected-pulse{0%,100%{box-shadow:0 0 8px rgba(16,185,129,0.3);}50%{box-shadow:0 0 16px rgba(16,185,129,0.6),0 0 4px rgba(52,211,153,0.4);}}
@@ -1438,6 +1450,8 @@
         <div class="admin-tab-panel" id="tab-stats">
             <div style="background:#061a0d;border:2px solid #16a34a;border-radius:10px;padding:8px;margin-bottom:6px;">
                 <div style="display:flex;align-items:center;justify-content:center;gap:5px;margin-bottom:6px;padding-bottom:5px;border-bottom:1px solid #14532d;"><span style="animation:icon-pulse-chart 2s ease-in-out infinite;">📈</span><span style="font-size:0.68em;color:#4ade80;font-weight:800;text-transform:uppercase;" data-i18n="dailySalesStats"></span></div>
+                <input type="date" id="stats-date-input" class="admin-date-picker" style="margin-bottom:6px;">
+                <div id="stats-date-error" style="display:none;font-size:0.58em;color:#f87171;background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.3);border-radius:6px;padding:5px 7px;margin-bottom:6px;text-align:left;line-height:1.4;"></div>
                 <div style="display:flex;gap:6px;">
                     <div style="flex:1;background:#1e293b;border:1px solid #4ade80;border-radius:8px;padding:6px;text-align:center;"><div style="font-size:0.58em;color:#86efac;font-weight:bold;margin-bottom:2px;" data-i18n="salesCount"></div><div id="daily-stat-count" style="font-size:1.1em;color:#fbbf24;font-weight:900;">0</div></div>
                     <div style="flex:1;background:#1e293b;border:1px solid #4ade80;border-radius:8px;padding:6px;text-align:center;"><div style="font-size:0.58em;color:#86efac;font-weight:bold;margin-bottom:2px;" data-i18n="volumePi"></div><div id="daily-stat-volume" style="font-size:1.1em;color:#fbbf24;font-weight:900;">0</div></div>
@@ -1448,7 +1462,7 @@
                     <div style="display:flex;align-items:center;gap:5px;"><span>🧾</span><span style="font-size:0.68em;color:#60a5fa;font-weight:800;text-transform:uppercase;" data-i18n="allSalesDetail"></span></div>
                     <div style="display:flex;gap:4px;">
                         <button onclick="toggleSalesList()" style="background:rgba(16,185,129,0.2);border:1px solid #10b981;color:#6ee7b7;padding:3px 8px;border-radius:6px;font-size:0.6em;font-weight:700;cursor:pointer;" data-i18n="viewBtn"></button>
-                        <button onclick="loadAllSalesDetail()" style="background:rgba(59,130,246,0.2);border:1px solid #3b82f6;color:#93c5fd;padding:3px 8px;border-radius:6px;font-size:0.6em;font-weight:700;cursor:pointer;" data-i18n="refreshBtn"></button>
+                        <button class="refresh-effect-btn" id="all-sales-refresh-btn" onclick="window.handleAllSalesRefreshClick()" style="background:rgba(59,130,246,0.2);border:1px solid #3b82f6;color:#93c5fd;padding:3px 8px;border-radius:6px;font-size:0.6em;font-weight:700;cursor:pointer;--refresh-ripple-color:rgba(59,130,246,0.6);"><span class="refresh-effect-icon">🔄</span> <span data-i18n="refreshBtn"></span></button>
                     </div>
                 </div>
                 <div id="admin-all-sales-list" style="max-height:260px;overflow-y:auto;text-align:left;display:none;">
@@ -1509,7 +1523,7 @@
                     <div id="admin-user-volume" style="font-size:1.3em;font-weight:900;color:#34d399;">0 Pi</div>
                 </div>
             </div>
-            <button class="pi-btn" style="background:#6366f1;animation:none;padding:8px;width:100%;font-size:0.8em;" onclick="loadAdminEarnings()" data-i18n="refreshBtn"></button>
+            <button class="pi-btn refresh-effect-btn" id="earnings-refresh-btn" style="background:#6366f1;animation:none;padding:8px;width:100%;font-size:0.8em;--refresh-ripple-color:rgba(99,102,241,0.6);" onclick="window.handleEarningsRefreshClick()"><span class="refresh-effect-icon">🔄</span> <span data-i18n="refreshBtn"></span></button>
             <div style="margin-top:12px;background:#1c0a0a;border:2px solid #ef4444;border-radius:12px;padding:10px;">
                 <div style="font-size:0.68em;color:#fca5a5;font-weight:800;text-transform:uppercase;margin-bottom:6px;">⚠️ <span data-i18n="resetDangerTitle"></span></div>
                 <div style="font-size:0.68em;color:#94a3b8;line-height:1.5;margin-bottom:8px;" data-i18n="resetDangerNote"></div>
@@ -1625,7 +1639,7 @@
             </div>
             <p style="font-size:0.72em;color:#cbd5e1;font-weight:600;line-height:1.4;margin:3px 0 2px 0;max-width:90%;text-align:center;" data-i18n="connectPrompt"></p>
             <div style="color:#fbbf24;font-weight:700;margin-bottom:2px;font-size:0.7em;" data-i18n="useButton"></div>
-            <button class="pi-btn" onclick="window.loginWithPi()" data-i18n="connectWithPi"></button>
+            <button class="pi-btn pi-connect-btn" onclick="window.loginWithPi()" data-i18n="connectWithPi"></button>
         </div>
         <div class="domain-grid locked-content" id="domain-list">
             <div id="domain-list-loading" style="display:contents;">
@@ -2127,6 +2141,9 @@ const i18n = {
     detailFieldSeller:"Gönderen Kullanıcı",detailFieldWallet:"Not",
     detailFieldPaymentTo:"Cüzdan",paymentToUsernameNote:"Ödeme otomatik olarak {user} Pi hesabına gönderilecek",
     detailFieldDate:"Gönderim Tarihi",detailFieldDesc:"Açıklama",
+    saleDateLabel:"Satış Tarihi",detailFieldSellerUser:"Satıcı",detailFieldBuyerUser:"Alıcı",
+    detailFieldTxid:"İşlem No",systemSellerLabel:"Sistem (Platform)",
+    statsPermissionError:"⚠️ Veriler alınamadı (yetki/bağlantı hatası). Firestore kurallarında 'daily_stats' ve 'daily_users' koleksiyonlarının okunabilir olduğundan emin olun.",
     deletedDomainsTitle:"🗑️ Silinmiş Domainler",noDeletedDomains:"Silinmiş domain yok.",
     restoreBtn:"↩ Geri Getir",restoreConfirm:(n)=>`"${n}" domainini geri getirmek istediğinize emin misiniz? Eski verileri (açıklama, görsel, satıcı bilgisi) korunarak yeniden satışa eklenecek.`,
     restoreFail:"Geri getirme başarısız: ",restoreSuccess:(n)=>`"${n}" domaini geri getirildi.`,
@@ -2561,6 +2578,9 @@ const i18n = {
     detailFieldSeller:"Submitted By",detailFieldWallet:"Note",
     detailFieldPaymentTo:"Wallet",paymentToUsernameNote:"Payment will be sent automatically to {user}'s Pi account",
     detailFieldDate:"Submission Date",detailFieldDesc:"Description",
+    saleDateLabel:"Sale Date",detailFieldSellerUser:"Seller",detailFieldBuyerUser:"Buyer",
+    detailFieldTxid:"Transaction ID",systemSellerLabel:"System (Platform)",
+    statsPermissionError:"⚠️ Could not load data (permission/connection error). Make sure the 'daily_stats' and 'daily_users' collections are readable in your Firestore rules.",
     deletedDomainsTitle:"🗑️ Deleted Domains",noDeletedDomains:"No deleted domains.",
     restoreBtn:"↩ Restore",restoreConfirm:(n)=>`Are you sure you want to restore "${n}"? Its previous data (description, image, seller info) will be preserved and it will be relisted for sale.`,
     restoreFail:"Restore failed: ",restoreSuccess:(n)=>`"${n}" has been restored.`,
@@ -3717,6 +3737,20 @@ window.refreshAdminPanel=async function(){
     }catch(e){console.error('Admin panel yenileme hatası:',e);}
 };
 
+// ── Kazanç ve Satış Detayları yenile butonları: tıklandığında dönme +
+// parlama (ripple) efekti oynatır, ardından gerçek veri yenileme
+// fonksiyonunu çağırır.
+window.handleEarningsRefreshClick=function(){
+    const btn=document.getElementById('earnings-refresh-btn');
+    if(btn){btn.classList.add('spinning');setTimeout(()=>btn.classList.remove('spinning'),700);}
+    loadAdminEarnings();
+};
+window.handleAllSalesRefreshClick=function(){
+    const btn=document.getElementById('all-sales-refresh-btn');
+    if(btn){btn.classList.add('spinning');setTimeout(()=>btn.classList.remove('spinning'),700);}
+    loadAllSalesDetail();
+};
+
 // USER PANEL RENDER
 function renderUserPanel(){
     if(!isAuth) return;
@@ -3744,7 +3778,7 @@ function renderUserPanel(){
                 else if(data.buyerConfirmed===false) confirmHtml=`<div style="margin-top:6px;font-size:0.65em;color:#f87171;font-weight:700;">⚠️ ${t('transferDisputedByYou')}</div>`;
                 else {
                     const disputeMsg = data.buyerDisputeResolution ? `<div style="margin-bottom:6px;padding:6px 8px;background:rgba(99,102,241,0.12);border:1px solid #6366f1;border-radius:6px;font-size:0.62em;color:#c7d2fe;"><b>💬 ${t('adminResponseLabel')}:</b> "${escapeHtml(data.buyerDisputeResolution)}"</div>` : '';
-                    const nudgeMsg = (!data.buyerDisputeResolution && data.buyerNudgeCount>0) ? `<div style="margin-bottom:5px;font-size:0.6em;color:#a5b4fc;">🔔 ${t('adminNudgedYou')(data.buyerNudgeCount)}</div>` : '';
+                    const nudgeMsg = (data.buyerNudgeCount>0) ? `<div style="margin-bottom:5px;font-size:0.6em;color:#a5b4fc;">🔔 ${t('adminNudgedYou')(data.buyerNudgeCount)}</div>` : '';
                     confirmHtml=`<div style="margin-top:8px;padding-top:8px;border-top:1px dashed #334155;">
                     ${disputeMsg}${nudgeMsg}
                     <div style="font-size:0.65em;color:#94a3b8;margin-bottom:5px;">${t('confirmTransferPrompt')}</div>
@@ -3755,7 +3789,26 @@ function renderUserPanel(){
                 </div>`;
                 }
             }
-            myHtml+=`<div class="my-domain-item" style="flex-wrap:wrap;"><div style="flex:1;min-width:0;"><b>${d.name}</b><br><small style="color:#fbbf24;font-weight:800;">${data.price}${t('soldPiLabel')}</small><br><small style="color:#64748b;">📅 ${date}</small>${confirmHtml}</div>${dogrulaBtn}</div>`;
+            const isPendingConfirmation = data.sellerUsername && data.payoutStatus && data.payoutStatus!=='released';
+            const statusTagHtml = isPendingConfirmation
+                ? `<span style="background:rgba(245,158,11,0.15);color:#fbbf24;font-size:0.58em;font-weight:800;padding:2px 8px;border-radius:6px;border:1px solid #f59e0b;flex-shrink:0;white-space:nowrap;">${t('soldPendingConfirmation')}</span>`
+                : `<span style="background:rgba(16,185,129,0.15);color:#6ee7b7;font-size:0.58em;font-weight:800;padding:2px 8px;border-radius:6px;border:1px solid #10b981;flex-shrink:0;white-space:nowrap;">${t('sold')}</span>`;
+            myHtml+=`<div class="my-domain-item" style="flex-wrap:wrap;align-items:flex-start;">
+                <div style="flex:1;min-width:0;">
+                    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px;gap:8px;">
+                        <b style="color:#f1f5f9;font-size:0.9em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${d.name}">${d.name}</b>
+                        ${statusTagHtml}
+                    </div>
+                    <div style="display:flex;flex-direction:column;gap:4px;font-size:0.72em;color:#cbd5e1;line-height:1.4;">
+                        <div style="display:flex;gap:6px;align-items:baseline;"><span style="color:#64748b;flex-shrink:0;font-weight:700;min-width:90px;">💰 ${t('detailFieldPrice')}:</span><span style="color:#fbbf24;font-weight:900;">${data.price} Pi</span></div>
+                        <div style="display:flex;gap:6px;align-items:baseline;"><span style="color:#64748b;flex-shrink:0;font-weight:700;min-width:90px;">📅 ${t('saleDateLabel')}:</span><span style="color:#94a3b8;">${date}</span></div>
+                        <div style="display:flex;gap:6px;align-items:baseline;"><span style="color:#64748b;flex-shrink:0;font-weight:700;min-width:90px;">👤 ${t('detailFieldSellerUser')}:</span><span style="color:#94a3b8;">${data.sellerUsername?'@'+data.sellerUsername:t('systemSellerLabel')}</span></div>
+                        <div style="display:flex;gap:6px;align-items:baseline;word-break:break-all;"><span style="color:#64748b;flex-shrink:0;font-weight:700;min-width:90px;">🧾 ${t('detailFieldTxid')}:</span><span style="color:#94a3b8;font-size:0.9em;">${data.txid||'—'}</span></div>
+                    </div>
+                    ${confirmHtml}
+                </div>
+                ${dogrulaBtn}
+            </div>`;
         }
     });
     const myDomainsEl=document.getElementById('my-domains-list');
@@ -3927,7 +3980,7 @@ function renderUserPanel(){
                     else if(d.sellerConfirmed===false) confirmHtml=`<div style="margin-top:6px;font-size:0.65em;color:#f87171;font-weight:700;">⚠️ ${t('transferDisputedByYou')}</div>`;
                     else {
                         const disputeMsg = d.sellerDisputeResolution ? `<div style="margin-bottom:6px;padding:6px 8px;background:rgba(99,102,241,0.12);border:1px solid #6366f1;border-radius:6px;font-size:0.62em;color:#c7d2fe;width:100%;box-sizing:border-box;"><b>💬 ${t('adminResponseLabel')}:</b> "${escapeHtml(d.sellerDisputeResolution)}"</div>` : '';
-                        const nudgeMsg = (!d.sellerDisputeResolution && d.sellerNudgeCount>0) ? `<div style="margin-bottom:5px;font-size:0.6em;color:#a5b4fc;width:100%;">🔔 ${t('adminNudgedYou')(d.sellerNudgeCount)}</div>` : '';
+                        const nudgeMsg = (d.sellerNudgeCount>0) ? `<div style="margin-bottom:5px;font-size:0.6em;color:#a5b4fc;width:100%;">🔔 ${t('adminNudgedYou')(d.sellerNudgeCount)}</div>` : '';
                         confirmHtml=`<div style="margin-top:8px;padding-top:8px;border-top:1px dashed #334155;width:100%;">
                         ${disputeMsg}${nudgeMsg}
                         <div style="font-size:0.65em;color:#94a3b8;margin-bottom:5px;">${t('confirmTransferSellerPrompt')}</div>
@@ -3938,7 +3991,26 @@ function renderUserPanel(){
                     </div>`;
                     }
                 }
-                return `<div class="my-domain-item" style="flex-wrap:wrap;"><div style="flex:1;min-width:0;"><b>${d.name}</b><br><small style="color:#34d399;font-weight:800;">+${d.price} Pi</small><br><small style="color:#64748b;">👤 @${d.buyer||'?'}</small>${confirmHtml}</div><span style="color:#10b981;font-size:0.8em;font-weight:800;">✅</span></div>`;
+                const sDate=d.at?new Date(d.at).toLocaleDateString(locale,{day:'2-digit',month:'2-digit',year:'numeric'})+' '+new Date(d.at).toLocaleTimeString(locale,{hour:'2-digit',minute:'2-digit'}):'-';
+                return `<div class="my-domain-item" style="flex-wrap:wrap;align-items:flex-start;">
+                    <div style="flex:1;min-width:0;">
+                        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px;gap:8px;">
+                            <b style="color:#f1f5f9;font-size:0.9em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${d.name}">${d.name}</b>
+                            <span style="background:rgba(16,185,129,0.15);color:#6ee7b7;font-size:0.58em;font-weight:800;padding:2px 8px;border-radius:6px;border:1px solid #10b981;flex-shrink:0;white-space:nowrap;">✅ ${t('sold')}</span>
+                        </div>
+                        <div style="display:flex;flex-direction:column;gap:4px;font-size:0.72em;color:#cbd5e1;line-height:1.4;">
+                            <div style="display:flex;gap:6px;align-items:baseline;"><span style="color:#64748b;flex-shrink:0;font-weight:700;min-width:90px;">💰 ${t('detailFieldPrice')}:</span><span style="color:#34d399;font-weight:900;">+${d.price} Pi</span></div>
+                            <div style="display:flex;gap:6px;align-items:baseline;"><span style="color:#64748b;flex-shrink:0;font-weight:700;min-width:90px;">📅 ${t('saleDateLabel')}:</span><span style="color:#94a3b8;">${sDate}</span></div>
+                            <div style="display:flex;gap:6px;align-items:baseline;"><span style="color:#64748b;flex-shrink:0;font-weight:700;min-width:90px;">👤 ${t('detailFieldBuyerUser')}:</span><span style="color:#94a3b8;">@${d.buyer||'?'}</span></div>
+                            <div style="display:flex;gap:6px;align-items:baseline;word-break:break-all;"><span style="color:#64748b;flex-shrink:0;font-weight:700;min-width:90px;">🧾 ${t('detailFieldTxid')}:</span><span style="color:#94a3b8;font-size:0.9em;">${d.txid||'—'}</span></div>
+                            <div style="display:flex;gap:6px;align-items:flex-start;"><span style="color:#64748b;flex-shrink:0;font-weight:700;min-width:90px;">🏷️ ${t('detailFieldType')}:</span><span class="domain-type-tag" style="margin:0;">${typeLabel(d.type)}</span></div>
+                            ${d.description?`<div style="display:flex;gap:6px;align-items:flex-start;"><span style="color:#64748b;flex-shrink:0;font-weight:700;min-width:90px;">📝 ${t('detailFieldDesc')}:</span><span style="color:#94a3b8;word-break:break-word;flex:1;">${d.description}</span></div>`:''}
+                            ${d.sellerNote?`<div style="display:flex;gap:6px;align-items:baseline;word-break:break-all;"><span style="color:#64748b;flex-shrink:0;font-weight:700;min-width:90px;">🗒️ ${t('detailFieldWallet')}:</span><span style="color:#60a5fa;font-size:0.9em;">${d.sellerNote}</span></div>`:''}
+                        </div>
+                        ${confirmHtml}
+                    </div>
+                    <span style="color:#10b981;font-size:0.8em;font-weight:800;flex-shrink:0;">✅</span>
+                </div>`;
             }).join('');
         }
         mySoldEl.innerHTML=html;
@@ -4092,22 +4164,63 @@ function render(){
     if(isAuth&&currentUser===APP_CONFIG.adminUsername) renderAdminPriceList();
     if(isAuth) updateSideMenuProfile();
     requestAnimationFrame(()=>{
-        const mc=document.getElementById("market-card"); if(!mc) return;
-        // FIX: Giriş yapılmamışken market-card'ın boyu, ARKADA GİZLİ duran
-        // (blur'lu) domain-list'in yüksekliğine göre değil, SADECE görünen
-        // kilit ekranının (lock) kendi yüksekliğine göre ayarlanmalı.
-        // Önceden list.scrollHeight de hesaba katılıyordu — domain sayısı
-        // arttıkça (7+ ilan) bu, giriş ekranını gereksiz yere devasa
-        // boyutlara çıkarıyor, "Ayrıcalıklı Web3 Dünyasına Katılın" kutusunun
-        // görünüm dışına taşmasına ve alttaki iletişim bilgilerinin
-        // kaydırmadan görünmemesine sebep oluyordu.
-        if(!isAuth){mc.style.minHeight=Math.max(lock.scrollHeight||0,300)+"px";}
-        else{mc.style.minHeight="";}
+        syncMarketCardMinHeight();
     });
+}
+
+// FIX (kök neden — footer'ın "Pi ile Bağlan" butonunun altına girmesi):
+// market-card'ın min-height'ı SADECE render() çağrıldığı anda, TEK BİR
+// requestAnimationFrame ile hesaplanıyordu. Yavaş bağlantılarda veya
+// önbelleksiz ilk ziyarette, o an içerik (görsel/font) henüz tam
+// yüklenmemiş olabiliyor — bu da lock.scrollHeight'ın GERÇEK yükseklikten
+// daha küçük ölçülmesine, dolayısıyla market-card'ın olması gerekenden kısa
+// kalıp altındaki sticky iletişim panelinin "Pi ile Bağlan" butonunun bir
+// kısmını örtmesine sebep oluyordu. Çözüm: hesaplamayı tekrar tekrar
+// tetiklenebilir bir fonksiyona taşımak + hem pencere tam yüklendiğinde
+// (görsel/font yüklemesi bitince) hem de kilit ekranının kendi boyutu
+// değiştiğinde (ResizeObserver) otomatik yeniden hesaplamak.
+function syncMarketCardMinHeight(){
+    const mc=document.getElementById("market-card");
+    const lock=document.getElementById("premium-lock");
+    if(!mc||!lock) return;
+    // FIX: Giriş yapılmamışken market-card'ın boyu, ARKADA GİZLİ duran
+    // (blur'lu) domain-list'in yüksekliğine göre değil, SADECE görünen
+    // kilit ekranının (lock) kendi yüksekliğine göre ayarlanmalı.
+    // Önceden list.scrollHeight de hesaba katılıyordu — domain sayısı
+    // arttıkça (7+ ilan) bu, giriş ekranını gereksiz yere devasa
+    // boyutlara çıkarıyor, "Ayrıcalıklı Web3 Dünyasına Katılın" kutusunun
+    // görünüm dışına taşmasına ve alttaki iletişim bilgilerinin
+    // kaydırmadan görünmemesine sebep oluyordu.
+    if(!isAuth){mc.style.minHeight=Math.max(lock.scrollHeight||0,300)+"px";}
+    else{mc.style.minHeight="";}
+}
+window.addEventListener('load',()=>requestAnimationFrame(syncMarketCardMinHeight));
+if(document.fonts&&document.fonts.ready) document.fonts.ready.then(()=>requestAnimationFrame(syncMarketCardMinHeight));
+if(window.ResizeObserver){
+    const _lockObserver=new ResizeObserver(()=>syncMarketCardMinHeight());
+    document.addEventListener('DOMContentLoaded',()=>{
+        const lockEl=document.getElementById('premium-lock');
+        if(lockEl) _lockObserver.observe(lockEl);
+    });
+    if(document.readyState==='complete'||document.readyState==='interactive'){
+        const lockEl=document.getElementById('premium-lock');
+        if(lockEl) _lockObserver.observe(lockEl);
+    }
 }
 
 // ADMIN LOG / STATS
 function listenToLogs(date){
+    // İki farklı sekmedeki (Günlük Giriş Kaydı / Günlük Satış İstatistikleri)
+    // tarih seçicileri artık aynı tarihi paylaşıyor — hangisinden değiştirilirse
+    // değiştirilsin, diğeri de otomatik güncellenir.
+    const dInput=document.getElementById("admin-date-input");
+    const sInput=document.getElementById("stats-date-input");
+    if(dInput && dInput.value!==date) dInput.value=date;
+    if(sInput && sInput.value!==date) sInput.value=date;
+
+    const errBox=document.getElementById("stats-date-error");
+    if(errBox){errBox.style.display='none';errBox.innerText='';}
+
     if(adminLogUnsubscribe) adminLogUnsubscribe();
     adminLogUnsubscribe=onSnapshot(doc(db,"daily_users",date),(snap)=>{
         const users=(snap.data()||{}).users||{};
@@ -4116,12 +4229,21 @@ function listenToLogs(date){
         if(logList) logList.innerHTML=sorted.length===0
             ?`<p style="font-style:italic;opacity:0.6;font-size:0.8em;">${t('noRecord')}</p>`
             :sorted.map(u=>`<div class="log-item"><b>@${u}</b><span>${new Date(users[u]).toLocaleTimeString()}</span></div>`).join('');
+    },(err)=>{
+        // FIX: Önceden bir hata (örn. Firestore izin hatası) sessizce
+        // yutuluyordu ve ekranda hep "0" görünüyordu — kullanıcı verinin
+        // hiç gelmediğini fark edemiyordu. Artık hata açıkça gösteriliyor.
+        console.error("daily_users dinleme hatası:",err);
+        if(errBox){errBox.style.display='block';errBox.innerText=t('statsPermissionError');}
     });
     if(adminStatsUnsubscribe) adminStatsUnsubscribe();
     adminStatsUnsubscribe=onSnapshot(doc(db,"daily_stats",date),(snap)=>{
         const data=snap.data()||{};
         const c=document.getElementById("daily-stat-count");const v=document.getElementById("daily-stat-volume");
         if(c) c.innerText=data.count||0; if(v) v.innerText=Math.round((data.volume||0)*100)/100;
+    },(err)=>{
+        console.error("daily_stats dinleme hatası:",err);
+        if(errBox){errBox.style.display='block';errBox.innerText=t('statsPermissionError');}
     });
 }
 let pendingDomainsPollTimer=null;
@@ -4419,7 +4541,7 @@ async function performPiConnect() {
             originalBtnText = connectBtn?.innerHTML;
 
             if (connectBtn) {
-                connectBtn.innerHTML = '<span style="display:inline-flex;align-items:center;gap:8px;"><span style="display:inline-block;width:16px;height:16px;border:2px solid rgba(255,255,255,0.3);border-top-color:#fff;border-radius:50%;animation:spin-ring 0.8s linear infinite;"></span><span style="font-size:0.9em;">Bağlanıyor...</span></span>';
+                connectBtn.innerHTML = '<span style="display:inline-flex;align-items:center;justify-content:center;gap:8px;"><span class="connect-spinner-colorful"></span><span style="font-size:0.9em;">Bağlanıyor...</span></span>';
                 connectBtn.disabled = true;
                 connectBtn.style.opacity = '0.7';
                 connectBtn.style.pointerEvents = 'none';
@@ -4478,6 +4600,11 @@ async function performPiConnect() {
                 dateInput.value = today;
                 listenToLogs(today);
                 dateInput.onchange = (e) => listenToLogs(e.target.value);
+                const statsDateInput = document.getElementById("stats-date-input");
+                if (statsDateInput) {
+                    statsDateInput.value = today;
+                    statsDateInput.onchange = (e) => listenToLogs(e.target.value);
+                }
             }
 
             // Login log'u async olarak yap (UI'ı bekleme)
