@@ -153,24 +153,35 @@
         .sale-detail-arrow.rotated{transform:rotate(180deg);}
         @keyframes icon-pulse-btn{0%,100%{filter:drop-shadow(0 0 4px rgba(99,102,241,0.6));transform:scale(1);}50%{filter:drop-shadow(0 0 10px rgba(165,180,252,0.9));transform:scale(1.12);}}
 
-        /* ── Panel Yenileme Butonu (Panelim + Admin Panel) ────────────── */
-        .panel-refresh-btn{position:absolute;right:8px;top:50%;transform:translateY(-50%);width:30px;height:30px;border-radius:50%;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;z-index:2;background:linear-gradient(135deg,var(--refresh-c1),var(--refresh-c2));box-shadow:0 2px 10px var(--refresh-glow),inset 0 1px 0 rgba(255,255,255,0.25);animation:refresh-idle-glow 2.6s ease-in-out infinite;transition:transform 0.15s ease;}
-        .panel-refresh-btn svg{width:16px;height:16px;transition:transform 0.6s cubic-bezier(0.34,1.56,0.64,1);}
+        /* ── Panel Yenileme Butonu (Panelim + Admin Panel + TÜM diğer yenile
+           butonları) — uygulamadaki HER yenile butonu bu tek tasarımı
+           kullanır: gradient daire + dönen SVG ikon + boşta hafif parlama +
+           tıklanınca "ripple" parlaması. ─────────────────────────────────
+           .panel-refresh-btn   → başlığın (position:relative olan bir
+                                   kutunun) sağ üst köşesine mutlak
+                                   konumlanır (Panelim / Admin Panel / Kazanç
+                                   başlığı gibi geniş alanlarda).
+           .panel-refresh-btn-inline → dar/az yer olan satır-içi
+                                   konumlarda (ör. "Tüm Satış Detayları"
+                                   başlığındaki "Gör" butonunun yanı) taşma
+                                   yapmadan aynı görünüm+animasyonu verir. */
+        .panel-refresh-btn,.panel-refresh-btn-inline{border-radius:50%;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;background:linear-gradient(135deg,var(--refresh-c1),var(--refresh-c2));box-shadow:0 2px 10px var(--refresh-glow),inset 0 1px 0 rgba(255,255,255,0.25);animation:refresh-idle-glow 2.6s ease-in-out infinite;transition:transform 0.15s ease;}
+        .panel-refresh-btn{position:absolute;right:8px;top:50%;transform:translateY(-50%);width:30px;height:30px;z-index:2;}
+        .panel-refresh-btn-inline{position:static;width:24px;height:24px;flex-shrink:0;}
+        .panel-refresh-btn svg,.panel-refresh-btn-inline svg{width:16px;height:16px;transition:transform 0.6s cubic-bezier(0.34,1.56,0.64,1);}
+        .panel-refresh-btn-inline svg{width:13px;height:13px;}
         .panel-refresh-btn:hover{transform:translateY(-50%) scale(1.1);}
+        .panel-refresh-btn-inline:hover{transform:scale(1.1);}
         .panel-refresh-btn:active{transform:translateY(-50%) scale(0.88);}
-        .panel-refresh-btn.spinning{animation:refresh-ripple 0.7s ease-out;}
-        .panel-refresh-btn.spinning svg{transform:rotate(360deg);}
+        .panel-refresh-btn-inline:active{transform:scale(0.88);}
+        .panel-refresh-btn.spinning,.panel-refresh-btn-inline.spinning{animation:refresh-ripple 0.7s ease-out;}
+        .panel-refresh-btn.spinning svg,.panel-refresh-btn-inline.spinning svg{transform:rotate(360deg);}
         @keyframes refresh-idle-glow{0%,100%{box-shadow:0 2px 10px var(--refresh-glow),inset 0 1px 0 rgba(255,255,255,0.25);}50%{box-shadow:0 2px 18px var(--refresh-glow-strong),inset 0 1px 0 rgba(255,255,255,0.35);}}
         @keyframes refresh-ripple{0%{box-shadow:0 0 0 0 var(--refresh-glow-strong),0 2px 10px var(--refresh-glow);}70%{box-shadow:0 0 0 12px rgba(0,0,0,0),0 2px 10px var(--refresh-glow);}100%{box-shadow:0 0 0 0 rgba(0,0,0,0),0 2px 10px var(--refresh-glow);}}
         #user-panel-refresh-btn{--refresh-c1:#10b981;--refresh-c2:#34d399;--refresh-glow:rgba(16,185,129,0.55);--refresh-glow-strong:rgba(16,185,129,0.5);}
         #admin-panel-refresh-btn{--refresh-c1:#6366f1;--refresh-c2:#a855f7;--refresh-glow:rgba(99,102,241,0.55);--refresh-glow-strong:rgba(99,102,241,0.5);}
-        /* ── Genel amaçlı satır-içi (inline) yenile butonu efekti ─────── */
-        .refresh-effect-btn{position:relative;overflow:visible;transition:transform 0.15s ease;}
-        .refresh-effect-btn:active{transform:scale(0.94);}
-        .refresh-effect-icon{display:inline-block;transition:transform 0.6s cubic-bezier(0.34,1.56,0.64,1);}
-        .refresh-effect-btn.spinning .refresh-effect-icon{transform:rotate(360deg);}
-        .refresh-effect-btn.spinning{animation:refresh-ripple-generic 0.7s ease-out;}
-        @keyframes refresh-ripple-generic{0%{box-shadow:0 0 0 0 var(--refresh-ripple-color,rgba(99,102,241,0.6));}70%{box-shadow:0 0 0 14px rgba(0,0,0,0);}100%{box-shadow:0 0 0 0 rgba(0,0,0,0);}}
+        #earnings-refresh-btn{--refresh-c1:#6366f1;--refresh-c2:#a855f7;--refresh-glow:rgba(99,102,241,0.55);--refresh-glow-strong:rgba(99,102,241,0.5);}
+        #all-sales-refresh-btn{--refresh-c1:#3b82f6;--refresh-c2:#60a5fa;--refresh-glow:rgba(59,130,246,0.55);--refresh-glow-strong:rgba(59,130,246,0.5);}
         /* ── "Pi ile Bağlan" butonu: içerik (π simgesi / bağlanıyor animasyonu)
            her zaman butonun kendi çerçevesinde tam ortalı dursun diye ─────── */
         .pi-connect-btn{display:inline-flex;align-items:center;justify-content:center;}
@@ -1460,9 +1471,11 @@
             <div style="background:#0a0f1e;border:2px solid #3b82f6;border-radius:10px;padding:8px;">
                 <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;padding-bottom:5px;border-bottom:1px solid #1e3a8a;">
                     <div style="display:flex;align-items:center;gap:5px;"><span>🧾</span><span style="font-size:0.68em;color:#60a5fa;font-weight:800;text-transform:uppercase;" data-i18n="allSalesDetail"></span></div>
-                    <div style="display:flex;gap:4px;">
+                    <div style="display:flex;gap:6px;align-items:center;">
                         <button onclick="toggleSalesList()" style="background:rgba(16,185,129,0.2);border:1px solid #10b981;color:#6ee7b7;padding:3px 8px;border-radius:6px;font-size:0.6em;font-weight:700;cursor:pointer;" data-i18n="viewBtn"></button>
-                        <button class="refresh-effect-btn" id="all-sales-refresh-btn" onclick="window.handleAllSalesRefreshClick()" style="background:rgba(59,130,246,0.2);border:1px solid #3b82f6;color:#93c5fd;padding:3px 8px;border-radius:6px;font-size:0.6em;font-weight:700;cursor:pointer;--refresh-ripple-color:rgba(59,130,246,0.6);"><span class="refresh-effect-icon">🔄</span> <span data-i18n="refreshBtn"></span></button>
+                        <button id="all-sales-refresh-btn" class="panel-refresh-btn-inline" onclick="window.handleAllSalesRefreshClick()" title="Yenile">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+                        </button>
                     </div>
                 </div>
                 <div id="admin-all-sales-list" style="max-height:260px;overflow-y:auto;text-align:left;display:none;">
@@ -1503,6 +1516,12 @@
             </div>
         </div>
         <div class="admin-tab-panel" id="tab-earnings">
+            <div style="position:relative;display:flex;align-items:center;justify-content:center;padding:6px 34px 8px 6px;margin-bottom:8px;border-bottom:1px solid #312e81;">
+                <span style="font-size:0.72em;color:#a5b4fc;font-weight:800;text-transform:uppercase;">💰 <span data-i18n="earningsTab"></span></span>
+                <button id="earnings-refresh-btn" class="panel-refresh-btn" onclick="window.handleEarningsRefreshClick()" title="Yenile">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+                </button>
+            </div>
             <div class="income-box" style="border-color:#6366f1;background:linear-gradient(135deg,#1e1b4b 0%,#312e81 100%);">
                 <div style="font-size:0.7em;color:#c7d2fe;font-weight:800;margin-bottom:4px;" data-i18n="platformWalletTitle"></div>
                 <div class="income-value" id="admin-platform-earnings" style="color:#a5b4fc;">0 Pi</div>
@@ -1523,7 +1542,6 @@
                     <div id="admin-user-volume" style="font-size:1.3em;font-weight:900;color:#34d399;">0 Pi</div>
                 </div>
             </div>
-            <button class="pi-btn refresh-effect-btn" id="earnings-refresh-btn" style="background:#6366f1;animation:none;padding:8px;width:100%;font-size:0.8em;--refresh-ripple-color:rgba(99,102,241,0.6);" onclick="window.handleEarningsRefreshClick()"><span class="refresh-effect-icon">🔄</span> <span data-i18n="refreshBtn"></span></button>
             <div style="margin-top:12px;background:#1c0a0a;border:2px solid #ef4444;border-radius:12px;padding:10px;">
                 <div style="font-size:0.68em;color:#fca5a5;font-weight:800;text-transform:uppercase;margin-bottom:6px;">⚠️ <span data-i18n="resetDangerTitle"></span></div>
                 <div style="font-size:0.68em;color:#94a3b8;line-height:1.5;margin-bottom:8px;" data-i18n="resetDangerNote"></div>
