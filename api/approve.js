@@ -823,12 +823,16 @@ export default async function handler(req, res) {
     if (!checkRateLimit(clientIp, 'submit_sell_request', 3, 60000))
       return res.status(429).json({ error: "Çok fazla istek. 1 dakika bekleyin." });
 
-    const { domainName: reqDomainName, price: reqPrice, domainType, imgPath: reqImgPath, sellerNote, description, editMode, oldRequestId } = req.body;
+    const { domainName: reqDomainName, price: reqPrice, domainType, imgPath: reqImgPath, sellerNote, ownershipProof, description, editMode, oldRequestId } = req.body;
     const realUsername = await getRealUsername(accessToken);
     if (!realUsername) return res.status(403).json({ error: "Geçerli Pi oturumu bulunamadı" });
 
     const priceNum = Number(reqPrice);
     if (!reqDomainName || !priceNum || priceNum <= 0) return res.status(400).json({ error: "Geçersiz parametre" });
+    // Sahiplik kanıtı zorunlu — açık artırmayla kazanılmış bir domaini
+    // başkasının adına satışa çıkarmayı zorlaştırmak için minimum bir engel.
+    if (!ownershipProof || !ownershipProof.trim())
+      return res.status(400).json({ error: "Sahiplik kanıtı zorunludur. Bu domainin size ait olduğunu doğrulayacak bilgiyi girmelisiniz." });
 
     try {
       const db = getDb();
@@ -874,6 +878,7 @@ export default async function handler(req, res) {
         domainType: domainType || 'genel',
         img: reqImgPath || 'assets/default.jpeg',
         sellerNote: sellerNote || null,
+        ownershipProof: ownershipProof.trim(),
         description: description || '',
         submittedBy: realUsername,
         status: 'pending',
@@ -928,6 +933,7 @@ export default async function handler(req, res) {
         description: reqData.description || '',
         sellerUsername: reqData.submittedBy,
         sellerNote: reqData.sellerNote,
+        ownershipProof: reqData.ownershipProof || null,
         txid: null, buyer: null, at: null,
         deleted: false, deletedAt: null,
         createdAt: Date.now()
