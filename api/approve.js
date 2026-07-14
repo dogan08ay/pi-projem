@@ -395,6 +395,32 @@ export default async function handler(req, res) {
     }
   }
 
+  // ── Belirli Role Ait Devir-Onayı Bildirimlerini Okundu Yap ─────────────
+  // "Alımlarım" / "Gelirim" sekmelerindeki küçük rozet için: sadece o
+  // sekmeyle ilgili (role'e göre) hatırlatma/anlaşmazlık-yanıtı bildirimleri
+  // okundu yapılır, genel bildirim zili (🔔) etkilenmez.
+  if (action === 'mark_role_notifications_read') {
+    const { role } = req.body; // 'buyer' | 'seller'
+    const realUsername = await getRealUsername(accessToken);
+    if (!realUsername) return res.status(403).json({ error: "Geçersiz oturum" });
+    if (role !== 'buyer' && role !== 'seller') return res.status(400).json({ error: "Geçersiz role" });
+    try {
+      const rtdb = getRtdb();
+      const ref = rtdb.ref(`notifications/${realUsername}`);
+      const snap = await ref.once('value');
+      const updates = {};
+      const relevantTypes = ['transfer_confirmation_reminder', 'dispute_response'];
+      snap.forEach(child => {
+        const v = child.val();
+        if (!v.read && relevantTypes.includes(v.type) && v.role === role) updates[`${child.key}/read`] = true;
+      });
+      if (Object.keys(updates).length > 0) await ref.update(updates);
+      return res.status(200).json({ success: true });
+    } catch (e) {
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
   // ── Bildirim Sil ──────────────────────────────────────────────────────
   if (action === 'delete_notification') {
     const { notifId } = req.body;
@@ -1748,7 +1774,8 @@ export default async function handler(req, res) {
         type: 'dispute_response',
         title: '💬 Bildirdiğiniz Sorunla İlgili Yanıt',
         body: `"${sale.domain}" ile ilgili bildirdiğiniz soruna admin şu yanıtı verdi: "${message}". Devam etmek için lütfen "Panelim" içinden tekrar onay verin.`,
-        domainName: sale.domain
+        domainName: sale.domain,
+        role
       });
 
       return res.status(200).json({ success: true });
@@ -1786,7 +1813,8 @@ export default async function handler(req, res) {
         body: role === 'buyer'
           ? `"${sale.domain}" domainini satıcıdan teslim aldınız mı? Ödemenin işleme alınabilmesi için lütfen "Panelim" içinden onaylayın.`
           : `"${sale.domain}" domainini alıcıya devrettiniz mi? Ödemenizin gönderilebilmesi için lütfen "Panelim" içinden onaylayın.`,
-        domainName: sale.domain
+        domainName: sale.domain,
+        role
       });
 
       return res.status(200).json({ success: true });
