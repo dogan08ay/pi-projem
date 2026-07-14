@@ -1513,6 +1513,7 @@
                 </select>
                 <textarea id="new-domain-desc" data-i18n-placeholder="descriptionPlaceholder" class="admin-date-picker" rows="2" style="resize:none;margin-bottom:0;"></textarea>
                 <button class="pi-btn" style="margin:4px 0 0 0;animation:none;background:#10b981;padding:8px;" onclick="handleAddDomain()" data-i18n="addDomainBtn"></button>
+                <button class="pi-btn" style="margin:10px 0 0 0;animation:none;background:#334155;padding:8px;font-size:0.68em;" onclick="handleBackfillSellerUsername()">🔧 Eski domainlerdeki satıcı bilgisini düzelt (tek seferlik)</button>
             </div>
         </div>
         <div class="admin-tab-panel" id="tab-earnings">
@@ -3590,6 +3591,13 @@ window.handleAddDomain=async function(){
     const result=await r.json();
     if(!r.ok||!result.success) alert(t('addDomainFail')+(result.error||''));
     else{alert(t('addDomainSuccess')(name));['new-domain-name','new-domain-price','new-domain-img','new-domain-desc'].forEach(id=>document.getElementById(id).value='');}
+};
+window.handleBackfillSellerUsername=async function(){
+    if(!confirm('Henüz satılmamış ve satıcı bilgisi eksik olan domainlere, satıcı olarak sizin kullanıcı adınız yazılacak. Zaten satılmış domainlere dokunulmayacak. Devam edilsin mi?')) return;
+    const r=await fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'backfill_seller_username',accessToken:piAccessToken})});
+    const result=await r.json();
+    if(!r.ok||!result.success) alert('Hata: '+(result.error||''));
+    else alert(`✅ ${result.updatedCount} domain güncellendi.`+(result.updatedNames&&result.updatedNames.length?'\n\n'+result.updatedNames.join(', '):''));
 };
 window.handleRelist=async function(domainName){
     if(!confirm(t('relistConfirm')(domainName))) return;
