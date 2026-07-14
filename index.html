@@ -3631,11 +3631,11 @@ window.handleAddDomain=async function(){
     else{alert(t('addDomainSuccess')(name));['new-domain-name','new-domain-price','new-domain-img','new-domain-desc'].forEach(id=>document.getElementById(id).value='');}
 };
 window.handleBackfillSellerUsername=async function(){
-    if(!confirm('Henüz satılmamış ve satıcı bilgisi eksik olan domainlere, satıcı olarak sizin kullanıcı adınız yazılacak. Zaten satılmış domainlere dokunulmayacak. Devam edilsin mi?')) return;
+    if(!confirm('Henüz satılmamış ve satıcı bilgisi eksik olan domainlere, satıcı olarak sizin kullanıcı adınız yazılacak. Ayrıca zaten satılmış olup domain kaydında satıcı bilgisi olan ama satış kaydında (global_sales) eksik olan kayıtlar da tamamlanacak (böylece "Devrettim" onayı çalışabilsin). Zaten doğru olan hiçbir kayda dokunulmayacak. Devam edilsin mi?')) return;
     const r=await fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'backfill_seller_username',accessToken:piAccessToken})});
     const result=await r.json();
     if(!r.ok||!result.success) alert('Hata: '+(result.error||''));
-    else alert(`✅ ${result.updatedCount} domain güncellendi.`+(result.updatedNames&&result.updatedNames.length?'\n\n'+result.updatedNames.join(', '):''));
+    else alert(`✅ ${result.updatedCount} domain güncellendi.`+(result.updatedNames&&result.updatedNames.length?'\n'+result.updatedNames.join(', '):'')+`\n\n✅ ${result.salesUpdated||0} satış kaydı (global_sales) tamamlandı.`+(result.salesUpdatedNames&&result.salesUpdatedNames.length?'\n'+result.salesUpdatedNames.join(', '):''));
 };
 window.handleRelist=async function(domainName){
     if(!confirm(t('relistConfirm')(domainName))) return;
@@ -5811,7 +5811,8 @@ function renderAdminTrademarkClaims(claims) {
             ${c.status === 'rejected' ? `
             <button onclick="adminDeleteTrademarkClaim('${c.id}')" style="width:100%;padding:6px;border:1px solid #7f1d1d;background:rgba(127,29,29,0.25);color:#fca5a5;border-radius:6px;font-size:0.65em;font-weight:700;cursor:pointer;">🗑️ ${t('trademarkDeleteBtn')}</button>
             ` : c.status === 'resolved' ? `
-            <div style="font-size:0.65em;color:${c.domainRemoved ? '#34d399' : '#94a3b8'};">${c.domainRemoved ? '✅ ' + t('trademarkDomainRemovedNote') : 'ℹ️ ' + t('trademarkDomainAlreadyGoneNote')}</div>
+            <div style="font-size:0.65em;color:${c.domainRemoved ? '#34d399' : '#94a3b8'};margin-bottom:6px;">${c.domainRemoved ? '✅ ' + t('trademarkDomainRemovedNote') : 'ℹ️ ' + t('trademarkDomainAlreadyGoneNote')}</div>
+            <button onclick="adminDeleteTrademarkClaim('${c.id}')" style="width:100%;padding:6px;border:1px solid #7f1d1d;background:rgba(127,29,29,0.25);color:#fca5a5;border-radius:6px;font-size:0.65em;font-weight:700;cursor:pointer;">🗑️ ${t('trademarkDeleteBtn')}</button>
             ` : `
             <div style="display:flex;gap:5px;flex-wrap:wrap;">
                 <button onclick="adminUpdateTrademarkStatus('${c.id}','reviewing')" style="flex:1;min-width:70px;padding:6px;border:1px solid #f59e0b;background:rgba(245,158,11,0.1);color:#fbbf24;border-radius:6px;font-size:0.65em;font-weight:700;cursor:pointer;">🔍 ${t('trademarkStatusReviewing')}</button>
