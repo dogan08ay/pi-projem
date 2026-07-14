@@ -5948,8 +5948,16 @@ window.withdrawMyTrademarkClaim = async function(claimId) {
 function renderAdminPayouts(payouts) {
     const container = document.getElementById('payouts-admin-list');
     if (!container) return;
-    const waitingStates = ['pending', 'no_seller', 'processing', 'refund_processing'];
-    const resolvedStates = ['released'];
+    // FIX: "Satıcısız" (sistem domaini) satışlarda escrow/bekleme adımı hiç
+    // yok — tutarın tamamı satış anında adminOwnEarnings'e kesin olarak
+    // ekleniyor (bkz. approve.js, sale completion). Önceden bu kayıtlar
+    // 'no_seller' durumuyla "Bekleyen" filtresinde sonsuza kadar, hiçbir
+    // aksiyon butonu olmadan görünmeye devam ediyordu — sanki hâlâ bir şey
+    // bekleniyormuş gibi yanlış bir izlenim veriyordu. Artık "Çözüldü"
+    // filtresinde (released ile birlikte) gösteriliyor; satırdaki "⚠️ satıcı
+    // hesabı yok" notu yine görünmeye devam ediyor.
+    const waitingStates = ['pending', 'processing', 'refund_processing'];
+    const resolvedStates = ['released', 'no_seller'];
     const refundedStates = ['refunded'];
     const failedStates = ['failed', 'refund_failed'];
     const filtered = payouts.filter(p => {
