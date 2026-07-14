@@ -580,7 +580,15 @@ export default async function handler(req, res) {
         description: description || '',
         txid: null, buyer: null, at: null,
         deleted: false, deletedAt: null,
-        createdAt: Date.now()
+        createdAt: Date.now(),
+        // FIX: Admin panelinden eklenen domainler artık "satıcısız sistem
+        // domaini" değil, satıcısı admin'in kendisi olan normal bir ilan
+        // olarak kaydediliyor. Böylece satış tamamlandığında bu domain de
+        // diğer tüm ilanlar gibi escrow/devir-onay akışına giriyor: alıcı
+        // "Aldım" diyor, admin "Panelim → Sattığım Domainler" üzerinden
+        // satıcı sıfatıyla "Devrettim" diyor, ve kayıt "Bekleyen Ödemeler"
+        // panelinde normal bir satıcı kaydı olarak görünüyor.
+        sellerUsername: ADMIN_USERNAME
       });
       return res.status(200).json({ success: true });
     } catch (e) {
