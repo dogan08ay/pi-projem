@@ -4134,6 +4134,20 @@ function render(){
     } else {
         sortedDomains = sortedDomains.filter(d=>selectedCategoryFilters.has(d.type||'genel'));
     }
+    // FIX: `hidden` alanı iki farklı amaç için kullanılıyor:
+    // 1) Kesinleşmiş satış (payoutStatus:'released') → şeffaflık amacıyla
+    //    BİLEREK herkese (dimmed) gösteriliyor, bu doğru davranış.
+    // 2) Admin'in "Gizle" butonuyla elle gizlediği (satılmamış) bir domain
+    //    → bu SADECE gerçek admin'e (ve "Kullanıcı Gözünden Gör" KAPALIYKEN)
+    //    görünmeli; normal kullanıcıda ve admin'in kendi "kullanıcı gözünden
+    //    gör" modunda tamamen kaybolmalı. Önceden ikisi ayırt edilmediği
+    //    için elle gizlenmiş domainler de herkese (buğulu) görünüyordu.
+    sortedDomains = sortedDomains.filter(d=>{
+        const data=domainData[d.name];
+        if(!data?.hidden) return true;
+        if(data.payoutStatus==='released') return true; // kesinleşmiş satış arşivi — herkese açık, doğru davranış
+        return isAdminViewing; // elle gizlenmiş, satılmamış — sadece gerçek admin görsün
+    });
     if(saleStatusFilter!=='hepsi'){
         sortedDomains = sortedDomains.filter(d=>{
             const isHidden = !!domainData[d.name]?.hidden;
