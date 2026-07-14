@@ -1103,6 +1103,9 @@
         </select>
         <label style="font-size:0.72em;color:#cbd5e1;font-weight:700;" data-i18n="descriptionLabel"></label>
         <textarea id="sell-domain-desc" class="sell-form-input" rows="2" style="resize:none;" data-i18n-placeholder="descriptionPlaceholder" oninput="this.classList.remove('field-error')"></textarea>
+        <label style="font-size:0.78em;color:#fca5a5;font-weight:800;display:flex;align-items:center;gap:5px;">🔐 <span data-i18n="ownershipProofLabel"></span> <span style="color:#ef4444;">*</span></label>
+        <div style="font-size:0.65em;color:#94a3b8;margin-bottom:5px;line-height:1.5;" data-i18n="ownershipProofHint"></div>
+        <textarea id="sell-domain-ownership-proof" class="sell-form-input" rows="3" style="resize:none;border-color:rgba(239,68,68,0.4);" data-i18n-placeholder="ownershipProofPlaceholder" oninput="this.classList.remove('field-error')"></textarea>
         <label style="font-size:0.72em;color:#cbd5e1;font-weight:700;" data-i18n="imageUploadLabel"></label>
         <div class="img-upload-area" onclick="document.getElementById('sell-img-input').click()">
             <div id="img-upload-hint" data-i18n="imageUploadHint"></div>
@@ -1862,6 +1865,10 @@ const i18n = {
     domainName:"Domain Adı",domainNamePlaceholder:"ornek.pi",priceLabel:"Fiyat (Pİ)",
     domainType:"Domain Türü",descriptionLabel:"Açıklama",
     descriptionPlaceholder:"Domain hakkında kısa açıklama...",
+    ownershipProofLabel:"Sahiplik Kanıtı (zorunlu)",
+    ownershipProofHint:"Bu domainin gerçekten size ait olduğunu nasıl doğrularsınız? Örn: açık artırmayı kazandığınıza dair işlem/kayıt bilgisi, ekran görüntüsü linki, resmi kayıt sayfası linki. Admin, ilanınızı bu bilgiye göre inceleyip onaylayacak.",
+    ownershipProofPlaceholder:"Örn: 12.06.2026 tarihinde Pi Domain açık artırmasını kazandım, işlem no: XXXX. Kanıt: [link]",
+    ownershipProofRequired:"Sahiplik kanıtı zorunludur. Lütfen bu domainin size ait olduğunu doğrulayacak bilgiyi girin.",
     imageUploadLabel:"Domain Görseli",imageUploadHint:"📁 Görsel seçmek için tıklayın",
     imageUploadFormats:"JPG, PNG, WEBP — Maks. 2MB",
     sellerNoteLabel:"Not (opsiyonel)",sellerNotePlaceholder:"Admin için eklemek istediğiniz bir not (isteğe bağlı)",
@@ -2295,6 +2302,10 @@ const i18n = {
     domainName:"Domain Name",domainNamePlaceholder:"example.pi",priceLabel:"Price (PI)",
     domainType:"Domain Type",descriptionLabel:"Description",
     descriptionPlaceholder:"Short description about the domain...",
+    ownershipProofLabel:"Proof of Ownership (required)",
+    ownershipProofHint:"How can you prove this domain actually belongs to you? E.g. the auction transaction/record info, a screenshot link, or a link to the official registration page. Admin will review your listing based on this.",
+    ownershipProofPlaceholder:"E.g.: I won the Pi Domain auction on 2026-06-12, transaction ID: XXXX. Proof: [link]",
+    ownershipProofRequired:"Proof of ownership is required. Please provide information verifying this domain belongs to you.",
     imageUploadLabel:"Domain Image",imageUploadHint:"📁 Click to select an image",
     imageUploadFormats:"JPG, PNG, WEBP — Max 2MB",
     sellerNoteLabel:"Note (optional)",sellerNotePlaceholder:"An optional note for the admin",
@@ -3006,12 +3017,14 @@ window.handleSubmitSellRequest=async function(){
     const nameInput=document.getElementById('sell-domain-name');
     const priceInput=document.getElementById('sell-domain-price');
     const descInput=document.getElementById('sell-domain-desc');
+    const ownershipProofInput=document.getElementById('sell-domain-ownership-proof');
     const uploadArea=document.querySelector('#sell-domain-modal .img-upload-area');
 
     const name=nameInput.value.trim();
     const price=Number(priceInput.value);
     const type=document.getElementById('sell-domain-type').value;
     const desc=descInput.value.trim();
+    const ownershipProof=ownershipProofInput.value.trim();
     const sellerNote=document.getElementById('sell-domain-note').value.trim(); // Cüzdan adresi ARTIK kullanılmıyor — bu alan sadece isteğe bağlı bir not.
 
     const hasExistingImage = !!(window._editingRejectedRequestId && window._editingRejectedRequestOldImg);
@@ -3021,6 +3034,7 @@ window.handleSubmitSellRequest=async function(){
     if(!/\.pi$/i.test(name)){ sellFormFail(nameInput, t('errDomainNeedsPiSuffix')); return; }
     if(!price||price<=0){ sellFormFail(priceInput, t('errPriceRequired')); return; }
     if(!desc){ sellFormFail(descInput, t('errDescriptionRequired')); return; }
+    if(!ownershipProof){ sellFormFail(ownershipProofInput, t('ownershipProofRequired')); return; }
     if(!selectedImageBase64 && !hasExistingImage){ sellFormFail(uploadArea, t('errImageRequired')); return; }
 
     let imgUrl='assets/default.jpeg';
@@ -3049,6 +3063,7 @@ window.handleSubmitSellRequest=async function(){
             domainType: type,
             imgPath: imgUrl,
             sellerNote: sellerNote,
+            ownershipProof: ownershipProof,
             description: desc,
             accessToken: piAccessToken
         };
@@ -3293,6 +3308,7 @@ window.openEditRejectedRequest=function(requestId){
     document.getElementById('sell-domain-type').value=req.domainType||'genel';
     document.getElementById('sell-domain-desc').value=req.description||'';
     document.getElementById('sell-domain-note').value=req.sellerNote||'';
+    document.getElementById('sell-domain-ownership-proof').value=req.ownershipProof||'';
     // Görsel önizlemesi
     selectedImageBase64=null;selectedImageMime=null;selectedImageName=null;
     const preview=document.getElementById('sell-img-preview');
@@ -3319,7 +3335,7 @@ window.openEditRejectedRequest=function(requestId){
 window.closeSellDomainModal=function(){
     document.getElementById('sell-domain-modal').style.display='none';
     // Alanları temizle
-    ['sell-domain-name','sell-domain-price','sell-domain-desc','sell-domain-note'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+    ['sell-domain-name','sell-domain-price','sell-domain-desc','sell-domain-note','sell-domain-ownership-proof'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
     document.getElementById('sell-domain-name').readOnly=false;
     document.getElementById('sell-domain-name').style.background='';
     document.getElementById('sell-domain-name').style.color='';
@@ -3383,6 +3399,12 @@ window.openSellRequestDetail=function(requestId,dataStr){
         html+=`<div style="background:#0f172a;border-radius:8px;padding:8px 10px;">
             <div style="font-size:0.65em;color:#94a3b8;font-weight:800;text-transform:uppercase;margin-bottom:3px;">📝 ${t('detailFieldDesc')}</div>
             <div style="font-size:0.82em;color:#cbd5e1;line-height:1.5;">${p.description}</div>
+        </div>`;
+    }
+    if(p.ownershipProof){
+        html+=`<div style="background:rgba(239,68,68,0.08);border:1.5px solid #ef4444;border-radius:8px;padding:8px 10px;">
+            <div style="font-size:0.65em;color:#fca5a5;font-weight:800;text-transform:uppercase;margin-bottom:3px;">🔐 ${t('ownershipProofLabel')}</div>
+            <div style="font-size:0.82em;color:#fecaca;line-height:1.5;white-space:pre-wrap;word-break:break-word;">${escapeHtml(p.ownershipProof)}</div>
         </div>`;
     }
     html+=`</div>`;
@@ -3783,6 +3805,10 @@ function renderUserPanel(){
                         ${d.sellerNote?`<div style="display:flex;gap:6px;align-items:baseline;word-break:break-all;">
                             <span style="color:#64748b;flex-shrink:0;font-weight:700;min-width:90px;">🗒️ ${t('detailFieldWallet')}:</span>
                             <span style="color:#60a5fa;font-size:0.9em;">${d.sellerNote}</span>
+                        </div>`:''}
+                        ${d.ownershipProof?`<div style="display:flex;gap:6px;align-items:flex-start;background:rgba(239,68,68,0.06);border:1px solid rgba(239,68,68,0.25);border-radius:6px;padding:5px 7px;">
+                            <span style="color:#fca5a5;flex-shrink:0;font-weight:700;min-width:90px;">🔐 ${t('ownershipProofLabel')}:</span>
+                            <span style="color:#fecaca;word-break:break-word;flex:1;font-size:0.85em;">${escapeHtml(d.ownershipProof)}</span>
                         </div>`:''}
                     </div>
                     <!-- Withdraw listing button -->
