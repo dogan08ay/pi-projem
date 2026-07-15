@@ -205,6 +205,23 @@ async function sendTG(chatId, text) {
   } catch (e) { console.error("TG Error:", e); }
 }
 
+// ─── Sistem Hata Günlüğü ────────────────────────────────────────────────────
+// "🩺 Sistem Kontrolü" raporunun "arka planda hata" bölümünü besler. Bir
+// action çalışırken beklenmeyen bir hatayla karşılaşıldığında buraya kısa bir
+// kayıt düşülür (Firestore: system_errors). Bu fonksiyonun kendisi ASLA hata
+// fırlatmaz — loglama başarısız olsa bile asıl isteği etkilemesin diye.
+async function logSystemError(action, err, extra) {
+  try {
+    const db = getDb();
+    await db.collection('system_errors').add({
+      action: action || 'unknown',
+      message: String(err && err.message || err || 'Bilinmeyen hata').slice(0, 500),
+      extra: extra ? String(extra).slice(0, 300) : null,
+      ts: Date.now()
+    });
+  } catch (_) { /* günlükleme hatası sessizce yutulur */ }
+}
+
 // ─── CORS ─────────────────────────────────────────────────────────────────
 function setCors(req, res) {
   const allowedOrigins = (process.env.ALLOWED_ORIGIN || '')
@@ -313,6 +330,25 @@ async function reverseSaleAndPoints(db, domainName, buyerUsername, soldPrice, so
 //  ANA HANDLER
 // ══════════════════════════════════════════════════════════════════════════
 export default async function handler(req, res) {
+  // FIX: Sistem Kontrolü'nün "arka planda hata" taramasını beslemek için
+  // tüm handler'ı bir güvenlik ağıyla sarmaladık. Mevcut ~50 action bloğunun
+  // kendi try/catch'lerine DOKUNMADIK — bu sadece onların dışında, hiçbir
+  // action'ın yakalayamadığı gerçekten beklenmeyen hataları yakalayıp
+  // (a) isteğin sessizce takılıp kalmasını önler, (b) system_errors'a kaydeder.
+  try {
+    const handled = await handlerImpl(req, res);
+    if (handled === undefined && !res.headersSent) {
+      // Hiçbir action bloğu eşleşmedi — istek sessizce takılı kalmasın
+      return res.status(400).json({ error: "Bilinmeyen action: " + (req.body && req.body.action) });
+    }
+  } catch (e) {
+    console.error("Beklenmeyen sunucu hatası:", e);
+    await logSystemError((req.body && req.body.action) || 'unknown', e, 'unhandled-top-level');
+    if (!res.headersSent) return res.status(500).json({ error: "Beklenmeyen bir sunucu hatası oluştu." });
+  }
+}
+
+async function handlerImpl(req, res) {
   setCors(req, res);
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ error: "Sadece POST kabul edilir" });
@@ -973,10 +1009,100 @@ export default async function handler(req, res) {
         addIssue('warning', 'Bakım modu şu anda AÇIK', 'Uygulama şu an ziyaretçilere kapalı. Kasıtlı değilse "🚀 Yayına Al" ile açın.');
       }
 
+      // ── YENİ: Ortam değişkenleri kontrolü ─────────────────────────────
+      // Eksik bir ortam değişkeni genelde "her şey çalışıyor gibi görünür,
+      // ta ki o özelliğe ihtiyaç duyulana kadar" şeklinde sinsi sorunlara
+      // yol açar (örn. ödeme sırasında aniden "escrow istemcisi yok" hatası).
+      const requiredEnvVars = [
+        { key: 'APP_SECRET', label: 'Pi API Key (escrow ödemeleri için gerekli)' },
+        { key: 'PI_WALLET_PRIVATE_SEED', label: 'Escrow cüzdan seed (satıcıya ödeme göndermek için gerekli)' },
+        { key: 'FIREBASE_SERVICE_ACCOUNT', label: 'Firebase servis hesabı (JSON) — Firestore/Realtime DB erişimi için gerekli' },
+        { key: 'FIREBASE_DATABASE_URL', label: 'Firebase Realtime Database URL (bildirimler için gerekli)' },
+        { key: 'FIREBASE_STORAGE_BUCKET', label: 'Firebase Storage bucket (domain görselleri için gerekli)' },
+        { key: 'TG_BOT_TOKEN', label: 'Telegram bot token (bildirimler için)' },
+        { key: 'TG_CHAT_ID', label: 'Telegram admin sohbet ID' },
+        { key: 'ALLOWED_ORIGIN', label: 'CORS izinli origin listesi' }
+      ];
+      const missingEnv = requiredEnvVars.filter(v => !process.env[v.key]);
+      if (missingEnv.length > 0) {
+        addIssue('error', `${missingEnv.length} ortam değişkeni Vercel'de tanımlı değil`,
+          missingEnv.map(v => `${v.key} (${v.label})`).join('; '));
+      }
+      if (!process.env.TG_GROUP_ID) {
+        addIssue('info', 'TG_GROUP_ID tanımlı değil', 'Satış duyuruları herkese açık Telegram grubuna gönderilemiyor olabilir (admin bildirimleri bundan etkilenmez).');
+      }
+
+      // ── YENİ: Canlı bağlantı testleri ──────────────────────────────────
+      const connResults = [];
+      // Firestore yazma testi (zararsız, tek bir dokümana zaman damgası yazıp okuyoruz)
+      try {
+        const pingRef = db.collection('config').doc('checkup_ping');
+        const pingVal = Date.now();
+        await pingRef.set({ lastCheckupAt: pingVal }, { merge: true });
+        const pingSnap = await pingRef.get();
+        if (pingSnap.data()?.lastCheckupAt !== pingVal) throw new Error('Yazılan değer okunamadı');
+        connResults.push('✅ Firestore (okuma/yazma)');
+      } catch (e) {
+        addIssue('error', 'Firestore\'a yazma/okuma başarısız', String(e.message || e));
+      }
+      // Realtime Database testi
+      try {
+        const rtdb = getRtdb();
+        const ref = rtdb.ref('_checkup_ping');
+        await ref.set(Date.now());
+        connResults.push('✅ Realtime Database');
+      } catch (e) {
+        addIssue('error', 'Realtime Database bağlantısı başarısız', String(e.message || e) + ' — bildirimler (🔔) bundan etkileniyor olabilir.');
+      }
+      // Pi Platform API erişilebilirlik testi (401 dönmesi dahi "erişilebilir" demektir — sadece ağ/DNS/sunucu tarafını doğruluyoruz)
+      try {
+        const piResp = await fetch('https://api.minepi.com/v2/me', { headers: { Authorization: 'Key invalid-checkup-probe' } });
+        if (piResp.status >= 200 && piResp.status < 600) connResults.push(`✅ Pi Platform API (HTTP ${piResp.status})`);
+      } catch (e) {
+        addIssue('error', 'Pi Platform API\'sine (api.minepi.com) ulaşılamıyor', String(e.message || e) + ' — ödemeler ve giriş doğrulaması etkilenebilir.');
+      }
+      // Telegram bot token doğrulama
+      if (TG_BOT_TOKEN) {
+        try {
+          const tgResp = await fetch(`https://api.telegram.org/bot${TG_BOT_TOKEN}/getMe`);
+          const tgData = await tgResp.json();
+          if (tgData.ok) connResults.push(`✅ Telegram Bot (@${tgData.result.username})`);
+          else addIssue('warning', 'Telegram bot token geçersiz görünüyor', JSON.stringify(tgData));
+        } catch (e) {
+          addIssue('warning', 'Telegram API\'sine ulaşılamadı', String(e.message || e));
+        }
+      }
+
+      // ── YENİ: Kayıtlı arka plan hataları (system_errors) ───────────────
+      // logSystemError() tarafından yazılan, herhangi bir action'ın kendi
+      // catch bloğunda ya da global güvenlik ağında yakalanan gerçek
+      // çalışma zamanı hataları. Son 7 gün, en fazla 20 kayıt.
+      let recentErrors = [];
+      try {
+        const sevenDaysAgo = now - 7 * 24 * 3600 * 1000;
+        const errSnap = await db.collection('system_errors')
+          .where('ts', '>=', sevenDaysAgo)
+          .orderBy('ts', 'desc')
+          .limit(20)
+          .get();
+        errSnap.forEach(e => recentErrors.push({ id: e.id, ...e.data() }));
+      } catch (e) {
+        // system_errors koleksiyonu/indexi henüz yoksa (ilk çalıştırma) sessizce geç
+      }
+      if (recentErrors.length > 0) {
+        const grouped = {};
+        recentErrors.forEach(e => { grouped[e.action] = (grouped[e.action] || 0) + 1; });
+        const summary = Object.entries(grouped).map(([a, c]) => `${a}: ${c}`).join(', ');
+        const lastFew = recentErrors.slice(0, 5).map(e => `[${new Date(e.ts).toLocaleString('tr-TR')}] ${e.action}: ${e.message}`).join('\n');
+        addIssue('warning', `Son 7 günde ${recentErrors.length} arka plan hatası kaydedildi`,
+          `Action bazında: ${summary}\n\nEn son 5 kayıt:\n${lastFew}`);
+      }
+
       return res.status(200).json({
         success: true,
         issues,
-        summary: { domainsScanned: domainsSnap.size, soldCount, salesScanned: salesSnap.size, sellRequestsScanned: sellReqSnap.size, trademarkClaimsScanned: tmSnap.size }
+        connResults,
+        summary: { domainsScanned: domainsSnap.size, soldCount, salesScanned: salesSnap.size, sellRequestsScanned: sellReqSnap.size, trademarkClaimsScanned: tmSnap.size, backgroundErrors: recentErrors.length }
       });
     } catch (e) {
       console.error("run_system_checkup hatası:", e);
@@ -2726,6 +2852,7 @@ export default async function handler(req, res) {
         }
       } catch (firestoreErr) {
         console.error("Firestore yazma hatası:", firestoreErr);
+        await logSystemError('complete', firestoreErr, `Ödeme tamamlandı (txid:${txid}) ama Firestore yazılamadı. Domain:${domainName}`);
         await sendTG(TG_CHAT_ID, `⚠️ *DİKKAT:* Ödeme tamamlandı (txid: ${txid}) ama Firestore'a yazılamadı. Domain: ${domainName}, @${username}`);
       }
       return res.status(200).json({ ...data, purchaseCode, success: true });
@@ -2734,6 +2861,7 @@ export default async function handler(req, res) {
     return res.status(200).json({ ...data, success: true });
   } catch (e) {
     console.error("Sunucu hatası:", e);
+    await logSystemError('complete', e);
     return res.status(500).json({ error: e.message });
   }
 }
