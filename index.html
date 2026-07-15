@@ -1378,6 +1378,13 @@
         </div>
         <div class="user-tab-panel" id="utab-income">
             <div class="income-box"><div style="font-size:0.7em;color:#6ee7b7;font-weight:800;margin-bottom:4px;" data-i18n="totalEarned"></div><div class="income-value" id="up-earned">0 Pi</div><div style="font-size:0.65em;color:#94a3b8;margin-top:6px;" data-i18n="earnedNote"></div></div>
+            <select id="my-sold-filter-select" onchange="window.setMySoldFilter(this.value)" class="filter-select-prominent" style="--filter-accent:#10b981;">
+                <option value="all" data-i18n="soldFilterAll"></option>
+                <option value="pending" data-i18n="soldFilterPending"></option>
+                <option value="confirmed" data-i18n="soldFilterConfirmed"></option>
+                <option value="disputed" data-i18n="soldFilterDisputed"></option>
+                <option value="refunded" data-i18n="soldFilterRefunded"></option>
+            </select>
             <div id="my-sold-list" style="text-align:left;"></div>
         </div>
         <div class="user-tab-panel" id="utab-tickets">
@@ -1419,7 +1426,7 @@
             </div>
         </div>
     </div>
-    <div id="view-as-user-box" style="display:none;align-items:center;gap:8px;background:linear-gradient(135deg,rgba(99,102,241,0.18) 0%,rgba(67,56,202,0.20) 100%);border:1.5px solid #6366f1;border-radius:10px;padding:8px 10px;margin:0 8px 8px 8px;width:calc(100% - 32px);box-sizing:border-box;">
+    <div id="view-as-user-box" style="display:none;align-items:center;gap:8px;background:linear-gradient(135deg,rgba(99,102,241,0.18) 0%,rgba(67,56,202,0.20) 100%);border:1.5px solid #6366f1;border-radius:10px;padding:8px 10px;margin:0 auto 8px auto;width:calc(100% - 16px);box-sizing:border-box;">
         <span style="font-size:1.1em;flex-shrink:0;">👁️</span>
         <span style="font-size:0.68em;color:#94a3b8;font-weight:700;flex:1;" data-i18n="viewAsUserLabel"></span>
         <button id="view-as-user-toggle-btn" onclick="window.toggleViewAsUser()" style="padding:6px 12px;border:none;border-radius:8px;background:linear-gradient(135deg,#6366f1,#818cf8);color:#fff;font-size:0.65em;font-weight:800;cursor:pointer;white-space:nowrap;"></button>
@@ -2145,6 +2152,8 @@ const i18n = {
     domainOnSale:"Satışta",domainSold:"Satıldı",sellerLabel:"Satıcı:",descriptionEmpty:"Açıklama girilmemiş.",
     imageUploading:"Görsel yükleniyor...",imageUploadFailed:"Görsel yüklenemedi.",
     myActiveListings:"Satıştaki Domainleriniz",mySoldDomainsLabel:"Satılan Domainleriniz",
+    viewListBtn:"Listeyi Gör",closeListBtn:"Listeyi Kapat",
+    soldFilterAll:"Hepsi",soldFilterPending:"Onay Bekleyen",soldFilterConfirmed:"Onaylanmış",soldFilterDisputed:"Sorun Bildirildi",soldFilterRefunded:"İade Edildi",
     walletBalanceLabel:"Domain Satışı Geliriniz",
     platformWalletTitle:"PLATFORM CÜZDANI (TOPLAM KAZANÇ)",
     platformWalletNote:"Sadece başka kullanıcılar tarafından listelenip satılan domainlerden alınan %5 komisyon kesintisidir. Satıcının payı (kalan %95) bu tutara dahil değildir.",
@@ -2582,6 +2591,8 @@ const i18n = {
     domainOnSale:"On Sale",domainSold:"Sold",sellerLabel:"Seller:",descriptionEmpty:"No description provided.",
     imageUploading:"Uploading image...",imageUploadFailed:"Image upload failed.",
     myActiveListings:"Domains Currently on Sale",mySoldDomainsLabel:"Your Sold Domains",
+    viewListBtn:"View List",closeListBtn:"Close List",
+    soldFilterAll:"All",soldFilterPending:"Pending Confirmation",soldFilterConfirmed:"Confirmed",soldFilterDisputed:"Issue Reported",soldFilterRefunded:"Refunded",
     walletBalanceLabel:"Your Domain Sales Earnings",
     platformWalletTitle:"PLATFORM WALLET (TOTAL EARNINGS)",
     platformWalletNote:"Only the 5% commission deducted from domains listed and sold by other users. The seller's share (remaining 95%) is not included in this amount.",
@@ -2799,6 +2810,10 @@ let notifPollInterval=null;
 let currentFilter='hepsi',userFirstSeen=null;
 let userProfile={points:0,badge:null};
 let userSellRequests=[],userSoldDomains=[],userActiveListings=[],userTotalSpent=0,userTotalEarned=0;
+let mySoldFilter='all';
+window.setMySoldFilter=function(val){ mySoldFilter=val; renderUserPanel(); };
+let myActiveListingsExpanded=false;
+window.toggleMyActiveListingsList=function(){ myActiveListingsExpanded=!myActiveListingsExpanded; renderUserPanel(); };
 let myListingsStatusFilter=localStorage.getItem('w3dg_my_listings_filter')||'all';
 window.setMyListingsStatusFilter=function(val){
     myListingsStatusFilter=val;
@@ -3926,7 +3941,14 @@ function renderUserPanel(){
     if(myListingsEl){
         let html='';
         // Aktif (şu an satışta) domainler — TÜM detaylar
-        html+=`<div style="font-size:0.68em;color:#fbbf24;font-weight:800;text-transform:uppercase;margin-bottom:6px;">🏷️ ${t('myActiveListings')}</div>`;
+        // FIX: Liste uzun olduğunda menüyü aşağı doğru boğmasın diye
+        // varsayılan olarak kapalı (collapsed); "Listeyi Gör" ile açılır,
+        // "Listeyi Kapat" ile tekrar kapanır. Sayı her zaman başlıkta görünür.
+        html+=`<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px;">
+            <div style="font-size:0.68em;color:#fbbf24;font-weight:800;text-transform:uppercase;">🏷️ ${t('myActiveListings')} (${userActiveListings.length})</div>
+            ${userActiveListings.length>0?`<button onclick="window.toggleMyActiveListingsList()" style="flex-shrink:0;padding:4px 10px;border:1px solid #f59e0b;border-radius:7px;background:rgba(245,158,11,0.1);color:#fbbf24;font-size:0.62em;font-weight:800;cursor:pointer;white-space:nowrap;">${myActiveListingsExpanded?'✖️ '+t('closeListBtn'):'👁️ '+t('viewListBtn')}</button>`:''}
+        </div>`;
+        html+=`<div style="display:${myActiveListingsExpanded?'block':'none'};">`;
         if(!userActiveListings.length){
             html+=`<p style="font-size:0.72em;opacity:0.5;text-align:center;margin-bottom:10px;">${t('noActiveListings')}</p>`;
         } else {
@@ -3974,6 +3996,7 @@ function renderUserPanel(){
                     </div>
                 </div>`).join('');
         }
+        html+=`</div>`;
         // Tüm satış önerileri geçmişi + TÜM detaylar (YENİ SIRALAMA)
         html+=`<div style="display:inline-flex;align-items:center;gap:6px;background:linear-gradient(135deg,#78350f,#92400e);color:#fcd34d;font-size:0.68em;font-weight:800;text-transform:uppercase;margin:10px 0 6px 0;padding:4px 10px;border-radius:8px;border:1px solid #f59e0b;">${t('myListingsStatusTitle')}</div>`;
         html+=`<select id="my-listings-status-filter" onchange="window.setMyListingsStatusFilter(this.value)" class="filter-select-prominent" style="--filter-accent:#f59e0b;">
@@ -4073,10 +4096,24 @@ function renderUserPanel(){
     const mySoldEl=document.getElementById('my-sold-list');
     if(mySoldEl){
         let html=`<div style="font-size:0.68em;color:#34d399;font-weight:800;text-transform:uppercase;margin-bottom:6px;">✅ ${t('mySoldDomainsLabel')}</div>`;
-        if(!userSoldDomains.length){
+        // FIX: Filtre — Hepsi / Onay Bekleyen / Onaylanmış / Sorun Bildirildi / İade Edildi.
+        // Onay Bekleyen: henüz release edilmemiş VE aktif bir itiraz (Sorun Var) yok.
+        // Sorun Bildirildi: alıcı veya satıcı "Sorun Var" demiş, henüz çözülmemiş.
+        // İade Edildi: payoutStatus iade ile ilgili durumlardan biri.
+        const isRefundStatus = ps => ps==='refunded'||ps==='refund_processing'||ps==='refund_failed';
+        const isDisputed = d => (d.buyerConfirmed===false || d.sellerConfirmed===false) && d.payoutStatus!=='released' && !isRefundStatus(d.payoutStatus);
+        const filteredSoldDomains = userSoldDomains.filter(d=>{
+            if(mySoldFilter==='all') return true;
+            if(mySoldFilter==='refunded') return isRefundStatus(d.payoutStatus);
+            if(mySoldFilter==='disputed') return isDisputed(d);
+            if(mySoldFilter==='confirmed') return d.payoutStatus==='released';
+            if(mySoldFilter==='pending') return d.payoutStatus && d.payoutStatus!=='released' && !isDisputed(d) && !isRefundStatus(d.payoutStatus);
+            return true;
+        });
+        if(!filteredSoldDomains.length){
             html+=`<p style="font-size:0.75em;opacity:0.5;text-align:center;">${t('noSoldDomains')}</p>`;
         } else {
-            html+=userSoldDomains.map(d=>{
+            html+=filteredSoldDomains.map(d=>{
                 const needsConfirm = d.payoutStatus!=='released' && d.payoutStatus!=='refunded';
                 let confirmHtml='';
                 if(needsConfirm){
