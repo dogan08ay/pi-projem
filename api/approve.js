@@ -861,6 +861,129 @@ export default async function handler(req, res) {
     }
   }
 
+  // ── Sistem Kontrolü (Check Up) ─────────────────────────────────────────
+  // Admin panelindeki "🩺 Sistem Kontrolü" butonunun arkası. Bilinen veri
+  // tutarlılığı sorunlarını tarar (satıcı/satış kaydı uyuşmazlıkları,
+  // takılı kalmış ödemeler, kopuk ilan kayıtları vb.) ve bir rapor
+  // (issues[]) döner. Hiçbir veriyi DEĞİŞTİRMEZ, sadece okur ve raporlar.
+  if (action === 'run_system_checkup') {
+    const isAdmin = await verifyAdmin(accessToken);
+    if (!isAdmin) return res.status(403).json({ error: "Yetki yok" });
+    try {
+      const db = getDb();
+      const issues = [];
+      const addIssue = (severity, title, detail) => issues.push({ severity, title, detail });
+
+      const [domainsSnap, salesSnap, sellReqSnap, tmSnap, statsSnap] = await Promise.all([
+        db.collection('domains').get(),
+        db.collection('global_sales').get(),
+        db.collection('sell_requests').get(),
+        db.collection('trademark_claims').get(),
+        db.collection('config').doc('platform_stats').get()
+      ]);
+
+      // global_sales'i domain adına göre indeksle (bir domain birden çok kez satılmış olabilir, hepsini tut)
+      const salesByDomain = {};
+      salesSnap.forEach(s => {
+        const sd = s.data();
+        if (!sd.domain) return;
+        (salesByDomain[sd.domain] = salesByDomain[sd.domain] || []).push({ id: s.id, ...sd });
+      });
+
+      let soldCount = 0, stuckPayouts = [], missingSalesRecord = [], sellerMismatch = [], missingSaleFields = [];
+      domainsSnap.forEach(d => {
+        const data = d.data();
+        if (data.deleted === true) return;
+        if (data.sold !== true) return;
+        soldCount++;
+
+        if (!data.buyer || !data.txid || !data.at) {
+          missingSaleFields.push(d.id);
+        }
+
+        const matchingSales = salesByDomain[d.id] || [];
+        if (data.sellerUsername) {
+          if (matchingSales.length === 0) {
+            missingSalesRecord.push(d.id);
+          } else {
+            const anyMatch = matchingSales.some(s => s.sellerUsername === data.sellerUsername);
+            if (!anyMatch) sellerMismatch.push(d.id);
+          }
+        }
+
+        matchingSales.forEach(s => {
+          if (s.payoutStatus === 'processing' || s.payoutStatus === 'failed' || s.payoutStatus === 'refund_processing' || s.payoutStatus === 'refund_failed') {
+            stuckPayouts.push({ domain: d.id, status: s.payoutStatus });
+          }
+        });
+      });
+
+      if (missingSalesRecord.length > 0) {
+        addIssue('error', `${missingSalesRecord.length} satılmış domain'in satış kaydı (global_sales) hiç yok`,
+          `Bu domainler "sold:true" ve satıcı bilgisi var, ama global_sales koleksiyonunda hiç kaydı yok — muhtemelen escrow sistemi kurulmadan önce satılmışlar. "Devrettim" onayı çalışmaz, "🔧 Eski domainlerdeki satıcı bilgisini düzelt" butonu bunları da düzeltemez (çünkü düzeltilecek bir kayıt yok). Etkilenenler: ${missingSalesRecord.join(', ')}`);
+      }
+      if (sellerMismatch.length > 0) {
+        addIssue('warning', `${sellerMismatch.length} domain'de satıcı bilgisi domains/global_sales arasında uyuşmuyor`,
+          `"🔧 Eski domainlerdeki satıcı bilgisini düzelt" butonuna basarak düzeltebilirsiniz. Etkilenenler: ${sellerMismatch.join(', ')}`);
+      }
+      if (stuckPayouts.length > 0) {
+        addIssue('warning', `${stuckPayouts.length} ödeme "işleniyor/başarısız" durumunda takılı kalmış`,
+          stuckPayouts.map(s => `${s.domain} (${s.status})`).join(', ') + ' — Bekleyen Ödemeler panelinden kontrol edip tekrar deneyin.');
+      }
+      if (missingSaleFields.length > 0) {
+        addIssue('info', `${missingSaleFields.length} satılmış domain'de alıcı/işlem no/tarih bilgisi eksik`,
+          `Etkilenenler: ${missingSaleFields.join(', ')}`);
+      }
+
+      // sell_requests: onaylanmış ama karşılığında domain oluşmamış
+      const staleRequests = [];
+      const now = Date.now();
+      sellReqSnap.forEach(r => {
+        const rd = r.data();
+        if (rd.status === 'pending' && rd.submittedAt && (now - rd.submittedAt) > 30 * 24 * 3600 * 1000) {
+          staleRequests.push(r.id);
+        }
+      });
+      if (staleRequests.length > 0) {
+        addIssue('info', `${staleRequests.length} satış talebi 30 günden uzun süredir bekliyor`, `İncelemeniz gerekebilir: ${staleRequests.join(', ')}`);
+      }
+
+      // trademark_claims: uzun süredir bekleyenler
+      const staleClaims = [];
+      tmSnap.forEach(c => {
+        const cd = c.data();
+        if ((cd.status === 'new' || cd.status === 'reviewing') && cd.createdAt && (now - cd.createdAt) > 14 * 24 * 3600 * 1000) {
+          staleClaims.push(c.id);
+        }
+      });
+      if (staleClaims.length > 0) {
+        addIssue('info', `${staleClaims.length} marka hakkı talebi 14 günden uzun süredir yanıt bekliyor`, `Talep ID'leri: ${staleClaims.join(', ')}`);
+      }
+
+      // platform_stats
+      if (!statsSnap.exists) {
+        addIssue('info', 'Kazanç istatistik kaydı (config/platform_stats) henüz oluşmamış', 'Kazanç sekmesi ilk açıldığında otomatik oluşturulur, bu normaldir.');
+      } else if (statsSnap.data().statsVersion !== 2) {
+        addIssue('warning', 'Kazanç istatistikleri eski formatta (statsVersion≠2)', 'Kazanç sekmesini bir kez açtığınızda otomatik güncellenir.');
+      }
+
+      // Bakım modu açık mı — unutulmuş olabilir
+      const maintSnap = await db.collection('config').doc('app_status').get();
+      if (maintSnap.exists && maintSnap.data().maintenanceMode === true) {
+        addIssue('warning', 'Bakım modu şu anda AÇIK', 'Uygulama şu an ziyaretçilere kapalı. Kasıtlı değilse "🚀 Yayına Al" ile açın.');
+      }
+
+      return res.status(200).json({
+        success: true,
+        issues,
+        summary: { domainsScanned: domainsSnap.size, soldCount, salesScanned: salesSnap.size, sellRequestsScanned: sellReqSnap.size, trademarkClaimsScanned: tmSnap.size }
+      });
+    } catch (e) {
+      console.error("run_system_checkup hatası:", e);
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
   // ── Platform İstatistiklerini Sıfırla ─────────────────────────────────
   if (action === 'reset_platform_stats') {
     const { confirmReset } = req.body;
