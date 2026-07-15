@@ -2704,7 +2704,13 @@ export default async function handler(req, res) {
             });
           }
 
-          const groupMsg = `🎉 *YENİ SATIŞ!*\n\n👤 @${username}, *${domainName}* domainini satın aldı! 🚀`;
+          // FIX: Grup mesajı da artık gerçek duruma göre değişiyor — escrow
+          // devredeyse (sellerUsername varsa, yani neredeyse her satışta)
+          // "satın aldı" yanında ödemenin henüz onay aşamasında olduğu da
+          // açıkça belirtiliyor; admin mesajındaki mantıkla birebir aynı.
+          const groupMsg = sellerUsername
+            ? `🎉 *YENİ SATIŞ!*\n\n👤 @${username}, *${domainName}* domainini satın aldı!\n⏳ Ödeme şu anda escrow'da — satıcı ve alıcının devri onaylamasının ardından serbest bırakılacak.`
+            : `🎉 *YENİ SATIŞ!*\n\n👤 @${username}, *${domainName}* domainini satın aldı! 🚀`;
           await sendTG(TG_GROUP_ID, groupMsg);
           // FIX: Üçüncü taraf bir satıcı varsa ödeme henüz escrow'da bekliyor
           // demektir (satıcıya serbest bırakılana kadar "tamamlandı" değil) —
