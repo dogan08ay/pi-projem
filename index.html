@@ -1702,6 +1702,7 @@
                 <textarea id="new-domain-desc" data-i18n-placeholder="descriptionPlaceholder" class="admin-date-picker" rows="2" style="resize:none;margin-bottom:0;"></textarea>
                 <button class="pi-btn" style="margin:4px 0 0 0;animation:none;background:#10b981;padding:8px;" onclick="handleAddDomain()" data-i18n="addDomainBtn"></button>
                 <button class="pi-btn" style="margin:10px 0 0 0;animation:none;background:#334155;padding:8px;font-size:0.68em;" onclick="handleBackfillSellerUsername()">🔧 Eski domainlerdeki satıcı bilgisini düzelt (tek seferlik)</button>
+                <button class="pi-btn" style="margin:6px 0 0 0;animation:none;background:#334155;padding:8px;font-size:0.68em;" onclick="window.handleFixDeletedRatings()">⭐ Silinmiş domainlerdeki puanları geri al (tek seferlik)</button>
             </div>
         </div>
         <div class="admin-tab-panel" id="tab-earnings">
@@ -4361,6 +4362,15 @@ window.runSystemCheckup=async function(){
     }finally{
         btn.textContent=originalText; btn.disabled=false;
     }
+};
+window.handleFixDeletedRatings=async function(){
+    if(!confirm('Silinmiş domainlerde hâlâ duran (kullanıcıların toplam puanına dahil edilmeye devam eden) yıldız puanları geri alınacak. Devam edilsin mi?')) return;
+    try{
+        const r=await fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'backfill_reverse_deleted_ratings',accessToken:piAccessToken})});
+        const result=await r.json();
+        if(!result.success){ alert('Hata: '+(result.error||'')); return; }
+        alert(`✅ ${result.fixedCount} domain'deki puan geri alındı.`+(result.fixedNames&&result.fixedNames.length?'\n'+result.fixedNames.join(', '):''));
+    }catch(e){ alert('Bir hata oluştu.'); }
 };
 window.handleBackfillSellerUsername=async function(){
     if(!confirm('Henüz satılmamış ve satıcı bilgisi eksik olan domainlere, satıcı olarak sizin kullanıcı adınız yazılacak. Ayrıca zaten satılmış olup domain kaydında satıcı bilgisi olan ama satış kaydında (global_sales) eksik olan kayıtlar da tamamlanacak (böylece "Devrettim" onayı çalışabilsin). Zaten doğru olan hiçbir kayda dokunulmayacak. Devam edilsin mi?')) return;
