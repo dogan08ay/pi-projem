@@ -1735,7 +1735,7 @@
             </div>
             <div style="background:#0f172a;border:1px solid #334155;border-radius:12px;padding:10px;margin-bottom:8px;">
                 <div style="font-size:0.65em;color:#94a3b8;font-weight:700;margin-bottom:8px;text-transform:uppercase;">📈 <span data-i18n="salesTrendTitle"></span></div>
-                <div id="sales-trend-chart" style="min-height:90px;display:flex;align-items:center;justify-content:center;color:#475569;font-size:0.7em;" data-i18n="loadingLabel"></div>
+                <div id="sales-trend-chart" style="min-height:90px;display:flex;align-items:center;justify-content:center;color:#475569;font-size:0.7em;">Yükleniyor...</div>
             </div>
             <button onclick="window.exportSalesCsv()" style="width:100%;padding:9px;margin-bottom:12px;border-radius:10px;border:1.5px solid #64748b;background:rgba(100,116,139,0.1);color:#cbd5e1;font-size:0.75em;font-weight:800;cursor:pointer;">⬇️ <span data-i18n="exportCsvBtn"></span></button>
             <div style="margin-top:12px;background:#1c0a0a;border:2px solid #ef4444;border-radius:12px;padding:10px;">
@@ -4653,7 +4653,7 @@ function renderUserPanel(){
                 ? `<span style="background:rgba(245,158,11,0.15);color:#fbbf24;font-size:0.58em;font-weight:800;padding:2px 8px;border-radius:6px;border:1px solid #f59e0b;flex-shrink:0;white-space:nowrap;">${t('soldPendingConfirmation')}</span>`
                 : `<span style="background:rgba(16,185,129,0.15);color:#6ee7b7;font-size:0.58em;font-weight:800;padding:2px 8px;border-radius:6px;border:1px solid #10b981;flex-shrink:0;white-space:nowrap;">${t('sold')}</span>`;
             const ratingHtml = (data.sellerUsername && data.payoutStatus==='released') ? (
-                data.buyerRating ? `<div style="margin-top:8px;font-size:0.68em;color:#fbbf24;">⭐ ${t('yourRatingLabel')}: ${'★'.repeat(data.buyerRating.stars)}${'☆'.repeat(5-data.buyerRating.stars)}</div>`
+                data.buyerRating ? `<div style="margin-top:8px;font-size:0.68em;color:#fbbf24;">⭐ ${t('yourRatingLabel')}: ${'★'.repeat(data.buyerRating.stars)}${'☆'.repeat(5-data.buyerRating.stars)}${data.buyerRating.comment?`<div style="color:#94a3b8;font-style:italic;margin-top:3px;">"${escapeHtml(data.buyerRating.comment)}"</div>`:''}</div>`
                 : `<div style="margin-top:8px;padding-top:8px;border-top:1px dashed #334155;">
                     <div style="font-size:0.65em;color:#94a3b8;margin-bottom:5px;">${t('rateSellerPrompt')}</div>
                     <div style="display:flex;gap:4px;">
@@ -4908,7 +4908,7 @@ function renderUserPanel(){
                         </div>
                         ${confirmHtml}
                         ${d.payoutStatus==='released' ? (
-                            d.sellerRatingOfBuyer ? `<div style="margin-top:8px;font-size:0.68em;color:#fbbf24;">⭐ ${t('yourRatingOfBuyerLabel')}: ${'★'.repeat(d.sellerRatingOfBuyer.stars)}${'☆'.repeat(5-d.sellerRatingOfBuyer.stars)}</div>`
+                            d.sellerRatingOfBuyer ? `<div style="margin-top:8px;font-size:0.68em;color:#fbbf24;">⭐ ${t('yourRatingOfBuyerLabel')}: ${'★'.repeat(d.sellerRatingOfBuyer.stars)}${'☆'.repeat(5-d.sellerRatingOfBuyer.stars)}${d.sellerRatingOfBuyer.comment?`<div style="color:#94a3b8;font-style:italic;margin-top:3px;">"${escapeHtml(d.sellerRatingOfBuyer.comment)}"</div>`:''}</div>`
                             : `<div style="margin-top:8px;padding-top:8px;border-top:1px dashed #334155;">
                                 <div style="font-size:0.65em;color:#94a3b8;margin-bottom:5px;">${t('rateBuyerPrompt')}</div>
                                 <div style="display:flex;gap:4px;">
