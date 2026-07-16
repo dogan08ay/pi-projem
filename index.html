@@ -88,7 +88,8 @@
         .item-title{color:#60a5fa;font-weight:800;width:105px;flex-shrink:0;font-size:0.85em;}
         .item-red-val-small{color:#ef4444;font-weight:900;flex:1;white-space:nowrap;font-size:0.88em;}
         .my-domain-item{background:#0f172a;padding:6px;border-radius:9px;display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;border:1px solid #334155;gap:8px;}
-        .verify-btn{background:linear-gradient(135deg,#0ea5e9 0%,#0284c7 100%);color:#ffffff;border:none;padding:4px 8px;border-radius:6px;font-size:0.68em;cursor:pointer;font-weight:800;text-decoration:none;display:inline-flex;align-items:center;gap:5px;white-space:nowrap;flex-shrink:0;}
+        .verify-btn{background:linear-gradient(135deg,#0ea5e9 0%,#0284c7 100%);color:#ffffff;border:none;padding:4px 8px;border-radius:6px;font-size:0.68em;cursor:pointer;font-weight:800;text-decoration:none;display:inline-flex;align-items:center;gap:5px;white-space:nowrap;flex-shrink:0;animation:verify-btn-glow 2s ease-in-out infinite;}
+        @keyframes verify-btn-glow{0%,100%{box-shadow:0 0 0 0 rgba(14,165,233,0.6);transform:scale(1);}50%{box-shadow:0 0 0 6px rgba(14,165,233,0);transform:scale(1.06);}}
         .verify-btn-disabled{background:rgba(71,85,105,0.45);color:#475569;border:1.5px solid #334155;padding:4px 8px;border-radius:6px;font-size:0.68em;font-weight:700;display:inline-flex;align-items:center;gap:5px;cursor:not-allowed;white-space:nowrap;flex-shrink:0;opacity:0.6;}
         .info-badge-header{display:inline-flex;align-items:center;gap:5px;background:linear-gradient(135deg,#312e81 0%,#4c1d95 50%,#312e81 100%);color:#c4b5fd;font-weight:900;font-size:0.75em;padding:3px 10px;border-radius:7px;margin-bottom:8px;border:1.5px solid #7c3aed;position:relative;overflow:hidden;}
         .info-badge-icon{font-size:1.05em;}
@@ -1351,6 +1352,17 @@
         <button class="pi-btn" style="background:#6366f1;animation:none;padding:10px;margin:0;width:100%;" onclick="document.getElementById('unique-users-modal').style.display='none'" data-i18n="close"></button>
     </div>
 </div>
+<div id="active-users-modal" class="modal-overlay" style="display:none;">
+    <div class="modal-content" style="border-color:#10b981;max-height:85vh;">
+        <div style="font-size:2em;margin-bottom:8px;">🟢</div>
+        <h2 style="color:#6ee7b7;margin:0 0 4px 0;font-size:1.05em;font-weight:900;" data-i18n="activeUsersTitle"></h2>
+        <div id="active-user-total" style="font-size:2.5em;font-weight:900;color:#6ee7b7;margin:8px 0 6px 0;">—</div>
+        <div style="font-size:0.7em;color:#94a3b8;margin-bottom:12px;" data-i18n="activeUsersDesc"></div>
+        <div id="active-user-list" style="max-height:300px;overflow-y:auto;text-align:left;margin-bottom:12px;"></div>
+        <button onclick="window.loadActiveUsers()" style="width:100%;padding:9px;margin-bottom:8px;border-radius:9px;border:1px solid #10b981;background:rgba(16,185,129,0.1);color:#6ee7b7;font-weight:800;font-size:0.75em;cursor:pointer;" data-i18n="refreshBtn"></button>
+        <button class="pi-btn" style="background:#475569;animation:none;padding:10px;margin:0;width:100%;" onclick="document.getElementById('active-users-modal').style.display='none'" data-i18n="close"></button>
+    </div>
+</div>
 <div id="legal-modal" class="modal-overlay" style="display:none;">
     <div class="modal-content" style="border-color:#f87171;max-height:85vh;text-align:left;">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
@@ -1567,6 +1579,11 @@
                 <div style="display:flex;align-items:center;gap:10px;"><div style="background:rgba(99,102,241,0.25);border:1.5px solid #818cf8;border-radius:10px;width:38px;height:38px;display:flex;align-items:center;justify-content:center;font-size:1.3em;animation:icon-pulse-btn 2.5s ease-in-out infinite;">👥</div>
                 <div style="text-align:left;"><div style="font-size:0.58em;color:#a5b4fc;font-weight:700;text-transform:uppercase;margin-bottom:2px;" data-i18n="totalLoggedInUsers"></div><div style="font-size:0.84em;color:#f1f5f9;font-weight:900;" data-i18n="uniqueUsers"></div></div></div>
                 <div style="display:flex;align-items:center;gap:5px;"><span id="unique-users-badge" style="font-size:1.8em;font-weight:900;color:#a5b4fc;">—</span><div style="background:rgba(99,102,241,0.3);border:1px solid #6366f1;border-radius:6px;padding:3px 5px;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#a5b4fc" stroke-width="3"><polyline points="9 18 15 12 9 6"/></svg></div></div>
+            </button>
+            <button onclick="window.openActiveUsersModal()" style="width:100%;box-sizing:border-box;background:linear-gradient(135deg,#052e1f 0%,#0f172a 100%);border:2px solid #10b981;border-radius:14px;padding:12px 14px;cursor:pointer;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;box-shadow:0 4px 18px rgba(16,185,129,0.35);">
+                <div style="display:flex;align-items:center;gap:10px;"><div style="background:rgba(16,185,129,0.25);border:1.5px solid #10b981;border-radius:10px;width:38px;height:38px;display:flex;align-items:center;justify-content:center;font-size:1.3em;animation:icon-pulse-btn 2.5s ease-in-out infinite;">🟢</div>
+                <div style="text-align:left;"><div style="font-size:0.58em;color:#6ee7b7;font-weight:700;text-transform:uppercase;margin-bottom:2px;" data-i18n="activeNowLabel"></div><div style="font-size:0.84em;color:#f1f5f9;font-weight:900;" data-i18n="activeUsersTitle"></div></div></div>
+                <div style="display:flex;align-items:center;gap:5px;"><span id="active-users-badge" style="font-size:1.8em;font-weight:900;color:#6ee7b7;">—</span><div style="background:rgba(16,185,129,0.3);border:1px solid #10b981;border-radius:6px;padding:3px 5px;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#6ee7b7" stroke-width="3"><polyline points="9 18 15 12 9 6"/></svg></div></div>
             </button>
             <div style="background:#060d1f;border:2.5px solid #3b82f6;border-radius:12px;padding:10px;">
                 <div style="display:flex;align-items:center;justify-content:center;gap:6px;margin-bottom:8px;padding-bottom:7px;border-bottom:1px solid #1e3a8a;"><span style="animation:icon-pulse-btn 2s ease-in-out infinite;">📋</span><span style="font-size:0.72em;color:#60a5fa;font-weight:800;text-transform:uppercase;" data-i18n="dailyLoginLog"></span></div>
@@ -2266,6 +2283,9 @@ const i18n = {
     searchPlaceholder:"🔍 Domain adı ara...",loginRequiredForFavorite:"Favorilere eklemek için giriş yapmalısınız.",
     favoriteAddBtn:"Favorilere Ekle",favoriteRemoveBtn:"Favorilerden Çıkar",
     howItWorksMenuItem:"Nasıl Çalışır?",howItWorksTitle:"Nasıl Çalışır ve Nasıl Korunuyorsunuz?",
+    activeNowLabel:"Şu An Aktif",activeUsersTitle:"Anlık Aktif Kullanıcılar",
+    activeUsersDesc:"Son 30 saniye içinde uygulamada aktif olan kullanıcılar. Butona her bastığınızda güncel veri çekilir.",
+    refreshBtn:"🔄 Yenile",loadingLabel:"Yükleniyor...",noActiveUsers:"Şu anda aktif kullanıcı yok.",
     rateSellerPrompt:"Satıcıyı değerlendirin:",yourRatingLabel:"Verdiğiniz Puan",
     confirmRatingPrompt:(n)=>`Satıcıya ${n} yıldız vermek istediğinize emin misiniz? Bu işlem geri alınamaz.`,
     genericError:"Bir hata oluştu, lütfen tekrar deneyin.",
@@ -2475,6 +2495,8 @@ const i18n = {
     tourStepOverviewTitle:"Genel Panel",
     tourStepOverviewDesc:"Hesap özetinizi, bakiyenizi ve genel istatistiklerinizi burada tek bakışta görürsünüz.",
     tourStepPurchasesTitle:"Alımlarım",
+    tourStepVerifyTitle:"🔵 Doğrula Butonu",
+    tourStepVerifyDesc:"Bu buton, ödemenizin gerçekten Pi blok zincirinde gerçekleştiğinin ispatıdır. Tıkladığınızda işleminizi doğrudan Pi blok gezgininde (block explorer) görürsünüz — yani ödemeniz uydurma değil, zincir üzerinde kalıcı ve doğrulanabilir, gerçek ve güvenli bir işlemdir.",
     tourStepPurchasesDesc:"Satın aldığınız tüm domainlerin listesine ve durumlarına buradan ulaşabilirsiniz.",
     tourStepIncomeTitle:"Gelirim",
     tourStepIncomeDesc:"Domain satışlarınızdan elde ettiğiniz geliri ve ödeme geçmişinizi burada takip edersiniz.",
@@ -2747,6 +2769,9 @@ const i18n = {
     searchPlaceholder:"🔍 Search domain name...",loginRequiredForFavorite:"You need to log in to add favorites.",
     favoriteAddBtn:"Add to Favorites",favoriteRemoveBtn:"Remove from Favorites",
     howItWorksMenuItem:"How It Works",howItWorksTitle:"How It Works & How You're Protected",
+    activeNowLabel:"Active Now",activeUsersTitle:"Currently Active Users",
+    activeUsersDesc:"Users active in the app within the last 30 seconds. Fresh data is pulled each time you press the button.",
+    refreshBtn:"🔄 Refresh",loadingLabel:"Loading...",noActiveUsers:"No active users right now.",
     rateSellerPrompt:"Rate the seller:",yourRatingLabel:"Your Rating",
     confirmRatingPrompt:(n)=>`Are you sure you want to give the seller ${n} star${n>1?'s':''}? This cannot be undone.`,
     genericError:"Something went wrong, please try again.",
@@ -2956,6 +2981,8 @@ const i18n = {
     tourStepOverviewTitle:"Overview",
     tourStepOverviewDesc:"See your account summary, balance, and overall stats here at a glance.",
     tourStepPurchasesTitle:"My Purchases",
+    tourStepVerifyTitle:"🔵 Verify Button",
+    tourStepVerifyDesc:"This button is proof your payment really happened on the Pi blockchain. Tap it to see your transaction directly in the Pi block explorer — your payment isn't just a claim, it's a permanent, verifiable, real and secure transaction on the chain.",
     tourStepPurchasesDesc:"Find the list and status of every domain you've bought here.",
     tourStepIncomeTitle:"My Income",
     tourStepIncomeDesc:"Track the income from your domain sales and your payment history here.",
@@ -3961,6 +3988,30 @@ window.downloadShareQr=async function(){
         document.body.appendChild(a); a.click(); a.remove();
         URL.revokeObjectURL(blobUrl);
     }catch(e){ window.open(img.src,'_blank'); }
+};
+window.openActiveUsersModal=async function(){
+    document.getElementById('active-users-modal').style.display='flex';
+    await window.loadActiveUsers();
+};
+window.loadActiveUsers=async function(){
+    const listEl=document.getElementById('active-user-list');
+    const totalEl=document.getElementById('active-user-total');
+    const badgeEl=document.getElementById('active-users-badge');
+    listEl.innerHTML=`<p style="font-size:0.75em;opacity:0.5;text-align:center;">${t('loadingLabel')}</p>`;
+    try{
+        const r=await fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'get_active_users',accessToken:piAccessToken})});
+        const result=await r.json();
+        if(!result.success){ listEl.innerHTML=`<p style="color:#f87171;font-size:0.8em;text-align:center;">${result.error||t('genericError')}</p>`; return; }
+        const active=result.active||[];
+        totalEl.textContent=active.length;
+        if(badgeEl) badgeEl.textContent=active.length;
+        const locale=currentLang==='en'?'en-GB':'tr-TR';
+        listEl.innerHTML = active.length===0
+            ? `<p style="font-size:0.8em;opacity:0.5;text-align:center;">${t('noActiveUsers')}</p>`
+            : active.map(u=>`<div class="log-item" style="display:flex;align-items:center;gap:8px;"><span style="width:8px;height:8px;border-radius:50%;background:#10b981;box-shadow:0 0 6px #10b981;flex-shrink:0;animation:icon-pulse-btn 1.8s ease-in-out infinite;"></span><b>@${u.username}</b><span style="color:#94a3b8;font-size:0.78em;margin-left:auto;">${new Date(u.lastSeen).toLocaleTimeString(locale,{hour:'2-digit',minute:'2-digit',second:'2-digit'})}</span></div>`).join('');
+    }catch(e){
+        listEl.innerHTML=`<p style="color:#f87171;font-size:0.8em;text-align:center;">${t('genericError')}</p>`;
+    }
 };
 window.openAuditLogModal=async function(){
     const resultsEl=document.getElementById('audit-log-results');
@@ -5636,6 +5687,7 @@ const TOUR_STEPS = [
     { selector: '#notif-btn', titleKey: 'tourStep3Title', descKey: 'tourStep3Desc', placement: 'bottom' },
     { selector: '[data-utab="utab-overview"]', titleKey: 'tourStepOverviewTitle', descKey: 'tourStepOverviewDesc', placement: 'top', before: () => window.switchUserTab && window.switchUserTab('utab-overview') },
     { selector: '[data-utab="utab-purchases"]', titleKey: 'tourStepPurchasesTitle', descKey: 'tourStepPurchasesDesc', placement: 'top', before: () => window.switchUserTab && window.switchUserTab('utab-purchases') },
+    { selector: '.verify-btn', titleKey: 'tourStepVerifyTitle', descKey: 'tourStepVerifyDesc', placement: 'top', before: () => window.switchUserTab && window.switchUserTab('utab-purchases') },
     { selector: '[data-utab="utab-income"]', titleKey: 'tourStepIncomeTitle', descKey: 'tourStepIncomeDesc', placement: 'top', before: () => window.switchUserTab && window.switchUserTab('utab-income') },
     { selector: '[data-utab="utab-listings"]', titleKey: 'tourStepListingsTitle', descKey: 'tourStepListingsDesc', placement: 'top', before: () => window.switchUserTab && window.switchUserTab('utab-listings') },
     { selector: '[data-utab="utab-trademark"]', titleKey: 'tourStepTrademarkTitle', descKey: 'tourStepTrademarkDesc', placement: 'top', before: () => window.switchUserTab && window.switchUserTab('utab-trademark') },
