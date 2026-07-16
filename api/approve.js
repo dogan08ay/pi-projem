@@ -153,16 +153,48 @@ async function getRealUsername(accessToken) {
   }
 }
 
-// ─── Rate Limiter (IP bazlı, in-memory) ───────────────────────────────────
-const rateLimitMap = new Map();
-function checkRateLimit(ip, action, maxReq = 10, windowMs = 60000) {
+// ─── Rate Limiter (IP bazlı, Firestore-tabanlı — serverless instance'lar
+// arası tutarlı çalışır) ───────────────────────────────────────────────────
+// ÖNCEKİ HAL: rateLimitMap in-memory (Map) tutuluyordu. Vercel gibi
+// serverless ortamlarda her istek farklı bir fonksiyon instance'ına
+// gidebildiğinden, bellekteki sayaç güvenilir değildi — bir saldırgan
+// farklı instance'lara denk gelerek limiti fiilen bypass edebilirdi.
+// YENİ HAL: sayaç Firestore'da (rate_limits koleksiyonu) bir transaction
+// içinde tutuluyor, böylece hangi instance'a düşerse düşsün aynı sayaç
+// görülüyor. Firestore'a erişilemezse (geçici hata vb.) eski in-memory
+// mantığa düşülüyor — böylece Firestore kesintisi tüm uygulamayı
+// kilitlemiyor, sadece o an için eski (instance-bazlı) korumaya döner.
+const rateLimitMemoryMap = new Map();
+function checkRateLimitMemoryFallback(ip, action, maxReq, windowMs) {
   const key = `${ip}:${action}`;
   const now = Date.now();
-  const entry = rateLimitMap.get(key) || { count: 0, start: now };
+  const entry = rateLimitMemoryMap.get(key) || { count: 0, start: now };
   if (now - entry.start > windowMs) { entry.count = 1; entry.start = now; }
   else entry.count++;
-  rateLimitMap.set(key, entry);
+  rateLimitMemoryMap.set(key, entry);
   return entry.count <= maxReq;
+}
+async function checkRateLimit(ip, action, maxReq = 10, windowMs = 60000) {
+  const now = Date.now();
+  const docId = `${ip}_${action}`.replace(/[\/\s]/g, '_').substring(0, 300) || `unknown_${action}`;
+  try {
+    const db = getDb();
+    const ref = db.collection('rate_limits').doc(docId);
+    return await db.runTransaction(async (tx) => {
+      const snap = await tx.get(ref);
+      const data = snap.exists ? snap.data() : null;
+      if (!data || now - data.start > windowMs) {
+        tx.set(ref, { count: 1, start: now });
+        return true;
+      }
+      if (data.count >= maxReq) return false;
+      tx.set(ref, { count: data.count + 1, start: data.start }, { merge: true });
+      return true;
+    });
+  } catch (e) {
+    console.error(`[RateLimit] Firestore hatası (${action}), in-memory yedeğe düşülüyor:`, e.message);
+    return checkRateLimitMemoryFallback(ip, action, maxReq, windowMs);
+  }
 }
 
 // ─── Bildirim Yardımcıları (Firebase Realtime Database) ───────────────────
@@ -252,6 +284,21 @@ function setCors(req, res) {
   res.setHeader('Vary', 'Origin');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+}
+
+// ─── Domain Adı Format Doğrulaması ──────────────────────────────────────
+// Domain adı hem Firestore doküman ID'si hem de frontend'de birçok yerde
+// (kart başlığı, onclick handler parametresi) HTML-escape edilmeden
+// render ediliyor. Bu fonksiyon olmadan bir kullanıcı submit_sell_request
+// ile domainName alanına HTML/script içeren bir değer gönderip, admin
+// onayladığında bunu markette herkesin tarayıcısında çalışacak şekilde
+// (stored XSS) markete sokabilirdi. Gerçek bir domain adı zaten sadece
+// harf/rakam/tire/nokta içerir, bu yüzden bu kısıtlama meşru kullanımı
+// etkilemez.
+function isValidDomainName(name) {
+  if (typeof name !== 'string') return false;
+  if (name.length < 3 || name.length > 253) return false;
+  return /^[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)+$/.test(name);
 }
 
 // ─── Puan Güncelleme (Handler DIŞINDA - Negatif Puan Koruması) ───────────
@@ -377,7 +424,7 @@ async function handlerImpl(req, res) {
 
   // ── Görsel Yükleme ─────────────────────────────────────────────────────
   if (action === 'upload_image') {
-    if (!checkRateLimit(clientIp, 'upload_image', 5, 60000))
+    if (!await checkRateLimit(clientIp, 'upload_image', 5, 60000))
       return res.status(429).json({ error: "Çok fazla istek. Lütfen bekleyin." });
 
     const realUsername = await getRealUsername(accessToken);
@@ -641,6 +688,8 @@ async function handlerImpl(req, res) {
     if (!isAdmin) return res.status(403).json({ error: "Yetki yok" });
     const priceNum = Number(newP);
     if (!newName || !priceNum || priceNum <= 0) return res.status(400).json({ error: "Geçersiz parametre" });
+    if (!isValidDomainName(newName))
+      return res.status(400).json({ error: "Geçersiz domain adı formatı. Örnek: example.com" });
     try {
       const db = getDb();
       const domainRef = db.collection('domains').doc(newName);
@@ -1387,7 +1436,7 @@ async function handlerImpl(req, res) {
 
   // ── Satış Önerisi Gönder ──────────────────────────────────────────────
   if (action === 'submit_sell_request') {
-    if (!checkRateLimit(clientIp, 'submit_sell_request', 3, 60000))
+    if (!await checkRateLimit(clientIp, 'submit_sell_request', 3, 60000))
       return res.status(429).json({ error: "Çok fazla istek. 1 dakika bekleyin." });
 
     const { domainName: reqDomainName, price: reqPrice, domainType, imgPath: reqImgPath, sellerNote, ownershipProof, description, editMode, oldRequestId } = req.body;
@@ -1396,6 +1445,8 @@ async function handlerImpl(req, res) {
 
     const priceNum = Number(reqPrice);
     if (!reqDomainName || !priceNum || priceNum <= 0) return res.status(400).json({ error: "Geçersiz parametre" });
+    if (!isValidDomainName(reqDomainName))
+      return res.status(400).json({ error: "Geçersiz domain adı formatı. Örnek: example.com" });
     // Sahiplik kanıtı zorunlu — açık artırmayla kazanılmış bir domaini
     // başkasının adına satışa çıkarmayı zorlaştırmak için minimum bir engel.
     if (!ownershipProof || !ownershipProof.trim())
@@ -1608,7 +1659,7 @@ async function handlerImpl(req, res) {
 
   // ── Ticket Oluştur (Kullanıcı) ────────────────────────────────────────
   if (action === 'create_ticket') {
-    if (!checkRateLimit(clientIp, 'create_ticket', 5, 60000))
+    if (!await checkRateLimit(clientIp, 'create_ticket', 5, 60000))
       return res.status(429).json({ error: "Çok fazla istek. Lütfen bekleyin." });
 
     const { subject, category, message, priority } = req.body;
@@ -1843,7 +1894,7 @@ async function handlerImpl(req, res) {
   }
 
   if (action === 'submit_trademark_claim') {
-    if (!checkRateLimit(clientIp, 'submit_trademark_claim', 3, 3600000))
+    if (!await checkRateLimit(clientIp, 'submit_trademark_claim', 3, 3600000))
       return res.status(429).json({ error: "Çok fazla istek. Lütfen daha sonra tekrar deneyin." });
 
     const { claimantName, companyName, domainName: claimDomain, trademarkInfo, description, contactEmail } = req.body;
@@ -2853,7 +2904,7 @@ async function handlerImpl(req, res) {
     const { domainName, offerPrice, message } = req.body;
     const realUsername = await getRealUsername(accessToken);
     if (!realUsername) return res.status(403).json({ error: "Geçersiz oturum" });
-    if (!checkRateLimit(clientIp, 'submit_offer', 10, 60000))
+    if (!await checkRateLimit(clientIp, 'submit_offer', 10, 60000))
       return res.status(429).json({ error: "Çok fazla teklif gönderdiniz, lütfen biraz bekleyin." });
     const priceNum = Number(offerPrice);
     if (!domainName || !Number.isFinite(priceNum) || priceNum <= 0)
@@ -3118,7 +3169,7 @@ async function handlerImpl(req, res) {
   if (action === 'get_user_profile') {
     // YENİ: Girişten hemen sonra çağrılan bu endpoint'e de rate limit
     // eklendi — token deneme/kaba kuvvet saldırılarına karşı ek koruma.
-    if (!checkRateLimit(clientIp, 'get_user_profile', 20, 60000))
+    if (!await checkRateLimit(clientIp, 'get_user_profile', 20, 60000))
       return res.status(429).json({ error: "Çok fazla istek. Lütfen biraz bekleyin." });
     const realUsername = await getRealUsername(accessToken);
     if (!realUsername) return res.status(403).json({ error: "Geçersiz oturum" });
@@ -3397,7 +3448,7 @@ async function handlerImpl(req, res) {
   // YENİ: Ödeme akışı (satın alma) için rate limiting eklendi — daha önce
   // hiç yoktu, bu da otomatikleştirilmiş kötüye kullanıma (bot ile ardı
   // ardına sahte ödeme denemesi) açık bırakıyordu.
-  if (!checkRateLimit(clientIp, 'payment_action', 20, 60000))
+  if (!await checkRateLimit(clientIp, 'payment_action', 20, 60000))
     return res.status(429).json({ error: "Çok fazla ödeme isteği. Lütfen biraz bekleyip tekrar deneyin." });
 
   if (action === 'cancel') {
