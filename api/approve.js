@@ -921,6 +921,30 @@ async function handlerImpl(req, res) {
   // takılı kalmış ödemeler, kopuk ilan kayıtları vb.) ve bir rapor
   // (issues[]) döner. Hiçbir veriyi DEĞİŞTİRMEZ, sadece okur ve raporlar.
   // ── Admin İşlem Günlüğünü Getir ────────────────────────────────────────
+  // ── Anlık Aktif Kullanıcılar (Admin) ───────────────────────────────────
+  // Mevcut "giriş bildirimleri" (log_login) ve günlük giriş kaydına EK
+  // olarak: admin panelinde açıldığı anda son 30 saniye içinde "aktif"
+  // (active_users koleksiyonunda lastSeen güncel) olan kullanıcıları
+  // canlı olarak çeker. Var olan giriş bildirimi akışına dokunmuyor.
+  if (action === 'get_active_users') {
+    const isAdmin = await verifyAdmin(accessToken);
+    if (!isAdmin) return res.status(403).json({ error: "Yetki yok" });
+    try {
+      const db = getDb();
+      const snap = await db.collection('active_users').get();
+      const now = Date.now();
+      const active = [];
+      snap.forEach(d => {
+        const lastSeen = d.data().lastSeen;
+        if (lastSeen && (now - lastSeen) < 30000) active.push({ username: d.id, lastSeen });
+      });
+      active.sort((a, b) => b.lastSeen - a.lastSeen);
+      return res.status(200).json({ success: true, active });
+    } catch (e) {
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
   if (action === 'get_admin_audit_log') {
     const isAdmin = await verifyAdmin(accessToken);
     if (!isAdmin) return res.status(403).json({ error: "Yetki yok" });
