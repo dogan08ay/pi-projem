@@ -1670,10 +1670,12 @@
                 <div style="background:#0f172a;border:1px solid #334155;border-radius:10px;padding:10px;text-align:center;">
                     <div style="font-size:0.6em;color:#94a3b8;font-weight:700;margin-bottom:4px;" data-i18n="totalVolumeAll"></div>
                     <div id="admin-total-volume" style="font-size:1.3em;font-weight:900;color:#fbbf24;">0 Pi</div>
+                    <div style="font-size:0.58em;color:#64748b;line-height:1.4;margin-top:6px;" data-i18n="totalVolumeAllExplain"></div>
                 </div>
                 <div style="background:#0f172a;border:1px solid #334155;border-radius:10px;padding:10px;text-align:center;">
                     <div style="font-size:0.6em;color:#94a3b8;font-weight:700;margin-bottom:4px;" data-i18n="userOwnedVolume"></div>
                     <div id="admin-user-volume" style="font-size:1.3em;font-weight:900;color:#34d399;">0 Pi</div>
+                    <div style="font-size:0.58em;color:#64748b;line-height:1.4;margin-top:6px;" data-i18n="userOwnedVolumeExplain"></div>
                 </div>
             </div>
             <div style="margin-top:12px;background:#1c0a0a;border:2px solid #ef4444;border-radius:12px;padding:10px;">
@@ -2317,6 +2319,8 @@ const i18n = {
     adminOwnEarningsTitle:"KİŞİSEL SATICI KAZANCIM",
     adminOwnEarningsNote:"Sadece kendi ilanlarımdan (" + APP_CONFIG.adminUsername + ") elde ettiğim satış geliri. Başkalarının ilanları ve sistem domainleri hariç.",
     totalVolumeAll:"Toplam Satış Hacmi",userOwnedVolume:"Kullanıcı Domain Geliri",
+    totalVolumeAllExplain:"Satıcısı fark etmeksizin, şimdiye kadar tamamlanmış TÜM satışların fiyatları toplamı.",
+    userOwnedVolumeExplain:"Sadece \"sahibi belli\" (satıcı adı kayıtlı) domainlerin satışlarının toplamı — satış tamamlanır tamamlanmaz sayılır, ödemenin satıcıya serbest bırakılmasını beklemez.",
     refreshBtn:"🔄 Yenile",viewBtn:"👁 Gör",
     resetDangerTitle:"TEHLİKELİ BÖLGE — GERİ DÖNÜŞÜ YOK",
     resetDangerNote:"global_sales, daily_stats tamamen silinir. Tüm kullanıcı puanları/rozetleri sıfırlanır. Marketin kendisi ve domain durumları etkilenmez. Bu işlem GERİ ALINAMAZ.",
@@ -2803,6 +2807,8 @@ const i18n = {
     adminOwnEarningsTitle:"MY PERSONAL SELLER EARNINGS",
     adminOwnEarningsNote:"Only from my own listings (" + APP_CONFIG.adminUsername + "). Excludes other users listings and system domains.",
     totalVolumeAll:"Total Sales Volume",userOwnedVolume:"User-Owned Domain Income",
+    totalVolumeAllExplain:"Total price of ALL completed sales so far, regardless of who the seller is.",
+    userOwnedVolumeExplain:"Total of sales where the domain has a recorded seller — counted as soon as the sale completes, without waiting for the payout to be released to the seller.",
     refreshBtn:"🔄 Refresh",viewBtn:"👁 View",
     resetDangerTitle:"DANGER ZONE — IRREVERSIBLE",
     resetDangerNote:"global_sales and daily_stats will be permanently deleted. All user points/badges will be reset to zero. The market and domain statuses are NOT affected.",
