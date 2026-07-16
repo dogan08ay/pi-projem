@@ -981,9 +981,23 @@
 .tour-skip { background:none; border:none; color:#64748b; font-size:0.72em; font-weight:700; cursor:pointer; padding:6px 4px; }
 .tour-next { background:linear-gradient(135deg,#6366f1,#818cf8); border:none; color:#fff; font-size:0.75em; font-weight:800; cursor:pointer; padding:8px 16px; border-radius:8px; }
 
+/* ── Toast Bildirim Sistemi (native alert() yerine) ───────────────────── */
+#toast-container { position:fixed; top:16px; left:50%; transform:translateX(-50%); z-index:100000; display:flex; flex-direction:column; gap:8px; align-items:center; pointer-events:none; width:calc(100% - 24px); max-width:420px; }
+.toast-item { pointer-events:auto; width:100%; box-sizing:border-box; background:#1e293b; border:1.5px solid #334155; border-radius:12px; padding:12px 14px; font-size:0.8em; line-height:1.5; color:#e2e8f0; white-space:pre-line; word-break:break-word; box-shadow:0 8px 24px rgba(0,0,0,0.35); display:flex; align-items:flex-start; gap:8px; animation:toast-in 0.25s ease-out; cursor:pointer; }
+.toast-item.toast-success { border-color:#10b981; background:rgba(16,185,129,0.12); }
+.toast-item.toast-error { border-color:#ef4444; background:rgba(239,68,68,0.12); }
+.toast-item.toast-info { border-color:#6366f1; background:rgba(99,102,241,0.12); }
+.toast-item.toast-leaving { animation:toast-out 0.2s ease-in forwards; }
+.toast-icon { flex-shrink:0; font-size:1.1em; line-height:1.4; }
+.toast-text { flex:1; }
+@keyframes toast-in { from{opacity:0;transform:translateY(-10px);} to{opacity:1;transform:translateY(0);} }
+@keyframes toast-out { from{opacity:1;transform:translateY(0);} to{opacity:0;transform:translateY(-10px);} }
+@media (max-width:480px) { #toast-container{ top:auto; bottom:16px; } }
+
 </style>
 </head>
 <body style="margin:0;padding:0;width:100%;min-width:320px;overflow-x:hidden;position:relative;box-sizing:border-box;">
+<div id="toast-container" aria-live="polite"></div>
 <!-- ═══════════════════════════════════════════════════════════════
      GÜVEN / BİLGİLENDİRME EKRANI (İLK AÇILIŞ)
      Uygulama satın alma ve cüzdan bağlantısı içerdiği için ilk ziyarette
@@ -1006,7 +1020,7 @@
         <path d="M10 12.5l1.5 1.5L15 10.5" stroke="#fbbf24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
     </svg>
 </button>
-<button id="tour-fab" onclick="window.startOnboardingTour()" title="Uygulama Turu" style="display:none;position:fixed;bottom:16px;right:14px;z-index:900;width:46px;height:46px;border-radius:50%;background:linear-gradient(135deg,#6366f1,#818cf8);border:2px solid rgba(255,255,255,0.25);box-shadow:0 6px 18px rgba(99,102,241,0.55);color:#fff;font-size:1.15em;font-weight:900;cursor:pointer;align-items:center;justify-content:center;animation:tour-fab-pulse 2.4s ease-in-out infinite;">?</button>
+<button id="tour-fab" onclick="window.startOnboardingTour()" title="Uygulama Turu" aria-label="Uygulama turunu başlat" style="display:none;position:fixed;bottom:16px;right:14px;z-index:900;width:46px;height:46px;border-radius:50%;background:linear-gradient(135deg,#6366f1,#818cf8);border:2px solid rgba(255,255,255,0.25);box-shadow:0 6px 18px rgba(99,102,241,0.55);color:#fff;font-size:1.15em;font-weight:900;cursor:pointer;align-items:center;justify-content:center;animation:tour-fab-pulse 2.4s ease-in-out infinite;">?</button>
 <style>@keyframes tour-fab-pulse{0%,100%{box-shadow:0 6px 18px rgba(99,102,241,0.55);}50%{box-shadow:0 6px 26px rgba(99,102,241,0.9),0 0 0 6px rgba(99,102,241,0.15);}}</style>
 <div class="side-menu-overlay" id="side-menu-overlay" onclick="toggleSideMenu()"></div>
 
@@ -1014,7 +1028,7 @@
 <div class="side-menu" id="side-menu">
     <div class="side-menu-header">
         <div style="font-weight:900;color:#c7d2fe;font-size:1.05em;">☰ <span data-i18n="menu"></span></div>
-        <button class="side-menu-close" onclick="toggleSideMenu()">✕</button>
+        <button class="side-menu-close" onclick="toggleSideMenu()" aria-label="Menüyü kapat">✕</button>
     </div>
     <div id="side-menu-profile-box" style="display:none;background:rgba(99,102,241,0.12);border:1.5px solid #6366f1;border-radius:9px;padding:6px;margin-bottom:4px;text-align:left;">
         <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
@@ -1405,7 +1419,7 @@
     <div class="modal-content" style="border-color:#f87171;max-height:85vh;text-align:left;">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
             <h2 id="legal-modal-title" style="color:#f87171;margin:0;font-size:1.05em;font-weight:900;"></h2>
-            <button onclick="document.getElementById('legal-modal').style.display='none'" style="background:rgba(248,113,113,0.15);border:1px solid rgba(248,113,113,0.4);color:#f87171;width:28px;height:28px;border-radius:8px;font-size:0.9em;cursor:pointer;font-weight:900;line-height:1;">✕</button>
+            <button onclick="document.getElementById('legal-modal').style.display='none'" aria-label="Kapat" style="background:rgba(248,113,113,0.15);border:1px solid rgba(248,113,113,0.4);color:#f87171;width:28px;height:28px;border-radius:8px;font-size:0.9em;cursor:pointer;font-weight:900;line-height:1;">✕</button>
         </div>
         <div id="legal-modal-body" style="max-height:65vh;overflow-y:auto;font-size:0.85em;line-height:1.6;color:#cbd5e1;"></div>
         <button class="pi-btn" style="background:#f87171;animation:none;padding:10px;margin:12px 0 0 0;width:100%;" onclick="document.getElementById('legal-modal').style.display='none'" data-i18n="close"></button>
@@ -1804,7 +1818,7 @@
         <div class="filter-section" id="filter-section" style="display:none;">
             <div style="display:flex;gap:6px;margin-bottom:6px;">
                 <input type="text" id="domain-search-input" oninput="window.onDomainSearchInput(this.value)" data-i18n-placeholder="searchPlaceholder" style="flex:1;min-width:0;background:#0f172a;border:1.5px solid #334155;border-radius:9px;padding:9px 10px;color:#e2e8f0;font-size:0.78em;">
-                <button type="button" id="favorites-filter-toggle" onclick="window.toggleFavoritesFilter()" style="flex-shrink:0;padding:0 12px;border-radius:9px;border:1.5px solid #f59e0b;background:rgba(245,158,11,0.1);color:#fbbf24;font-size:1em;cursor:pointer;">☆</button>
+                <button type="button" id="favorites-filter-toggle" onclick="window.toggleFavoritesFilter()" aria-label="Sadece favorileri göster" style="flex-shrink:0;padding:0 12px;border-radius:9px;border:1.5px solid #f59e0b;background:rgba(245,158,11,0.1);color:#fbbf24;font-size:1em;cursor:pointer;">☆</button>
             </div>
             <div class="filter-section-label" data-i18n="filterSectionLabel"></div>
             <button type="button" id="category-filter-btn" onclick="window.toggleCategoryFilterPanel()" class="category-select" style="display:flex;align-items:center;justify-content:space-between;cursor:pointer;">
@@ -1992,6 +2006,42 @@
 })();
 </script>
 <script type="module">
+// ═══════════════════════════════════════════════════════════════════════
+//  TOAST BİLDİRİM SİSTEMİ — native alert() yerine kullanılır. alert()
+//  senkron/bloklayıcı olduğu için tarayıcıyı kilitliyordu ve mobilde
+//  marka kimliğinden kopuk duruyordu. Bu fonksiyon aynı yerlerden
+//  (alert(...) -> showToast(...)) çağrılır, ama sayfayı bloklamaz.
+//  Mesaj içeriğine bakarak (✅/⚠️/❌/Hata gibi işaretler) otomatik
+//  success/error/info renklendirmesi yapar.
+// ═══════════════════════════════════════════════════════════════════════
+function showToast(message) {
+    try {
+        const text = String(message ?? '');
+        let type = 'info', icon = 'ℹ️';
+        if (/^✅|başarı|güncellendi|eklendi|gönderildi|onaylandı|kaydedildi/i.test(text) && !/hata|başarısız/i.test(text)) {
+            type = 'success'; icon = '✅';
+        } else if (/^(⚠️|❌|🔴)|hata|başarısız|yetki yok|geçersiz|bulunamadı|error/i.test(text)) {
+            type = 'error'; icon = '⚠️';
+        }
+        const container = document.getElementById('toast-container');
+        if (!container) { console.log('[toast]', text); return; }
+        const el = document.createElement('div');
+        el.className = `toast-item toast-${type}`;
+        el.innerHTML = `<span class="toast-icon">${icon}</span><span class="toast-text"></span>`;
+        el.querySelector('.toast-text').textContent = text;
+        const duration = Math.min(9000, Math.max(3500, text.length * 60));
+        const remove = () => {
+            el.classList.add('toast-leaving');
+            setTimeout(() => el.remove(), 200);
+        };
+        el.addEventListener('click', remove);
+        container.appendChild(el);
+        setTimeout(remove, duration);
+    } catch (e) {
+        console.error('showToast hatası:', e);
+    }
+}
+
 // ═══════════════════════════════════════════════════════════════════════
 //  SKELETON SCREEN HELPERS — yükleme sırasında boş ekran yerine iskelet
 // ═══════════════════════════════════════════════════════════════════════
@@ -3237,7 +3287,7 @@ window.toggleLangPicker=function(){const p=document.getElementById('lang-picker'
 
 // PROFILE MODAL
 window.openProfileModal=function(){
-    if(!isAuth){alert(t('profileLoginRequired'));return;}
+    if(!isAuth){showToast(t('profileLoginRequired'));return;}
     document.getElementById('profile-modal').style.display='flex';
     document.getElementById('profile-modal-username').innerText='@'+currentUser;
     document.getElementById('profile-modal-avatar').innerText=currentUser.charAt(0).toUpperCase();
@@ -3351,7 +3401,7 @@ window.toggleFavoritesFilter=function(){
 };
 window.toggleFavorite=async function(domainName, evt){
     if(evt) evt.stopPropagation();
-    if(!isAuth){ alert(t('loginRequiredForFavorite')); return; }
+    if(!isAuth){ showToast(t('loginRequiredForFavorite')); return; }
     const wasFav=userFavorites.has(domainName);
     // İyimser (optimistic) güncelleme — sunucu yanıtını beklemeden arayüzü güncelle
     if(wasFav) userFavorites.delete(domainName); else userFavorites.add(domainName);
@@ -3426,7 +3476,7 @@ function syncCategoryFilterCheckboxes(){
 // GÖRSEL SEÇME
 window.handleImageSelect=function(event){
     const file=event.target.files[0]; if(!file) return;
-    if(file.size>2*1024*1024){alert(t('imageUploadFailed'));return;}
+    if(file.size>2*1024*1024){showToast(t('imageUploadFailed'));return;}
     const reader=new FileReader();
     reader.onload=function(e){
         const result=e.target.result;
@@ -3440,7 +3490,7 @@ window.handleImageSelect=function(event){
 
 // SATIŞ ÖNERİSİ
 window.openSellDomainModal=function(){
-    if(!isAuth){alert(t('sellLoginRequired'));return;}
+    if(!isAuth){showToast(t('sellLoginRequired'));return;}
     document.getElementById('sell-domain-modal').style.display='flex';
     if(document.getElementById('side-menu').classList.contains('open')) toggleSideMenu();
 
@@ -3474,7 +3524,7 @@ function sellFormFail(el,message){
         el.scrollIntoView({behavior:'smooth',block:'center'});
         if(typeof el.focus==='function') el.focus();
     }
-    alert(message);
+    showToast(message);
 }
 window.handleSubmitSellRequest=async function(){
     sellFormClearErrors();
@@ -3510,8 +3560,8 @@ window.handleSubmitSellRequest=async function(){
                 body:JSON.stringify({action:'upload_image',imageBase64:selectedImageBase64,mimeType:selectedImageMime,fileName:selectedImageName,accessToken:piAccessToken})});
             const result=await r.json();
             if(result.success&&result.url) imgUrl=result.url;
-            else{alert(t('imageUploadFailed'));if(hint)hint.textContent=t('imageUploadHint');return;}
-        }catch(e){alert(t('imageUploadFailed'));return;}
+            else{showToast(t('imageUploadFailed'));if(hint)hint.textContent=t('imageUploadHint');return;}
+        }catch(e){showToast(t('imageUploadFailed'));return;}
     }else if(hasExistingImage){
         imgUrl=window._editingRejectedRequestOldImg;
     }
@@ -3539,11 +3589,11 @@ window.handleSubmitSellRequest=async function(){
         const r=await fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},
             body:JSON.stringify(payload)});
         const result=await r.json();
-        if(!r.ok||!result.success){alert(t('sellSubmitFail')+(result.error||''));return;}
-        alert(isEditMode?(currentLang==='tr'?'İlan düzenlenip yeniden onaya gönderildi.':'Listing edited and resubmitted for approval.'):t('sellSubmitSuccess'));
+        if(!r.ok||!result.success){showToast(t('sellSubmitFail')+(result.error||''));return;}
+        showToast(isEditMode?(currentLang==='tr'?'İlan düzenlenip yeniden onaya gönderildi.':'Listing edited and resubmitted for approval.'):t('sellSubmitSuccess'));
         closeSellDomainModal();
         await loadUserProfile(); debouncedRender();
-    }catch(e){alert(t('sellSubmitError'));}
+    }catch(e){showToast(t('sellSubmitError'));}
 };
 
 // ─── BİLDİRİMLER (Backend Proxy ile — RTDB rules kapalı olduğu için
@@ -3699,11 +3749,11 @@ window.clearAllNotifications=async function(){
     try{
         const r=await fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'clear_all_notifications',accessToken:piAccessToken})});
         const result=await r.json();
-        if(!r.ok||!result.success){alert(t('clearAllNotifsFail')+(result.error||''));return;}
+        if(!r.ok||!result.success){showToast(t('clearAllNotifsFail')+(result.error||''));return;}
         cachedNotifications=[];
         renderNotifBadgeAndList();
         document.getElementById('notif-modal').style.display='none';
-    }catch(e){alert(t('clearAllNotifsError'));}
+    }catch(e){showToast(t('clearAllNotifsError'));}
 };
 
 // DOMAIN DETAY
@@ -3752,7 +3802,7 @@ window.openDomainDetail=function(domainName){
         if(dateStr) rows+=row('📅',t('saleDateLabel'),dateStr);
         rows+=row('🧾',t('detailFieldTxid'),data.txid||'—');
     }
-    rows+=`<div style="display:flex;gap:6px;align-items:flex-start;"><span style="color:#64748b;flex-shrink:0;font-weight:700;min-width:100px;">📝 ${t('detailFieldDesc')}:</span><span style="color:#94a3b8;word-break:break-word;flex:1;">${data.description||domain.description||t('descriptionEmpty')}</span></div>`;
+    rows+=`<div style="display:flex;gap:6px;align-items:flex-start;"><span style="color:#64748b;flex-shrink:0;font-weight:700;min-width:100px;">📝 ${t('detailFieldDesc')}:</span><span style="color:#94a3b8;word-break:break-word;flex:1;">${(data.description||domain.description)?escapeHtml(data.description||domain.description):t('descriptionEmpty')}</span></div>`;
 
     document.getElementById('detail-modal-fields').innerHTML=rows;
 
@@ -3774,11 +3824,11 @@ window.handleWithdrawListing=async function(domainName){
     try{
         const r=await fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'withdraw_listing',domainName,accessToken:piAccessToken})});
         const result=await r.json();
-        if(!r.ok||!result.success){alert(t('withdrawFail')+(result.error||''));return;}
-        alert(t('withdrawSuccess')(domainName));
+        if(!r.ok||!result.success){showToast(t('withdrawFail')+(result.error||''));return;}
+        showToast(t('withdrawSuccess')(domainName));
         await loadUserProfile();
         debouncedRender();
-    }catch(e){alert(t('withdrawError'));}
+    }catch(e){showToast(t('withdrawError'));}
 };
 
 // ── ESCROW: Alıcı/Satıcı devir onayı ────────────────────────────────────
@@ -3788,7 +3838,7 @@ window.handleConfirmTransfer=async function(domainName,role,confirmed){
         const raw=prompt(t('reportIssuePrompt'));
         if(raw===null) return; // kullanıcı "İptal" ile çıktı — hiçbir şey gönderilmez
         note=raw.trim();
-        if(!note){ alert(t('reportIssueEmptyWarning')); return; } // boş metinle "Tamam" da göndermez
+        if(!note){ showToast(t('reportIssueEmptyWarning')); return; } // boş metinle "Tamam" da göndermez
     } else {
         if(!confirm(role==='buyer'?t('confirmReceivedConfirmDialog')(domainName):t('confirmSentConfirmDialog')(domainName))) return;
     }
@@ -3796,10 +3846,10 @@ window.handleConfirmTransfer=async function(domainName,role,confirmed){
         const action = role==='buyer' ? 'confirm_transfer_buyer' : 'confirm_transfer_seller';
         const r=await fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action,domainName,confirmed,note,accessToken:piAccessToken})});
         const result=await r.json();
-        if(!r.ok||!result.success){alert(t('confirmTransferFail')+(result.error||''));return;}
+        if(!r.ok||!result.success){showToast(t('confirmTransferFail')+(result.error||''));return;}
         await loadUserProfile();
         debouncedRender();
-    }catch(e){alert(t('confirmTransferError'));}
+    }catch(e){showToast(t('confirmTransferError'));}
 };
 
 // ── KULLANICI: Reddedilmiş ilan işlemleri ──────────────────────────────
@@ -3809,17 +3859,17 @@ window.handleDeleteRejectedRequest=async function(requestId){
     try{
         const r=await fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'delete_rejected_request',requestId:requestId,accessToken:piAccessToken})});
         const result=await r.json();
-        if(!r.ok||!result.success){alert((currentLang==='tr'?'Silme başarısız: ':'Delete failed: ')+(result.error||''));return;}
-        alert(currentLang==='tr'?'İlan başarıyla silindi.':'Listing deleted successfully.');
+        if(!r.ok||!result.success){showToast((currentLang==='tr'?'Silme başarısız: ':'Delete failed: ')+(result.error||''));return;}
+        showToast(currentLang==='tr'?'İlan başarıyla silindi.':'Listing deleted successfully.');
         await loadUserProfile();
         debouncedRender();
-    }catch(e){alert(currentLang==='tr'?'Bir hata oluştu.':'An error occurred.');}
+    }catch(e){showToast(currentLang==='tr'?'Bir hata oluştu.':'An error occurred.');}
 };
 
 window.openEditRejectedRequest=function(requestId){
     const req=userSellRequests.find(r=>r.id===requestId);
-    if(!req){alert(currentLang==='tr'?'İlan bulunamadı.':'Listing not found.');return;}
-    if(req.status!=='rejected'){alert(currentLang==='tr'?'Sadece reddedilmiş ilanlar düzenlenebilir.':'Only rejected listings can be edited.');return;}
+    if(!req){showToast(currentLang==='tr'?'İlan bulunamadı.':'Listing not found.');return;}
+    if(req.status!=='rejected'){showToast(currentLang==='tr'?'Sadece reddedilmiş ilanlar düzenlenebilir.':'Only rejected listings can be edited.');return;}
     // Modal alanlarını doldur
     document.getElementById('sell-domain-name').value=req.domainName||'';
     document.getElementById('sell-domain-name').readOnly=true;
@@ -3881,11 +3931,11 @@ window.handleWithdrawSellRequest=async function(requestId){
     try{
         const r=await fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'withdraw_sell_request',requestId,accessToken:piAccessToken})});
         const result=await r.json();
-        if(!r.ok||!result.success){alert((currentLang==='tr'?'Geri çekme başarısız: ':'Withdraw failed: ')+(result.error||''));return;}
-        alert(currentLang==='tr'?'İlan talebi geri çekildi.':'Listing request withdrawn.');
+        if(!r.ok||!result.success){showToast((currentLang==='tr'?'Geri çekme başarısız: ':'Withdraw failed: ')+(result.error||''));return;}
+        showToast(currentLang==='tr'?'İlan talebi geri çekildi.':'Listing request withdrawn.');
         await loadUserProfile();
         debouncedRender();
-    }catch(e){alert(currentLang==='tr'?'Bir hata oluştu.':'An error occurred.');}
+    }catch(e){showToast(currentLang==='tr'?'Bir hata oluştu.':'An error occurred.');}
 };
 
 window.toggleSaleDetail=function(id){
@@ -3913,13 +3963,13 @@ window.openSellRequestDetail=function(requestId,dataStr){
     rows.forEach(row=>{
         html+=`<div style="background:#0f172a;border-radius:8px;padding:8px 10px;">
             <div style="font-size:0.65em;color:#94a3b8;font-weight:800;text-transform:uppercase;margin-bottom:3px;">${row.icon} ${row.label}</div>
-            <div style="font-size:0.88em;color:#f1f5f9;font-weight:700;word-break:break-all;">${row.value}</div>
+            <div style="font-size:0.88em;color:#f1f5f9;font-weight:700;word-break:break-all;">${escapeHtml(String(row.value))}</div>
         </div>`;
     });
     if(p.description){
         html+=`<div style="background:#0f172a;border-radius:8px;padding:8px 10px;">
             <div style="font-size:0.65em;color:#94a3b8;font-weight:800;text-transform:uppercase;margin-bottom:3px;">📝 ${t('detailFieldDesc')}</div>
-            <div style="font-size:0.82em;color:#cbd5e1;line-height:1.5;">${p.description}</div>
+            <div style="font-size:0.82em;color:#cbd5e1;line-height:1.5;">${escapeHtml(p.description)}</div>
         </div>`;
     }
     if(p.ownershipProof){
@@ -3948,12 +3998,12 @@ function renderPendingDomains(pendingList){
         const safe=JSON.stringify(p).replace(/\\/g,'\\\\').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
         return `<div class="pending-domain-item">
             <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px;">
-                <div><b style="color:#fbbf24;">${p.domainName}</b> <span class="domain-type-tag">${typeLabel(p.domainType)}</span></div>
+                <div><b style="color:#fbbf24;">${escapeHtml(p.domainName)}</b> <span class="domain-type-tag">${typeLabel(p.domainType)}</span></div>
                 <span style="color:#fbbf24;font-weight:900;font-size:0.9em;">${p.price} PI</span>
             </div>
             <div style="font-size:0.72em;color:#94a3b8;margin-bottom:8px;">
                 👤 ${t('pendingSentBy')}${p.submittedBy}<br>
-                📝 ${t('pendingWallet')}${p.sellerNote?(p.sellerNote.length>40?p.sellerNote.substring(0,40)+'...':p.sellerNote):t('pendingWalletUnspecified')}
+                📝 ${t('pendingWallet')}${p.sellerNote?escapeHtml(p.sellerNote.length>40?p.sellerNote.substring(0,40)+'...':p.sellerNote):t('pendingWalletUnspecified')}
             </div>
             <div style="display:flex;gap:6px;">
                 <button onclick="openSellRequestDetail('${p.id}','${safe}')" style="flex:1;background:#6366f1;color:#fff;border:none;padding:7px;border-radius:8px;font-size:0.72em;font-weight:800;cursor:pointer;">${t('detailBtn')}</button>
@@ -3965,15 +4015,15 @@ function renderPendingDomains(pendingList){
 window.handleApproveSellRequest=async function(requestId){
     if(!confirm(t('approveConfirm'))) return;
     const r=await fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'approve_sell_request',requestId,accessToken:piAccessToken})});
-    const result=await r.json(); if(!r.ok||!result.success) alert(t('approveFail')+(result.error||''));
+    const result=await r.json(); if(!r.ok||!result.success) showToast(t('approveFail')+(result.error||''));
 };
 window.handleRejectSellRequest=async function(requestId){
     const reason=prompt(currentLang==='tr'?'Lütfen red sebebini girin (ilan sahibi tarafından görülecektir):':'Please enter the rejection reason (will be visible to the listing owner):');
     if(reason===null) return; // İptal edildi
-    if(!reason.trim()){alert(currentLang==='tr'?'Red sebebi boş bırakılamaz.':'Rejection reason cannot be empty.');return;}
+    if(!reason.trim()){showToast(currentLang==='tr'?'Red sebebi boş bırakılamaz.':'Rejection reason cannot be empty.');return;}
     if(!confirm(t('rejectConfirm'))) return;
     const r=await fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'reject_sell_request',requestId,rejectReason:reason.trim(),accessToken:piAccessToken})});
-    const result=await r.json(); if(!r.ok||!result.success) alert(t('rejectFail')+(result.error||''));
+    const result=await r.json(); if(!r.ok||!result.success) showToast(t('rejectFail')+(result.error||''));
 };
 // ADMIN PRICE LIST
 function renderAdminPriceList(){
@@ -4012,7 +4062,7 @@ function renderAdminPriceList(){
                         <div style="font-size:0.62em;color:#94a3b8;">${t('deletedAtLabel')} ${delDate}</div>
                     </div>
                     <button onclick="handleRestoreDomain('${d.name}')" style="background:#10b981;color:#fff;border:none;padding:5px 8px;border-radius:6px;font-size:0.7em;font-weight:bold;cursor:pointer;flex-shrink:0;">${t('restoreBtn')}</button>
-                    <button onclick="handlePermanentDelete('${d.name}')" style="background:#7f1d1d;color:#fca5a5;border:1px solid #ef4444;padding:5px 8px;border-radius:6px;font-size:0.7em;font-weight:bold;cursor:pointer;flex-shrink:0;" data-i18n-title="permanentDeleteBtn">🗑</button>
+                    <button onclick="handlePermanentDelete('${d.name}')" style="background:#7f1d1d;color:#fca5a5;border:1px solid #ef4444;padding:5px 8px;border-radius:6px;font-size:0.7em;font-weight:bold;cursor:pointer;flex-shrink:0;" data-i18n-title="permanentDeleteBtn" aria-label="Kalıcı sil">🗑</button>
                 </div>`;
             }).join('');
         }
@@ -4022,14 +4072,14 @@ window.handleRestoreDomain=async function(domainName){
     if(!confirm(t('restoreConfirm')(domainName))) return;
     const r=await fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'restore_domain',domainName,accessToken:piAccessToken})});
     const result=await r.json();
-    if(!r.ok||!result.success) alert(t('restoreFail')+(result.error||''));
-    else alert(t('restoreSuccess')(domainName));
+    if(!r.ok||!result.success) showToast(t('restoreFail')+(result.error||''));
+    else showToast(t('restoreSuccess')(domainName));
 };
 window.handlePermanentDelete=async function(domainName){
     if(!confirm(t('permanentDeleteConfirm')(domainName))) return;
     const r=await fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'permanent_delete_domain',domainName,accessToken:piAccessToken})});
     const result=await r.json();
-    if(!r.ok||!result.success) alert(t('permanentDeleteFail')+(result.error||''));
+    if(!r.ok||!result.success) showToast(t('permanentDeleteFail')+(result.error||''));
     else{
         domains=domains.filter(d=>d.name!==domainName);
         delete domainData[domainName];
@@ -4037,30 +4087,30 @@ window.handlePermanentDelete=async function(domainName){
         userSoldDomains=userSoldDomains.filter(d=>d.name!==domainName);
         userActiveListings=userActiveListings.filter(d=>d.name!==domainName);
         await loadUserProfile();
-        alert(t('permanentDeleteSuccess')(domainName));
+        showToast(t('permanentDeleteSuccess')(domainName));
         debouncedRender();
     }
 };
 window.handlePriceUpdate=async function(domainName){
     const newPrice=Number(document.getElementById(`price-input-${domainName}`)?.value);
-    if(!newPrice||newPrice<=0){alert(t('validPrice'));return;}
+    if(!newPrice||newPrice<=0){showToast(t('validPrice'));return;}
     const r=await fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'update_price',domainName,newPrice,accessToken:piAccessToken})});
     const result=await r.json();
-    if(!r.ok||!result.success) alert(t('priceUpdateFail')+(result.error||''));
-    else alert(t('priceUpdateSuccess')(domainName,newPrice));
+    if(!r.ok||!result.success) showToast(t('priceUpdateFail')+(result.error||''));
+    else showToast(t('priceUpdateSuccess')(domainName,newPrice));
 };
 window.handleDeleteDomain=async function(domainName){
     if(!confirm(t('deleteConfirm')(domainName))) return;
     const r=await fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'delete_domain',domainName,accessToken:piAccessToken})});
     const result=await r.json();
-    if(!r.ok||!result.success){alert(t('deleteFail')+(result.error||''));return;}
+    if(!r.ok||!result.success){showToast(t('deleteFail')+(result.error||''));return;}
     // FIX: Backend artık soft-delete yapıyor (deleted:true) ve bu durum
     // domains koleksiyonundaki belgenin alanı olarak Firestore'a yazılıyor.
     // onSnapshot zaten bu güncellemeyi (removed değil, modified change)
     // tüm bağlı client'lara anında iletir; bu yüzden ayrıca optimistik
     // local silme yapmaya gerek yok — domainData/domains güncellemesi
     // onSnapshot içindeki "deleted===true" kontrolüyle otomatik olur.
-    alert(t('deleteSuccess')(domainName));
+    showToast(t('deleteSuccess')(domainName));
 };
 window.handleAddDomain=async function(){
     const name=document.getElementById("new-domain-name").value.trim();
@@ -4068,14 +4118,14 @@ window.handleAddDomain=async function(){
     const img=document.getElementById("new-domain-img").value.trim()||'assets/default.jpeg';
     const domainType=document.getElementById("new-domain-type").value;
     const description=document.getElementById("new-domain-desc").value.trim();
-    if(!name||!price||price<=0){alert(t('domainNamePriceRequired'));return;}
+    if(!name||!price||price<=0){showToast(t('domainNamePriceRequired'));return;}
     const r=await fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'add_domain',domainName:name,newPrice:price,imgPath:img,domainType,description,accessToken:piAccessToken})});
     const result=await r.json();
-    if(!r.ok||!result.success) alert(t('addDomainFail')+(result.error||''));
-    else{alert(t('addDomainSuccess')(name));['new-domain-name','new-domain-price','new-domain-img','new-domain-desc'].forEach(id=>document.getElementById(id).value='');}
+    if(!r.ok||!result.success) showToast(t('addDomainFail')+(result.error||''));
+    else{showToast(t('addDomainSuccess')(name));['new-domain-name','new-domain-price','new-domain-img','new-domain-desc'].forEach(id=>document.getElementById(id).value='');}
 };
 window.openDeleteAccountModal=async function(){
-    if(!isAuth){ alert(t('loginRequiredGeneric')); return; }
+    if(!isAuth){ showToast(t('loginRequiredGeneric')); return; }
     document.getElementById('delete-account-modal').style.display='flex';
     try{
         const r=await fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'get_my_deletion_request',accessToken:piAccessToken})});
@@ -4092,10 +4142,10 @@ window.confirmDeleteAccountRequest=async function(){
     try{
         const r=await fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'request_account_deletion',reason,accessToken:piAccessToken})});
         const result=await r.json();
-        if(!result.success){ alert(result.error||t('genericError')); return; }
+        if(!result.success){ showToast(result.error||t('genericError')); return; }
         document.getElementById('delete-account-modal').style.display='none';
-        alert(t('deletionRequestSent'));
-    }catch(e){ alert(t('genericError')); }
+        showToast(t('deletionRequestSent'));
+    }catch(e){ showToast(t('genericError')); }
 };
 window.openOfferModal=function(domainName){
     const domain=domains.find(d=>d.name===domainName); if(!domain) return;
@@ -4110,33 +4160,33 @@ window.confirmSubmitOffer=async function(){
     const domainName=document.getElementById('offer-price-input').dataset.domain;
     const offerPrice=parseFloat(document.getElementById('offer-price-input').value);
     const message=document.getElementById('offer-message-input').value;
-    if(!offerPrice||offerPrice<=0){ alert(t('invalidOfferPrice')); return; }
+    if(!offerPrice||offerPrice<=0){ showToast(t('invalidOfferPrice')); return; }
     try{
         const r=await fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'submit_offer',domainName,offerPrice,message,accessToken:piAccessToken})});
         const result=await r.json();
-        if(!result.success){ alert(result.error||t('genericError')); return; }
+        if(!result.success){ showToast(result.error||t('genericError')); return; }
         document.getElementById('offer-modal').style.display='none';
-        alert(t('offerSentSuccess'));
-    }catch(e){ alert(t('genericError')); }
+        showToast(t('offerSentSuccess'));
+    }catch(e){ showToast(t('genericError')); }
 };
 window.withdrawOffer=async function(offerId){
     if(!confirm(t('confirmWithdrawOffer'))) return;
     try{
         const r=await fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'withdraw_offer',offerId,accessToken:piAccessToken})});
         const result=await r.json();
-        if(!result.success){ alert(result.error||t('genericError')); return; }
+        if(!result.success){ showToast(result.error||t('genericError')); return; }
         window.loadMyOffers();
-    }catch(e){ alert(t('genericError')); }
+    }catch(e){ showToast(t('genericError')); }
 };
 window.respondOffer=async function(offerId, accept){
     if(!confirm(accept?t('confirmAcceptOffer'):t('confirmRejectOffer'))) return;
     try{
         const r=await fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'respond_offer',offerId,accept,accessToken:piAccessToken})});
         const result=await r.json();
-        if(!result.success){ alert(result.error||t('genericError')); return; }
+        if(!result.success){ showToast(result.error||t('genericError')); return; }
         window.loadReceivedOffers();
         loadUserProfile().then(()=>debouncedRender());
-    }catch(e){ alert(t('genericError')); }
+    }catch(e){ showToast(t('genericError')); }
 };
 let myOffersExpanded=false;
 window.toggleMyOffersList=function(){ myOffersExpanded=!myOffersExpanded; window.loadMyOffers(); };
@@ -4194,10 +4244,10 @@ window.submitBuyerRating=async function(domainName, stars){
     try{
         const r=await fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'submit_buyer_rating',domainName,stars,comment,accessToken:piAccessToken})});
         const result=await r.json();
-        if(!result.success){ alert(result.error||t('genericError')); return; }
+        if(!result.success){ showToast(result.error||t('genericError')); return; }
         if(domainData[domainName]) domainData[domainName].sellerRatingOfBuyer={stars,comment,at:Date.now()};
         debouncedRender();
-    }catch(e){ alert(t('genericError')); }
+    }catch(e){ showToast(t('genericError')); }
 };
 window.submitSellerRating=async function(domainName, stars){
     if(!confirm(t('confirmRatingPrompt')(stars))) return;
@@ -4205,10 +4255,10 @@ window.submitSellerRating=async function(domainName, stars){
     try{
         const r=await fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'submit_seller_rating',domainName,stars,comment,accessToken:piAccessToken})});
         const result=await r.json();
-        if(!result.success){ alert(result.error||t('genericError')); return; }
+        if(!result.success){ showToast(result.error||t('genericError')); return; }
         if(domainData[domainName]) domainData[domainName].buyerRating={stars,comment,at:Date.now()};
         debouncedRender();
-    }catch(e){ alert(t('genericError')); }
+    }catch(e){ showToast(t('genericError')); }
 };
 window.openShareAppModal=function(){
     const url=window.location.origin+'/';
@@ -4222,9 +4272,9 @@ window.copyShareLink=function(){
     const inp=document.getElementById('share-link-input');
     inp.select(); inp.setSelectionRange(0,99999);
     if(navigator.clipboard&&navigator.clipboard.writeText){
-        navigator.clipboard.writeText(inp.value).then(()=>alert(t('linkCopied'))).catch(()=>{ try{document.execCommand('copy');alert(t('linkCopied'));}catch(e){} });
+        navigator.clipboard.writeText(inp.value).then(()=>showToast(t('linkCopied'))).catch(()=>{ try{document.execCommand('copy');showToast(t('linkCopied'));}catch(e){} });
     } else {
-        try{document.execCommand('copy');alert(t('linkCopied'));}catch(e){}
+        try{document.execCommand('copy');showToast(t('linkCopied'));}catch(e){}
     }
 };
 window.shareVia=function(platform){
@@ -4301,9 +4351,9 @@ window.resolveDeletionRequest=async function(requestId){
     try{
         const r=await fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'resolve_deletion_request',requestId,note,accessToken:piAccessToken})});
         const result=await r.json();
-        if(!result.success){ alert(result.error||t('genericError')); return; }
+        if(!result.success){ showToast(result.error||t('genericError')); return; }
         window.openDeletionRequestsModal();
-    }catch(e){ alert(t('genericError')); }
+    }catch(e){ showToast(t('genericError')); }
 };
 window.openAuditLogModal=async function(){
     const resultsEl=document.getElementById('audit-log-results');
@@ -4334,7 +4384,7 @@ window.runSystemCheckup=async function(){
     try{
         const r=await fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'run_system_checkup',accessToken:piAccessToken})});
         const result=await r.json();
-        if(!r.ok||!result.success){ alert('Hata: '+(result.error||'Kontrol yapılamadı')); return; }
+        if(!r.ok||!result.success){ showToast('Hata: '+(result.error||'Kontrol yapılamadı')); return; }
         const s=result.summary||{};
         document.getElementById('checkup-summary').textContent=`Tarandı: ${s.domainsScanned||0} domain (${s.soldCount||0} satılmış), ${s.salesScanned||0} satış kaydı, ${s.sellRequestsScanned||0} satış talebi, ${s.trademarkClaimsScanned||0} marka hakkı talebi, son 7 günde ${s.backgroundErrors||0} arka plan hatası.`;
         const resultsEl=document.getElementById('checkup-results');
@@ -4356,7 +4406,7 @@ window.runSystemCheckup=async function(){
         }
         document.getElementById('checkup-modal').style.display='flex';
     }catch(e){
-        alert('Kontrol sırasında bir hata oluştu: '+e.message);
+        console.error('Sistem kontrolü hatası:', e); showToast('Kontrol sırasında bir hata oluştu. Lütfen tekrar deneyin.');
     }finally{
         btn.textContent=originalText; btn.disabled=false;
     }
@@ -4366,31 +4416,31 @@ window.handleFixDeletedRatings=async function(){
     try{
         const r=await fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'backfill_reverse_deleted_ratings',accessToken:piAccessToken})});
         const result=await r.json();
-        if(!result.success){ alert('Hata: '+(result.error||'')); return; }
-        alert(`✅ ${result.fixedCount} domain'deki puan geri alındı.`+(result.fixedNames&&result.fixedNames.length?'\n'+result.fixedNames.join(', '):''));
-    }catch(e){ alert('Bir hata oluştu.'); }
+        if(!result.success){ showToast('Hata: '+(result.error||'')); return; }
+        showToast(`✅ ${result.fixedCount} domain'deki puan geri alındı.`+(result.fixedNames&&result.fixedNames.length?'\n'+result.fixedNames.join(', '):''));
+    }catch(e){ showToast('Bir hata oluştu.'); }
 };
 window.handleRecomputeAllRatings=async function(){
     if(!confirm('TÜM kullanıcıların satıcı/alıcı yıldız puanları, şu an Firestore\'da var olan domain kayıtları taranarak SIFIRDAN yeniden hesaplanacak ve mevcut (muhtemelen şişmiş) değerlerin üzerine yazılacak. Kalıcı silinmiş domainler zaten Firestore\'da hiç yok, bu yüzden onlara ait puanlar otomatik olarak sıfırlanacak. Bu işlem güvenlidir ve tekrar tekrar çalıştırılabilir. Devam edilsin mi?')) return;
     try{
         const r=await fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'recompute_all_ratings',accessToken:piAccessToken})});
         const result=await r.json();
-        if(!r.ok||!result.success){ alert('Hata: '+(result.error||'')); return; }
-        alert(`✅ ${result.updatedCount} kullanıcı profili güncellendi.\n${result.sellersAffected||0} satıcı, ${result.buyersAffected||0} alıcı için puanlar güncel domain kayıtlarına göre yeniden yazıldı.`);
-    }catch(e){ alert('Bir hata oluştu.'); }
+        if(!r.ok||!result.success){ showToast('Hata: '+(result.error||'')); return; }
+        showToast(`✅ ${result.updatedCount} kullanıcı profili güncellendi.\n${result.sellersAffected||0} satıcı, ${result.buyersAffected||0} alıcı için puanlar güncel domain kayıtlarına göre yeniden yazıldı.`);
+    }catch(e){ showToast('Bir hata oluştu.'); }
 };
 window.handleBackfillSellerUsername=async function(){
     if(!confirm('Henüz satılmamış ve satıcı bilgisi eksik olan domainlere, satıcı olarak sizin kullanıcı adınız yazılacak. Ayrıca zaten satılmış olup domain kaydında satıcı bilgisi olan ama satış kaydında (global_sales) eksik olan kayıtlar da tamamlanacak (böylece "Devrettim" onayı çalışabilsin). Zaten doğru olan hiçbir kayda dokunulmayacak. Devam edilsin mi?')) return;
     const r=await fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'backfill_seller_username',accessToken:piAccessToken})});
     const result=await r.json();
-    if(!r.ok||!result.success) alert('Hata: '+(result.error||''));
-    else alert(`✅ ${result.updatedCount} domain güncellendi.`+(result.updatedNames&&result.updatedNames.length?'\n'+result.updatedNames.join(', '):'')+`\n\n✅ ${result.salesUpdated||0} satış kaydı (global_sales) tamamlandı.`+(result.salesUpdatedNames&&result.salesUpdatedNames.length?'\n'+result.salesUpdatedNames.join(', '):''));
+    if(!r.ok||!result.success) showToast('Hata: '+(result.error||''));
+    else showToast(`✅ ${result.updatedCount} domain güncellendi.`+(result.updatedNames&&result.updatedNames.length?'\n'+result.updatedNames.join(', '):'')+`\n\n✅ ${result.salesUpdated||0} satış kaydı (global_sales) tamamlandı.`+(result.salesUpdatedNames&&result.salesUpdatedNames.length?'\n'+result.salesUpdatedNames.join(', '):''));
 };
 window.handleRelist=async function(domainName){
     if(!confirm(t('relistConfirm')(domainName))) return;
     const r=await fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'relist',domainName,accessToken:piAccessToken})});
     const result=await r.json();
-    if(!r.ok||!result.success) alert(t('relistFail')+(result.error||''));
+    if(!r.ok||!result.success) showToast(t('relistFail')+(result.error||''));
 };
 
 // ── ADMIN: Domain Gizle/Göster ─────────────────────────────────────────
@@ -4400,7 +4450,7 @@ window.handleRelist=async function(domainName){
 window.handleToggleHideDomain=async function(domainName,hide){
     const r=await fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'toggle_hide_domain',domainName,hide,accessToken:piAccessToken})});
     const result=await r.json();
-    if(!r.ok||!result.success) alert(t('hideToggleFail')+(result.error||''));
+    if(!r.ok||!result.success) showToast(t('hideToggleFail')+(result.error||''));
 };
 
 // ── ADMIN KAZANÇ / CÜZDAN ÖZETİ ────────────────────────────────────────
@@ -4448,7 +4498,7 @@ window.loadAllSalesDetail=async function(){
                     </div>
                 </div>
             </div>`;}).join('');
-    }catch(e){container.innerHTML=`<p style="color:#ef4444;font-size:0.75em;text-align:center;">${e.message}</p>`;}
+    }catch(e){console.error('Kazanç özeti yüklenemedi:', e); container.innerHTML=`<p style="color:#ef4444;font-size:0.75em;text-align:center;">Yüklenemedi, lütfen tekrar deneyin.</p>`;}
 };
 window.loadAdminEarnings=async function(){
     if(!isAuth||currentUser!==APP_CONFIG.adminUsername) return;
@@ -4503,9 +4553,9 @@ window.exportSalesCsv=async function(){
     try{
         const r=await fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'export_sales_data',accessToken:piAccessToken})});
         const result=await r.json();
-        if(!result.success){ alert(result.error||t('genericError')); return; }
+        if(!result.success){ showToast(result.error||t('genericError')); return; }
         const rows=result.rows||[];
-        if(!rows.length){ alert(t('noDataToExport')); return; }
+        if(!rows.length){ showToast(t('noDataToExport')); return; }
         const headers=['domain','price','buyer','sellerUsername','at','txid','payoutStatus','type'];
         const escapeCsv=(v)=>{ const s=String(v??''); return /[",\n]/.test(s) ? '"'+s.replace(/"/g,'""')+'"' : s; };
         const csv=[headers.join(',')].concat(rows.map(r=>headers.map(h=>escapeCsv(r[h])).join(','))).join('\n');
@@ -4514,7 +4564,7 @@ window.exportSalesCsv=async function(){
         const a=document.createElement('a'); a.href=url; a.download=`satis-verileri-${new Date().toISOString().slice(0,10)}.csv`;
         document.body.appendChild(a); a.click(); a.remove();
         URL.revokeObjectURL(url);
-    }catch(e){ alert(t('genericError')); }
+    }catch(e){ showToast(t('genericError')); }
 };
 
 window.toggleStatsSection=function(){
@@ -4545,15 +4595,15 @@ window.handleResetPlatformStats=async function(){
         });
         const result=await r.json();
         if(!r.ok||!result.success){
-            alert(t('resetFail')+(result.error||r.status));
+            showToast(t('resetFail')+(result.error||r.status));
             return;
         }
-        alert(t('resetSuccess'));
+        showToast(t('resetSuccess'));
         // Kazanç verilerini yenile (sıfırlandıktan sonra rakamlar 0 göstermeli)
         await loadAdminEarnings();
     }catch(e){
         console.error("Sıfırlama hatası:",e);
-        alert(t('resetFail')+e.message);
+        console.error('Reset hatası:', e); showToast(t('resetFail'));
     }
 };
 
@@ -4745,11 +4795,11 @@ function renderUserPanel(){
                         </div>
                         <div style="display:flex;gap:6px;align-items:flex-start;">
                             <span style="color:#64748b;flex-shrink:0;font-weight:700;min-width:90px;">📝 ${t('detailFieldDesc')}:</span>
-                            <span style="color:#94a3b8;word-break:break-word;flex:1;">${d.description||'<span style="color:#475569;font-style:italic;">—</span>'}</span>
+                            <span style="color:#94a3b8;word-break:break-word;flex:1;">${d.description?escapeHtml(d.description):'<span style="color:#475569;font-style:italic;">—</span>'}</span>
                         </div>
                         ${d.sellerNote?`<div style="display:flex;gap:6px;align-items:baseline;word-break:break-all;">
                             <span style="color:#64748b;flex-shrink:0;font-weight:700;min-width:90px;">🗒️ ${t('detailFieldWallet')}:</span>
-                            <span style="color:#60a5fa;font-size:0.9em;">${d.sellerNote}</span>
+                            <span style="color:#60a5fa;font-size:0.9em;">${escapeHtml(d.sellerNote)}</span>
                         </div>`:''}
                         ${d.ownershipProof?`<div style="display:flex;gap:6px;align-items:flex-start;background:rgba(239,68,68,0.06);border:1px solid rgba(239,68,68,0.25);border-radius:6px;padding:5px 7px;">
                             <span style="color:#fca5a5;flex-shrink:0;font-weight:700;min-width:90px;">🔐 ${t('ownershipProofLabel')}:</span>
@@ -4821,11 +4871,11 @@ function renderUserPanel(){
                         </div>
                         <div style="display:flex;gap:6px;align-items:flex-start;">
                             <span style="color:#64748b;flex-shrink:0;font-weight:700;min-width:90px;">📝 ${t('detailFieldDesc')}:</span>
-                            <span style="color:#94a3b8;word-break:break-word;flex:1;">${req.description||'<span style="color:#475569;font-style:italic;">—</span>'}</span>
+                            <span style="color:#94a3b8;word-break:break-word;flex:1;">${req.description?escapeHtml(req.description):'<span style="color:#475569;font-style:italic;">—</span>'}</span>
                         </div>
                         ${req.sellerNote?`<div style="display:flex;gap:6px;align-items:baseline;word-break:break-all;">
                             <span style="color:#64748b;flex-shrink:0;font-weight:700;min-width:90px;">🗒️ ${t('detailFieldWallet')}:</span>
-                            <span style="color:#60a5fa;font-size:0.9em;">${req.sellerNote}</span>
+                            <span style="color:#60a5fa;font-size:0.9em;">${escapeHtml(req.sellerNote)}</span>
                         </div>`:''}
                         <div style="display:flex;gap:6px;align-items:baseline;">
                             <span style="color:#64748b;flex-shrink:0;font-weight:700;min-width:90px;">💳 ${t('detailFieldPaymentTo')}:</span>
@@ -4920,8 +4970,8 @@ function renderUserPanel(){
                             <div style="display:flex;gap:6px;align-items:baseline;"><span style="color:#64748b;flex-shrink:0;font-weight:700;min-width:90px;">👤 ${t('detailFieldBuyerUser')}:</span><span style="color:#94a3b8;">@${d.buyer||'?'}</span></div>
                             <div style="display:flex;gap:6px;align-items:baseline;word-break:break-all;"><span style="color:#64748b;flex-shrink:0;font-weight:700;min-width:90px;">🧾 ${t('detailFieldTxid')}:</span><span style="color:#94a3b8;font-size:0.9em;">${d.txid||'—'}</span></div>
                             <div style="display:flex;gap:6px;align-items:flex-start;"><span style="color:#64748b;flex-shrink:0;font-weight:700;min-width:90px;">🏷️ ${t('detailFieldType')}:</span><span class="domain-type-tag" style="margin:0;">${typeLabel(d.type)}</span></div>
-                            ${d.description?`<div style="display:flex;gap:6px;align-items:flex-start;"><span style="color:#64748b;flex-shrink:0;font-weight:700;min-width:90px;">📝 ${t('detailFieldDesc')}:</span><span style="color:#94a3b8;word-break:break-word;flex:1;">${d.description}</span></div>`:''}
-                            ${d.sellerNote?`<div style="display:flex;gap:6px;align-items:baseline;word-break:break-all;"><span style="color:#64748b;flex-shrink:0;font-weight:700;min-width:90px;">🗒️ ${t('detailFieldWallet')}:</span><span style="color:#60a5fa;font-size:0.9em;">${d.sellerNote}</span></div>`:''}
+                            ${d.description?`<div style="display:flex;gap:6px;align-items:flex-start;"><span style="color:#64748b;flex-shrink:0;font-weight:700;min-width:90px;">📝 ${t('detailFieldDesc')}:</span><span style="color:#94a3b8;word-break:break-word;flex:1;">${escapeHtml(d.description)}</span></div>`:''}
+                            ${d.sellerNote?`<div style="display:flex;gap:6px;align-items:baseline;word-break:break-all;"><span style="color:#64748b;flex-shrink:0;font-weight:700;min-width:90px;">🗒️ ${t('detailFieldWallet')}:</span><span style="color:#60a5fa;font-size:0.9em;">${escapeHtml(d.sellerNote)}</span></div>`:''}
                         </div>
                         ${confirmHtml}
                         ${d.payoutStatus==='released' ? (
@@ -5045,7 +5095,7 @@ function render(){
         const isFinalizedSale=data.hidden&&data.payoutStatus==='released';
         const hiddenTag=isFinalizedSale?`<span class="domain-type-tag" style="background:#065f46;color:#6ee7b7;">✅ ${t('finalizedSaleTag')}</span>`:(data.hidden?`<span class="domain-type-tag" style="background:#475569;">🙈 ${t('hiddenTag')}</span>`:'');
         const imgSrc=data.img||d.img;
-        const favBtn=isAuth?`<button onclick="window.toggleFavorite('${d.name}',event)" style="position:absolute;top:6px;right:6px;z-index:3;width:26px;height:26px;border-radius:50%;border:none;background:rgba(15,23,42,0.7);color:${userFavorites.has(d.name)?'#fbbf24':'#94a3b8'};font-size:0.95em;display:flex;align-items:center;justify-content:center;cursor:pointer;backdrop-filter:blur(4px);">${userFavorites.has(d.name)?'★':'☆'}</button>`:'';
+        const favBtn=isAuth?`<button onclick="window.toggleFavorite('${d.name}',event)" aria-label="${userFavorites.has(d.name)?'Favorilerden çıkar':'Favorilere ekle'}" style="position:absolute;top:6px;right:6px;z-index:3;width:26px;height:26px;border-radius:50%;border:none;background:rgba(15,23,42,0.7);color:${userFavorites.has(d.name)?'#fbbf24':'#94a3b8'};font-size:0.95em;display:flex;align-items:center;justify-content:center;cursor:pointer;backdrop-filter:blur(4px);">${userFavorites.has(d.name)?'★':'☆'}</button>`:'';
         card.style.position='relative';
         card.innerHTML=`${favBtn}<img src="${imgSrc}" class="domain-img" onerror="this.src='data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMDAiIGhlaWdodD0iMTAwIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjNDc1NTY5Ii8+PC9zdmc+'">${tTag}${hiddenTag}<div class="domain-name">${d.name} <span style="color:#fbbf24;font-weight:800;">(${data.price} π)</span></div><div class="domain-price">${data.price} PI</div>`;
 
@@ -5090,7 +5140,7 @@ function render(){
             btn.className='btn-buy';btn.innerText=t('buyNow');
             btn.onclick=(e)=>{
                 e.stopPropagation();
-                if(!isAuth){alert(t('loginRequired'));return;}
+                if(!isAuth){showToast(t('loginRequired'));return;}
                 pendingDomain=d.name;pendingPrice=data.price;
                 document.getElementById('pre-buy-modal').style.display='flex';
             };
@@ -5415,12 +5465,12 @@ window.toggleMaintenanceMode = async function(){
         const r = await fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},
             body:JSON.stringify({action:'set_maintenance_mode',enabled:turningOn,accessToken:piAccessToken})});
         const result = await r.json();
-        if(!result.success){ alert(result.error || 'Hata'); return; }
+        if(!result.success){ showToast(result.error || 'Hata'); return; }
         // _maintenanceModeOn zaten canlı onSnapshot dinleyicisi tarafından güncellenecek;
         // burada ekstra bir şey yapmaya gerek yok.
     }catch(e){
         console.error('Bakım modu değiştirilemedi:', e);
-        alert('Bakım modu değiştirilemedi.');
+        showToast('Bakım modu değiştirilemedi.');
     }
 };
 onSnapshot(doc(db,"config","app_status"),(snap)=>{
@@ -5702,7 +5752,7 @@ async function performPiConnect() {
     }
 
     const success = await attemptLogin(false);
-    if (!success) alert(t('loginError'));
+    if (!success) showToast(t('loginError'));
 }
 
 // ── GERÇEK "PI İLE BAĞLAN" TETİKLEYİCİSİ ──────────────────────────────
@@ -5742,7 +5792,7 @@ document.getElementById("confirm-buy-btn").onclick=async()=>{
                 onCancel:async(id)=>{
                     try{await fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({paymentId:id,action:'cancel'})});}catch(e){}
                 },
-                onError:(e)=>{console.error("Payment error:",e);alert(t('paymentError'));}
+                onError:(e)=>{console.error("Payment error:",e);showToast(t('paymentError'));}
             }
         );
     }catch(e){console.error(e);}
@@ -6029,13 +6079,13 @@ window.submitTrademarkClaim = async function(){
 
     [nameInput,domainInput,descInput,emailInput].forEach(el=>el.classList.remove('field-error'));
 
-    if(!claimantName){ nameInput.classList.add('field-error'); nameInput.scrollIntoView({behavior:'smooth',block:'center'}); alert(t('trademarkErrName')); return; }
-    if(!domainName){ domainInput.classList.add('field-error'); domainInput.scrollIntoView({behavior:'smooth',block:'center'}); alert(t('trademarkErrDomain')); return; }
-    if(!description){ descInput.classList.add('field-error'); descInput.scrollIntoView({behavior:'smooth',block:'center'}); alert(t('trademarkErrDescription')); return; }
-    if(!contactEmail || !emailRegex.test(contactEmail)){ emailInput.classList.add('field-error'); emailInput.scrollIntoView({behavior:'smooth',block:'center'}); alert(t('trademarkErrEmail')); return; }
+    if(!claimantName){ nameInput.classList.add('field-error'); nameInput.scrollIntoView({behavior:'smooth',block:'center'}); showToast(t('trademarkErrName')); return; }
+    if(!domainName){ domainInput.classList.add('field-error'); domainInput.scrollIntoView({behavior:'smooth',block:'center'}); showToast(t('trademarkErrDomain')); return; }
+    if(!description){ descInput.classList.add('field-error'); descInput.scrollIntoView({behavior:'smooth',block:'center'}); showToast(t('trademarkErrDescription')); return; }
+    if(!contactEmail || !emailRegex.test(contactEmail)){ emailInput.classList.add('field-error'); emailInput.scrollIntoView({behavior:'smooth',block:'center'}); showToast(t('trademarkErrEmail')); return; }
     // Savunma katmanı: buton zaten checkbox işaretlenmeden disabled kalıyor,
     // ama olası bir DOM manipülasyonuna karşı burada da kontrol ediyoruz.
-    if(!declarationCheckbox || !declarationCheckbox.checked){ alert(t('trademarkErrDeclaration')); return; }
+    if(!declarationCheckbox || !declarationCheckbox.checked){ showToast(t('trademarkErrDeclaration')); return; }
 
     const btn=document.getElementById('trademark-submit-btn');
     const originalText=btn.textContent;
@@ -6046,7 +6096,7 @@ window.submitTrademarkClaim = async function(){
             body:JSON.stringify({action:'submit_trademark_claim',claimantName,companyName,domainName,trademarkInfo,description,contactEmail,accessToken:isAuth?piAccessToken:null})});
         const result=await res.json();
         if(result.success){
-            alert(t('trademarkSuccess')+'\n\n'+t('trademarkTrackingNote'));
+            showToast(t('trademarkSuccess')+'\n\n'+t('trademarkTrackingNote'));
             window.closeTrademarkClaimModal();
             [nameInput,domainInput,descInput,emailInput].forEach(el=>el.value='');
             document.getElementById('trademark-company-name').value='';
@@ -6054,11 +6104,11 @@ window.submitTrademarkClaim = async function(){
             resetTrademarkForm();
             if(isAuth) loadMyTrademarkClaims();
         }else{
-            alert(result.error || t('trademarkError'));
+            showToast(result.error || t('trademarkError'));
         }
     }catch(e){
         console.error('Marka hakkı talebi gönderme hatası:', e);
-        alert(t('trademarkError'));
+        showToast(t('trademarkError'));
     }finally{
         btn.textContent=originalText;
         if(declarationCheckbox && declarationCheckbox.checked) btn.disabled=false;
@@ -6226,7 +6276,7 @@ async function startOnboardingTour() {
     // sessizce iptal oluyordu ("tıklayınca açılmıyor").
     const firstTarget = await tourWaitForTarget(TOUR_STEPS[0].selector);
     if (!firstTarget) {
-        alert(t('tourNotReady'));
+        showToast(t('tourNotReady'));
         return;
     }
 
@@ -6448,8 +6498,8 @@ window.submitTicket = async function() {
     const category = document.getElementById('ticket-category').value;
     const priority = document.getElementById('ticket-priority').value;
 
-    if (!subject) { alert(t('ticketEmptySubject')); return; }
-    if (!message) { alert(t('ticketEmptyMessage')); return; }
+    if (!subject) { showToast(t('ticketEmptySubject')); return; }
+    if (!message) { showToast(t('ticketEmptyMessage')); return; }
 
     try {
         const r = await fetch('/api/approve', {
@@ -6466,14 +6516,14 @@ window.submitTicket = async function() {
         });
         const result = await r.json();
         if (result.success) {
-            alert(t('ticketSubmitSuccess'));
+            showToast(t('ticketSubmitSuccess'));
             closeTicketCreateModal();
             await loadMyTickets();
         } else {
-            alert(t('ticketSubmitFail') + (result.error || ''));
+            showToast(t('ticketSubmitFail') + (result.error || ''));
         }
     } catch (e) {
-        alert(t('ticketSubmitFail') + e.message);
+        console.error('Ticket gönderme hatası:', e); showToast(t('ticketSubmitFail'));
     }
 };
 
@@ -6566,13 +6616,13 @@ window.deleteMyTicket = async function(ticketId) {
         const result = await r.json();
         if (result.success) {
             closeTicketDetailModal();
-            alert(t('ticketDeleteSuccess'));
+            showToast(t('ticketDeleteSuccess'));
             await loadMyTickets();
         } else {
-            alert(t('ticketDeleteFail') + (result.error || ''));
+            showToast(t('ticketDeleteFail') + (result.error || ''));
         }
     } catch (e) {
-        alert(t('ticketDeleteFail') + e.message);
+        console.error('Ticket silme hatası:', e); showToast(t('ticketDeleteFail'));
     }
 };
 
@@ -6600,16 +6650,16 @@ window.sendTicketReply = async function() {
             // Refresh detail view
             openTicketDetail(currentTicketId);
         } else {
-            alert(t('ticketReplyFail') + (result.error || ''));
+            showToast(t('ticketReplyFail') + (result.error || ''));
         }
     } catch (e) {
-        alert(t('ticketReplyFail') + e.message);
+        console.error('Ticket yanıt hatası:', e); showToast(t('ticketReplyFail'));
     }
 };
 
 // ── KULLANICI: Ticket paneline scroll ──────────────────────────────────
 window.scrollToTicketPanel = function() {
-    if (!isAuth) { alert(t('loginRequired')); return; }
+    if (!isAuth) { showToast(t('loginRequired')); return; }
     switchUserTab('utab-tickets');
     const up = document.getElementById('user-panel');
     if (up) {
@@ -6720,7 +6770,7 @@ window.adminUpdateTrademarkStatus = async function(claimId, status) {
             body: JSON.stringify({ action: 'update_trademark_claim_status', claimId, status, accessToken: piAccessToken })
         });
         const result = await r.json();
-        if (!result.success) alert(result.error || t('trademarkError'));
+        if (!result.success) showToast(result.error || t('trademarkError'));
         // Liste zaten canlı dinleyici (onSnapshot) ile anında güncellenir.
     } catch (e) {
         console.error("Marka hakkı durumu güncellenemedi:", e);
@@ -6738,13 +6788,13 @@ window.adminApproveTrademarkClaim = async function(claimId, domainName) {
         });
         const result = await r.json();
         if (result.success) {
-            alert(result.domainRemoved ? t('trademarkApproveSuccessRemoved') : t('trademarkApproveSuccessNotFound'));
+            showToast(result.domainRemoved ? t('trademarkApproveSuccessRemoved') : t('trademarkApproveSuccessNotFound'));
         } else {
-            alert(result.error || t('trademarkError'));
+            showToast(result.error || t('trademarkError'));
         }
     } catch (e) {
         console.error("Marka hakkı talebi onaylanamadı:", e);
-        alert(t('trademarkError'));
+        showToast(t('trademarkError'));
     }
 };
 
@@ -6762,7 +6812,7 @@ window.adminDeleteTrademarkClaim = async function(claimId) {
             body: JSON.stringify({ action: 'delete_trademark_claim', claimId, accessToken: piAccessToken })
         });
         const result = await r.json();
-        if (!result.success) alert(result.error || t('trademarkError'));
+        if (!result.success) showToast(result.error || t('trademarkError'));
     } catch (e) {
         console.error("Marka hakkı talebi silinemedi:", e);
     }
@@ -6863,7 +6913,7 @@ window.deleteMyTrademarkClaim = async function(claimId) {
         });
         const result = await r.json();
         if (result.success) loadMyTrademarkClaims();
-        else alert(result.error || t('trademarkError'));
+        else showToast(result.error || t('trademarkError'));
     } catch (e) {
         console.error("Marka hakkı talebi silinemedi:", e);
     }
@@ -6879,7 +6929,7 @@ window.withdrawMyTrademarkClaim = async function(claimId) {
         });
         const result = await r.json();
         if (result.success) loadMyTrademarkClaims();
-        else alert(result.error || t('trademarkError'));
+        else showToast(result.error || t('trademarkError'));
     } catch (e) {
         console.error("Marka hakkı talebi geri çekilemedi:", e);
     }
@@ -6990,13 +7040,13 @@ window.adminResolveDispute = async function(saleId, role, domainName){
     const message = prompt(t('resolveDisputePrompt')(role==='buyer'?t('roleBuyer'):t('roleSeller')));
     if(message===null) return;
     const trimmed = message.trim();
-    if(!trimmed){ alert(t('resolveDisputeEmptyWarning')); return; }
+    if(!trimmed){ showToast(t('resolveDisputeEmptyWarning')); return; }
     try{
         const r=await fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'resolve_dispute',saleId,role,message:trimmed,accessToken:piAccessToken})});
         const result=await r.json();
-        if(!r.ok||!result.success){alert(t('resolveDisputeFail')+(result.error||''));return;}
-        alert(t('resolveDisputeSuccess'));
-    }catch(e){alert(t('resolveDisputeError'));}
+        if(!r.ok||!result.success){showToast(t('resolveDisputeFail')+(result.error||''));return;}
+        showToast(t('resolveDisputeSuccess'));
+    }catch(e){showToast(t('resolveDisputeError'));}
 };
 
 window.adminNudgeConfirmation = async function(saleId, role, domainName){
@@ -7004,13 +7054,13 @@ window.adminNudgeConfirmation = async function(saleId, role, domainName){
     try{
         const r=await fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'nudge_confirmation',saleId,role,accessToken:piAccessToken})});
         const result=await r.json();
-        if(!r.ok||!result.success){alert(t('nudgeFail')+(result.error||''));return;}
-        alert(t('nudgeSuccess'));
-    }catch(e){alert(t('nudgeError'));}
+        if(!r.ok||!result.success){showToast(t('nudgeFail')+(result.error||''));return;}
+        showToast(t('nudgeSuccess'));
+    }catch(e){showToast(t('nudgeError'));}
 };
 
 window.adminReleasePayout = async function(saleId, domainName, sellerUsername) {
-    if (!sellerUsername) { alert(t('payoutNoSellerWarning')); return; }
+    if (!sellerUsername) { showToast(t('payoutNoSellerWarning')); return; }
     if (!confirm(`"${domainName}" ${t('payoutConfirmRelease')}`)) return;
 
     try {
@@ -7021,18 +7071,18 @@ window.adminReleasePayout = async function(saleId, domainName, sellerUsername) {
         });
         const result = await r.json();
         if (result.success) {
-            alert(`✅ ${result.payoutAmount} Pi @${sellerUsername} kullanıcısına gönderildi.`);
+            showToast(`✅ ${result.payoutAmount} Pi @${sellerUsername} kullanıcısına gönderildi.`);
         } else {
-            alert(result.error || t('trademarkError'));
+            showToast(result.error || t('trademarkError'));
         }
     } catch (e) {
         console.error("Ödeme serbest bırakılamadı:", e);
-        alert(t('trademarkError'));
+        showToast(t('trademarkError'));
     }
 };
 
 window.adminRefundPayout = async function(saleId, domainName, buyerUsername) {
-    if (!buyerUsername) { alert(t('payoutNoBuyerWarning')); return; }
+    if (!buyerUsername) { showToast(t('payoutNoBuyerWarning')); return; }
     if (!confirm(`"${domainName}" ${t('payoutConfirmRefund')}`)) return;
 
     try {
@@ -7043,13 +7093,13 @@ window.adminRefundPayout = async function(saleId, domainName, buyerUsername) {
         });
         const result = await r.json();
         if (result.success) {
-            alert(`✅ ${result.refundAmount} Pi @${buyerUsername} kullanıcısına iade edildi.`);
+            showToast(`✅ ${result.refundAmount} Pi @${buyerUsername} kullanıcısına iade edildi.`);
         } else {
-            alert(result.error || t('trademarkError'));
+            showToast(result.error || t('trademarkError'));
         }
     } catch (e) {
         console.error("Ödeme iade edilemedi:", e);
-        alert(t('trademarkError'));
+        showToast(t('trademarkError'));
     }
 };
 
@@ -7310,10 +7360,10 @@ window.adminDeleteTicket = async function() {
             closeAdminTicketDetailModal();
             await adminLoadTickets();
         } else {
-            alert(t('ticketAdminDeleteFail') + (result.error || ''));
+            showToast(t('ticketAdminDeleteFail') + (result.error || ''));
         }
     } catch (e) {
-        alert(t('ticketAdminDeleteFail') + e.message);
+        console.error('Ticket admin silme hatası:', e); showToast(t('ticketAdminDeleteFail'));
     }
 };
 
