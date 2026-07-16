@@ -2568,13 +2568,54 @@ async function handlerImpl(req, res) {
   // puan verilmemiş olmalı. Domain doc'a buyerRating yazılır (tekrar
   // puanlamayı engeller) + satıcının user_profiles kaydında ratingSum/
   // ratingCount artırılır (ortalama puan buradan hesaplanır).
-  if (action === 'submit_seller_rating') {
-    const { domainName, stars } = req.body;
+  // ── Alıcıyı Değerlendir (Satıcı → Alıcı Puanlaması) ────────────────────
+  // submit_seller_rating'in aynası: sadece satış release edilmişse, isteği
+  // yapan gerçekten o satışın satıcısıysa ve daha önce puanlanmamışsa.
+  // Alıcının puanı domain doc'a sellerRatingOfBuyer olarak yazılır (buyerRating
+  // ile karışmasın diye ayrı alan), buyer'ın user_profiles kaydında
+  // buyerRatingSum/buyerRatingCount artırılır (satıcı puanından tamamen ayrı).
+  if (action === 'submit_buyer_rating') {
+    const { domainName, stars, comment } = req.body;
     const realUsername = await getRealUsername(accessToken);
     if (!realUsername) return res.status(403).json({ error: "Geçersiz oturum" });
     const starsNum = parseInt(stars, 10);
     if (!domainName || !Number.isInteger(starsNum) || starsNum < 1 || starsNum > 5)
       return res.status(400).json({ error: "Geçersiz puan" });
+    const commentText = comment ? String(comment).trim().slice(0, 300) : null;
+    try {
+      const db = getDb();
+      const domainRef = db.collection('domains').doc(domainName);
+      const domainSnap = await domainRef.get();
+      if (!domainSnap.exists) return res.status(404).json({ error: "Domain bulunamadı" });
+      const data = domainSnap.data();
+      if (data.sellerUsername !== realUsername) return res.status(403).json({ error: "Bu satışın satıcısı siz değilsiniz" });
+      if (data.payoutStatus !== 'released') return res.status(400).json({ error: "Ödeme henüz serbest bırakılmadı, satış tamamlanmadan değerlendirme yapılamaz" });
+      if (data.sellerRatingOfBuyer) return res.status(400).json({ error: "Bu satış için zaten bir değerlendirme yaptınız" });
+      if (!data.buyer) return res.status(400).json({ error: "Bu satışın kayıtlı bir alıcısı yok" });
+
+      const rating = { stars: starsNum, at: Date.now(), by: realUsername, comment: commentText };
+      await domainRef.set({ sellerRatingOfBuyer: rating }, { merge: true });
+      await db.collection('user_profiles').doc(data.buyer).set({
+        buyerRatingSum: FieldValue.increment(starsNum),
+        buyerRatingCount: FieldValue.increment(1)
+      }, { merge: true });
+
+      return res.status(200).json({ success: true });
+    } catch (e) {
+      console.error("submit_buyer_rating hatası:", e);
+      await logSystemError('submit_buyer_rating', e);
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  if (action === 'submit_seller_rating') {
+    const { domainName, stars, comment } = req.body;
+    const realUsername = await getRealUsername(accessToken);
+    if (!realUsername) return res.status(403).json({ error: "Geçersiz oturum" });
+    const starsNum = parseInt(stars, 10);
+    if (!domainName || !Number.isInteger(starsNum) || starsNum < 1 || starsNum > 5)
+      return res.status(400).json({ error: "Geçersiz puan" });
+    const commentText = comment ? String(comment).trim().slice(0, 300) : null;
     try {
       const db = getDb();
       const domainRef = db.collection('domains').doc(domainName);
@@ -2586,7 +2627,7 @@ async function handlerImpl(req, res) {
       if (data.buyerRating) return res.status(400).json({ error: "Bu satış için zaten bir değerlendirme yaptınız" });
       if (!data.sellerUsername) return res.status(400).json({ error: "Bu satışın kayıtlı bir satıcısı yok" });
 
-      const rating = { stars: starsNum, at: Date.now(), by: realUsername };
+      const rating = { stars: starsNum, at: Date.now(), by: realUsername, comment: commentText };
       await domainRef.set({ buyerRating: rating }, { merge: true });
       await db.collection('user_profiles').doc(data.sellerUsername).set({
         ratingSum: FieldValue.increment(starsNum),
@@ -2601,7 +2642,7 @@ async function handlerImpl(req, res) {
     }
   }
 
-  // ── Satıcının Ortalama Puanını Getir (herkese açık — kimlik doğrulama gerektirmez) ─
+  // ── Satıcının Ortalama Puanını + Son Yorumlarını Getir (herkese açık) ──
   if (action === 'get_seller_rating') {
     const { sellerUsername } = req.body;
     if (!sellerUsername) return res.status(400).json({ error: "Geçersiz kullanıcı adı" });
@@ -2611,7 +2652,291 @@ async function handlerImpl(req, res) {
       const d = snap.exists ? snap.data() : {};
       const count = d.ratingCount || 0;
       const avg = count > 0 ? Math.round((d.ratingSum / count) * 10) / 10 : null;
+
+      // Yazılı yorumları toplamak için: bu satıcının sattığı domainleri
+      // tara, buyerRating.comment dolu olanları en yeniden eskiye sırala.
+      let recentReviews = [];
+      try {
+        const domSnap = await db.collection('domains').where('sellerUsername', '==', sellerUsername).limit(100).get();
+        const withComments = [];
+        domSnap.forEach(dd => {
+          const br = dd.data().buyerRating;
+          if (br && br.comment) withComments.push({ stars: br.stars, comment: br.comment, at: br.at, domain: dd.id });
+        });
+        withComments.sort((a, b) => b.at - a.at);
+        recentReviews = withComments.slice(0, 5);
+      } catch (_) { /* yorum toplama başarısız olsa da ana puan verisi dönsün */ }
+
+      return res.status(200).json({ success: true, avg, count, recentReviews });
+    } catch (e) {
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  // ── Alıcının Ortalama Puanını Getir ─────────────────────────────────────
+  if (action === 'get_buyer_rating') {
+    const { buyerUsername } = req.body;
+    if (!buyerUsername) return res.status(400).json({ error: "Geçersiz kullanıcı adı" });
+    try {
+      const db = getDb();
+      const snap = await db.collection('user_profiles').doc(buyerUsername).get();
+      const d = snap.exists ? snap.data() : {};
+      const count = d.buyerRatingCount || 0;
+      const avg = count > 0 ? Math.round((d.buyerRatingSum / count) * 10) / 10 : null;
       return res.status(200).json({ success: true, avg, count });
+    } catch (e) {
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  // ── Pazarlık / Teklif Sistemi ───────────────────────────────────────────
+  // Bir domain için sabit fiyat dışında, alıcı bir teklif sunabiliyor.
+  // Satıcı (ya da admin) kabul ederse domain fiyatı teklif tutarına
+  // güncellenir ve alıcı normal satın alma akışıyla tamamlayabilir.
+  if (action === 'submit_offer') {
+    const { domainName, offerPrice, message } = req.body;
+    const realUsername = await getRealUsername(accessToken);
+    if (!realUsername) return res.status(403).json({ error: "Geçersiz oturum" });
+    if (!checkRateLimit(clientIp, 'submit_offer', 10, 60000))
+      return res.status(429).json({ error: "Çok fazla teklif gönderdiniz, lütfen biraz bekleyin." });
+    const priceNum = Number(offerPrice);
+    if (!domainName || !Number.isFinite(priceNum) || priceNum <= 0)
+      return res.status(400).json({ error: "Geçersiz teklif tutarı" });
+    try {
+      const db = getDb();
+      const domainSnap = await db.collection('domains').doc(domainName).get();
+      if (!domainSnap.exists) return res.status(404).json({ error: "Domain bulunamadı" });
+      const data = domainSnap.data();
+      if (data.sold === true) return res.status(400).json({ error: "Bu domain zaten satılmış" });
+      if (data.deleted === true || data.hidden === true) return res.status(400).json({ error: "Bu domain artık satışta değil" });
+      if (data.sellerUsername === realUsername) return res.status(400).json({ error: "Kendi domaininize teklif veremezsiniz" });
+
+      const offerRef = db.collection('offers').doc();
+      await offerRef.set({
+        domainName,
+        buyerUsername: realUsername,
+        sellerUsername: data.sellerUsername || null,
+        originalPrice: data.price,
+        offerPrice: priceNum,
+        message: message ? String(message).trim().slice(0, 300) : null,
+        status: 'pending',
+        createdAt: Date.now()
+      });
+
+      const notifyTarget = data.sellerUsername || ADMIN_USERNAME;
+      await sendNotification(notifyTarget, {
+        type: 'offer_received',
+        title: '💬 Yeni Teklif Aldınız',
+        body: `@${realUsername}, "${domainName}" için ${priceNum} Pi teklif etti (liste fiyatı: ${data.price} Pi).`,
+        domainName
+      });
+      if (notifyTarget === ADMIN_USERNAME) {
+        await sendTG(TG_CHAT_ID, `💬 *YENİ TEKLİF*\n\n🌐 ${domainName}\n👤 @${realUsername}\n💰 Teklif: ${priceNum} Pi (liste: ${data.price} Pi)`);
+      }
+
+      return res.status(200).json({ success: true, offerId: offerRef.id });
+    } catch (e) {
+      console.error("submit_offer hatası:", e);
+      await logSystemError('submit_offer', e);
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  // ── Kendi Verdiğim Teklifleri Getir (alıcı) ─────────────────────────────
+  if (action === 'get_my_offers') {
+    const realUsername = await getRealUsername(accessToken);
+    if (!realUsername) return res.status(403).json({ error: "Geçersiz oturum" });
+    try {
+      const db = getDb();
+      const snap = await db.collection('offers').where('buyerUsername', '==', realUsername).get();
+      const offers = [];
+      snap.forEach(d => offers.push({ id: d.id, ...d.data() }));
+      offers.sort((a, b) => b.createdAt - a.createdAt);
+      return res.status(200).json({ success: true, offers });
+    } catch (e) {
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  // ── Domainlerime Gelen Teklifleri Getir (satıcı) ────────────────────────
+  if (action === 'get_received_offers') {
+    const realUsername = await getRealUsername(accessToken);
+    if (!realUsername) return res.status(403).json({ error: "Geçersiz oturum" });
+    try {
+      const db = getDb();
+      const snap = await db.collection('offers').where('sellerUsername', '==', realUsername).where('status', '==', 'pending').get();
+      const offers = [];
+      snap.forEach(d => offers.push({ id: d.id, ...d.data() }));
+      offers.sort((a, b) => b.createdAt - a.createdAt);
+      return res.status(200).json({ success: true, offers });
+    } catch (e) {
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  // ── Teklife Yanıt Ver (Kabul/Reddet) ────────────────────────────────────
+  if (action === 'respond_offer') {
+    const { offerId, accept } = req.body;
+    const realUsername = await getRealUsername(accessToken);
+    if (!realUsername) return res.status(403).json({ error: "Geçersiz oturum" });
+    if (!offerId) return res.status(400).json({ error: "Geçersiz teklif" });
+    try {
+      const db = getDb();
+      const offerRef = db.collection('offers').doc(offerId);
+      const offerSnap = await offerRef.get();
+      if (!offerSnap.exists) return res.status(404).json({ error: "Teklif bulunamadı" });
+      const offer = offerSnap.data();
+      const isAdmin = await verifyAdmin(accessToken);
+      if (offer.sellerUsername !== realUsername && !isAdmin)
+        return res.status(403).json({ error: "Bu teklife yanıt verme yetkiniz yok" });
+      if (offer.status !== 'pending') return res.status(400).json({ error: "Bu teklif zaten yanıtlanmış" });
+
+      if (accept) {
+        const domainRef = db.collection('domains').doc(offer.domainName);
+        const domainSnap = await domainRef.get();
+        if (!domainSnap.exists || domainSnap.data().sold === true)
+          return res.status(400).json({ error: "Domain artık müsait değil" });
+
+        await domainRef.set({ price: offer.offerPrice }, { merge: true });
+        await offerRef.set({ status: 'accepted', respondedAt: Date.now() }, { merge: true });
+
+        // Aynı domain için bekleyen diğer teklifler artık geçersiz — fiyat değişti
+        const otherPending = await db.collection('offers')
+          .where('domainName', '==', offer.domainName).where('status', '==', 'pending').get();
+        const batch = db.batch();
+        otherPending.forEach(d => { if (d.id !== offerId) batch.set(d.ref, { status: 'expired', respondedAt: Date.now() }, { merge: true }); });
+        await batch.commit();
+
+        await sendNotification(offer.buyerUsername, {
+          type: 'offer_accepted',
+          title: '✅ Teklifiniz Kabul Edildi!',
+          body: `"${offer.domainName}" için ${offer.offerPrice} Pi teklifiniz kabul edildi. Şimdi bu fiyattan satın alabilirsiniz.`,
+          domainName: offer.domainName
+        });
+      } else {
+        await offerRef.set({ status: 'rejected', respondedAt: Date.now() }, { merge: true });
+        await sendNotification(offer.buyerUsername, {
+          type: 'offer_rejected',
+          title: '❌ Teklifiniz Reddedildi',
+          body: `"${offer.domainName}" için ${offer.offerPrice} Pi teklifiniz satıcı tarafından reddedildi.`,
+          domainName: offer.domainName
+        });
+      }
+
+      await logAdminAction(realUsername, 'respond_offer', `${offer.domainName}: @${offer.buyerUsername}'in ${offer.offerPrice} Pi teklifi ${accept ? 'kabul edildi' : 'reddedildi'}`);
+      return res.status(200).json({ success: true });
+    } catch (e) {
+      console.error("respond_offer hatası:", e);
+      await logSystemError('respond_offer', e);
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  // ── Kendi Teklifimi Geri Çek ────────────────────────────────────────────
+  if (action === 'withdraw_offer') {
+    const { offerId } = req.body;
+    const realUsername = await getRealUsername(accessToken);
+    if (!realUsername) return res.status(403).json({ error: "Geçersiz oturum" });
+    try {
+      const db = getDb();
+      const offerRef = db.collection('offers').doc(offerId);
+      const offerSnap = await offerRef.get();
+      if (!offerSnap.exists) return res.status(404).json({ error: "Teklif bulunamadı" });
+      const offer = offerSnap.data();
+      if (offer.buyerUsername !== realUsername) return res.status(403).json({ error: "Bu teklif size ait değil" });
+      if (offer.status !== 'pending') return res.status(400).json({ error: "Sadece bekleyen teklifler geri çekilebilir" });
+      await offerRef.set({ status: 'withdrawn', respondedAt: Date.now() }, { merge: true });
+      return res.status(200).json({ success: true });
+    } catch (e) {
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  // ── Hesap/Veri Silme Talebi (KVKK/GDPR) ─────────────────────────────────
+  // NOT: Burada otomatik/anlık veri silme YAPILMIYOR — kasıtlı bir tasarım
+  // tercihi. Çünkü tamamlanmış satışlar/ödemeler muhasebe ve olası
+  // anlaşmazlık kayıtları için saklanması gerekebilecek finansal kayıtlar;
+  // körü körüne otomatik silme bu kayıtları da yok ederek başka
+  // yükümlülükleri ihlal edebilir. Bunun yerine: talep kayıt altına alınır,
+  // admin'e bildirilir, admin inceleyip (gerekirse kişisel veriyi
+  // anonimleştirerek) manuel olarak sonuçlandırır.
+  if (action === 'request_account_deletion') {
+    const { reason } = req.body;
+    const realUsername = await getRealUsername(accessToken);
+    if (!realUsername) return res.status(403).json({ error: "Geçersiz oturum" });
+    try {
+      const db = getDb();
+      const existing = await db.collection('account_deletion_requests')
+        .where('username', '==', realUsername).where('status', '==', 'pending').get();
+      if (!existing.empty) return res.status(400).json({ error: "Zaten bekleyen bir talebiniz var." });
+
+      const reqRef = db.collection('account_deletion_requests').doc();
+      await reqRef.set({
+        username: realUsername,
+        reason: reason ? String(reason).trim().slice(0, 500) : null,
+        status: 'pending',
+        createdAt: Date.now()
+      });
+
+      await sendTG(TG_CHAT_ID, `🗑️ *HESAP SİLME TALEBİ*\n\n👤 @${realUsername}${reason ? `\n📝 ${reason}` : ''}\n\nAdmin panelinden inceleyip sonuçlandırın.`);
+
+      return res.status(200).json({ success: true });
+    } catch (e) {
+      console.error("request_account_deletion hatası:", e);
+      await logSystemError('request_account_deletion', e);
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  // ── Kendi Silme Talebimin Durumunu Gör ──────────────────────────────────
+  if (action === 'get_my_deletion_request') {
+    const realUsername = await getRealUsername(accessToken);
+    if (!realUsername) return res.status(403).json({ error: "Geçersiz oturum" });
+    try {
+      const db = getDb();
+      const snap = await db.collection('account_deletion_requests')
+        .where('username', '==', realUsername).orderBy('createdAt', 'desc').limit(1).get();
+      if (snap.empty) return res.status(200).json({ success: true, request: null });
+      const doc = snap.docs[0];
+      return res.status(200).json({ success: true, request: { id: doc.id, ...doc.data() } });
+    } catch (e) {
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  // ── Admin: Bekleyen Silme Taleplerini Getir ─────────────────────────────
+  if (action === 'get_deletion_requests') {
+    const isAdmin = await verifyAdmin(accessToken);
+    if (!isAdmin) return res.status(403).json({ error: "Yetki yok" });
+    try {
+      const db = getDb();
+      const snap = await db.collection('account_deletion_requests').where('status', '==', 'pending').get();
+      const requests = [];
+      snap.forEach(d => requests.push({ id: d.id, ...d.data() }));
+      requests.sort((a, b) => a.createdAt - b.createdAt);
+      return res.status(200).json({ success: true, requests });
+    } catch (e) {
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  // ── Admin: Silme Talebini Sonuçlandır ────────────────────────────────────
+  if (action === 'resolve_deletion_request') {
+    const { requestId, note } = req.body;
+    const isAdmin = await verifyAdmin(accessToken);
+    if (!isAdmin) return res.status(403).json({ error: "Yetki yok" });
+    if (!requestId) return res.status(400).json({ error: "Geçersiz talep" });
+    try {
+      const db = getDb();
+      const reqRef = db.collection('account_deletion_requests').doc(requestId);
+      await reqRef.set({
+        status: 'resolved',
+        resolvedAt: Date.now(),
+        resolvedBy: await getRealUsername(accessToken),
+        resolutionNote: note ? String(note).trim().slice(0, 500) : null
+      }, { merge: true });
+      await logAdminAction(await getRealUsername(accessToken), 'resolve_deletion_request', requestId);
+      return res.status(200).json({ success: true });
     } catch (e) {
       return res.status(500).json({ error: e.message });
     }
@@ -2716,6 +3041,67 @@ async function handlerImpl(req, res) {
   }
 
   // ── Admin: Toplam Kazanç / Cüzdan Özeti ────────────────────────────────
+  // ── Satış Trendi (Son 30 Gün) ──────────────────────────────────────────
+  if (action === 'get_sales_trend') {
+    const isAdmin = await verifyAdmin(accessToken);
+    if (!isAdmin) return res.status(403).json({ error: "Yetki yok" });
+    try {
+      const db = getDb();
+      const now = Date.now();
+      const thirtyDaysAgo = now - 30 * 24 * 3600 * 1000;
+      const snap = await db.collection('domains').where('sold', '==', true).get();
+      // Firestore'da tarih alanına göre range filtresi + eşitlik filtresi
+      // aynı anda index gerektirebileceğinden, güvenli tarafta kalmak için
+      // client tarafta (burada, sunucu kodunda) filtreliyoruz.
+      const byDay = {};
+      for (let i = 0; i < 30; i++) {
+        const d = new Date(now - i * 24 * 3600 * 1000);
+        const key = d.toISOString().slice(0, 10);
+        byDay[key] = { date: key, count: 0, volume: 0 };
+      }
+      snap.forEach(d => {
+        const data = d.data();
+        if (data.deleted === true || !data.at || data.at < thirtyDaysAgo) return;
+        const key = new Date(data.at).toISOString().slice(0, 10);
+        if (byDay[key]) { byDay[key].count++; byDay[key].volume += Number(data.price || 0); }
+      });
+      const trend = Object.values(byDay).sort((a, b) => a.date.localeCompare(b.date));
+      return res.status(200).json({ success: true, trend });
+    } catch (e) {
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  // ── Satış Verisini Dışa Aktarım İçin Getir (CSV, admin'in tarayıcısında oluşturulur) ─
+  if (action === 'export_sales_data') {
+    const isAdmin = await verifyAdmin(accessToken);
+    if (!isAdmin) return res.status(403).json({ error: "Yetki yok" });
+    try {
+      const db = getDb();
+      const snap = await db.collection('domains').where('sold', '==', true).get();
+      const rows = [];
+      snap.forEach(d => {
+        const data = d.data();
+        if (data.deleted === true) return;
+        rows.push({
+          domain: d.id,
+          price: data.price || 0,
+          buyer: data.buyer || '',
+          sellerUsername: data.sellerUsername || '',
+          at: data.at ? new Date(data.at).toISOString() : '',
+          txid: data.txid || '',
+          payoutStatus: data.payoutStatus || '',
+          type: data.type || ''
+        });
+      });
+      rows.sort((a, b) => (b.at || '').localeCompare(a.at || ''));
+      await logAdminAction(await getRealUsername(accessToken), 'export_sales_data', `${rows.length} satır`);
+      return res.status(200).json({ success: true, rows });
+    } catch (e) {
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
   if (action === 'get_admin_earnings') {
     const isAdmin = await verifyAdmin(accessToken);
     if (!isAdmin) return res.status(403).json({ error: "Yetki yok" });
