@@ -3,7 +3,31 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Web3 Domain Gateway</title>
+    <title>Web3 Domain Gateway — .pi Domain Pazar Yeri</title>
+    <meta name="description" content="Pi Network üzerinde .pi domain al ve sat. Escrow (emanet) korumalı, güvenli ve şeffaf alışveriş.">
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" sizes="512x512" href="assets/favicon-512.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32.png">
+    <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
+
+    <!-- Open Graph / WhatsApp, Telegram, Facebook önizlemesi -->
+    <!-- NOT: og:image ve og:url mutlak (absolute) URL olmak zorunda; domain
+         değişirse (bkz. Değişiklik Günlüğü v2.0 öncesi dofiay.com geçişi)
+         bu iki satırın da güncellenmesi gerekir. -->
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="Web3 Domain Gateway">
+    <meta property="og:title" content="Web3 Domain Gateway — .pi Domain Pazar Yeri">
+    <meta property="og:description" content="Pi Network üzerinde .pi domain al ve sat. Escrow korumalı, güvenli ve şeffaf alışveriş.">
+    <meta property="og:image" content="https://dofiay.com/assets/og-image.png">
+    <meta property="og:url" content="https://dofiay.com/">
+
+    <!-- X / Twitter önizlemesi -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Web3 Domain Gateway — .pi Domain Pazar Yeri">
+    <meta name="twitter:description" content="Pi Network üzerinde .pi domain al ve sat. Escrow korumalı, güvenli ve şeffaf alışveriş.">
+    <meta name="twitter:image" content="https://dofiay.com/assets/og-image.png">
+
     <script src="https://sdk.minepi.com/pi-sdk.js"></script>
     <style>
         :root { --bg:#0f172a; --card:#1e293b; --accent:#6366f1; --text:#f8fafc; --sold:#ef4444; --price:#fbbf24; --success:#10b981; }
@@ -1055,6 +1079,10 @@
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fbbf24" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
         <span style="color:#fbbf24;" data-i18n="trustMiniBadgeMenu"></span>
     </button>
+    <button class="side-menu-item" onclick="toggleSideMenu();window.openHowItWorksModal();">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#a5b4fc" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+        <span style="color:#a5b4fc;" data-i18n="howItWorksMenuItem"></span>
+    </button>
     <button class="side-menu-item" onclick="toggleSideMenu();setTimeout(()=>window.startOnboardingTour(),350);">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#818cf8" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 2-3 4"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
         <span style="color:#818cf8;" data-i18n="tourReplay"></span>
@@ -1194,6 +1222,15 @@
     </div>
 </div>
 
+<div id="audit-log-modal" class="modal-overlay" style="display:none;">
+    <div class="modal-content" style="border-color:#64748b;text-align:left;max-height:82vh;display:flex;flex-direction:column;">
+        <h2 style="color:#e2e8f0;margin:0 0 10px 0;font-size:1em;font-weight:900;display:flex;align-items:center;gap:6px;">📋 Admin İşlem Günlüğü</h2>
+        <div style="font-size:0.65em;color:#64748b;margin-bottom:10px;">Son 100 kayıt, en yeni üstte. Kim, ne zaman, ne yaptı.</div>
+        <div id="audit-log-results" style="flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:6px;"></div>
+        <button class="pi-btn" style="background:#475569;animation:none;padding:10px;margin:12px 0 0 0;width:100%;flex-shrink:0;" onclick="document.getElementById('audit-log-modal').style.display='none'" data-i18n="close"></button>
+    </div>
+</div>
+
 <div id="share-app-modal" class="modal-overlay" style="display:none;">
     <div class="modal-content" style="border-color:#10b981;text-align:center;">
         <h2 style="color:#f1f5f9;margin:0 0 4px 0;font-size:1.05em;font-weight:900;">📤 <span data-i18n="shareAppTitle"></span></h2>
@@ -1213,6 +1250,46 @@
         </div>
         <button id="share-native-btn" onclick="window.shareNative()" style="display:none;width:100%;padding:10px;border-radius:9px;border:none;background:linear-gradient(135deg,#10b981,#059669);color:#fff;font-weight:800;font-size:0.78em;cursor:pointer;margin-bottom:8px;">📤 <span data-i18n="shareNativeBtn"></span></button>
         <button class="pi-btn" style="background:#475569;animation:none;padding:10px;margin:0;width:100%;" onclick="document.getElementById('share-app-modal').style.display='none'" data-i18n="close"></button>
+    </div>
+</div>
+
+<div id="how-it-works-modal" class="modal-overlay" style="display:none;">
+    <div class="modal-content" style="border-color:#6366f1;text-align:left;max-height:82vh;display:flex;flex-direction:column;">
+        <h2 style="color:#c7d2fe;margin:0 0 12px 0;font-size:1.05em;font-weight:900;display:flex;align-items:center;gap:6px;">📖 <span data-i18n="howItWorksTitle"></span></h2>
+        <div style="flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:14px;font-size:0.78em;line-height:1.6;color:#cbd5e1;">
+
+            <div>
+                <div style="color:#a5b4fc;font-weight:900;font-size:0.95em;margin-bottom:4px;">🌐 <span data-i18n="hiwSection1Title"></span></div>
+                <div data-i18n="hiwSection1Body"></div>
+            </div>
+
+            <div style="background:#0f172a;border-radius:12px;padding:12px;border:1px solid rgba(99,102,241,0.3);">
+                <div style="color:#a5b4fc;font-weight:900;font-size:0.95em;margin-bottom:8px;">🔒 <span data-i18n="hiwSection2Title"></span></div>
+                <div style="display:flex;flex-direction:column;gap:8px;">
+                    <div style="display:flex;gap:8px;"><span style="color:#6366f1;font-weight:900;flex-shrink:0;">1.</span><span data-i18n="hiwStep1"></span></div>
+                    <div style="display:flex;gap:8px;"><span style="color:#6366f1;font-weight:900;flex-shrink:0;">2.</span><span data-i18n="hiwStep2"></span></div>
+                    <div style="display:flex;gap:8px;"><span style="color:#6366f1;font-weight:900;flex-shrink:0;">3.</span><span data-i18n="hiwStep3"></span></div>
+                    <div style="display:flex;gap:8px;"><span style="color:#6366f1;font-weight:900;flex-shrink:0;">4.</span><span data-i18n="hiwStep4"></span></div>
+                </div>
+            </div>
+
+            <div>
+                <div style="color:#a5b4fc;font-weight:900;font-size:0.95em;margin-bottom:4px;">⚠️ <span data-i18n="hiwSection3Title"></span></div>
+                <div data-i18n="hiwSection3Body"></div>
+            </div>
+
+            <div>
+                <div style="color:#a5b4fc;font-weight:900;font-size:0.95em;margin-bottom:4px;">💰 <span data-i18n="hiwSection4Title"></span></div>
+                <div data-i18n="hiwSection4Body"></div>
+            </div>
+
+            <div>
+                <div style="color:#a5b4fc;font-weight:900;font-size:0.95em;margin-bottom:4px;">🛡️ <span data-i18n="hiwSection5Title"></span></div>
+                <div data-i18n="hiwSection5Body"></div>
+            </div>
+
+        </div>
+        <button class="pi-btn" style="background:#475569;animation:none;padding:10px;margin:12px 0 0 0;width:100%;flex-shrink:0;" onclick="document.getElementById('how-it-works-modal').style.display='none'" data-i18n="close"></button>
     </div>
 </div>
 
@@ -1329,6 +1406,9 @@
         </div>
         <div id="join-web3-banner" style="display:none;padding:4px 8px 0 8px;">
             <div class="lock-title-box" style="margin:0 auto;"><span data-i18n="joinWeb3"></span></div>
+        </div>
+        <div style="padding:6px 8px 0 8px;">
+            <button onclick="window.openHowItWorksModal()" style="width:100%;display:flex;align-items:center;justify-content:center;gap:6px;padding:9px;border-radius:10px;border:1.5px solid rgba(99,102,241,0.4);background:rgba(99,102,241,0.08);color:#a5b4fc;font-size:0.72em;font-weight:800;cursor:pointer;">📖 <span data-i18n="howItWorksMenuItem"></span></button>
         </div>
         
     </div>
@@ -1464,6 +1544,7 @@
             </button>
         </h3>
         <button id="checkup-btn" onclick="window.runSystemCheckup()" style="display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:9px;margin-bottom:8px;border:1.5px solid rgba(20,184,166,0.5);border-radius:10px;background:linear-gradient(135deg,rgba(20,184,166,0.18) 0%,rgba(15,118,110,0.20) 100%);color:#5eead4;font-size:0.75em;font-weight:800;cursor:pointer;">🩺 Sistem Kontrolü Yap</button>
+        <button onclick="window.openAuditLogModal()" style="display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:9px;margin-bottom:8px;border:1.5px solid rgba(148,163,184,0.4);border-radius:10px;background:rgba(148,163,184,0.08);color:#cbd5e1;font-size:0.75em;font-weight:800;cursor:pointer;">📋 Admin İşlem Günlüğü</button>
         <div id="maintenance-control-box" style="display:flex;align-items:center;gap:8px;background:linear-gradient(135deg,rgba(239,68,68,0.16) 0%,rgba(127,29,29,0.20) 100%);border:1.5px solid rgba(239,68,68,0.45);border-radius:10px;padding:8px 10px;margin-bottom:8px;">
             <span id="maintenance-status-dot" style="width:9px;height:9px;border-radius:50%;background:#10b981;flex-shrink:0;box-shadow:0 0 6px #10b981;"></span>
             <span id="maintenance-status-text" style="font-size:0.68em;color:#94a3b8;font-weight:700;flex:1;" data-i18n="maintenanceStatusLive"></span>
@@ -1643,6 +1724,10 @@
     <div class="card" id="market-card" style="position:relative;padding:5px;margin-bottom:2px;overflow:hidden;min-height:70px;background:linear-gradient(145deg,#0f172a 0%,#1e1b4b 50%,#0f172a 100%);border:1px solid #2a3a52;width:calc(100% - 16px);margin-left:auto;margin-right:auto;">
         <div class="section-title-box" id="market-title-box" style="display:none;" data-i18n="availableDomains"></div>
         <div class="filter-section" id="filter-section" style="display:none;">
+            <div style="display:flex;gap:6px;margin-bottom:6px;">
+                <input type="text" id="domain-search-input" oninput="window.onDomainSearchInput(this.value)" data-i18n-placeholder="searchPlaceholder" style="flex:1;min-width:0;background:#0f172a;border:1.5px solid #334155;border-radius:9px;padding:9px 10px;color:#e2e8f0;font-size:0.78em;">
+                <button type="button" id="favorites-filter-toggle" onclick="window.toggleFavoritesFilter()" style="flex-shrink:0;padding:0 12px;border-radius:9px;border:1.5px solid #f59e0b;background:rgba(245,158,11,0.1);color:#fbbf24;font-size:1em;cursor:pointer;">☆</button>
+            </div>
             <div class="filter-section-label" data-i18n="filterSectionLabel"></div>
             <button type="button" id="category-filter-btn" onclick="window.toggleCategoryFilterPanel()" class="category-select" style="display:flex;align-items:center;justify-content:space-between;cursor:pointer;">
                 <span id="category-filter-btn-label" data-i18n="filterAll"></span>
@@ -2178,6 +2263,26 @@ const i18n = {
     domainOnSale:"Satışta",domainSold:"Satıldı",sellerLabel:"Satıcı:",descriptionEmpty:"Açıklama girilmemiş.",
     imageUploading:"Görsel yükleniyor...",imageUploadFailed:"Görsel yüklenemedi.",
     myActiveListings:"Satıştaki Domainleriniz",mySoldDomainsLabel:"Satılan Domainleriniz",
+    searchPlaceholder:"🔍 Domain adı ara...",loginRequiredForFavorite:"Favorilere eklemek için giriş yapmalısınız.",
+    favoriteAddBtn:"Favorilere Ekle",favoriteRemoveBtn:"Favorilerden Çıkar",
+    howItWorksMenuItem:"Nasıl Çalışır?",howItWorksTitle:"Nasıl Çalışır ve Nasıl Korunuyorsunuz?",
+    rateSellerPrompt:"Satıcıyı değerlendirin:",yourRatingLabel:"Verdiğiniz Puan",
+    confirmRatingPrompt:(n)=>`Satıcıya ${n} yıldız vermek istediğinize emin misiniz? Bu işlem geri alınamaz.`,
+    genericError:"Bir hata oluştu, lütfen tekrar deneyin.",
+    sellerRatingLabel:"Satıcı Puanı",noRatingsYet:"Henüz değerlendirme yok",
+    hiwSection1Title:"Genel Bakış",
+    hiwSection1Body:"Web3 Domain Gateway, Pi Network üzerinde çalışan bir .pi domain (alan adı) al-sat pazar yeridir. Ödemeler Pi Coin ile yapılır. Domain satın aldığınızda paranız doğrudan satıcıya gitmez — önce güvenli bir emanet (escrow) hesabında bekletilir.",
+    hiwSection2Title:"Escrow (Emanet) Koruması Nasıl İşliyor?",
+    hiwStep1:"Bir domain satın aldığınızda, ödediğiniz Pi tutarı satıcıya değil, sistemin emanet hesabına gider.",
+    hiwStep2:"Satıcı domaini size devretmesinin ardından \"Devrettim\" der, siz de devri teslim aldığınızda \"Domaini Aldım\" dersiniz.",
+    hiwStep3:"Her iki taraf da onay verdikten sonra, emanetteki tutar satıcıya gönderilir. Herhangi bir taraf onay vermeden ödeme asla serbest bırakılmaz.",
+    hiwStep4:"Bir sorun yaşarsanız \"Sorun Var\" diyerek bildirebilirsiniz; admin durumu inceleyip taraflarla iletişime geçer ve süreci çözer.",
+    hiwSection3Title:"Anlaşmazlık Durumunda Ne Olur?",
+    hiwSection3Body:"Alıcı veya satıcı \"Sorun Var\" bildirdiğinde, ödeme otomatik olarak dondurulur ve admin devreye girer. Admin her iki tarafla da iletişime geçip durumu değerlendirir; gerekirse ödeme satıcıya serbest bırakılır ya da alıcıya iade edilir.",
+    hiwSection4Title:"Komisyon ve Ücretler",
+    hiwSection4Body:"Platform, üçüncü taraf satıcıların satışlarından yalnızca satış tamamlanıp ödeme serbest bırakıldığında %5 komisyon alır. Alıcıdan ekstra bir ücret alınmaz — ödediğiniz fiyat, gördüğünüz fiyattır.",
+    hiwSection5Title:"Güvenlik Önlemleri",
+    hiwSection5Body:"Tüm hassas veriler sunucu tarafında doğrulanır, admin yetkisi Pi Network'ün kendi kimlik doğrulama sistemi üzerinden kontrol edilir. Sistem, veri tutarlılığını ve bağlantı sağlığını düzenli olarak otomatik denetler.",
     shareAppMenuItem:"Uygulamayı Paylaş",shareAppTitle:"Uygulamayı Paylaş",
     shareAppDesc:"Linki veya QR kodu paylaşarak arkadaşlarını .pi domain pazarına davet et!",
     copyBtn:"Kopyala",linkCopied:"✅ Link kopyalandı!",
@@ -2639,6 +2744,26 @@ const i18n = {
     domainOnSale:"On Sale",domainSold:"Sold",sellerLabel:"Seller:",descriptionEmpty:"No description provided.",
     imageUploading:"Uploading image...",imageUploadFailed:"Image upload failed.",
     myActiveListings:"Domains Currently on Sale",mySoldDomainsLabel:"Your Sold Domains",
+    searchPlaceholder:"🔍 Search domain name...",loginRequiredForFavorite:"You need to log in to add favorites.",
+    favoriteAddBtn:"Add to Favorites",favoriteRemoveBtn:"Remove from Favorites",
+    howItWorksMenuItem:"How It Works",howItWorksTitle:"How It Works & How You're Protected",
+    rateSellerPrompt:"Rate the seller:",yourRatingLabel:"Your Rating",
+    confirmRatingPrompt:(n)=>`Are you sure you want to give the seller ${n} star${n>1?'s':''}? This cannot be undone.`,
+    genericError:"Something went wrong, please try again.",
+    sellerRatingLabel:"Seller Rating",noRatingsYet:"No ratings yet",
+    hiwSection1Title:"Overview",
+    hiwSection1Body:"Web3 Domain Gateway is a .pi domain marketplace running on Pi Network. Payments are made in Pi Coin. When you buy a domain, your payment doesn't go straight to the seller — it's first held in a secure escrow account.",
+    hiwSection2Title:"How Escrow Protection Works",
+    hiwStep1:"When you buy a domain, the Pi you pay goes to the system's escrow account, not directly to the seller.",
+    hiwStep2:"After the seller transfers the domain to you, they mark it as \"Transferred\"; once you receive it, you mark it as \"I Received It\".",
+    hiwStep3:"Once both sides confirm, the escrowed amount is released to the seller. Payment is never released without both confirmations.",
+    hiwStep4:"If there's a problem, you can report it with \"Report an Issue\"; the admin reviews the situation, contacts both parties, and resolves it.",
+    hiwSection3Title:"What Happens in a Dispute?",
+    hiwSection3Body:"When a buyer or seller reports an issue, the payment is automatically frozen and the admin steps in. The admin reviews the situation with both parties and either releases the payment to the seller or refunds the buyer.",
+    hiwSection4Title:"Commission & Fees",
+    hiwSection4Body:"The platform takes a 5% commission only from third-party seller sales, and only once the sale is complete and payment is released. Buyers pay no extra fees — the price you see is the price you pay.",
+    hiwSection5Title:"Security Measures",
+    hiwSection5Body:"All sensitive data is verified server-side, and admin authority is checked against Pi Network's own authentication system. The system automatically and regularly audits data consistency and connection health.",
     shareAppMenuItem:"Share App",shareAppTitle:"Share the App",
     shareAppDesc:"Share the link or QR code to invite friends to the .pi domain marketplace!",
     copyBtn:"Copy",linkCopied:"✅ Link copied!",
@@ -3043,6 +3168,41 @@ window.setSaleStatusFilter=function(val){
     debouncedRender();
 };
 
+// ── Arama + Favoriler ────────────────────────────────────────────────────
+let domainSearchQuery='';
+let showOnlyFavorites=false;
+let userFavorites=new Set(); // sunucudan (user_profiles.favorites) senkronize edilir, girişte doldurulur
+let domainSearchDebounceTimer=null;
+window.onDomainSearchInput=function(val){
+    clearTimeout(domainSearchDebounceTimer);
+    domainSearchDebounceTimer=setTimeout(()=>{ domainSearchQuery=val.trim().toLowerCase(); debouncedRender(); },200);
+};
+window.toggleFavoritesFilter=function(){
+    showOnlyFavorites=!showOnlyFavorites;
+    const btn=document.getElementById('favorites-filter-toggle');
+    if(btn){
+        btn.textContent = showOnlyFavorites ? '★' : '☆';
+        btn.style.background = showOnlyFavorites ? 'rgba(245,158,11,0.9)' : 'rgba(245,158,11,0.1)';
+        btn.style.color = showOnlyFavorites ? '#1e1b4b' : '#fbbf24';
+    }
+    debouncedRender();
+};
+window.toggleFavorite=async function(domainName, evt){
+    if(evt) evt.stopPropagation();
+    if(!isAuth){ alert(t('loginRequiredForFavorite')); return; }
+    const wasFav=userFavorites.has(domainName);
+    // İyimser (optimistic) güncelleme — sunucu yanıtını beklemeden arayüzü güncelle
+    if(wasFav) userFavorites.delete(domainName); else userFavorites.add(domainName);
+    debouncedRender();
+    try{
+        const r=await fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'toggle_favorite',domainName,addFavorite:!wasFav,accessToken:piAccessToken})});
+        const result=await r.json();
+        if(!result.success){ if(wasFav) userFavorites.add(domainName); else userFavorites.delete(domainName); debouncedRender(); }
+    }catch(e){
+        if(wasFav) userFavorites.add(domainName); else userFavorites.delete(domainName); debouncedRender();
+    }
+};
+
 window.toggleCategoryFilterPanel=function(){
     const panel=document.getElementById('category-filter-panel');
     if(!panel) return;
@@ -3406,6 +3566,18 @@ window.openDomainDetail=function(domainName){
     rows+=row('💰',t('detailFieldPrice'),`${data.price} Pi`,statusColor,true);
     rows+=row('📌',t('detailFieldStatus'),statusLabel,statusColor,true);
     rows+=row('👤',t('detailFieldSellerUser'),data.sellerUsername?'@'+data.sellerUsername:t('systemSellerLabel'));
+    rows+=`<div id="detail-seller-rating-row" style="display:none;"></div>`;
+    if(data.sellerUsername){
+        fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'get_seller_rating',sellerUsername:data.sellerUsername})})
+            .then(r=>r.json()).then(res=>{
+                const el=document.getElementById('detail-seller-rating-row');
+                if(!el||!res.success) return;
+                const ratingText = res.count>0 ? `⭐ ${res.avg} (${res.count})` : t('noRatingsYet');
+                el.style.display='flex';
+                el.style.gap='6px'; el.style.alignItems='baseline';
+                el.innerHTML=`<span style="color:#64748b;flex-shrink:0;font-weight:700;min-width:100px;">⭐ ${t('sellerRatingLabel')}:</span><span style="color:#fbbf24;font-weight:900;">${ratingText}</span>`;
+            }).catch(()=>{});
+    }
     if(data.sold){
         rows+=row('🧑‍💼',t('detailFieldBuyerUser'),data.buyer?'@'+data.buyer:'—');
         const dateStr=data.at?new Date(data.at).toLocaleDateString(locale,{day:'2-digit',month:'2-digit',year:'numeric'})+' '+new Date(data.at).toLocaleTimeString(locale,{hour:'2-digit',minute:'2-digit'}):null;
@@ -3417,8 +3589,13 @@ window.openDomainDetail=function(domainName){
     document.getElementById('detail-modal-fields').innerHTML=rows;
 
     const actionEl=document.getElementById('detail-modal-action');
-    if(!data.sold&&isAuth){actionEl.innerHTML=`<button class="btn-buy" style="width:100%;padding:10px;font-size:0.9em;" onclick="document.getElementById('domain-detail-modal').style.display='none';pendingDomain='${domainName}';pendingPrice=${data.price};document.getElementById('pre-buy-modal').style.display='flex';">${t('buyNow')}</button>`;}
-    else{actionEl.innerHTML='';}
+    let actionHtml='';
+    if(isAuth){
+        const isFav=userFavorites.has(domainName);
+        actionHtml+=`<button onclick="window.toggleFavorite('${domainName}')" style="width:100%;padding:9px;margin-bottom:8px;border-radius:9px;border:1.5px solid #f59e0b;background:${isFav?'rgba(245,158,11,0.9)':'rgba(245,158,11,0.1)'};color:${isFav?'#1e1b4b':'#fbbf24'};font-weight:800;font-size:0.78em;cursor:pointer;">${isFav?'★ '+t('favoriteRemoveBtn'):'☆ '+t('favoriteAddBtn')}</button>`;
+    }
+    if(!data.sold&&isAuth){actionHtml+=`<button class="btn-buy" style="width:100%;padding:10px;font-size:0.9em;" onclick="document.getElementById('domain-detail-modal').style.display='none';pendingDomain='${domainName}';pendingPrice=${data.price};document.getElementById('pre-buy-modal').style.display='flex';">${t('buyNow')}</button>`;}
+    actionEl.innerHTML=actionHtml;
     document.getElementById('domain-detail-modal').style.display='flex';
 };
 
@@ -3728,6 +3905,19 @@ window.handleAddDomain=async function(){
     if(!r.ok||!result.success) alert(t('addDomainFail')+(result.error||''));
     else{alert(t('addDomainSuccess')(name));['new-domain-name','new-domain-price','new-domain-img','new-domain-desc'].forEach(id=>document.getElementById(id).value='');}
 };
+window.openHowItWorksModal=function(){
+    document.getElementById('how-it-works-modal').style.display='flex';
+};
+window.submitSellerRating=async function(domainName, stars){
+    if(!confirm(t('confirmRatingPrompt')(stars))) return;
+    try{
+        const r=await fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'submit_seller_rating',domainName,stars,accessToken:piAccessToken})});
+        const result=await r.json();
+        if(!result.success){ alert(result.error||t('genericError')); return; }
+        if(domainData[domainName]) domainData[domainName].buyerRating={stars,at:Date.now()};
+        debouncedRender();
+    }catch(e){ alert(t('genericError')); }
+};
 window.openShareAppModal=function(){
     const url=window.location.origin+'/';
     document.getElementById('share-link-input').value=url;
@@ -3771,6 +3961,28 @@ window.downloadShareQr=async function(){
         document.body.appendChild(a); a.click(); a.remove();
         URL.revokeObjectURL(blobUrl);
     }catch(e){ window.open(img.src,'_blank'); }
+};
+window.openAuditLogModal=async function(){
+    const resultsEl=document.getElementById('audit-log-results');
+    resultsEl.innerHTML=`<div style="text-align:center;color:#64748b;font-size:0.75em;padding:20px;">Yükleniyor...</div>`;
+    document.getElementById('audit-log-modal').style.display='flex';
+    try{
+        const r=await fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'get_admin_audit_log',accessToken:piAccessToken})});
+        const result=await r.json();
+        if(!result.success){ resultsEl.innerHTML=`<div style="color:#f87171;font-size:0.75em;text-align:center;">${result.error||'Yüklenemedi'}</div>`; return; }
+        if(!result.entries||!result.entries.length){ resultsEl.innerHTML=`<div style="color:#64748b;font-size:0.75em;text-align:center;padding:20px;">Henüz kayıt yok.</div>`; return; }
+        resultsEl.innerHTML=result.entries.map(e=>`
+            <div style="background:#0f172a;border-radius:9px;padding:9px 10px;border-left:3px solid #64748b;">
+                <div style="display:flex;justify-content:space-between;gap:8px;margin-bottom:3px;">
+                    <b style="color:#cbd5e1;font-size:0.7em;">${e.action}</b>
+                    <span style="color:#64748b;font-size:0.62em;flex-shrink:0;">${new Date(e.ts).toLocaleString('tr-TR')}</span>
+                </div>
+                <div style="color:#94a3b8;font-size:0.68em;">👤 @${e.admin}${e.details?' — '+e.details:''}</div>
+            </div>
+        `).join('');
+    }catch(e){
+        resultsEl.innerHTML=`<div style="color:#f87171;font-size:0.75em;text-align:center;">Bir hata oluştu.</div>`;
+    }
 };
 window.runSystemCheckup=async function(){
     const btn=document.getElementById('checkup-btn');
@@ -3944,6 +4156,7 @@ async function loadUserProfile(){
         const result=await r.json();
         if(result.success){
             userProfile=result.profile||{points:0,badge:null};
+            userFavorites=new Set(result.profile?.favorites||[]);
             userSellRequests=result.sellRequests||[];
             userSoldDomains=result.soldDomains||[];
             userActiveListings=result.activeListings||[];
@@ -4033,6 +4246,14 @@ function renderUserPanel(){
             const statusTagHtml = isPendingConfirmation
                 ? `<span style="background:rgba(245,158,11,0.15);color:#fbbf24;font-size:0.58em;font-weight:800;padding:2px 8px;border-radius:6px;border:1px solid #f59e0b;flex-shrink:0;white-space:nowrap;">${t('soldPendingConfirmation')}</span>`
                 : `<span style="background:rgba(16,185,129,0.15);color:#6ee7b7;font-size:0.58em;font-weight:800;padding:2px 8px;border-radius:6px;border:1px solid #10b981;flex-shrink:0;white-space:nowrap;">${t('sold')}</span>`;
+            const ratingHtml = (data.sellerUsername && data.payoutStatus==='released') ? (
+                data.buyerRating ? `<div style="margin-top:8px;font-size:0.68em;color:#fbbf24;">⭐ ${t('yourRatingLabel')}: ${'★'.repeat(data.buyerRating.stars)}${'☆'.repeat(5-data.buyerRating.stars)}</div>`
+                : `<div style="margin-top:8px;padding-top:8px;border-top:1px dashed #334155;">
+                    <div style="font-size:0.65em;color:#94a3b8;margin-bottom:5px;">${t('rateSellerPrompt')}</div>
+                    <div style="display:flex;gap:4px;">
+                        ${[1,2,3,4,5].map(n=>`<button onclick="window.submitSellerRating('${d.name}',${n})" style="flex:1;padding:6px;border:1px solid #f59e0b;border-radius:6px;background:rgba(245,158,11,0.08);color:#fbbf24;font-size:0.85em;cursor:pointer;">${'★'.repeat(n)}</button>`).join('')}
+                    </div>
+                </div>` ) : '';
             myHtml+=`<div class="my-domain-item" style="flex-wrap:wrap;align-items:flex-start;">
                 <div style="flex:1;min-width:0;">
                     <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px;gap:8px;">
@@ -4046,6 +4267,7 @@ function renderUserPanel(){
                         <div style="display:flex;gap:6px;align-items:baseline;word-break:break-all;"><span style="color:#64748b;flex-shrink:0;font-weight:700;min-width:90px;">🧾 ${t('detailFieldTxid')}:</span><span style="color:#94a3b8;font-size:0.9em;">${data.txid||'—'}</span></div>
                     </div>
                     ${confirmHtml}
+                    ${ratingHtml}
                 </div>
                 ${dogrulaBtn}
             </div>`;
@@ -4323,6 +4545,14 @@ function render(){
     let sortedDomains=[...domains].filter(d=>!domainData[d.name]?.deleted).sort((a,b)=>(domainData[b.name]?.createdAt||0)-(domainData[a.name]?.createdAt||0));
     const isAdminViewing=isAuth&&currentUser===APP_CONFIG.adminUsername&&!window._viewAsUserMode;
     syncCategoryFilterCheckboxes();
+    // Arama kutusu — domain adında (büyük/küçük harf duyarsız) geçen kısım
+    if(domainSearchQuery){
+        sortedDomains = sortedDomains.filter(d=>d.name.toLowerCase().includes(domainSearchQuery));
+    }
+    // Favoriler filtresi
+    if(showOnlyFavorites){
+        sortedDomains = sortedDomains.filter(d=>userFavorites.has(d.name));
+    }
     // GÜVENLİK/GÖRÜNÜRLÜK: Pasife alınmış (ödemesi kesinleşmiş, satıştan
     // kaldırılmış) domainler artık admin'e özel değil — herkes "Pasif"
     // filtresini seçerek görebilir (satış arşivi/şeffaflık amaçlı).
@@ -4383,7 +4613,9 @@ function render(){
         const isFinalizedSale=data.hidden&&data.payoutStatus==='released';
         const hiddenTag=isFinalizedSale?`<span class="domain-type-tag" style="background:#065f46;color:#6ee7b7;">✅ ${t('finalizedSaleTag')}</span>`:(data.hidden?`<span class="domain-type-tag" style="background:#475569;">🙈 ${t('hiddenTag')}</span>`:'');
         const imgSrc=data.img||d.img;
-        card.innerHTML=`<img src="${imgSrc}" class="domain-img" onerror="this.src='data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMDAiIGhlaWdodD0iMTAwIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjNDc1NTY5Ii8+PC9zdmc+'">${tTag}${hiddenTag}<div class="domain-name">${d.name} <span style="color:#fbbf24;font-weight:800;">(${data.price} π)</span></div><div class="domain-price">${data.price} PI</div>`;
+        const favBtn=isAuth?`<button onclick="window.toggleFavorite('${d.name}',event)" style="position:absolute;top:6px;right:6px;z-index:3;width:26px;height:26px;border-radius:50%;border:none;background:rgba(15,23,42,0.7);color:${userFavorites.has(d.name)?'#fbbf24':'#94a3b8'};font-size:0.95em;display:flex;align-items:center;justify-content:center;cursor:pointer;backdrop-filter:blur(4px);">${userFavorites.has(d.name)?'★':'☆'}</button>`:'';
+        card.style.position='relative';
+        card.innerHTML=`${favBtn}<img src="${imgSrc}" class="domain-img" onerror="this.src='data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMDAiIGhlaWdodD0iMTAwIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjNDc1NTY5Ii8+PC9zdmc+'">${tTag}${hiddenTag}<div class="domain-name">${d.name} <span style="color:#fbbf24;font-weight:800;">(${data.price} π)</span></div><div class="domain-price">${data.price} PI</div>`;
 
         if(data.sold){
             // Satıcılı bir satışta, escrow ödemesi admin tarafından serbest
@@ -5171,7 +5403,8 @@ onSnapshot(collection(db,"domains"),(snapshot)=>{
             deleted:docData.deleted===true, // FIX: soft-delete bayrağı
             deletedAt:docData.deletedAt||null, // FIX: silinme tarihi eksikti, eklendi
             hidden:docData.hidden===true, // FIX: eksikti — "Gizle" butonu bu yüzden hiç etkili olmuyordu
-            payoutStatus:docData.payoutStatus||null // FIX: eksikti — "Onay Aşamasında" durumu bu yüzden hiç görünmüyor, direkt "SATILDI" gösteriliyordu
+            payoutStatus:docData.payoutStatus||null, // FIX: eksikti — "Onay Aşamasında" durumu bu yüzden hiç görünmüyor, direkt "SATILDI" gösteriliyordu
+            buyerRating:docData.buyerRating||null // YENİ: alıcının satıcıya verdiği puan (varsa)
         };
         if(!defaultDomain){
             domains.unshift({name,img:docData.img||'assets/default.jpeg',price:docData.price||0,type:docData.type||'genel',description:docData.description||''});
