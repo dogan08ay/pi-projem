@@ -222,6 +222,23 @@ async function logSystemError(action, err, extra) {
   } catch (_) { /* günlükleme hatası sessizce yutulur */ }
 }
 
+// ─── Admin İşlem Günlüğü (Audit Log) ────────────────────────────────────────
+// "Kim, ne zaman, hangi işlemi yaptı" kaydı. Özellikle finansal/geri
+// alınamaz işlemler (ödeme serbest bırakma, iade, ilan reddi, domain silme,
+// bakım modu vb.) için — ileride bir anlaşmazlık çıkarsa elde iz olsun diye.
+// Asla hata fırlatmaz, asıl işlemi engellemez.
+async function logAdminAction(adminUsername, action, details) {
+  try {
+    const db = getDb();
+    await db.collection('admin_audit_log').add({
+      admin: adminUsername || 'unknown',
+      action,
+      details: details ? String(details).slice(0, 400) : null,
+      ts: Date.now()
+    });
+  } catch (_) { /* günlükleme hatası sessizce yutulur */ }
+}
+
 // ─── CORS ─────────────────────────────────────────────────────────────────
 function setCors(req, res) {
   const allowedOrigins = (process.env.ALLOWED_ORIGIN || '')
@@ -822,6 +839,7 @@ async function handlerImpl(req, res) {
       }, { merge: true });
 
       console.log(`Domain soft-delete edildi: ${delName}`);
+      await logAdminAction(await getRealUsername(accessToken), 'delete_domain', delName);
       return res.status(200).json({ success: true });
     } catch (e) {
       return res.status(500).json({ error: e.message });
@@ -902,6 +920,21 @@ async function handlerImpl(req, res) {
   // tutarlılığı sorunlarını tarar (satıcı/satış kaydı uyuşmazlıkları,
   // takılı kalmış ödemeler, kopuk ilan kayıtları vb.) ve bir rapor
   // (issues[]) döner. Hiçbir veriyi DEĞİŞTİRMEZ, sadece okur ve raporlar.
+  // ── Admin İşlem Günlüğünü Getir ────────────────────────────────────────
+  if (action === 'get_admin_audit_log') {
+    const isAdmin = await verifyAdmin(accessToken);
+    if (!isAdmin) return res.status(403).json({ error: "Yetki yok" });
+    try {
+      const db = getDb();
+      const snap = await db.collection('admin_audit_log').orderBy('ts', 'desc').limit(100).get();
+      const entries = [];
+      snap.forEach(d => entries.push({ id: d.id, ...d.data() }));
+      return res.status(200).json({ success: true, entries });
+    } catch (e) {
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
   if (action === 'run_system_checkup') {
     const isAdmin = await verifyAdmin(accessToken);
     if (!isAdmin) return res.status(403).json({ error: "Yetki yok" });
@@ -1164,6 +1197,7 @@ async function handlerImpl(req, res) {
       });
 
       console.log(`Platform istatistikleri sıfırlandı: ${new Date(resetTimestamp).toISOString()}`);
+      await logAdminAction(await getRealUsername(accessToken), 'reset_platform_stats', 'TÜM satış geçmişi ve puanlar sıfırlandı');
       return res.status(200).json({ success: true, resetAt: resetTimestamp });
     } catch (e) {
       console.error("Platform sıfırlama hatası:", e);
@@ -1301,6 +1335,7 @@ async function handlerImpl(req, res) {
       });
 
       await updateUserPoints(reqData.submittedBy, 20, 'domain_approved');
+      await logAdminAction(await getRealUsername(accessToken), 'approve_sell_request', `${reqData.domainName} (@${reqData.submittedBy})`);
 
       return res.status(200).json({ success: true });
     } catch (e) {
@@ -1329,6 +1364,8 @@ async function handlerImpl(req, res) {
           domainName: reqData.domainName
         });
       }
+
+      await logAdminAction(await getRealUsername(accessToken), 'reject_sell_request', `${reqData?.domainName || requestId}${rejectReason ? ' - ' + rejectReason : ''}`);
 
       return res.status(200).json({ success: true });
     } catch (e) {
@@ -1617,6 +1654,7 @@ async function handlerImpl(req, res) {
         updatedAt: Date.now(),
         updatedBy: realUsername
       }, { merge: true });
+      await logAdminAction(realUsername, 'set_maintenance_mode', enabled ? 'AÇILDI' : 'KAPATILDI');
       return res.status(200).json({ success: true, maintenanceMode: !!enabled });
     } catch (e) {
       console.error("set_maintenance_mode hatası:", e);
@@ -1747,6 +1785,8 @@ async function handlerImpl(req, res) {
         }
       }
 
+      await logAdminAction(await getRealUsername(accessToken), 'update_trademark_claim_status', `claim:${claimId} → ${status}`);
+
       return res.status(200).json({ success: true });
     } catch (e) {
       console.error("update_trademark_claim_status hatası:", e);
@@ -1816,6 +1856,8 @@ async function handlerImpl(req, res) {
           domainName
         });
       }
+
+      await logAdminAction(await getRealUsername(accessToken), 'approve_trademark_claim', `${domainName} kaldırıldı (claim:${claimId})`);
 
       return res.status(200).json({ success: true, domainRemoved, note: domainNotFoundNote });
     } catch (e) {
@@ -2065,6 +2107,8 @@ async function handlerImpl(req, res) {
         role
       });
 
+      await logAdminAction(await getRealUsername(accessToken), 'resolve_dispute', `${sale.domain} (${role}): ${message}`);
+
       return res.status(200).json({ success: true });
     } catch (e) {
       return res.status(500).json({ error: e.message });
@@ -2222,6 +2266,7 @@ async function handlerImpl(req, res) {
           domainName: sale.domain, amount: payoutAmount
         });
         await sendTG(TG_CHAT_ID, `💸 *ÖDEME SERBEST BIRAKILDI*\n\n🌐 ${sale.domain}\n👤 @${sale.sellerUsername}\n💰 ${payoutAmount} Pi\n🔑 txid: ${txid}`);
+        await logAdminAction(await getRealUsername(accessToken), 'release_seller_payment', `${sale.domain} → @${sale.sellerUsername}, ${payoutAmount} Pi`);
 
         return res.status(200).json({ success: true, txid, payoutAmount });
       } catch (stepError) {
@@ -2343,6 +2388,7 @@ async function handlerImpl(req, res) {
           domainName: sale.domain, amount: refundAmount
         });
         await sendTG(TG_CHAT_ID, `↩️ *ÖDEME İADE EDİLDİ*\n\n🌐 ${sale.domain}\n👤 @${sale.user}\n💰 ${refundAmount} Pi\n🔑 txid: ${txid}`);
+        await logAdminAction(await getRealUsername(accessToken), 'refund_buyer', `${sale.domain} → @${sale.user}, ${refundAmount} Pi`);
 
         return res.status(200).json({ success: true, txid, refundAmount });
       } catch (stepError) {
@@ -2491,13 +2537,91 @@ async function handlerImpl(req, res) {
   }
 
   // ── Kullanıcı Profili Getir ───────────────────────────────────────────
+  // ── Favori Ekle/Çıkar ──────────────────────────────────────────────────
+  // ── Satıcıyı Değerlendir (Puanlama) ────────────────────────────────────
+  // Sadece: satış gerçekten release edilmiş (payoutStatus:'released'),
+  // isteği yapan gerçekten o satışın alıcısı, ve daha önce bu satış için
+  // puan verilmemiş olmalı. Domain doc'a buyerRating yazılır (tekrar
+  // puanlamayı engeller) + satıcının user_profiles kaydında ratingSum/
+  // ratingCount artırılır (ortalama puan buradan hesaplanır).
+  if (action === 'submit_seller_rating') {
+    const { domainName, stars } = req.body;
+    const realUsername = await getRealUsername(accessToken);
+    if (!realUsername) return res.status(403).json({ error: "Geçersiz oturum" });
+    const starsNum = parseInt(stars, 10);
+    if (!domainName || !Number.isInteger(starsNum) || starsNum < 1 || starsNum > 5)
+      return res.status(400).json({ error: "Geçersiz puan" });
+    try {
+      const db = getDb();
+      const domainRef = db.collection('domains').doc(domainName);
+      const domainSnap = await domainRef.get();
+      if (!domainSnap.exists) return res.status(404).json({ error: "Domain bulunamadı" });
+      const data = domainSnap.data();
+      if (data.buyer !== realUsername) return res.status(403).json({ error: "Bu satışın alıcısı siz değilsiniz" });
+      if (data.payoutStatus !== 'released') return res.status(400).json({ error: "Ödeme henüz serbest bırakılmadı, satış tamamlanmadan değerlendirme yapılamaz" });
+      if (data.buyerRating) return res.status(400).json({ error: "Bu satış için zaten bir değerlendirme yaptınız" });
+      if (!data.sellerUsername) return res.status(400).json({ error: "Bu satışın kayıtlı bir satıcısı yok" });
+
+      const rating = { stars: starsNum, at: Date.now(), by: realUsername };
+      await domainRef.set({ buyerRating: rating }, { merge: true });
+      await db.collection('user_profiles').doc(data.sellerUsername).set({
+        ratingSum: FieldValue.increment(starsNum),
+        ratingCount: FieldValue.increment(1)
+      }, { merge: true });
+
+      return res.status(200).json({ success: true });
+    } catch (e) {
+      console.error("submit_seller_rating hatası:", e);
+      await logSystemError('submit_seller_rating', e);
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  // ── Satıcının Ortalama Puanını Getir (herkese açık — kimlik doğrulama gerektirmez) ─
+  if (action === 'get_seller_rating') {
+    const { sellerUsername } = req.body;
+    if (!sellerUsername) return res.status(400).json({ error: "Geçersiz kullanıcı adı" });
+    try {
+      const db = getDb();
+      const snap = await db.collection('user_profiles').doc(sellerUsername).get();
+      const d = snap.exists ? snap.data() : {};
+      const count = d.ratingCount || 0;
+      const avg = count > 0 ? Math.round((d.ratingSum / count) * 10) / 10 : null;
+      return res.status(200).json({ success: true, avg, count });
+    } catch (e) {
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  if (action === 'toggle_favorite') {
+    const { domainName, addFavorite } = req.body;
+    const realUsername = await getRealUsername(accessToken);
+    if (!realUsername) return res.status(403).json({ error: "Geçersiz oturum" });
+    if (!domainName) return res.status(400).json({ error: "Geçersiz domain adı" });
+    try {
+      const db = getDb();
+      const ref = db.collection('user_profiles').doc(realUsername);
+      await ref.set({
+        favorites: addFavorite ? FieldValue.arrayUnion(domainName) : FieldValue.arrayRemove(domainName)
+      }, { merge: true });
+      return res.status(200).json({ success: true });
+    } catch (e) {
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
   if (action === 'get_user_profile') {
+    // YENİ: Girişten hemen sonra çağrılan bu endpoint'e de rate limit
+    // eklendi — token deneme/kaba kuvvet saldırılarına karşı ek koruma.
+    if (!checkRateLimit(clientIp, 'get_user_profile', 20, 60000))
+      return res.status(429).json({ error: "Çok fazla istek. Lütfen biraz bekleyin." });
     const realUsername = await getRealUsername(accessToken);
     if (!realUsername) return res.status(403).json({ error: "Geçersiz oturum" });
     try {
       const db = getDb();
       const profileSnap = await db.collection('user_profiles').doc(realUsername).get();
       const profileData = profileSnap.exists ? profileSnap.data() : { points: 0, badge: null };
+      if (!profileData.favorites) profileData.favorites = [];
 
       const salesSnap = await db.collection('global_sales').where('user', '==', realUsername).get();
       let totalSpent = 0;
@@ -2703,6 +2827,12 @@ async function handlerImpl(req, res) {
 
   const allowedActions = ['approve', 'complete', 'cancel'];
   if (!allowedActions.includes(action)) return res.status(400).json({ error: "Geçersiz action" });
+
+  // YENİ: Ödeme akışı (satın alma) için rate limiting eklendi — daha önce
+  // hiç yoktu, bu da otomatikleştirilmiş kötüye kullanıma (bot ile ardı
+  // ardına sahte ödeme denemesi) açık bırakıyordu.
+  if (!checkRateLimit(clientIp, 'payment_action', 20, 60000))
+    return res.status(429).json({ error: "Çok fazla ödeme isteği. Lütfen biraz bekleyip tekrar deneyin." });
 
   if (action === 'cancel') {
     if (domainName && !username) {
