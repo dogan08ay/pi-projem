@@ -894,6 +894,23 @@ async function handlerImpl(req, res) {
         if (prevBuyer && soldPrice > 0) {
           await reverseSaleAndPoints(db, permDelName, prevBuyer, soldPrice, soldAt);
         }
+
+        // YENİ: Bu satışa bağlı yıldız puanları da geri alınır — domain
+        // kalıcı silinince, o satıştan doğan itibar puanı da kaybolmalı,
+        // yoksa ortalama puan artık var olmayan bir işleme dayanarak
+        // şişirilmiş kalır.
+        if (domainData.buyerRating && domainData.sellerUsername) {
+          await db.collection('user_profiles').doc(domainData.sellerUsername).set({
+            ratingSum: FieldValue.increment(-domainData.buyerRating.stars),
+            ratingCount: FieldValue.increment(-1)
+          }, { merge: true });
+        }
+        if (domainData.sellerRatingOfBuyer && domainData.buyer) {
+          await db.collection('user_profiles').doc(domainData.buyer).set({
+            buyerRatingSum: FieldValue.increment(-domainData.sellerRatingOfBuyer.stars),
+            buyerRatingCount: FieldValue.increment(-1)
+          }, { merge: true });
+        }
       }
 
       if (snap.data().deleted !== true) return res.status(400).json({ error: "Sadece soft-delete edilmiş domainler kalıcı silinebilir" });
