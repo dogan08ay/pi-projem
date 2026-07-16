@@ -4986,6 +4986,11 @@ onSnapshot(collection(db,"active_users"),(snap)=>{
     const now=Date.now();let count=0;
     snap.forEach(d=>{if(d.data().lastSeen&&(now-d.data().lastSeen)<30000)count++;});
     const el=document.getElementById("online-count"); if(el) el.innerText=count;
+    // FIX: Admin panelindeki "Anlık Aktif Kullanıcılar" butonunun rozeti de
+    // modalı hiç açmadan, bu zaten var olan canlı dinleyiciden anında
+    // güncellensin (önceden sadece modal açılınca dolduruluyordu, o ana
+    // kadar "—" görünüyordu).
+    const badgeEl=document.getElementById("active-users-badge"); if(badgeEl) badgeEl.textContent=count;
 });
 async function updateActiveStatus(){if(currentUser) await setDoc(doc(db,"active_users",currentUser),{lastSeen:Date.now()},{merge:true});}
 window.addEventListener('beforeunload',async()=>{if(currentUser) await deleteDoc(doc(db,"active_users",currentUser));});
