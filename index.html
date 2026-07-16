@@ -1703,6 +1703,7 @@
                 <button class="pi-btn" style="margin:4px 0 0 0;animation:none;background:#10b981;padding:8px;" onclick="handleAddDomain()" data-i18n="addDomainBtn"></button>
                 <button class="pi-btn" style="margin:10px 0 0 0;animation:none;background:#334155;padding:8px;font-size:0.68em;" onclick="handleBackfillSellerUsername()">🔧 Eski domainlerdeki satıcı bilgisini düzelt (tek seferlik)</button>
                 <button class="pi-btn" style="margin:6px 0 0 0;animation:none;background:#334155;padding:8px;font-size:0.68em;" onclick="window.handleFixDeletedRatings()">⭐ Silinmiş domainlerdeki puanları geri al (tek seferlik)</button>
+                <button class="pi-btn" style="margin:6px 0 0 0;animation:none;background:#334155;padding:8px;font-size:0.68em;" onclick="window.handleRecomputeAllRatings()">🔄 Tüm puanları sıfırdan yeniden hesapla (kalıcı silinmiş domainleri de temizler)</button>
             </div>
         </div>
         <div class="admin-tab-panel" id="tab-earnings">
@@ -4370,6 +4371,15 @@ window.handleFixDeletedRatings=async function(){
         const result=await r.json();
         if(!result.success){ alert('Hata: '+(result.error||'')); return; }
         alert(`✅ ${result.fixedCount} domain'deki puan geri alındı.`+(result.fixedNames&&result.fixedNames.length?'\n'+result.fixedNames.join(', '):''));
+    }catch(e){ alert('Bir hata oluştu.'); }
+};
+window.handleRecomputeAllRatings=async function(){
+    if(!confirm('TÜM kullanıcıların satıcı/alıcı yıldız puanları, şu an Firestore\'da var olan domain kayıtları taranarak SIFIRDAN yeniden hesaplanacak ve mevcut (muhtemelen şişmiş) değerlerin üzerine yazılacak. Kalıcı silinmiş domainler zaten Firestore\'da hiç yok, bu yüzden onlara ait puanlar otomatik olarak sıfırlanacak. Bu işlem güvenlidir ve tekrar tekrar çalıştırılabilir. Devam edilsin mi?')) return;
+    try{
+        const r=await fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'recompute_all_ratings',accessToken:piAccessToken})});
+        const result=await r.json();
+        if(!r.ok||!result.success){ alert('Hata: '+(result.error||'')); return; }
+        alert(`✅ ${result.updatedCount} kullanıcı profili güncellendi.\n${result.sellersAffected||0} satıcı, ${result.buyersAffected||0} alıcı için puanlar güncel domain kayıtlarına göre yeniden yazıldı.`);
     }catch(e){ alert('Bir hata oluştu.'); }
 };
 window.handleBackfillSellerUsername=async function(){
