@@ -1496,6 +1496,10 @@
         </div>
         <div class="user-tab-panel" id="utab-income">
             <div class="income-box"><div style="font-size:0.7em;color:#6ee7b7;font-weight:800;margin-bottom:4px;" data-i18n="totalEarned"></div><div class="income-value" id="up-earned">0 Pi</div><div style="font-size:0.65em;color:#94a3b8;margin-top:6px;" data-i18n="earnedNote"></div></div>
+            <div id="my-seller-rating-box" style="text-align:center;background:#0f172a;border:1px solid rgba(245,158,11,0.35);border-radius:10px;padding:10px;margin-bottom:10px;">
+                <div style="font-size:0.62em;color:#94a3b8;font-weight:700;margin-bottom:4px;" data-i18n="myRatingAsSellerLabel"></div>
+                <div id="my-seller-rating-value" style="font-size:1.1em;font-weight:900;color:#fbbf24;">—</div>
+            </div>
             <select id="my-sold-filter-select" onchange="window.setMySoldFilter(this.value)" class="filter-select-prominent" style="--filter-accent:#10b981;">
                 <option value="all" data-i18n="soldFilterAll"></option>
                 <option value="pending" data-i18n="soldFilterPending"></option>
@@ -2292,6 +2296,7 @@ const i18n = {
     confirmRatingPrompt:(n)=>`Satıcıya ${n} yıldız vermek istediğinize emin misiniz? Bu işlem geri alınamaz.`,
     genericError:"Bir hata oluştu, lütfen tekrar deneyin.",
     sellerRatingLabel:"Satıcı Puanı",noRatingsYet:"Henüz değerlendirme yok",
+    myRatingAsSellerLabel:"Satıcı Olarak Puanınız",ratingsCountSuffix:"değerlendirme",
     hiwSection1Title:"Genel Bakış",
     hiwSection1Body:"Web3 Domain Gateway, Pi Network üzerinde çalışan bir .pi domain (alan adı) al-sat pazar yeridir. Ödemeler Pi Coin ile yapılır. Domain satın aldığınızda paranız doğrudan satıcıya gitmez — önce güvenli bir emanet (escrow) hesabında bekletilir.",
     hiwSection2Title:"Escrow (Emanet) Koruması Nasıl İşliyor?",
@@ -2789,6 +2794,7 @@ const i18n = {
     confirmRatingPrompt:(n)=>`Are you sure you want to give the seller ${n} star${n>1?'s':''}? This cannot be undone.`,
     genericError:"Something went wrong, please try again.",
     sellerRatingLabel:"Seller Rating",noRatingsYet:"No ratings yet",
+    myRatingAsSellerLabel:"Your Rating as a Seller",ratingsCountSuffix:"ratings",
     hiwSection1Title:"Overview",
     hiwSection1Body:"Web3 Domain Gateway is a .pi domain marketplace running on Pi Network. Payments are made in Pi Coin. When you buy a domain, your payment doesn't go straight to the seller — it's first held in a secure escrow account.",
     hiwSection2Title:"How Escrow Protection Works",
@@ -4238,6 +4244,13 @@ async function loadUserProfile(){
             userActiveListings=result.activeListings||[];
             userTotalSpent=result.totalSpent||0;
             userTotalEarned=result.totalEarned||0;
+            // YENİ: Kendi satıcı puanımızı (Gelirim sekmesindeki kutu) çek.
+            fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'get_seller_rating',sellerUsername:currentUser})})
+                .then(r=>r.json()).then(res=>{
+                    const el=document.getElementById('my-seller-rating-value');
+                    if(!el||!res.success) return;
+                    el.textContent = res.count>0 ? `⭐ ${res.avg} (${res.count} ${t('ratingsCountSuffix')})` : t('noRatingsYet');
+                }).catch(()=>{});
         }
     }catch(e){console.error("Profil yüklenemedi:",e);}
 }
