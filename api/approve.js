@@ -683,6 +683,123 @@ async function handlerImpl(req, res) {
   // geriye dönük escrow'a sokmak alıcı/satıcı için kafa karıştırıcı olur).
   // İdempotenttir: kaç kez çalıştırılırsa çalıştırılsın, sadece eksik olan
   // kayıtları günceller, zaten sellerUsername'i olanlara dokunmaz.
+  // ── Tüm Puanları Sıfırdan Yeniden Hesapla ───────────────────────────────
+  // Kalıcı silinen bir domain'in puanı (eski bir silmeden, bu düzeltmeden
+  // ÖNCE yapılmış olabilir) geriye dönük düzelmez — çünkü artırma/azaltma
+  // (increment) mantığı sadece BUNDAN SONRAKİ silmelerde çalışır. Bu action
+  // ise var olan TÜM domainleri tarayıp (silinmişler zaten Firestore'da hiç
+  // yok, otomatik olarak hesaba katılmıyor), her kullanıcının puanını
+  // SIFIRDAN toplayıp mevcut (muhtemelen şişmiş/eksik) değerin üzerine
+  // YAZAR. Ne kadar çok kez çalıştırılırsa çalıştırılsın hep doğru sonucu
+  // verir (idempotent).
+  if (action === 'recompute_all_ratings') {
+    const isAdmin = await verifyAdmin(accessToken);
+    if (!isAdmin) return res.status(403).json({ error: "Yetki yok" });
+    try {
+      const db = getDb();
+      const domainsSnap = await db.collection('domains').get();
+      const sellerTotals = {}; // sellerUsername -> {sum, count}
+      const buyerTotals = {};  // buyerUsername -> {sum, count}
+
+      domainsSnap.forEach(d => {
+        const data = d.data();
+        if (data.buyerRating && data.sellerUsername) {
+          const t = sellerTotals[data.sellerUsername] || { sum: 0, count: 0 };
+          t.sum += data.buyerRating.stars; t.count++;
+          sellerTotals[data.sellerUsername] = t;
+        }
+        if (data.sellerRatingOfBuyer && data.buyer) {
+          const t = buyerTotals[data.buyer] || { sum: 0, count: 0 };
+          t.sum += data.sellerRatingOfBuyer.stars; t.count++;
+          buyerTotals[data.buyer] = t;
+        }
+      });
+
+      // Önce, puanı olan TÜM profilleri sıfırla (ileride bir domain silinip
+      // artık hiç puanı kalmayan bir kullanıcı varsa, onun eski şişmiş
+      // değeri de 0'a dönsün diye).
+      const allProfilesSnap = await db.collection('user_profiles').get();
+      const batch = db.batch();
+      let updatedCount = 0;
+      allProfilesSnap.forEach(p => {
+        const pd = p.data();
+        const hasOldRatingData = pd.ratingSum !== undefined || pd.ratingCount !== undefined || pd.buyerRatingSum !== undefined || pd.buyerRatingCount !== undefined;
+        if (!hasOldRatingData) return;
+        const sellerT = sellerTotals[p.id] || { sum: 0, count: 0 };
+        const buyerT = buyerTotals[p.id] || { sum: 0, count: 0 };
+        batch.set(p.ref, {
+          ratingSum: sellerT.sum, ratingCount: sellerT.count,
+          buyerRatingSum: buyerT.sum, buyerRatingCount: buyerT.count
+        }, { merge: true });
+        updatedCount++;
+      });
+      // Henüz hiç user_profiles kaydı olmayan ama şimdi puanı çıkan kullanıcılar
+      Object.keys(sellerTotals).forEach(u => {
+        if (!allProfilesSnap.docs.some(p => p.id === u)) {
+          batch.set(db.collection('user_profiles').doc(u), { ratingSum: sellerTotals[u].sum, ratingCount: sellerTotals[u].count }, { merge: true });
+          updatedCount++;
+        }
+      });
+      Object.keys(buyerTotals).forEach(u => {
+        if (!allProfilesSnap.docs.some(p => p.id === u)) {
+          batch.set(db.collection('user_profiles').doc(u), { buyerRatingSum: buyerTotals[u].sum, buyerRatingCount: buyerTotals[u].count }, { merge: true });
+          updatedCount++;
+        }
+      });
+      await batch.commit();
+
+      await logAdminAction(await getRealUsername(accessToken), 'recompute_all_ratings', `${updatedCount} profil güncellendi`);
+      return res.status(200).json({ success: true, updatedCount, sellersAffected: Object.keys(sellerTotals).length, buyersAffected: Object.keys(buyerTotals).length });
+    } catch (e) {
+      console.error("recompute_all_ratings hatası:", e);
+      await logSystemError('recompute_all_ratings', e);
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  // ── Geriye Dönük Düzeltme: Zaten Silinmiş Domainlerdeki Puanları Geri Al ─
+  // Bu fix'ten ÖNCE silinmiş domainlerin buyerRating/sellerRatingOfBuyer
+  // alanları hâlâ duruyor ve ilgili kullanıcının toplam puanına dahil
+  // ediliyordu. Bu action, deleted===true olan ve hâlâ puan taşıyan her
+  // domain için puanı geri alır ve alanı temizler. İdempotenttir.
+  if (action === 'backfill_reverse_deleted_ratings') {
+    const isAdmin = await verifyAdmin(accessToken);
+    if (!isAdmin) return res.status(403).json({ error: "Yetki yok" });
+    try {
+      const db = getDb();
+      const snap = await db.collection('domains').where('deleted', '==', true).get();
+      let fixedCount = 0;
+      const fixedNames = [];
+      for (const d of snap.docs) {
+        const data = d.data();
+        const update = {};
+        if (data.buyerRating && data.sellerUsername) {
+          await db.collection('user_profiles').doc(data.sellerUsername).set({
+            ratingSum: FieldValue.increment(-data.buyerRating.stars),
+            ratingCount: FieldValue.increment(-1)
+          }, { merge: true });
+          update.buyerRating = null;
+        }
+        if (data.sellerRatingOfBuyer && data.buyer) {
+          await db.collection('user_profiles').doc(data.buyer).set({
+            buyerRatingSum: FieldValue.increment(-data.sellerRatingOfBuyer.stars),
+            buyerRatingCount: FieldValue.increment(-1)
+          }, { merge: true });
+          update.sellerRatingOfBuyer = null;
+        }
+        if (Object.keys(update).length > 0) {
+          await d.ref.set(update, { merge: true });
+          fixedCount++;
+          fixedNames.push(d.id);
+        }
+      }
+      return res.status(200).json({ success: true, fixedCount, fixedNames });
+    } catch (e) {
+      console.error("backfill_reverse_deleted_ratings hatası:", e);
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
   if (action === 'backfill_seller_username') {
     const isAdmin = await verifyAdmin(accessToken);
     if (!isAdmin) return res.status(403).json({ error: "Yetki yok" });
@@ -833,10 +950,32 @@ async function handlerImpl(req, res) {
         await updateUserPoints(domainDataForDelete.sellerUsername, -20, 'domain_deleted_point_reversal');
       }
 
-      await domainRef.set({
-        deleted: true,
-        deletedAt: Date.now()
-      }, { merge: true });
+      // YENİ: Normal "Sil" (soft-delete) domaini listeden tamamen kaldırıp
+      // kullanıcı için "silinmiş" gibi davrandığından, buna bağlı yıldız
+      // puanları da burada geri alınmalı — sadece "Kalıcı Sil"i beklemek
+      // kullanıcı beklentisiyle uyuşmuyordu (domain zaten görünmez oluyor,
+      // ama puan hâlâ sayılıyordu).
+      if (domainDataForDelete.buyerRating && domainDataForDelete.sellerUsername) {
+        await db.collection('user_profiles').doc(domainDataForDelete.sellerUsername).set({
+          ratingSum: FieldValue.increment(-domainDataForDelete.buyerRating.stars),
+          ratingCount: FieldValue.increment(-1)
+        }, { merge: true });
+      }
+      if (domainDataForDelete.sellerRatingOfBuyer && domainDataForDelete.buyer) {
+        await db.collection('user_profiles').doc(domainDataForDelete.buyer).set({
+          buyerRatingSum: FieldValue.increment(-domainDataForDelete.sellerRatingOfBuyer.stars),
+          buyerRatingCount: FieldValue.increment(-1)
+        }, { merge: true });
+      }
+
+      const softDeleteUpdate = { deleted: true, deletedAt: Date.now() };
+      // Geri alınan puanlar domain kaydından da temizlenir — hem "Kalıcı
+      // Sil" ile daha sonra İKİNCİ kez geri alınmasını (çifte düşüş) önler,
+      // hem de bu domain restore edilirse eski (artık geçersiz) puanın
+      // tekrar görünmesini engeller.
+      if (domainDataForDelete.buyerRating) softDeleteUpdate.buyerRating = null;
+      if (domainDataForDelete.sellerRatingOfBuyer) softDeleteUpdate.sellerRatingOfBuyer = null;
+      await domainRef.set(softDeleteUpdate, { merge: true });
 
       console.log(`Domain soft-delete edildi: ${delName}`);
       await logAdminAction(await getRealUsername(accessToken), 'delete_domain', delName);
