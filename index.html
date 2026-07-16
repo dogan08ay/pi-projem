@@ -2356,6 +2356,15 @@ const i18n = {
     changelogV1_6Item4:"Kullanıcılar kendi taleplerini, admin ise herhangi bir talebi kalıcı olarak silebiliyor",
     changelogV1_6Item5:"Talep listesi kullanıcı/konu/tarih/durum bilgilerini net çizgilerle ayrılmış tablo düzeninde gösteriyor",
 
+    changelogV2_2:"v2.2 - Pazar Yeri ve Şeffaflık Güncellemesi",
+    changelogV2_2Item1:"🔍 Domain arama kutusu ve ⭐ Favoriler eklendi",
+    changelogV2_2Item2:"⭐ Puanlama sistemi: alıcılar, ödeme tamamlanan satışlarda satıcıyı 1-5 yıldızla değerlendirebiliyor",
+    changelogV2_2Item3:"📖 'Nasıl Çalışır?' sayfası eklendi — escrow koruması, anlaşmazlık süreci ve komisyon herkese açık şekilde anlatılıyor",
+    changelogV2_2Item4:"📤 Paylaşılan link artık WhatsApp/Telegram/X/Facebook'ta düzgün bir önizleme kartı (başlık, açıklama, görsel) ve favicon gösteriyor",
+    changelogV2_2Item5:"📋 Admin İşlem Günlüğü ve 🟢 Anlık Aktif Kullanıcılar paneli eklendi",
+    changelogV2_2Item6:"🔒 Satın alma ve giriş sonrası profil senkronizasyonu için rate limiting eklendi",
+    changelogV2_2Item7:"🔵 'Doğrula' butonu artık dikkat çekici animasyonlu; uygulama turu bu butonun ödemenin blok zincirindeki ispatı olduğunu anlatıyor",
+    changelogV2_2Item8:"🏦 Kazanç ekranındaki 'Toplam Satış Hacmi' ve 'Kullanıcı Domain Geliri' rakamlarının nasıl hesaplandığı artık kutu içinde açıklanıyor",
     changelogV2_1:"v2.1 - Sistem İyileştirmeleri",
     changelogSecurityBadge:"🔒 GÜVENLİK",
     changelogV2_1Item1:"Panelim → Gelirim'e filtre eklendi: Hepsi / Onay Bekleyen / Onaylanmış / Sorun Bildirildi / İade Edildi",
@@ -2844,6 +2853,15 @@ const i18n = {
     changelogV1_6Item4:"Users can delete their own tickets, and admin can permanently delete any ticket",
     changelogV1_6Item5:"Ticket list now shows user/subject/date/status in a clearly divided table layout",
 
+    changelogV2_2:"v2.2 - Marketplace & Transparency Update",
+    changelogV2_2Item1:"🔍 Added a domain search box and ⭐ Favorites",
+    changelogV2_2Item2:"⭐ Rating system: buyers can rate the seller 1-5 stars once a sale is fully paid out",
+    changelogV2_2Item3:"📖 Added a 'How It Works' page — escrow protection, dispute process, and fees explained publicly",
+    changelogV2_2Item4:"📤 Shared links now show a proper preview card (title, description, image) on WhatsApp/Telegram/X/Facebook, plus a favicon",
+    changelogV2_2Item5:"📋 Added an Admin Audit Log and a 🟢 Currently Active Users panel",
+    changelogV2_2Item6:"🔒 Added rate limiting to the purchase flow and post-login profile sync",
+    changelogV2_2Item7:"🔵 The 'Verify' button is now eye-catching and animated; the app tour explains it's proof of an on-chain payment",
+    changelogV2_2Item8:"🏦 The Earnings tab now explains how 'Total Sales Volume' and 'User-Owned Domain Income' are calculated, right in the box",
     changelogV2_1:"v2.1 - System Improvements",
     changelogSecurityBadge:"🔒 SECURITY",
     changelogV2_1Item1:"Added a filter to My Panel → My Income: All / Pending / Confirmed / Issue Reported / Refunded",
@@ -3523,6 +3541,7 @@ window.openChangelogModal=function(){
     const list=document.getElementById('changelog-list');
     if(!list) return;
     const versions=[
+        {v:t('changelogV2_2'),items:[t('changelogV2_2Item1'),t('changelogV2_2Item2'),t('changelogV2_2Item3'),t('changelogV2_2Item4'),t('changelogV2_2Item5'),t('changelogV2_2Item6'),t('changelogV2_2Item7'),t('changelogV2_2Item8')],date:'2026-07-16',icon:'✨',color:'#fbbf24'},
         {v:t('changelogV2_1'),items:[t('changelogV2_1Item1'),t('changelogV2_1Item2'),t('changelogV2_1Item3'),t('changelogV2_1Item4'),t('changelogV2_1Item5')],date:'2026-07-15',icon:'⚙️',color:'#818cf8'},
         {v:t('changelogV2_0'),items:[t('changelogV2_0Item1'),t('changelogV2_0Item2'),t('changelogV2_0Item3'),t('changelogV2_0Item4'),t('changelogV2_0Item5')],date:'2026-07-15',icon:'🛡️',color:'#10b981',featured:true},
         {v:t('changelogV1_9'),items:[t('changelogV1_9Item1'),t('changelogV1_9Item2'),t('changelogV1_9Item3'),t('changelogV1_9Item4'),t('changelogV1_9Item5')],date:'2026-07-12',icon:'🤝',color:'#6366f1'},
