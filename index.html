@@ -216,6 +216,7 @@
         #user-panel-refresh-btn{--refresh-c1:#10b981;--refresh-c2:#34d399;--refresh-glow:rgba(16,185,129,0.55);--refresh-glow-strong:rgba(16,185,129,0.5);}
         #admin-panel-refresh-btn{--refresh-c1:#6366f1;--refresh-c2:#a855f7;--refresh-glow:rgba(99,102,241,0.55);--refresh-glow-strong:rgba(99,102,241,0.5);}
         #earnings-refresh-btn{--refresh-c1:#6366f1;--refresh-c2:#a855f7;--refresh-glow:rgba(99,102,241,0.55);--refresh-glow-strong:rgba(99,102,241,0.5);}
+        #offers-refresh-btn{--refresh-c1:#818cf8;--refresh-c2:#a5b4fc;--refresh-glow:rgba(129,140,248,0.55);--refresh-glow-strong:rgba(129,140,248,0.5);}
         #all-sales-refresh-btn{--refresh-c1:#3b82f6;--refresh-c2:#60a5fa;--refresh-glow:rgba(59,130,246,0.55);--refresh-glow-strong:rgba(59,130,246,0.5);}
         /* ── "Pi ile Bağlan" butonu: içerik (π simgesi / bağlanıyor animasyonu)
            her zaman butonun kendi çerçevesinde tam ortalı dursun diye ─────── */
@@ -1570,7 +1571,7 @@
             </div>
         </div>
         <div class="user-tab-panel" id="utab-purchases">
-            <div id="my-buyer-rating-box" style="text-align:center;background:#0f172a;border:1px solid rgba(245,158,11,0.35);border-radius:10px;padding:10px;margin-bottom:10px;">
+            <div id="my-buyer-rating-box" style="text-align:center;background:#0f172a;border:1px solid rgba(245,158,11,0.35);border-radius:10px;padding:10px;margin-bottom:16px;">
                 <div style="font-size:0.62em;color:#94a3b8;font-weight:700;margin-bottom:4px;" data-i18n="myRatingAsBuyerLabel"></div>
                 <div id="my-buyer-rating-value" style="font-size:1.1em;font-weight:900;color:#fbbf24;">—</div>
             </div>
@@ -1578,17 +1579,22 @@
                 <div style="display:flex;align-items:center;justify-content:center;gap:6px;margin-bottom:8px;padding-bottom:7px;border-bottom:1px solid #064e3b;"><span style="animation:icon-pulse-green 2s ease-in-out infinite;">🛒</span><span style="font-size:0.72em;color:#34d399;font-weight:800;text-transform:uppercase;" data-i18n="purchasedDomains"></span></div>
                 <div id="my-domains-list" style="text-align:left;"></div>
             </div>
-            <div style="background:#1c1508;border:2px solid #f59e0b;border-radius:12px;padding:10px;margin-top:10px;">
-                <button onclick="window.toggleMyOffersList()" style="width:100%;display:flex;align-items:center;justify-content:center;gap:6px;background:none;border:none;color:#fbbf24;font-size:0.72em;font-weight:800;text-transform:uppercase;cursor:pointer;padding:0;">💬 <span data-i18n="myOffersTitle"></span> <span style="font-size:0.8em;">▾</span></button>
+            <div style="background:#161329;border:2px solid #818cf8;border-radius:12px;padding:10px;margin-top:18px;box-shadow:0 4px 14px rgba(0,0,0,0.25);">
+                <button onclick="window.toggleMyOffersList()" style="width:100%;display:flex;align-items:center;justify-content:center;gap:6px;background:none;border:none;color:#a5b4fc;font-size:0.72em;font-weight:800;text-transform:uppercase;cursor:pointer;padding:0;">💬 <span data-i18n="myOffersTitle"></span> <span style="font-size:0.8em;">▾</span></button>
                 <div id="my-offers-content" style="display:none;margin-top:8px;"></div>
             </div>
         </div>
         <div class="user-tab-panel" id="utab-listings">
-            <div style="background:#1c1508;border:2px solid #f59e0b;border-radius:12px;padding:10px;margin-bottom:10px;">
-                <button onclick="window.toggleReceivedOffersList()" style="width:100%;display:flex;align-items:center;justify-content:center;gap:6px;background:none;border:none;color:#fbbf24;font-size:0.72em;font-weight:800;text-transform:uppercase;cursor:pointer;padding:0;">📥 <span data-i18n="receivedOffersTitle"></span> <span style="font-size:0.8em;">▾</span></button>
+            <!-- FIX: "Gelen Tekliflerim" öncesinde "İlanlarım" ile AYNI amber
+                 renk temasını kullanıyordu (background:#1c1508 vs #1c1917,
+                 ikisi de border:#f59e0b) — bu yüzden iki panel neredeyse
+                 kaynaşmış gibi görünüyordu. Artık teklifler indigo, ilanlar
+                 amber temada, net ayrışıyor. Panel arası boşluk da artırıldı. -->
+            <div style="background:#161329;border:2px solid #818cf8;border-radius:12px;padding:10px;margin-bottom:18px;box-shadow:0 4px 14px rgba(0,0,0,0.25);">
+                <button onclick="window.toggleReceivedOffersList()" style="width:100%;display:flex;align-items:center;justify-content:center;gap:6px;background:none;border:none;color:#a5b4fc;font-size:0.72em;font-weight:800;text-transform:uppercase;cursor:pointer;padding:0;">📥 <span data-i18n="receivedOffersTitle"></span> <span style="font-size:0.8em;">▾</span></button>
                 <div id="received-offers-content" style="display:none;margin-top:8px;"></div>
             </div>
-            <div style="background:#1c1917;border:2px solid #f59e0b;border-radius:12px;padding:10px;">
+            <div style="background:#1c1917;border:2px solid #f59e0b;border-radius:12px;padding:10px;box-shadow:0 4px 14px rgba(0,0,0,0.25);">
                 <div style="display:flex;align-items:center;justify-content:center;gap:6px;margin-bottom:8px;padding-bottom:7px;border-bottom:1px solid #78350f;"><span>🏷️</span><span style="font-size:0.72em;color:#fbbf24;font-weight:800;text-transform:uppercase;" data-i18n="myListingsTitle"></span></div>
                 <div id="my-listings-list" style="text-align:left;"></div>
                 <button class="pi-btn" style="background:#f59e0b;animation:none;padding:8px;margin:8px 0 0 0;width:100%;font-size:0.8em;" onclick="openSellDomainModal()" data-i18n="listNewDomain"></button>
@@ -1698,7 +1704,7 @@
             </div>
         </div>
         <div class="admin-tab-panel" id="tab-stats">
-            <div style="background:#061a0d;border:2px solid #16a34a;border-radius:10px;padding:8px;margin-bottom:6px;">
+            <div style="background:#061a0d;border:2px solid #16a34a;border-radius:10px;padding:8px;margin-bottom:18px;">
                 <div style="display:flex;align-items:center;justify-content:center;gap:5px;margin-bottom:6px;padding-bottom:5px;border-bottom:1px solid #14532d;"><span style="animation:icon-pulse-chart 2s ease-in-out infinite;">📈</span><span style="font-size:0.68em;color:#4ade80;font-weight:800;text-transform:uppercase;" data-i18n="dailySalesStats"></span></div>
                 <input type="date" id="stats-date-input" class="admin-date-picker" style="margin-bottom:6px;">
                 <div id="stats-date-error" style="display:none;font-size:0.58em;color:#f87171;background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.3);border-radius:6px;padding:5px 7px;margin-bottom:6px;text-align:left;line-height:1.4;"></div>
@@ -1755,8 +1761,8 @@
             </div>
         </div>
         <div class="admin-tab-panel" id="tab-earnings">
-            <div style="position:relative;display:flex;align-items:center;justify-content:center;padding:6px 34px 8px 6px;margin-bottom:8px;border-bottom:1px solid #312e81;">
-                <span style="font-size:0.72em;color:#a5b4fc;font-weight:800;text-transform:uppercase;">💰 <span data-i18n="earningsTab"></span></span>
+            <div style="position:relative;display:flex;align-items:center;justify-content:center;padding:6px 34px 12px 6px;margin-bottom:12px;border-bottom:1px solid #312e81;">
+                <span style="font-size:0.75em;color:#e0e7ff;font-weight:900;text-transform:uppercase;background:linear-gradient(135deg,#4338ca,#6366f1);border:1.5px solid #a5b4fc;border-radius:9px;padding:7px 16px;box-shadow:0 3px 12px rgba(99,102,241,0.45);letter-spacing:0.3px;">💰 <span data-i18n="earningsTab"></span></span>
                 <button id="earnings-refresh-btn" class="panel-refresh-btn" onclick="window.handleEarningsRefreshClick()" title="Yenile">
                     <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
                 </button>
@@ -1849,8 +1855,8 @@
         </div>
         <div class="admin-tab-panel" id="tab-offers">
             <div style="background:#0a0f1e;border:2px solid #818cf8;border-radius:12px;padding:10px;box-sizing:border-box;max-width:100%;overflow-x:hidden;">
-                <div style="display:flex;align-items:center;justify-content:space-between;gap:6px;margin-bottom:8px;padding-bottom:7px;border-bottom:1px solid #312e81;">
-                    <div style="display:flex;align-items:center;gap:6px;"><span>🔄</span><span style="font-size:0.72em;color:#a5b4fc;font-weight:800;text-transform:uppercase;" data-i18n="offersTabLabel"></span></div>
+                <div style="position:relative;display:flex;align-items:center;justify-content:center;padding:6px 34px 8px 6px;margin-bottom:8px;border-bottom:1px solid #312e81;">
+                    <span style="font-size:0.72em;color:#a5b4fc;font-weight:800;text-transform:uppercase;">🔄 <span data-i18n="offersTabLabel"></span></span>
                     <button id="offers-refresh-btn" class="panel-refresh-btn" onclick="window.loadAdminOffersTable()" title="Yenile">
                         <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
                     </button>
@@ -4769,24 +4775,60 @@ window.loadSalesTrendChart=async function(){
         if(totalCount===0){ el.innerHTML=`<span style="color:#475569;">${t('noSalesLast30Days')}</span>`; return; }
         const locale=currentLang==='en'?'en-GB':'tr-TR';
         const lastIdx=trend.length-1;
-        const tickEvery=Math.ceil(trend.length/6); // ~6 tarih etiketi, hepsini sıkıştırmak yerine
-        const bars=trend.map((d,i)=>{
-            const h=Math.max(3,(d.volume/maxVol)*72);
+
+        // ── SVG tabanlı, ızgara çizgili, eksen etiketli grafik (öncesinde
+        // sadece div'lerden oluşan çubuklar vardı, referans çizgisi/ölçek
+        // yoktu — "profesyonel görünmüyor" şikayetinin sebebi büyük
+        // ihtimalle buydu). Ölçek 700x180 viewBox, responsive genişlik. ──
+        const W=700, H=180, padL=34, padR=6, padT=10, padB=26;
+        const plotW=W-padL-padR, plotH=H-padT-padB;
+        const barGap=2;
+        const barW=Math.max(2,(plotW/trend.length)-barGap);
+        const tickEvery=Math.ceil(trend.length/6);
+        const yFor=(v)=>padT+plotH-(v/maxVol)*plotH;
+
+        // Izgara çizgileri (0%, %50, %100) + sol eksen etiketleri
+        const gridLevels=[0,0.5,1];
+        const gridSvg=gridLevels.map(pct=>{
+            const y=padT+plotH-(pct*plotH);
+            const val=Math.round(maxVol*pct);
+            return `<line x1="${padL}" y1="${y}" x2="${W-padR}" y2="${y}" stroke="#1e293b" stroke-width="1" stroke-dasharray="${pct===0?'0':'3,3'}"/>
+                <text x="${padL-6}" y="${y+3}" text-anchor="end" font-size="9" fill="#475569">${val}</text>`;
+        }).join('');
+
+        const barsSvg=trend.map((d,i)=>{
+            const x=padL+i*(plotW/trend.length)+barGap/2;
+            const y=yFor(d.volume);
+            const h=Math.max(1.5,padT+plotH-y);
             const isToday=i===lastIdx;
+            const fill=isToday?'url(#trendGradToday)':'url(#trendGradNormal)';
             const showTick=(i%tickEvery===0)||isToday;
             const tickLabel=showTick?new Date(d.date+'T00:00:00').toLocaleDateString(locale,{day:'2-digit',month:'2-digit'}):'';
-            return `<div class="trend-bar-col" onclick="window.selectTrendDay(${i})" title="${tickLabel||d.date.slice(5)}: ${d.volume} Pi (${d.count})" style="flex:1;min-width:6px;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:96px;cursor:pointer;transition:opacity 0.15s;">
-                <div style="width:100%;max-width:14px;height:${h}px;background:${isToday?'linear-gradient(180deg,#fbbf24,#f59e0b)':'linear-gradient(180deg,#818cf8,#6366f1)'};border-radius:3px 3px 0 0;transition:height 0.3s;"></div>
-                <div style="font-size:0.52em;color:#64748b;margin-top:3px;height:12px;white-space:nowrap;">${tickLabel}</div>
-            </div>`;
+            return `<g class="trend-bar-col" onclick="window.selectTrendDay(${i})" style="cursor:pointer;">
+                <rect x="${x-2}" y="${padT}" width="${barW+4}" height="${plotH}" fill="transparent"/>
+                <rect x="${x}" y="${y}" width="${barW}" height="${h}" rx="${Math.min(3,barW/2)}" fill="${fill}"/>
+                ${tickLabel?`<text x="${x+barW/2}" y="${H-8}" text-anchor="middle" font-size="8.5" fill="#64748b">${tickLabel}</text>`:''}
+            </g>`;
         }).join('');
+
         el.style.display='block';
-        el.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px;">
-                <span style="font-size:0.6em;color:#64748b;">${t('trendMaxDayLabel')}: <b style="color:#a5b4fc;">${maxVol} Pi</b></span>
+        el.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+                <span style="font-size:0.68em;color:#94a3b8;font-weight:700;">${t('trendTotalSummary')(totalCount,totalVol)}</span>
+                <span style="font-size:0.62em;color:#a5b4fc;background:rgba(129,140,248,0.12);border:1px solid rgba(129,140,248,0.35);border-radius:6px;padding:3px 8px;font-weight:800;">${t('trendMaxDayLabel')}: ${maxVol} Pi</span>
             </div>
-            <div style="display:flex;align-items:flex-end;gap:2px;height:96px;margin-bottom:2px;">${bars}</div>
-            <div id="sales-trend-info" style="min-height:18px;font-size:0.68em;text-align:center;padding:6px 4px;margin:6px 0;background:#1e293b;border-radius:8px;color:#94a3b8;">${t('trendTapHint')}</div>
-            <div style="text-align:center;font-size:0.65em;color:#94a3b8;font-weight:700;">${t('trendTotalSummary')(totalCount,totalVol)}</div>`;
+            <svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;display:block;">
+                <defs>
+                    <linearGradient id="trendGradNormal" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stop-color="#a5b4fc"/><stop offset="100%" stop-color="#6366f1"/>
+                    </linearGradient>
+                    <linearGradient id="trendGradToday" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stop-color="#fde68a"/><stop offset="100%" stop-color="#f59e0b"/>
+                    </linearGradient>
+                </defs>
+                ${gridSvg}
+                ${barsSvg}
+            </svg>
+            <div id="sales-trend-info" style="min-height:18px;font-size:0.68em;text-align:center;padding:7px 4px;margin-top:8px;background:#1e293b;border:1px solid #334155;border-radius:8px;color:#94a3b8;">${t('trendTapHint')}</div>`;
         window.selectTrendDay(lastIdx);
     }catch(e){ el.textContent=t('genericError'); }
 };
