@@ -4080,7 +4080,7 @@ window.openSellRequestDetail=function(requestId,dataStr){
     rows.forEach(row=>{
         html+=`<div style="background:#0f172a;border-radius:8px;padding:8px 10px;">
             <div style="font-size:0.65em;color:#94a3b8;font-weight:800;text-transform:uppercase;margin-bottom:3px;">${row.icon} ${row.label}</div>
-            <div style="font-size:0.88em;color:#f1f5f9;font-weight:700;word-break:break-all;">${escapeHtml(String(row.value))}</div>
+            <div style="font-size:0.88em;color:#f1f5f9;font-weight:700;overflow-wrap:break-word;word-break:normal;">${escapeHtml(String(row.value))}</div>
         </div>`;
     });
     if(p.description){
@@ -5126,7 +5126,7 @@ function renderUserPanel(){
                             <span style="color:#64748b;flex-shrink:0;font-weight:700;min-width:90px;">📝 ${t('detailFieldDesc')}:</span>
                             <span style="color:#94a3b8;word-break:break-word;flex:1;">${d.description?escapeHtml(d.description):'<span style="color:#475569;font-style:italic;">—</span>'}</span>
                         </div>
-                        ${d.sellerNote?`<div style="display:flex;gap:6px;align-items:baseline;word-break:break-all;">
+                        ${d.sellerNote?`<div style="display:flex;gap:6px;align-items:baseline;overflow-wrap:break-word;word-break:normal;">
                             <span style="color:#64748b;flex-shrink:0;font-weight:700;min-width:90px;">🗒️ ${t('detailFieldWallet')}:</span>
                             <span style="color:#60a5fa;font-size:0.9em;">${escapeHtml(d.sellerNote)}</span>
                         </div>`:''}
@@ -5202,7 +5202,7 @@ function renderUserPanel(){
                             <span style="color:#64748b;flex-shrink:0;font-weight:700;min-width:90px;">📝 ${t('detailFieldDesc')}:</span>
                             <span style="color:#94a3b8;word-break:break-word;flex:1;">${req.description?escapeHtml(req.description):'<span style="color:#475569;font-style:italic;">—</span>'}</span>
                         </div>
-                        ${req.sellerNote?`<div style="display:flex;gap:6px;align-items:baseline;word-break:break-all;">
+                        ${req.sellerNote?`<div style="display:flex;gap:6px;align-items:baseline;overflow-wrap:break-word;word-break:normal;">
                             <span style="color:#64748b;flex-shrink:0;font-weight:700;min-width:90px;">🗒️ ${t('detailFieldWallet')}:</span>
                             <span style="color:#60a5fa;font-size:0.9em;">${escapeHtml(req.sellerNote)}</span>
                         </div>`:''}
