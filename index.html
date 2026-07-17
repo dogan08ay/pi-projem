@@ -20,6 +20,16 @@
     <meta property="og:title" content="Web3 Domain Gateway — .pi Domain Pazar Yeri">
     <meta property="og:description" content="Pi Network üzerinde .pi domain al ve sat. Escrow korumalı, güvenli ve şeffaf alışveriş.">
     <meta property="og:image" content="https://dofiay.com/assets/og-image.png">
+    <!-- WhatsApp'ın önizleme tarayıcısı (facebookexternalhit) og:image'ı
+         GÜVENİLİR şekilde göstermek için genelde width/height/type/secure_url
+         ipuçlarına da bakıyor; bunlar eksikken bazı istemcilerde görsel hiç
+         çekilmeyip sadece düz link görünüyordu. og-image.png'nin GERÇEK
+         piksel boyutu bu değerlerle (1200x630, PNG) eşleşmiyorsa bu meta
+         etiketlerini gerçek boyuta göre güncellemek gerekir. -->
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta property="og:image:type" content="image/png">
+    <meta property="og:image:secure_url" content="https://dofiay.com/assets/og-image.png">
     <meta property="og:url" content="https://dofiay.com/">
 
     <!-- X / Twitter önizlemesi -->
@@ -1661,6 +1671,7 @@
             <button class="admin-tab-btn" data-tab="tab-tickets" onclick="switchAdminTab('tab-tickets')">🎫<span data-i18n="ticketManagement" style="font-size:0.9em;"></span><span class="pending-badge" id="ticket-count-badge" style="display:none;">0</span></button>
             <button class="admin-tab-btn" data-tab="tab-trademark" onclick="switchAdminTab('tab-trademark')">🔖<span data-i18n="trademarkTabLabel" style="font-size:0.9em;"></span><span class="pending-badge" id="trademark-count-badge" style="display:none;">0</span></button>
             <button class="admin-tab-btn" data-tab="tab-payouts" onclick="switchAdminTab('tab-payouts')">💸<span data-i18n="payoutsTabLabel" style="font-size:0.9em;"></span><span class="pending-badge" id="payouts-count-badge" style="display:none;">0</span></button>
+            <button class="admin-tab-btn" data-tab="tab-offers" onclick="switchAdminTab('tab-offers')">🔄<span data-i18n="offersTabLabel" style="font-size:0.9em;"></span></button>
 
         </div>
         <div class="admin-tab-panel active" id="tab-users">
@@ -1827,6 +1838,20 @@
                 <div id="payouts-admin-list" style="width:100%;box-sizing:border-box;overflow-x:hidden;">
                     <div class="skeleton-ticket-row"><div class="skeleton" style="width:34px;height:34px;border-radius:8px;"></div><div style="flex:1;"><div class="skeleton skeleton-line" style="width:60%;margin:0 0 6px 0;"></div><div class="skeleton skeleton-line" style="width:35%;height:8px;margin:0;"></div></div></div>
                     <div class="skeleton-ticket-row"><div class="skeleton" style="width:34px;height:34px;border-radius:8px;"></div><div style="flex:1;"><div class="skeleton skeleton-line" style="width:52%;margin:0 0 6px 0;"></div><div class="skeleton skeleton-line" style="width:30%;height:8px;margin:0;"></div></div></div>
+                </div>
+            </div>
+        </div>
+        <div class="admin-tab-panel" id="tab-offers">
+            <div style="background:#0a0f1e;border:2px solid #818cf8;border-radius:12px;padding:10px;box-sizing:border-box;max-width:100%;overflow-x:hidden;">
+                <div style="display:flex;align-items:center;justify-content:space-between;gap:6px;margin-bottom:8px;padding-bottom:7px;border-bottom:1px solid #312e81;">
+                    <div style="display:flex;align-items:center;gap:6px;"><span>🔄</span><span style="font-size:0.72em;color:#a5b4fc;font-weight:800;text-transform:uppercase;" data-i18n="offersTabLabel"></span></div>
+                    <button id="offers-refresh-btn" class="panel-refresh-btn" onclick="window.loadAdminOffersTable()" title="Yenile">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+                    </button>
+                </div>
+                <div style="font-size:0.65em;color:#94a3b8;margin-bottom:8px;line-height:1.5;" data-i18n="offersTabExplainer"></div>
+                <div id="admin-offers-table-wrap" style="width:100%;box-sizing:border-box;overflow-x:auto;">
+                    <p style="font-size:0.75em;opacity:0.5;text-align:center;" data-i18n="clickToLoad"></p>
                 </div>
             </div>
         </div>
@@ -2145,11 +2170,36 @@ const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
 // FIX 1: Pi SDK hazır olana kadar bekle — "giriş hatası" bug'ı
+// FIX 2 (kök neden — Pi Browser dışında "Bağlan" butonu hiçbir şey
+// yapmıyormuş gibi görünüyordu): Bu fonksiyon öncesinde `Pi` objesi hiç
+// tanımlanmazsa SONSUZA KADAR bekliyordu (setInterval hiç temizlenmiyordu).
+// Normal bir tarayıcıda (Pi Browser dışında) `Pi` objesi teorik olarak CDN
+// script'i yüklendiği için genelde tanımlı olur, ama SDK'nın kendisi Pi
+// Browser'ın native köprüsü olmadan kimlik doğrulamasını tamamlayamaz —
+// asıl hata `Pi.authenticate()` çağrısında (performPiConnect içinde) ortaya
+// çıkar. Yine de bu fonksiyona bir zaman aşımı ekliyoruz: SDK script'i CDN'den
+// hiç yüklenemezse (ör. ağ engeli) buton yine de sonsuza kadar "Bağlanıyor..."
+// durumunda takılı kalmasın.
+window.piSdkTimedOut = false;
 let piReady = false;
 function waitForPi() {
     return new Promise(resolve => {
         if (typeof Pi !== 'undefined') { if (!piReady) { Pi.init({ version:"2.0", sandbox:true }); piReady=true; } resolve(); return; }
-        const check = setInterval(() => { if (typeof Pi !== 'undefined') { clearInterval(check); if (!piReady) { Pi.init({ version:"2.0", sandbox:true }); piReady=true; } resolve(); } }, 100);
+        const TIMEOUT_MS = 6000;
+        const startedAt = Date.now();
+        const check = setInterval(() => {
+            if (typeof Pi !== 'undefined') {
+                clearInterval(check);
+                if (!piReady) { Pi.init({ version:"2.0", sandbox:true }); piReady=true; }
+                resolve();
+                return;
+            }
+            if (Date.now() - startedAt > TIMEOUT_MS) {
+                clearInterval(check);
+                window.piSdkTimedOut = true;
+                resolve();
+            }
+        }, 100);
     });
 }
 const i18n = {
@@ -2158,6 +2208,7 @@ const i18n = {
     purchasedDomain:"ALINAN DOMAIN",firstLogin:"İLK GİRİŞ",
     profileSettings:"Profil Ayarları",myPanel:"Panelim",sellMyDomain:"Domainimi Satışa Çıkar",
     languageOptions:"Dil Seçenekleri",logout:"Çıkış Yap",connectWithPi:"<span style='display:inline-flex;align-items:center;gap:10px;'><span style='display:inline-block;animation:logo-pulse 1.5s ease-in-out infinite;font-size:1.3em;'>π</span><span style='font-size:1.05em;'>Pi ile Bağlan</span></span>",
+    piBrowserRequiredMsg:"Bu uygulama sadece Pi Browser üzerinden çalışır. Lütfen bu sayfayı Pi Browser uygulamasında açın.",
     contactSection:"İletişim",piNetworkUser:"Pi Network Kullanıcısı",
     firstLoginDate:"İlk Giriş Tarihi",lastSeen:"Son Görülme",
     purchasedDomainLabel:"Alınan Domain",totalPoints:"Toplam Puan",close:"KAPAT",
@@ -2430,7 +2481,13 @@ const i18n = {
     myOffersTitle:"Tekliflerim",receivedOffersTitle:"Gelen Teklifler",noOffersYet:"Henüz teklif yok.",
     withdrawOfferBtn:"Geri Çek",acceptOfferBtn:"Kabul Et",rejectOfferBtn:"Reddet",
     offerStatusPending:"Bekliyor",offerStatusAccepted:"Kabul Edildi",offerStatusRejected:"Reddedildi",
-    offerStatusWithdrawn:"Geri Çekildi",offerStatusExpired:"Geçersiz Oldu",
+    offerStatusWithdrawn:"Geri Çekildi",offerStatusExpired:"Geçersiz Oldu",offerStatusCountered:"Karşı Teklif Verildi",
+    counterOfferBtn:"Karşı Teklif",counterOfferPricePrompt:"Karşı teklif tutarını Pi olarak girin:",
+    counterOfferMessagePrompt:"İsteğe bağlı bir not ekleyin (boş bırakabilirsiniz):",
+    counterOfferSentSuccess:"Karşı teklifiniz gönderildi.",counterOfferReceivedLabel:"Karşı Teklif",
+    yourCounterOfferLabel:"Karşı Teklifiniz",offerStatusPendingBuyerResponse:"alıcının yanıtı bekleniyor",
+    offersTabLabel:"Teklifler",offersTabExplainer:"Platformdaki tüm alım-satım tekliflerinin (kabul/red/karşı teklif) tam listesi.",
+    offersTableBuyer:"Alıcı",offersTableSeller:"Satıcı",offersTablePrice:"Fiyat",offersTableStatus:"Durum",offersTableDate:"Tarih",
     deleteAccountLink:"HESABIMI SİL",deleteAccountTitle:"Hesap ve Veri Silme Talebi",
     deleteAccountExplain1:"Hesabınızın ve kişisel verilerinizin silinmesini talep edebilirsiniz. Talebiniz admin'e iletilir ve incelenir.",
     deleteAccountExplain2:"Not: Tamamlanmış satışlarınıza ait finansal kayıtlar (muhasebe ve anlaşmazlık durumları için) yasal saklama yükümlülükleri nedeniyle tamamen silinemeyebilir; bu durumda kişisel bilgileriniz anonimleştirilir. Admin süreci elle inceleyip size dönüş yapacaktır.",
@@ -2693,6 +2750,7 @@ const i18n = {
     purchasedDomain:"OWNED DOMAINS",firstLogin:"FIRST LOGIN",
     profileSettings:"Profile Settings",myPanel:"My Panel",sellMyDomain:"List My Domain for Sale",
     languageOptions:"Language Options",logout:"Sign Out",connectWithPi:"<span style='display:inline-flex;align-items:center;gap:10px;'><span style='display:inline-block;animation:logo-pulse 1.5s ease-in-out infinite;font-size:1.3em;'>π</span><span style='font-size:1.05em;'>Connect with Pi</span></span>",
+    piBrowserRequiredMsg:"This app only works inside the Pi Browser. Please open this page in the Pi Browser app.",
     contactSection:"Contact",piNetworkUser:"Pi Network User",firstLoginDate:"First Login Date",
     lastSeen:"Last Seen",purchasedDomainLabel:"Purchased Domains",totalPoints:"Total Points",close:"CLOSE",
     listDomainTitle:"List Your Domain for Sale",
@@ -2961,7 +3019,13 @@ const i18n = {
     myOffersTitle:"My Offers",receivedOffersTitle:"Received Offers",noOffersYet:"No offers yet.",
     withdrawOfferBtn:"Withdraw",acceptOfferBtn:"Accept",rejectOfferBtn:"Reject",
     offerStatusPending:"Pending",offerStatusAccepted:"Accepted",offerStatusRejected:"Rejected",
-    offerStatusWithdrawn:"Withdrawn",offerStatusExpired:"Expired",
+    offerStatusWithdrawn:"Withdrawn",offerStatusExpired:"Expired",offerStatusCountered:"Counter-Offered",
+    counterOfferBtn:"Counter-Offer",counterOfferPricePrompt:"Enter your counter-offer amount in Pi:",
+    counterOfferMessagePrompt:"Add an optional note (you can leave this blank):",
+    counterOfferSentSuccess:"Your counter-offer has been sent.",counterOfferReceivedLabel:"Counter-Offer",
+    yourCounterOfferLabel:"Your Counter-Offer",offerStatusPendingBuyerResponse:"waiting for buyer's response",
+    offersTabLabel:"Offers",offersTabExplainer:"Full list of all buy offers on the platform (accepted/rejected/countered).",
+    offersTableBuyer:"Buyer",offersTableSeller:"Seller",offersTablePrice:"Price",offersTableStatus:"Status",offersTableDate:"Date",
     deleteAccountLink:"DELETE MY ACCOUNT",deleteAccountTitle:"Account & Data Deletion Request",
     deleteAccountExplain1:"You can request that your account and personal data be deleted. Your request will be sent to the admin for review.",
     deleteAccountExplain2:"Note: Financial records tied to completed sales (kept for accounting and potential dispute purposes) may not be fully deletable due to legal retention requirements; in that case your personal info will be anonymized instead. The admin will review this manually and follow up with you.",
@@ -3382,6 +3446,7 @@ window.switchAdminTab=function(tabId){
     if(tabId==='tab-earnings') loadAdminEarnings();
     if(tabId==='tab-stats') loadAllSalesDetail();
     if(tabId==='tab-tickets'){ adminLoadTickets(); markTicketsSeen(); }
+    if(tabId==='tab-offers') window.loadAdminOffersTable();
 };
 window.switchUserTab=function(tabId){
     document.querySelectorAll('.user-tab-btn').forEach(b=>b.classList.toggle('active',b.dataset.utab===tabId));
@@ -4224,6 +4289,76 @@ window.respondOffer=async function(offerId, accept){
         loadUserProfile().then(()=>debouncedRender());
     }catch(e){ showToast(t('genericError')); }
 };
+window.counterOffer=async function(offerId){
+    const priceStr=prompt(t('counterOfferPricePrompt'));
+    if(priceStr===null) return;
+    const counterPrice=parseFloat(priceStr);
+    if(!counterPrice||counterPrice<=0){ showToast(t('invalidOfferPrice')); return; }
+    const counterMessage=prompt(t('counterOfferMessagePrompt'))||'';
+    try{
+        const r=await fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'counter_offer',offerId,counterPrice,counterMessage,accessToken:piAccessToken})});
+        const result=await r.json();
+        if(!result.success){ showToast(result.error||t('genericError')); return; }
+        showToast(t('counterOfferSentSuccess'));
+        window.loadReceivedOffers();
+    }catch(e){ showToast(t('genericError')); }
+};
+window.respondCounterOffer=async function(offerId, accept){
+    if(!confirm(accept?t('confirmAcceptOffer'):t('confirmRejectOffer'))) return;
+    try{
+        const r=await fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'respond_counter_offer',offerId,accept,accessToken:piAccessToken})});
+        const result=await r.json();
+        if(!result.success){ showToast(result.error||t('genericError')); return; }
+        window.loadMyOffers();
+        loadUserProfile().then(()=>debouncedRender());
+    }catch(e){ showToast(t('genericError')); }
+};
+// ── Admin: Tüm Teklif Trafiği Tablosu ─────────────────────────────────────
+// Öncesinde admin'in teklifleri görebileceği bir yer yoktu. Bu tablo
+// platformdaki TÜM teklifleri (kim, hangi domain, ne kadar, hangi durumda,
+// ne zaman) tek bakışta, karmaşa olmadan okunabilir şekilde gösterir.
+window.loadAdminOffersTable=async function(){
+    const wrap=document.getElementById('admin-offers-table-wrap');
+    if(!wrap) return;
+    wrap.innerHTML=`<p style="font-size:0.75em;opacity:0.5;text-align:center;">${t('loadingLabel')}</p>`;
+    try{
+        const r=await fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'get_all_offers',accessToken:piAccessToken})});
+        const result=await r.json();
+        if(!result.success){ wrap.innerHTML=`<p style="color:#f87171;font-size:0.75em;text-align:center;">${escapeHtml(result.error||t('genericError'))}</p>`; return; }
+        const offers=result.offers||[];
+        if(!offers.length){ wrap.innerHTML=`<p style="font-size:0.75em;opacity:0.5;text-align:center;">${t('noOffersYet')}</p>`; return; }
+        const statusColor={pending:'#fbbf24',countered:'#818cf8',accepted:'#34d399',rejected:'#f87171',withdrawn:'#94a3b8',expired:'#94a3b8'};
+        const statusLabel={pending:t('offerStatusPending'),countered:t('offerStatusCountered'),accepted:t('offerStatusAccepted'),rejected:t('offerStatusRejected'),withdrawn:t('offerStatusWithdrawn'),expired:t('offerStatusExpired')};
+        const locale=currentLang==='en'?'en-GB':'tr-TR';
+        const rows=offers.map(o=>{
+            const dateStr=o.createdAt?new Date(o.createdAt).toLocaleDateString(locale,{day:'2-digit',month:'2-digit',year:'2-digit',hour:'2-digit',minute:'2-digit'}):'—';
+            const color=statusColor[o.status]||'#94a3b8';
+            const label=statusLabel[o.status]||o.status;
+            const priceCell=o.status==='countered'||o.status==='accepted'&&o.counterPrice
+                ? `${o.offerPrice} Pi <span style="color:#a5b4fc;">→ ${o.counterPrice} Pi</span>`
+                : `${o.offerPrice} Pi`;
+            return `<tr>
+                <td style="padding:7px 8px;font-size:0.68em;color:#e2e8f0;font-weight:700;border-top:1px solid #1e293b;white-space:nowrap;">${escapeHtml(o.domainName||'—')}</td>
+                <td style="padding:7px 8px;font-size:0.66em;color:#94a3b8;border-top:1px solid #1e293b;white-space:nowrap;">@${escapeHtml(o.buyerUsername||'—')}</td>
+                <td style="padding:7px 8px;font-size:0.66em;color:#94a3b8;border-top:1px solid #1e293b;white-space:nowrap;">@${escapeHtml(o.sellerUsername||'—')}</td>
+                <td style="padding:7px 8px;font-size:0.68em;color:#fbbf24;font-weight:800;border-top:1px solid #1e293b;white-space:nowrap;">${priceCell}</td>
+                <td style="padding:7px 8px;font-size:0.64em;font-weight:800;color:${color};border-top:1px solid #1e293b;white-space:nowrap;">${label}</td>
+                <td style="padding:7px 8px;font-size:0.62em;color:#64748b;border-top:1px solid #1e293b;white-space:nowrap;">${dateStr}</td>
+            </tr>`;
+        }).join('');
+        wrap.innerHTML=`<table style="width:100%;border-collapse:collapse;min-width:560px;">
+            <thead><tr style="background:#1e1b4b;">
+                <th style="padding:6px 8px;font-size:0.58em;color:#818cf8;text-align:left;font-weight:800;text-transform:uppercase;">Domain</th>
+                <th style="padding:6px 8px;font-size:0.58em;color:#818cf8;text-align:left;font-weight:800;text-transform:uppercase;">${t('offersTableBuyer')}</th>
+                <th style="padding:6px 8px;font-size:0.58em;color:#818cf8;text-align:left;font-weight:800;text-transform:uppercase;">${t('offersTableSeller')}</th>
+                <th style="padding:6px 8px;font-size:0.58em;color:#818cf8;text-align:left;font-weight:800;text-transform:uppercase;">${t('offersTablePrice')}</th>
+                <th style="padding:6px 8px;font-size:0.58em;color:#818cf8;text-align:left;font-weight:800;text-transform:uppercase;">${t('offersTableStatus')}</th>
+                <th style="padding:6px 8px;font-size:0.58em;color:#818cf8;text-align:left;font-weight:800;text-transform:uppercase;">${t('offersTableDate')}</th>
+            </tr></thead>
+            <tbody>${rows}</tbody>
+        </table>`;
+    }catch(e){ console.error('Admin teklif tablosu hatası:', e); wrap.innerHTML=`<p style="color:#f87171;font-size:0.75em;text-align:center;">${t('genericError')}</p>`; }
+};
 let myOffersExpanded=false;
 window.toggleMyOffersList=function(){ myOffersExpanded=!myOffersExpanded; window.loadMyOffers(); };
 window.loadMyOffers=async function(){
@@ -4236,13 +4371,21 @@ window.loadMyOffers=async function(){
         const r=await fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'get_my_offers',accessToken:piAccessToken})});
         const result=await r.json();
         if(!result.success||!result.offers||!result.offers.length){ box.innerHTML=`<p style="font-size:0.72em;opacity:0.5;text-align:center;">${t('noOffersYet')}</p>`; return; }
-        const statusMap={pending:{label:t('offerStatusPending'),color:'#fbbf24'},accepted:{label:t('offerStatusAccepted'),color:'#34d399'},rejected:{label:t('offerStatusRejected'),color:'#f87171'},withdrawn:{label:t('offerStatusWithdrawn'),color:'#94a3b8'},expired:{label:t('offerStatusExpired'),color:'#94a3b8'}};
+        const statusMap={pending:{label:t('offerStatusPending'),color:'#fbbf24'},accepted:{label:t('offerStatusAccepted'),color:'#34d399'},rejected:{label:t('offerStatusRejected'),color:'#f87171'},withdrawn:{label:t('offerStatusWithdrawn'),color:'#94a3b8'},expired:{label:t('offerStatusExpired'),color:'#94a3b8'},countered:{label:t('offerStatusCountered'),color:'#818cf8'}};
         box.innerHTML=result.offers.map(o=>{
             const sv=statusMap[o.status]||statusMap.pending;
             return `<div style="background:#0f172a;border-radius:9px;padding:9px 10px;margin-bottom:6px;border-left:3px solid ${sv.color};">
                 <div style="display:flex;justify-content:space-between;gap:8px;margin-bottom:3px;"><b style="color:#e2e8f0;font-size:0.78em;">${o.domainName}</b><span style="color:${sv.color};font-size:0.65em;font-weight:800;">${sv.label}</span></div>
                 <div style="color:#94a3b8;font-size:0.7em;">💰 ${o.offerPrice} Pi (${t('currentPriceLabel')}: ${o.originalPrice} Pi)</div>
                 ${o.status==='pending'?`<button onclick="window.withdrawOffer('${o.id}')" style="margin-top:6px;padding:5px 10px;border-radius:6px;border:1px solid #64748b;background:none;color:#94a3b8;font-size:0.65em;cursor:pointer;">${t('withdrawOfferBtn')}</button>`:''}
+                ${o.status==='countered'?`<div style="margin-top:6px;padding-top:6px;border-top:1px dashed #334155;">
+                    <div style="color:#a5b4fc;font-size:0.75em;font-weight:800;margin-bottom:2px;">🔄 ${t('counterOfferReceivedLabel')}: ${o.counterPrice} Pi</div>
+                    ${o.counterMessage?`<div style="color:#94a3b8;font-size:0.68em;font-style:italic;margin-bottom:6px;">"${escapeHtml(o.counterMessage)}"</div>`:''}
+                    <div style="display:flex;gap:6px;">
+                        <button onclick="window.respondCounterOffer('${o.id}',true)" style="flex:1;padding:6px;border-radius:6px;border:none;background:#10b981;color:#fff;font-weight:800;font-size:0.65em;cursor:pointer;">✅ ${t('acceptOfferBtn')}</button>
+                        <button onclick="window.respondCounterOffer('${o.id}',false)" style="flex:1;padding:6px;border-radius:6px;border:none;background:#ef4444;color:#fff;font-weight:800;font-size:0.65em;cursor:pointer;">❌ ${t('rejectOfferBtn')}</button>
+                    </div>
+                </div>`:''}
             </div>`;
         }).join('');
     }catch(e){ box.innerHTML=`<p style="color:#f87171;font-size:0.72em;text-align:center;">${t('genericError')}</p>`; }
@@ -4259,16 +4402,21 @@ window.loadReceivedOffers=async function(){
         const r=await fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'get_received_offers',accessToken:piAccessToken})});
         const result=await r.json();
         if(!result.success||!result.offers||!result.offers.length){ box.innerHTML=`<p style="font-size:0.72em;opacity:0.5;text-align:center;">${t('noOffersYet')}</p>`; return; }
-        box.innerHTML=result.offers.map(o=>`
-            <div style="background:#0f172a;border-radius:9px;padding:9px 10px;margin-bottom:6px;border-left:3px solid #f59e0b;">
+        box.innerHTML=result.offers.map(o=>{
+            const isCountered=o.status==='countered';
+            return `
+            <div style="background:#0f172a;border-radius:9px;padding:9px 10px;margin-bottom:6px;border-left:3px solid ${isCountered?'#818cf8':'#f59e0b'};">
                 <div style="display:flex;justify-content:space-between;gap:8px;margin-bottom:3px;"><b style="color:#e2e8f0;font-size:0.78em;">${o.domainName}</b><span style="color:#94a3b8;font-size:0.65em;">@${o.buyerUsername}</span></div>
                 <div style="color:#fbbf24;font-size:0.78em;font-weight:800;margin-bottom:2px;">💰 ${o.offerPrice} Pi <span style="color:#64748b;font-weight:400;font-size:0.85em;">(${t('currentPriceLabel')}: ${o.originalPrice} Pi)</span></div>
                 ${o.message?`<div style="color:#94a3b8;font-size:0.7em;font-style:italic;margin-bottom:6px;">"${escapeHtml(o.message)}"</div>`:''}
-                <div style="display:flex;gap:6px;margin-top:6px;">
+                ${isCountered?`<div style="color:#a5b4fc;font-size:0.72em;font-weight:800;margin-bottom:6px;">🔄 ${t('yourCounterOfferLabel')}: ${o.counterPrice} Pi — <span style="color:#94a3b8;font-weight:400;">${t('offerStatusPendingBuyerResponse')}</span></div>`
+                :`<div style="display:flex;gap:6px;margin-top:6px;">
                     <button onclick="window.respondOffer('${o.id}',true)" style="flex:1;padding:6px;border-radius:6px;border:none;background:#10b981;color:#fff;font-weight:800;font-size:0.68em;cursor:pointer;">✅ ${t('acceptOfferBtn')}</button>
+                    <button onclick="window.counterOffer('${o.id}')" style="flex:1;padding:6px;border-radius:6px;border:1.5px solid #818cf8;background:rgba(129,140,248,0.1);color:#a5b4fc;font-weight:800;font-size:0.68em;cursor:pointer;">🔄 ${t('counterOfferBtn')}</button>
                     <button onclick="window.respondOffer('${o.id}',false)" style="flex:1;padding:6px;border-radius:6px;border:none;background:#ef4444;color:#fff;font-weight:800;font-size:0.68em;cursor:pointer;">❌ ${t('rejectOfferBtn')}</button>
-                </div>
-            </div>`).join('');
+                </div>`}
+            </div>`;
+        }).join('');
     }catch(e){ box.innerHTML=`<p style="color:#f87171;font-size:0.72em;text-align:center;">${t('genericError')}</p>`; }
 };
 window.openHowItWorksModal=function(){
@@ -5255,6 +5403,17 @@ function render(){
             };
             card.appendChild(btn);
 
+            // Teklif Ver: öncesinde sadece domain detay modalının içinde
+            // gizliydi, kullanıcılar farkına varmıyordu. Artık kart üzerinde
+            // de doğrudan görünüyor (kendi domainine teklif veremezsin).
+            if(isAuth && data.sellerUsername!==currentUser){
+                const offerBtn=document.createElement('button');
+                offerBtn.className='btn-buy';offerBtn.style.background='rgba(245,158,11,0.15)';offerBtn.style.border='1.5px solid #f59e0b';offerBtn.style.color='#fbbf24';offerBtn.style.marginTop='4px';
+                offerBtn.innerText='💬 '+t('makeOfferBtn');
+                offerBtn.onclick=(e)=>{e.stopPropagation();window.openOfferModal(d.name);};
+                card.appendChild(offerBtn);
+            }
+
             if(isAdminViewing){
                 const hideBtn=document.createElement('button');
                 hideBtn.className='btn-buy';hideBtn.style.background=data.hidden?'#10b981':'#64748b';hideBtn.style.marginTop='4px';
@@ -5856,6 +6015,15 @@ async function performPiConnect() {
                 await new Promise(r => setTimeout(r, 400));
                 return await attemptLogin(true);
             }
+            // FIX (kök neden — "Bağlan butonuna basınca hiçbir şey olmuyor"):
+            // İki deneme de başarısız olduysa (kullanıcı iptal etmediyse),
+            // öncesinde tamamen SESSİZCE vazgeçiliyordu — buton normale
+            // dönüyor ama hiçbir açıklama gösterilmiyordu. Bunun en yaygın
+            // nedeni: sayfa Pi Browser DIŞINDA (normal Chrome/Safari vb.)
+            // açılmış olması — Pi.authenticate() Pi Browser'ın kendi native
+            // köprüsü olmadan tamamlanamaz. Artık kullanıcıya bunu açıkça
+            // söylüyoruz.
+            showToast('⚠️ '+t('piBrowserRequiredMsg'));
             return false;
         }
     }
