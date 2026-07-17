@@ -63,5 +63,18 @@ service cloud.firestore {
       allow read: if true;
       allow write: if false;
     }
+
+    // ── GÜVENLİK NOTU ────────────────────────────────────────────────────
+    // rate_limits: sadece backend'in (approve.js, Admin SDK ile) yazdığı/
+    // okuduğu bir sayaç koleksiyonu. Admin SDK zaten bu kuralları by-pass
+    // ettiği için burada bir eşleşme olmasa da erişim zaten reddedilirdi
+    // (Firestore'da eşleşen kural yoksa varsayılan red uygulanır). Yine de
+    // ileride biri yanlışlıkla "allow read/write: if true" eklerse bunu
+    // fark etmesi için niyeti açıkça yazıyoruz: istemci tarafından hiçbir
+    // koşulda okunmamalı/yazılmamalı.
+    match /rate_limits/{entry} {
+      allow read: if false;
+      allow write: if false;
+    }
   }
 }
