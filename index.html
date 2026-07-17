@@ -993,10 +993,16 @@
 
 /* ── Toast Bildirim Sistemi (native alert() yerine) ───────────────────── */
 #toast-container { position:fixed; top:16px; left:50%; transform:translateX(-50%); z-index:100000; display:flex; flex-direction:column; gap:8px; align-items:center; pointer-events:none; width:calc(100% - 24px); max-width:420px; }
-.toast-item { pointer-events:auto; width:100%; box-sizing:border-box; background:#1e293b; border:1.5px solid #334155; border-radius:12px; padding:12px 14px; font-size:0.8em; line-height:1.5; color:#e2e8f0; white-space:pre-line; word-break:break-word; box-shadow:0 8px 24px rgba(0,0,0,0.35); display:flex; align-items:flex-start; gap:8px; animation:toast-in 0.25s ease-out; cursor:pointer; }
-.toast-item.toast-success { border-color:#10b981; background:rgba(16,185,129,0.12); }
-.toast-item.toast-error { border-color:#ef4444; background:rgba(239,68,68,0.12); }
-.toast-item.toast-info { border-color:#6366f1; background:rgba(99,102,241,0.12); }
+.toast-item { pointer-events:auto; width:100%; box-sizing:border-box; background:#0f172a; border:1.5px solid #334155; border-left-width:5px; border-radius:12px; padding:12px 14px; font-size:0.8em; line-height:1.5; color:#f1f5f9; white-space:pre-line; word-break:break-word; box-shadow:0 10px 30px rgba(0,0,0,0.55); display:flex; align-items:flex-start; gap:8px; animation:toast-in 0.25s ease-out; cursor:pointer; }
+/* FIX (alt panelde yazı görünmüyor sorunu): önceki halde arkaplan
+   rgba(renk, 0.12) yani %88 şeffaftı — toast'ın arkasında ne varsa (sayfa
+   içeriği, başka bir panel vb.) yazının üzerine karışıp okunmaz hale
+   getiriyordu. Artık arkaplan TAM OPAK (her durumda), renk sadece sol
+   kenarlıkla ve ikonla belli oluyor — hangi cihazda/hangi ekranın üzerinde
+   çıkarsa çıksın yazı her zaman net görünür. */
+.toast-item.toast-success { border-left-color:#10b981; background:#0d1f1a; }
+.toast-item.toast-error { border-left-color:#ef4444; background:#241111; }
+.toast-item.toast-info { border-left-color:#6366f1; background:#161329; }
 .toast-item.toast-leaving { animation:toast-out 0.2s ease-in forwards; }
 .toast-icon { flex-shrink:0; font-size:1.1em; line-height:1.4; }
 .toast-text { flex:1; }
@@ -1448,7 +1454,7 @@
             <button onclick="document.getElementById('csv-export-modal').style.display='none'" aria-label="Kapat" style="background:rgba(148,163,184,0.15);border:1px solid rgba(148,163,184,0.4);color:#cbd5e1;width:28px;height:28px;border-radius:8px;font-size:0.9em;cursor:pointer;font-weight:900;line-height:1;">✕</button>
         </div>
         <div id="csv-export-summary" style="font-size:0.75em;color:#94a3b8;margin-bottom:8px;"></div>
-        <textarea id="csv-export-preview" readonly style="width:100%;box-sizing:border-box;height:200px;background:#0f172a;border:1px solid #334155;border-radius:8px;color:#cbd5e1;font-family:monospace;font-size:0.68em;padding:8px;resize:vertical;"></textarea>
+        <div id="csv-export-table-wrap" style="width:100%;box-sizing:border-box;overflow:auto;max-height:340px;border:1px solid #334155;border-radius:8px;"></div>
         <div style="display:flex;gap:8px;margin-top:10px;">
             <button class="pi-btn" style="flex:1;background:#6366f1;animation:none;padding:10px;font-size:0.8em;" onclick="window.copyCsvToClipboard()">📋 <span data-i18n="csvCopyBtn"></span></button>
             <button class="pi-btn" style="flex:1;background:#10b981;animation:none;padding:10px;font-size:0.8em;" onclick="window.downloadCsvFile()">💾 <span data-i18n="csvDownloadBtn"></span></button>
@@ -2474,6 +2480,7 @@ const i18n = {
     myRatingAsBuyerLabel:"Alıcı Olarak Puanınız",rateBuyerPrompt:"Alıcıyı değerlendirin:",
     submitOfferTitle:"Teklif Ver",offerPriceLabel:"Teklif Tutarınız (Pi)",offerMessageLabel:"Mesajınız (opsiyonel)",
     sendOfferBtn:"Teklifi Gönder",makeOfferBtn:"Teklif Ver",currentPriceLabel:"Liste Fiyatı",
+    cannotOfferOwnDomain:"Kendi domaininize teklif veremezsiniz.",
     invalidOfferPrice:"Lütfen geçerli bir teklif tutarı girin.",offerSentSuccess:"✅ Teklifiniz gönderildi! Satıcı yanıt verdiğinde bildirim alacaksınız.",
     confirmWithdrawOffer:"Bu teklifi geri çekmek istediğinize emin misiniz?",
     confirmAcceptOffer:"Bu teklifi kabul etmek istediğinize emin misiniz? Domain fiyatı teklif tutarına güncellenecek.",
@@ -2509,6 +2516,7 @@ const i18n = {
     csvCopiedMsg:"Panoya kopyalandı.",csvCopyManualHint:"Otomatik kopyalanamadı — metin kutusu seçili, elle kopyalayabilirsiniz.",
     csvDownloadFailHint:"İndirme başarısız oldu, bu tarayıcıda 'Panoya Kopyala' seçeneğini deneyin.",
     csvTryRefreshHint:"(Panel açıkken silinmiş bir satış olabilir, sayfayı yenileyip tekrar deneyin.)",
+    csvHeaderLabels:{domain:"Domain",price:"Fiyat",buyer:"Alıcı",sellerUsername:"Satıcı",at:"Tarih",txid:"İşlem No",payoutStatus:"Ödeme Durumu",type:"Tür"},
     noSalesLast30Days:"Son 30 günde satış yok.",noDataToExport:"Dışa aktarılacak veri yok.",
     salesCountUnit:"satış",trendMaxDayLabel:"En yüksek gün",trendTapHint:"Detay için bir çubuğa dokunun",
     trendTotalSummary:(count,vol)=>`Son 30 günde ${count} satış, toplam ${Math.round(vol*100)/100} Pi`,
@@ -3012,6 +3020,7 @@ const i18n = {
     myRatingAsBuyerLabel:"Your Rating as a Buyer",rateBuyerPrompt:"Rate the buyer:",
     submitOfferTitle:"Make an Offer",offerPriceLabel:"Your Offer (Pi)",offerMessageLabel:"Message (optional)",
     sendOfferBtn:"Send Offer",makeOfferBtn:"Make an Offer",currentPriceLabel:"List Price",
+    cannotOfferOwnDomain:"You can't make an offer on your own domain.",
     invalidOfferPrice:"Please enter a valid offer amount.",offerSentSuccess:"✅ Your offer was sent! You'll be notified when the seller responds.",
     confirmWithdrawOffer:"Are you sure you want to withdraw this offer?",
     confirmAcceptOffer:"Are you sure you want to accept this offer? The domain's price will be updated to the offer amount.",
@@ -3047,6 +3056,7 @@ const i18n = {
     csvCopiedMsg:"Copied to clipboard.",csvCopyManualHint:"Couldn't copy automatically — the text box is selected, you can copy it manually.",
     csvDownloadFailHint:"Download failed, try 'Copy to Clipboard' in this browser instead.",
     csvTryRefreshHint:"(A sale may have been deleted while the panel was open — refresh the page and try again.)",
+    csvHeaderLabels:{domain:"Domain",price:"Price",buyer:"Buyer",sellerUsername:"Seller",at:"Date",txid:"Transaction ID",payoutStatus:"Payout Status",type:"Type"},
     noSalesLast30Days:"No sales in the last 30 days.",noDataToExport:"No data to export.",
     salesCountUnit:"sales",trendMaxDayLabel:"Peak day",trendTapHint:"Tap a bar for details",
     trendTotalSummary:(count,vol)=>`${count} sales in the last 30 days, ${Math.round(vol*100)/100} Pi total`,
@@ -3914,7 +3924,7 @@ window.openDomainDetail=function(domainName){
         actionHtml+=`<button onclick="window.toggleFavorite('${domainName}')" style="width:100%;padding:9px;margin-bottom:8px;border-radius:9px;border:1.5px solid #f59e0b;background:${isFav?'rgba(245,158,11,0.9)':'rgba(245,158,11,0.1)'};color:${isFav?'#1e1b4b':'#fbbf24'};font-weight:800;font-size:0.78em;cursor:pointer;">${isFav?'★ '+t('favoriteRemoveBtn'):'☆ '+t('favoriteAddBtn')}</button>`;
     }
     if(!data.sold&&isAuth){actionHtml+=`<button class="btn-buy" style="width:100%;padding:10px;font-size:0.9em;" onclick="document.getElementById('domain-detail-modal').style.display='none';pendingDomain='${domainName}';pendingPrice=${data.price};document.getElementById('pre-buy-modal').style.display='flex';">${t('buyNow')}</button>`;}
-    if(!data.sold&&isAuth&&data.sellerUsername!==currentUser){actionHtml+=`<button onclick="window.openOfferModal('${domainName}')" style="width:100%;padding:9px;margin-top:8px;border-radius:9px;border:1.5px solid #f59e0b;background:rgba(245,158,11,0.1);color:#fbbf24;font-weight:800;font-size:0.78em;cursor:pointer;">💬 ${t('makeOfferBtn')}</button>`;}
+    if(!data.sold&&isAuth){actionHtml+=`<button onclick="if(domainData['${domainName}']&&domainData['${domainName}'].sellerUsername===currentUser){showToast(t('cannotOfferOwnDomain'));}else{window.openOfferModal('${domainName}');}" style="width:100%;padding:9px;margin-top:8px;border-radius:9px;border:1.5px solid #f59e0b;background:rgba(245,158,11,0.1);color:#fbbf24;font-weight:800;font-size:0.78em;cursor:pointer;">💬 ${t('makeOfferBtn')}</button>`;}
     actionEl.innerHTML=actionHtml;
     document.getElementById('domain-detail-modal').style.display='flex';
 };
@@ -4431,18 +4441,22 @@ window.openHowItWorksModal=function(){
 function buildRatingsTable(buyerRating, sellerRatingOfBuyer){
     if(!buyerRating && !sellerRatingOfBuyer) return '';
     const starsHtml=(n)=>`<span style="letter-spacing:1px;">${'★'.repeat(n)}${'☆'.repeat(5-n)}</span>`;
+    // FIX (üst üste binme): "Kim" hücresi öncesinde white-space:nowrap idi;
+    // "Alıcı → Satıcı" gibi metin dar kartlarda sütun genişliğini aşıp
+    // yandaki puan sütununün ÜZERİNE biniyordu. Artık satır kaydırmaya
+    // izin veriliyor (kelimeler alt alta düşebiliyor) ve etiketler kısaltıldı.
     const rowHtml=(label,r)=>!r?'':`<tr>
-        <td style="padding:7px 8px;font-size:0.66em;color:#94a3b8;font-weight:800;white-space:nowrap;vertical-align:top;border-top:1px solid #1e293b;">${label}</td>
-        <td style="padding:7px 8px;font-size:0.78em;color:#fbbf24;font-weight:900;white-space:nowrap;vertical-align:top;border-top:1px solid #1e293b;">${starsHtml(r.stars)}</td>
-        <td style="padding:7px 8px;font-size:0.7em;color:#cbd5e1;line-height:1.4;vertical-align:top;border-top:1px solid #1e293b;">${r.comment?escapeHtml(r.comment):`<span style="color:#475569;font-style:italic;">${t('noCommentGiven')}</span>`}</td>
+        <td style="padding:7px 6px;font-size:0.64em;color:#94a3b8;font-weight:800;line-height:1.3;vertical-align:top;border-top:1px solid #1e293b;word-break:break-word;">${label}</td>
+        <td style="padding:7px 6px;font-size:0.76em;color:#fbbf24;font-weight:900;white-space:nowrap;vertical-align:top;border-top:1px solid #1e293b;">${starsHtml(r.stars)}</td>
+        <td style="padding:7px 6px;font-size:0.68em;color:#cbd5e1;line-height:1.4;vertical-align:top;border-top:1px solid #1e293b;word-break:break-word;overflow-wrap:anywhere;">${r.comment?escapeHtml(r.comment):`<span style="color:#475569;font-style:italic;">${t('noCommentGiven')}</span>`}</td>
     </tr>`;
     return `<div style="margin-top:8px;">
         <div style="font-size:0.6em;color:#64748b;font-weight:800;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;">⭐ ${t('ratingsTableTitle')}</div>
         <table style="width:100%;border-collapse:collapse;background:#0f172a;border-radius:8px;overflow:hidden;table-layout:fixed;">
             <thead><tr style="background:#1e293b;">
-                <th style="padding:6px 8px;font-size:0.58em;color:#64748b;text-align:left;font-weight:800;text-transform:uppercase;width:32%;">${t('ratingsTableWho')}</th>
-                <th style="padding:6px 8px;font-size:0.58em;color:#64748b;text-align:left;font-weight:800;text-transform:uppercase;width:20%;">${t('ratingsTableStars')}</th>
-                <th style="padding:6px 8px;font-size:0.58em;color:#64748b;text-align:left;font-weight:800;text-transform:uppercase;">${t('ratingsTableComment')}</th>
+                <th style="padding:6px;font-size:0.56em;color:#64748b;text-align:left;font-weight:800;text-transform:uppercase;width:26%;">${t('ratingsTableWho')}</th>
+                <th style="padding:6px;font-size:0.56em;color:#64748b;text-align:left;font-weight:800;text-transform:uppercase;width:22%;">${t('ratingsTableStars')}</th>
+                <th style="padding:6px;font-size:0.56em;color:#64748b;text-align:left;font-weight:800;text-transform:uppercase;">${t('ratingsTableComment')}</th>
             </tr></thead>
             <tbody>${rowHtml(t('buyerRatedSellerLabel'),buyerRating)}${rowHtml(t('sellerRatedBuyerLabel'),sellerRatingOfBuyer)}</tbody>
         </table>
@@ -4793,7 +4807,25 @@ window.exportSalesCsv=async function(btnEl){
         const csv=[headers.join(',')].concat(rows.map(r=>headers.map(h=>escapeCsv(r[h])).join(','))).join('\n');
         lastCsvData={csv, count:rows.length};
         document.getElementById('csv-export-summary').textContent = t('csvRowCount')(rows.length);
-        document.getElementById('csv-export-preview').value = csv;
+
+        // Ham CSV metni yerine (kimse okuyamıyordu) BAŞLIKLI, düzenli bir
+        // tablo gösteriyoruz. Kopyala/İndir butonları hâlâ arka planda
+        // tuttuğumuz gerçek CSV metnini kullanıyor, sadece GÖRÜNÜM değişti.
+        const headerLabels=t('csvHeaderLabels');
+        const locale=currentLang==='en'?'en-GB':'tr-TR';
+        const fmtCell=(h,v)=>{
+            if(v===undefined||v===null||v==='') return '<span style="color:#475569;">—</span>';
+            if(h==='price') return `${escapeHtml(String(v))} Pi`;
+            if(h==='at'){ const d=new Date(Number(v)); return isNaN(d.getTime())?escapeHtml(String(v)):d.toLocaleString(locale,{day:'2-digit',month:'2-digit',year:'2-digit',hour:'2-digit',minute:'2-digit'}); }
+            if(h==='buyer'||h==='sellerUsername') return '@'+escapeHtml(String(v));
+            return escapeHtml(String(v));
+        };
+        const theadHtml=headers.map(h=>`<th style="padding:7px 10px;font-size:0.62em;color:#818cf8;text-align:left;font-weight:800;text-transform:uppercase;white-space:nowrap;">${headerLabels[h]||h}</th>`).join('');
+        const rowsHtml=rows.map(r=>`<tr>${headers.map(h=>`<td style="padding:7px 10px;font-size:0.68em;color:#e2e8f0;border-top:1px solid #1e293b;white-space:nowrap;">${fmtCell(h,r[h])}</td>`).join('')}</tr>`).join('');
+        document.getElementById('csv-export-table-wrap').innerHTML=`<table style="width:100%;border-collapse:collapse;min-width:680px;">
+            <thead><tr style="background:#1e293b;position:sticky;top:0;">${theadHtml}</tr></thead>
+            <tbody>${rowsHtml}</tbody>
+        </table>`;
         document.getElementById('csv-export-modal').style.display='flex';
     }catch(e){ console.error('CSV export hatası:', e); showToast(t('genericError')); }
     finally{ if(btn){ btn.disabled=false; btn.style.opacity='1'; if(originalText!==null) btn.innerHTML=originalText; } }
@@ -4804,8 +4836,6 @@ window.copyCsvToClipboard=async function(){
         await navigator.clipboard.writeText(lastCsvData.csv);
         showToast('✅ '+t('csvCopiedMsg'));
     }catch(e){
-        const ta=document.getElementById('csv-export-preview');
-        if(ta){ ta.focus(); ta.select(); }
         showToast(t('csvCopyManualHint'));
     }
 };
@@ -5404,15 +5434,24 @@ function render(){
             card.appendChild(btn);
 
             // Teklif Ver: öncesinde sadece domain detay modalının içinde
-            // gizliydi, kullanıcılar farkına varmıyordu. Artık kart üzerinde
-            // de doğrudan görünüyor (kendi domainine teklif veremezsin).
-            if(isAuth && data.sellerUsername!==currentUser){
-                const offerBtn=document.createElement('button');
-                offerBtn.className='btn-buy';offerBtn.style.background='rgba(245,158,11,0.15)';offerBtn.style.border='1.5px solid #f59e0b';offerBtn.style.color='#fbbf24';offerBtn.style.marginTop='4px';
-                offerBtn.innerText='💬 '+t('makeOfferBtn');
-                offerBtn.onclick=(e)=>{e.stopPropagation();window.openOfferModal(d.name);};
-                card.appendChild(offerBtn);
-            }
+            // gizliydi, kullanıcılar farkına varmıyordu. FIX: öncesinde bu
+            // buton sadece isAuth+sellerUsername kontrolü render ANINDA
+            // sağlanırsa ekleniyordu — giriş yapılmamışsa ya da domain
+            // sellerUsername'i (admin'in kendi eklediği domainlerde olduğu
+            // gibi) admin'in kullanıcı adına eşitse buton HİÇ görünmüyordu,
+            // "teklif bölümü hiç yok" hissi yaratıyordu. Artık buyNow ile
+            // AYNI desen: buton HER ZAMAN görünür, kontrol tıklama anında
+            // yapılır (giriş yoksa uyarı, kendi domainiyse uyarı).
+            const offerBtn=document.createElement('button');
+            offerBtn.className='btn-buy';offerBtn.style.background='rgba(245,158,11,0.15)';offerBtn.style.border='1.5px solid #f59e0b';offerBtn.style.color='#fbbf24';offerBtn.style.marginTop='4px';
+            offerBtn.innerText='💬 '+t('makeOfferBtn');
+            offerBtn.onclick=(e)=>{
+                e.stopPropagation();
+                if(!isAuth){ showToast(t('loginRequired')); return; }
+                if(data.sellerUsername && data.sellerUsername===currentUser){ showToast(t('cannotOfferOwnDomain')); return; }
+                window.openOfferModal(d.name);
+            };
+            card.appendChild(offerBtn);
 
             if(isAdminViewing){
                 const hideBtn=document.createElement('button');
