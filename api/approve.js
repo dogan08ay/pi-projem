@@ -2978,9 +2978,22 @@ async function handlerImpl(req, res) {
     if (!realUsername) return res.status(403).json({ error: "Geçersiz oturum" });
     try {
       const db = getDb();
-      const snap = await db.collection('offers').where('sellerUsername', '==', realUsername).where('status', '==', 'pending').get();
-      const offers = [];
-      snap.forEach(d => offers.push({ id: d.id, ...d.data() }));
+      // 'countered': satıcının kendi verdiği karşı teklifi de burada
+      // göstermeye devam ediyoruz ki alıcının yanıtını bekleyen teklif
+      // listeden kaybolmasın (aksi halde satıcı ne olduğunu takip edemez).
+      let offers = [];
+      try {
+        const snap = await db.collection('offers').where('sellerUsername', '==', realUsername).where('status', 'in', ['pending', 'countered']).get();
+        snap.forEach(d => offers.push({ id: d.id, ...d.data() }));
+      } catch (idxErr) {
+        // Firestore bu birleşik sorgu için composite index isteyebilir;
+        // index henüz oluşturulmamışsa uygulamanın çökmemesi için daha
+        // basit bir sorguya (sadece sellerUsername) düşüp filtreyi
+        // JS tarafında yapıyoruz.
+        console.error('[get_received_offers] composite index hatası, fallback kullanılıyor:', idxErr.message);
+        const snap = await db.collection('offers').where('sellerUsername', '==', realUsername).get();
+        snap.forEach(d => { const data = d.data(); if (data.status === 'pending' || data.status === 'countered') offers.push({ id: d.id, ...data }); });
+      }
       offers.sort((a, b) => b.createdAt - a.createdAt);
       return res.status(200).json({ success: true, offers });
     } catch (e) {
@@ -3062,6 +3075,123 @@ async function handlerImpl(req, res) {
       await offerRef.set({ status: 'withdrawn', respondedAt: Date.now() }, { merge: true });
       return res.status(200).json({ success: true });
     } catch (e) {
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  // ── Karşı Teklif Ver (satıcı) ───────────────────────────────────────────
+  // Satıcı, gelen bir teklifi doğrudan kabul/reddetmek yerine farklı bir
+  // fiyat önerebilir. Teklif 'countered' durumuna geçer, orijinal teklif
+  // tutarı korunur (offerPrice) ama ayrıca counterPrice/counterMessage
+  // alanları eklenir. Alıcı bunu respond_counter_offer ile yanıtlar.
+  if (action === 'counter_offer') {
+    const { offerId, counterPrice, counterMessage } = req.body;
+    const realUsername = await getRealUsername(accessToken);
+    if (!realUsername) return res.status(403).json({ error: "Geçersiz oturum" });
+    const priceNum = Number(counterPrice);
+    if (!offerId || !Number.isFinite(priceNum) || priceNum <= 0)
+      return res.status(400).json({ error: "Geçersiz karşı teklif tutarı" });
+    try {
+      const db = getDb();
+      const offerRef = db.collection('offers').doc(offerId);
+      const offerSnap = await offerRef.get();
+      if (!offerSnap.exists) return res.status(404).json({ error: "Teklif bulunamadı" });
+      const offer = offerSnap.data();
+      const isAdmin = await verifyAdmin(accessToken);
+      if (offer.sellerUsername !== realUsername && !isAdmin)
+        return res.status(403).json({ error: "Bu teklife yanıt verme yetkiniz yok" });
+      if (offer.status !== 'pending') return res.status(400).json({ error: "Bu teklif zaten yanıtlanmış" });
+
+      await offerRef.set({
+        status: 'countered',
+        counterPrice: priceNum,
+        counterMessage: counterMessage ? String(counterMessage).trim().slice(0, 300) : null,
+        counteredAt: Date.now()
+      }, { merge: true });
+
+      await sendNotification(offer.buyerUsername, {
+        type: 'offer_countered',
+        title: '🔄 Karşı Teklif Aldınız',
+        body: `"${offer.domainName}" için satıcı ${priceNum} Pi karşı teklif sundu (sizin teklifiniz: ${offer.offerPrice} Pi).`,
+        domainName: offer.domainName
+      });
+      await logAdminAction(realUsername, 'counter_offer', `${offer.domainName}: @${offer.buyerUsername}'in ${offer.offerPrice} Pi teklifine ${priceNum} Pi karşı teklif verildi`);
+      return res.status(200).json({ success: true });
+    } catch (e) {
+      console.error("counter_offer hatası:", e);
+      await logSystemError('counter_offer', e);
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  // ── Karşı Teklife Yanıt Ver (alıcı) ─────────────────────────────────────
+  if (action === 'respond_counter_offer') {
+    const { offerId, accept } = req.body;
+    const realUsername = await getRealUsername(accessToken);
+    if (!realUsername) return res.status(403).json({ error: "Geçersiz oturum" });
+    if (!offerId) return res.status(400).json({ error: "Geçersiz teklif" });
+    try {
+      const db = getDb();
+      const offerRef = db.collection('offers').doc(offerId);
+      const offerSnap = await offerRef.get();
+      if (!offerSnap.exists) return res.status(404).json({ error: "Teklif bulunamadı" });
+      const offer = offerSnap.data();
+      if (offer.buyerUsername !== realUsername) return res.status(403).json({ error: "Bu teklif size ait değil" });
+      if (offer.status !== 'countered') return res.status(400).json({ error: "Bu teklif için bekleyen bir karşı teklif yok" });
+
+      if (accept) {
+        const domainRef = db.collection('domains').doc(offer.domainName);
+        const domainSnap = await domainRef.get();
+        if (!domainSnap.exists || domainSnap.data().sold === true)
+          return res.status(400).json({ error: "Domain artık müsait değil" });
+
+        await domainRef.set({ price: offer.counterPrice }, { merge: true });
+        await offerRef.set({ status: 'accepted', respondedAt: Date.now() }, { merge: true });
+
+        const otherPending = await db.collection('offers')
+          .where('domainName', '==', offer.domainName).where('status', '==', 'pending').get();
+        const batch = db.batch();
+        otherPending.forEach(d => { if (d.id !== offerId) batch.set(d.ref, { status: 'expired', respondedAt: Date.now() }, { merge: true }); });
+        await batch.commit();
+
+        await sendNotification(offer.sellerUsername || ADMIN_USERNAME, {
+          type: 'counter_offer_accepted',
+          title: '✅ Karşı Teklifiniz Kabul Edildi!',
+          body: `"${offer.domainName}" için ${offer.counterPrice} Pi karşı teklifiniz @${realUsername} tarafından kabul edildi.`,
+          domainName: offer.domainName
+        });
+      } else {
+        await offerRef.set({ status: 'rejected', respondedAt: Date.now() }, { merge: true });
+        await sendNotification(offer.sellerUsername || ADMIN_USERNAME, {
+          type: 'counter_offer_rejected',
+          title: '❌ Karşı Teklifiniz Reddedildi',
+          body: `"${offer.domainName}" için ${offer.counterPrice} Pi karşı teklifiniz @${realUsername} tarafından reddedildi.`,
+          domainName: offer.domainName
+        });
+      }
+      await logAdminAction(realUsername, 'respond_counter_offer', `${offer.domainName}: ${offer.counterPrice} Pi karşı teklif ${accept ? 'kabul edildi' : 'reddedildi'}`);
+      return res.status(200).json({ success: true });
+    } catch (e) {
+      console.error("respond_counter_offer hatası:", e);
+      await logSystemError('respond_counter_offer', e);
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  // ── Tüm Teklif Trafiğini Getir (SADECE admin) ───────────────────────────
+  if (action === 'get_all_offers') {
+    const isAdmin = await verifyAdmin(accessToken);
+    if (!isAdmin) return res.status(403).json({ error: "Yetki yok" });
+    try {
+      const db = getDb();
+      // Platform büyüdükçe bu koleksiyon da büyüyecek; admin izleme paneli
+      // için en son 500 kayıt yeterli — daha fazlası pratikte okunamaz zaten.
+      const snap = await db.collection('offers').orderBy('createdAt', 'desc').limit(500).get();
+      const offers = [];
+      snap.forEach(d => offers.push({ id: d.id, ...d.data() }));
+      return res.status(200).json({ success: true, offers });
+    } catch (e) {
+      console.error("get_all_offers hatası:", e);
       return res.status(500).json({ error: e.message });
     }
   }
