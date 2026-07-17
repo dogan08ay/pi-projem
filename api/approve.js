@@ -1,5 +1,5 @@
 import { initializeApp, getApps, cert } from 'firebase-admin/app';
-import { getFirestore, FieldValue } from 'firebase-admin/firestore';
+import { getFirestore, FieldValue, Timestamp } from 'firebase-admin/firestore';
 import { getStorage } from 'firebase-admin/storage';
 import { getDatabase } from 'firebase-admin/database';
 import * as PiNetworkPkg from 'pi-backend';
@@ -177,6 +177,13 @@ function checkRateLimitMemoryFallback(ip, action, maxReq, windowMs) {
 async function checkRateLimit(ip, action, maxReq = 10, windowMs = 60000) {
   const now = Date.now();
   const docId = `${ip}_${action}`.replace(/[\/\s]/g, '_').substring(0, 300) || `unknown_${action}`;
+  // expiresAt: rate_limits koleksiyonu sürekli yeni doküman biriktirir.
+  // Firestore'un TTL (Time-to-live) politikası SADECE Timestamp tipindeki
+  // bir alana bakarak otomatik silme yapabilir (sayı/epoch ms işe yaramaz),
+  // bu yüzden pencere süresi dolduğunda dokümanın "artık geçersiz" olacağı
+  // anı ayrıca Timestamp olarak yazıyoruz. Konsoldan bu alan üzerinde bir
+  // TTL politikası tanımlanınca Firestore eski kayıtları kendisi temizler.
+  const expiresAt = Timestamp.fromMillis(now + windowMs);
   try {
     const db = getDb();
     const ref = db.collection('rate_limits').doc(docId);
@@ -184,11 +191,11 @@ async function checkRateLimit(ip, action, maxReq = 10, windowMs = 60000) {
       const snap = await tx.get(ref);
       const data = snap.exists ? snap.data() : null;
       if (!data || now - data.start > windowMs) {
-        tx.set(ref, { count: 1, start: now });
+        tx.set(ref, { count: 1, start: now, expiresAt });
         return true;
       }
       if (data.count >= maxReq) return false;
-      tx.set(ref, { count: data.count + 1, start: data.start }, { merge: true });
+      tx.set(ref, { count: data.count + 1, start: data.start, expiresAt }, { merge: true });
       return true;
     });
   } catch (e) {
