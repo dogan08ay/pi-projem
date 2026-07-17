@@ -76,5 +76,16 @@ service cloud.firestore {
       allow read: if false;
       allow write: if false;
     }
+
+    // ── GÜVENLİK NOTU ────────────────────────────────────────────────────
+    // offers: alıcının teklif tutarını, mesajını ve kullanıcı adını içerir.
+    // Sadece backend'den (submit_offer / get_my_offers / get_received_offers
+    // / respond_offer / counter_offer / respond_counter_offer / get_all_offers
+    // [admin]) erişiliyor, hepsi gerçek kimlik doğrulaması yapıyor. İstemci
+    // tarafından hiçbir koşulda doğrudan okunmamalı/yazılmamalı.
+    match /offers/{offer} {
+      allow read: if false;
+      allow write: if false;
+    }
   }
 }
