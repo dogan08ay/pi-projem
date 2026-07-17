@@ -1426,6 +1426,26 @@
     </div>
 </div>
 
+<!-- CSV Dışa Aktarım Modalı — blob indirme bazı WebView'lerde (Pi Browser
+     dahil) <a download> özniteliğini yok sayıp CSV'yi düz metin olarak
+     sayfanın dibinde açabiliyordu, bu da "boğulmuş, görünmüyor" hissi
+     yaratıyordu. Artık veri her zaman ekranda GÖRÜNÜR bir modalda,
+     kopyalanabilir/indirilebilir şekilde sunuluyor. -->
+<div id="csv-export-modal" class="modal-overlay" style="display:none;">
+    <div class="modal-content" style="border-color:#64748b;max-height:85vh;text-align:left;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+            <h2 style="color:#e2e8f0;margin:0;font-size:1.05em;font-weight:900;">⬇️ <span data-i18n="exportCsvBtn"></span></h2>
+            <button onclick="document.getElementById('csv-export-modal').style.display='none'" aria-label="Kapat" style="background:rgba(148,163,184,0.15);border:1px solid rgba(148,163,184,0.4);color:#cbd5e1;width:28px;height:28px;border-radius:8px;font-size:0.9em;cursor:pointer;font-weight:900;line-height:1;">✕</button>
+        </div>
+        <div id="csv-export-summary" style="font-size:0.75em;color:#94a3b8;margin-bottom:8px;"></div>
+        <textarea id="csv-export-preview" readonly style="width:100%;box-sizing:border-box;height:200px;background:#0f172a;border:1px solid #334155;border-radius:8px;color:#cbd5e1;font-family:monospace;font-size:0.68em;padding:8px;resize:vertical;"></textarea>
+        <div style="display:flex;gap:8px;margin-top:10px;">
+            <button class="pi-btn" style="flex:1;background:#6366f1;animation:none;padding:10px;font-size:0.8em;" onclick="window.copyCsvToClipboard()">📋 <span data-i18n="csvCopyBtn"></span></button>
+            <button class="pi-btn" style="flex:1;background:#10b981;animation:none;padding:10px;font-size:0.8em;" onclick="window.downloadCsvFile()">💾 <span data-i18n="csvDownloadBtn"></span></button>
+        </div>
+    </div>
+</div>
+
 <!-- ANA İÇERİK -->
 <div class="container">
   <div class="main-scroll">
@@ -1750,7 +1770,7 @@
                 <div style="font-size:0.65em;color:#94a3b8;font-weight:700;margin-bottom:8px;text-transform:uppercase;">📈 <span data-i18n="salesTrendTitle"></span></div>
                 <div id="sales-trend-chart" style="min-height:90px;display:flex;align-items:center;justify-content:center;color:#475569;font-size:0.7em;">Yükleniyor...</div>
             </div>
-            <button onclick="window.exportSalesCsv()" style="width:100%;padding:9px;margin-bottom:12px;border-radius:10px;border:1.5px solid #64748b;background:rgba(100,116,139,0.1);color:#cbd5e1;font-size:0.75em;font-weight:800;cursor:pointer;">⬇️ <span data-i18n="exportCsvBtn"></span></button>
+            <button onclick="window.exportSalesCsv(this)" style="width:100%;padding:9px;margin-bottom:12px;border-radius:10px;border:1.5px solid #64748b;background:rgba(100,116,139,0.1);color:#cbd5e1;font-size:0.75em;font-weight:800;cursor:pointer;">⬇️ <span data-i18n="exportCsvBtn"></span></button>
             <div style="margin-top:12px;background:#1c0a0a;border:2px solid #ef4444;border-radius:12px;padding:10px;">
                 <div style="font-size:0.68em;color:#fca5a5;font-weight:800;text-transform:uppercase;margin-bottom:6px;">⚠️ <span data-i18n="resetDangerTitle"></span></div>
                 <div style="font-size:0.68em;color:#94a3b8;line-height:1.5;margin-bottom:8px;" data-i18n="resetDangerNote"></div>
@@ -2420,12 +2440,20 @@ const i18n = {
     confirmDeletionRequest:"Hesap silme talebinizi göndermek istediğinize emin misiniz?",
     deletionRequestSent:"✅ Talebiniz alındı. Admin inceleyip sizinle iletişime geçecektir.",
     yourRatingOfBuyerLabel:"Alıcıya Verdiğiniz Puan",
+    ratingsTableTitle:"Değerlendirmeler",ratingsTableWho:"Kim",ratingsTableStars:"Puan",ratingsTableComment:"Yorum",
+    buyerRatedSellerLabel:"Alıcı → Satıcı",sellerRatedBuyerLabel:"Satıcı → Alıcı",noCommentGiven:"Yorum yok",
     confirmRatingOfBuyerPrompt:(n)=>`Alıcıya ${n} yıldız vermek istediğinize emin misiniz? Bu işlem geri alınamaz.`,
     genericError:"Bir hata oluştu, lütfen tekrar deneyin.",
     sellerRatingLabel:"Satıcı Puanı",noRatingsYet:"Henüz değerlendirme yok",
     myRatingAsSellerLabel:"Satıcı Olarak Puanınız",ratingsCountSuffix:"değerlendirme",
     salesTrendTitle:"Satış Trendi (Son 30 Gün)",exportCsvBtn:"Satış Verilerini CSV Olarak İndir",
+    csvCopyBtn:"Panoya Kopyala",csvDownloadBtn:"Dosya Olarak İndir",
+    csvRowCount:(n)=>`${n} satır bulundu. Aşağıda önizleyebilir, kopyalayabilir veya dosya olarak indirebilirsiniz.`,
+    csvCopiedMsg:"Panoya kopyalandı.",csvCopyManualHint:"Otomatik kopyalanamadı — metin kutusu seçili, elle kopyalayabilirsiniz.",
+    csvDownloadFailHint:"İndirme başarısız oldu, bu tarayıcıda 'Panoya Kopyala' seçeneğini deneyin.",
+    csvTryRefreshHint:"(Panel açıkken silinmiş bir satış olabilir, sayfayı yenileyip tekrar deneyin.)",
     noSalesLast30Days:"Son 30 günde satış yok.",noDataToExport:"Dışa aktarılacak veri yok.",
+    salesCountUnit:"satış",trendMaxDayLabel:"En yüksek gün",trendTapHint:"Detay için bir çubuğa dokunun",
     trendTotalSummary:(count,vol)=>`Son 30 günde ${count} satış, toplam ${Math.round(vol*100)/100} Pi`,
     hiwSection1Title:"Genel Bakış",
     hiwSection1Body:"Web3 Domain Gateway, Pi Network üzerinde çalışan bir .pi domain (alan adı) al-sat pazar yeridir. Ödemeler Pi Coin ile yapılır. Domain satın aldığınızda paranız doğrudan satıcıya gitmez — önce güvenli bir emanet (escrow) hesabında bekletilir.",
@@ -2943,12 +2971,20 @@ const i18n = {
     confirmDeletionRequest:"Are you sure you want to submit an account deletion request?",
     deletionRequestSent:"✅ Your request has been received. The admin will review it and follow up with you.",
     yourRatingOfBuyerLabel:"Your Rating of the Buyer",
+    ratingsTableTitle:"Ratings",ratingsTableWho:"Who",ratingsTableStars:"Stars",ratingsTableComment:"Comment",
+    buyerRatedSellerLabel:"Buyer → Seller",sellerRatedBuyerLabel:"Seller → Buyer",noCommentGiven:"No comment",
     confirmRatingOfBuyerPrompt:(n)=>`Are you sure you want to give the buyer ${n} star${n>1?'s':''}? This cannot be undone.`,
     genericError:"Something went wrong, please try again.",
     sellerRatingLabel:"Seller Rating",noRatingsYet:"No ratings yet",
     myRatingAsSellerLabel:"Your Rating as a Seller",ratingsCountSuffix:"ratings",
     salesTrendTitle:"Sales Trend (Last 30 Days)",exportCsvBtn:"Download Sales Data as CSV",
+    csvCopyBtn:"Copy to Clipboard",csvDownloadBtn:"Download as File",
+    csvRowCount:(n)=>`${n} rows found. Preview, copy, or download as a file below.`,
+    csvCopiedMsg:"Copied to clipboard.",csvCopyManualHint:"Couldn't copy automatically — the text box is selected, you can copy it manually.",
+    csvDownloadFailHint:"Download failed, try 'Copy to Clipboard' in this browser instead.",
+    csvTryRefreshHint:"(A sale may have been deleted while the panel was open — refresh the page and try again.)",
     noSalesLast30Days:"No sales in the last 30 days.",noDataToExport:"No data to export.",
+    salesCountUnit:"sales",trendMaxDayLabel:"Peak day",trendTapHint:"Tap a bar for details",
     trendTotalSummary:(count,vol)=>`${count} sales in the last 30 days, ${Math.round(vol*100)/100} Pi total`,
     hiwSection1Title:"Overview",
     hiwSection1Body:"Web3 Domain Gateway is a .pi domain marketplace running on Pi Network. Payments are made in Pi Coin. When you buy a domain, your payment doesn't go straight to the seller — it's first held in a secure escrow account.",
@@ -4238,6 +4274,32 @@ window.loadReceivedOffers=async function(){
 window.openHowItWorksModal=function(){
     document.getElementById('how-it-works-modal').style.display='flex';
 };
+// ── Puanlar/Yorumlar Tablosu ──────────────────────────────────────────────
+// Bir domain satışında hem alıcının satıcıya verdiği puanı hem de satıcının
+// alıcıya verdiği puanı (hangileri mevcutsa) TEK bir düzenli tabloda
+// gösterir. Öncesinde her taraf sadece kendi verdiği puanı, satır satır
+// dağınık bir metin olarak görüyordu; artık ikisi de aynı yerde, kim kime
+// kaç yıldız verdi ve ne yorum yazdı net şekilde okunuyor.
+function buildRatingsTable(buyerRating, sellerRatingOfBuyer){
+    if(!buyerRating && !sellerRatingOfBuyer) return '';
+    const starsHtml=(n)=>`<span style="letter-spacing:1px;">${'★'.repeat(n)}${'☆'.repeat(5-n)}</span>`;
+    const rowHtml=(label,r)=>!r?'':`<tr>
+        <td style="padding:7px 8px;font-size:0.66em;color:#94a3b8;font-weight:800;white-space:nowrap;vertical-align:top;border-top:1px solid #1e293b;">${label}</td>
+        <td style="padding:7px 8px;font-size:0.78em;color:#fbbf24;font-weight:900;white-space:nowrap;vertical-align:top;border-top:1px solid #1e293b;">${starsHtml(r.stars)}</td>
+        <td style="padding:7px 8px;font-size:0.7em;color:#cbd5e1;line-height:1.4;vertical-align:top;border-top:1px solid #1e293b;">${r.comment?escapeHtml(r.comment):`<span style="color:#475569;font-style:italic;">${t('noCommentGiven')}</span>`}</td>
+    </tr>`;
+    return `<div style="margin-top:8px;">
+        <div style="font-size:0.6em;color:#64748b;font-weight:800;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;">⭐ ${t('ratingsTableTitle')}</div>
+        <table style="width:100%;border-collapse:collapse;background:#0f172a;border-radius:8px;overflow:hidden;table-layout:fixed;">
+            <thead><tr style="background:#1e293b;">
+                <th style="padding:6px 8px;font-size:0.58em;color:#64748b;text-align:left;font-weight:800;text-transform:uppercase;width:32%;">${t('ratingsTableWho')}</th>
+                <th style="padding:6px 8px;font-size:0.58em;color:#64748b;text-align:left;font-weight:800;text-transform:uppercase;width:20%;">${t('ratingsTableStars')}</th>
+                <th style="padding:6px 8px;font-size:0.58em;color:#64748b;text-align:left;font-weight:800;text-transform:uppercase;">${t('ratingsTableComment')}</th>
+            </tr></thead>
+            <tbody>${rowHtml(t('buyerRatedSellerLabel'),buyerRating)}${rowHtml(t('sellerRatedBuyerLabel'),sellerRatingOfBuyer)}</tbody>
+        </table>
+    </div>`;
+}
 window.submitBuyerRating=async function(domainName, stars){
     if(!confirm(t('confirmRatingOfBuyerPrompt')(stars))) return;
     const comment=prompt(t('ratingCommentPrompt'))||'';
@@ -4520,6 +4582,16 @@ window.loadAdminEarnings=async function(){
     window.loadSalesTrendChart();
 };
 
+let lastSalesTrend=[];
+window.selectTrendDay=function(i){
+    const d=lastSalesTrend[i]; if(!d) return;
+    const box=document.getElementById('sales-trend-info');
+    if(!box) return;
+    const locale=currentLang==='en'?'en-GB':'tr-TR';
+    const label=new Date(d.date+'T00:00:00').toLocaleDateString(locale,{day:'2-digit',month:'long',year:'numeric'});
+    box.innerHTML=`<b style="color:#f1f5f9;">${label}</b><span style="color:#64748b;margin:0 6px;">·</span><span style="color:#fbbf24;font-weight:900;">${d.volume} Pi</span><span style="color:#64748b;margin:0 6px;">·</span><span style="color:#94a3b8;">${d.count} ${t('salesCountUnit')}</span>`;
+    document.querySelectorAll('.trend-bar-col').forEach((el,idx)=>{ el.style.opacity = idx===i ? '1' : '0.55'; });
+};
 window.loadSalesTrendChart=async function(){
     const el=document.getElementById('sales-trend-chart');
     if(!el) return;
@@ -4528,43 +4600,76 @@ window.loadSalesTrendChart=async function(){
         const result=await r.json();
         if(!result.success||!result.trend){ el.textContent=t('genericError'); return; }
         const trend=result.trend;
+        lastSalesTrend=trend;
         const maxVol=Math.max(1,...trend.map(d=>d.volume));
-        const barW=100/trend.length;
         const totalVol=trend.reduce((s,d)=>s+d.volume,0);
         const totalCount=trend.reduce((s,d)=>s+d.count,0);
         if(totalCount===0){ el.innerHTML=`<span style="color:#475569;">${t('noSalesLast30Days')}</span>`; return; }
+        const locale=currentLang==='en'?'en-GB':'tr-TR';
+        const lastIdx=trend.length-1;
+        const tickEvery=Math.ceil(trend.length/6); // ~6 tarih etiketi, hepsini sıkıştırmak yerine
         const bars=trend.map((d,i)=>{
-            const h=Math.max(2,(d.volume/maxVol)*70);
-            const isToday=i===trend.length-1;
-            const locale=currentLang==='en'?'en-GB':'tr-TR';
-            const label=new Date(d.date+'T00:00:00').toLocaleDateString(locale,{day:'2-digit',month:'2-digit'});
-            return `<div title="${label}: ${d.volume} Pi (${d.count})" style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:76px;cursor:default;">
-                <div style="width:70%;height:${h}px;background:${isToday?'linear-gradient(180deg,#fbbf24,#f59e0b)':'linear-gradient(180deg,#818cf8,#6366f1)'};border-radius:3px 3px 0 0;transition:height 0.3s;"></div>
+            const h=Math.max(3,(d.volume/maxVol)*72);
+            const isToday=i===lastIdx;
+            const showTick=(i%tickEvery===0)||isToday;
+            const tickLabel=showTick?new Date(d.date+'T00:00:00').toLocaleDateString(locale,{day:'2-digit',month:'2-digit'}):'';
+            return `<div class="trend-bar-col" onclick="window.selectTrendDay(${i})" title="${tickLabel||d.date.slice(5)}: ${d.volume} Pi (${d.count})" style="flex:1;min-width:6px;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:96px;cursor:pointer;transition:opacity 0.15s;">
+                <div style="width:100%;max-width:14px;height:${h}px;background:${isToday?'linear-gradient(180deg,#fbbf24,#f59e0b)':'linear-gradient(180deg,#818cf8,#6366f1)'};border-radius:3px 3px 0 0;transition:height 0.3s;"></div>
+                <div style="font-size:0.52em;color:#64748b;margin-top:3px;height:12px;white-space:nowrap;">${tickLabel}</div>
             </div>`;
         }).join('');
         el.style.display='block';
-        el.innerHTML=`<div style="display:flex;align-items:flex-end;gap:1px;height:76px;margin-bottom:6px;">${bars}</div>
-            <div style="display:flex;justify-content:space-between;font-size:0.6em;color:#64748b;margin-bottom:6px;"><span>${trend[0].date.slice(5)}</span><span>${trend[trend.length-1].date.slice(5)}</span></div>
-            <div style="text-align:center;font-size:0.62em;color:#94a3b8;">${t('trendTotalSummary')(totalCount,totalVol)}</div>`;
+        el.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px;">
+                <span style="font-size:0.6em;color:#64748b;">${t('trendMaxDayLabel')}: <b style="color:#a5b4fc;">${maxVol} Pi</b></span>
+            </div>
+            <div style="display:flex;align-items:flex-end;gap:2px;height:96px;margin-bottom:2px;">${bars}</div>
+            <div id="sales-trend-info" style="min-height:18px;font-size:0.68em;text-align:center;padding:6px 4px;margin:6px 0;background:#1e293b;border-radius:8px;color:#94a3b8;">${t('trendTapHint')}</div>
+            <div style="text-align:center;font-size:0.65em;color:#94a3b8;font-weight:700;">${t('trendTotalSummary')(totalCount,totalVol)}</div>`;
+        window.selectTrendDay(lastIdx);
     }catch(e){ el.textContent=t('genericError'); }
 };
 
-window.exportSalesCsv=async function(){
+let lastCsvData=null;
+window.exportSalesCsv=async function(btnEl){
+    const btn = btnEl || event?.currentTarget;
+    const originalText = btn ? btn.innerHTML : null;
+    if(btn){ btn.disabled=true; btn.style.opacity='0.6'; btn.innerHTML='⏳ ...'; }
     try{
         const r=await fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'export_sales_data',accessToken:piAccessToken})});
         const result=await r.json();
         if(!result.success){ showToast(result.error||t('genericError')); return; }
         const rows=result.rows||[];
-        if(!rows.length){ showToast(t('noDataToExport')); return; }
+        if(!rows.length){ showToast(t('noDataToExport')+' '+t('csvTryRefreshHint')); return; }
         const headers=['domain','price','buyer','sellerUsername','at','txid','payoutStatus','type'];
         const escapeCsv=(v)=>{ const s=String(v??''); return /[",\n]/.test(s) ? '"'+s.replace(/"/g,'""')+'"' : s; };
         const csv=[headers.join(',')].concat(rows.map(r=>headers.map(h=>escapeCsv(r[h])).join(','))).join('\n');
-        const blob=new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8;'});
+        lastCsvData={csv, count:rows.length};
+        document.getElementById('csv-export-summary').textContent = t('csvRowCount')(rows.length);
+        document.getElementById('csv-export-preview').value = csv;
+        document.getElementById('csv-export-modal').style.display='flex';
+    }catch(e){ console.error('CSV export hatası:', e); showToast(t('genericError')); }
+    finally{ if(btn){ btn.disabled=false; btn.style.opacity='1'; if(originalText!==null) btn.innerHTML=originalText; } }
+};
+window.copyCsvToClipboard=async function(){
+    if(!lastCsvData) return;
+    try{
+        await navigator.clipboard.writeText(lastCsvData.csv);
+        showToast('✅ '+t('csvCopiedMsg'));
+    }catch(e){
+        const ta=document.getElementById('csv-export-preview');
+        if(ta){ ta.focus(); ta.select(); }
+        showToast(t('csvCopyManualHint'));
+    }
+};
+window.downloadCsvFile=function(){
+    if(!lastCsvData) return;
+    try{
+        const blob=new Blob(['\ufeff'+lastCsvData.csv],{type:'text/csv;charset=utf-8;'});
         const url=URL.createObjectURL(blob);
         const a=document.createElement('a'); a.href=url; a.download=`satis-verileri-${new Date().toISOString().slice(0,10)}.csv`;
         document.body.appendChild(a); a.click(); a.remove();
-        URL.revokeObjectURL(url);
-    }catch(e){ showToast(t('genericError')); }
+        setTimeout(()=>URL.revokeObjectURL(url), 2000);
+    }catch(e){ console.error('CSV indirme hatası:', e); showToast(t('csvDownloadFailHint')); }
 };
 
 window.toggleStatsSection=function(){
@@ -4574,6 +4679,10 @@ window.toggleStatsSection=function(){
     if(sec.style.display==='none'){
         sec.style.display='block';
         if(arrow) arrow.style.transform='rotate(180deg)';
+        // Panel her açıldığında taze veri çek — aksi halde kazanç/trend
+        // sayıları eski (ör. o sırada kalıcı silinmiş bir domain'e ait)
+        // bir önbellekten kalma olabilir ve CSV export ile tutarsız görünür.
+        window.loadAdminEarnings();
     } else {
         sec.style.display='none';
         if(arrow) arrow.style.transform='rotate(0deg)';
@@ -4720,13 +4829,13 @@ function renderUserPanel(){
                 ? `<span style="background:rgba(245,158,11,0.15);color:#fbbf24;font-size:0.58em;font-weight:800;padding:2px 8px;border-radius:6px;border:1px solid #f59e0b;flex-shrink:0;white-space:nowrap;">${t('soldPendingConfirmation')}</span>`
                 : `<span style="background:rgba(16,185,129,0.15);color:#6ee7b7;font-size:0.58em;font-weight:800;padding:2px 8px;border-radius:6px;border:1px solid #10b981;flex-shrink:0;white-space:nowrap;">${t('sold')}</span>`;
             const ratingHtml = (data.sellerUsername && data.payoutStatus==='released') ? (
-                data.buyerRating ? `<div style="margin-top:8px;font-size:0.68em;color:#fbbf24;">⭐ ${t('yourRatingLabel')}: ${'★'.repeat(data.buyerRating.stars)}${'☆'.repeat(5-data.buyerRating.stars)}${data.buyerRating.comment?`<div style="color:#94a3b8;font-style:italic;margin-top:3px;">"${escapeHtml(data.buyerRating.comment)}"</div>`:''}</div>`
-                : `<div style="margin-top:8px;padding-top:8px;border-top:1px dashed #334155;">
+                buildRatingsTable(data.buyerRating, data.sellerRatingOfBuyer) +
+                (!data.buyerRating ? `<div style="margin-top:8px;padding-top:8px;border-top:1px dashed #334155;">
                     <div style="font-size:0.65em;color:#94a3b8;margin-bottom:5px;">${t('rateSellerPrompt')}</div>
                     <div style="display:flex;gap:4px;">
                         ${[1,2,3,4,5].map(n=>`<button onclick="window.submitSellerRating('${d.name}',${n})" style="flex:1;padding:6px;border:1px solid #f59e0b;border-radius:6px;background:rgba(245,158,11,0.08);color:#fbbf24;font-size:0.85em;cursor:pointer;">${'★'.repeat(n)}</button>`).join('')}
                     </div>
-                </div>` ) : '';
+                </div>` : '') ) : '';
             myHtml+=`<div class="my-domain-item" style="flex-wrap:wrap;align-items:flex-start;">
                 <div style="flex:1;min-width:0;">
                     <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px;gap:8px;">
@@ -4975,13 +5084,13 @@ function renderUserPanel(){
                         </div>
                         ${confirmHtml}
                         ${d.payoutStatus==='released' ? (
-                            d.sellerRatingOfBuyer ? `<div style="margin-top:8px;font-size:0.68em;color:#fbbf24;">⭐ ${t('yourRatingOfBuyerLabel')}: ${'★'.repeat(d.sellerRatingOfBuyer.stars)}${'☆'.repeat(5-d.sellerRatingOfBuyer.stars)}${d.sellerRatingOfBuyer.comment?`<div style="color:#94a3b8;font-style:italic;margin-top:3px;">"${escapeHtml(d.sellerRatingOfBuyer.comment)}"</div>`:''}</div>`
-                            : `<div style="margin-top:8px;padding-top:8px;border-top:1px dashed #334155;">
+                            buildRatingsTable(d.buyerRating, d.sellerRatingOfBuyer) +
+                            (!d.sellerRatingOfBuyer ? `<div style="margin-top:8px;padding-top:8px;border-top:1px dashed #334155;">
                                 <div style="font-size:0.65em;color:#94a3b8;margin-bottom:5px;">${t('rateBuyerPrompt')}</div>
                                 <div style="display:flex;gap:4px;">
                                     ${[1,2,3,4,5].map(n=>`<button onclick="window.submitBuyerRating('${d.name}',${n})" style="flex:1;padding:6px;border:1px solid #f59e0b;border-radius:6px;background:rgba(245,158,11,0.08);color:#fbbf24;font-size:0.85em;cursor:pointer;">${'★'.repeat(n)}</button>`).join('')}
                                 </div>
-                            </div>`
+                            </div>` : '')
                         ) : ''}
                     </div>
                 </div>`;
