@@ -1258,7 +1258,7 @@
 
 <div id="audit-log-modal" class="modal-overlay" style="display:none;">
     <div class="modal-content" style="border-color:#64748b;text-align:left;max-height:82vh;display:flex;flex-direction:column;">
-        <h2 style="color:#e2e8f0;margin:0 0 10px 0;font-size:1em;font-weight:900;display:flex;align-items:center;gap:6px;">📋 Admin İşlem Günlüğü</h2>
+        <h2 style="color:#e2e8f0;margin:0 0 10px 0;font-size:1em;font-weight:900;display:flex;align-items:center;gap:6px;">📋 <span data-i18n="adminAuditLogBtn"></span></h2>
         <div style="font-size:0.65em;color:#64748b;margin-bottom:10px;">Son 100 kayıt, en yeni üstte. Kim, ne zaman, ne yaptı.</div>
         <div id="audit-log-results" style="flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:6px;"></div>
         <button class="pi-btn" style="background:#475569;animation:none;padding:10px;margin:12px 0 0 0;width:100%;flex-shrink:0;" onclick="document.getElementById('audit-log-modal').style.display='none'" data-i18n="close"></button>
@@ -1267,7 +1267,7 @@
 
 <div id="deletion-requests-modal" class="modal-overlay" style="display:none;">
     <div class="modal-content" style="border-color:#ef4444;text-align:left;max-height:82vh;display:flex;flex-direction:column;">
-        <h2 style="color:#f87171;margin:0 0 10px 0;font-size:1em;font-weight:900;display:flex;align-items:center;gap:6px;">🗑️ Hesap Silme Talepleri</h2>
+        <h2 style="color:#f87171;margin:0 0 10px 0;font-size:1em;font-weight:900;display:flex;align-items:center;gap:6px;">🗑️ <span data-i18n="deletionRequestsBtn"></span></h2>
         <div style="font-size:0.65em;color:#64748b;margin-bottom:10px;">Bekleyen talepler. İncelemeyi kendiniz yapıp gerekli işlemi (veri anonimleştirme vb.) tamamladıktan sonra "Sonuçlandır"a basın.</div>
         <div id="deletion-requests-results" style="flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:8px;"></div>
         <button class="pi-btn" style="background:#475569;animation:none;padding:10px;margin:12px 0 0 0;width:100%;flex-shrink:0;" onclick="document.getElementById('deletion-requests-modal').style.display='none'" data-i18n="close"></button>
@@ -1665,9 +1665,9 @@
                 <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
             </button>
         </h3>
-        <button id="checkup-btn" onclick="window.runSystemCheckup()" style="display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:9px;margin-bottom:8px;border:1.5px solid rgba(20,184,166,0.5);border-radius:10px;background:linear-gradient(135deg,rgba(20,184,166,0.18) 0%,rgba(15,118,110,0.20) 100%);color:#5eead4;font-size:0.75em;font-weight:800;cursor:pointer;">🩺 Sistem Kontrolü Yap</button>
-        <button onclick="window.openAuditLogModal()" style="display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:9px;margin-bottom:8px;border:1.5px solid rgba(148,163,184,0.4);border-radius:10px;background:rgba(148,163,184,0.08);color:#cbd5e1;font-size:0.75em;font-weight:800;cursor:pointer;">📋 Admin İşlem Günlüğü</button>
-        <button onclick="window.openDeletionRequestsModal()" style="display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:9px;margin-bottom:8px;border:1.5px solid rgba(239,68,68,0.4);border-radius:10px;background:rgba(239,68,68,0.08);color:#fca5a5;font-size:0.75em;font-weight:800;cursor:pointer;">🗑️ Hesap Silme Talepleri</button>
+        <button id="checkup-btn" onclick="window.runSystemCheckup()" style="display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:9px;margin-bottom:8px;border:1.5px solid rgba(20,184,166,0.5);border-radius:10px;background:linear-gradient(135deg,rgba(20,184,166,0.18) 0%,rgba(15,118,110,0.20) 100%);color:#5eead4;font-size:0.75em;font-weight:800;cursor:pointer;">🩺 <span data-i18n="runSystemCheckupBtn"></span></button>
+        <button onclick="window.openAuditLogModal()" style="display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:9px;margin-bottom:8px;border:1.5px solid rgba(148,163,184,0.4);border-radius:10px;background:rgba(148,163,184,0.08);color:#cbd5e1;font-size:0.75em;font-weight:800;cursor:pointer;">📋 <span data-i18n="adminAuditLogBtn"></span></button>
+        <button onclick="window.openDeletionRequestsModal()" style="display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:9px;margin-bottom:8px;border:1.5px solid rgba(239,68,68,0.4);border-radius:10px;background:rgba(239,68,68,0.08);color:#fca5a5;font-size:0.75em;font-weight:800;cursor:pointer;">🗑️ <span data-i18n="deletionRequestsBtn"></span></button>
         <div id="maintenance-control-box" style="display:flex;align-items:center;gap:8px;background:linear-gradient(135deg,rgba(239,68,68,0.16) 0%,rgba(127,29,29,0.20) 100%);border:1.5px solid rgba(239,68,68,0.45);border-radius:10px;padding:8px 10px;margin-bottom:8px;">
             <span id="maintenance-status-dot" style="width:9px;height:9px;border-radius:50%;background:#10b981;flex-shrink:0;box-shadow:0 0 6px #10b981;"></span>
             <span id="maintenance-status-text" style="font-size:0.68em;color:#94a3b8;font-weight:700;flex:1;" data-i18n="maintenanceStatusLive"></span>
@@ -1745,8 +1745,8 @@
                 <div style="position:absolute;right:8px;top:50%;transform:translateY(-50%);font-size:0.75em;color:#64748b;pointer-events:none;">📁</div>
             </div>
             <div style="font-size:0.62em;color:#64748b;margin:4px 0 8px 0;background:rgba(99,102,241,0.08);border:1px dashed #6366f1;border-radius:6px;padding:6px 8px;line-height:1.5;">
-                <b style="color:#818cf8;">Örnek:</b> <code style="background:#0f172a;padding:2px 6px;border-radius:4px;color:#34d399;">assets/domain-adi.jpeg</code> veya <code style="background:#0f172a;padding:2px 6px;border-radius:4px;color:#34d399;">assets/domain-adi.png</code><br>
-                <span style="color:#94a3b8;">Görseli önce GitHub repo'nuzun <code style="background:#0f172a;padding:1px 4px;border-radius:3px;">assets/</code> klasörüne yükleyin, ardından yukarıdaki formatta dosya adını girin.</span>
+                <b style="color:#818cf8;" data-i18n="imgPathExampleLabel"></b> <code style="background:#0f172a;padding:2px 6px;border-radius:4px;color:#34d399;">assets/domain-adi.jpeg</code> <span data-i18n="orWord"></span> <code style="background:#0f172a;padding:2px 6px;border-radius:4px;color:#34d399;">assets/domain-adi.png</code><br>
+                <span style="color:#94a3b8;" data-i18n="imgPathInstructions"></span>
             </div>
                 <select id="new-domain-type" class="admin-date-picker" style="margin-bottom:0;">
                     <option value="genel" data-i18n="typeGeneral"></option><option value="finans" data-i18n="typeFinance"></option>
@@ -1791,7 +1791,7 @@
             </div>
             <div style="background:#0f172a;border:1px solid #334155;border-radius:12px;padding:10px;margin-bottom:8px;">
                 <div style="font-size:0.65em;color:#94a3b8;font-weight:700;margin-bottom:8px;text-transform:uppercase;">📈 <span data-i18n="salesTrendTitle"></span></div>
-                <div id="sales-trend-chart" style="min-height:90px;display:flex;align-items:center;justify-content:center;color:#475569;font-size:0.7em;">Yükleniyor...</div>
+                <div id="sales-trend-chart" style="min-height:90px;display:flex;align-items:center;justify-content:center;color:#475569;font-size:0.7em;" data-i18n="loadingLabel"></div>
             </div>
             <button onclick="window.exportSalesCsv(this)" style="width:100%;padding:9px;margin-bottom:12px;border-radius:10px;border:1.5px solid #64748b;background:rgba(100,116,139,0.1);color:#cbd5e1;font-size:0.75em;font-weight:800;cursor:pointer;">⬇️ <span data-i18n="exportCsvBtn"></span></button>
             <div style="margin-top:12px;background:#1c0a0a;border:2px solid #ef4444;border-radius:12px;padding:10px;">
@@ -1805,12 +1805,12 @@
             <div style="background:#0a0f1e;border:2px solid #6366f1;border-radius:12px;padding:10px;">
                 <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;padding-bottom:7px;border-bottom:1px solid #312e81;"><span>🎫</span><span style="font-size:0.72em;color:#a5b4fc;font-weight:800;text-transform:uppercase;" data-i18n="ticketManagement"></span></div>
                 <div class="ticket-admin-filters" id="ticket-admin-filters">
-                    <button class="ticket-filter-btn active" data-status="all" onclick="adminFilterTickets('all')">Tümü</button>
-                    <button class="ticket-filter-btn" data-status="new" onclick="adminFilterTickets('new')">Yeni</button>
-                    <button class="ticket-filter-btn" data-status="reviewing" onclick="adminFilterTickets('reviewing')">İnceleniyor</button>
-                    <button class="ticket-filter-btn" data-status="answered" onclick="adminFilterTickets('answered')">Yanıtlandı</button>
-                    <button class="ticket-filter-btn" data-status="resolved" onclick="adminFilterTickets('resolved')">Çözüldü</button>
-                    <button class="ticket-filter-btn" data-status="closed" onclick="adminFilterTickets('closed')">Kapatıldı</button>
+                    <button class="ticket-filter-btn active" data-status="all" onclick="adminFilterTickets('all')" data-i18n="ticketFilterAll"></button>
+                    <button class="ticket-filter-btn" data-status="new" onclick="adminFilterTickets('new')" data-i18n="ticketStatusNew"></button>
+                    <button class="ticket-filter-btn" data-status="reviewing" onclick="adminFilterTickets('reviewing')" data-i18n="ticketStatusReviewing"></button>
+                    <button class="ticket-filter-btn" data-status="answered" onclick="adminFilterTickets('answered')" data-i18n="ticketStatusAnswered"></button>
+                    <button class="ticket-filter-btn" data-status="resolved" onclick="adminFilterTickets('resolved')" data-i18n="ticketStatusResolved"></button>
+                    <button class="ticket-filter-btn" data-status="closed" onclick="adminFilterTickets('closed')" data-i18n="ticketStatusClosed"></button>
                 </div>
                 <div id="ticket-admin-list">
                     <div class="skeleton-ticket-row"><div class="skeleton" style="width:34px;height:34px;border-radius:8px;"></div><div style="flex:1;"><div class="skeleton skeleton-line" style="width:60%;margin:0 0 6px 0;"></div><div class="skeleton skeleton-line" style="width:35%;height:8px;margin:0;"></div></div></div>
@@ -2232,6 +2232,9 @@ const i18n = {
     purchasedDomain:"ALINAN DOMAIN",firstLogin:"İLK GİRİŞ",
     profileSettings:"Profil Ayarları",myPanel:"Panelim",sellMyDomain:"Domainimi Satışa Çıkar",
     languageOptions:"Dil Seçenekleri",logout:"Çıkış Yap",connectWithPi:"<span style='display:inline-flex;align-items:center;gap:10px;'><span style='display:inline-block;animation:logo-pulse 1.5s ease-in-out infinite;font-size:1.3em;'>π</span><span style='font-size:1.05em;'>Pi ile Bağlan</span></span>",
+    runSystemCheckupBtn:"Sistem Kontrolü Yap",adminAuditLogBtn:"Admin İşlem Günlüğü",deletionRequestsBtn:"Hesap Silme Talepleri",
+    imgPathExampleLabel:"Örnek:",orWord:"veya",
+    imgPathInstructions:"Görseli önce GitHub repo'nuzun <code style=\"background:#0f172a;padding:1px 4px;border-radius:3px;\">assets/</code> klasörüne yükleyin, ardından yukarıdaki formatta dosya adını girin.",
     piBrowserRequiredMsg:"Bu uygulama sadece Pi Browser üzerinden çalışır. Lütfen bu sayfayı Pi Browser uygulamasında açın.",
     contactSection:"İletişim",piNetworkUser:"Pi Network Kullanıcısı",
     firstLoginDate:"İlk Giriş Tarihi",lastSeen:"Son Görülme",
@@ -2784,6 +2787,9 @@ const i18n = {
     purchasedDomain:"OWNED DOMAINS",firstLogin:"FIRST LOGIN",
     profileSettings:"Profile Settings",myPanel:"My Panel",sellMyDomain:"List My Domain for Sale",
     languageOptions:"Language Options",logout:"Sign Out",connectWithPi:"<span style='display:inline-flex;align-items:center;gap:10px;'><span style='display:inline-block;animation:logo-pulse 1.5s ease-in-out infinite;font-size:1.3em;'>π</span><span style='font-size:1.05em;'>Connect with Pi</span></span>",
+    runSystemCheckupBtn:"Run System Checkup",adminAuditLogBtn:"Admin Action Log",deletionRequestsBtn:"Account Deletion Requests",
+    imgPathExampleLabel:"Example:",orWord:"or",
+    imgPathInstructions:"First upload the image to your GitHub repo's <code style=\"background:#0f172a;padding:1px 4px;border-radius:3px;\">assets/</code> folder, then enter the filename in the format above.",
     piBrowserRequiredMsg:"This app only works inside the Pi Browser. Please open this page in the Pi Browser app.",
     contactSection:"Contact",piNetworkUser:"Pi Network User",firstLoginDate:"First Login Date",
     lastSeen:"Last Seen",purchasedDomainLabel:"Purchased Domains",totalPoints:"Total Points",close:"CLOSE",
@@ -4658,7 +4664,7 @@ window.resolveDeletionRequest=async function(requestId){
 };
 window.openAuditLogModal=async function(){
     const resultsEl=document.getElementById('audit-log-results');
-    resultsEl.innerHTML=`<div style="text-align:center;color:#64748b;font-size:0.75em;padding:20px;">Yükleniyor...</div>`;
+    resultsEl.innerHTML=`<div style="text-align:center;color:#64748b;font-size:0.75em;padding:20px;">${t('loadingLabel')}</div>`;
     document.getElementById('audit-log-modal').style.display='flex';
     try{
         const r=await fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'get_admin_audit_log',accessToken:piAccessToken})});
@@ -5556,6 +5562,17 @@ function render(){
                 resBadge.style.cssText=`margin-top:4px;padding:5px 8px;border-radius:6px;font-size:0.62em;font-weight:800;text-align:center;${isMine?'background:rgba(16,185,129,0.15);border:1px solid #10b981;color:#6ee7b7;':'background:rgba(148,163,184,0.12);border:1px solid #64748b;color:#94a3b8;'}`;
                 resBadge.textContent=isMine ? t('reservedForYouMsg')(minutesLeft) : t('reservedForOtherMsg')(minutesLeft);
                 card.appendChild(resBadge);
+            } else if(data.reservedFor && data.reservedUntil && data.reservedUntil<=Date.now()){
+                // Rezervasyon süresi dolmuş ama Firestore'da hâlâ eski
+                // (indirimli) fiyat duruyor olabilir — zamanlanmış görev
+                // olmadığı için, bunu GÖREN ilk ziyaretçinin tarayıcısı
+                // backend'e "kontrol et, gerekiyorsa eski fiyata döndür"
+                // isteği gönderir. Aynı domain için oturum başına tek sefer.
+                if(!window._expiredResChecked) window._expiredResChecked=new Set();
+                if(!window._expiredResChecked.has(d.name)){
+                    window._expiredResChecked.add(d.name);
+                    fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'check_expired_reservation',domainName:d.name})}).catch(()=>{});
+                }
             }
 
             // Teklif Ver: öncesinde sadece domain detay modalının içinde
