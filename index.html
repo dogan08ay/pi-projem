@@ -125,7 +125,7 @@
         .lang-option{display:flex;align-items:center;gap:6px;padding:5px 7px;color:#f1f5f9;font-size:0.75em;font-weight:700;cursor:pointer;border-radius:8px;margin:2px 0;border:none;background:transparent;width:100%;box-sizing:border-box;transition:background 0.15s;}
         .lang-option:hover,.lang-option.active{background:rgba(99,102,241,0.2);}
         .lang-option.active{color:#a5b4fc;}
-        .admin-tabs{display:grid;grid-template-columns:repeat(3,1fr);gap:5px;margin-bottom:8px;padding-bottom:3px;width:100%;box-sizing:border-box;}
+        .admin-tabs{display:grid;grid-template-columns:repeat(3,1fr);gap:5px;margin-top:18px;margin-bottom:8px;padding-top:14px;padding-bottom:3px;width:100%;box-sizing:border-box;border-top:1px dashed rgba(99,102,241,0.3);}
         .admin-tabs::-webkit-scrollbar{height:0;display:none;}
         .admin-tab-btn{background:linear-gradient(135deg,#1e1b4b 0%,#0f172a 100%);border:1.5px solid #4c1d95;color:#a5b4fc;padding:8px 3px;border-radius:8px;font-size:0.62em;text-align:center;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;white-space:normal;line-height:1.25;font-weight:800;cursor:pointer;transition:all 0.2s;box-shadow:0 2px 8px rgba(0,0,0,0.3);overflow:hidden;min-width:0;position:relative;min-height:44px;}
         .admin-tab-btn span[data-i18n]{overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;word-break:break-word;}
@@ -1597,7 +1597,7 @@
             <div style="background:#1c1917;border:2px solid #f59e0b;border-radius:12px;padding:10px;box-shadow:0 4px 14px rgba(0,0,0,0.25);">
                 <div style="display:flex;align-items:center;justify-content:center;gap:6px;margin-bottom:8px;padding-bottom:7px;border-bottom:1px solid #78350f;"><span>🏷️</span><span style="font-size:0.72em;color:#fbbf24;font-weight:800;text-transform:uppercase;" data-i18n="myListingsTitle"></span></div>
                 <div id="my-listings-list" style="text-align:left;"></div>
-                <button class="pi-btn" style="background:#f59e0b;animation:none;padding:8px;margin:8px 0 0 0;width:100%;font-size:0.8em;" onclick="openSellDomainModal()" data-i18n="listNewDomain"></button>
+                <button class="pi-btn" style="background:linear-gradient(135deg,#fbbf24,#f59e0b);color:#451a03;animation:none;padding:10px;margin:8px 0 0 0;width:100%;font-size:0.8em;font-weight:900;box-shadow:0 3px 10px rgba(245,158,11,0.35);border:1px solid rgba(255,255,255,0.25);" onclick="openSellDomainModal()" data-i18n="listNewDomain"></button>
             </div>
         </div>
         <div class="user-tab-panel" id="utab-income">
@@ -1654,7 +1654,7 @@
             </div>
         </div>
     </div>
-    <div id="view-as-user-box" style="display:none;align-items:center;gap:8px;background:linear-gradient(135deg,rgba(99,102,241,0.18) 0%,rgba(67,56,202,0.20) 100%);border:1.5px solid #6366f1;border-radius:10px;padding:8px 10px;margin:0 auto 8px auto;width:calc(100% - 16px);box-sizing:border-box;">
+    <div id="view-as-user-box" style="display:none;align-items:center;gap:8px;background:linear-gradient(135deg,rgba(99,102,241,0.18) 0%,rgba(67,56,202,0.20) 100%);border:1.5px solid #6366f1;border-radius:10px;padding:8px 10px;margin:16px auto 16px auto;width:calc(100% - 16px);box-sizing:border-box;box-shadow:0 4px 14px rgba(99,102,241,0.25);">
         <span style="font-size:1.1em;flex-shrink:0;">👁️</span>
         <span style="font-size:0.68em;color:#94a3b8;font-weight:700;flex:1;" data-i18n="viewAsUserLabel"></span>
         <button id="view-as-user-toggle-btn" onclick="window.toggleViewAsUser()" style="padding:6px 12px;border:none;border-radius:8px;background:linear-gradient(135deg,#6366f1,#818cf8);color:#fff;font-size:0.65em;font-weight:800;cursor:pointer;white-space:nowrap;"></button>
@@ -1683,7 +1683,7 @@
             <button class="admin-tab-btn" data-tab="tab-tickets" onclick="switchAdminTab('tab-tickets')">🎫<span data-i18n="ticketManagement" style="font-size:0.9em;"></span><span class="pending-badge" id="ticket-count-badge" style="display:none;">0</span></button>
             <button class="admin-tab-btn" data-tab="tab-trademark" onclick="switchAdminTab('tab-trademark')">🔖<span data-i18n="trademarkTabLabel" style="font-size:0.9em;"></span><span class="pending-badge" id="trademark-count-badge" style="display:none;">0</span></button>
             <button class="admin-tab-btn" data-tab="tab-payouts" onclick="switchAdminTab('tab-payouts')">💸<span data-i18n="payoutsTabLabel" style="font-size:0.9em;"></span><span class="pending-badge" id="payouts-count-badge" style="display:none;">0</span></button>
-            <button class="admin-tab-btn" data-tab="tab-offers" onclick="switchAdminTab('tab-offers')">🔄<span data-i18n="offersTabLabel" style="font-size:0.9em;"></span></button>
+            <button class="admin-tab-btn" data-tab="tab-offers" onclick="switchAdminTab('tab-offers')">🔄<span data-i18n="offersTabLabel" style="font-size:0.9em;"></span><span class="pending-badge" id="offers-count-badge" style="display:none;">0</span></button>
 
         </div>
         <div class="admin-tab-panel active" id="tab-users">
@@ -2499,6 +2499,7 @@ const i18n = {
     submitOfferTitle:"Teklif Ver",offerPriceLabel:"Teklif Tutarınız (Pi)",offerMessageLabel:"Mesajınız (opsiyonel)",
     sendOfferBtn:"Teklifi Gönder",makeOfferBtn:"Teklif Ver",currentPriceLabel:"Liste Fiyatı",
     cannotOfferOwnDomain:"Kendi domaininize teklif veremezsiniz.",
+    raceConditionMsg:"Bu domain, ödemeniz tamamlanırken çok kısa bir süre önce başka biri tarafından satın alınmış. Paranız alındığı için destek ekibimize otomatik bildirim gitti, en kısa sürede sizinle iletişime geçip iadenizi yapacaklar.",
     invalidOfferPrice:"Lütfen geçerli bir teklif tutarı girin.",offerSentSuccess:"✅ Teklifiniz gönderildi! Satıcı yanıt verdiğinde bildirim alacaksınız.",
     confirmWithdrawOffer:"Bu teklifi geri çekmek istediğinize emin misiniz?",
     confirmAcceptOffer:"Bu teklifi kabul etmek istediğinize emin misiniz? Domain fiyatı teklif tutarına güncellenecek.",
@@ -2513,6 +2514,11 @@ const i18n = {
     yourCounterOfferLabel:"Karşı Teklifiniz",offerStatusPendingBuyerResponse:"alıcının yanıtı bekleniyor",
     offersTabLabel:"Teklifler",offersTabExplainer:"Platformdaki tüm alım-satım tekliflerinin (kabul/red/karşı teklif) tam listesi.",
     offersTableBuyer:"Alıcı",offersTableSeller:"Satıcı",offersTablePrice:"Fiyat",offersTableStatus:"Durum",offersTableDate:"Tarih",
+    convMadeOffer:(p)=>`${p} Pi teklif etti`,convCounterOffer:(p)=>`${p} Pi karşı teklif verdi`,
+    convAccepted:"kabul etti",convRejected:"reddetti",convWithdrawn:"teklifi geri çekti",convExpired:"Fiyat değişti, teklif kendiliğinden geçersiz oldu",
+    offerDetailDomain:"Domain Adı",offerDetailStatus:"Teklif Durumu",offerDetailListPrice:"Domain Liste Fiyatı",
+    offerDetailOfferedPrice:"Teklif Edilen Fiyat",offerDetailCounterPrice:"Karşı Teklif Fiyatı",
+    offerDetailBuyerNote:"Alıcı Notu",offerDetailSellerNote:"Satıcı Notu",offerDetailFrom:"Kimden",
     deleteAccountLink:"HESABIMI SİL",deleteAccountTitle:"Hesap ve Veri Silme Talebi",
     deleteAccountExplain1:"Hesabınızın ve kişisel verilerinizin silinmesini talep edebilirsiniz. Talebiniz admin'e iletilir ve incelenir.",
     deleteAccountExplain2:"Not: Tamamlanmış satışlarınıza ait finansal kayıtlar (muhasebe ve anlaşmazlık durumları için) yasal saklama yükümlülükleri nedeniyle tamamen silinemeyebilir; bu durumda kişisel bilgileriniz anonimleştirilir. Admin süreci elle inceleyip size dönüş yapacaktır.",
@@ -3039,6 +3045,7 @@ const i18n = {
     submitOfferTitle:"Make an Offer",offerPriceLabel:"Your Offer (Pi)",offerMessageLabel:"Message (optional)",
     sendOfferBtn:"Send Offer",makeOfferBtn:"Make an Offer",currentPriceLabel:"List Price",
     cannotOfferOwnDomain:"You can't make an offer on your own domain.",
+    raceConditionMsg:"This domain was purchased by someone else moments before your payment finished. Since your payment was received, our support team has been notified automatically and will contact you soon to process your refund.",
     invalidOfferPrice:"Please enter a valid offer amount.",offerSentSuccess:"✅ Your offer was sent! You'll be notified when the seller responds.",
     confirmWithdrawOffer:"Are you sure you want to withdraw this offer?",
     confirmAcceptOffer:"Are you sure you want to accept this offer? The domain's price will be updated to the offer amount.",
@@ -3053,6 +3060,11 @@ const i18n = {
     yourCounterOfferLabel:"Your Counter-Offer",offerStatusPendingBuyerResponse:"waiting for buyer's response",
     offersTabLabel:"Offers",offersTabExplainer:"Full list of all buy offers on the platform (accepted/rejected/countered).",
     offersTableBuyer:"Buyer",offersTableSeller:"Seller",offersTablePrice:"Price",offersTableStatus:"Status",offersTableDate:"Date",
+    convMadeOffer:(p)=>`offered ${p} Pi`,convCounterOffer:(p)=>`countered with ${p} Pi`,
+    convAccepted:"accepted",convRejected:"rejected",convWithdrawn:"withdrew the offer",convExpired:"Price changed, offer expired automatically",
+    offerDetailDomain:"Domain Name",offerDetailStatus:"Offer Status",offerDetailListPrice:"Domain List Price",
+    offerDetailOfferedPrice:"Offered Price",offerDetailCounterPrice:"Counter-Offer Price",
+    offerDetailBuyerNote:"Buyer's Note",offerDetailSellerNote:"Seller's Note",offerDetailFrom:"From",
     deleteAccountLink:"DELETE MY ACCOUNT",deleteAccountTitle:"Account & Data Deletion Request",
     deleteAccountExplain1:"You can request that your account and personal data be deleted. Your request will be sent to the admin for review.",
     deleteAccountExplain2:"Note: Financial records tied to completed sales (kept for accounting and potential dispute purposes) may not be fully deletable due to legal retention requirements; in that case your personal info will be anonymized instead. The admin will review this manually and follow up with you.",
@@ -3474,7 +3486,7 @@ window.switchAdminTab=function(tabId){
     if(tabId==='tab-earnings') loadAdminEarnings();
     if(tabId==='tab-stats') loadAllSalesDetail();
     if(tabId==='tab-tickets'){ adminLoadTickets(); markTicketsSeen(); }
-    if(tabId==='tab-offers') window.loadAdminOffersTable();
+    if(tabId==='tab-offers'){ window.loadAdminOffersTable(); const b=document.getElementById('offers-count-badge'); if(b) b.style.display='none'; }
 };
 window.switchUserTab=function(tabId){
     document.querySelectorAll('.user-tab-btn').forEach(b=>b.classList.toggle('active',b.dataset.utab===tabId));
@@ -4357,38 +4369,80 @@ window.loadAdminOffersTable=async function(){
         if(!offers.length){ wrap.innerHTML=`<p style="font-size:0.75em;opacity:0.5;text-align:center;">${t('noOffersYet')}</p>`; return; }
         const statusColor={pending:'#fbbf24',countered:'#818cf8',accepted:'#34d399',rejected:'#f87171',withdrawn:'#94a3b8',expired:'#94a3b8'};
         const statusLabel={pending:t('offerStatusPending'),countered:t('offerStatusCountered'),accepted:t('offerStatusAccepted'),rejected:t('offerStatusRejected'),withdrawn:t('offerStatusWithdrawn'),expired:t('offerStatusExpired')};
+        const statusIcon={pending:'⏳',countered:'🔄',accepted:'✅',rejected:'❌',withdrawn:'↩️',expired:'⌛'};
         const locale=currentLang==='en'?'en-GB':'tr-TR';
-        const rows=offers.map(o=>{
-            const dateStr=o.createdAt?new Date(o.createdAt).toLocaleDateString(locale,{day:'2-digit',month:'2-digit',year:'2-digit',hour:'2-digit',minute:'2-digit'}):'—';
-            const color=statusColor[o.status]||'#94a3b8';
-            const label=statusLabel[o.status]||o.status;
-            const priceCell=o.status==='countered'||o.status==='accepted'&&o.counterPrice
-                ? `${o.offerPrice} Pi <span style="color:#a5b4fc;">→ ${o.counterPrice} Pi</span>`
-                : `${o.offerPrice} Pi`;
-            return `<tr>
-                <td style="padding:7px 8px;font-size:0.68em;color:#e2e8f0;font-weight:700;border-top:1px solid #1e293b;white-space:nowrap;">${escapeHtml(o.domainName||'—')}</td>
-                <td style="padding:7px 8px;font-size:0.66em;color:#94a3b8;border-top:1px solid #1e293b;white-space:nowrap;">@${escapeHtml(o.buyerUsername||'—')}</td>
-                <td style="padding:7px 8px;font-size:0.66em;color:#94a3b8;border-top:1px solid #1e293b;white-space:nowrap;">@${escapeHtml(o.sellerUsername||'—')}</td>
-                <td style="padding:7px 8px;font-size:0.68em;color:#fbbf24;font-weight:800;border-top:1px solid #1e293b;white-space:nowrap;">${priceCell}</td>
-                <td style="padding:7px 8px;font-size:0.64em;font-weight:800;color:${color};border-top:1px solid #1e293b;white-space:nowrap;">${label}</td>
-                <td style="padding:7px 8px;font-size:0.62em;color:#64748b;border-top:1px solid #1e293b;white-space:nowrap;">${dateStr}</td>
-            </tr>`;
+        const fmtDate=(ts)=>ts?new Date(ts).toLocaleDateString(locale,{day:'2-digit',month:'2-digit',year:'2-digit',hour:'2-digit',minute:'2-digit'}):'—';
+
+        // ── Adım Adım Konuşma Görünümü ────────────────────────────────────
+        // Öncesinde her teklif tek bir düz tablo satırıydı — kim kaç teklif
+        // verdi, karşı teklif oldu mu, ne zaman kabul/red edildi, hepsi bir
+        // hücrede sıkışıyordu. Artık her teklif, alıcı/satıcı arasında bir
+        // "konuşma" gibi ADIM ADIM gösteriliyor: 1) İlk teklif  2) (varsa)
+        // Karşı teklif  3) Sonuç (kabul/red/geri çekildi/süresi doldu).
+        const conversationStep=(icon,who,text,date,accent)=>`
+            <div style="display:flex;gap:8px;align-items:flex-start;padding:6px 0;">
+                <div style="width:26px;height:26px;border-radius:50%;background:${accent}22;border:1.5px solid ${accent};display:flex;align-items:center;justify-content:center;font-size:0.8em;flex-shrink:0;">${icon}</div>
+                <div style="flex:1;min-width:0;">
+                    <div style="font-size:0.68em;color:#e2e8f0;line-height:1.4;"><b style="color:${accent};">${who}</b> ${text}</div>
+                    <div style="font-size:0.58em;color:#64748b;margin-top:1px;">${date}</div>
+                </div>
+            </div>`;
+
+        const cards=offers.map(o=>{
+            const buyer='@'+escapeHtml(o.buyerUsername||'—');
+            const seller='@'+escapeHtml(o.sellerUsername||'—');
+            let steps='';
+            steps+=conversationStep('💬', buyer, t('convMadeOffer')(o.offerPrice), fmtDate(o.createdAt), '#818cf8');
+            if(o.counterPrice!=null){
+                steps+=conversationStep('🔄', seller, t('convCounterOffer')(o.counterPrice) + (o.counterMessage?` — "${escapeHtml(o.counterMessage)}"`:''), fmtDate(o.counteredAt), '#a5b4fc');
+            }
+            if(o.status==='accepted'){
+                const acceptedBy = o.counterPrice!=null ? buyer : seller;
+                steps+=conversationStep('✅', acceptedBy, t('convAccepted'), fmtDate(o.respondedAt), '#34d399');
+            } else if(o.status==='rejected'){
+                const rejectedBy = o.counterPrice!=null ? buyer : seller;
+                steps+=conversationStep('❌', rejectedBy, t('convRejected'), fmtDate(o.respondedAt), '#f87171');
+            } else if(o.status==='withdrawn'){
+                steps+=conversationStep('↩️', buyer, t('convWithdrawn'), fmtDate(o.respondedAt), '#94a3b8');
+            } else if(o.status==='expired'){
+                steps+=conversationStep('⌛', '', t('convExpired'), fmtDate(o.respondedAt), '#94a3b8');
+            }
+            return `<div style="background:#0f172a;border:1px solid #1e293b;border-radius:10px;padding:10px 12px;margin-bottom:10px;">
+                <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px;margin-bottom:6px;padding-bottom:6px;border-bottom:1px solid #1e293b;">
+                    <b style="color:#f1f5f9;font-size:0.75em;">🌐 ${escapeHtml(o.domainName||'—')}</b>
+                    <span style="font-size:0.62em;font-weight:800;color:${statusColor[o.status]||'#94a3b8'};background:${statusColor[o.status]||'#94a3b8'}1a;border:1px solid ${statusColor[o.status]||'#94a3b8'}55;border-radius:6px;padding:2px 8px;">${statusIcon[o.status]||''} ${statusLabel[o.status]||o.status}</span>
+                </div>
+                ${steps}
+            </div>`;
         }).join('');
-        wrap.innerHTML=`<table style="width:100%;border-collapse:collapse;min-width:560px;">
-            <thead><tr style="background:#1e1b4b;">
-                <th style="padding:6px 8px;font-size:0.58em;color:#818cf8;text-align:left;font-weight:800;text-transform:uppercase;">Domain</th>
-                <th style="padding:6px 8px;font-size:0.58em;color:#818cf8;text-align:left;font-weight:800;text-transform:uppercase;">${t('offersTableBuyer')}</th>
-                <th style="padding:6px 8px;font-size:0.58em;color:#818cf8;text-align:left;font-weight:800;text-transform:uppercase;">${t('offersTableSeller')}</th>
-                <th style="padding:6px 8px;font-size:0.58em;color:#818cf8;text-align:left;font-weight:800;text-transform:uppercase;">${t('offersTablePrice')}</th>
-                <th style="padding:6px 8px;font-size:0.58em;color:#818cf8;text-align:left;font-weight:800;text-transform:uppercase;">${t('offersTableStatus')}</th>
-                <th style="padding:6px 8px;font-size:0.58em;color:#818cf8;text-align:left;font-weight:800;text-transform:uppercase;">${t('offersTableDate')}</th>
-            </tr></thead>
-            <tbody>${rows}</tbody>
-        </table>`;
+        wrap.innerHTML=cards;
     }catch(e){ console.error('Admin teklif tablosu hatası:', e); wrap.innerHTML=`<p style="color:#f87171;font-size:0.75em;text-align:center;">${t('genericError')}</p>`; }
 };
 let myOffersExpanded=false;
 window.toggleMyOffersList=function(){ myOffersExpanded=!myOffersExpanded; window.loadMyOffers(); };
+// ── Teklif Detay Tablosu (paylaşılan yardımcı) ────────────────────────────
+// Öncesinde "Tekliflerim" / "Gelen Tekliflerim" bölümlerinde bilgiler gevşek
+// satırlar halinde, tutarsız yerlerde duruyordu. Artık her teklif, başlık
+// karşısında açıklama şeklinde DÜZENLİ bir tabloda: Domain adı, Teklif
+// Durumu, Domain Liste Fiyatı, Teklif Edilen Fiyat, (varsa) Karşı Teklif
+// Fiyatı — hepsi net, karşılıklı diyalog gibi okunabilir.
+function buildOfferDetailTable(o, statusLabel, statusColor){
+    const rows=[
+        [t('offerDetailDomain'), escapeHtml(o.domainName||'—')],
+        [t('offerDetailStatus'), `<span style="color:${statusColor};font-weight:800;">${statusLabel}</span>`],
+        [t('offerDetailListPrice'), `${o.originalPrice} Pi`],
+        [t('offerDetailOfferedPrice'), `${o.offerPrice} Pi`],
+    ];
+    if(o.counterPrice!=null) rows.push([t('offerDetailCounterPrice'), `<span style="color:#a5b4fc;font-weight:800;">${o.counterPrice} Pi</span>`]);
+    if(o.message) rows.push([t('offerDetailBuyerNote'), escapeHtml(o.message)]);
+    if(o.counterMessage) rows.push([t('offerDetailSellerNote'), escapeHtml(o.counterMessage)]);
+    return `<table style="width:100%;border-collapse:collapse;background:#0b1220;border-radius:8px;overflow:hidden;table-layout:fixed;">
+        <tbody>${rows.map(([label,val])=>`<tr>
+            <td style="padding:6px 8px;font-size:0.62em;color:#64748b;font-weight:800;text-transform:uppercase;width:42%;vertical-align:top;border-top:1px solid #1e293b;">${label}</td>
+            <td style="padding:6px 8px;font-size:0.72em;color:#e2e8f0;vertical-align:top;border-top:1px solid #1e293b;word-break:break-word;">${val}</td>
+        </tr>`).join('')}</tbody>
+    </table>`;
+}
 window.loadMyOffers=async function(){
     const box=document.getElementById('my-offers-content');
     if(!box) return;
@@ -4402,18 +4456,13 @@ window.loadMyOffers=async function(){
         const statusMap={pending:{label:t('offerStatusPending'),color:'#fbbf24'},accepted:{label:t('offerStatusAccepted'),color:'#34d399'},rejected:{label:t('offerStatusRejected'),color:'#f87171'},withdrawn:{label:t('offerStatusWithdrawn'),color:'#94a3b8'},expired:{label:t('offerStatusExpired'),color:'#94a3b8'},countered:{label:t('offerStatusCountered'),color:'#818cf8'}};
         box.innerHTML=result.offers.map(o=>{
             const sv=statusMap[o.status]||statusMap.pending;
-            return `<div style="background:#0f172a;border-radius:9px;padding:9px 10px;margin-bottom:6px;border-left:3px solid ${sv.color};">
-                <div style="display:flex;justify-content:space-between;gap:8px;margin-bottom:3px;"><b style="color:#e2e8f0;font-size:0.78em;">${o.domainName}</b><span style="color:${sv.color};font-size:0.65em;font-weight:800;">${sv.label}</span></div>
-                <div style="color:#94a3b8;font-size:0.7em;">💰 ${o.offerPrice} Pi (${t('currentPriceLabel')}: ${o.originalPrice} Pi)</div>
-                ${o.status==='pending'?`<button onclick="window.withdrawOffer('${o.id}')" style="margin-top:6px;padding:5px 10px;border-radius:6px;border:1px solid #64748b;background:none;color:#94a3b8;font-size:0.65em;cursor:pointer;">${t('withdrawOfferBtn')}</button>`:''}
-                ${o.status==='countered'?`<div style="margin-top:6px;padding-top:6px;border-top:1px dashed #334155;">
-                    <div style="color:#a5b4fc;font-size:0.75em;font-weight:800;margin-bottom:2px;">🔄 ${t('counterOfferReceivedLabel')}: ${o.counterPrice} Pi</div>
-                    ${o.counterMessage?`<div style="color:#94a3b8;font-size:0.68em;font-style:italic;margin-bottom:6px;">"${escapeHtml(o.counterMessage)}"</div>`:''}
-                    <div style="display:flex;gap:6px;">
+            return `<div style="background:#0f172a;border-radius:9px;padding:10px;margin-bottom:8px;border-left:3px solid ${sv.color};">
+                ${buildOfferDetailTable(o, sv.label, sv.color)}
+                ${o.status==='pending'?`<button onclick="window.withdrawOffer('${o.id}')" style="margin-top:8px;padding:5px 10px;border-radius:6px;border:1px solid #64748b;background:none;color:#94a3b8;font-size:0.65em;cursor:pointer;">${t('withdrawOfferBtn')}</button>`:''}
+                ${o.status==='countered'?`<div style="display:flex;gap:6px;margin-top:8px;">
                         <button onclick="window.respondCounterOffer('${o.id}',true)" style="flex:1;padding:6px;border-radius:6px;border:none;background:#10b981;color:#fff;font-weight:800;font-size:0.65em;cursor:pointer;">✅ ${t('acceptOfferBtn')}</button>
                         <button onclick="window.respondCounterOffer('${o.id}',false)" style="flex:1;padding:6px;border-radius:6px;border:none;background:#ef4444;color:#fff;font-weight:800;font-size:0.65em;cursor:pointer;">❌ ${t('rejectOfferBtn')}</button>
-                    </div>
-                </div>`:''}
+                    </div>`:''}
             </div>`;
         }).join('');
     }catch(e){ box.innerHTML=`<p style="color:#f87171;font-size:0.72em;text-align:center;">${t('genericError')}</p>`; }
@@ -4430,15 +4479,16 @@ window.loadReceivedOffers=async function(){
         const r=await fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'get_received_offers',accessToken:piAccessToken})});
         const result=await r.json();
         if(!result.success||!result.offers||!result.offers.length){ box.innerHTML=`<p style="font-size:0.72em;opacity:0.5;text-align:center;">${t('noOffersYet')}</p>`; return; }
+        const statusMap={pending:{label:t('offerStatusPending'),color:'#fbbf24'},countered:{label:t('offerStatusCountered'),color:'#818cf8'}};
         box.innerHTML=result.offers.map(o=>{
             const isCountered=o.status==='countered';
+            const sv=statusMap[o.status]||statusMap.pending;
             return `
-            <div style="background:#0f172a;border-radius:9px;padding:9px 10px;margin-bottom:6px;border-left:3px solid ${isCountered?'#818cf8':'#f59e0b'};">
-                <div style="display:flex;justify-content:space-between;gap:8px;margin-bottom:3px;"><b style="color:#e2e8f0;font-size:0.78em;">${o.domainName}</b><span style="color:#94a3b8;font-size:0.65em;">@${o.buyerUsername}</span></div>
-                <div style="color:#fbbf24;font-size:0.78em;font-weight:800;margin-bottom:2px;">💰 ${o.offerPrice} Pi <span style="color:#64748b;font-weight:400;font-size:0.85em;">(${t('currentPriceLabel')}: ${o.originalPrice} Pi)</span></div>
-                ${o.message?`<div style="color:#94a3b8;font-size:0.7em;font-style:italic;margin-bottom:6px;">"${escapeHtml(o.message)}"</div>`:''}
-                ${isCountered?`<div style="color:#a5b4fc;font-size:0.72em;font-weight:800;margin-bottom:6px;">🔄 ${t('yourCounterOfferLabel')}: ${o.counterPrice} Pi — <span style="color:#94a3b8;font-weight:400;">${t('offerStatusPendingBuyerResponse')}</span></div>`
-                :`<div style="display:flex;gap:6px;margin-top:6px;">
+            <div style="background:#0f172a;border-radius:9px;padding:10px;margin-bottom:8px;border-left:3px solid ${sv.color};">
+                <div style="font-size:0.65em;color:#94a3b8;margin-bottom:6px;">👤 ${t('offerDetailFrom')}: <b style="color:#e2e8f0;">@${escapeHtml(o.buyerUsername)}</b></div>
+                ${buildOfferDetailTable(o, sv.label, sv.color)}
+                ${isCountered?`<div style="margin-top:8px;font-size:0.65em;color:#94a3b8;">${t('offerStatusPendingBuyerResponse')}</div>`
+                :`<div style="display:flex;gap:6px;margin-top:8px;">
                     <button onclick="window.respondOffer('${o.id}',true)" style="flex:1;padding:6px;border-radius:6px;border:none;background:#10b981;color:#fff;font-weight:800;font-size:0.68em;cursor:pointer;">✅ ${t('acceptOfferBtn')}</button>
                     <button onclick="window.counterOffer('${o.id}')" style="flex:1;padding:6px;border-radius:6px;border:1.5px solid #818cf8;background:rgba(129,140,248,0.1);color:#a5b4fc;font-weight:800;font-size:0.68em;cursor:pointer;">🔄 ${t('counterOfferBtn')}</button>
                     <button onclick="window.respondOffer('${o.id}',false)" style="flex:1;padding:6px;border-radius:6px;border:none;background:#ef4444;color:#fff;font-weight:800;font-size:0.68em;cursor:pointer;">❌ ${t('rejectOfferBtn')}</button>
@@ -5672,6 +5722,28 @@ window.setPayoutsFilter = function(val) {
     localStorage.setItem('w3dg_payouts_filter', val);
     renderAdminPayouts(_allPendingPayouts);
 };
+let pendingOffersBadgePollTimer=null;
+// ── "Teklifler" sekmesi bildirim rozeti ────────────────────────────────
+// Yeni/bekleyen bir teklif geldiğinde sekme başlığında küçük bir rozet
+// belirir (payouts rozetiyle aynı desen); admin sekmeyi açtığında kayboluyor.
+function listenToPendingOffersBadge(){
+    if(pendingOffersBadgePollTimer) clearInterval(pendingOffersBadgePollTimer);
+    const fetchOnce=async()=>{
+        try{
+            const r=await fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'get_pending_offers_count',accessToken:piAccessToken})});
+            const result=await r.json();
+            if(!result.success) return;
+            const badge=document.getElementById('offers-count-badge');
+            if(!badge) return;
+            // Sekme zaten açıksa rozeti hiç gösterme (görüyorsa "yeni" değildir)
+            const tabActive=document.getElementById('tab-offers')?.classList.contains('active');
+            if(result.count>0 && !tabActive){ badge.style.display='inline-block'; badge.textContent=result.count>99?'99+':result.count; }
+            else badge.style.display='none';
+        }catch(e){console.error("Bekleyen teklif sayısı alınamadı:",e);}
+    };
+    fetchOnce();
+    pendingOffersBadgePollTimer=setInterval(fetchOnce,7000);
+}
 function listenToPendingPayouts(){
     if(pendingPayoutsPollTimer) clearInterval(pendingPayoutsPollTimer);
     const fetchOnce=async()=>{
@@ -5959,6 +6031,7 @@ async function performPiConnect() {
                 startTicketBadgePolling();
                 listenToTrademarkClaims();
                 listenToPendingPayouts();
+                listenToPendingOffersBadge();
                 const today = new Date().toISOString().split("T")[0];
                 const dateInput = document.getElementById("admin-date-input");
                 dateInput.value = today;
@@ -6148,12 +6221,39 @@ document.getElementById("confirm-buy-btn").onclick=async()=>{
             {amount:Number(pendingPrice),memo:"Domain: "+pendingDomain,metadata:{domain:pendingDomain}},
             {
                 onReadyForServerApproval:async(id)=>{
-                    await fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},
+                    // FIX: approve isteğinin sonucu hiç kontrol edilmiyordu.
+                    // "approve" adımında artık backend, domain az önce
+                    // satılmışsa erken bir hata dönebiliyor (bkz. approve.js) —
+                    // bunu görmezden gelip kullanıcının parasını göndermesine
+                    // izin vermek yerine burada durduruyoruz.
+                    const r=await fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},
                         body:JSON.stringify({paymentId:id,action:'approve',accessToken:piAccessToken})});
+                    if(!r.ok){
+                        const result=await r.json().catch(()=>({}));
+                        showToast(result.error||t('genericError'));
+                        document.getElementById('pre-buy-modal').style.display='none';
+                    }
                 },
                 onReadyForServerCompletion:async(id,txid)=>{
-                    await fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},
+                    // FIX: Öncesinde bu istek atılır atılmaz, backend'in ne
+                    // döndüğüne HİÇ bakılmadan "success-modal" gösteriliyordu.
+                    // Yani ödeme backend'de bir sebeple reddedilse (ör. yarış
+                    // durumunda domain az önce başka biri tarafından alınmışsa)
+                    // bile kullanıcıya "satın alma başarılı" gösteriliyordu.
+                    // Artık gerçek sonuca bakılıyor.
+                    const r=await fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},
                         body:JSON.stringify({paymentId:id,action:'complete',txid,username:currentUser,domainName:pendingDomain})});
+                    const result=await r.json().catch(()=>({}));
+                    if(!r.ok || result.error){
+                        if(result.raceCondition){
+                            showToast('⚠️ '+t('raceConditionMsg'));
+                        } else {
+                            showToast(result.error||t('genericError'));
+                        }
+                        await loadUserProfile();
+                        debouncedRender();
+                        return;
+                    }
                     document.getElementById("success-modal").style.display="flex";
                     await loadUserProfile();
                     fetchNotifications(true);
