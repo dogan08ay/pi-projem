@@ -3196,6 +3196,23 @@ async function handlerImpl(req, res) {
     }
   }
 
+  // ── Teklifler Sekmesi Rozeti İçin Hafif Sayaç ───────────────────────────
+  // Admin panelindeki "Teklifler" başlığında yeni/bekleyen teklif olduğunu
+  // gösteren küçük bir bildirim rozeti için — get_all_offers gibi 500
+  // kaydın tamamını çekmek yerine sadece 'pending' sayısını döner.
+  if (action === 'get_pending_offers_count') {
+    const isAdmin = await verifyAdmin(accessToken);
+    if (!isAdmin) return res.status(403).json({ error: "Yetki yok" });
+    try {
+      const db = getDb();
+      const snap = await db.collection('offers').where('status', '==', 'pending').get();
+      return res.status(200).json({ success: true, count: snap.size });
+    } catch (e) {
+      console.error("get_pending_offers_count hatası:", e);
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
   // ── Hesap/Veri Silme Talebi (KVKK/GDPR) ─────────────────────────────────
   // NOT: Burada otomatik/anlık veri silme YAPILMIYOR — kasıtlı bir tasarım
   // tercihi. Çünkü tamamlanmış satışlar/ödemeler muhasebe ve olası
@@ -3594,6 +3611,28 @@ async function handlerImpl(req, res) {
     }
   }
 
+  // YENİ (yarış durumu sertleştirmesi — kısım 1/2): 'approve' adımında,
+  // kullanıcı Pi cüzdanından ödemeyi imzalamadan ÖNCE domain hâlâ müsait mi
+  // diye erkenden bakıyoruz. Bu, iki kişinin aynı domaine neredeyse aynı
+  // anda "Satın Al" bastığı durumda birinin daha en baştan (parasını hiç
+  // göndermeden) net bir hata almasını sağlar — yarış penceresini önemli
+  // ölçüde daraltır. (Asıl kesin koruma 'complete' adımındaki transaction'da;
+  // bu sadece erken/ucuz bir ön-kontrol, %100 garanti değil çünkü blockchain
+  // işlemi kullanıcı tarafında gerçekleşiyor.)
+  if (action === 'approve' && domainName) {
+    try {
+      const db = getDb();
+      const domainSnap = await db.collection('domains').doc(domainName).get();
+      if (domainSnap.exists && domainSnap.data().sold === true) {
+        return res.status(409).json({ error: "Bu domain az önce başka biri tarafından satın alındı." });
+      }
+    } catch (e) {
+      console.error("approve ön-kontrol hatası:", e);
+      // Kontrol başarısız olursa akışı durdurmuyoruz (Pi API zaten kendi
+      // içinde onaylayacak) — sadece erken uyarı bir bonus, engel değil.
+    }
+  }
+
   const PI_API_KEY = process.env.APP_SECRET;
   const body = action === 'complete' ? { txid } : {};
   const url = `https://api.minepi.com/v2/payments/${paymentId}/${action}`;
@@ -3615,22 +3654,33 @@ async function handlerImpl(req, res) {
 
     if (action === 'complete' && domainName && username) {
       let purchaseCode = null;
+      let raceLost = false;
       try {
         const db = getDb();
         const domainRef = db.collection('domains').doc(domainName);
-        const domainSnap = await domainRef.get();
-        const realPrice = domainSnap.exists ? domainSnap.data().price : null;
 
-        if (typeof realPrice !== 'number')
-          return res.status(400).json({ error: "Geçersiz domain" });
+        // YENİ (yarış durumu sertleştirmesi — ASIL KORUMA): Öncesinde burada
+        // "oku, kontrol et, sonra yaz" ayrı ayrı adımlardı — iki ödeme
+        // neredeyse aynı anda 'complete' olursa (ikisi de gerçek Pi
+        // blockchain'inde zaten tamamlanmıştı), ikisi de "sold !== true"
+        // görüp ikisi de yazabiliyordu; ikinci yazan birincinin kaydının
+        // ÜZERİNE yazıyordu — yani biri gerçekten Pi ödedi ama hiçbir kayıt
+        // kalmıyordu, admin de bundan haberdar olmuyordu. Artık okuma+yazma
+        // tek bir Firestore transaction içinde, atomik. Kaybeden taraf
+        // (parası zaten gitmiş) net bir hata alıyor VE admin'e aynı anda
+        // acil bir uyarı gidiyor ki elle iade sürecini başlatabilsin.
+        const txResult = await db.runTransaction(async (tx) => {
+          const domainSnap = await tx.get(domainRef);
+          const realPrice = domainSnap.exists ? domainSnap.data().price : null;
+          if (typeof realPrice !== 'number') return { ok: false, reason: 'invalid_domain' };
+          if (domainSnap.data().sold === true) return { ok: false, reason: 'already_sold' };
 
-        if (domainSnap.data().sold !== true) {
-          purchaseCode = "WEB3-" + Math.random().toString(36).substr(2, 6).toUpperCase();
+          const code = "WEB3-" + Math.random().toString(36).substr(2, 6).toUpperCase();
           const sellerUsername = domainSnap.data().sellerUsername || null;
           const previousBuyer = domainSnap.data().buyer || null;
-
           const payoutStatusForDomain = sellerUsername ? 'pending' : 'no_seller';
-          await domainRef.set({
+
+          tx.set(domainRef, {
             sold: true, price: realPrice,
             txid: txid || null, buyer: username, at: Date.now(),
             sellerUsername: sellerUsername || null,
@@ -3639,6 +3689,34 @@ async function handlerImpl(req, res) {
             // gerek olmadığından direkt kesin "SATILDI" gösterilir.
             payoutStatus: payoutStatusForDomain
           }, { merge: true });
+
+          return { ok: true, realPrice, sellerUsername, previousBuyer, code };
+        });
+
+        if (!txResult.ok) {
+          if (txResult.reason === 'invalid_domain') return res.status(400).json({ error: "Geçersiz domain" });
+          // 'already_sold': yarışı kaybetti. Ödeme Pi blockchain'inde zaten
+          // tamamlandı — bunu geri alamayız, ama admin'i ACİL uyarıp elle
+          // iade süreci başlatılmasını tetikliyoruz.
+          raceLost = true;
+          console.error(`[YARIŞ DURUMU] ${username}, ${domainName} için ödeme tamamladı ama domain az önce başka biri tarafından alınmış. txid:${txid}`);
+          await logSystemError('complete_race_condition', new Error('Domain already sold — payment completed but no domain assigned'), `Alıcı:@${username} Domain:${domainName} Txid:${txid} — MANUEL İADE GEREKİYOR`);
+          await sendTG(TG_CHAT_ID, `🚨 *ACİL — YARIŞ DURUMU / MANUEL İADE GEREKİYOR*\n\n@${username} "${domainName}" için ödeme yaptı (txid: ${txid}) ama domain aynı anda başka biri tarafından satın alınmış. Bu kullanıcıya elle Pi iadesi yapılması gerekiyor.`);
+          await sendNotificationToAdmin({
+            type: 'race_condition_refund_needed',
+            title: '🚨 Acil: Elle İade Gerekiyor',
+            body: `@${username}, "${domainName}" için ödeme yaptı (txid: ${txid}) ama domain aynı anda başka biri tarafından alındı. Manuel iade gerekiyor.`,
+            domainName, buyer: username, txid
+          });
+          return res.status(409).json({
+            error: "Bu domain, ödemeniz tamamlanırken çok kısa bir süre önce başka biri tarafından satın alınmış. Paranız alındığı için otomatik olarak destek ekibine bildirildi, en kısa sürede sizinle iletişime geçip iadenizi yapacaklar.",
+            raceCondition: true
+          });
+        }
+
+        const { realPrice, sellerUsername, previousBuyer, code } = txResult;
+        purchaseCode = code;
+        {
 
           await db.collection('global_sales').doc(txid || paymentId).set({
             user: username, domain: domainName, price: realPrice, at: Date.now(),
@@ -3731,8 +3809,6 @@ async function handlerImpl(req, res) {
             ? `🔒 *YENİ SATIŞ — ESCROW'DA ONAY BEKLİYOR*\n\n👤 @${username}\n🌐 ${domainName}\n💰 ${realPrice} Pi\n🏷️ Satıcı: @${sellerUsername}\n🔑 ${purchaseCode}\n\nÖdeme, alıcı ve satıcının devri onaylaması sonrası "Bekleyen Ödemeler" panelinden serbest bırakılacak.`
             : `✅ *SATIŞ TAMAMLANDI*\n\n👤 @${username}\n🌐 ${domainName}\n💰 ${realPrice} Pi\n🔑 ${purchaseCode}`;
           await sendTG(TG_CHAT_ID, adminMsg);
-        } else {
-          console.warn("Domain zaten satılmış:", domainName);
         }
       } catch (firestoreErr) {
         console.error("Firestore yazma hatası:", firestoreErr);
