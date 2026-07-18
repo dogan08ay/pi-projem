@@ -2500,6 +2500,8 @@ const i18n = {
     sendOfferBtn:"Teklifi Gönder",makeOfferBtn:"Teklif Ver",currentPriceLabel:"Liste Fiyatı",
     cannotOfferOwnDomain:"Kendi domaininize teklif veremezsiniz.",
     raceConditionMsg:"Bu domain, ödemeniz tamamlanırken çok kısa bir süre önce başka biri tarafından satın alınmış. Paranız alındığı için destek ekibimize otomatik bildirim gitti, en kısa sürede sizinle iletişime geçip iadenizi yapacaklar.",
+    reservedForYouMsg:(m)=>`🎉 Anlaştınız! ${m} dakika boyunca bu domaini sadece siz alabilirsiniz`,
+    reservedForOtherMsg:(m)=>`🔒 Anlaşma sağlanan bir alıcı için ayrılmış — ${m} dakika sonra herkese açılır`,
     invalidOfferPrice:"Lütfen geçerli bir teklif tutarı girin.",offerSentSuccess:"✅ Teklifiniz gönderildi! Satıcı yanıt verdiğinde bildirim alacaksınız.",
     confirmWithdrawOffer:"Bu teklifi geri çekmek istediğinize emin misiniz?",
     confirmAcceptOffer:"Bu teklifi kabul etmek istediğinize emin misiniz? Domain fiyatı teklif tutarına güncellenecek.",
@@ -3046,6 +3048,8 @@ const i18n = {
     sendOfferBtn:"Send Offer",makeOfferBtn:"Make an Offer",currentPriceLabel:"List Price",
     cannotOfferOwnDomain:"You can't make an offer on your own domain.",
     raceConditionMsg:"This domain was purchased by someone else moments before your payment finished. Since your payment was received, our support team has been notified automatically and will contact you soon to process your refund.",
+    reservedForYouMsg:(m)=>`🎉 Deal made! You're the only one who can buy this domain for the next ${m} min`,
+    reservedForOtherMsg:(m)=>`🔒 Reserved for a buyer who reached a deal — opens to everyone in ${m} min`,
     invalidOfferPrice:"Please enter a valid offer amount.",offerSentSuccess:"✅ Your offer was sent! You'll be notified when the seller responds.",
     confirmWithdrawOffer:"Are you sure you want to withdraw this offer?",
     confirmAcceptOffer:"Are you sure you want to accept this offer? The domain's price will be updated to the offer amount.",
@@ -3954,6 +3958,11 @@ window.openDomainDetail=function(domainName){
         actionHtml+=`<button onclick="window.toggleFavorite('${domainName}')" style="width:100%;padding:9px;margin-bottom:8px;border-radius:9px;border:1.5px solid #f59e0b;background:${isFav?'rgba(245,158,11,0.9)':'rgba(245,158,11,0.1)'};color:${isFav?'#1e1b4b':'#fbbf24'};font-weight:800;font-size:0.78em;cursor:pointer;">${isFav?'★ '+t('favoriteRemoveBtn'):'☆ '+t('favoriteAddBtn')}</button>`;
     }
     if(!data.sold&&isAuth){actionHtml+=`<button class="btn-buy" style="width:100%;padding:10px;font-size:0.9em;" onclick="document.getElementById('domain-detail-modal').style.display='none';pendingDomain='${domainName}';pendingPrice=${data.price};document.getElementById('pre-buy-modal').style.display='flex';">${t('buyNow')}</button>`;}
+    if(!data.sold && data.reservedFor && data.reservedUntil && data.reservedUntil>Date.now()){
+        const isMine=isAuth && data.reservedFor===currentUser;
+        const minutesLeft=Math.max(1,Math.ceil((data.reservedUntil-Date.now())/60000));
+        actionHtml+=`<div style="margin-top:8px;padding:7px 10px;border-radius:8px;font-size:0.68em;font-weight:800;text-align:center;${isMine?'background:rgba(16,185,129,0.15);border:1px solid #10b981;color:#6ee7b7;':'background:rgba(148,163,184,0.12);border:1px solid #64748b;color:#94a3b8;'}">${isMine?t('reservedForYouMsg')(minutesLeft):t('reservedForOtherMsg')(minutesLeft)}</div>`;
+    }
     if(!data.sold&&isAuth){actionHtml+=`<button onclick="if(domainData['${domainName}']&&domainData['${domainName}'].sellerUsername===currentUser){showToast(t('cannotOfferOwnDomain'));}else{window.openOfferModal('${domainName}');}" style="width:100%;padding:9px;margin-top:8px;border-radius:9px;border:1.5px solid #f59e0b;background:rgba(245,158,11,0.1);color:#fbbf24;font-weight:800;font-size:0.78em;cursor:pointer;">💬 ${t('makeOfferBtn')}</button>`;}
     actionEl.innerHTML=actionHtml;
     document.getElementById('domain-detail-modal').style.display='flex';
@@ -5537,6 +5546,18 @@ function render(){
             };
             card.appendChild(btn);
 
+            // Anlaşılan teklif sonrası öncelik penceresi göstergesi: bu
+            // domain şu an rezerveli mi, kimin için, ne kadar süre kaldı —
+            // satın alma denemeden ÖNCE kullanıcı bunu net görsün.
+            if(data.reservedFor && data.reservedUntil && data.reservedUntil>Date.now()){
+                const isMine=isAuth && data.reservedFor===currentUser;
+                const minutesLeft=Math.max(1,Math.ceil((data.reservedUntil-Date.now())/60000));
+                const resBadge=document.createElement('div');
+                resBadge.style.cssText=`margin-top:4px;padding:5px 8px;border-radius:6px;font-size:0.62em;font-weight:800;text-align:center;${isMine?'background:rgba(16,185,129,0.15);border:1px solid #10b981;color:#6ee7b7;':'background:rgba(148,163,184,0.12);border:1px solid #64748b;color:#94a3b8;'}`;
+                resBadge.textContent=isMine ? t('reservedForYouMsg')(minutesLeft) : t('reservedForOtherMsg')(minutesLeft);
+                card.appendChild(resBadge);
+            }
+
             // Teklif Ver: öncesinde sadece domain detay modalının içinde
             // gizliydi, kullanıcılar farkına varmıyordu. FIX: öncesinde bu
             // buton sadece isAuth+sellerUsername kontrolü render ANINDA
@@ -6227,7 +6248,7 @@ document.getElementById("confirm-buy-btn").onclick=async()=>{
                     // bunu görmezden gelip kullanıcının parasını göndermesine
                     // izin vermek yerine burada durduruyoruz.
                     const r=await fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},
-                        body:JSON.stringify({paymentId:id,action:'approve',accessToken:piAccessToken})});
+                        body:JSON.stringify({paymentId:id,action:'approve',domainName:pendingDomain,accessToken:piAccessToken})});
                     if(!r.ok){
                         const result=await r.json().catch(()=>({}));
                         showToast(result.error||t('genericError'));
