@@ -33,6 +33,11 @@ const PiNetwork = resolvePiNetworkCtor();
 // ─── Admin Config ───────────────────────────────────────────────────────
 const ADMIN_USERNAME = process.env.ADMIN_USERNAME || 'doganay0808';
 const PLATFORM_COMMISSION_RATE = 0.05; // %5 komisyon
+// İkili bir teklif pazarlığında (kabul veya karşı-teklif kabulü) anlaşma
+// sağlandığında, anlaşan alıcıya bu süre boyunca domaini SADECE kendisinin
+// satın alabileceği bir öncelik penceresi tanınır. Süre dolunca domain
+// herkese açılır (ilk gelen alır).
+const OFFER_RESERVATION_MS = 15 * 60 * 1000; // 15 dakika
 
 // ─── Escrow / A2U Ödeme İstemcisi (Satıcıya Otomatik Havuz Ödemesi) ───────
 // NOT: Bunun çalışması için ortam değişkenlerine PI_WALLET_PRIVATE_SEED
@@ -3024,7 +3029,8 @@ async function handlerImpl(req, res) {
         if (!domainSnap.exists || domainSnap.data().sold === true)
           return res.status(400).json({ error: "Domain artık müsait değil" });
 
-        await domainRef.set({ price: offer.offerPrice }, { merge: true });
+        const reservedUntil = Date.now() + OFFER_RESERVATION_MS;
+        await domainRef.set({ price: offer.offerPrice, reservedFor: offer.buyerUsername, reservedUntil }, { merge: true });
         await offerRef.set({ status: 'accepted', respondedAt: Date.now() }, { merge: true });
 
         // Aynı domain için bekleyen diğer teklifler artık geçersiz — fiyat değişti
@@ -3034,10 +3040,11 @@ async function handlerImpl(req, res) {
         otherPending.forEach(d => { if (d.id !== offerId) batch.set(d.ref, { status: 'expired', respondedAt: Date.now() }, { merge: true }); });
         await batch.commit();
 
+        const minutes = Math.round(OFFER_RESERVATION_MS / 60000);
         await sendNotification(offer.buyerUsername, {
           type: 'offer_accepted',
           title: '✅ Teklifiniz Kabul Edildi!',
-          body: `"${offer.domainName}" için ${offer.offerPrice} Pi teklifiniz kabul edildi. Şimdi bu fiyattan satın alabilirsiniz.`,
+          body: `"${offer.domainName}" için ${offer.offerPrice} Pi teklifiniz kabul edildi. Bu domaini ${minutes} dakika boyunca SADECE siz satın alabilirsiniz — süre dolarsa herkese açılır.`,
           domainName: offer.domainName
         });
       } else {
@@ -3145,7 +3152,8 @@ async function handlerImpl(req, res) {
         if (!domainSnap.exists || domainSnap.data().sold === true)
           return res.status(400).json({ error: "Domain artık müsait değil" });
 
-        await domainRef.set({ price: offer.counterPrice }, { merge: true });
+        const reservedUntil = Date.now() + OFFER_RESERVATION_MS;
+        await domainRef.set({ price: offer.counterPrice, reservedFor: realUsername, reservedUntil }, { merge: true });
         await offerRef.set({ status: 'accepted', respondedAt: Date.now() }, { merge: true });
 
         const otherPending = await db.collection('offers')
@@ -3154,10 +3162,11 @@ async function handlerImpl(req, res) {
         otherPending.forEach(d => { if (d.id !== offerId) batch.set(d.ref, { status: 'expired', respondedAt: Date.now() }, { merge: true }); });
         await batch.commit();
 
+        const minutes = Math.round(OFFER_RESERVATION_MS / 60000);
         await sendNotification(offer.sellerUsername || ADMIN_USERNAME, {
           type: 'counter_offer_accepted',
           title: '✅ Karşı Teklifiniz Kabul Edildi!',
-          body: `"${offer.domainName}" için ${offer.counterPrice} Pi karşı teklifiniz @${realUsername} tarafından kabul edildi.`,
+          body: `"${offer.domainName}" için ${offer.counterPrice} Pi karşı teklifiniz @${realUsername} tarafından kabul edildi. Alıcıya ${minutes} dakikalık öncelikli satın alma süresi tanındı.`,
           domainName: offer.domainName
         });
       } else {
@@ -3623,8 +3632,20 @@ async function handlerImpl(req, res) {
     try {
       const db = getDb();
       const domainSnap = await db.collection('domains').doc(domainName).get();
-      if (domainSnap.exists && domainSnap.data().sold === true) {
-        return res.status(409).json({ error: "Bu domain az önce başka biri tarafından satın alındı." });
+      if (domainSnap.exists) {
+        const dData = domainSnap.data();
+        if (dData.sold === true) {
+          return res.status(409).json({ error: "Bu domain az önce başka biri tarafından satın alındı." });
+        }
+        // Anlaşılan teklif sonrası öncelik penceresi: bu süre boyunca domain
+        // SADECE anlaşan alıcıya satılabilir, başkası denerse engellenir.
+        if (dData.reservedFor && dData.reservedUntil && dData.reservedUntil > Date.now()) {
+          const buyerUsername = await getRealUsername(accessToken);
+          if (buyerUsername !== dData.reservedFor) {
+            const minutesLeft = Math.ceil((dData.reservedUntil - Date.now()) / 60000);
+            return res.status(409).json({ error: `Bu domain şu anda anlaşma sağlanan bir alıcı için ayrılmış. ${minutesLeft} dakika sonra herkese açılacak.`, reserved: true, reservedUntil: dData.reservedUntil });
+          }
+        }
       }
     } catch (e) {
       console.error("approve ön-kontrol hatası:", e);
@@ -3674,6 +3695,13 @@ async function handlerImpl(req, res) {
           const realPrice = domainSnap.exists ? domainSnap.data().price : null;
           if (typeof realPrice !== 'number') return { ok: false, reason: 'invalid_domain' };
           if (domainSnap.data().sold === true) return { ok: false, reason: 'already_sold' };
+          // Rezervasyon kontrolü BURADA (transaction içinde) da tekrarlanıyor
+          // — approve aşamasındaki kontrol sadece erken/kaba bir engel,
+          // asıl atomik/kesin koruma bu transaction'da olmalı.
+          const dData = domainSnap.data();
+          if (dData.reservedFor && dData.reservedUntil && dData.reservedUntil > Date.now() && dData.reservedFor !== username) {
+            return { ok: false, reason: 'reserved', reservedUntil: dData.reservedUntil };
+          }
 
           const code = "WEB3-" + Math.random().toString(36).substr(2, 6).toUpperCase();
           const sellerUsername = domainSnap.data().sellerUsername || null;
@@ -3687,7 +3715,8 @@ async function handlerImpl(req, res) {
             // Escrow onayı tamamlanana kadar liste ekranında "Onay Aşamasında"
             // gösterilir; satıcısı yoksa (sistem domaini) zaten beklemeye
             // gerek olmadığından direkt kesin "SATILDI" gösterilir.
-            payoutStatus: payoutStatusForDomain
+            payoutStatus: payoutStatusForDomain,
+            reservedFor: FieldValue.delete(), reservedUntil: FieldValue.delete()
           }, { merge: true });
 
           return { ok: true, realPrice, sellerUsername, previousBuyer, code };
@@ -3695,6 +3724,28 @@ async function handlerImpl(req, res) {
 
         if (!txResult.ok) {
           if (txResult.reason === 'invalid_domain') return res.status(400).json({ error: "Geçersiz domain" });
+          if (txResult.reason === 'reserved') {
+            // Domain, anlaşma sağlanan BAŞKA bir alıcı için rezerve edilmiş.
+            // 'approve' aşamasındaki ön-kontrol bunu genelde daha en baştan
+            // engeller (kullanıcı parasını hiç göndermez); bu dal sadece çok
+            // dar bir zaman penceresinde (approve ile complete arasında yeni
+            // bir rezervasyon oluşmuşsa) tetiklenir. Ödeme yine de zaten
+            // blockchain'de tamamlandığı için aynı acil-iade akışını izliyoruz.
+            raceLost = true;
+            console.error(`[REZERVASYON ÇAKIŞMASI] ${username}, ${domainName} için ödeme tamamladı ama domain başka bir alıcı için rezerveliymiş. txid:${txid}`);
+            await logSystemError('complete_reservation_conflict', new Error('Domain reserved for another buyer — payment completed but no domain assigned'), `Alıcı:@${username} Domain:${domainName} Txid:${txid} — MANUEL İADE GEREKİYOR`);
+            await sendTG(TG_CHAT_ID, `🚨 *ACİL — REZERVASYON ÇAKIŞMASI / MANUEL İADE GEREKİYOR*\n\n@${username} "${domainName}" için ödeme yaptı (txid: ${txid}) ama domain anlaşma sağlanan başka bir alıcı için rezerveliymiş. Bu kullanıcıya elle Pi iadesi yapılması gerekiyor.`);
+            await sendNotificationToAdmin({
+              type: 'reservation_conflict_refund_needed',
+              title: '🚨 Acil: Elle İade Gerekiyor (Rezervasyon)',
+              body: `@${username}, "${domainName}" için ödeme yaptı (txid: ${txid}) ama domain başka bir alıcı için rezerveliymiş. Manuel iade gerekiyor.`,
+              domainName, buyer: username, txid
+            });
+            return res.status(409).json({
+              error: "Bu domain, ödemeniz tamamlanırken anlaşma sağlanan başka bir alıcı için rezerve edilmiş. Paranız alındığı için otomatik olarak destek ekibine bildirildi, en kısa sürede sizinle iletişime geçip iadenizi yapacaklar.",
+              raceCondition: true
+            });
+          }
           // 'already_sold': yarışı kaybetti. Ödeme Pi blockchain'inde zaten
           // tamamlandı — bunu geri alamayız, ama admin'i ACİL uyarıp elle
           // iade süreci başlatılmasını tetikliyoruz.
