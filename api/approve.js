@@ -39,6 +39,39 @@ const PLATFORM_COMMISSION_RATE = 0.05; // %5 komisyon
 // herkese açılır (ilk gelen alır).
 const OFFER_RESERVATION_MS = 15 * 60 * 1000; // 15 dakika
 
+// ── Süresi Dolmuş Rezervasyonu Eski Fiyata Döndür ───────────────────────
+// Anlaşan alıcı, öncelik penceresi (OFFER_RESERVATION_MS) içinde domaini
+// satın almazsa, anlaşılan indirimli fiyat KALICI olarak kalmamalı — aksi
+// halde biri sadece pazarlık yapıp hiç almadan fiyatı düşürebilir. Bu
+// fonksiyon, süresi dolmuş bir rezervasyon bulursa fiyatı pazarlık
+// ÖNCESİNDEKİ değerine döndürür ve rezervasyon alanlarını temizler.
+// Uygulamada zamanlanmış görev (cron) olmadığı için bu, domainle ilgili
+// herhangi bir etkileşim (görüntüleme, teklif, satın alma denemesi) anında
+// TETİKLENEREK çalışır — "tembel" (lazy) bir temizlik mekanizmasıdır.
+// Idempotent'tir: zaten süresi dolmamışsa veya rezervasyon yoksa hiçbir şey
+// yapmaz, güvenle tekrar tekrar çağrılabilir.
+async function revertExpiredReservation(db, domainName) {
+  try {
+    const domainRef = db.collection('domains').doc(domainName);
+    const snap = await domainRef.get();
+    if (!snap.exists) return null;
+    const data = snap.data();
+    if (data.sold === true) return null;
+    if (!data.reservedFor || !data.reservedUntil) return null;
+    if (data.reservedUntil > Date.now()) return null; // hâlâ geçerli, dokunma
+
+    const revertPrice = typeof data.preNegotiationPrice === 'number' ? data.preNegotiationPrice : null;
+    const update = { reservedFor: FieldValue.delete(), reservedUntil: FieldValue.delete(), preNegotiationPrice: FieldValue.delete() };
+    if (revertPrice !== null) update.price = revertPrice;
+    await domainRef.set(update, { merge: true });
+    console.log(`[Rezervasyon süresi doldu] ${domainName} eski fiyata döndürüldü: ${revertPrice}`);
+    return revertPrice;
+  } catch (e) {
+    console.error(`revertExpiredReservation hatası (${domainName}):`, e);
+    return null;
+  }
+}
+
 // ─── Escrow / A2U Ödeme İstemcisi (Satıcıya Otomatik Havuz Ödemesi) ───────
 // NOT: Bunun çalışması için ortam değişkenlerine PI_WALLET_PRIVATE_SEED
 // eklenmesi ve `npm install pi-backend` ile paketin projeye kurulması
@@ -2923,6 +2956,7 @@ async function handlerImpl(req, res) {
       return res.status(400).json({ error: "Geçersiz teklif tutarı" });
     try {
       const db = getDb();
+      await revertExpiredReservation(db, domainName);
       const domainSnap = await db.collection('domains').doc(domainName).get();
       if (!domainSnap.exists) return res.status(404).json({ error: "Domain bulunamadı" });
       const data = domainSnap.data();
@@ -3030,7 +3064,8 @@ async function handlerImpl(req, res) {
           return res.status(400).json({ error: "Domain artık müsait değil" });
 
         const reservedUntil = Date.now() + OFFER_RESERVATION_MS;
-        await domainRef.set({ price: offer.offerPrice, reservedFor: offer.buyerUsername, reservedUntil }, { merge: true });
+        const preNegotiationPrice = domainSnap.data().price;
+        await domainRef.set({ price: offer.offerPrice, reservedFor: offer.buyerUsername, reservedUntil, preNegotiationPrice }, { merge: true });
         await offerRef.set({ status: 'accepted', respondedAt: Date.now() }, { merge: true });
 
         // Aynı domain için bekleyen diğer teklifler artık geçersiz — fiyat değişti
@@ -3153,7 +3188,8 @@ async function handlerImpl(req, res) {
           return res.status(400).json({ error: "Domain artık müsait değil" });
 
         const reservedUntil = Date.now() + OFFER_RESERVATION_MS;
-        await domainRef.set({ price: offer.counterPrice, reservedFor: realUsername, reservedUntil }, { merge: true });
+        const preNegotiationPrice = domainSnap.data().price;
+        await domainRef.set({ price: offer.counterPrice, reservedFor: realUsername, reservedUntil, preNegotiationPrice }, { merge: true });
         await offerRef.set({ status: 'accepted', respondedAt: Date.now() }, { merge: true });
 
         const otherPending = await db.collection('offers')
@@ -3218,6 +3254,28 @@ async function handlerImpl(req, res) {
       return res.status(200).json({ success: true, count: snap.size });
     } catch (e) {
       console.error("get_pending_offers_count hatası:", e);
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  // ── Süresi Dolmuş Rezervasyonu Anında Tetikle (herhangi bir ziyaretçi) ──
+  // "İlk kim domaine bakarsa o an kontrol edilsin" isteği için: frontend,
+  // bir domain kartında süresi geçmiş ama henüz temizlenmemiş bir rezervasyon
+  // fark ettiğinde bu action'ı çağırır. Giriş yapmamış ziyaretçiler de
+  // tetikleyebilsin diye kimlik doğrulaması istemiyoruz — zararsız, idempotent
+  // bir "kendi kendini düzeltme" işlemi olduğu için güvenli. Kötüye kullanımı
+  // önlemek için IP bazlı rate limit var.
+  if (action === 'check_expired_reservation') {
+    const { domainName } = req.body;
+    if (!domainName) return res.status(400).json({ error: "domainName zorunlu" });
+    if (!await checkRateLimit(clientIp, 'check_expired_reservation', 20, 60000))
+      return res.status(429).json({ error: "Çok fazla istek" });
+    try {
+      const db = getDb();
+      await revertExpiredReservation(db, domainName);
+      return res.status(200).json({ success: true });
+    } catch (e) {
+      console.error("check_expired_reservation hatası:", e);
       return res.status(500).json({ error: e.message });
     }
   }
@@ -3631,6 +3689,7 @@ async function handlerImpl(req, res) {
   if (action === 'approve' && domainName) {
     try {
       const db = getDb();
+      await revertExpiredReservation(db, domainName);
       const domainSnap = await db.collection('domains').doc(domainName).get();
       if (domainSnap.exists) {
         const dData = domainSnap.data();
@@ -3679,6 +3738,11 @@ async function handlerImpl(req, res) {
       try {
         const db = getDb();
         const domainRef = db.collection('domains').doc(domainName);
+
+        // Transaction'a girmeden önce süresi dolmuş bir rezervasyon varsa
+        // geri alıyoruz — böylece aşağıdaki transaction, güncel/doğru
+        // reservedFor durumuna bakar.
+        await revertExpiredReservation(db, domainName);
 
         // YENİ (yarış durumu sertleştirmesi — ASIL KORUMA): Öncesinde burada
         // "oku, kontrol et, sonra yaz" ayrı ayrı adımlardı — iki ödeme
