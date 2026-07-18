@@ -1926,8 +1926,20 @@
                 <div class="secure-badge-warning" style="color:#fbbf24;font-size:0.9em;font-weight:900;line-height:1.3;text-transform:uppercase;text-shadow:0 0 12px rgba(251,191,36,0.4);letter-spacing:1.2px;" data-i18n="testNetWarning"></div>
             </div>
             <p style="font-size:0.72em;color:#cbd5e1;font-weight:600;line-height:1.4;margin:3px 0 2px 0;max-width:90%;text-align:center;" data-i18n="connectPrompt"></p>
-            <div style="color:#fbbf24;font-weight:700;margin-bottom:2px;font-size:0.7em;" data-i18n="useButton"></div>
-            <button class="pi-btn pi-connect-btn" onclick="window.loginWithPi()" data-i18n="connectWithPi"></button>
+            <!-- FIX (kökten çözüm): Bu butonun üstündeki dekoratif içerik
+                 (rozet ikonu + başlık + metinler) telefonun ekran yüksekliğine
+                 göre farklı kişilerde farklı miktarda yer kaplıyordu — bazı
+                 telefonlarda hepsi sığıp buton ilk ekranda görünürken, daha
+                 kısa/dar ekranlı telefonlarda buton görünüm alanının dışına
+                 taşıp kaydırma gerektiriyordu. Kalıcı çözüm: butonu, overlay
+                 (kaydırılabilir alan) neresinde olursa olsun görünür ALT
+                 kenara YAPIŞTIRIYORUZ (position:sticky). Böylece herkeste,
+                 ekran boyutu ne olursa olsun, buton kaydırmadan görünür.
+            -->
+            <div style="position:sticky;bottom:2px;width:100%;padding-top:8px;background:linear-gradient(180deg,transparent,rgba(10,15,30,0.85) 35%,rgba(10,15,30,0.96));z-index:5;">
+                <div style="color:#fbbf24;font-weight:700;margin-bottom:6px;font-size:0.7em;" data-i18n="useButton"></div>
+                <button class="pi-btn pi-connect-btn" onclick="window.loginWithPi()" data-i18n="connectWithPi"></button>
+            </div>
         </div>
         <div class="domain-grid locked-content" id="domain-list">
             <div id="domain-list-loading" style="display:contents;">
