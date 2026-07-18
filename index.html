@@ -993,22 +993,33 @@
 .tour-next { background:linear-gradient(135deg,#6366f1,#818cf8); border:none; color:#fff; font-size:0.75em; font-weight:800; cursor:pointer; padding:8px 16px; border-radius:8px; }
 
 /* ── Toast Bildirim Sistemi (native alert() yerine) ───────────────────── */
-#toast-container { position:fixed; top:16px; left:50%; transform:translateX(-50%); z-index:100000; display:flex; flex-direction:column; gap:8px; align-items:center; pointer-events:none; width:calc(100% - 24px); max-width:420px; }
-.toast-item { pointer-events:auto; width:100%; box-sizing:border-box; background:#0f172a; border:1.5px solid #334155; border-left-width:5px; border-radius:12px; padding:12px 14px; font-size:0.8em; line-height:1.5; color:#f1f5f9; white-space:pre-line; word-break:break-word; box-shadow:0 10px 30px rgba(0,0,0,0.55); display:flex; align-items:flex-start; gap:8px; animation:toast-in 0.25s ease-out; cursor:pointer; }
-/* FIX (alt panelde yazı görünmüyor sorunu): önceki halde arkaplan
-   rgba(renk, 0.12) yani %88 şeffaftı — toast'ın arkasında ne varsa (sayfa
-   içeriği, başka bir panel vb.) yazının üzerine karışıp okunmaz hale
-   getiriyordu. Artık arkaplan TAM OPAK (her durumda), renk sadece sol
-   kenarlıkla ve ikonla belli oluyor — hangi cihazda/hangi ekranın üzerinde
-   çıkarsa çıksın yazı her zaman net görünür. */
-.toast-item.toast-success { border-left-color:#10b981; background:#0d1f1a; }
-.toast-item.toast-error { border-left-color:#ef4444; background:#241111; }
-.toast-item.toast-info { border-left-color:#6366f1; background:#161329; }
+#toast-container { position:fixed; top:16px; left:50%; transform:translateX(-50%); z-index:100000; display:flex; flex-direction:column; gap:10px; align-items:center; pointer-events:none; width:calc(100% - 24px); max-width:420px; }
+.toast-item { position:relative; pointer-events:auto; width:100%; box-sizing:border-box; background:transparent; border-radius:13px; padding:13px 15px; font-size:0.8em; line-height:1.5; color:#f8fafc; white-space:pre-line; word-break:break-word; box-shadow:0 12px 34px rgba(0,0,0,0.6); display:flex; align-items:flex-start; gap:9px; animation:toast-in 0.3s cubic-bezier(0.34,1.56,0.64,1); cursor:pointer; }
+/* FIX (alt panelde yazı görünmüyor sorunu): arkaplan TAM OPAK, renk sadece
+   sol kenarlıkla/ikonla belli oluyordu — okunurluk sorunu çözüldü.
+   YENİ: dikkat çekmesi için, kutunun etrafında yavaşça DÖNEN bir gradyan
+   çerçeve (::before, conic-gradient + rotate animasyonu) eklendi — böylece
+   arkaplan ne renk olursa olsun toast göze çarpıyor, sonra nazikçe kayboluyor.
+   Katman sırası (alttan üste): ::before (dönen gradyan halka, z-index:-2)
+   → ::after (opak renkli kutu, z-index:-1) → gerçek içerik (ikon+metin). */
+.toast-item::before {
+    content:''; position:absolute; inset:-2px; border-radius:15px; z-index:-2;
+    background:conic-gradient(from 0deg, transparent 0%, var(--toast-accent,#6366f1) 18%, transparent 40%);
+    animation:toast-border-spin 2.6s linear infinite;
+}
+.toast-item::after {
+    content:''; position:absolute; inset:0; border-radius:13px; z-index:-1;
+    background:var(--toast-bg,#0f172a); box-shadow:inset 0 0 0 1.5px rgba(255,255,255,0.06);
+}
+.toast-item.toast-success { --toast-accent:#10b981; --toast-bg:#0d1f1a; }
+.toast-item.toast-error { --toast-accent:#ef4444; --toast-bg:#241111; }
+.toast-item.toast-info { --toast-accent:#818cf8; --toast-bg:#161329; }
 .toast-item.toast-leaving { animation:toast-out 0.2s ease-in forwards; }
-.toast-icon { flex-shrink:0; font-size:1.1em; line-height:1.4; }
+.toast-icon { flex-shrink:0; font-size:1.15em; line-height:1.4; filter:drop-shadow(0 0 6px rgba(255,255,255,0.25)); }
 .toast-text { flex:1; }
-@keyframes toast-in { from{opacity:0;transform:translateY(-10px);} to{opacity:1;transform:translateY(0);} }
-@keyframes toast-out { from{opacity:1;transform:translateY(0);} to{opacity:0;transform:translateY(-10px);} }
+@keyframes toast-in { from{opacity:0;transform:translateY(-14px) scale(0.94);} to{opacity:1;transform:translateY(0) scale(1);} }
+@keyframes toast-out { from{opacity:1;transform:translateY(0) scale(1);} to{opacity:0;transform:translateY(-10px) scale(0.96);} }
+@keyframes toast-border-spin { to{ transform:rotate(360deg); } }
 @media (max-width:480px) { #toast-container{ top:auto; bottom:16px; } }
 
 </style>
@@ -2233,6 +2244,9 @@ const i18n = {
     profileSettings:"Profil Ayarları",myPanel:"Panelim",sellMyDomain:"Domainimi Satışa Çıkar",
     languageOptions:"Dil Seçenekleri",logout:"Çıkış Yap",connectWithPi:"<span style='display:inline-flex;align-items:center;gap:10px;'><span style='display:inline-block;animation:logo-pulse 1.5s ease-in-out infinite;font-size:1.3em;'>π</span><span style='font-size:1.05em;'>Pi ile Bağlan</span></span>",
     runSystemCheckupBtn:"Sistem Kontrolü Yap",adminAuditLogBtn:"Admin İşlem Günlüğü",deletionRequestsBtn:"Hesap Silme Talepleri",
+    scanningLabel:"Taranıyor...",checkupFailMsg:"Kontrol yapılamadı",checkupErrorMsg:"Kontrol sırasında bir hata oluştu. Lütfen tekrar deneyin.",
+    checkupAllGoodMsg:"✅ Hiçbir sorun bulunamadı, her şey yolunda!",
+    checkupSummaryMsg:(s)=>`Tarandı: ${s.domainsScanned||0} domain (${s.soldCount||0} satılmış), ${s.salesScanned||0} satış kaydı, ${s.sellRequestsScanned||0} satış talebi, ${s.trademarkClaimsScanned||0} marka hakkı talebi, son 7 günde ${s.backgroundErrors||0} arka plan hatası.`,
     imgPathExampleLabel:"Örnek:",orWord:"veya",
     imgPathInstructions:"Görseli önce GitHub repo'nuzun <code style=\"background:#0f172a;padding:1px 4px;border-radius:3px;\">assets/</code> klasörüne yükleyin, ardından yukarıdaki formatta dosya adını girin.",
     piBrowserRequiredMsg:"Bu uygulama sadece Pi Browser üzerinden çalışır. Lütfen bu sayfayı Pi Browser uygulamasında açın.",
@@ -2788,6 +2802,9 @@ const i18n = {
     profileSettings:"Profile Settings",myPanel:"My Panel",sellMyDomain:"List My Domain for Sale",
     languageOptions:"Language Options",logout:"Sign Out",connectWithPi:"<span style='display:inline-flex;align-items:center;gap:10px;'><span style='display:inline-block;animation:logo-pulse 1.5s ease-in-out infinite;font-size:1.3em;'>π</span><span style='font-size:1.05em;'>Connect with Pi</span></span>",
     runSystemCheckupBtn:"Run System Checkup",adminAuditLogBtn:"Admin Action Log",deletionRequestsBtn:"Account Deletion Requests",
+    scanningLabel:"Scanning...",checkupFailMsg:"Checkup failed",checkupErrorMsg:"An error occurred during the checkup. Please try again.",
+    checkupAllGoodMsg:"✅ No issues found, everything looks good!",
+    checkupSummaryMsg:(s)=>`Scanned: ${s.domainsScanned||0} domains (${s.soldCount||0} sold), ${s.salesScanned||0} sales records, ${s.sellRequestsScanned||0} sell requests, ${s.trademarkClaimsScanned||0} trademark claims, ${s.backgroundErrors||0} background errors in the last 7 days.`,
     imgPathExampleLabel:"Example:",orWord:"or",
     imgPathInstructions:"First upload the image to your GitHub repo's <code style=\"background:#0f172a;padding:1px 4px;border-radius:3px;\">assets/</code> folder, then enter the filename in the format above.",
     piBrowserRequiredMsg:"This app only works inside the Pi Browser. Please open this page in the Pi Browser app.",
@@ -4686,21 +4703,27 @@ window.openAuditLogModal=async function(){
 };
 window.runSystemCheckup=async function(){
     const btn=document.getElementById('checkup-btn');
-    const originalText=btn.textContent;
-    btn.textContent='🩺 Taranıyor...'; btn.disabled=true;
+    // FIX: btn.textContent=... kullanmak, butonun içindeki
+    // <span data-i18n="runSystemCheckupBtn"> elemanını TAMAMEN yok ediyordu
+    // (düz metne çeviriyordu). Sonuç: bu butona bir kez tıklandıktan sonra
+    // içindeki span kalıcı olarak kayboluyordu, applyTranslations() artık
+    // onu bulamıyordu — yani dil değiştirmek bir daha asla bu butonu
+    // etkilemiyordu. innerHTML ile orijinal yapıyı (span dahil) koruyoruz.
+    const originalHTML=btn.innerHTML;
+    btn.innerHTML='🩺 '+t('scanningLabel'); btn.disabled=true;
     try{
         const r=await fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'run_system_checkup',accessToken:piAccessToken})});
         const result=await r.json();
-        if(!r.ok||!result.success){ showToast('Hata: '+(result.error||'Kontrol yapılamadı')); return; }
+        if(!r.ok||!result.success){ showToast(t('checkupFailMsg')+': '+(result.error||'')); return; }
         const s=result.summary||{};
-        document.getElementById('checkup-summary').textContent=`Tarandı: ${s.domainsScanned||0} domain (${s.soldCount||0} satılmış), ${s.salesScanned||0} satış kaydı, ${s.sellRequestsScanned||0} satış talebi, ${s.trademarkClaimsScanned||0} marka hakkı talebi, son 7 günde ${s.backgroundErrors||0} arka plan hatası.`;
+        document.getElementById('checkup-summary').textContent=t('checkupSummaryMsg')(s);
         const resultsEl=document.getElementById('checkup-results');
         let connHtml='';
         if(result.connResults&&result.connResults.length){
             connHtml=`<div style="background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.3);border-radius:10px;padding:10px;font-size:0.68em;color:#6ee7b7;line-height:1.7;">${result.connResults.join('<br>')}</div>`;
         }
         if(!result.issues||result.issues.length===0){
-            resultsEl.innerHTML=connHtml+`<div style="background:rgba(16,185,129,0.12);border:1px solid #10b981;border-radius:10px;padding:16px;text-align:center;color:#6ee7b7;font-weight:800;font-size:0.85em;margin-top:8px;">✅ Hiçbir sorun bulunamadı, her şey yolunda!</div>`;
+            resultsEl.innerHTML=connHtml+`<div style="background:rgba(16,185,129,0.12);border:1px solid #10b981;border-radius:10px;padding:16px;text-align:center;color:#6ee7b7;font-weight:800;font-size:0.85em;margin-top:8px;">${t('checkupAllGoodMsg')}</div>`;
         } else {
             const sevMap={error:{icon:'🔴',color:'#f87171',bg:'rgba(239,68,68,0.1)',border:'#ef4444'},warning:{icon:'🟠',color:'#fbbf24',bg:'rgba(245,158,11,0.1)',border:'#f59e0b'},info:{icon:'🔵',color:'#60a5fa',bg:'rgba(59,130,246,0.1)',border:'#3b82f6'}};
             resultsEl.innerHTML=connHtml+result.issues.map(iss=>{
@@ -4713,9 +4736,9 @@ window.runSystemCheckup=async function(){
         }
         document.getElementById('checkup-modal').style.display='flex';
     }catch(e){
-        console.error('Sistem kontrolü hatası:', e); showToast('Kontrol sırasında bir hata oluştu. Lütfen tekrar deneyin.');
+        console.error('Sistem kontrolü hatası:', e); showToast(t('checkupErrorMsg'));
     }finally{
-        btn.textContent=originalText; btn.disabled=false;
+        btn.innerHTML=originalHTML; btn.disabled=false;
     }
 };
 window.handleFixDeletedRatings=async function(){
