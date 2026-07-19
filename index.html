@@ -1038,18 +1038,7 @@
 </head>
 <body style="margin:0;padding:0;width:100%;min-width:320px;overflow-x:hidden;position:relative;box-sizing:border-box;">
 <div id="toast-container" aria-live="polite"></div>
-<!-- FIX (kökten çözüm — "Pi ile Bağlan" ekranı sığmıyor sorunu): Önceki
-     düzeltme sadece bir alt bölümün (#premium-lock) içindeki butonu sabitledi,
-     ama logo + başlık + istatistik çubuğu + bilgi butonları gibi çok daha
-     fazla içerik ONUN DA ÜSTÜNDE, normal sayfa akışında duruyordu — kısa
-     ekranlı telefonlarda kullanıcı hâlâ kaydırmak zorunda kalıyordu. Kesin
-     çözüm: sayfanın geri kalanından TAMAMEN bağımsız, ekranın en altına
-     SABİT (position:fixed) duran, giriş yapılmamışken HER ZAMAN görünen
-     ikinci bir "Bağlan" çubuğu. Üstte ne kadar içerik olursa olsun, bu
-     çubuk ilk açılışta kaydırmadan görünür. -->
-<div id="fixed-connect-bar" style="display:none;position:fixed;left:0;right:0;bottom:0;z-index:9998;padding:10px 14px calc(10px + env(safe-area-inset-bottom,0px)) 14px;background:linear-gradient(180deg,rgba(10,15,30,0) 0%,rgba(10,15,30,0.92) 25%,rgba(10,15,30,0.98) 100%);backdrop-filter:blur(6px);box-sizing:border-box;">
-    <button class="pi-btn pi-connect-btn" style="width:100%;margin:0;box-shadow:0 -4px 20px rgba(99,102,241,0.35);" onclick="window.loginWithPi()" data-i18n="connectWithPi"></button>
-</div>
+
 <!-- ═══════════════════════════════════════════════════════════════
      GÜVEN / BİLGİLENDİRME EKRANI (İLK AÇILIŞ)
      Uygulama satın alma ve cüzdan bağlantısı içerdiği için ilk ziyarette
@@ -5501,8 +5490,6 @@ function render(){
     if(!isAuth){lock.classList.add("active");list.classList.add("locked-content");}
     else{lock.classList.remove("active");list.classList.remove("locked-content");}
     const jwb2=document.getElementById('join-web3-banner'); if(jwb2) jwb2.style.display=isAuth?'none':'block';
-    const fixedConnectBar=document.getElementById('fixed-connect-bar');
-    if(fixedConnectBar) fixedConnectBar.style.display=isAuth?'none':'block';
 
     // ... gerisi aynı (domain-grid oluşturma kısmı değişmedi)
     let sortedDomains=[...domains].filter(d=>!domainData[d.name]?.deleted).sort((a,b)=>(domainData[b.name]?.createdAt||0)-(domainData[a.name]?.createdAt||0));
