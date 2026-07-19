@@ -994,14 +994,12 @@
 
 /* ── Toast Bildirim Sistemi (native alert() yerine) ───────────────────── */
 #toast-container { position:fixed; top:16px; left:50%; transform:translateX(-50%); z-index:100000; display:flex; flex-direction:column; gap:12px; align-items:center; pointer-events:none; width:calc(100% - 24px); max-width:420px; }
-/* FIX (arkaplan/yazı rengi gelmiyordu): önceki teknik "transparan kenarlık +
-   arkadan sızan gradyan" (background-clip:padding-box) idi — bu, Pi
-   Browser'ın WebView motorunda güvenilir render olmuyor, kutunun kendi
-   arkaplanını/yazı rengini bozuyordu. YENİ TASARIM: arkaplan ve yazı rengi
-   artık DOĞRUDAN kutunun kendi üzerinde (hiçbir maskeleme/clip hilesi yok —
-   her tarayıcıda garanti çalışır). Dönen efekt ise kutunun DIŞINDA, ayrı bir
-   katmanda (::before, negatif inset, kutunun arkasında) — bu yüzden kutunun
-   kendi görünümünü hiçbir şekilde etkilemiyor/bozmuyor. */
+/* Arkaplan/yazı rengi kutunun kendi üzerinde (maskeleme hilesi yok, garanti
+   render olur). "Çerçevenin çizgisini takip eden" dönen ışık isteği için
+   CSS yerine SVG kullanıyoruz (bkz. showToast() JS) — bir <rect> üzerinde
+   stroke-dasharray + stroke-dashoffset animasyonu, TAM OLARAK kenarlığın
+   kendi çizgisi üzerinde giden bir "kuyruklu yıldız" segmenti oluşturur;
+   bu, CSS gradyan/mask hilelerinden çok daha güvenilir ve tam istenen efekt. */
 .toast-item {
     position:relative; pointer-events:auto; width:100%; box-sizing:border-box;
     border-radius:13px; padding:14px 16px; font-size:0.8em; line-height:1.5;
@@ -1010,7 +1008,7 @@
     display:flex; align-items:flex-start; gap:9px; cursor:pointer;
     background:linear-gradient(120deg, var(--toast-bg1,#1e1b4b), var(--toast-bg2,#312e81), var(--toast-bg1,#1e1b4b)) !important;
     background-size:220% 220%;
-    border:2px solid var(--toast-accent,#818cf8);
+    border:1.5px solid var(--toast-border,rgba(129,140,248,0.4));
     box-shadow:0 10px 28px rgba(0,0,0,0.55);
     animation-name:toast-in, toast-glow-pulse, toast-bg-shift;
     animation-duration:0.3s, 1.8s, 4s;
@@ -1018,29 +1016,22 @@
     animation-iteration-count:1, infinite, infinite;
     animation-fill-mode:none, none, none;
 }
-/* Dönen halka: kutunun TAMAMEN dışında, arkasında (z-index:-1) duran ayrı
-   bir katman — kutunun kendi background/renk özelliklerine dokunmuyor. */
-.toast-item::before {
-    content:''; position:absolute; inset:-6px; border-radius:18px; z-index:-1;
-    background:conic-gradient(from 0deg, transparent 0%, var(--toast-accent,#818cf8) 20%, transparent 45%, var(--toast-accent2,#6366f1) 65%, transparent 90%);
-    animation:toast-border-spin 2.4s linear infinite;
-    opacity:0.9;
-}
-.toast-item.toast-success { --toast-accent:#34d399; --toast-accent2:#10b981; --toast-bg1:#052e22; --toast-bg2:#0d3d2c; }
-.toast-item.toast-error { --toast-accent:#f87171; --toast-accent2:#ef4444; --toast-bg1:#3a0d0d; --toast-bg2:#4c1414; }
-.toast-item.toast-info { --toast-accent:#a5b4fc; --toast-accent2:#6366f1; --toast-bg1:#1e1b4b; --toast-bg2:#312e81; }
+.toast-border-trace { position:absolute; inset:0; width:100%; height:100%; overflow:visible; pointer-events:none; }
+.toast-item.toast-success { --toast-accent:#34d399; --toast-accent2:#10b981; --toast-bg1:#052e22; --toast-bg2:#0d3d2c; --toast-border:rgba(52,211,153,0.4); }
+.toast-item.toast-error { --toast-accent:#f87171; --toast-accent2:#ef4444; --toast-bg1:#3a0d0d; --toast-bg2:#4c1414; --toast-border:rgba(248,113,113,0.4); }
+.toast-item.toast-info { --toast-accent:#a5b4fc; --toast-accent2:#6366f1; --toast-bg1:#1e1b4b; --toast-bg2:#312e81; --toast-border:rgba(165,180,252,0.4); }
 .toast-item.toast-leaving { animation:toast-out 0.2s ease-in forwards !important; }
-.toast-icon { flex-shrink:0; font-size:1.15em; line-height:1.4; filter:drop-shadow(0 0 6px rgba(255,255,255,0.4)); }
-.toast-text { flex:1; color:#ffffff !important; }
+.toast-icon { flex-shrink:0; font-size:1.15em; line-height:1.4; filter:drop-shadow(0 0 6px rgba(255,255,255,0.4)); position:relative; z-index:1; }
+.toast-text { flex:1; color:#ffffff !important; position:relative; z-index:1; }
 @keyframes toast-in { from{opacity:0;transform:translateY(-14px) scale(0.94);} to{opacity:1;transform:translateY(0) scale(1);} }
 @keyframes toast-out { from{opacity:1;transform:translateY(0) scale(1);} to{opacity:0;transform:translateY(-10px) scale(0.96);} }
-@keyframes toast-border-spin { to{ transform:rotate(360deg); } }
 @keyframes toast-bg-shift { 0%,100%{background-position:0% 50%;} 50%{background-position:100% 50%;} }
 @keyframes toast-glow-pulse {
     0%,100%{ box-shadow:0 10px 28px rgba(0,0,0,0.55), 0 0 0px var(--toast-accent,#818cf8); }
     50%{ box-shadow:0 10px 28px rgba(0,0,0,0.55), 0 0 20px 3px var(--toast-accent,#818cf8); }
 }
 @media (max-width:480px) { #toast-container{ top:auto; bottom:16px; } }
+
 
 
 </style>
@@ -2128,7 +2119,20 @@ function showToast(message) {
         if (!container) { console.log('[toast]', text); return; }
         const el = document.createElement('div');
         el.className = `toast-item toast-${type}`;
-        el.innerHTML = `<span class="toast-icon">${icon}</span><span class="toast-text"></span>`;
+        // Kenarlığın ÇİZGİSİNİ TAKİP EDEN ışık segmenti: stroke-dasharray/
+        // stroke-dashoffset animasyonu ile SVG rect'in kendi kenarı üzerinde
+        // dolaşan bir "kuyruklu yıldız" segmenti. pathLength="100" sayesinde
+        // kutunun gerçek piksel boyutundan bağımsız çalışır (her toast farklı
+        // uzunlukta metin içerdiği için genişliği/yüksekliği değişken olur).
+        const accentVar = 'var(--toast-accent,#818cf8)';
+        el.innerHTML = `<svg class="toast-border-trace" aria-hidden="true">
+                <rect x="0" y="0" width="100%" height="100%" rx="13" ry="13"
+                    fill="none" stroke="${accentVar}" stroke-width="2.5" stroke-linecap="round"
+                    pathLength="100" stroke-dasharray="14 86" opacity="0.95">
+                    <animate attributeName="stroke-dashoffset" values="0;-100" dur="2.6s" repeatCount="indefinite"/>
+                </rect>
+            </svg>
+            <span class="toast-icon">${icon}</span><span class="toast-text"></span>`;
         el.querySelector('.toast-text').textContent = text;
         const duration = Math.min(9000, Math.max(3500, text.length * 60));
         const remove = () => {
