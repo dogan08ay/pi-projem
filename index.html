@@ -1038,6 +1038,18 @@
 </head>
 <body style="margin:0;padding:0;width:100%;min-width:320px;overflow-x:hidden;position:relative;box-sizing:border-box;">
 <div id="toast-container" aria-live="polite"></div>
+<!-- FIX (kökten çözüm — "Pi ile Bağlan" ekranı sığmıyor sorunu): Önceki
+     düzeltme sadece bir alt bölümün (#premium-lock) içindeki butonu sabitledi,
+     ama logo + başlık + istatistik çubuğu + bilgi butonları gibi çok daha
+     fazla içerik ONUN DA ÜSTÜNDE, normal sayfa akışında duruyordu — kısa
+     ekranlı telefonlarda kullanıcı hâlâ kaydırmak zorunda kalıyordu. Kesin
+     çözüm: sayfanın geri kalanından TAMAMEN bağımsız, ekranın en altına
+     SABİT (position:fixed) duran, giriş yapılmamışken HER ZAMAN görünen
+     ikinci bir "Bağlan" çubuğu. Üstte ne kadar içerik olursa olsun, bu
+     çubuk ilk açılışta kaydırmadan görünür. -->
+<div id="fixed-connect-bar" style="display:none;position:fixed;left:0;right:0;bottom:0;z-index:9998;padding:10px 14px calc(10px + env(safe-area-inset-bottom,0px)) 14px;background:linear-gradient(180deg,rgba(10,15,30,0) 0%,rgba(10,15,30,0.92) 25%,rgba(10,15,30,0.98) 100%);backdrop-filter:blur(6px);box-sizing:border-box;">
+    <button class="pi-btn pi-connect-btn" style="width:100%;margin:0;box-shadow:0 -4px 20px rgba(99,102,241,0.35);" onclick="window.loginWithPi()" data-i18n="connectWithPi"></button>
+</div>
 <!-- ═══════════════════════════════════════════════════════════════
      GÜVEN / BİLGİLENDİRME EKRANI (İLK AÇILIŞ)
      Uygulama satın alma ve cüzdan bağlantısı içerdiği için ilk ziyarette
@@ -1549,7 +1561,7 @@
         <div class="user-tabs">
             <button class="user-tab-btn active" data-utab="utab-overview" onclick="switchUserTab('utab-overview')">📊 <span data-i18n="overview"></span></button>
             <button class="user-tab-btn" style="position:relative;" data-utab="utab-purchases" onclick="switchUserTab('utab-purchases')">🛒 <span data-i18n="myPurchases"></span><span class="pending-badge" id="user-purchases-tab-badge" style="display:none;">0</span></button>
-            <button class="user-tab-btn" data-utab="utab-listings" onclick="switchUserTab('utab-listings')">🏷️<span data-i18n="myListings"></span></button>
+            <button class="user-tab-btn" style="position:relative;" data-utab="utab-listings" onclick="switchUserTab('utab-listings')">🏷️<span data-i18n="myListings"></span><span class="pending-badge" id="user-listings-tab-badge" style="display:none;">0</span></button>
             <button class="user-tab-btn" style="position:relative;" data-utab="utab-income" onclick="switchUserTab('utab-income')">💰<span data-i18n="myIncome"></span><span class="pending-badge" id="user-income-tab-badge" style="display:none;">0</span></button>
             <button class="user-tab-btn" style="position:relative;" data-utab="utab-tickets" onclick="switchUserTab('utab-tickets')">🎫<span data-i18n="myTickets"></span><span class="pending-badge" id="user-ticket-tab-badge" style="display:none;">0</span></button>
             <button class="user-tab-btn" style="position:relative;" data-utab="utab-trademark" onclick="switchUserTab('utab-trademark')">🔖<span data-i18n="myTrademarkClaims"></span><span class="pending-badge" id="user-trademark-tab-badge" style="display:none;">0</span></button>
@@ -3545,19 +3557,20 @@ window.switchUserTab=function(tabId){
     document.querySelectorAll('.user-tab-panel').forEach(p=>p.classList.toggle('active',p.id===tabId));
     if(tabId==='utab-tickets'){ loadMyTickets(); markMyTicketsSeen(); }
     if(tabId==='utab-trademark'){ loadMyTrademarkClaims(); }
-    if(tabId==='utab-purchases'){ markRoleNotificationsRead('buyer'); }
-    if(tabId==='utab-income'){ markRoleNotificationsRead('seller'); }
+    if(tabId==='utab-purchases'){ markRoleNotificationsRead('buyer',['transfer_confirmation_reminder','dispute_response','offer_accepted','offer_rejected','offer_countered']); }
+    if(tabId==='utab-income'){ markRoleNotificationsRead('seller',['transfer_confirmation_reminder','dispute_response']); }
+    if(tabId==='utab-listings'){ markRoleNotificationsRead('seller',['offer_received','counter_offer_accepted','counter_offer_rejected']); }
 };
-// "Alımlarım" (buyer) / "Gelirim" (seller) sekmesi açılınca, o role ait
-// devir-onayı hatırlatma/anlaşmazlık-yanıtı bildirimlerini okundu yapar ve
-// sekme rozetini kaybeder. Genel bildirim ziline (🔔) dokunmaz.
-async function markRoleNotificationsRead(role){
+// "Alımlarım" (buyer) / "Gelirim" (seller) / "İlanlarım" (seller) sekmesi
+// açılınca, o sekmeye ait bildirim tiplerini okundu yapar ve sekme rozetini
+// kaybeder. Genel bildirim ziline (🔔) dokunmaz.
+async function markRoleNotificationsRead(role, types){
     if(!piAccessToken) return;
-    const relevantTypes=['transfer_confirmation_reminder','dispute_response'];
+    const relevantTypes=types||['transfer_confirmation_reminder','dispute_response'];
     const hasUnread=cachedNotifications.some(n=>!n.read&&relevantTypes.includes(n.type)&&n.role===role);
     if(!hasUnread) return;
     try{
-        await fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'mark_role_notifications_read',role,accessToken:piAccessToken})});
+        await fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'mark_role_notifications_read',role,types:relevantTypes,accessToken:piAccessToken})});
         cachedNotifications=cachedNotifications.map(n=>relevantTypes.includes(n.type)&&n.role===role?{...n,read:true}:n);
         renderNotifBadgeAndList();
     }catch(e){}
@@ -3828,13 +3841,25 @@ function renderNotifBadgeAndList(){
     // hatırlatması veya anlaşmazlık yanıtı, henüz okunmadıysa ilgili sekme
     // butonunda küçük bir rozet olarak gösterilir. Sekme açılınca kaybolur
     // (bkz. switchUserTab).
-    const relevantTypes=['transfer_confirmation_reminder','dispute_response'];
+    // "Alımlarım" / "Gelirim" / "İlanlarım" sekme rozetleri: admin'den gelen
+    // devir-onayı hatırlatması, anlaşmazlık yanıtı VE teklif olayları
+    // (yeni teklif geldi, karşı teklif geldi, teklif/karşı teklif
+    // kabul/red edildi), henüz okunmadıysa ilgili sekme butonunda küçük bir
+    // rozet olarak gösterilir. Sekme açılınca kaybolur (bkz. switchUserTab).
+    // FIX: teklif bildirimleri öncesinde 'role' alanı olmadan gönderiliyordu,
+    // bu yüzden bu filtreye hiç girmiyor, rozet hiçbir zaman görünmüyordu.
+    const relevantTypes=['transfer_confirmation_reminder','dispute_response','offer_accepted','offer_rejected','offer_countered'];
+    const relevantTypesSeller=['transfer_confirmation_reminder','dispute_response'];
+    const listingsRelevantTypes=['offer_received','counter_offer_accepted','counter_offer_rejected'];
     const unreadBuyer=cachedNotifications.filter(n=>!n.read&&relevantTypes.includes(n.type)&&n.role==='buyer').length;
-    const unreadSeller=cachedNotifications.filter(n=>!n.read&&relevantTypes.includes(n.type)&&n.role==='seller').length;
+    const unreadSeller=cachedNotifications.filter(n=>!n.read&&relevantTypesSeller.includes(n.type)&&n.role==='seller').length;
+    const unreadListings=cachedNotifications.filter(n=>!n.read&&listingsRelevantTypes.includes(n.type)&&n.role==='seller').length;
     const purchasesBadge=document.getElementById('user-purchases-tab-badge');
     const incomeBadge=document.getElementById('user-income-tab-badge');
+    const listingsBadge=document.getElementById('user-listings-tab-badge');
     if(purchasesBadge){ if(unreadBuyer>0){purchasesBadge.style.display='block';purchasesBadge.textContent=unreadBuyer>99?'99+':unreadBuyer;} else {purchasesBadge.style.display='none';} }
     if(incomeBadge){ if(unreadSeller>0){incomeBadge.style.display='block';incomeBadge.textContent=unreadSeller>99?'99+':unreadSeller;} else {incomeBadge.style.display='none';} }
+    if(listingsBadge){ if(unreadListings>0){listingsBadge.style.display='block';listingsBadge.textContent=unreadListings>99?'99+':unreadListings;} else {listingsBadge.style.display='none';} }
 }
 function renderNotifList(notifs){
     const list=document.getElementById('notif-list'); if(!list) return;
@@ -5476,6 +5501,8 @@ function render(){
     if(!isAuth){lock.classList.add("active");list.classList.add("locked-content");}
     else{lock.classList.remove("active");list.classList.remove("locked-content");}
     const jwb2=document.getElementById('join-web3-banner'); if(jwb2) jwb2.style.display=isAuth?'none':'block';
+    const fixedConnectBar=document.getElementById('fixed-connect-bar');
+    if(fixedConnectBar) fixedConnectBar.style.display=isAuth?'none':'block';
 
     // ... gerisi aynı (domain-grid oluşturma kısmı değişmedi)
     let sortedDomains=[...domains].filter(d=>!domainData[d.name]?.deleted).sort((a,b)=>(domainData[b.name]?.createdAt||0)-(domainData[a.name]?.createdAt||0));
