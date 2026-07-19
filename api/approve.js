@@ -545,7 +545,7 @@ async function handlerImpl(req, res) {
   // sekmeyle ilgili (role'e göre) hatırlatma/anlaşmazlık-yanıtı bildirimleri
   // okundu yapılır, genel bildirim zili (🔔) etkilenmez.
   if (action === 'mark_role_notifications_read') {
-    const { role } = req.body; // 'buyer' | 'seller'
+    const { role, types } = req.body; // 'buyer' | 'seller', types: opsiyonel özel bildirim tipi listesi
     const realUsername = await getRealUsername(accessToken);
     if (!realUsername) return res.status(403).json({ error: "Geçersiz oturum" });
     if (role !== 'buyer' && role !== 'seller') return res.status(400).json({ error: "Geçersiz role" });
@@ -554,7 +554,10 @@ async function handlerImpl(req, res) {
       const ref = rtdb.ref(`notifications/${realUsername}`);
       const snap = await ref.once('value');
       const updates = {};
-      const relevantTypes = ['transfer_confirmation_reminder', 'dispute_response'];
+      // Varsayılan tipler geriye dönük uyumluluk için korunuyor; frontend
+      // artık sekmeye göre (Alımlarım/Gelirim/İlanlarım) farklı tip listeleri
+      // gönderebiliyor — her sekmenin kendi rozetini bağımsız temizleyebilmesi için.
+      const relevantTypes = Array.isArray(types) && types.length ? types : ['transfer_confirmation_reminder', 'dispute_response'];
       snap.forEach(child => {
         const v = child.val();
         if (!v.read && relevantTypes.includes(v.type) && v.role === role) updates[`${child.key}/read`] = true;
@@ -2979,6 +2982,7 @@ async function handlerImpl(req, res) {
       const notifyTarget = data.sellerUsername || ADMIN_USERNAME;
       await sendNotification(notifyTarget, {
         type: 'offer_received',
+        role: 'seller',
         title: '💬 Yeni Teklif Aldınız',
         body: `@${realUsername}, "${domainName}" için ${priceNum} Pi teklif etti (liste fiyatı: ${data.price} Pi).`,
         domainName
@@ -3078,6 +3082,7 @@ async function handlerImpl(req, res) {
         const minutes = Math.round(OFFER_RESERVATION_MS / 60000);
         await sendNotification(offer.buyerUsername, {
           type: 'offer_accepted',
+          role: 'buyer',
           title: '✅ Teklifiniz Kabul Edildi!',
           body: `"${offer.domainName}" için ${offer.offerPrice} Pi teklifiniz kabul edildi. Bu domaini ${minutes} dakika boyunca SADECE siz satın alabilirsiniz — süre dolarsa herkese açılır.`,
           domainName: offer.domainName
@@ -3086,6 +3091,7 @@ async function handlerImpl(req, res) {
         await offerRef.set({ status: 'rejected', respondedAt: Date.now() }, { merge: true });
         await sendNotification(offer.buyerUsername, {
           type: 'offer_rejected',
+          role: 'buyer',
           title: '❌ Teklifiniz Reddedildi',
           body: `"${offer.domainName}" için ${offer.offerPrice} Pi teklifiniz satıcı tarafından reddedildi.`,
           domainName: offer.domainName
@@ -3153,6 +3159,7 @@ async function handlerImpl(req, res) {
 
       await sendNotification(offer.buyerUsername, {
         type: 'offer_countered',
+        role: 'buyer',
         title: '🔄 Karşı Teklif Aldınız',
         body: `"${offer.domainName}" için satıcı ${priceNum} Pi karşı teklif sundu (sizin teklifiniz: ${offer.offerPrice} Pi).`,
         domainName: offer.domainName
@@ -3201,6 +3208,7 @@ async function handlerImpl(req, res) {
         const minutes = Math.round(OFFER_RESERVATION_MS / 60000);
         await sendNotification(offer.sellerUsername || ADMIN_USERNAME, {
           type: 'counter_offer_accepted',
+          role: 'seller',
           title: '✅ Karşı Teklifiniz Kabul Edildi!',
           body: `"${offer.domainName}" için ${offer.counterPrice} Pi karşı teklifiniz @${realUsername} tarafından kabul edildi. Alıcıya ${minutes} dakikalık öncelikli satın alma süresi tanındı.`,
           domainName: offer.domainName
@@ -3209,6 +3217,7 @@ async function handlerImpl(req, res) {
         await offerRef.set({ status: 'rejected', respondedAt: Date.now() }, { merge: true });
         await sendNotification(offer.sellerUsername || ADMIN_USERNAME, {
           type: 'counter_offer_rejected',
+          role: 'seller',
           title: '❌ Karşı Teklifiniz Reddedildi',
           body: `"${offer.domainName}" için ${offer.counterPrice} Pi karşı teklifiniz @${realUsername} tarafından reddedildi.`,
           domainName: offer.domainName
