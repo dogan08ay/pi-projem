@@ -72,6 +72,31 @@ async function revertExpiredReservation(db, domainName) {
   }
 }
 
+// YENİ: Bir domain silindiğinde (soft-delete VEYA kalıcı silme), o domaine
+// verilmiş/gelmiş TÜM teklif geçmişini de siler. Aksi halde domain artık
+// mevcut olmadığı/görünmediği halde "offers" koleksiyonundaki eski kayıtlar
+// kalıcı olarak öylece durur; alıcı "Tekliflerim" ve satıcı "Gelen
+// Teklifler" listelerinde artık var olmayan bir domaine ait teklifler
+// görünmeye devam eder. Firestore batch limiti (500) aşılabileceğinden
+// 400'lük parçalar halinde siliniyor.
+async function deleteOffersForDomain(db, domainName) {
+  try {
+    const snap = await db.collection('offers').where('domainName', '==', domainName).get();
+    if (snap.empty) return 0;
+    const docs = snap.docs;
+    for (let i = 0; i < docs.length; i += 400) {
+      const batch = db.batch();
+      docs.slice(i, i + 400).forEach(d => batch.delete(d.ref));
+      await batch.commit();
+    }
+    console.log(`[Teklif geçmişi silindi] ${domainName} için ${docs.length} teklif kaydı silindi`);
+    return docs.length;
+  } catch (e) {
+    console.error(`deleteOffersForDomain hatası (${domainName}):`, e);
+    return 0;
+  }
+}
+
 // ─── Escrow / A2U Ödeme İstemcisi (Satıcıya Otomatik Havuz Ödemesi) ───────
 // NOT: Bunun çalışması için ortam değişkenlerine PI_WALLET_PRIVATE_SEED
 // eklenmesi ve `npm install pi-backend` ile paketin projeye kurulması
@@ -1074,6 +1099,11 @@ async function handlerImpl(req, res) {
       if (domainDataForDelete.sellerRatingOfBuyer) softDeleteUpdate.sellerRatingOfBuyer = null;
       await domainRef.set(softDeleteUpdate, { merge: true });
 
+      // YENİ: Domain silinince, ona verilmiş/gelmiş teklif geçmişi de silinsin
+      // — kullanıcı artık olmayan bir domain için "Tekliflerim" / "Gelen
+      // Teklifler" listesinde teklif görmemeli.
+      await deleteOffersForDomain(db, delName);
+
       console.log(`Domain soft-delete edildi: ${delName}`);
       await logAdminAction(await getRealUsername(accessToken), 'delete_domain', delName);
       return res.status(200).json({ success: true });
@@ -1161,6 +1191,13 @@ async function handlerImpl(req, res) {
         reqSnap.forEach(doc => batch.delete(doc.ref));
         await batch.commit();
       }
+
+      // YENİ: Kalıcı silmede de teklif geçmişi silinir (soft-delete anında
+      // zaten silinmiş olabilir ama domain hiç soft-delete edilmeden burada
+      // doğrudan çağrılan bir akış olursa diye burada da garanti altına
+      // alınıyor — deleteOffersForDomain zaten kayıt yoksa hiçbir şey yapmaz).
+      await deleteOffersForDomain(db, permDelName);
+
       console.log(`Domain kalıcı silindi: ${permDelName}`);
       return res.status(200).json({ success: true });
     } catch (e) {
@@ -1220,12 +1257,13 @@ async function handlerImpl(req, res) {
       const issues = [];
       const addIssue = (severity, title, detail) => issues.push({ severity, title, detail });
 
-      const [domainsSnap, salesSnap, sellReqSnap, tmSnap, statsSnap] = await Promise.all([
+      const [domainsSnap, salesSnap, sellReqSnap, tmSnap, statsSnap, offersSnap] = await Promise.all([
         db.collection('domains').get(),
         db.collection('global_sales').get(),
         db.collection('sell_requests').get(),
         db.collection('trademark_claims').get(),
-        db.collection('config').doc('platform_stats').get()
+        db.collection('config').doc('platform_stats').get(),
+        db.collection('offers').get()
       ]);
 
       // global_sales'i domain adına göre indeksle (bir domain birden çok kez satılmış olabilir, hepsini tut)
@@ -1294,7 +1332,30 @@ async function handlerImpl(req, res) {
         addIssue('info', `${staleRequests.length} satış talebi 30 günden uzun süredir bekliyor`, `İncelemeniz gerekebilir: ${staleRequests.join(', ')}`);
       }
 
-      // trademark_claims: uzun süredir bekleyenler
+      // ── YENİ: Yetim teklif kayıtları (offers) ──────────────────────────
+      // Bir domain silindiğinde (soft-delete veya kalıcı silme) artık ona
+      // ait teklif geçmişi de siliniyor (bkz. deleteOffersForDomain), AMA bu
+      // sadece bu düzeltmeden SONRA silinen domainler için geçerli. Daha
+      // önce silinmiş domainlerin "offers" kayıtları hâlâ Firestore'da
+      // duruyor olabilir. Burada bunları tespit edip admin'e "🧹 Yetim
+      // Verileri Temizle" butonunu kullanması için bildiriyoruz.
+      const domainStatusMap = {};
+      domainsSnap.forEach(d => { domainStatusMap[d.id] = d.data().deleted === true; });
+      const orphanedOffersByDomain = {};
+      offersSnap.forEach(o => {
+        const dn = o.data().domainName;
+        if (!dn) return;
+        const isOrphan = !(dn in domainStatusMap) || domainStatusMap[dn] === true;
+        if (isOrphan) orphanedOffersByDomain[dn] = (orphanedOffersByDomain[dn] || 0) + 1;
+      });
+      const orphanedOfferDomains = Object.keys(orphanedOffersByDomain);
+      const orphanedOfferCount = orphanedOfferDomains.reduce((sum, dn) => sum + orphanedOffersByDomain[dn], 0);
+      if (orphanedOfferCount > 0) {
+        addIssue('warning', `${orphanedOfferCount} teklif kaydı artık var olmayan/silinmiş domainlere ait (${orphanedOfferDomains.length} domain)`,
+          `Etkilenen domainler: ${orphanedOfferDomains.join(', ')} — Admin panelindeki "🧹 Yetim Verileri Temizle" butonuyla kalıcı olarak silebilirsiniz.`);
+      }
+
+
       const staleClaims = [];
       tmSnap.forEach(c => {
         const cd = c.data();
@@ -1412,10 +1473,63 @@ async function handlerImpl(req, res) {
         success: true,
         issues,
         connResults,
-        summary: { domainsScanned: domainsSnap.size, soldCount, salesScanned: salesSnap.size, sellRequestsScanned: sellReqSnap.size, trademarkClaimsScanned: tmSnap.size, backgroundErrors: recentErrors.length }
+        summary: { domainsScanned: domainsSnap.size, soldCount, salesScanned: salesSnap.size, sellRequestsScanned: sellReqSnap.size, trademarkClaimsScanned: tmSnap.size, backgroundErrors: recentErrors.length, offersScanned: offersSnap.size, orphanedOffers: orphanedOfferCount }
       });
     } catch (e) {
       console.error("run_system_checkup hatası:", e);
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  // ── Yetim Teklif Kayıtlarını Temizle ────────────────────────────────────
+  // Admin panelindeki "🧹 Yetim Verileri Temizle" butonunun arkası.
+  // deleteOffersForDomain() artık her domain silindiğinde (soft/kalıcı)
+  // otomatik çalışıyor, AMA bu düzeltmeden ÖNCE silinmiş domainlerin
+  // "offers" kayıtları hâlâ Firestore'da duruyor olabilir. Bu action, artık
+  // var olmayan VEYA "deleted:true" olan domainlere ait tüm teklif
+  // kayıtlarını tarar ve kalıcı olarak siler. Idempotent'tir — temiz bir
+  // veritabanında tekrar çalıştırıldığında hiçbir şey silmez.
+  if (action === 'cleanup_orphaned_offers') {
+    const isAdmin = await verifyAdmin(accessToken);
+    if (!isAdmin) return res.status(403).json({ error: "Yetki yok" });
+    try {
+      const db = getDb();
+      const [domainsSnap, offersSnap] = await Promise.all([
+        db.collection('domains').get(),
+        db.collection('offers').get()
+      ]);
+
+      const domainStatusMap = {};
+      domainsSnap.forEach(d => { domainStatusMap[d.id] = d.data().deleted === true; });
+
+      const orphanDocs = [];
+      const affectedDomains = {};
+      offersSnap.forEach(o => {
+        const dn = o.data().domainName;
+        if (!dn) return;
+        const isOrphan = !(dn in domainStatusMap) || domainStatusMap[dn] === true;
+        if (isOrphan) {
+          orphanDocs.push(o.ref);
+          affectedDomains[dn] = (affectedDomains[dn] || 0) + 1;
+        }
+      });
+
+      if (orphanDocs.length === 0) {
+        return res.status(200).json({ success: true, deletedCount: 0, affectedDomains: [] });
+      }
+
+      for (let i = 0; i < orphanDocs.length; i += 400) {
+        const batch = db.batch();
+        orphanDocs.slice(i, i + 400).forEach(ref => batch.delete(ref));
+        await batch.commit();
+      }
+
+      const affectedList = Object.entries(affectedDomains).map(([domainName, count]) => ({ domainName, count }));
+      await logAdminAction(await getRealUsername(accessToken), 'cleanup_orphaned_offers', `${orphanDocs.length} kayıt / ${affectedList.length} domain`);
+      console.log(`[Yetim veri temizliği] ${orphanDocs.length} teklif kaydı silindi (${affectedList.length} domain)`);
+      return res.status(200).json({ success: true, deletedCount: orphanDocs.length, affectedDomains: affectedList });
+    } catch (e) {
+      console.error("cleanup_orphaned_offers hatası:", e);
       return res.status(500).json({ error: e.message });
     }
   }
