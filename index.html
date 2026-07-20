@@ -1604,7 +1604,7 @@
                 <div id="my-domains-list" style="text-align:left;"></div>
             </div>
             <div style="background:#161329;border:2px solid #818cf8;border-radius:12px;padding:10px;margin-top:18px;box-shadow:0 4px 14px rgba(0,0,0,0.25);">
-                <button onclick="window.toggleMyOffersList()" style="width:100%;display:flex;align-items:center;justify-content:center;gap:6px;background:none;border:none;color:#a5b4fc;font-size:0.72em;font-weight:800;text-transform:uppercase;cursor:pointer;padding:0;">💬 <span data-i18n="myOffersTitle"></span> <span style="font-size:0.8em;">▾</span></button>
+                <button onclick="window.toggleMyOffersList()" style="width:100%;display:flex;align-items:center;justify-content:center;gap:6px;background:none;border:none;color:#a5b4fc;font-size:0.72em;font-weight:800;text-transform:uppercase;cursor:pointer;padding:0;position:relative;">💬 <span data-i18n="myOffersTitle"></span> <span style="font-size:0.8em;">▾</span><span class="pending-badge" id="my-offers-title-badge" style="display:none;position:static;margin-left:2px;">0</span></button>
                 <div id="my-offers-content" style="display:none;margin-top:8px;"></div>
             </div>
         </div>
@@ -1615,7 +1615,7 @@
                  kaynaşmış gibi görünüyordu. Artık teklifler indigo, ilanlar
                  amber temada, net ayrışıyor. Panel arası boşluk da artırıldı. -->
             <div style="background:#161329;border:2px solid #818cf8;border-radius:12px;padding:10px;margin-bottom:18px;box-shadow:0 4px 14px rgba(0,0,0,0.25);">
-                <button onclick="window.toggleReceivedOffersList()" style="width:100%;display:flex;align-items:center;justify-content:center;gap:6px;background:none;border:none;color:#a5b4fc;font-size:0.72em;font-weight:800;text-transform:uppercase;cursor:pointer;padding:0;">📥 <span data-i18n="receivedOffersTitle"></span> <span style="font-size:0.8em;">▾</span></button>
+                <button onclick="window.toggleReceivedOffersList()" style="width:100%;display:flex;align-items:center;justify-content:center;gap:6px;background:none;border:none;color:#a5b4fc;font-size:0.72em;font-weight:800;text-transform:uppercase;cursor:pointer;padding:0;position:relative;">📥 <span data-i18n="receivedOffersTitle"></span> <span style="font-size:0.8em;">▾</span><span class="pending-badge" id="received-offers-title-badge" style="display:none;position:static;margin-left:2px;">0</span></button>
                 <div id="received-offers-content" style="display:none;margin-top:8px;"></div>
             </div>
             <div style="background:#1c1917;border:2px solid #f59e0b;border-radius:12px;padding:10px;box-shadow:0 4px 14px rgba(0,0,0,0.25);">
@@ -1690,6 +1690,7 @@
             </button>
         </h3>
         <button id="checkup-btn" onclick="window.runSystemCheckup()" style="display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:9px;margin-bottom:8px;border:1.5px solid rgba(20,184,166,0.5);border-radius:10px;background:linear-gradient(135deg,rgba(20,184,166,0.18) 0%,rgba(15,118,110,0.20) 100%);color:#5eead4;font-size:0.75em;font-weight:800;cursor:pointer;">🩺 <span data-i18n="runSystemCheckupBtn"></span></button>
+        <button id="cleanup-orphaned-btn" onclick="window.handleCleanupOrphanedOffers()" style="display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:9px;margin-bottom:8px;border:1.5px solid rgba(168,85,247,0.5);border-radius:10px;background:linear-gradient(135deg,rgba(168,85,247,0.18) 0%,rgba(107,33,168,0.20) 100%);color:#d8b4fe;font-size:0.75em;font-weight:800;cursor:pointer;">🧹 <span data-i18n="cleanupOrphanedBtn"></span></button>
         <button onclick="window.openAuditLogModal()" style="display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:9px;margin-bottom:8px;border:1.5px solid rgba(148,163,184,0.4);border-radius:10px;background:rgba(148,163,184,0.08);color:#cbd5e1;font-size:0.75em;font-weight:800;cursor:pointer;">📋 <span data-i18n="adminAuditLogBtn"></span></button>
         <button onclick="window.openDeletionRequestsModal()" style="display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:9px;margin-bottom:8px;border:1.5px solid rgba(239,68,68,0.4);border-radius:10px;background:rgba(239,68,68,0.08);color:#fca5a5;font-size:0.75em;font-weight:800;cursor:pointer;">🗑️ <span data-i18n="deletionRequestsBtn"></span></button>
         <div id="maintenance-control-box" style="display:flex;align-items:center;gap:8px;background:linear-gradient(135deg,rgba(239,68,68,0.16) 0%,rgba(127,29,29,0.20) 100%);border:1.5px solid rgba(239,68,68,0.45);border-radius:10px;padding:8px 10px;margin-bottom:8px;">
@@ -2269,10 +2270,10 @@ const i18n = {
     purchasedDomain:"ALINAN DOMAIN",firstLogin:"İLK GİRİŞ",
     profileSettings:"Profil Ayarları",myPanel:"Panelim",sellMyDomain:"Domainimi Satışa Çıkar",
     languageOptions:"Dil Seçenekleri",logout:"Çıkış Yap",connectWithPi:"<span style='display:inline-flex;align-items:center;gap:10px;'><span style='display:inline-block;animation:logo-pulse 1.5s ease-in-out infinite;font-size:1.3em;'>π</span><span style='font-size:1.05em;'>Pi ile Bağlan</span></span>",
-    runSystemCheckupBtn:"Sistem Kontrolü Yap",adminAuditLogBtn:"Admin İşlem Günlüğü",deletionRequestsBtn:"Hesap Silme Talepleri",
+    runSystemCheckupBtn:"Sistem Kontrolü Yap",cleanupOrphanedBtn:"Yetim Verileri Temizle",adminAuditLogBtn:"Admin İşlem Günlüğü",deletionRequestsBtn:"Hesap Silme Talepleri",
     scanningLabel:"Taranıyor...",checkupFailMsg:"Kontrol yapılamadı",checkupErrorMsg:"Kontrol sırasında bir hata oluştu. Lütfen tekrar deneyin.",
     checkupAllGoodMsg:"✅ Hiçbir sorun bulunamadı, her şey yolunda!",
-    checkupSummaryMsg:(s)=>`Tarandı: ${s.domainsScanned||0} domain (${s.soldCount||0} satılmış), ${s.salesScanned||0} satış kaydı, ${s.sellRequestsScanned||0} satış talebi, ${s.trademarkClaimsScanned||0} marka hakkı talebi, son 7 günde ${s.backgroundErrors||0} arka plan hatası.`,
+    checkupSummaryMsg:(s)=>`Tarandı: ${s.domainsScanned||0} domain (${s.soldCount||0} satılmış), ${s.salesScanned||0} satış kaydı, ${s.sellRequestsScanned||0} satış talebi, ${s.trademarkClaimsScanned||0} marka hakkı talebi, ${s.offersScanned||0} teklif kaydı (${s.orphanedOffers||0} yetim), son 7 günde ${s.backgroundErrors||0} arka plan hatası.`,
     imgPathExampleLabel:"Örnek:",orWord:"veya",
     imgPathInstructions:"Görseli önce GitHub repo'nuzun <code style=\"background:#0f172a;padding:1px 4px;border-radius:3px;\">assets/</code> klasörüne yükleyin, ardından yukarıdaki formatta dosya adını girin.",
     piBrowserRequiredMsg:"Bu uygulama sadece Pi Browser üzerinden çalışır. Lütfen bu sayfayı Pi Browser uygulamasında açın.",
@@ -2828,10 +2829,10 @@ const i18n = {
     purchasedDomain:"OWNED DOMAINS",firstLogin:"FIRST LOGIN",
     profileSettings:"Profile Settings",myPanel:"My Panel",sellMyDomain:"List My Domain for Sale",
     languageOptions:"Language Options",logout:"Sign Out",connectWithPi:"<span style='display:inline-flex;align-items:center;gap:10px;'><span style='display:inline-block;animation:logo-pulse 1.5s ease-in-out infinite;font-size:1.3em;'>π</span><span style='font-size:1.05em;'>Connect with Pi</span></span>",
-    runSystemCheckupBtn:"Run System Checkup",adminAuditLogBtn:"Admin Action Log",deletionRequestsBtn:"Account Deletion Requests",
+    runSystemCheckupBtn:"Run System Checkup",cleanupOrphanedBtn:"Clean Up Orphaned Data",adminAuditLogBtn:"Admin Action Log",deletionRequestsBtn:"Account Deletion Requests",
     scanningLabel:"Scanning...",checkupFailMsg:"Checkup failed",checkupErrorMsg:"An error occurred during the checkup. Please try again.",
     checkupAllGoodMsg:"✅ No issues found, everything looks good!",
-    checkupSummaryMsg:(s)=>`Scanned: ${s.domainsScanned||0} domains (${s.soldCount||0} sold), ${s.salesScanned||0} sales records, ${s.sellRequestsScanned||0} sell requests, ${s.trademarkClaimsScanned||0} trademark claims, ${s.backgroundErrors||0} background errors in the last 7 days.`,
+    checkupSummaryMsg:(s)=>`Scanned: ${s.domainsScanned||0} domains (${s.soldCount||0} sold), ${s.salesScanned||0} sales records, ${s.sellRequestsScanned||0} sell requests, ${s.trademarkClaimsScanned||0} trademark claims, ${s.offersScanned||0} offer records (${s.orphanedOffers||0} orphaned), ${s.backgroundErrors||0} background errors in the last 7 days.`,
     imgPathExampleLabel:"Example:",orWord:"or",
     imgPathInstructions:"First upload the image to your GitHub repo's <code style=\"background:#0f172a;padding:1px 4px;border-radius:3px;\">assets/</code> folder, then enter the filename in the format above.",
     piBrowserRequiredMsg:"This app only works inside the Pi Browser. Please open this page in the Pi Browser app.",
@@ -3548,9 +3549,18 @@ window.switchUserTab=function(tabId){
     document.querySelectorAll('.user-tab-panel').forEach(p=>p.classList.toggle('active',p.id===tabId));
     if(tabId==='utab-tickets'){ loadMyTickets(); markMyTicketsSeen(); }
     if(tabId==='utab-trademark'){ loadMyTrademarkClaims(); }
-    if(tabId==='utab-purchases'){ markRoleNotificationsRead('buyer',['transfer_confirmation_reminder','dispute_response','offer_accepted','offer_rejected','offer_countered']); }
+    // FIX: teklif bildirim tipleri (offer_accepted/offer_rejected/offer_countered,
+    // offer_received/counter_offer_accepted/counter_offer_rejected) artık BURADA
+    // (sekme açılışında) okundu işaretlenmiyor. Çünkü kullanıcı sekmeyi açar açmaz
+    // bildirim okundu sayılırsa, "Tekliflerim" / "Gelen Teklifler" alt başlığındaki
+    // rozet daha kullanıcı panele hiç bakmadan kaybolurdu — hangi alt bölüme yeni
+    // veri geldiği hiç belli olmazdı. Artık bu tipler sadece ilgili alt panel
+    // GERÇEKTEN açıldığında okundu işaretleniyor (bkz. toggleMyOffersList /
+    // toggleReceivedOffersList). Sekme seviyesinde sadece transfer/anlaşmazlık
+    // bildirimleri (ki bunlar panel içindeki "Satın Aldıklarım" / "Gelirim"
+    // listesiyle ilgili, alt açılır panel değil) okundu yapılmaya devam ediyor.
+    if(tabId==='utab-purchases'){ markRoleNotificationsRead('buyer',['transfer_confirmation_reminder','dispute_response']); }
     if(tabId==='utab-income'){ markRoleNotificationsRead('seller',['transfer_confirmation_reminder','dispute_response']); }
-    if(tabId==='utab-listings'){ markRoleNotificationsRead('seller',['offer_received','counter_offer_accepted','counter_offer_rejected']); }
 };
 // "Alımlarım" (buyer) / "Gelirim" (seller) / "İlanlarım" (seller) sekmesi
 // açılınca, o sekmeye ait bildirim tiplerini okundu yapar ve sekme rozetini
@@ -3851,6 +3861,21 @@ function renderNotifBadgeAndList(){
     if(purchasesBadge){ if(unreadBuyer>0){purchasesBadge.style.display='block';purchasesBadge.textContent=unreadBuyer>99?'99+':unreadBuyer;} else {purchasesBadge.style.display='none';} }
     if(incomeBadge){ if(unreadSeller>0){incomeBadge.style.display='block';incomeBadge.textContent=unreadSeller>99?'99+':unreadSeller;} else {incomeBadge.style.display='none';} }
     if(listingsBadge){ if(unreadListings>0){listingsBadge.style.display='block';listingsBadge.textContent=unreadListings>99?'99+':unreadListings;} else {listingsBadge.style.display='none';} }
+
+    // YENİ: "Tekliflerim" (Alımlarım sekmesi içinde) ve "Gelen Teklifler"
+    // (İlanlarım sekmesi içinde) başlıklarında, tıpkı sekme rozetlerinde
+    // olduğu gibi, o alt panele ait okunmamış bildirim varsa küçük bir rozet
+    // gösterilir. Panel gerçekten AÇILINCA kaybolur (bkz. toggleMyOffersList /
+    // toggleReceivedOffersList). Böylece kullanıcı Alımlarım'ı/İlanlarım'ı
+    // açtığında hangi alt bölüme yeni veri geldiği net görülür.
+    const myOffersTypes=['offer_accepted','offer_rejected','offer_countered'];
+    const receivedOffersTypes=['offer_received','counter_offer_accepted','counter_offer_rejected'];
+    const unreadMyOffers=cachedNotifications.filter(n=>!n.read&&myOffersTypes.includes(n.type)&&n.role==='buyer').length;
+    const unreadReceivedOffers=cachedNotifications.filter(n=>!n.read&&receivedOffersTypes.includes(n.type)&&n.role==='seller').length;
+    const myOffersTitleBadge=document.getElementById('my-offers-title-badge');
+    const receivedOffersTitleBadge=document.getElementById('received-offers-title-badge');
+    if(myOffersTitleBadge){ if(unreadMyOffers>0&&!myOffersExpanded){myOffersTitleBadge.style.display='inline-block';myOffersTitleBadge.textContent=unreadMyOffers>99?'99+':unreadMyOffers;} else {myOffersTitleBadge.style.display='none';} }
+    if(receivedOffersTitleBadge){ if(unreadReceivedOffers>0&&!receivedOffersExpanded){receivedOffersTitleBadge.style.display='inline-block';receivedOffersTitleBadge.textContent=unreadReceivedOffers>99?'99+':unreadReceivedOffers;} else {receivedOffersTitleBadge.style.display='none';} }
 }
 function renderNotifList(notifs){
     const list=document.getElementById('notif-list'); if(!list) return;
@@ -4492,7 +4517,13 @@ window.loadAdminOffersTable=async function(){
     }catch(e){ console.error('Admin teklif tablosu hatası:', e); wrap.innerHTML=`<p style="color:#f87171;font-size:0.75em;text-align:center;">${t('genericError')}</p>`; }
 };
 let myOffersExpanded=false;
-window.toggleMyOffersList=function(){ myOffersExpanded=!myOffersExpanded; window.loadMyOffers(); };
+// FIX: "Tekliflerim" başlığındaki bildirim rozeti artık sekme açılışında değil,
+// bu panel GERÇEKTEN açıldığında kayboluyor (bkz. switchUserTab'daki not).
+window.toggleMyOffersList=function(){
+    myOffersExpanded=!myOffersExpanded;
+    if(myOffersExpanded){ markRoleNotificationsRead('buyer',['offer_accepted','offer_rejected','offer_countered']); }
+    window.loadMyOffers();
+};
 // ── Teklif Detay Tablosu (paylaşılan yardımcı) ────────────────────────────
 // Öncesinde "Tekliflerim" / "Gelen Tekliflerim" bölümlerinde bilgiler gevşek
 // satırlar halinde, tutarsız yerlerde duruyordu. Artık her teklif, başlık
@@ -4541,7 +4572,13 @@ window.loadMyOffers=async function(){
     }catch(e){ box.innerHTML=`<p style="color:#f87171;font-size:0.72em;text-align:center;">${t('genericError')}</p>`; }
 };
 let receivedOffersExpanded=false;
-window.toggleReceivedOffersList=function(){ receivedOffersExpanded=!receivedOffersExpanded; window.loadReceivedOffers(); };
+// FIX: "Gelen Teklifler" başlığındaki bildirim rozeti artık sekme açılışında
+// değil, bu panel GERÇEKTEN açıldığında kayboluyor (bkz. switchUserTab'daki not).
+window.toggleReceivedOffersList=function(){
+    receivedOffersExpanded=!receivedOffersExpanded;
+    if(receivedOffersExpanded){ markRoleNotificationsRead('seller',['offer_received','counter_offer_accepted','counter_offer_rejected']); }
+    window.loadReceivedOffers();
+};
 window.loadReceivedOffers=async function(){
     const box=document.getElementById('received-offers-content');
     if(!box) return;
@@ -4806,6 +4843,28 @@ window.handleBackfillSellerUsername=async function(){
     const result=await r.json();
     if(!r.ok||!result.success) showToast('Hata: '+(result.error||''));
     else showToast(`✅ ${result.updatedCount} domain güncellendi.`+(result.updatedNames&&result.updatedNames.length?'\n'+result.updatedNames.join(', '):'')+`\n\n✅ ${result.salesUpdated||0} satış kaydı (global_sales) tamamlandı.`+(result.salesUpdatedNames&&result.salesUpdatedNames.length?'\n'+result.salesUpdatedNames.join(', '):''));
+};
+// YENİ: "🧹 Yetim Verileri Temizle" — artık var olmayan veya silinmiş
+// domainlere ait, geçmişte (bu düzeltmeden önce) biriken "offers" (teklif
+// geçmişi) kayıtlarını kalıcı olarak temizler. Bundan sonraki domain
+// silmelerinde offers zaten otomatik siliniyor (bkz. deleteOffersForDomain),
+// bu buton sadece ESKİ artıkları temizlemek için tek seferlik/periyodik
+// kullanılır. Güvenlidir: temiz bir veritabanında tekrar çalıştırılırsa
+// "silinecek kayıt yok" der, hiçbir şeye dokunmaz.
+window.handleCleanupOrphanedOffers=async function(){
+    if(!confirm('Artık var olmayan veya silinmiş domainlere ait TÜM teklif geçmişi kayıtları (offers) kalıcı olarak silinecek. Bu işlem geri alınamaz. Hâlâ aktif/satışta olan domainlerin tekliflerine dokunulmaz. Devam edilsin mi?')) return;
+    const btn=document.getElementById('cleanup-orphaned-btn');
+    const originalHTML=btn?btn.innerHTML:null;
+    if(btn){ btn.innerHTML='🧹 '+t('scanningLabel'); btn.disabled=true; }
+    try{
+        const r=await fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'cleanup_orphaned_offers',accessToken:piAccessToken})});
+        const result=await r.json();
+        if(!r.ok||!result.success){ showToast('Hata: '+(result.error||'')); return; }
+        if(result.deletedCount===0){ showToast('✅ Temizlenecek yetim teklif kaydı bulunamadı, her şey zaten temiz.'); return; }
+        const domainList=(result.affectedDomains||[]).map(d=>`${d.domainName} (${d.count})`).join(', ');
+        showToast(`✅ ${result.deletedCount} yetim teklif kaydı silindi.\nEtkilenen domainler: ${domainList}`);
+    }catch(e){ showToast('Bir hata oluştu.'); }
+    finally{ if(btn){ btn.innerHTML=originalHTML; btn.disabled=false; } }
 };
 window.handleRelist=async function(domainName){
     if(!confirm(t('relistConfirm')(domainName))) return;
@@ -6489,7 +6548,17 @@ onSnapshot(collection(db,"domains"),(snapshot)=>{
             hidden:docData.hidden===true, // FIX: eksikti — "Gizle" butonu bu yüzden hiç etkili olmuyordu
             payoutStatus:docData.payoutStatus||null, // FIX: eksikti — "Onay Aşamasında" durumu bu yüzden hiç görünmüyor, direkt "SATILDI" gösteriliyordu
             buyerRating:docData.buyerRating||null, // YENİ: alıcının satıcıya verdiği puan (varsa)
-            sellerRatingOfBuyer:docData.sellerRatingOfBuyer||null // YENİ: satıcının alıcıya verdiği puan (varsa)
+            sellerRatingOfBuyer:docData.sellerRatingOfBuyer||null, // YENİ: satıcının alıcıya verdiği puan (varsa)
+            // FIX: eksikti — teklif kabulünden sonraki 15 dakikalık öncelik
+            // penceresi backend'de (approve.js) doğru şekilde yazılıyordu
+            // ama bu üç alan buraya hiç kopyalanmadığı için domainData
+            // üzerinden kontrol eden HİÇBİR yer (kart rozeti, detay modalı,
+            // süresi-dolmuş-rezervasyonu-tetikleme) hiçbir zaman devreye
+            // girmiyordu. Rezervasyon bilgisi bu yüzden hiç görünmüyor,
+            // süre dolunca da fiyat otomatik eski haline dönmüyordu.
+            reservedFor:docData.reservedFor||null,
+            reservedUntil:docData.reservedUntil||null,
+            preNegotiationPrice:typeof docData.preNegotiationPrice==='number'?docData.preNegotiationPrice:null
         };
         if(!defaultDomain){
             domains.unshift({name,img:docData.img||'assets/default.jpeg',price:docData.price||0,type:docData.type||'genel',description:docData.description||''});
