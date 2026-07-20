@@ -1729,6 +1729,13 @@
             </div>
         </div>
         <div class="admin-tab-panel" id="tab-stats">
+            <!-- TAŞINDI: "Satış Trendi" grafiği artık Kazanç sekmesinde değil,
+                 doğrudan Satış İstatistikleri başlığı altında — çünkü bu bir
+                 kazanç rakamı değil, satış istatistiği/görselleştirmesi. -->
+            <div style="background:#0f172a;border:1px solid #334155;border-radius:12px;padding:10px;margin-bottom:12px;">
+                <div style="font-size:0.65em;color:#94a3b8;font-weight:700;margin-bottom:8px;text-transform:uppercase;">📈 <span data-i18n="salesTrendTitle"></span></div>
+                <div id="sales-trend-chart" style="min-height:90px;display:flex;align-items:center;justify-content:center;color:#475569;font-size:0.7em;"></div>
+            </div>
             <div style="background:#061a0d;border:2px solid #16a34a;border-radius:10px;padding:8px;margin-bottom:18px;">
                 <div style="display:flex;align-items:center;justify-content:center;gap:5px;margin-bottom:6px;padding-bottom:5px;border-bottom:1px solid #14532d;"><span style="animation:icon-pulse-chart 2s ease-in-out infinite;">📈</span><span style="font-size:0.68em;color:#4ade80;font-weight:800;text-transform:uppercase;" data-i18n="dailySalesStats"></span></div>
                 <input type="date" id="stats-date-input" class="admin-date-picker" style="margin-bottom:6px;">
@@ -1792,31 +1799,46 @@
                     <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
                 </button>
             </div>
-            <div class="income-box" style="border-color:#6366f1;background:linear-gradient(135deg,#1e1b4b 0%,#312e81 100%);">
-                <div style="font-size:0.7em;color:#c7d2fe;font-weight:800;margin-bottom:4px;" data-i18n="platformWalletTitle"></div>
-                <div class="income-value" id="admin-platform-earnings" style="color:#a5b4fc;">0 Pi</div>
-                <div style="font-size:0.65em;color:#94a3b8;margin-top:6px;" data-i18n="platformWalletNote"></div>
-            </div>
-            <div class="income-box" style="border-color:#10b981;background:linear-gradient(135deg,#064e3b 0%,#065f46 100%);">
-                <div style="font-size:0.7em;color:#6ee7b7;font-weight:800;margin-bottom:4px;" data-i18n="adminOwnEarningsTitle"></div>
-                <div class="income-value" id="admin-own-earnings" style="color:#34d399;">0 Pi</div>
-                <div style="font-size:0.65em;color:#94a3b8;margin-top:6px;" data-i18n="adminOwnEarningsNote"></div>
-            </div>
-            <div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px;margin-bottom:8px;min-width:0;">
-                <div style="background:#0f172a;border:1px solid #334155;border-radius:10px;padding:10px;text-align:center;">
-                    <div style="font-size:0.6em;color:#94a3b8;font-weight:700;margin-bottom:4px;" data-i18n="totalVolumeAll"></div>
-                    <div id="admin-total-volume" style="font-size:1.3em;font-weight:900;color:#fbbf24;">0 Pi</div>
-                    <div style="font-size:0.58em;color:#64748b;line-height:1.4;margin-top:6px;" data-i18n="totalVolumeAllExplain"></div>
+            <!-- ═══════════════════════════════════════════════════════════
+                 YENİDEN TASARLANDI: eskiden burada 4 ayrı kutu vardı ve
+                 hangisinin "gerçekten benim param" olduğu, hangisinin sadece
+                 "platformda dönen toplam para" olduğu belirsizdi. Şimdi
+                 muhasebe mantığıyla iki net bölüme ayrıldı:
+                   1) NET KAZANCIM  → cüzdanıma gerçekten giren, benim param
+                   2) PLATFORM CİROSU → sadece bilgi amaçlı brüt hacim,
+                      benim param DEĞİL (kırmızı ile vurgulanan kısım
+                      satıcılara ait)
+                 ═══════════════════════════════════════════════════════════ -->
+            <div style="background:linear-gradient(135deg,#052e1f 0%,#0f172a 100%);border:2px solid #10b981;border-radius:14px;padding:12px;margin-bottom:14px;">
+                <div style="font-size:0.72em;color:#6ee7b7;font-weight:900;text-transform:uppercase;text-align:center;margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid rgba(16,185,129,0.3);">✅ <span data-i18n="netEarningsTitle"></span></div>
+                <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;padding:6px 2px;">
+                    <div style="flex:1;min-width:0;"><div style="font-size:0.68em;color:#c7d2fe;font-weight:700;" data-i18n="platformWalletTitle"></div><div style="font-size:0.56em;color:#64748b;margin-top:2px;line-height:1.4;" data-i18n="platformWalletNote"></div></div>
+                    <div id="admin-platform-earnings" style="font-size:1em;font-weight:900;color:#a5b4fc;white-space:nowrap;flex-shrink:0;">0 Pi</div>
                 </div>
-                <div style="background:#0f172a;border:1px solid #334155;border-radius:10px;padding:10px;text-align:center;">
-                    <div style="font-size:0.6em;color:#94a3b8;font-weight:700;margin-bottom:4px;" data-i18n="userOwnedVolume"></div>
-                    <div id="admin-user-volume" style="font-size:1.3em;font-weight:900;color:#34d399;">0 Pi</div>
-                    <div style="font-size:0.58em;color:#64748b;line-height:1.4;margin-top:6px;" data-i18n="userOwnedVolumeExplain"></div>
+                <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;padding:8px 2px 6px 2px;border-top:1px dashed rgba(148,163,184,0.25);margin-top:2px;">
+                    <div style="flex:1;min-width:0;"><div style="font-size:0.68em;color:#bbf7d0;font-weight:700;" data-i18n="adminOwnEarningsTitle"></div><div style="font-size:0.56em;color:#64748b;margin-top:2px;line-height:1.4;" data-i18n="adminOwnEarningsNote"></div></div>
+                    <div id="admin-own-earnings" style="font-size:1em;font-weight:900;color:#34d399;white-space:nowrap;flex-shrink:0;">0 Pi</div>
+                </div>
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px;padding-top:10px;border-top:1.5px solid rgba(16,185,129,0.4);">
+                    <div style="font-size:0.72em;color:#f0fdf4;font-weight:900;text-transform:uppercase;" data-i18n="netEarningsTotalLabel"></div>
+                    <div id="admin-net-total-earnings" style="font-size:1.5em;font-weight:900;color:#4ade80;">0 Pi</div>
                 </div>
             </div>
-            <div style="background:#0f172a;border:1px solid #334155;border-radius:12px;padding:10px;margin-bottom:8px;">
-                <div style="font-size:0.65em;color:#94a3b8;font-weight:700;margin-bottom:8px;text-transform:uppercase;">📈 <span data-i18n="salesTrendTitle"></span></div>
-                <div id="sales-trend-chart" style="min-height:90px;display:flex;align-items:center;justify-content:center;color:#475569;font-size:0.7em;"></div>
+            <div style="background:#0f172a;border:1.5px solid #334155;border-radius:14px;padding:12px;margin-bottom:8px;">
+                <div style="font-size:0.68em;color:#94a3b8;font-weight:800;text-transform:uppercase;text-align:center;margin-bottom:4px;">📊 <span data-i18n="grossVolumeTitle"></span></div>
+                <div style="font-size:0.6em;color:#64748b;text-align:center;margin-bottom:10px;line-height:1.5;padding:0 2px;" data-i18n="grossVolumeWarning"></div>
+                <div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px;min-width:0;">
+                    <div style="background:rgba(15,23,42,0.6);border:1px solid #334155;border-radius:10px;padding:10px;text-align:center;">
+                        <div style="font-size:0.58em;color:#94a3b8;font-weight:700;margin-bottom:4px;" data-i18n="totalVolumeAll"></div>
+                        <div id="admin-total-volume" style="font-size:1.2em;font-weight:900;color:#fbbf24;">0 Pi</div>
+                        <div style="font-size:0.55em;color:#64748b;line-height:1.4;margin-top:6px;" data-i18n="totalVolumeAllExplain"></div>
+                    </div>
+                    <div style="background:rgba(15,23,42,0.6);border:1px solid #334155;border-radius:10px;padding:10px;text-align:center;">
+                        <div style="font-size:0.58em;color:#94a3b8;font-weight:700;margin-bottom:4px;" data-i18n="userOwnedVolume"></div>
+                        <div id="admin-user-volume" style="font-size:1.2em;font-weight:900;color:#f87171;">0 Pi</div>
+                        <div style="font-size:0.55em;color:#64748b;line-height:1.4;margin-top:6px;" data-i18n="userOwnedVolumeExplain"></div>
+                    </div>
+                </div>
             </div>
             <button onclick="window.exportSalesCsv(this)" style="width:100%;padding:9px;margin-bottom:12px;border-radius:10px;border:1.5px solid #64748b;background:rgba(100,116,139,0.1);color:#cbd5e1;font-size:0.75em;font-weight:800;cursor:pointer;">⬇️ <span data-i18n="exportCsvBtn"></span></button>
             <div style="margin-top:12px;background:#1c0a0a;border:2px solid #ef4444;border-radius:12px;padding:10px;">
@@ -2613,13 +2635,17 @@ const i18n = {
     viewListBtn:"Listeyi Gör",closeListBtn:"Listeyi Kapat",
     soldFilterAll:"Hepsi",soldFilterPending:"Onay Bekleyen",soldFilterConfirmed:"Onaylanmış",soldFilterDisputed:"Sorun Bildirildi",soldFilterRefunded:"İade Edildi",
     walletBalanceLabel:"Domain Satışı Geliriniz",
-    platformWalletTitle:"PLATFORM CÜZDANI (TOPLAM KAZANÇ)",
-    platformWalletNote:"Sadece başka kullanıcılar tarafından listelenip satılan domainlerden alınan %5 komisyon kesintisidir. Satıcının payı (kalan %95) bu tutara dahil değildir.",
-    adminOwnEarningsTitle:"KİŞİSEL SATICI KAZANCIM",
-    adminOwnEarningsNote:"Sadece kendi ilanlarımdan (" + APP_CONFIG.adminUsername + ") elde ettiğim satış geliri. Başkalarının ilanları ve sistem domainleri hariç.",
-    totalVolumeAll:"Toplam Satış Hacmi",userOwnedVolume:"Kullanıcı Domain Geliri",
+    platformWalletTitle:"Komisyon Gelirim (%5)",
+    platformWalletNote:"Başka kullanıcılar tarafından listelenip satılan domainlerden alınan %5 komisyon. Satıcının payı (kalan %95) buna dahil değil; ödeme satıcıya serbest bırakıldıkça bu tutara eklenir.",
+    adminOwnEarningsTitle:"Kendi Domain Satış Gelirim (%100)",
+    adminOwnEarningsNote:"Sadece kendi ilanlarımdan (" + APP_CONFIG.adminUsername + ") elde ettiğim satış geliri — komisyon kesintisi yok, tamamı bana ait. Başkalarının ilanları hariç.",
+    netEarningsTitle:"Net Kazancım (Cüzdanıma Giren Para)",
+    netEarningsTotalLabel:"Toplam Net Kazanç",
+    grossVolumeTitle:"Platform Cirosu (Brüt Satış Hacmi)",
+    grossVolumeWarning:"⚠️ Aşağıdaki tutarlar SENİN kazancın DEĞİLDİR. Platformda bugüne kadar el değiştirmiş TÜM satış paralarının toplamıdır — satıcılara giden pay da dahildir. Sadece bilgi/istatistik amaçlıdır.",
+    totalVolumeAll:"Toplam Satış Hacmi",userOwnedVolume:"Satıcılara Ait Pay (Benim Değil)",
     totalVolumeAllExplain:"Satıcısı fark etmeksizin, şimdiye kadar tamamlanmış TÜM satışların fiyatları toplamı.",
-    userOwnedVolumeExplain:"Sadece \"sahibi belli\" (satıcı adı kayıtlı) domainlerin satışlarının toplamı — satış tamamlanır tamamlanmaz sayılır, ödemenin satıcıya serbest bırakılmasını beklemez.",
+    userOwnedVolumeExplain:"\"Sahibi belli\" (satıcı adı kayıtlı) domainlerin satış toplamı. Bunun %95'i ilgili satıcılara ait/ödenir — sadece %5 komisyon kısmı yukarıdaki Net Kazanç'a dahil edilir.",
     refreshBtn:"🔄 Yenile",viewBtn:"👁 Gör",
     resetDangerTitle:"TEHLİKELİ BÖLGE — GERİ DÖNÜŞÜ YOK",
     resetDangerNote:"global_sales, daily_stats tamamen silinir. Tüm kullanıcı puanları/rozetleri sıfırlanır. Marketin kendisi ve domain durumları etkilenmez. Bu işlem GERİ ALINAMAZ.",
@@ -3168,13 +3194,17 @@ const i18n = {
     viewListBtn:"View List",closeListBtn:"Close List",
     soldFilterAll:"All",soldFilterPending:"Pending Confirmation",soldFilterConfirmed:"Confirmed",soldFilterDisputed:"Issue Reported",soldFilterRefunded:"Refunded",
     walletBalanceLabel:"Your Domain Sales Earnings",
-    platformWalletTitle:"PLATFORM WALLET (TOTAL EARNINGS)",
-    platformWalletNote:"Only the 5% commission deducted from domains listed and sold by other users. The seller's share (remaining 95%) is not included in this amount.",
-    adminOwnEarningsTitle:"MY PERSONAL SELLER EARNINGS",
-    adminOwnEarningsNote:"Only from my own listings (" + APP_CONFIG.adminUsername + "). Excludes other users listings and system domains.",
-    totalVolumeAll:"Total Sales Volume",userOwnedVolume:"User-Owned Domain Income",
+    platformWalletTitle:"Commission Income (5%)",
+    platformWalletNote:"The 5% commission taken from domains listed and sold by other users. The seller's share (remaining 95%) is not included; added to this total as payouts are released to sellers.",
+    adminOwnEarningsTitle:"My Own Domain Sales Income (100%)",
+    adminOwnEarningsNote:"Sales revenue from my own listings only (" + APP_CONFIG.adminUsername + ") — no commission cut, all of it is mine. Excludes other users' listings.",
+    netEarningsTitle:"My Net Earnings (Money Actually Mine)",
+    netEarningsTotalLabel:"Total Net Earnings",
+    grossVolumeTitle:"Platform Turnover (Gross Sales Volume)",
+    grossVolumeWarning:"⚠️ The figures below are NOT your earnings. This is the total of ALL money that has changed hands on the platform so far — including the share paid out to sellers. For information/statistics only.",
+    totalVolumeAll:"Total Sales Volume",userOwnedVolume:"Sellers' Share (Not Mine)",
     totalVolumeAllExplain:"Total price of ALL completed sales so far, regardless of who the seller is.",
-    userOwnedVolumeExplain:"Total of sales where the domain has a recorded seller — counted as soon as the sale completes, without waiting for the payout to be released to the seller.",
+    userOwnedVolumeExplain:"Total of sales where the domain has a recorded seller. 95% of this belongs to/is paid out to those sellers — only the 5% commission portion is included in Net Earnings above.",
     refreshBtn:"🔄 Refresh",viewBtn:"👁 View",
     resetDangerTitle:"DANGER ZONE — IRREVERSIBLE",
     resetDangerNote:"global_sales and daily_stats will be permanently deleted. All user points/badges will be reset to zero. The market and domain statuses are NOT affected.",
@@ -3540,7 +3570,7 @@ window.switchAdminTab=function(tabId){
     document.querySelectorAll('.admin-tab-btn').forEach(b=>b.classList.toggle('active',b.dataset.tab===tabId));
     document.querySelectorAll('.admin-tab-panel').forEach(p=>p.classList.toggle('active',p.id===tabId));
     if(tabId==='tab-earnings') loadAdminEarnings();
-    if(tabId==='tab-stats') loadAllSalesDetail();
+    if(tabId==='tab-stats'){ loadAllSalesDetail(); window.loadSalesTrendChart(); }
     if(tabId==='tab-tickets'){ adminLoadTickets(); markTicketsSeen(); }
     if(tabId==='tab-offers'){ window.loadAdminOffersTable(); const b=document.getElementById('offers-count-badge'); if(b) b.style.display='none'; }
 };
@@ -4941,13 +4971,18 @@ window.loadAdminEarnings=async function(){
             const totalEl=document.getElementById('admin-total-volume');
             const userEl=document.getElementById('admin-user-volume');
             const ownEl=document.getElementById('admin-own-earnings');
+            const netTotalEl=document.getElementById('admin-net-total-earnings');
             if(platformEl) platformEl.textContent=fmt(result.platformEarnings);
             if(totalEl) totalEl.textContent=fmt(result.totalVolume);
             if(userEl) userEl.textContent=fmt(result.userOwnedVolume);
             if(ownEl) ownEl.textContent=fmt(result.adminOwnEarnings);
+            // YENİ: "Net Kazancım" bölümünün alt toplamı — komisyon geliri +
+            // kendi domain satış gelirim. Bu, cüzdanıma gerçekten giren
+            // TOPLAM parayı gösteriyor (brüt hacimle karıştırılmasın diye
+            // ayrı ve vurgulu gösteriliyor).
+            if(netTotalEl) netTotalEl.textContent=fmt(Number(result.platformEarnings||0)+Number(result.adminOwnEarnings||0));
         }
     }catch(e){console.error("Kazanç bilgisi alınamadı:",e);}
-    window.loadSalesTrendChart();
 };
 
 let lastSalesTrend=[];
