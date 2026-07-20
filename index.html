@@ -4901,20 +4901,29 @@ window.selectTrendDay=function(i){
     box.innerHTML=`<b style="color:#f1f5f9;">${label}</b><span style="color:#64748b;margin:0 6px;">·</span><span style="color:#fbbf24;font-weight:900;">${d.volume} Pi</span><span style="color:#64748b;margin:0 6px;">·</span><span style="color:#94a3b8;">${d.count} ${t('salesCountUnit')}</span>`;
     document.querySelectorAll('.trend-bar-col').forEach((el,idx)=>{ el.style.opacity = idx===i ? '1' : '0.55'; });
 };
+let salesTrendReqId=0;
 window.loadSalesTrendChart=async function(){
     const el=document.getElementById('sales-trend-chart');
     if(!el) return;
+    // FIX (bazen "Yükleniyor"da takılı kalma sorunu): bu fonksiyon birden
+    // fazla kaynaktan (sekme açılışı, yenile butonu, otomatik yenileme vb.)
+    // art arda/çakışarak çağrılabiliyor. Öncesinde, ESKİ bir çağrının yanıtı
+    // YENİ bir çağrının sonucunu ezip ekranı "yükleniyor" durumunda
+    // bırakabiliyordu. Artık her çağrı kendi sıra numarasını alıyor; yanıt
+    // geldiğinde hâlâ EN SON çağrı kendisi mi diye kontrol ediyor, değilse
+    // (yani araya daha yeni bir çağrı girmişse) ekranı hiç güncellemiyor.
+    const myReqId=++salesTrendReqId;
     el.innerHTML=`<span style="color:#475569;">${t('loadingLabel')}</span>`;
     try{
-        // FIX ("Yükleniyor" sonsuza kadar takılı kalma ihtimali): istek
-        // ağ sorunları yüzünden hiç yanıt vermeyebilirdi — 10 saniyelik bir
-        // zaman aşımı ekledik, bu süre geçerse "veri yok" değil, NET bir
+        // İstek ağ sorunları yüzünden hiç yanıt vermeyebilirdi — 10 saniyelik
+        // bir zaman aşımı ekledik, bu süre geçerse "veri yok" değil, NET bir
         // "tekrar dene" hata durumu gösteriliyor (ikisi birbirine karışmasın).
         const controller=new AbortController();
         const timeoutId=setTimeout(()=>controller.abort(),10000);
         const r=await fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'get_sales_trend',accessToken:piAccessToken}),signal:controller.signal});
         clearTimeout(timeoutId);
         const result=await r.json();
+        if(myReqId!==salesTrendReqId) return; // araya daha yeni bir çağrı girmiş, bu yanıtı yok say
         if(!result.success||!result.trend){
             el.innerHTML=`<span style="color:#f87171;">${escapeHtml(result.error||t('genericError'))}</span> <button onclick="window.loadSalesTrendChart()" style="margin-left:6px;padding:3px 8px;border-radius:6px;border:1px solid #64748b;background:none;color:#94a3b8;font-size:0.85em;cursor:pointer;">${t('retryBtn')}</button>`;
             return;
@@ -4983,6 +4992,7 @@ window.loadSalesTrendChart=async function(){
             <div id="sales-trend-info" style="min-height:18px;font-size:0.68em;text-align:center;padding:7px 4px;margin-top:8px;background:#1e293b;border:1px solid #334155;border-radius:8px;color:#94a3b8;">${t('trendTapHint')}</div>`;
         window.selectTrendDay(lastIdx);
     }catch(e){
+        if(myReqId!==salesTrendReqId) return; // araya daha yeni bir çağrı girmiş, bu hatayı yok say
         const msg = e.name==='AbortError' ? t('requestTimeoutMsg') : t('genericError');
         el.innerHTML=`<span style="color:#f87171;">${escapeHtml(msg)}</span> <button onclick="window.loadSalesTrendChart()" style="margin-left:6px;padding:3px 8px;border-radius:6px;border:1px solid #64748b;background:none;color:#94a3b8;font-size:0.85em;cursor:pointer;">${t('retryBtn')}</button>`;
     }
