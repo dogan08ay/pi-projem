@@ -2577,6 +2577,7 @@ const i18n = {
     buyerRatedSellerLabel:"Alıcı → Satıcı",sellerRatedBuyerLabel:"Satıcı → Alıcı",noCommentGiven:"Yorum yok",
     confirmRatingOfBuyerPrompt:(n)=>`Alıcıya ${n} yıldız vermek istediğinize emin misiniz? Bu işlem geri alınamaz.`,
     genericError:"Bir hata oluştu, lütfen tekrar deneyin.",
+    retryBtn:"Tekrar Dene",requestTimeoutMsg:"İstek zaman aşımına uğradı (bağlantı yavaş olabilir).",
     sellerRatingLabel:"Satıcı Puanı",noRatingsYet:"Henüz değerlendirme yok",
     myRatingAsSellerLabel:"Satıcı Olarak Puanınız",ratingsCountSuffix:"değerlendirme",
     salesTrendTitle:"Satış Trendi (Son 30 Gün)",exportCsvBtn:"Satış Verilerini CSV Olarak İndir",
@@ -3131,6 +3132,7 @@ const i18n = {
     buyerRatedSellerLabel:"Buyer → Seller",sellerRatedBuyerLabel:"Seller → Buyer",noCommentGiven:"No comment",
     confirmRatingOfBuyerPrompt:(n)=>`Are you sure you want to give the buyer ${n} star${n>1?'s':''}? This cannot be undone.`,
     genericError:"Something went wrong, please try again.",
+    retryBtn:"Retry",requestTimeoutMsg:"The request timed out (your connection may be slow).",
     sellerRatingLabel:"Seller Rating",noRatingsYet:"No ratings yet",
     myRatingAsSellerLabel:"Your Rating as a Seller",ratingsCountSuffix:"ratings",
     salesTrendTitle:"Sales Trend (Last 30 Days)",exportCsvBtn:"Download Sales Data as CSV",
@@ -4902,10 +4904,21 @@ window.selectTrendDay=function(i){
 window.loadSalesTrendChart=async function(){
     const el=document.getElementById('sales-trend-chart');
     if(!el) return;
+    el.innerHTML=`<span style="color:#475569;">${t('loadingLabel')}</span>`;
     try{
-        const r=await fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'get_sales_trend',accessToken:piAccessToken})});
+        // FIX ("Yükleniyor" sonsuza kadar takılı kalma ihtimali): istek
+        // ağ sorunları yüzünden hiç yanıt vermeyebilirdi — 10 saniyelik bir
+        // zaman aşımı ekledik, bu süre geçerse "veri yok" değil, NET bir
+        // "tekrar dene" hata durumu gösteriliyor (ikisi birbirine karışmasın).
+        const controller=new AbortController();
+        const timeoutId=setTimeout(()=>controller.abort(),10000);
+        const r=await fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'get_sales_trend',accessToken:piAccessToken}),signal:controller.signal});
+        clearTimeout(timeoutId);
         const result=await r.json();
-        if(!result.success||!result.trend){ el.textContent=t('genericError'); return; }
+        if(!result.success||!result.trend){
+            el.innerHTML=`<span style="color:#f87171;">${escapeHtml(result.error||t('genericError'))}</span> <button onclick="window.loadSalesTrendChart()" style="margin-left:6px;padding:3px 8px;border-radius:6px;border:1px solid #64748b;background:none;color:#94a3b8;font-size:0.85em;cursor:pointer;">${t('retryBtn')}</button>`;
+            return;
+        }
         const trend=result.trend;
         lastSalesTrend=trend;
         const maxVol=Math.max(1,...trend.map(d=>d.volume));
@@ -4969,7 +4982,10 @@ window.loadSalesTrendChart=async function(){
             </svg>
             <div id="sales-trend-info" style="min-height:18px;font-size:0.68em;text-align:center;padding:7px 4px;margin-top:8px;background:#1e293b;border:1px solid #334155;border-radius:8px;color:#94a3b8;">${t('trendTapHint')}</div>`;
         window.selectTrendDay(lastIdx);
-    }catch(e){ el.textContent=t('genericError'); }
+    }catch(e){
+        const msg = e.name==='AbortError' ? t('requestTimeoutMsg') : t('genericError');
+        el.innerHTML=`<span style="color:#f87171;">${escapeHtml(msg)}</span> <button onclick="window.loadSalesTrendChart()" style="margin-left:6px;padding:3px 8px;border-radius:6px;border:1px solid #64748b;background:none;color:#94a3b8;font-size:0.85em;cursor:pointer;">${t('retryBtn')}</button>`;
+    }
 };
 
 let lastCsvData=null;
