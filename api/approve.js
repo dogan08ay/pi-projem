@@ -433,13 +433,39 @@ async function reverseSaleAndPoints(db, domainName, buyerUsername, soldPrice, so
     await updateUserPoints(buyerUsername, -soldPrice, `sale_reversed_${domainName}`);
 
     // 3. daily_stats'ten de düş
+    // FIX: Eskiden burada doğrudan FieldValue.increment(-1) /
+    // increment(-soldPrice) kullanılıyordu. Bu, o günün sayacı zaten 0 ise
+    // (ör. domainin ORİJİNAL satışı hiç daily_stats'e yazılmamışsa — elle
+    // eklenmiş eski/test verisi, ya da sayaç daha önce başka bir işlemle
+    // zaten düşülmüşse) günlük istatistiği EKSİYE düşürüyordu. Artık bir
+    // transaction içinde önce mevcut değeri okuyup, çıkarma işlemini
+    // 0'ın altına inmeyecek şekilde (Math.max(0, ...)) uyguluyoruz. Eğer
+    // gerçekten bir tutarsızlık varsa (0'ın altına düşecek kadar büyük bir
+    // düşüş isteniyorsa) bunu sessizce yutmuyoruz, Sistem Kontrolü'ne
+    // "arka plan hatası" olarak düşüyoruz ki admin kaynağını araştırabilsin.
     if (soldAt) {
       const soldDate = new Date(soldAt).toISOString().split('T')[0];
       try {
-        await db.collection('daily_stats').doc(soldDate).set({
-          count: FieldValue.increment(-1),
-          volume: FieldValue.increment(-soldPrice)
-        }, { merge: true });
+        const statsRef = db.collection('daily_stats').doc(soldDate);
+        await db.runTransaction(async (tx) => {
+          const snap = await tx.get(statsRef);
+          const cur = snap.exists ? snap.data() : {};
+          const curCount = Number(cur.count || 0);
+          const curVolume = Number(cur.volume || 0);
+          const newCount = curCount - 1;
+          const newVolume = curVolume - soldPrice;
+          if (newCount < 0 || newVolume < 0) {
+            logSystemError(
+              'reverseSaleAndPoints:daily_stats_underflow',
+              `daily_stats/${soldDate} için düşüş, mevcut değerin altına inmeye çalıştı (count:${curCount}->${newCount}, volume:${curVolume}->${newVolume})`,
+              `domain=${domainName} buyer=${buyerUsername} soldPrice=${soldPrice}`
+            );
+          }
+          tx.set(statsRef, {
+            count: Math.max(0, newCount),
+            volume: Math.max(0, Math.round(newVolume * 1e7) / 1e7)
+          }, { merge: true });
+        });
         console.log(`[reverseSale] daily_stats güncellendi: ${soldDate}, -${soldPrice} Pi`);
       } catch (statErr) {
         console.error("[reverseSale] daily_stats güncelleme hatası:", statErr);
@@ -1257,13 +1283,14 @@ async function handlerImpl(req, res) {
       const issues = [];
       const addIssue = (severity, title, detail) => issues.push({ severity, title, detail });
 
-      const [domainsSnap, salesSnap, sellReqSnap, tmSnap, statsSnap, offersSnap] = await Promise.all([
+      const [domainsSnap, salesSnap, sellReqSnap, tmSnap, statsSnap, offersSnap, dailyStatsSnap] = await Promise.all([
         db.collection('domains').get(),
         db.collection('global_sales').get(),
         db.collection('sell_requests').get(),
         db.collection('trademark_claims').get(),
         db.collection('config').doc('platform_stats').get(),
-        db.collection('offers').get()
+        db.collection('offers').get(),
+        db.collection('daily_stats').get()
       ]);
 
       // global_sales'i domain adına göre indeksle (bir domain birden çok kez satılmış olabilir, hepsini tut)
@@ -1353,6 +1380,26 @@ async function handlerImpl(req, res) {
       if (orphanedOfferCount > 0) {
         addIssue('warning', `${orphanedOfferCount} teklif kaydı artık var olmayan/silinmiş domainlere ait (${orphanedOfferDomains.length} domain)`,
           `Etkilenen domainler: ${orphanedOfferDomains.join(', ')} — Admin panelindeki "🧹 Yetim Verileri Temizle" butonuyla kalıcı olarak silebilirsiniz.`);
+      }
+
+      // ── YENİ: Eksiye düşmüş günlük istatistik (daily_stats) kayıtları ──
+      // relist / kalıcı silme sırasında çalışan reverseSaleAndPoints,
+      // eskiden bir günün sayacını doğrudan increment(-1) ile düşürüyordu.
+      // Eğer o günün orijinal satışı hiç sayılmamışsa (elle eklenmiş eski
+      // veri, ya da sayaç daha önce başka bir işlemle zaten düşülmüşse) bu,
+      // günlük satış sayısını/hacmini EKSİYE düşürüyordu (bkz. "Satış
+      // İstatistikleri" sekmesinde negatif görünen günler). Artık yeni
+      // düşüşler 0'ın altına inmiyor (transaction ile korunuyor), ama
+      // GEÇMİŞTE oluşmuş eksi kayıtlar Firestore'da hâlâ durabilir. Burada
+      // bunları tespit edip admin'e bildiriyoruz.
+      const negativeDailyStats = [];
+      dailyStatsSnap.forEach(d => {
+        const dd = d.data();
+        if ((dd.count || 0) < 0 || (dd.volume || 0) < 0) negativeDailyStats.push(d.id);
+      });
+      if (negativeDailyStats.length > 0) {
+        addIssue('warning', `${negativeDailyStats.length} günün satış istatistiği (daily_stats) eksi değerde`,
+          `Etkilenen tarihler: ${negativeDailyStats.join(', ')} — Ekranda artık 0 olarak gösteriliyor, ama Firestore'daki gerçek değer hâlâ eksi. Firestore konsolundan ilgili "daily_stats/{tarih}" dokümanının count/volume alanlarını elle 0'a (veya doğru değere) düzeltmeniz gerekiyor.`);
       }
 
 
@@ -1473,7 +1520,7 @@ async function handlerImpl(req, res) {
         success: true,
         issues,
         connResults,
-        summary: { domainsScanned: domainsSnap.size, soldCount, salesScanned: salesSnap.size, sellRequestsScanned: sellReqSnap.size, trademarkClaimsScanned: tmSnap.size, backgroundErrors: recentErrors.length, offersScanned: offersSnap.size, orphanedOffers: orphanedOfferCount }
+        summary: { domainsScanned: domainsSnap.size, soldCount, salesScanned: salesSnap.size, sellRequestsScanned: sellReqSnap.size, trademarkClaimsScanned: tmSnap.size, backgroundErrors: recentErrors.length, offersScanned: offersSnap.size, orphanedOffers: orphanedOfferCount, negativeDailyStats: negativeDailyStats.length }
       });
     } catch (e) {
       console.error("run_system_checkup hatası:", e);
@@ -3135,12 +3182,17 @@ async function handlerImpl(req, res) {
     if (!realUsername) return res.status(403).json({ error: "Geçersiz oturum" });
     try {
       const db = getDb();
+      // YENİ: 'accepted' teklifler de artık listede kalıyor. Öncesinde bir
+      // teklif kabul edilir edilmez bu sorgudan tamamen düşüyordu — yani
+      // satıcı, "kabul ettim" dedikten sonra 15 dakikalık rezervasyon
+      // süresinde ne olduğunu (alıcı satın aldı mı, süre doldu mu) HİÇBİR
+      // ŞEKİLDE göremiyordu; teklif sanki hiç var olmamış gibi kayboluyordu.
       // 'countered': satıcının kendi verdiği karşı teklifi de burada
       // göstermeye devam ediyoruz ki alıcının yanıtını bekleyen teklif
       // listeden kaybolmasın (aksi halde satıcı ne olduğunu takip edemez).
       let offers = [];
       try {
-        const snap = await db.collection('offers').where('sellerUsername', '==', realUsername).where('status', 'in', ['pending', 'countered']).get();
+        const snap = await db.collection('offers').where('sellerUsername', '==', realUsername).where('status', 'in', ['pending', 'countered', 'accepted']).get();
         snap.forEach(d => offers.push({ id: d.id, ...d.data() }));
       } catch (idxErr) {
         // Firestore bu birleşik sorgu için composite index isteyebilir;
@@ -3149,7 +3201,7 @@ async function handlerImpl(req, res) {
         // JS tarafında yapıyoruz.
         console.error('[get_received_offers] composite index hatası, fallback kullanılıyor:', idxErr.message);
         const snap = await db.collection('offers').where('sellerUsername', '==', realUsername).get();
-        snap.forEach(d => { const data = d.data(); if (data.status === 'pending' || data.status === 'countered') offers.push({ id: d.id, ...data }); });
+        snap.forEach(d => { const data = d.data(); if (data.status === 'pending' || data.status === 'countered' || data.status === 'accepted') offers.push({ id: d.id, ...data }); });
       }
       offers.sort((a, b) => b.createdAt - a.createdAt);
       return res.status(200).json({ success: true, offers });
@@ -3198,7 +3250,7 @@ async function handlerImpl(req, res) {
           type: 'offer_accepted',
           role: 'buyer',
           title: '✅ Teklifiniz Kabul Edildi!',
-          body: `"${offer.domainName}" için ${offer.offerPrice} Pi teklifiniz kabul edildi. Bu domaini ${minutes} dakika boyunca SADECE siz satın alabilirsiniz — süre dolarsa herkese açılır.`,
+          body: `"${offer.domainName}" için ${offer.offerPrice} Pi teklifiniz kabul edildi. Fiyat ${minutes} dakika boyunca ${offer.offerPrice} Pi olarak SİZİN için geçerli ve domain SADECE size rezerve edildi. Bu süre içinde satın almazsanız teklifiniz geçerliliğini kaybeder ve domain eski fiyatıyla tekrar herkese açılır.`,
           domainName: offer.domainName
         });
       } else {
@@ -3324,7 +3376,18 @@ async function handlerImpl(req, res) {
           type: 'counter_offer_accepted',
           role: 'seller',
           title: '✅ Karşı Teklifiniz Kabul Edildi!',
-          body: `"${offer.domainName}" için ${offer.counterPrice} Pi karşı teklifiniz @${realUsername} tarafından kabul edildi. Alıcıya ${minutes} dakikalık öncelikli satın alma süresi tanındı.`,
+          body: `"${offer.domainName}" için ${offer.counterPrice} Pi karşı teklifiniz @${realUsername} tarafından kabul edildi. Alıcıya ${minutes} dakikalık öncelikli satın alma süresi tanındı — bu süre içinde satın almazsa domain eski fiyatıyla tekrar herkese açılacak.`,
+          domainName: offer.domainName
+        });
+        // YENİ: Alıcıya da (kendi verdiği kabul işleminin) 15 dakikalık
+        // rezervasyon penceresini ve süresi dolarsa ne olacağını açıkça
+        // teyit eden bir bildirim gönderiliyor — önceden bu bilgi sadece
+        // satıcıya gidiyordu, alıcı ekranda görmeden bilmiyordu.
+        await sendNotification(realUsername, {
+          type: 'offer_accepted',
+          role: 'buyer',
+          title: '✅ Anlaşma Sağlandı!',
+          body: `"${offer.domainName}" için ${offer.counterPrice} Pi karşı teklifi kabul ettiniz. Fiyat ${minutes} dakika boyunca ${offer.counterPrice} Pi olarak SİZİN için geçerli ve domain SADECE size rezerve edildi. Bu süre içinde satın almazsanız teklifiniz geçerliliğini kaybeder ve domain eski fiyatıyla tekrar herkese açılır.`,
           domainName: offer.domainName
         });
       } else {
@@ -3819,10 +3882,24 @@ async function handlerImpl(req, res) {
         if (dData.sold === true) {
           return res.status(409).json({ error: "Bu domain az önce başka biri tarafından satın alındı." });
         }
+        // YENİ: Bir domainin SATICISI, kendi ilanını satın alamaz. Bu özellikle
+        // teklif kabul edilip 15 dakikalık rezervasyon başladığında karışıklığa
+        // yol açıyordu: satıcı "anlaşma sağlandı, şimdi ne yapmalıyım" diye
+        // domain sayfasına gidip oradaki "Satın Al" butonuna basıyor (buton
+        // eskiden herkese, satıcıya bile açıktı — bkz. index.html düzeltmesi),
+        // Pi cüzdanı açılıp birkaç saniye "işliyor" göründükten SONRA burada
+        // reddediliyordu. Bu kontrolü en başa, gerçek Pi API çağrısından
+        // (dolayısıyla herhangi bir para hareketinden) ÖNCEYE koyuyoruz —
+        // hem net bir hata mesajı dönüyor hem de kullanıcı boşuna Pi
+        // cüzdanında onay vermiş olmuyor.
+        const requesterUsername = await getRealUsername(accessToken);
+        if (dData.sellerUsername && requesterUsername && dData.sellerUsername === requesterUsername) {
+          return res.status(403).json({ error: "Bu domainin satıcısı sizsiniz — kendi ilanınızı satın alamazsınız.", ownListing: true });
+        }
         // Anlaşılan teklif sonrası öncelik penceresi: bu süre boyunca domain
         // SADECE anlaşan alıcıya satılabilir, başkası denerse engellenir.
         if (dData.reservedFor && dData.reservedUntil && dData.reservedUntil > Date.now()) {
-          const buyerUsername = await getRealUsername(accessToken);
+          const buyerUsername = requesterUsername || await getRealUsername(accessToken);
           if (buyerUsername !== dData.reservedFor) {
             const minutesLeft = Math.ceil((dData.reservedUntil - Date.now()) / 60000);
             return res.status(409).json({ error: `Bu domain şu anda anlaşma sağlanan bir alıcı için ayrılmış. ${minutesLeft} dakika sonra herkese açılacak.`, reserved: true, reservedUntil: dData.reservedUntil });
@@ -3882,6 +3959,13 @@ async function handlerImpl(req, res) {
           const realPrice = domainSnap.exists ? domainSnap.data().price : null;
           if (typeof realPrice !== 'number') return { ok: false, reason: 'invalid_domain' };
           if (domainSnap.data().sold === true) return { ok: false, reason: 'already_sold' };
+          // YENİ: 'approve' aşamasındaki kontrolün aynısı burada da (savunma
+          // katmanı olarak) tekrarlanıyor — teorik olarak approve ile
+          // complete arasındaki dar zaman diliminde sellerUsername
+          // değişmiş olabilir ya da approve adımı bir şekilde atlanmış olabilir.
+          if (domainSnap.data().sellerUsername && domainSnap.data().sellerUsername === username) {
+            return { ok: false, reason: 'own_listing' };
+          }
           // Rezervasyon kontrolü BURADA (transaction içinde) da tekrarlanıyor
           // — approve aşamasındaki kontrol sadece erken/kaba bir engel,
           // asıl atomik/kesin koruma bu transaction'da olmalı.
@@ -3931,6 +4015,28 @@ async function handlerImpl(req, res) {
             return res.status(409).json({
               error: "Bu domain, ödemeniz tamamlanırken anlaşma sağlanan başka bir alıcı için rezerve edilmiş. Paranız alındığı için otomatik olarak destek ekibine bildirildi, en kısa sürede sizinle iletişime geçip iadenizi yapacaklar.",
               raceCondition: true
+            });
+          }
+          if (txResult.reason === 'own_listing') {
+            // Kendi domainini satın almaya çalıştı. 'approve' aşamasındaki
+            // ön-kontrol bunu normalde daha en baştan (Pi API'ye hiç
+            // gitmeden) engeller; bu dal sadece o kontrolün bir şekilde
+            // atlandığı çok dar bir kenar durumda tetiklenir. Ödeme yine de
+            // blockchain'de tamamlanmış olabileceğinden aynı acil-iade
+            // akışını izliyoruz.
+            raceLost = true;
+            console.error(`[KENDİ İLANINI SATIN ALMA] ${username}, kendi ilanı olan ${domainName} için ödeme tamamladı. txid:${txid}`);
+            await logSystemError('complete_own_listing_purchase', new Error('Seller attempted to buy their own domain — payment completed'), `Kullanıcı:@${username} Domain:${domainName} Txid:${txid} — MANUEL İADE GEREKİYOR`);
+            await sendTG(TG_CHAT_ID, `🚨 *ACİL — KENDİ İLANINI SATIN ALMA / MANUEL İADE GEREKİYOR*\n\n@${username}, kendi ilanı olan "${domainName}" için ödeme yaptı (txid: ${txid}). Bu kullanıcıya elle Pi iadesi yapılması gerekiyor.`);
+            await sendNotificationToAdmin({
+              type: 'own_listing_refund_needed',
+              title: '🚨 Acil: Elle İade Gerekiyor (Kendi İlanı)',
+              body: `@${username}, kendi ilanı olan "${domainName}" için ödeme yaptı (txid: ${txid}). Manuel iade gerekiyor.`,
+              domainName, buyer: username, txid
+            });
+            return res.status(403).json({
+              error: "Bu domainin satıcısı sizsiniz, kendi ilanınızı satın alamazsınız. Paranız alındığı için otomatik olarak destek ekibine bildirildi, en kısa sürede sizinle iletişime geçip iadenizi yapacaklar.",
+              ownListing: true
             });
           }
           // 'already_sold': yarışı kaybetti. Ödeme Pi blockchain'inde zaten
