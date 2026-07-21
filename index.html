@@ -2568,6 +2568,7 @@ const i18n = {
     submitOfferTitle:"Teklif Ver",offerPriceLabel:"Teklif Tutarınız (Pi)",offerMessageLabel:"Mesajınız (opsiyonel)",
     sendOfferBtn:"Teklifi Gönder",makeOfferBtn:"Teklif Ver",currentPriceLabel:"Liste Fiyatı",
     cannotOfferOwnDomain:"Kendi domaininize teklif veremezsiniz.",
+    ownListingTag:"Kendi İlanınız — Satın Alamazsınız",
     raceConditionMsg:"Bu domain, ödemeniz tamamlanırken çok kısa bir süre önce başka biri tarafından satın alınmış. Paranız alındığı için destek ekibimize otomatik bildirim gitti, en kısa sürede sizinle iletişime geçip iadenizi yapacaklar.",
     reservedForYouMsg:(m)=>`🎉 Anlaştınız! ${m} dakika boyunca bu domaini sadece siz alabilirsiniz`,
     reservedForOtherMsg:(m)=>`🔒 Anlaşma sağlanan bir alıcı için ayrılmış — ${m} dakika sonra herkese açılır`,
@@ -2590,6 +2591,10 @@ const i18n = {
     offerDetailDomain:"Domain Adı",offerDetailStatus:"Teklif Durumu",offerDetailListPrice:"Domain Liste Fiyatı",
     offerDetailOfferedPrice:"Teklif Edilen Fiyat",offerDetailCounterPrice:"Karşı Teklif Fiyatı",
     offerDetailBuyerNote:"Alıcı Notu",offerDetailSellerNote:"Satıcı Notu",offerDetailFrom:"Kimden",
+    offerDetailOutcome:"Sonuç",
+    offerOutcomePurchased:"Satın Alındı / Satıldı",
+    offerOutcomeReserved:(m,p)=>`${p} Pi fiyatla rezerve edildi — ${m} dakika içinde satın alınmazsa teklif geçerliliğini kaybedecek.`,
+    offerOutcomeExpiredUnused:"Teklif süresi doldu — satın alma gerçekleşmedi. Domain eski fiyatıyla tekrar satışa açıldı.",
     deleteAccountLink:"HESABIMI SİL",deleteAccountTitle:"Hesap ve Veri Silme Talebi",
     deleteAccountExplain1:"Hesabınızın ve kişisel verilerinizin silinmesini talep edebilirsiniz. Talebiniz admin'e iletilir ve incelenir.",
     deleteAccountExplain2:"Not: Tamamlanmış satışlarınıza ait finansal kayıtlar (muhasebe ve anlaşmazlık durumları için) yasal saklama yükümlülükleri nedeniyle tamamen silinemeyebilir; bu durumda kişisel bilgileriniz anonimleştirilir. Admin süreci elle inceleyip size dönüş yapacaktır.",
@@ -3127,6 +3132,7 @@ const i18n = {
     submitOfferTitle:"Make an Offer",offerPriceLabel:"Your Offer (Pi)",offerMessageLabel:"Message (optional)",
     sendOfferBtn:"Send Offer",makeOfferBtn:"Make an Offer",currentPriceLabel:"List Price",
     cannotOfferOwnDomain:"You can't make an offer on your own domain.",
+    ownListingTag:"Your Own Listing — Can't Buy",
     raceConditionMsg:"This domain was purchased by someone else moments before your payment finished. Since your payment was received, our support team has been notified automatically and will contact you soon to process your refund.",
     reservedForYouMsg:(m)=>`🎉 Deal made! You're the only one who can buy this domain for the next ${m} min`,
     reservedForOtherMsg:(m)=>`🔒 Reserved for a buyer who reached a deal — opens to everyone in ${m} min`,
@@ -3149,6 +3155,10 @@ const i18n = {
     offerDetailDomain:"Domain Name",offerDetailStatus:"Offer Status",offerDetailListPrice:"Domain List Price",
     offerDetailOfferedPrice:"Offered Price",offerDetailCounterPrice:"Counter-Offer Price",
     offerDetailBuyerNote:"Buyer's Note",offerDetailSellerNote:"Seller's Note",offerDetailFrom:"From",
+    offerDetailOutcome:"Outcome",
+    offerOutcomePurchased:"Purchased / Sold",
+    offerOutcomeReserved:(m,p)=>`Reserved at ${p} Pi — if not purchased within ${m} minutes, the offer will expire.`,
+    offerOutcomeExpiredUnused:"Offer expired — purchase did not happen. The domain is listed again at its original price.",
     deleteAccountLink:"DELETE MY ACCOUNT",deleteAccountTitle:"Account & Data Deletion Request",
     deleteAccountExplain1:"You can request that your account and personal data be deleted. Your request will be sent to the admin for review.",
     deleteAccountExplain2:"Note: Financial records tied to completed sales (kept for accounting and potential dispute purposes) may not be fully deletable due to legal retention requirements; in that case your personal info will be anonymized instead. The admin will review this manually and follow up with you.",
@@ -4079,7 +4089,14 @@ window.openDomainDetail=function(domainName){
         const isFav=userFavorites.has(domainName);
         actionHtml+=`<button onclick="window.toggleFavorite('${domainName}')" style="width:100%;padding:9px;margin-bottom:8px;border-radius:9px;border:1.5px solid #f59e0b;background:${isFav?'rgba(245,158,11,0.9)':'rgba(245,158,11,0.1)'};color:${isFav?'#1e1b4b':'#fbbf24'};font-weight:800;font-size:0.78em;cursor:pointer;">${isFav?'★ '+t('favoriteRemoveBtn'):'☆ '+t('favoriteAddBtn')}</button>`;
     }
-    if(!data.sold&&isAuth){actionHtml+=`<button class="btn-buy" style="width:100%;padding:10px;font-size:0.9em;" onclick="document.getElementById('domain-detail-modal').style.display='none';pendingDomain='${domainName}';pendingPrice=${data.price};document.getElementById('pre-buy-modal').style.display='flex';">${t('buyNow')}</button>`;}
+    if(!data.sold&&isAuth){
+        const isOwnListing=data.sellerUsername && data.sellerUsername===currentUser;
+        if(isOwnListing){
+            actionHtml+=`<div style="width:100%;padding:10px;font-size:0.9em;border-radius:9px;background:#334155;color:#94a3b8;text-align:center;font-weight:800;">👤 ${t('ownListingTag')}</div>`;
+        } else {
+            actionHtml+=`<button class="btn-buy" style="width:100%;padding:10px;font-size:0.9em;" onclick="document.getElementById('domain-detail-modal').style.display='none';pendingDomain='${domainName}';pendingPrice=${data.price};document.getElementById('pre-buy-modal').style.display='flex';">${t('buyNow')}</button>`;
+        }
+    }
     if(!data.sold && data.reservedFor && data.reservedUntil && data.reservedUntil>Date.now()){
         const isMine=isAuth && data.reservedFor===currentUser;
         const minutesLeft=Math.max(1,Math.ceil((data.reservedUntil-Date.now())/60000));
@@ -4573,6 +4590,33 @@ function buildOfferDetailTable(o, statusLabel, statusColor){
     if(o.counterPrice!=null) rows.push([t('offerDetailCounterPrice'), `<span style="color:#a5b4fc;font-weight:800;">${o.counterPrice} Pi</span>`]);
     if(o.message) rows.push([t('offerDetailBuyerNote'), escapeHtml(o.message)]);
     if(o.counterMessage) rows.push([t('offerDetailSellerNote'), escapeHtml(o.counterMessage)]);
+    // YENİ: Teklif kabul edildikten sonra ne olduğu (rezervasyon devam
+    // ediyor mu, satın alındı mı, süresi mi doldu) burada CANLI olarak
+    // gösteriliyor. domainData zaten anlık (onSnapshot) güncellendiği için
+    // bu satır her render'da güncel duruma göre değişir — ayrıca sunucuda
+    // ayrı bir "offer.status" güncellemesi gerekmiyor, tamamen domain'in o
+    // anki gerçek durumundan (sold/buyer/reservedFor/reservedUntil) türetiliyor.
+    if(o.status==='accepted'){
+        const dd=domainData[o.domainName];
+        const agreedPrice=(o.counterPrice!=null?o.counterPrice:o.offerPrice);
+        if(dd && dd.sold===true && dd.buyer===o.buyerUsername){
+            // Rezervasyon süresi içinde (ya da sonrasında, fark etmez) bu
+            // alıcı gerçekten satın almış — kesin sonuç.
+            const dateStr=dd.at?new Date(dd.at).toLocaleDateString(locale,{day:'2-digit',month:'2-digit',year:'numeric'})+' '+new Date(dd.at).toLocaleTimeString(locale,{hour:'2-digit',minute:'2-digit'}):null;
+            rows.push([t('offerDetailOutcome'), `<span style="color:#34d399;font-weight:800;">✅ ${t('offerOutcomePurchased')}</span>`]);
+            rows.push([t('detailFieldBuyerUser'), '@'+(dd.buyer||o.buyerUsername)]);
+            rows.push([t('detailFieldSellerUser'), dd.sellerUsername?('@'+dd.sellerUsername):'—']);
+            if(dateStr) rows.push([t('saleDateLabel'), dateStr]);
+        } else if(dd && dd.reservedFor===o.buyerUsername && dd.reservedUntil && dd.reservedUntil>Date.now()){
+            // Rezervasyon hâlâ aktif — geri sayım gösteriliyor.
+            const minutesLeft=Math.max(1,Math.ceil((dd.reservedUntil-Date.now())/60000));
+            rows.push([t('offerDetailOutcome'), `<span style="color:#fbbf24;font-weight:800;">⏳ ${t('offerOutcomeReserved')(minutesLeft,agreedPrice)}</span>`]);
+        } else {
+            // Ne satın alınmış ne de rezervasyon hâlâ aktif → süre doldu,
+            // satın alma hiç gerçekleşmedi.
+            rows.push([t('offerDetailOutcome'), `<span style="color:#94a3b8;font-weight:800;">⌛ ${t('offerOutcomeExpiredUnused')}</span>`]);
+        }
+    }
     return `<table style="width:100%;border-collapse:collapse;background:#0b1220;border-radius:8px;overflow:hidden;table-layout:fixed;">
         <tbody>${rows.map(([label,val])=>`<tr>
             <td style="padding:6px 8px;font-size:0.62em;color:#64748b;font-weight:800;text-transform:uppercase;width:42%;vertical-align:top;border-top:1px solid #1e293b;">${label}</td>
@@ -4580,6 +4624,7 @@ function buildOfferDetailTable(o, statusLabel, statusColor){
         </tr>`).join('')}</tbody>
     </table>`;
 }
+let lastMyOffersData=[];
 window.loadMyOffers=async function(){
     const box=document.getElementById('my-offers-content');
     if(!box) return;
@@ -4589,21 +4634,34 @@ window.loadMyOffers=async function(){
     try{
         const r=await fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'get_my_offers',accessToken:piAccessToken})});
         const result=await r.json();
-        if(!result.success||!result.offers||!result.offers.length){ box.innerHTML=`<p style="font-size:0.72em;opacity:0.5;text-align:center;">${t('noOffersYet')}</p>`; return; }
-        const statusMap={pending:{label:t('offerStatusPending'),color:'#fbbf24'},accepted:{label:t('offerStatusAccepted'),color:'#34d399'},rejected:{label:t('offerStatusRejected'),color:'#f87171'},withdrawn:{label:t('offerStatusWithdrawn'),color:'#94a3b8'},expired:{label:t('offerStatusExpired'),color:'#94a3b8'},countered:{label:t('offerStatusCountered'),color:'#818cf8'}};
-        box.innerHTML=result.offers.map(o=>{
-            const sv=statusMap[o.status]||statusMap.pending;
-            return `<div style="background:#0f172a;border-radius:9px;padding:10px;margin-bottom:8px;border-left:3px solid ${sv.color};">
-                ${buildOfferDetailTable(o, sv.label, sv.color)}
-                ${o.status==='pending'?`<button onclick="window.withdrawOffer('${o.id}')" style="margin-top:8px;padding:5px 10px;border-radius:6px;border:1px solid #64748b;background:none;color:#94a3b8;font-size:0.65em;cursor:pointer;">${t('withdrawOfferBtn')}</button>`:''}
-                ${o.status==='countered'?`<div style="display:flex;gap:6px;margin-top:8px;">
-                        <button onclick="window.respondCounterOffer('${o.id}',true)" style="flex:1;padding:6px;border-radius:6px;border:none;background:#10b981;color:#fff;font-weight:800;font-size:0.65em;cursor:pointer;">✅ ${t('acceptOfferBtn')}</button>
-                        <button onclick="window.respondCounterOffer('${o.id}',false)" style="flex:1;padding:6px;border-radius:6px;border:none;background:#ef4444;color:#fff;font-weight:800;font-size:0.65em;cursor:pointer;">❌ ${t('rejectOfferBtn')}</button>
-                    </div>`:''}
-            </div>`;
-        }).join('');
+        if(!result.success||!result.offers||!result.offers.length){ lastMyOffersData=[]; box.innerHTML=`<p style="font-size:0.72em;opacity:0.5;text-align:center;">${t('noOffersYet')}</p>`; return; }
+        lastMyOffersData=result.offers;
+        renderMyOffersBox();
     }catch(e){ box.innerHTML=`<p style="color:#f87171;font-size:0.72em;text-align:center;">${t('genericError')}</p>`; }
 };
+// YENİ: Sadece görüntüyü (backend'e tekrar sormadan) günceller — kabul
+// edilmiş bir teklifin rezervasyon geri sayımı azalırken veya süre dolup
+// "satın alma gerçekleşmedi"ye dönerken ekranın CANLI güncellenmesi için.
+// domainData zaten onSnapshot ile anlık güncel; bu fonksiyon periyodik
+// olarak (aşağıdaki setInterval) veya domainData her değiştiğinde tekrar
+// çağrılıp mevcut teklif verisini güncel domain durumuna göre yeniden çizer.
+function renderMyOffersBox(){
+    const box=document.getElementById('my-offers-content');
+    if(!box || !myOffersExpanded) return;
+    if(!lastMyOffersData.length){ box.innerHTML=`<p style="font-size:0.72em;opacity:0.5;text-align:center;">${t('noOffersYet')}</p>`; return; }
+    const statusMap={pending:{label:t('offerStatusPending'),color:'#fbbf24'},accepted:{label:t('offerStatusAccepted'),color:'#34d399'},rejected:{label:t('offerStatusRejected'),color:'#f87171'},withdrawn:{label:t('offerStatusWithdrawn'),color:'#94a3b8'},expired:{label:t('offerStatusExpired'),color:'#94a3b8'},countered:{label:t('offerStatusCountered'),color:'#818cf8'}};
+    box.innerHTML=lastMyOffersData.map(o=>{
+        const sv=statusMap[o.status]||statusMap.pending;
+        return `<div style="background:#0f172a;border-radius:9px;padding:10px;margin-bottom:8px;border-left:3px solid ${sv.color};">
+            ${buildOfferDetailTable(o, sv.label, sv.color)}
+            ${o.status==='pending'?`<button onclick="window.withdrawOffer('${o.id}')" style="margin-top:8px;padding:5px 10px;border-radius:6px;border:1px solid #64748b;background:none;color:#94a3b8;font-size:0.65em;cursor:pointer;">${t('withdrawOfferBtn')}</button>`:''}
+            ${o.status==='countered'?`<div style="display:flex;gap:6px;margin-top:8px;">
+                    <button onclick="window.respondCounterOffer('${o.id}',true)" style="flex:1;padding:6px;border-radius:6px;border:none;background:#10b981;color:#fff;font-weight:800;font-size:0.65em;cursor:pointer;">✅ ${t('acceptOfferBtn')}</button>
+                    <button onclick="window.respondCounterOffer('${o.id}',false)" style="flex:1;padding:6px;border-radius:6px;border:none;background:#ef4444;color:#fff;font-weight:800;font-size:0.65em;cursor:pointer;">❌ ${t('rejectOfferBtn')}</button>
+                </div>`:''}
+        </div>`;
+    }).join('');
+}
 let receivedOffersExpanded=false;
 // FIX: "Gelen Teklifler" başlığındaki bildirim rozeti artık sekme açılışında
 // değil, bu panel GERÇEKTEN açıldığında kayboluyor (bkz. switchUserTab'daki not).
@@ -4612,6 +4670,7 @@ window.toggleReceivedOffersList=function(){
     if(receivedOffersExpanded){ markRoleNotificationsRead('seller',['offer_received','counter_offer_accepted','counter_offer_rejected']); }
     window.loadReceivedOffers();
 };
+let lastReceivedOffersData=[];
 window.loadReceivedOffers=async function(){
     const box=document.getElementById('received-offers-content');
     if(!box) return;
@@ -4621,25 +4680,55 @@ window.loadReceivedOffers=async function(){
     try{
         const r=await fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'get_received_offers',accessToken:piAccessToken})});
         const result=await r.json();
-        if(!result.success||!result.offers||!result.offers.length){ box.innerHTML=`<p style="font-size:0.72em;opacity:0.5;text-align:center;">${t('noOffersYet')}</p>`; return; }
-        const statusMap={pending:{label:t('offerStatusPending'),color:'#fbbf24'},countered:{label:t('offerStatusCountered'),color:'#818cf8'}};
-        box.innerHTML=result.offers.map(o=>{
-            const isCountered=o.status==='countered';
-            const sv=statusMap[o.status]||statusMap.pending;
-            return `
-            <div style="background:#0f172a;border-radius:9px;padding:10px;margin-bottom:8px;border-left:3px solid ${sv.color};">
-                <div style="font-size:0.65em;color:#94a3b8;margin-bottom:6px;">👤 ${t('offerDetailFrom')}: <b style="color:#e2e8f0;">@${escapeHtml(o.buyerUsername)}</b></div>
-                ${buildOfferDetailTable(o, sv.label, sv.color)}
-                ${isCountered?`<div style="margin-top:8px;font-size:0.65em;color:#94a3b8;">${t('offerStatusPendingBuyerResponse')}</div>`
-                :`<div style="display:flex;gap:6px;margin-top:8px;">
+        if(!result.success||!result.offers||!result.offers.length){ lastReceivedOffersData=[]; box.innerHTML=`<p style="font-size:0.72em;opacity:0.5;text-align:center;">${t('noOffersYet')}</p>`; return; }
+        lastReceivedOffersData=result.offers;
+        renderReceivedOffersBox();
+    }catch(e){ box.innerHTML=`<p style="color:#f87171;font-size:0.72em;text-align:center;">${t('genericError')}</p>`; }
+};
+// YENİ: Aynı loadMyOffers/renderMyOffersBox mantığı — kabul edilmiş bir
+// teklifin rezervasyon geri sayımı/sonucu, backend'e tekrar sormadan,
+// güncel domainData'ya göre canlı yeniden çiziliyor.
+function renderReceivedOffersBox(){
+    const box=document.getElementById('received-offers-content');
+    if(!box || !receivedOffersExpanded) return;
+    if(!lastReceivedOffersData.length){ box.innerHTML=`<p style="font-size:0.72em;opacity:0.5;text-align:center;">${t('noOffersYet')}</p>`; return; }
+    const statusMap={pending:{label:t('offerStatusPending'),color:'#fbbf24'},countered:{label:t('offerStatusCountered'),color:'#818cf8'},accepted:{label:t('offerStatusAccepted'),color:'#34d399'}};
+    box.innerHTML=lastReceivedOffersData.map(o=>{
+        const sv=statusMap[o.status]||statusMap.pending;
+        // Aksiyon butonları (kabul/karşı teklif/reddet) SADECE gerçekten
+        // bekleyen ('pending') tekliflerde gösterilir. 'countered' iken
+        // top yine alıcıda, bekleniyor. 'accepted' artık burada da
+        // görünüyor (bkz. get_received_offers) ama aksiyon gerektirmiyor —
+        // buildOfferDetailTable zaten rezervasyon/sonuç durumunu satır
+        // olarak gösteriyor.
+        let actionsHtml;
+        if(o.status==='countered'){
+            actionsHtml=`<div style="margin-top:8px;font-size:0.65em;color:#94a3b8;">${t('offerStatusPendingBuyerResponse')}</div>`;
+        } else if(o.status==='accepted'){
+            actionsHtml='';
+        } else {
+            actionsHtml=`<div style="display:flex;gap:6px;margin-top:8px;">
                     <button onclick="window.respondOffer('${o.id}',true)" style="flex:1;padding:6px;border-radius:6px;border:none;background:#10b981;color:#fff;font-weight:800;font-size:0.68em;cursor:pointer;">✅ ${t('acceptOfferBtn')}</button>
                     <button onclick="window.counterOffer('${o.id}')" style="flex:1;padding:6px;border-radius:6px;border:1.5px solid #818cf8;background:rgba(129,140,248,0.1);color:#a5b4fc;font-weight:800;font-size:0.68em;cursor:pointer;">🔄 ${t('counterOfferBtn')}</button>
                     <button onclick="window.respondOffer('${o.id}',false)" style="flex:1;padding:6px;border-radius:6px;border:none;background:#ef4444;color:#fff;font-weight:800;font-size:0.68em;cursor:pointer;">❌ ${t('rejectOfferBtn')}</button>
-                </div>`}
-            </div>`;
-        }).join('');
-    }catch(e){ box.innerHTML=`<p style="color:#f87171;font-size:0.72em;text-align:center;">${t('genericError')}</p>`; }
-};
+                </div>`;
+        }
+        return `
+        <div style="background:#0f172a;border-radius:9px;padding:10px;margin-bottom:8px;border-left:3px solid ${sv.color};">
+            <div style="font-size:0.65em;color:#94a3b8;margin-bottom:6px;">👤 ${t('offerDetailFrom')}: <b style="color:#e2e8f0;">@${escapeHtml(o.buyerUsername)}</b></div>
+            ${buildOfferDetailTable(o, sv.label, sv.color)}
+            ${actionsHtml}
+        </div>`;
+    }).join('');
+}
+// YENİ: Tekliflerim/Gelen Teklifler panelleri açıkken, kabul edilmiş bir
+// teklifin 15 dakikalık geri sayımını ve süre dolunca "satın alma
+// gerçekleşmedi" durumuna geçişini CANLI göstermek için periyodik olarak
+// (backend'e tekrar sormadan, sadece mevcut veriyle) yeniden çiziyoruz.
+setInterval(()=>{
+    if(myOffersExpanded) renderMyOffersBox();
+    if(receivedOffersExpanded) renderReceivedOffersBox();
+}, 15000);
 window.openHowItWorksModal=function(){
     document.getElementById('how-it-works-modal').style.display='flex';
 };
@@ -5728,6 +5817,21 @@ function render(){
                 }
             }
         } else {
+            // FIX: Satıcının kendi ilanına "Satın Al" butonu gösteriliyordu.
+            // Satıcı bir teklif anlaşması sonrası (ya da sırf merakla) kendi
+            // domainine "Satın Al" derse, Pi cüzdanı açılıp birkaç saniye
+            // "işliyor" göründükten SONRA backend reddediyordu (kafa
+            // karıştırıcı, gereksiz bir bekleme). Artık buton hiç
+            // gösterilmiyor — kendi ilanınız olduğu net bir etiketle
+            // belirtiliyor.
+            const isOwnListing = isAuth && data.sellerUsername && data.sellerUsername===currentUser;
+            if(isOwnListing){
+                const ownTag=document.createElement('div');
+                ownTag.className='btn-buy';
+                ownTag.style.cssText='background:#334155;color:#94a3b8;cursor:default;text-align:center;';
+                ownTag.innerText='👤 '+t('ownListingTag');
+                card.appendChild(ownTag);
+            } else {
             const btn=document.createElement('button');
             btn.className='btn-buy';btn.innerText=t('buyNow');
             btn.onclick=(e)=>{
@@ -5737,6 +5841,7 @@ function render(){
                 document.getElementById('pre-buy-modal').style.display='flex';
             };
             card.appendChild(btn);
+            }
 
             // Anlaşılan teklif sonrası öncelik penceresi göstergesi: bu
             // domain şu an rezerveli mi, kimin için, ne kadar süre kaldı —
@@ -5873,7 +5978,13 @@ function listenToLogs(date){
     adminStatsUnsubscribe=onSnapshot(doc(db,"daily_stats",date),(snap)=>{
         const data=snap.data()||{};
         const c=document.getElementById("daily-stat-count");const v=document.getElementById("daily-stat-volume");
-        if(c) c.innerText=data.count||0; if(v) v.innerText=Math.round((data.volume||0)*100)/100;
+        // FIX: Geçmişte bazı düzeltme (relist/silme) işlemleri bu günün
+        // sayacını yanlışlıkla eksiye düşürmüş olabilir (bkz. approve.js
+        // reverseSaleAndPoints — artık yeni kayıtlar için düzeltildi, ama
+        // ESKİDEN oluşmuş eksi bir kayıt Firestore'da hâlâ durabilir).
+        // Ekranda asla eksi bir satış sayısı/hacmi göstermiyoruz.
+        if(c) c.innerText=Math.max(0,data.count||0);
+        if(v) v.innerText=Math.max(0,Math.round((data.volume||0)*100)/100);
     },(err)=>{
         console.error("daily_stats dinleme hatası:",err);
         if(errBox){errBox.style.display='block';errBox.innerText=t('statsPermissionError');}
