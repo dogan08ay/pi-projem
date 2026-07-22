@@ -2619,9 +2619,10 @@ const i18n = {
     offerDetailOfferedPrice:"Teklif Edilen Fiyat",offerDetailCounterPrice:"Karşı Teklif Fiyatı",
     offerDetailBuyerNote:"Alıcı Notu",offerDetailSellerNote:"Satıcı Notu",offerDetailFrom:"Kimden",
     offerDetailOutcome:"Sonuç",
-    offerOutcomePurchased:"Satın Alındı / Satıldı",
+    offerOutcomePurchased:"Anlaşma Sağlandı — Satış Gerçekleşti",
     offerOutcomeReserved:(m,p)=>`${p} Pi fiyatla rezerve edildi — ${m} dakika içinde satın alınmazsa teklif geçerliliğini kaybedecek.`,
     offerOutcomeExpiredUnused:"Teklif süresi doldu — satın alma gerçekleşmedi. Domain eski fiyatıyla tekrar satışa açıldı.",
+    offerOutcomeSoldToOther:"Anlaşma sağlandı, satış gerçekleşti — domain başka bir alıcıya satıldı. Bu teklif artık geçerli değil.",
     deleteAccountLink:"HESABIMI SİL",deleteAccountTitle:"Hesap ve Veri Silme Talebi",
     deleteAccountExplain1:"Hesabınızın ve kişisel verilerinizin silinmesini talep edebilirsiniz. Talebiniz admin'e iletilir ve incelenir.",
     deleteAccountExplain2:"Not: Tamamlanmış satışlarınıza ait finansal kayıtlar (muhasebe ve anlaşmazlık durumları için) yasal saklama yükümlülükleri nedeniyle tamamen silinemeyebilir; bu durumda kişisel bilgileriniz anonimleştirilir. Admin süreci elle inceleyip size dönüş yapacaktır.",
@@ -3184,9 +3185,10 @@ const i18n = {
     offerDetailOfferedPrice:"Offered Price",offerDetailCounterPrice:"Counter-Offer Price",
     offerDetailBuyerNote:"Buyer's Note",offerDetailSellerNote:"Seller's Note",offerDetailFrom:"From",
     offerDetailOutcome:"Outcome",
-    offerOutcomePurchased:"Purchased / Sold",
+    offerOutcomePurchased:"Deal Reached — Sale Completed",
     offerOutcomeReserved:(m,p)=>`Reserved at ${p} Pi — if not purchased within ${m} minutes, the offer will expire.`,
     offerOutcomeExpiredUnused:"Offer expired — purchase did not happen. The domain is listed again at its original price.",
+    offerOutcomeSoldToOther:"Deal reached, sale completed — the domain was sold to a different buyer. This offer is no longer valid.",
     deleteAccountLink:"DELETE MY ACCOUNT",deleteAccountTitle:"Account & Data Deletion Request",
     deleteAccountExplain1:"You can request that your account and personal data be deleted. Your request will be sent to the admin for review.",
     deleteAccountExplain2:"Note: Financial records tied to completed sales (kept for accounting and potential dispute purposes) may not be fully deletable due to legal retention requirements; in that case your personal info will be anonymized instead. The admin will review this manually and follow up with you.",
@@ -4615,6 +4617,21 @@ window.toggleMyOffersList=function(){
 // karşısında açıklama şeklinde DÜZENLİ bir tabloda: Domain adı, Teklif
 // Durumu, Domain Liste Fiyatı, Teklif Edilen Fiyat, (varsa) Karşı Teklif
 // Fiyatı — hepsi net, karşılıklı diyalog gibi okunabilir.
+// FIX (kök neden — "satış gerçekleşti ama kabul/reddet butonları hâlâ
+// duruyor, teklif devam ediyormuş gibi görünüyor"): Bir domain için birden
+// fazla teklif/karşı teklif olabilir. Biri kabul edilip domain satıldığında,
+// SADECE o anki 'pending' teklifler otomatik geçersiz sayılıyordu — eğer
+// başka bir alıcının teklifi o sırada 'countered' (satıcının karşı teklif
+// verdiği, alıcının yanıtını beklediği) durumdaysa, bu teklif hiç
+// güncellenmiyor ve süresiz şekilde "aktif" görünmeye devam ediyordu.
+// Domain zaten satılmış olsa bile o kaydın altında hâlâ ✅/❌ butonları
+// çıkıyor, "teklif hâlâ devam ediyor" izlenimi veriyordu. Artık burada
+// ham "o.status" alanına değil, domain'in GERÇEKTEN satılıp satılmadığına
+// (domainData[o.domainName].sold) bakılıyor — bu her zaman güncel ve
+// güvenilir tek doğru kaynak. Bu fonksiyon artık ikinci bir değer olarak
+// "resolved" (true/false) döndürüyor; renderMyOffersBox/renderReceivedOffersBox
+// bunu kullanarak aksiyon butonlarını (kabul/reddet/karşı teklif/geri çek)
+// domain satıldıysa HER ZAMAN gizliyor — o.status ne olursa olsun.
 function buildOfferDetailTable(o, statusLabel, statusColor){
     const rows=[
         [t('offerDetailDomain'), escapeHtml(o.domainName||'—')],
@@ -4625,16 +4642,11 @@ function buildOfferDetailTable(o, statusLabel, statusColor){
     if(o.counterPrice!=null) rows.push([t('offerDetailCounterPrice'), `<span style="color:#a5b4fc;font-weight:800;">${o.counterPrice} Pi</span>`]);
     if(o.message) rows.push([t('offerDetailBuyerNote'), escapeHtml(o.message)]);
     if(o.counterMessage) rows.push([t('offerDetailSellerNote'), escapeHtml(o.counterMessage)]);
-    // YENİ: Teklif kabul edildikten sonra ne olduğu (rezervasyon devam
-    // ediyor mu, satın alındı mı, süresi mi doldu) burada CANLI olarak
-    // gösteriliyor. domainData zaten anlık (onSnapshot) güncellendiği için
-    // bu satır her render'da güncel duruma göre değişir — ayrıca sunucuda
-    // ayrı bir "offer.status" güncellemesi gerekmiyor, tamamen domain'in o
-    // anki gerçek durumundan (sold/buyer/reservedFor/reservedUntil) türetiliyor.
-    if(o.status==='accepted'){
-        const dd=domainData[o.domainName];
-        const agreedPrice=(o.counterPrice!=null?o.counterPrice:o.offerPrice);
-        if(dd && dd.sold===true && dd.buyer===o.buyerUsername){
+    let resolved=false;
+    const dd=domainData[o.domainName];
+    if(dd && dd.sold===true){
+        resolved=true;
+        if(dd.buyer===o.buyerUsername){
             // Rezervasyon süresi içinde (ya da sonrasında, fark etmez) bu
             // alıcı gerçekten satın almış — kesin sonuç.
             const dateStr=dd.at?new Date(dd.at).toLocaleDateString(locale,{day:'2-digit',month:'2-digit',year:'numeric'})+' '+new Date(dd.at).toLocaleTimeString(locale,{hour:'2-digit',minute:'2-digit'}):null;
@@ -4642,7 +4654,18 @@ function buildOfferDetailTable(o, statusLabel, statusColor){
             rows.push([t('detailFieldBuyerUser'), '@'+(dd.buyer||o.buyerUsername)]);
             rows.push([t('detailFieldSellerUser'), dd.sellerUsername?('@'+dd.sellerUsername):'—']);
             if(dateStr) rows.push([t('saleDateLabel'), dateStr]);
-        } else if(dd && dd.reservedFor===o.buyerUsername && dd.reservedUntil && dd.reservedUntil>Date.now()){
+        } else {
+            // Domain SATILDI ama başka bir alıcıya — bu teklif artık
+            // konusuz kaldı (ör. satıcı karşı teklif vermişti, alıcı yanıt
+            // vermeden domain başka birine gitti). Eskiden bu durumda kayıt
+            // "countered" olarak takılı kalıp kabul/reddet butonlarını
+            // göstermeye devam ediyordu.
+            rows.push([t('offerDetailOutcome'), `<span style="color:#94a3b8;font-weight:800;">🚫 ${t('offerOutcomeSoldToOther')}</span>`]);
+        }
+    } else if(o.status==='accepted'){
+        resolved=true;
+        const agreedPrice=(o.counterPrice!=null?o.counterPrice:o.offerPrice);
+        if(dd && dd.reservedFor===o.buyerUsername && dd.reservedUntil && dd.reservedUntil>Date.now()){
             // Rezervasyon hâlâ aktif — geri sayım gösteriliyor.
             const minutesLeft=Math.max(1,Math.ceil((dd.reservedUntil-Date.now())/60000));
             rows.push([t('offerDetailOutcome'), `<span style="color:#fbbf24;font-weight:800;">⏳ ${t('offerOutcomeReserved')(minutesLeft,agreedPrice)}</span>`]);
@@ -4652,12 +4675,13 @@ function buildOfferDetailTable(o, statusLabel, statusColor){
             rows.push([t('offerDetailOutcome'), `<span style="color:#94a3b8;font-weight:800;">⌛ ${t('offerOutcomeExpiredUnused')}</span>`]);
         }
     }
-    return `<table style="width:100%;border-collapse:collapse;background:#0b1220;border-radius:8px;overflow:hidden;table-layout:fixed;">
+    const html=`<table style="width:100%;border-collapse:collapse;background:#0b1220;border-radius:8px;overflow:hidden;table-layout:fixed;">
         <tbody>${rows.map(([label,val])=>`<tr>
             <td style="padding:6px 8px;font-size:0.62em;color:#64748b;font-weight:800;text-transform:uppercase;width:42%;vertical-align:top;border-top:1px solid #1e293b;">${label}</td>
             <td style="padding:6px 8px;font-size:0.72em;color:#e2e8f0;vertical-align:top;border-top:1px solid #1e293b;word-break:break-word;">${val}</td>
         </tr>`).join('')}</tbody>
     </table>`;
+    return {html, resolved};
 }
 let lastMyOffersData=[];
 window.loadMyOffers=async function(silent){
@@ -4697,10 +4721,11 @@ function renderMyOffersBox(){
         // teklifler normal şekilde görünmeye devam eder.
         try{
             const sv=statusMap[o.status]||statusMap.pending;
+            const {html:detailHtml, resolved}=buildOfferDetailTable(o, sv.label, sv.color);
             return `<div style="background:#0f172a;border-radius:9px;padding:10px;margin-bottom:8px;border-left:3px solid ${sv.color};">
-                ${buildOfferDetailTable(o, sv.label, sv.color)}
-                ${o.status==='pending'?`<button onclick="window.withdrawOffer('${o.id}')" style="margin-top:8px;padding:5px 10px;border-radius:6px;border:1px solid #64748b;background:none;color:#94a3b8;font-size:0.65em;cursor:pointer;">${t('withdrawOfferBtn')}</button>`:''}
-                ${o.status==='countered'?`<div style="display:flex;gap:6px;margin-top:8px;">
+                ${detailHtml}
+                ${(!resolved && o.status==='pending')?`<button onclick="window.withdrawOffer('${o.id}')" style="margin-top:8px;padding:5px 10px;border-radius:6px;border:1px solid #64748b;background:none;color:#94a3b8;font-size:0.65em;cursor:pointer;">${t('withdrawOfferBtn')}</button>`:''}
+                ${(!resolved && o.status==='countered')?`<div style="display:flex;gap:6px;margin-top:8px;">
                         <button onclick="window.respondCounterOffer('${o.id}',true)" style="flex:1;padding:6px;border-radius:6px;border:none;background:#10b981;color:#fff;font-weight:800;font-size:0.65em;cursor:pointer;">✅ ${t('acceptOfferBtn')}</button>
                         <button onclick="window.respondCounterOffer('${o.id}',false)" style="flex:1;padding:6px;border-radius:6px;border:none;background:#ef4444;color:#fff;font-weight:800;font-size:0.65em;cursor:pointer;">❌ ${t('rejectOfferBtn')}</button>
                     </div>`:''}
@@ -4745,17 +4770,18 @@ function renderReceivedOffersBox(){
     box.innerHTML=lastReceivedOffersData.map(o=>{
       try{
         const sv=statusMap[o.status]||statusMap.pending;
-        // Aksiyon butonları (kabul/karşı teklif/reddet) SADECE gerçekten
-        // bekleyen ('pending') tekliflerde gösterilir. 'countered' iken
-        // top yine alıcıda, bekleniyor. 'accepted' artık burada da
-        // görünüyor (bkz. get_received_offers) ama aksiyon gerektirmiyor —
-        // buildOfferDetailTable zaten rezervasyon/sonuç durumunu satır
-        // olarak gösteriyor.
+        const {html:detailHtml, resolved}=buildOfferDetailTable(o, sv.label, sv.color);
+        // Aksiyon butonları (kabul/karşı teklif/reddet) SADECE domain hâlâ
+        // satılmamışsa VE teklif gerçekten bekliyorsa gösterilir. "resolved"
+        // (domain satıldı ya da bu teklif kesin kabul edilip sonuçlandı)
+        // true ise — o.status ne olursa olsun — hiçbir aksiyon butonu
+        // gösterilmez; "teklif hâlâ devam ediyormuş" izlenimi tamamen ortadan
+        // kalkar.
         let actionsHtml;
-        if(o.status==='countered'){
-            actionsHtml=`<div style="margin-top:8px;font-size:0.65em;color:#94a3b8;">${t('offerStatusPendingBuyerResponse')}</div>`;
-        } else if(o.status==='accepted'){
+        if(resolved){
             actionsHtml='';
+        } else if(o.status==='countered'){
+            actionsHtml=`<div style="margin-top:8px;font-size:0.65em;color:#94a3b8;">${t('offerStatusPendingBuyerResponse')}</div>`;
         } else {
             actionsHtml=`<div style="display:flex;gap:6px;margin-top:8px;">
                     <button onclick="window.respondOffer('${o.id}',true)" style="flex:1;padding:6px;border-radius:6px;border:none;background:#10b981;color:#fff;font-weight:800;font-size:0.68em;cursor:pointer;">✅ ${t('acceptOfferBtn')}</button>
@@ -4766,7 +4792,7 @@ function renderReceivedOffersBox(){
         return `
         <div style="background:#0f172a;border-radius:9px;padding:10px;margin-bottom:8px;border-left:3px solid ${sv.color};">
             <div style="font-size:0.65em;color:#94a3b8;margin-bottom:6px;">👤 ${t('offerDetailFrom')}: <b style="color:#e2e8f0;">@${escapeHtml(o.buyerUsername)}</b></div>
-            ${buildOfferDetailTable(o, sv.label, sv.color)}
+            ${detailHtml}
             ${actionsHtml}
         </div>`;
       }catch(renderErr){
