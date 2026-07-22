@@ -3303,9 +3303,17 @@ async function handlerImpl(req, res) {
         // işlemini (domain zaten rezerve edilmiş olsa bile) 500 hatasına
         // düşürüyordu. Artık sadece domainName'e göre çekilip durum filtresi
         // JS tarafında uygulanıyor — hiçbir composite index'e ihtiyaç yok.
+        // FIX 2 (kök neden — "satıldı ama kabul/reddet butonları hâlâ
+        // duruyor"): eskiden sadece 'pending' teklifler geçersiz
+        // sayılıyordu. Eğer başka bir alıcının teklifi o an 'countered'
+        // (satıcının karşı teklif verdiği, henüz yanıt beklenen) durumdaysa,
+        // bu domain satıldıktan SONRA bile o kayıt sonsuza kadar "aktif"
+        // görünmeye devam ediyor, ekranda hâlâ kabul/reddet butonları
+        // çıkıyordu. Artık 'countered' teklifler de aynı şekilde geçersiz
+        // kılınıyor.
         const otherPending = await db.collection('offers').where('domainName', '==', offer.domainName).get();
         const batch = db.batch();
-        otherPending.forEach(d => { if (d.id !== offerId && d.data().status === 'pending') batch.set(d.ref, { status: 'expired', respondedAt: Date.now() }, { merge: true }); });
+        otherPending.forEach(d => { if (d.id !== offerId && (d.data().status === 'pending' || d.data().status === 'countered')) batch.set(d.ref, { status: 'expired', respondedAt: Date.now() }, { merge: true }); });
         await batch.commit();
 
         const minutes = Math.round(OFFER_RESERVATION_MS / 60000);
@@ -3429,10 +3437,12 @@ async function handlerImpl(req, res) {
         await offerRef.set({ status: 'accepted', respondedAt: Date.now() }, { merge: true });
 
         // FIX: aynı composite-index riski burada da vardı, aynı şekilde
-        // güvenli hale getirildi (bkz. respond_offer'daki not).
+        // güvenli hale getirildi (bkz. respond_offer'daki not). Ayrıca
+        // 'countered' durumundaki diğer teklifler de artık geçersiz
+        // sayılıyor (bkz. respond_offer'daki "kök neden" notu).
         const otherPending = await db.collection('offers').where('domainName', '==', offer.domainName).get();
         const batch = db.batch();
-        otherPending.forEach(d => { if (d.id !== offerId && d.data().status === 'pending') batch.set(d.ref, { status: 'expired', respondedAt: Date.now() }, { merge: true }); });
+        otherPending.forEach(d => { if (d.id !== offerId && (d.data().status === 'pending' || d.data().status === 'countered')) batch.set(d.ref, { status: 'expired', respondedAt: Date.now() }, { merge: true }); });
         await batch.commit();
 
         const minutes = Math.round(OFFER_RESERVATION_MS / 60000);
