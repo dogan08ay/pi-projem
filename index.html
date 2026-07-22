@@ -2355,7 +2355,7 @@ const i18n = {
     overview:"Genel",myPurchases:"Alımlarım",myListings:"İlanlarım",myIncome:"Gelirim",
     totalSpent:"Toplam Harcama",myListingsCount:"İlan Sayım",
     myListingsTitle:"İLAN TAKİP PANELİ",listNewDomain:"+ Yeni İlan Ver",
-    totalEarned:"TOPLAM GELİR",earnedNote:"Satışa sunduğunuz ve satılan domainlerden elde edilen gelir.",
+    totalEarned:"TOPLAM GELİR",earnedNote:"Satılan domainlerinizden, %5 platform komisyonu düşüldükten sonra cüzdanınıza geçen/geçecek net tutar.",
     info:"BİLGİ",
     testNetNote:"<div style=\'display:grid;grid-template-columns:auto 1fr;gap:4px 8px;align-items:start;font-size:0.95em;\'><div>🧪</div><div>Bu uygulama <b>Test-Pi</b> ağında deneme amaçlıdır.</div><div>🔄</div><div>Satın aldığınız domainler tekrar <span class=\"btn-fake-buy\">SATIN AL</span> olarak görünebilir.</div><div>⚠️</div><div>Satın alma geçmişinizden silinebilir.</div></div>",
     purchasedDomains:"Satın Alınan Domainler",
@@ -2635,6 +2635,7 @@ const i18n = {
     buyerRatedSellerLabel:"Alıcı → Satıcı",sellerRatedBuyerLabel:"Satıcı → Alıcı",noCommentGiven:"Yorum yok",
     confirmRatingOfBuyerPrompt:(n)=>`Alıcıya ${n} yıldız vermek istediğinize emin misiniz? Bu işlem geri alınamaz.`,
     genericError:"Bir hata oluştu, lütfen tekrar deneyin.",
+    panelRefreshFailedMsg:"⚠️ Veriler yenilenemedi (oturumunuzun süresi dolmuş olabilir). Sorun devam ederse çıkış yapıp tekrar giriş yapmayı deneyin.",
     retryBtn:"Tekrar Dene",requestTimeoutMsg:"İstek zaman aşımına uğradı (bağlantı yavaş olabilir).",
     sellerRatingLabel:"Satıcı Puanı",noRatingsYet:"Henüz değerlendirme yok",
     myRatingAsSellerLabel:"Satıcı Olarak Puanınız",ratingsCountSuffix:"değerlendirme",
@@ -2922,7 +2923,7 @@ const i18n = {
     overview:"Overview",myPurchases:"My Purchases",myListings:"My Listings",myIncome:"My Income",
     totalSpent:"Total Spent",myListingsCount:"My Listings",
     myListingsTitle:"LISTING TRACKING PANEL",listNewDomain:"+ New Listing",
-    totalEarned:"TOTAL EARNINGS",earnedNote:"Total earnings from your listed and sold domains.",
+    totalEarned:"TOTAL EARNINGS",earnedNote:"Net amount (after the 5% platform commission) that has been or will be paid out to your wallet from your sold domains.",
     info:"INFO",
     testNetNote:"<div style=\'display:grid;grid-template-columns:auto 1fr;gap:4px 8px;align-items:start;font-size:0.95em;\'><div>🧪</div><div>This app runs on <b>Test-Pi</b> for demo purposes.</div><div>🔄</div><div>Purchased domains may reappear as <span class=\"btn-fake-buy\">BUY</span> in the market.</div><div>⚠️</div><div>They may be removed from your purchase history.</div></div>",
     purchasedDomains:"Purchased Domains",noDomains:"No purchase history found yet.",
@@ -3199,6 +3200,7 @@ const i18n = {
     buyerRatedSellerLabel:"Buyer → Seller",sellerRatedBuyerLabel:"Seller → Buyer",noCommentGiven:"No comment",
     confirmRatingOfBuyerPrompt:(n)=>`Are you sure you want to give the buyer ${n} star${n>1?'s':''}? This cannot be undone.`,
     genericError:"Something went wrong, please try again.",
+    panelRefreshFailedMsg:"⚠️ Couldn't refresh your data (your session may have expired). If this persists, try logging out and back in.",
     retryBtn:"Retry",requestTimeoutMsg:"The request timed out (your connection may be slow).",
     sellerRatingLabel:"Seller Rating",noRatingsYet:"No ratings yet",
     myRatingAsSellerLabel:"Your Rating as a Seller",ratingsCountSuffix:"ratings",
@@ -4688,15 +4690,25 @@ function renderMyOffersBox(){
     if(!lastMyOffersData.length){ box.innerHTML=`<p style="font-size:0.72em;opacity:0.5;text-align:center;">${t('noOffersYet')}</p>`; return; }
     const statusMap={pending:{label:t('offerStatusPending'),color:'#fbbf24'},accepted:{label:t('offerStatusAccepted'),color:'#34d399'},rejected:{label:t('offerStatusRejected'),color:'#f87171'},withdrawn:{label:t('offerStatusWithdrawn'),color:'#94a3b8'},expired:{label:t('offerStatusExpired'),color:'#94a3b8'},countered:{label:t('offerStatusCountered'),color:'#818cf8'}};
     box.innerHTML=lastMyOffersData.map(o=>{
-        const sv=statusMap[o.status]||statusMap.pending;
-        return `<div style="background:#0f172a;border-radius:9px;padding:10px;margin-bottom:8px;border-left:3px solid ${sv.color};">
-            ${buildOfferDetailTable(o, sv.label, sv.color)}
-            ${o.status==='pending'?`<button onclick="window.withdrawOffer('${o.id}')" style="margin-top:8px;padding:5px 10px;border-radius:6px;border:1px solid #64748b;background:none;color:#94a3b8;font-size:0.65em;cursor:pointer;">${t('withdrawOfferBtn')}</button>`:''}
-            ${o.status==='countered'?`<div style="display:flex;gap:6px;margin-top:8px;">
-                    <button onclick="window.respondCounterOffer('${o.id}',true)" style="flex:1;padding:6px;border-radius:6px;border:none;background:#10b981;color:#fff;font-weight:800;font-size:0.65em;cursor:pointer;">✅ ${t('acceptOfferBtn')}</button>
-                    <button onclick="window.respondCounterOffer('${o.id}',false)" style="flex:1;padding:6px;border-radius:6px;border:none;background:#ef4444;color:#fff;font-weight:800;font-size:0.65em;cursor:pointer;">❌ ${t('rejectOfferBtn')}</button>
-                </div>`:''}
-        </div>`;
+        // FIX: Beklenmedik/eksik alanlı TEK bir teklif kaydı (ör. eski/bozuk
+        // veri) tüm listenin render'ını patlatıp panelin "bir hata oluştu"
+        // demesine sebep oluyordu. Artık her kayıt kendi try/catch'i içinde
+        // çiziliyor — biri patlarsa sadece o kayıt atlanır, geri kalan
+        // teklifler normal şekilde görünmeye devam eder.
+        try{
+            const sv=statusMap[o.status]||statusMap.pending;
+            return `<div style="background:#0f172a;border-radius:9px;padding:10px;margin-bottom:8px;border-left:3px solid ${sv.color};">
+                ${buildOfferDetailTable(o, sv.label, sv.color)}
+                ${o.status==='pending'?`<button onclick="window.withdrawOffer('${o.id}')" style="margin-top:8px;padding:5px 10px;border-radius:6px;border:1px solid #64748b;background:none;color:#94a3b8;font-size:0.65em;cursor:pointer;">${t('withdrawOfferBtn')}</button>`:''}
+                ${o.status==='countered'?`<div style="display:flex;gap:6px;margin-top:8px;">
+                        <button onclick="window.respondCounterOffer('${o.id}',true)" style="flex:1;padding:6px;border-radius:6px;border:none;background:#10b981;color:#fff;font-weight:800;font-size:0.65em;cursor:pointer;">✅ ${t('acceptOfferBtn')}</button>
+                        <button onclick="window.respondCounterOffer('${o.id}',false)" style="flex:1;padding:6px;border-radius:6px;border:none;background:#ef4444;color:#fff;font-weight:800;font-size:0.65em;cursor:pointer;">❌ ${t('rejectOfferBtn')}</button>
+                    </div>`:''}
+            </div>`;
+        }catch(renderErr){
+            console.error('Teklif kaydı çizilemedi, atlanıyor:', o && o.id, renderErr);
+            return '';
+        }
     }).join('');
 }
 let receivedOffersExpanded=false;
@@ -4731,6 +4743,7 @@ function renderReceivedOffersBox(){
     if(!lastReceivedOffersData.length){ box.innerHTML=`<p style="font-size:0.72em;opacity:0.5;text-align:center;">${t('noOffersYet')}</p>`; return; }
     const statusMap={pending:{label:t('offerStatusPending'),color:'#fbbf24'},countered:{label:t('offerStatusCountered'),color:'#818cf8'},accepted:{label:t('offerStatusAccepted'),color:'#34d399'}};
     box.innerHTML=lastReceivedOffersData.map(o=>{
+      try{
         const sv=statusMap[o.status]||statusMap.pending;
         // Aksiyon butonları (kabul/karşı teklif/reddet) SADECE gerçekten
         // bekleyen ('pending') tekliflerde gösterilir. 'countered' iken
@@ -4756,6 +4769,12 @@ function renderReceivedOffersBox(){
             ${buildOfferDetailTable(o, sv.label, sv.color)}
             ${actionsHtml}
         </div>`;
+      }catch(renderErr){
+        // FIX: tek bir bozuk teklif kaydı tüm "Gelen Teklifler" panelini
+        // çökertmesin diye — o kayıt atlanır, diğerleri normal görünür.
+        console.error('Teklif kaydı çizilemedi, atlanıyor:', o && o.id, renderErr);
+        return '';
+      }
     }).join('');
 }
 // YENİ: Tekliflerim/Gelen Teklifler panelleri açıkken, kabul edilmiş bir
@@ -5334,7 +5353,7 @@ window.handleResetPlatformStats=async function(){
 
 // KULLANICI PROFİL
 async function loadUserProfile(){
-    if(!isAuth||!piAccessToken) return;
+    if(!isAuth||!piAccessToken) return {ok:false,reason:'not_authenticated'};
     try{
         const r=await fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'get_user_profile',accessToken:piAccessToken})});
         const result=await r.json();
@@ -5360,15 +5379,45 @@ async function loadUserProfile(){
                     if(!el||!res.success) return;
                     el.textContent = res.count>0 ? `⭐ ${res.avg} (${res.count} ${t('ratingsCountSuffix')})` : t('noRatingsYet');
                 }).catch(()=>{});
+            return {ok:true};
         }
-    }catch(e){console.error("Profil yüklenemedi:",e);}
+        // FIX (kök neden — "Yenile butonu yenileme yapmıyor"): eskiden
+        // result.success false olduğunda (ör. oturum/erişim tokenı süresi
+        // dolmuş, ağ hatası, vb.) fonksiyon HİÇBİR ŞEY yapmadan sessizce
+        // çıkıyordu. Kullanıcı "Yenile"ye basıyor, buton döner-durur ama
+        // ekranda hiçbir şey değişmez — tek çözüm gibi görünen şey çıkış
+        // yapıp tekrar girmekti (yeni bir oturum/token almak). Artık hatayı
+        // açıkça bildiriyoruz ki kullanıcı neyin yanlış gittiğini görsün.
+        console.error("Profil yüklenemedi:", result.error);
+        return {ok:false,reason:'server_error',error:result.error};
+    }catch(e){
+        console.error("Profil yüklenemedi:",e);
+        return {ok:false,reason:'network_error'};
+    }
 }
 
 window.refreshUserPanel=async function(){
     const btn=document.getElementById('user-panel-refresh-btn');
     if(btn){btn.classList.add('spinning');setTimeout(()=>btn.classList.remove('spinning'),700);}
-    await loadUserProfile();
+    // FIX (kök neden — "Yenile butonu orada yenileme yapmıyor, çıkış yapıp
+    // girmek gerekiyor"): Bu buton eskiden SADECE loadUserProfile()
+    // çağırıyordu; o da (yukarıdaki düzeltmeden önce) sessizce
+    // başarısız olabiliyordu — kullanıcı hiçbir geri bildirim almadan
+    // "yenileme yapmıyor" izlenimine kapılıyordu. Artık:
+    //  1) sonucu kontrol ediyoruz, başarısız olursa AÇIKÇA bir hata
+    //     gösteriyoruz (çıkış-giriş yapmaya gerek kalmadan neyin yanlış
+    //     gittiğini anlasın diye),
+    //  2) açık olan Tekliflerim/Gelen Teklifler panellerini ve
+    //     bildirimleri de gerçekten tazeliyoruz — "yenile" artık
+    //     gerçekten TÜM Panelim verisini yeniliyor, sadece bir kısmını değil.
+    const result=await loadUserProfile();
+    if(myOffersExpanded) window.loadMyOffers(true);
+    if(receivedOffersExpanded) window.loadReceivedOffers(true);
+    fetchNotifications(true);
     debouncedRender();
+    if(!result || !result.ok){
+        showToast(t('panelRefreshFailedMsg'));
+    }
 };
 
 // ── ADMIN PANEL YENİLEME ──────────────────────────────────────────────
@@ -5447,8 +5496,8 @@ function renderUserPanel(){
             const ratingHtml = (data.sellerUsername && data.payoutStatus==='released') ? (
                 buildRatingsTable(data.buyerRating, data.sellerRatingOfBuyer) +
                 (!data.buyerRating ? `<div style="margin-top:8px;padding-top:8px;border-top:1px dashed #334155;">
-                    <div style="font-size:0.65em;color:#94a3b8;margin-bottom:5px;">${t('rateSellerPrompt')}</div>
-                    <div style="display:flex;gap:4px;">
+                    <div style="font-size:0.65em;color:#94a3b8;margin-bottom:10px;line-height:1.5;display:block;">${t('rateSellerPrompt')}</div>
+                    <div style="display:flex;gap:4px;margin-top:2px;">
                         ${[1,2,3,4,5].map(n=>`<button onclick="window.submitSellerRating('${d.name}',${n})" style="flex:1;padding:6px;border:1px solid #f59e0b;border-radius:6px;background:rgba(245,158,11,0.08);color:#fbbf24;font-size:0.85em;cursor:pointer;">${'★'.repeat(n)}</button>`).join('')}
                     </div>
                 </div>` : '') ) : '';
@@ -5702,8 +5751,8 @@ function renderUserPanel(){
                         ${d.payoutStatus==='released' ? (
                             buildRatingsTable(d.buyerRating, d.sellerRatingOfBuyer) +
                             (!d.sellerRatingOfBuyer ? `<div style="margin-top:8px;padding-top:8px;border-top:1px dashed #334155;">
-                                <div style="font-size:0.65em;color:#94a3b8;margin-bottom:5px;">${t('rateBuyerPrompt')}</div>
-                                <div style="display:flex;gap:4px;">
+                                <div style="font-size:0.65em;color:#94a3b8;margin-bottom:10px;line-height:1.5;display:block;">${t('rateBuyerPrompt')}</div>
+                                <div style="display:flex;gap:4px;margin-top:2px;">
                                     ${[1,2,3,4,5].map(n=>`<button onclick="window.submitBuyerRating('${d.name}',${n})" style="flex:1;padding:6px;border:1px solid #f59e0b;border-radius:6px;background:rgba(245,158,11,0.08);color:#fbbf24;font-size:0.85em;cursor:pointer;">${'★'.repeat(n)}</button>`).join('')}
                                 </div>
                             </div>` : '')
