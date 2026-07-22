@@ -1972,7 +1972,7 @@
             </div>
             </div>
 <div class="secure-badge-title" style="text-align:center;color:#c7d2fe;font-size:1.05em;font-weight:900;margin-bottom:8px;text-shadow:0 0 15px rgba(199,210,254,0.4);letter-spacing:1px;border-bottom:1px solid rgba(99,102,241,0.2);padding-bottom:8px;" data-i18n="secureConnection"></div>
-                <div class="secure-badge-body" style="color:#e0e7ff;font-size:0.85em;line-height:1.6;margin-bottom:8px;font-weight:600;border-bottom:1px solid rgba(99,102,241,0.2);padding-bottom:10px;" data-i18n="testNetBadgeBody"></div>
+                <div class="secure-badge-body" style="color:#e0e7ff;font-size:0.85em;line-height:1.6;margin-bottom:8px;font-weight:600;border-bottom:1px solid rgba(99,102,241,0.2);padding-bottom:10px;word-wrap:break-word;overflow-wrap:break-word;white-space:normal;" data-i18n="testNetBadgeBody"></div>
                 <div class="secure-badge-warning" style="color:#fbbf24;font-size:0.9em;font-weight:900;line-height:1.3;text-transform:uppercase;text-shadow:0 0 12px rgba(251,191,36,0.4);letter-spacing:1.2px;" data-i18n="testNetWarning"></div>
             </div>
             <p style="font-size:0.72em;color:#cbd5e1;font-weight:600;line-height:1.4;margin:3px 0 2px 0;max-width:90%;text-align:center;" data-i18n="connectPrompt"></p>
@@ -1986,36 +1986,27 @@
                  kenara YAPIŞTIRIYORUZ (position:sticky). Böylece herkeste,
                  ekran boyutu ne olursa olsun, buton kaydırmadan görünür.
             -->
-            <!-- FIX (asıl kök neden — bir önceki "sticky" denemesi neden
-                 yetersiz kaldı): #premium-lock overlay'ının yüksekliği,
-                 syncMarketCardMinHeight() tarafından İÇERİĞİNİN TAM
-                 boyuna (lock.scrollHeight) eşitleniyor — yani overlay
-                 kendi içinde ASLA taşmıyor/kaymıyor, hep tam sığıyor.
-                 Bu da "position:sticky"nin hiçbir işe yaramamasına sebep
-                 oluyordu: sticky bir elemanın "yapışması" için önce
-                 kendi kaydırma alanının, elemanın doğal konumundan
-                 GERİDE kalması gerekir — burada overlay hiç kaymadığı
-                 için buton sadece kendi doğal (en alt) konumunda
-                 duruyordu. Sayfayı kaydıran asıl alan ise DIŞARIDAKİ
-                 .main-scroll'du; telefon ekranı bu devasa kilit
-                 ekranından kısaysa buton görünüm dışında kalıyordu.
-                 KESİN ÇÖZÜM: butonu overlay'in akışından tamamen
-                 çıkarıp gerçek tarayıcı görünümüne (viewport) sabitledik
-                 (position:fixed). Böylece içerik ne kadar uzun olursa
-                 olsun, telefon ekranı ne boyutta olursa olsun, buton
-                 HER ZAMAN ekranın en altında, kaydırmaya gerek kalmadan
-                 görünür. Görünürlüğü hâlâ ebeveyn overlay'in
-                 opacity/visibility'sinden miras alıyor (bkz.
-                 .premium-lock-overlay.active), yani sadece giriş
-                 yapılmamışken görünüyor. -->
-            <div style="position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:600px;box-sizing:border-box;padding:8px 8px calc(8px + env(safe-area-inset-bottom,0px)) 8px;background:linear-gradient(180deg,transparent,rgba(10,15,30,0.9) 30%,rgba(10,15,30,0.98));z-index:110;">
-                <div style="color:#fbbf24;font-weight:700;margin-bottom:6px;font-size:0.7em;" data-i18n="useButton"></div>
-                <button class="pi-btn pi-connect-btn" onclick="window.loginWithPi()" data-i18n="connectWithPi"></button>
-            </div>
-            <!-- Yukarıdaki buton artık position:fixed olduğu için normal
-                 akıştan çıktı; altında kalacak içerik (varsa) örtülmesin
-                 diye overlay'in en altına, buton barının yüksekliği kadar
-                 boşluk bırakıyoruz. -->
+            <!-- FIX 2 (GERÇEK kök neden — bir önceki position:fixed
+                 denemesi neden HÂLÂ işe yaramadı): Butonu position:fixed
+                 yapmak tek başına yetmiyordu, çünkü bu buton hâlâ
+                 #market-card'ın İÇİNDEYDİ ve #market-card'ta
+                 "overflow:hidden" var. CSS'te overflow:hidden olan bir
+                 kutu, İÇİNDEKİ HER ŞEYİ (position:fixed olsa bile!) kendi
+                 sınırlarına kırpar — position:fixed'in "her zaman gerçek
+                 ekrana göre sabitlenir" kuralı, ÜSTTEKİ bir kutunun
+                 overflow:hidden'ı tarafından geçersiz kılınır/kırpılır.
+                 Yani buton "gerçek ekrana sabitlenmiş" olsa da,
+                 market-card'ın görünür alanı dışına asla çıkamıyordu —
+                 tıpkı önceki sticky denemesi gibi, market-card kısa
+                 ekranlarda taştığında buton görünmez oluyordu.
+                 KESİN ÇÖZÜM: Butonu buradan TAMAMEN kaldırdık; artık
+                 sayfanın en dışında (hem #market-card'ın hem
+                 .main-scroll'un — ki onun da overflow-y:auto'su var —
+                 DIŞINDA), hiçbir overflow'lu ebeveyni olmayan ayrı bir
+                 #global-connect-bar elementi olarak, .main-scroll'un
+                 kapanışından hemen sonra tanımlandı (aşağıya bakınız).
+                 O yüzden burada sadece içeriğin altında, o barın
+                 kapatmayacağı kadar boşluk bırakan bir spacer kaldı. -->
             <div style="flex-shrink:0;height:74px;width:100%;" aria-hidden="true"></div>
         </div>
         <div class="domain-grid locked-content" id="domain-list">
@@ -2043,6 +2034,23 @@
      .container'daki justify-content:space-between + .main-scroll'un
      flex:1 1 auto büyümesi yüzünden aralarında devasa boş alan oluşmasına
      sebep oluyordu. -->
+
+<!-- ═══════════════════════════════════════════════════════════════
+     GİRİŞ EKRANI İÇİN GERÇEKTEN VİEWPORT'A SABİT "Pi ile Bağlan" BARI
+     (kök neden düzeltmesi — bkz. #premium-lock içindeki FIX 2 notu)
+     Bu element BİLEREK .main-scroll'un VE #market-card'ın tamamen
+     DIŞINDA duruyor: ikisinde de overflow (hidden / auto) var, ve CSS'te
+     overflow'lu bir kutu İÇİNDEKİ her şeyi (position:fixed dahil!)
+     kendi sınırlarına kırpar. Burada, .container'ın doğrudan altında
+     ama hiçbir overflow'lu ebeveyni olmadan durduğu için, position:fixed
+     artık gerçekten söz verdiği şeyi yapıyor: ekran ne kadar dar/kısa
+     olursa olsun, kaydırmaya hiç gerek kalmadan HER ZAMAN görünür.
+     Görünürlüğü CSS'ten değil, render() içinde isAuth durumuna göre
+     JS ile kontrol ediliyor (bkz. render() fonksiyonundaki senkronizasyon). -->
+<div id="global-connect-bar" style="display:none;position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:600px;box-sizing:border-box;padding:8px 8px calc(8px + env(safe-area-inset-bottom,0px)) 8px;background:linear-gradient(180deg,transparent,rgba(10,15,30,0.9) 30%,rgba(10,15,30,0.98));z-index:110;text-align:center;">
+    <div style="color:#fbbf24;font-weight:700;margin-bottom:6px;font-size:0.7em;" data-i18n="useButton"></div>
+    <button class="pi-btn pi-connect-btn" onclick="window.loginWithPi()" data-i18n="connectWithPi"></button>
+</div>
 
 <!-- ═══════════════════════════════════════════════════════════════
      MARKA HAKKI / TELİF BİLDİRİM FORMU (DMCA-benzeri Claim Formu)
@@ -2480,7 +2488,7 @@ const i18n = {
     maintenanceDisableBtn:"🚀 Yayına Al",
     maintenanceConfirmEnable:"Uygulamayı bakım moduna almak üzeresiniz. Siz hariç tüm ziyaretçiler bakım ekranını görecek. Devam edilsin mi?",
     maintenanceConfirmDisable:"Uygulamayı tekrar yayına almak üzeresiniz. Devam edilsin mi?",
-    testNetBadgeBody:"<span style=\"white-space:nowrap;\">Sistemimiz şu anda <span class=\"blink-yellow\">TEST-Pİ</span> ağında çalışmaktadır.</span>",
+    testNetBadgeBody:"Sistemimiz şu anda <span class=\"blink-yellow\">TEST-Pİ</span> ağında çalışmaktadır.",
     testNetWarning:"<span class=\"blink-yellow\">GERÇEK Pİ BAKİYENİZ KESİNLİKLE<br>KULLANILMAZ!</span>",
     connectPrompt:"Web3 domain sahibi olmak ve güvenli bağlantı kurmak için,",useButton:"👇 aşağıdaki Pi ile Bağlan butonunu kullanın.",
     securePaymentTitle:"GÜVENLİ ÖDEME ONAYI",
@@ -3047,7 +3055,7 @@ const i18n = {
     maintenanceDisableBtn:"🚀 Go Live",
     maintenanceConfirmEnable:"You're about to put the app into maintenance mode. All visitors except you will see the maintenance screen. Continue?",
     maintenanceConfirmDisable:"You're about to bring the app back live. Continue?",
-    testNetBadgeBody:"<span style=\"white-space:nowrap;\">Our system runs on <span class=\"blink-yellow\">TEST-PI</span> network.</span>",
+    testNetBadgeBody:"Our system runs on <span class=\"blink-yellow\">TEST-PI</span> network.",
     testNetWarning:"<span class=\"blink-yellow\">YOUR REAL PI BALANCE<br>WILL NOT BE USED!</span>",
     connectPrompt:"To own a Web3 domain and establish a secure connection,",useButton:"👇 use the Connect with Pi button below.",
     securePaymentTitle:"SECURE PAYMENT CONFIRMATION",
@@ -5799,6 +5807,15 @@ function renderUserPanel(){
 }
 // ANA RENDER
 function render(){
+    // FIX (kök neden düzeltmesi): "Pi ile Bağlan" barının görünürlüğü artık
+    // CSS'ten (ebeveyn .active class'ından) değil, burada JS ile
+    // isAuth'a göre kontrol ediliyor — çünkü bar artık #premium-lock'un
+    // DIŞINDA, ayrı bir element (bkz. #global-connect-bar). render() her
+    // önemli durum değişikliğinde (login, logout, ilk yükleme) zaten
+    // çağrıldığı için, tüm giriş/çıkış senaryolarını tek bir yerden
+    // güvenceye alıyor.
+    const gcb=document.getElementById('global-connect-bar');
+    if(gcb) gcb.style.display = isAuth ? 'none' : 'block';
     const list=document.getElementById("domain-list");
     const lock=document.getElementById("premium-lock");
     if(!list) return;
