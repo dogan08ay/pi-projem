@@ -3128,6 +3128,64 @@ async function handlerImpl(req, res) {
       if (data.deleted === true || data.hidden === true) return res.status(400).json({ error: "Bu domain artık satışta değil" });
       if (data.sellerUsername === realUsername) return res.status(400).json({ error: "Kendi domaininize teklif veremezsiniz" });
 
+      // FIX (kök neden — "2. tur teklifler yeni bir tablo olarak çıkıyor"):
+      // Öncesinde her "Teklif Ver" işlemi, o alıcı-domain arasında zaten
+      // devam eden bir müzakere (pending/countered) olsa bile HER ZAMAN
+      // yepyeni bir "offers" kaydı açıyordu. Böylece satıcı karşı teklif
+      // verip alıcı da yeni bir fiyatla tekrar teklif verince, ekranda iki
+      // ayrı, birbirinden habersiz teklif kaydı/tablosu oluşuyordu. Artık
+      // önce bu ikili arasında zaten AÇIK bir müzakere var mı diye
+      // bakıyoruz; varsa yeni kayıt açmak yerine AYNI kaydı güncelliyoruz
+      // — böylece tüm trafik (1. teklif, karşı teklif, 2. teklif, ...)
+      // TEK bir kayıt/tablo üzerinden ilerliyor ve iki taraf da anlık
+      // olarak aynı veriyi görüyor.
+      const existingSnap = await db.collection('offers')
+        .where('domainName', '==', domainName)
+        .where('buyerUsername', '==', realUsername)
+        .get();
+      let existingActiveDoc = null;
+      existingSnap.forEach(d => {
+        const s = d.data().status;
+        if (s === 'pending' || s === 'countered') existingActiveDoc = d;
+      });
+
+      if (existingActiveDoc) {
+        // Aynı müzakereyi sürdür: fiyat/mesaj güncellenir, karşı teklif
+        // bilgisi temizlenir (yeni tur satıcının yanıtını bekliyor),
+        // durum yeniden 'pending' olur. Geçmiş tur bilgisi kaybolmasın diye
+        // önceki teklif/karşı teklif fiyatları "history" dizisine ekleniyor.
+        const prevData = existingActiveDoc.data();
+        const history = Array.isArray(prevData.history) ? prevData.history.slice() : [];
+        history.push({
+          offerPrice: prevData.offerPrice,
+          counterPrice: prevData.counterPrice || null,
+          at: Date.now()
+        });
+        await existingActiveDoc.ref.set({
+          offerPrice: priceNum,
+          message: message ? String(message).trim().slice(0, 300) : null,
+          status: 'pending',
+          counterPrice: null,
+          counterMessage: null,
+          counteredAt: null,
+          history,
+          updatedAt: Date.now()
+        }, { merge: true });
+
+        const notifyTarget2 = data.sellerUsername || ADMIN_USERNAME;
+        await sendNotification(notifyTarget2, {
+          type: 'offer_received',
+          role: 'seller',
+          title: '💬 Yeni Teklif Aldınız',
+          body: `@${realUsername}, "${domainName}" için ${priceNum} Pi yeni teklif sundu (önceki teklifiniz: ${prevData.counterPrice || prevData.offerPrice} Pi).`,
+          domainName
+        });
+        if (notifyTarget2 === ADMIN_USERNAME) {
+          await sendTG(TG_CHAT_ID, `💬 *YENİ TEKLİF (devam eden müzakere)*\n\n🌐 ${domainName}\n👤 @${realUsername}\n💰 Yeni teklif: ${priceNum} Pi`);
+        }
+        return res.status(200).json({ success: true, offerId: existingActiveDoc.id });
+      }
+
       const offerRef = db.collection('offers').doc();
       await offerRef.set({
         domainName,
@@ -3239,10 +3297,15 @@ async function handlerImpl(req, res) {
         await offerRef.set({ status: 'accepted', respondedAt: Date.now() }, { merge: true });
 
         // Aynı domain için bekleyen diğer teklifler artık geçersiz — fiyat değişti
-        const otherPending = await db.collection('offers')
-          .where('domainName', '==', offer.domainName).where('status', '==', 'pending').get();
+        // FIX: iki farklı alanda (domainName + status) eşitlik filtresi
+        // Firestore'da composite index gerektirir; index tanımlı değilse bu
+        // sorgu SESSİZCE değil, doğrudan hata fırlatarak tüm "kabul et"
+        // işlemini (domain zaten rezerve edilmiş olsa bile) 500 hatasına
+        // düşürüyordu. Artık sadece domainName'e göre çekilip durum filtresi
+        // JS tarafında uygulanıyor — hiçbir composite index'e ihtiyaç yok.
+        const otherPending = await db.collection('offers').where('domainName', '==', offer.domainName).get();
         const batch = db.batch();
-        otherPending.forEach(d => { if (d.id !== offerId) batch.set(d.ref, { status: 'expired', respondedAt: Date.now() }, { merge: true }); });
+        otherPending.forEach(d => { if (d.id !== offerId && d.data().status === 'pending') batch.set(d.ref, { status: 'expired', respondedAt: Date.now() }, { merge: true }); });
         await batch.commit();
 
         const minutes = Math.round(OFFER_RESERVATION_MS / 60000);
@@ -3365,10 +3428,11 @@ async function handlerImpl(req, res) {
         await domainRef.set({ price: offer.counterPrice, reservedFor: realUsername, reservedUntil, preNegotiationPrice }, { merge: true });
         await offerRef.set({ status: 'accepted', respondedAt: Date.now() }, { merge: true });
 
-        const otherPending = await db.collection('offers')
-          .where('domainName', '==', offer.domainName).where('status', '==', 'pending').get();
+        // FIX: aynı composite-index riski burada da vardı, aynı şekilde
+        // güvenli hale getirildi (bkz. respond_offer'daki not).
+        const otherPending = await db.collection('offers').where('domainName', '==', offer.domainName).get();
         const batch = db.batch();
-        otherPending.forEach(d => { if (d.id !== offerId) batch.set(d.ref, { status: 'expired', respondedAt: Date.now() }, { merge: true }); });
+        otherPending.forEach(d => { if (d.id !== offerId && d.data().status === 'pending') batch.set(d.ref, { status: 'expired', respondedAt: Date.now() }, { merge: true }); });
         await batch.commit();
 
         const minutes = Math.round(OFFER_RESERVATION_MS / 60000);
@@ -3624,7 +3688,19 @@ async function handlerImpl(req, res) {
       domainsSnap.forEach(d => {
         const data = d.data();
         if (data.deleted === true) return;
-        totalEarned += Number(data.price || 0);
+        // FIX (kök neden): Burada eskiden ham satış bedeli (data.price)
+        // toplanıyordu. Ama satıştan %5 platform komisyonu kesiliyor,
+        // satıcıya (bu kullanıcıya) giden gerçek tutar data.payoutAmount
+        // (satış anında zaten hesaplanıp domain kaydına yazılıyor —
+        // bkz. PLATFORM_COMMISSION_RATE). "Toplam Gelir" alanı bu yüzden
+        // satıcının cüzdanına gerçekte GİRMEYECEK olan tutarı gösteriyordu.
+        // Artık net (komisyon düşülmüş) tutar toplanıyor; payoutAmount
+        // henüz yazılmamış çok eski kayıtlar için aynı formülle (fiyatın
+        // %95'i) hesaplanıyor.
+        const netAmount = data.payoutAmount != null
+          ? Number(data.payoutAmount)
+          : Math.round(Number(data.price || 0) * (1 - PLATFORM_COMMISSION_RATE) * 1e7) / 1e7;
+        totalEarned += netAmount;
         soldDomains.push({ name: d.id, ...data });
       });
 
