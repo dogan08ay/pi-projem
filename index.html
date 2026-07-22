@@ -4803,26 +4803,33 @@ window.openHowItWorksModal=function(){
 // kaç yıldız verdi ve ne yorum yazdı net şekilde okunuyor.
 function buildRatingsTable(buyerRating, sellerRatingOfBuyer){
     if(!buyerRating && !sellerRatingOfBuyer) return '';
-    const starsHtml=(n)=>`<span style="letter-spacing:1px;">${'★'.repeat(n)}${'☆'.repeat(5-n)}</span>`;
-    // FIX (üst üste binme): "Kim" hücresi öncesinde white-space:nowrap idi;
-    // "Alıcı → Satıcı" gibi metin dar kartlarda sütun genişliğini aşıp
-    // yandaki puan sütununün ÜZERİNE biniyordu. Artık satır kaydırmaya
-    // izin veriliyor (kelimeler alt alta düşebiliyor) ve etiketler kısaltıldı.
-    const rowHtml=(label,r)=>!r?'':`<tr>
-        <td style="padding:7px 6px;font-size:0.64em;color:#94a3b8;font-weight:800;line-height:1.3;vertical-align:top;border-top:1px solid #1e293b;word-break:break-word;">${label}</td>
-        <td style="padding:7px 6px;font-size:0.76em;color:#fbbf24;font-weight:900;white-space:nowrap;vertical-align:top;border-top:1px solid #1e293b;">${starsHtml(r.stars)}</td>
-        <td style="padding:7px 6px;font-size:0.68em;color:#cbd5e1;line-height:1.4;vertical-align:top;border-top:1px solid #1e293b;word-break:break-word;overflow-wrap:anywhere;">${r.comment?escapeHtml(r.comment):`<span style="color:#475569;font-style:italic;">${t('noCommentGiven')}</span>`}</td>
-    </tr>`;
+    const starsHtml=(n)=>`<span style="letter-spacing:0px;white-space:nowrap;">${'★'.repeat(n)}${'☆'.repeat(5-n)}</span>`;
+    // FIX (asıl kök neden — bir önceki deneme yanlış yeri hedeflemişti):
+    // Sorun input yıldız BUTONLARINDA değil, burada, zaten verilmiş
+    // değerlendirmelerin gösterildiği tabloda idi. table-layout:fixed +
+    // sabit yüzdelik sütun genişliği (%22) + white-space:nowrap
+    // kombinasyonu, "★★★★★" gibi 5 karakterlik yıldız metnini dar
+    // ekranlarda o sütuna SIĞDIRAMIYOR ve nowrap olduğu için metin
+    // KIRPILMAK yerine hücre sınırının dışına, bir sonraki (yorum)
+    // hücresinin ÜZERİNE taşıyordu — ekran görüntüsündeki tam olarak bu
+    // görüntüydü ("★★★★" + yorumun ilk harfinin üzerine binen 5. yıldız).
+    // KESİN ÇÖZÜM: satırları 3 sütunlu dar bir tablo yerine, yıldızların
+    // KENDİ SATIRINDA, yorumun ise ALTINDA ayrı bir satırda olduğu
+    // dikey (stacked) bir kart düzenine çevirdik. Yıldız ve yorum artık
+    // aynı yatay alanı hiç paylaşmadığı için üst üste binme fiziksel
+    // olarak imkansız — ekran ne kadar dar olursa olsun.
+    const rowHtml=(label,r)=>!r?'':`<div style="padding:8px 10px;border-top:1px solid #1e293b;">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:4px;">
+            <span style="font-size:0.62em;color:#94a3b8;font-weight:800;text-transform:uppercase;">${label}</span>
+            <span style="font-size:0.85em;color:#fbbf24;font-weight:900;">${starsHtml(r.stars)}</span>
+        </div>
+        <div style="font-size:0.68em;color:#cbd5e1;line-height:1.4;word-break:break-word;overflow-wrap:anywhere;">${r.comment?escapeHtml(r.comment):`<span style="color:#475569;font-style:italic;">${t('noCommentGiven')}</span>`}</div>
+    </div>`;
     return `<div style="margin-top:8px;">
         <div style="font-size:0.6em;color:#64748b;font-weight:800;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;">⭐ ${t('ratingsTableTitle')}</div>
-        <table style="width:100%;border-collapse:collapse;background:#0f172a;border-radius:8px;overflow:hidden;table-layout:fixed;">
-            <thead><tr style="background:#1e293b;">
-                <th style="padding:6px;font-size:0.56em;color:#64748b;text-align:left;font-weight:800;text-transform:uppercase;width:26%;">${t('ratingsTableWho')}</th>
-                <th style="padding:6px;font-size:0.56em;color:#64748b;text-align:left;font-weight:800;text-transform:uppercase;width:22%;">${t('ratingsTableStars')}</th>
-                <th style="padding:6px;font-size:0.56em;color:#64748b;text-align:left;font-weight:800;text-transform:uppercase;">${t('ratingsTableComment')}</th>
-            </tr></thead>
-            <tbody>${rowHtml(t('buyerRatedSellerLabel'),buyerRating)}${rowHtml(t('sellerRatedBuyerLabel'),sellerRatingOfBuyer)}</tbody>
-        </table>
+        <div style="background:#0f172a;border-radius:8px;overflow:hidden;">
+            ${rowHtml(t('buyerRatedSellerLabel'),buyerRating)}${rowHtml(t('sellerRatedBuyerLabel'),sellerRatingOfBuyer)}
+        </div>
     </div>`;
 }
 window.submitBuyerRating=async function(domainName, stars){
