@@ -5806,6 +5806,10 @@ function renderUserPanel(){
     }
 }
 // ANA RENDER
+let firstRenderDone=false; // FIX: syncMarketCardMinHeight'ın render()'dan
+// ÖNCE (ör. sayfa 'load' olayında) yanlışlıkla tetiklenip spacer'ı
+// isAuth durumu hiç belirlenmeden 0px'e düşürmesini engellemek için —
+// bkz. syncMarketCardMinHeight içindeki kullanım.
 function render(){
     // FIX (kök neden düzeltmesi): "Pi ile Bağlan" barının görünürlüğü artık
     // CSS'ten (ebeveyn .active class'ından) değil, burada JS ile
@@ -5816,6 +5820,7 @@ function render(){
     // güvenceye alıyor.
     const gcb=document.getElementById('global-connect-bar');
     if(gcb) gcb.style.display = isAuth ? 'none' : 'block';
+    firstRenderDone=true;
     const list=document.getElementById("domain-list");
     const lock=document.getElementById("premium-lock");
     if(!list) return;
@@ -6076,13 +6081,26 @@ function syncMarketCardMinHeight(){
     // (offsetHeight) birebir eşitleniyor — hangi cihaz olursa olsun,
     // önce alttaki bar ne kadar yer kaplıyorsa spacer da tam o kadar
     // boşluk bırakıyor, çakışma da fazla boşluk da imkansız hale geliyor.
-    const bar=document.getElementById('global-connect-bar');
-    const spacer=document.getElementById('connect-bar-spacer');
-    if(spacer){
-        if(bar && bar.style.display!=='none' && !isAuth){
-            spacer.style.height=(bar.offsetHeight||74)+"px";
-        } else {
-            spacer.style.height="0px";
+    // FIX (kök neden — "ilk açılışta üst üste biniyor, yukarı kaydırınca
+    // düzeliyor"): Bu fonksiyon sayfa 'load' olayında ve document.fonts.ready
+    // içinde de tetikleniyor — bu olaylar render()'dan ÖNCE ateşlenebiliyor
+    // (özellikle Firestore bağlantısı yavaşsa). O anda #global-connect-bar
+    // henüz render() tarafından hiç gösterilmemiş (hâlâ varsayılan
+    // display:none) olabiliyordu; eski kod bunu "bar gösterilmiyor" sanıp
+    // spacer'ı YANLIŞLIKLA 0px'e düşürüyordu — bu da barın altındaki son
+    // metin satırının üzerine binmesine sebep oluyordu. Artık: render() en
+    // az BİR KEZ çalışıp isAuth durumunu (ve dolayısıyla barın gerçek
+    // görünürlüğünü) kesinleştirmeden, spacer'a HİÇ dokunulmuyor — güvenli
+    // varsayılan (92px) olduğu gibi kalıyor, asla 0'a zorlanmıyor.
+    if(firstRenderDone){
+        const bar=document.getElementById('global-connect-bar');
+        const spacer=document.getElementById('connect-bar-spacer');
+        if(spacer){
+            if(bar && !isAuth){
+                spacer.style.height=(bar.offsetHeight||92)+"px";
+            } else {
+                spacer.style.height="0px";
+            }
         }
     }
     // FIX: Giriş yapılmamışken market-card'ın boyu, ARKADA GİZLİ duran
