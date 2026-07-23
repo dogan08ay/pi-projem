@@ -2047,37 +2047,24 @@
      olursa olsun, kaydırmaya hiç gerek kalmadan HER ZAMAN görünür.
      Görünürlüğü CSS'ten değil, render() içinde isAuth durumuna göre
      JS ile kontrol ediliyor (bkz. render() fonksiyonundaki senkronizasyon). -->
-<div id="global-connect-bar" style="display:none;position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:600px;box-sizing:border-box;padding:8px 8px calc(8px + env(safe-area-inset-bottom,0px)) 8px;background:linear-gradient(180deg,transparent,rgba(10,15,30,0.9) 30%,rgba(10,15,30,0.98));z-index:110;text-align:center;">
+<div id="global-connect-bar" style="display:none;position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:600px;box-sizing:border-box;padding:8px 8px calc(8px + env(safe-area-inset-bottom,0px)) 8px;background:rgba(10,15,30,0.98);z-index:110;text-align:center;">
     <div style="color:#fbbf24;font-weight:700;margin-bottom:6px;font-size:0.7em;" data-i18n="useButton"></div>
     <button class="pi-btn pi-connect-btn" onclick="window.loginWithPi()" data-i18n="connectWithPi"></button>
-    <!-- FIX (kök neden — "ilk açılışta görünen iletişim paneli yok"):
-         Asıl footer (.footer-section) .main-scroll'un İÇİNDE, normal akışta
-         duruyor — yani sayfanın toplam içeriği (kilit ekranı + footer)
-         viewport'tan uzunsa, footer'ı görmek için KAYDIRMAK gerekiyor. Bu,
-         cihaza/ekran boyuna göre değişen, güvenilmez bir durum. Artık
-         giriş yapılmamışken, HER ZAMAN görünen (position:fixed) bu barın
-         içine kompakt bir iletişim satırı da eklendi — böylece kaydırmaya
-         hiç gerek kalmadan, ilk açılışta, her cihazda garanti şekilde
-         görünür. -->
-    <div style="margin-top:8px;padding-top:8px;border-top:1px solid rgba(148,163,184,0.15);font-size:0.58em;color:#94a3b8;display:flex;justify-content:center;gap:10px;flex-wrap:wrap;">
-        <span>📩 <a href="mailto:doganay08@hotmail.com" onclick="window.location.href=this.href;return false;" style="color:#38bdf8;text-decoration:none;font-weight:800;">doganay08@hotmail.com</a></span>
-        <span>💬 <a href="https://t.me/+5jZi9vrcNMM2NGVk" target="_blank" rel="noopener noreferrer" style="color:#38bdf8;text-decoration:none;font-weight:800;" data-i18n="telegramGroup">TELEGRAM GRUBUMUZ</a></span>
-    </div>
-    <!-- FIX (devamı — "sadece mail ve telegram kalıyor" şikayeti): Asıl
-         footer'da Gizlilik Politikası/Kullanım Şartları linkleri de vardı,
-         onlar bu sabit barda YOKTU — sayfa ilk açıldığında ham HTML kısa
-         bir an tam görünüyor (JS henüz market-card'ın boyunu ayarlamamışken),
-         o anda asıl footer'daki TAM içerik görünüyordu; JS market-card'ı
-         büyütünce asıl footer aşağı kayıp görünümden çıkıyor, sadece
-         buradaki (daha eksik) mail+telegram kalıyordu. Artık bu linkler de
-         buraya eklendi — tüm iletişim/hukuki bilgiler artık kaydırmaya
-         gerek kalmadan hep aynı sabit barda duruyor, hiçbir şey "kaybolmuyor". -->
-    <div style="margin-top:4px;font-size:0.56em;">
-        <a href="#" onclick="openLegalModal('privacy');return false;" style="cursor:pointer;color:#94a3b8;text-decoration:underline;" data-i18n="privacyPolicy">GİZLİLİK POLİTİKASI</a>
-        <span style="color:#475569;"> | </span>
-        <a href="#" onclick="openLegalModal('terms');return false;" style="cursor:pointer;color:#94a3b8;text-decoration:underline;" data-i18n="termsOfUse">KULLANIM ŞARTLARI</a>
+    <!-- FIX (kullanıcı isteği — "iletişim panelini giriş yaptıktan sonra
+         görünen ile aynı olsun"): Bu artık giriş sonrası görünen
+         .footer-section ile BİREBİR AYNI class/yapı/etiketleri kullanıyor
+         (aynı "footer-row" satırları, aynı "contactUs"/"community" çevirileri) —
+         görsel olarak ayrı/farklı bir "kısaltılmış" versiyon değil, aynı
+         panelin ta kendisi. Giriş yapılmamışken HER ZAMAN görünen
+         (position:fixed) bu barın içinde durduğu için kaydırmaya gerek
+         kalmadan ilk açılışta garanti görünür. -->
+    <div class="footer-section" style="border:none;background:none;padding:6px 0 0 0;margin:0;border-radius:0;">
+        <div class="footer-row" style="font-size:0.65em;margin-bottom:2px;">📩 <span data-i18n="contactUs"></span>: <a href="mailto:doganay08@hotmail.com" onclick="window.location.href=this.href;return false;">doganay08@hotmail.com</a></div>
+        <div class="footer-row" style="font-size:0.65em;margin-bottom:2px;">💬 <span data-i18n="community"></span>: <a href="https://t.me/+5jZi9vrcNMM2NGVk" target="_blank" rel="noopener noreferrer" data-i18n="telegramGroup">TELEGRAM GRUBUMUZ</a></div>
+        <div style="margin-top:2px;font-size:0.6em;"><a href="#" onclick="openLegalModal('privacy');return false;" style="cursor:pointer;" data-i18n="privacyPolicy">GİZLİLİK POLİTİKASI</a> | <a href="#" onclick="openLegalModal('terms');return false;" style="cursor:pointer;" data-i18n="termsOfUse">KULLANIM ŞARTLARI</a></div>
     </div>
 </div>
+
 
 <!-- ═══════════════════════════════════════════════════════════════
      MARKA HAKKI / TELİF BİLDİRİM FORMU (DMCA-benzeri Claim Formu)
@@ -6140,7 +6127,8 @@ function syncMarketCardMinHeight(){
         const spacer=document.getElementById('connect-bar-spacer');
         if(spacer){
             if(bar && !isAuth){
-                spacer.style.height=(bar.offsetHeight||92)+"px";
+                // +6px güvenlik payı: milimetrik ölçüm farklarına karşı ekstra tampon.
+                spacer.style.height=((bar.offsetHeight||92)+6)+"px";
             } else {
                 spacer.style.height="0px";
             }
