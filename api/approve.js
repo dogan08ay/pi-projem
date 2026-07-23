@@ -3843,57 +3843,56 @@ async function handlerImpl(req, res) {
         }
       });
 
-      // ── KALICI GELİR DEFTERİ ────────────────────────────────────────────
-      // İlk kez okunuyorsa (belge hiç yoksa), MEVCUT durumu eski (canlı
-      // tarama) yöntemiyle bir kereliğine hesaplayıp kalıcı belgeye yazıyoruz
-      // — böylece o ana kadar zaten kazanılmış gerçek gelir kaybolmuyor.
-      // Sonraki her satış/ödeme serbest bırakma bu belgeyi artırarak devam
-      // eder ve domain silinse bile bu toplamlar bir daha asla değişmez.
-      const statsRef = db.collection('config').doc('platform_stats');
-      const statsSnap = await statsRef.get();
-      let totalVolume, userOwnedVolume, platformEarnings, adminOwnEarnings;
-
-      // FIX: statsVersion:2 öncesi oluşturulmuş kayıtlar, ödeme durumu
-      // kontrolü olmayan eski (hatalı) formülle hesaplanmış olabilir. Böyle
-      // bir kayıt bulunursa, bu istekte SESSİZCE ve BİR KEREYE MAHSUS doğru
-      // formülle yeniden hesaplanıp üzerine yazılır — elle müdahale gerekmez.
-      const needsRecalc = !statsSnap.exists || statsSnap.data().statsVersion !== 2;
-
-      if (statsSnap.exists && !needsRecalc) {
-        const s = statsSnap.data();
-        totalVolume = Number(s.totalVolume || 0);
-        userOwnedVolume = Number(s.userOwnedVolume || 0);
-        platformEarnings = Number(s.platformEarnings || 0);
-        adminOwnEarnings = Number(s.adminOwnEarnings || 0);
-      } else {
-        totalVolume = 0; userOwnedVolume = 0; adminOwnEarnings = 0; platformEarnings = 0;
-        allDomainsSnap.forEach(d => {
-          const data = d.data();
-          const price = Number(data.price || 0);
-          if (data.deleted === true || data.sold !== true) return;
-          totalVolume += price;
-          if (data.sellerUsername) {
-            userOwnedVolume += price;
-            if (data.sellerUsername === ADMIN_USERNAME) {
-              // Admin'in kendi domaini: escrow/serbest bırakma adımı yok,
-              // satış anında kesinleşmiş sayılır.
-              adminOwnEarnings += price;
-            } else if (data.payoutStatus === 'released') {
-              // FIX: %5 komisyon SADECE ödeme satıcıya gerçekten serbest
-              // bırakılmışsa (payoutStatus:'released') kazanılmış sayılır.
-              // Önceden bu kontrol yoktu; havuzda bekleyen (henüz ödenmemiş)
-              // satışlar da komisyon olarak sayılıp toplamı şişiriyordu.
-              const releasedPayout = Number(data.payoutAmount || Math.round(price * (1 - PLATFORM_COMMISSION_RATE) * 1e7) / 1e7);
-              platformEarnings += (price - releasedPayout);
-            }
-          } else {
+      // ── KALICI GELİR DEFTERİ → ARTIK HER SEFERİNDE TAZE HESAPLANIYOR ────
+      // FIX (kök neden — "%5 komisyon 0.005 yerine 0.01 gösteriyor" gibi
+      // hatalar): Öncesinde bu sayılar SADECE İLK KEZ domain kayıtlarından
+      // hesaplanıyor, sonrasında Firestore'daki "platform_stats" belgesine
+      // kalıcı olarak yazılıp SONSUZA KADAR o önbelleğe güveniliyordu — her
+      // ödeme serbest bırakıldığında da üzerine ekleniyordu (increment).
+      // Sorun şu: eğer bu increment bir ödeme akışında (ör. bir ödemenin
+      // ağ hatası/uid hatası yüzünden retry edilmesi gibi bir kenar
+      // durumda) YANLIŞLIKLA iki kez tetiklenirse, önbellekteki sayı
+      // KALICI OLARAK bozuluyor ve bir daha KENDİLİĞİNDEN asla düzelmiyordu
+      // — elle veri düzeltmesi gerekiyordu.
+      // Artık önbelleğe hiç güvenilmiyor: bu action her çağrıldığında,
+      // TÜM domain kayıtları taranarak sıfırdan (ground truth'tan) yeniden
+      // hesaplanıyor. Bu, geçmişte oluşmuş her türlü çifte-sayım/senkron
+      // hatasını otomatik olarak, elle müdahale gerekmeden düzeltir —
+      // gösterilen rakam her zaman "domains" koleksiyonundaki gerçek
+      // payoutStatus/price/payoutAmount alanlarının doğrudan yansımasıdır.
+      // (platform_stats belgesine yine de referans/debug amaçlı yazılıyor,
+      // ama artık OKUMA tarafında asla güvenilmiyor.)
+      let totalVolume = 0, userOwnedVolume = 0, adminOwnEarnings = 0, platformEarnings = 0;
+      allDomainsSnap.forEach(d => {
+        const data = d.data();
+        const price = Number(data.price || 0);
+        if (data.deleted === true || data.sold !== true) return;
+        totalVolume += price;
+        if (data.sellerUsername) {
+          userOwnedVolume += price;
+          if (data.sellerUsername === ADMIN_USERNAME) {
+            // Admin'in kendi domaini: escrow/serbest bırakma adımı yok,
+            // satış anında kesinleşmiş sayılır.
             adminOwnEarnings += price;
+          } else if (data.payoutStatus === 'released') {
+            // %5 komisyon SADECE ödeme satıcıya gerçekten serbest
+            // bırakılmışsa (payoutStatus:'released') kazanılmış sayılır.
+            const releasedPayout = Number(data.payoutAmount || Math.round(price * (1 - PLATFORM_COMMISSION_RATE) * 1e7) / 1e7);
+            platformEarnings += (price - releasedPayout);
           }
-        });
-        platformEarnings = Math.round(platformEarnings * 1e7) / 1e7;
-        await statsRef.set({ totalVolume, userOwnedVolume, platformEarnings, adminOwnEarnings, statsVersion: 2, backfilledAt: Date.now() });
-        console.log('[platform_stats] Hesaplandı/düzeltildi (statsVersion 2):', { totalVolume, userOwnedVolume, platformEarnings, adminOwnEarnings });
-      }
+        } else {
+          adminOwnEarnings += price;
+        }
+      });
+      totalVolume = Math.round(totalVolume * 1e7) / 1e7;
+      userOwnedVolume = Math.round(userOwnedVolume * 1e7) / 1e7;
+      adminOwnEarnings = Math.round(adminOwnEarnings * 1e7) / 1e7;
+      platformEarnings = Math.round(platformEarnings * 1e7) / 1e7;
+      // Referans/debug amaçlı kaydediyoruz (okuma tarafı artık buna
+      // güvenmiyor, sadece Sistem Kontrolü gibi araçlar için bilgi amaçlı).
+      db.collection('config').doc('platform_stats').set({
+        totalVolume, userOwnedVolume, platformEarnings, adminOwnEarnings, statsVersion: 3, recalculatedAt: Date.now()
+      }).catch(e => console.error('[platform_stats] referans yazımı başarısız (önemsiz):', e.message));
 
       allSalesDetail.sort((a, b) => (b.at || 0) - (a.at || 0));
 
