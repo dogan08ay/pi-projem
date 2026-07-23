@@ -1975,39 +1975,15 @@
                 <div class="secure-badge-body" style="color:#e0e7ff;font-size:0.85em;line-height:1.6;margin-bottom:8px;font-weight:600;border-bottom:1px solid rgba(99,102,241,0.2);padding-bottom:10px;word-wrap:break-word;overflow-wrap:break-word;white-space:normal;" data-i18n="testNetBadgeBody"></div>
                 <div class="secure-badge-warning" style="color:#fbbf24;font-size:0.9em;font-weight:900;line-height:1.3;text-transform:uppercase;text-shadow:0 0 12px rgba(251,191,36,0.4);letter-spacing:1.2px;" data-i18n="testNetWarning"></div>
             </div>
-            <p style="font-size:0.72em;color:#cbd5e1;font-weight:600;line-height:1.4;margin:3px 0 2px 0;max-width:90%;text-align:center;" data-i18n="connectPrompt"></p>
-            <!-- FIX (kökten çözüm): Bu butonun üstündeki dekoratif içerik
-                 (rozet ikonu + başlık + metinler) telefonun ekran yüksekliğine
-                 göre farklı kişilerde farklı miktarda yer kaplıyordu — bazı
-                 telefonlarda hepsi sığıp buton ilk ekranda görünürken, daha
-                 kısa/dar ekranlı telefonlarda buton görünüm alanının dışına
-                 taşıp kaydırma gerektiriyordu. Kalıcı çözüm: butonu, overlay
-                 (kaydırılabilir alan) neresinde olursa olsun görünür ALT
-                 kenara YAPIŞTIRIYORUZ (position:sticky). Böylece herkeste,
-                 ekran boyutu ne olursa olsun, buton kaydırmadan görünür.
-            -->
-            <!-- FIX 2 (GERÇEK kök neden — bir önceki position:fixed
-                 denemesi neden HÂLÂ işe yaramadı): Butonu position:fixed
-                 yapmak tek başına yetmiyordu, çünkü bu buton hâlâ
-                 #market-card'ın İÇİNDEYDİ ve #market-card'ta
-                 "overflow:hidden" var. CSS'te overflow:hidden olan bir
-                 kutu, İÇİNDEKİ HER ŞEYİ (position:fixed olsa bile!) kendi
-                 sınırlarına kırpar — position:fixed'in "her zaman gerçek
-                 ekrana göre sabitlenir" kuralı, ÜSTTEKİ bir kutunun
-                 overflow:hidden'ı tarafından geçersiz kılınır/kırpılır.
-                 Yani buton "gerçek ekrana sabitlenmiş" olsa da,
-                 market-card'ın görünür alanı dışına asla çıkamıyordu —
-                 tıpkı önceki sticky denemesi gibi, market-card kısa
-                 ekranlarda taştığında buton görünmez oluyordu.
-                 KESİN ÇÖZÜM: Butonu buradan TAMAMEN kaldırdık; artık
-                 sayfanın en dışında (hem #market-card'ın hem
-                 .main-scroll'un — ki onun da overflow-y:auto'su var —
-                 DIŞINDA), hiçbir overflow'lu ebeveyni olmayan ayrı bir
-                 #global-connect-bar elementi olarak, .main-scroll'un
-                 kapanışından hemen sonra tanımlandı (aşağıya bakınız).
-                 O yüzden burada sadece içeriğin altında, o barın
-                 kapatmayacağı kadar boşluk bırakan bir spacer kaldı. -->
-            <div id="connect-bar-spacer" style="flex-shrink:0;height:92px;width:100%;" aria-hidden="true"></div>
+            <!-- FIX (kullanıcı geri bildirimi — "Ayrıcalıklı Web3 dünyasına
+                 katılmak ve güvenli bağlantı kurmak için yazısı nerede"):
+                 Bu metin (connectPrompt) burada dururken, bir önceki
+                 düzeltmede #global-connect-bar'ı OPAK yaptığımız için artık
+                 barın altında tamamen ÖRTÜLÜYORDU — silinmedi ama görünmez
+                 oldu. Aşağıya (spacer'dan sonra) taşımak yerine, "useButton"
+                 metniyle birlikte GÖRÜNMESİ gereken asıl yer olan
+                 #global-connect-bar'ın İÇİNE taşındı (bkz. aşağıda). -->
+            <div id="connect-bar-spacer" style="flex-shrink:0;height:150px;width:100%;" aria-hidden="true"></div>
         </div>
         <div class="domain-grid locked-content" id="domain-list">
             <div id="domain-list-loading" style="display:contents;">
@@ -2048,6 +2024,7 @@
      Görünürlüğü CSS'ten değil, render() içinde isAuth durumuna göre
      JS ile kontrol ediliyor (bkz. render() fonksiyonundaki senkronizasyon). -->
 <div id="global-connect-bar" style="display:none;position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:600px;box-sizing:border-box;padding:8px 8px calc(8px + env(safe-area-inset-bottom,0px)) 8px;background:rgba(10,15,30,0.98);z-index:110;text-align:center;">
+    <p style="font-size:0.72em;color:#cbd5e1;font-weight:600;line-height:1.4;margin:0 0 6px 0;" data-i18n="connectPrompt"></p>
     <div style="color:#fbbf24;font-weight:700;margin-bottom:6px;font-size:0.7em;" data-i18n="useButton"></div>
     <button class="pi-btn pi-connect-btn" onclick="window.loginWithPi()" data-i18n="connectWithPi"></button>
     <!-- FIX (kullanıcı isteği — "iletişim panelini giriş yaptıktan sonra
