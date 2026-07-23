@@ -2007,7 +2007,7 @@
                  kapanışından hemen sonra tanımlandı (aşağıya bakınız).
                  O yüzden burada sadece içeriğin altında, o barın
                  kapatmayacağı kadar boşluk bırakan bir spacer kaldı. -->
-            <div style="flex-shrink:0;height:74px;width:100%;" aria-hidden="true"></div>
+            <div id="connect-bar-spacer" style="flex-shrink:0;height:92px;width:100%;" aria-hidden="true"></div>
         </div>
         <div class="domain-grid locked-content" id="domain-list">
             <div id="domain-list-loading" style="display:contents;">
@@ -6064,6 +6064,27 @@ function syncMarketCardMinHeight(){
     const mc=document.getElementById("market-card");
     const lock=document.getElementById("premium-lock");
     if(!mc||!lock) return;
+    // FIX (kök neden — "Pi ile Bağlan" üstündeki yazılar üst üste
+    // biniyor / aralarında garip boşluk oluşuyor"): #connect-bar-spacer
+    // öncesinde SABİT 74px'ti — ama #global-connect-bar'ın gerçek
+    // yüksekliği cihaza göre değişiyor (özellikle çentikli telefonlarda
+    // safe-area-inset-bottom farklı, font render farkları da yükseklik
+    // farkı yaratıyor). 74px bazı cihazlarda YETERSİZ kalıp barın
+    // içeriğin üzerine binmesine (üst üste binme), bazılarında da FAZLA
+    // gelip gereksiz boşluk bırakmasına sebep oluyordu. Artık spacer'ın
+    // yüksekliği #global-connect-bar'ın GERÇEK ölçülen yüksekliğine
+    // (offsetHeight) birebir eşitleniyor — hangi cihaz olursa olsun,
+    // önce alttaki bar ne kadar yer kaplıyorsa spacer da tam o kadar
+    // boşluk bırakıyor, çakışma da fazla boşluk da imkansız hale geliyor.
+    const bar=document.getElementById('global-connect-bar');
+    const spacer=document.getElementById('connect-bar-spacer');
+    if(spacer){
+        if(bar && bar.style.display!=='none' && !isAuth){
+            spacer.style.height=(bar.offsetHeight||74)+"px";
+        } else {
+            spacer.style.height="0px";
+        }
+    }
     // FIX: Giriş yapılmamışken market-card'ın boyu, ARKADA GİZLİ duran
     // (blur'lu) domain-list'in yüksekliğine göre değil, SADECE görünen
     // kilit ekranının (lock) kendi yüksekliğine göre ayarlanmalı.
@@ -6450,8 +6471,17 @@ async function performPiConnect() {
 
         try {
             // ── 1. Spinner'ı buton üzerinde göster ─────────────────────
-            const lock = document.getElementById('premium-lock');
-            connectBtn = lock?.querySelector('.pi-btn');
+            // FIX (kök neden — "Bağlanıyor..." animasyonu kayboldu): Buton
+            // artık #premium-lock'un İÇİNDE değil, overflow:hidden
+            // kırpma sorunundan kaçınmak için #global-connect-bar adında
+            // ayrı, dışarıdaki bir elemente taşındı (bkz. #global-connect-bar
+            // ve render()'daki senkronizasyon). Eskiden burada
+            // `lock.querySelector('.pi-btn')` ile #premium-lock'un İÇİNDE
+            // aranıyordu — buton artık orada olmadığı için hep null
+            // dönüyor, spinner/"Bağlanıyor..." metni hiç görünmüyordu.
+            // Artık doğrudan sayfa genelinde (sınıf adı sayfada tek olduğu
+            // için) aranıyor.
+            connectBtn = document.querySelector('.pi-connect-btn');
             originalBtnText = connectBtn?.innerHTML;
 
             if (connectBtn) {
