@@ -2699,6 +2699,7 @@ const i18n = {
     resetSuccess:"Sıfırlama tamamlandı. Platform istatistikleri bugünden itibaren başlıyor.",
     resetFail:"Sıfırlama başarısız: ",
     detailFieldDomain:"Domain Adı",detailFieldPrice:"Fiyat",detailFieldType:"Tür",detailFieldStatus:"Durum",
+    detailFieldEarning:"Kazancınız (Net)",detailFieldSalePrice:"Satış Bedeli",commissionLabelShort:"komisyon",
     detailFieldSeller:"Gönderen Kullanıcı",detailFieldWallet:"Not",
     detailFieldPaymentTo:"Cüzdan",paymentToUsernameNote:"Ödeme otomatik olarak {user} Pi hesabına gönderilecek",
     detailFieldDate:"Gönderim Tarihi",detailFieldDesc:"Açıklama",
@@ -3265,6 +3266,7 @@ const i18n = {
     resetSuccess:"Reset complete. Platform statistics now start from today.",
     resetFail:"Reset failed: ",
     detailFieldDomain:"Domain Name",detailFieldPrice:"Price",detailFieldType:"Type",detailFieldStatus:"Status",
+    detailFieldEarning:"Your Earning (Net)",detailFieldSalePrice:"Sale Price",commissionLabelShort:"commission",
     detailFieldSeller:"Submitted By",detailFieldWallet:"Note",
     detailFieldPaymentTo:"Wallet",paymentToUsernameNote:"Payment will be sent automatically to {user}'s Pi account",
     detailFieldDate:"Submission Date",detailFieldDesc:"Description",
@@ -5780,7 +5782,21 @@ function renderUserPanel(){
                             ${statusTagHtml}
                         </div>
                         <div style="display:flex;flex-direction:column;gap:4px;font-size:0.72em;color:#cbd5e1;line-height:1.4;">
-                            <div style="display:flex;gap:6px;align-items:baseline;"><span style="color:#64748b;flex-shrink:0;font-weight:700;min-width:90px;">💰 ${t('detailFieldPrice')}:</span><span style="color:${priceColor};font-weight:900;">+${d.price} Pi</span></div>
+                            <div style="display:flex;gap:6px;align-items:baseline;">
+                                <span style="color:#64748b;flex-shrink:0;font-weight:700;min-width:90px;">💰 ${t('detailFieldEarning')}:</span>
+                                <span style="color:${priceColor};font-weight:900;">
+                                    <!-- FIX (kök neden): Bu satır "Fiyat" başlığı altında
+                                         ham satış bedelini (d.price) gösteriyordu — halbuki
+                                         satıştan %5 platform komisyonu kesiliyor, satıcının
+                                         cüzdanına giden gerçek tutar bu değil. Artık burada
+                                         GERÇEKTEN cüzdana giren net tutar (d.payoutAmount;
+                                         henüz yazılmamışsa aynı formülle hesaplanan %95)
+                                         gösteriliyor, yanına da ham satış bedeli küçük bir
+                                         not olarak ekleniyor ki komisyon şeffaf olsun. -->
+                                    +${(d.payoutAmount!=null?Number(d.payoutAmount):Math.round(Number(d.price||0)*0.95*1e7)/1e7)} Pi
+                                </span>
+                                <span style="color:#64748b;font-size:0.85em;">(${t('detailFieldSalePrice')}: ${d.price} Pi, %5 ${t('commissionLabelShort')})</span>
+                            </div>
                             <div style="display:flex;gap:6px;align-items:baseline;"><span style="color:#64748b;flex-shrink:0;font-weight:700;min-width:90px;">📅 ${t('saleDateLabel')}:</span><span style="color:#94a3b8;">${sDate}</span></div>
                             <div style="display:flex;gap:6px;align-items:baseline;"><span style="color:#64748b;flex-shrink:0;font-weight:700;min-width:90px;">👤 ${t('detailFieldBuyerUser')}:</span><span style="color:#94a3b8;">@${d.buyer||'?'}</span></div>
                             <div style="display:flex;gap:6px;align-items:baseline;word-break:break-all;"><span style="color:#64748b;flex-shrink:0;font-weight:700;min-width:90px;">🧾 ${t('detailFieldTxid')}:</span><span style="color:#94a3b8;font-size:0.9em;">${d.txid||'—'}</span></div>
