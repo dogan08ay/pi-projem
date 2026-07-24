@@ -1991,10 +1991,19 @@ async function handlerImpl(req, res) {
 
   // ── Kullanıcı: Ticket'a Yanıt Gönder ──────────────────────────────────
   if (action === 'reply_ticket') {
-    const { ticketId, text } = req.body;
+    const { ticketId } = req.body;
     const realUsername = await getRealUsername(accessToken);
     if (!realUsername) return res.status(403).json({ error: "Geçersiz oturum" });
-    if (!ticketId || !text) return res.status(400).json({ error: "ticketId ve mesaj zorunludur" });
+    if (!ticketId || !req.body.text) return res.status(400).json({ error: "ticketId ve mesaj zorunludur" });
+    // GÜVENLİK EKLEMESİ: diğer serbest-metin alanları (teklif mesajı, yorum
+    // vb.) hep uzunluk sınırlıyken burada sınır yoktu — kullanıcı çok büyük
+    // bir metni tekrar tekrar gönderip hem admin'e bildirim spam'i
+    // yapabilir hem de ticket dokümanını (arrayUnion ile sürekli büyüyen
+    // messages dizisi) şişirip Firestore doküman boyut limitine
+    // yaklaştırabilirdi.
+    const text = String(req.body.text).trim().slice(0, 2000);
+    if (!await checkRateLimit(clientIp, 'reply_ticket', 15, 60000))
+      return res.status(429).json({ error: "Çok fazla mesaj gönderildi. Lütfen biraz bekleyip tekrar deneyin." });
     try {
       const db = getDb();
       const ticketRef = db.collection('tickets').doc(ticketId);
@@ -4019,7 +4028,16 @@ async function handlerImpl(req, res) {
   // ══════════════════════════════════════════════════════════════════════
   //  Pi Ödeme Akışı (approve / complete / cancel)
   // ══════════════════════════════════════════════════════════════════════
-  const { paymentId, txid, username, domainName } = req.body;
+  // GÜVENLİK DÜZELTMESİ: 'username' artık `let` — Pi API çağrısından hemen
+  // sonra, 'approve'/'complete' adımlarında bu değer accessToken ile
+  // doğrulanmış gerçek kullanıcı adıyla DEĞİŞTİRİLİYOR (aşağıya bakın).
+  // Önceden bu alan doğrudan client body'sinden (tarayıcıdaki JS
+  // değişkeninden) alınıyordu — DevTools/proxy ile kolayca değiştirilebilir
+  // bir değerdi ve alıcı, rezervasyon sahibi, "kendi ilanı" kontrolleri hep
+  // buna göre yapılıyordu. Artık sadece bilgilendirme/loglama amaçlı bir
+  // ilk değer olarak tutuluyor, güvenlik kararlarında KULLANILMIYOR.
+  let { paymentId, txid, username, domainName } = req.body;
+  const clientSuppliedUsername = username;
 
   if (!paymentId) return res.status(400).json({ error: "paymentId zorunludur" });
 
@@ -4104,6 +4122,38 @@ async function handlerImpl(req, res) {
     if (!response.ok) {
       console.error("Pi API hatası:", action, paymentId, data);
       return res.status(response.status).json({ error: "Pi API hatası", details: data });
+    }
+
+    // GÜVENLİK DÜZELTMESİ: aşağıdaki tüm alıcı/rezervasyon/"kendi ilanı"
+    // kontrolleri ve Firestore yazımı artık body'den gelen (spoof
+    // edilebilir) username yerine, accessToken'dan doğrulanan gerçek
+    // kullanıcı adını kullanıyor. accessToken doğrulanamazsa işlem
+    // tamamlanmıyor — para Pi blockchain'inde zaten alınmış olsa bile,
+    // domain hiçbir zaman güvenilmeyen bir "buyer" değeriyle işaretlenmiyor;
+    // bunun yerine admin'e acil bildirim gidiyor ki elle çözülebilsin.
+    if (action === 'complete' && domainName) {
+      const verifiedUsername = await getRealUsername(accessToken);
+      if (!verifiedUsername) {
+        console.error(`[GÜVENLİK] complete adımı accessToken doğrulanamadan çağrıldı. paymentId:${paymentId} domainName:${domainName} body_username:${clientSuppliedUsername} txid:${txid}`);
+        await logSystemError('complete_unverified_identity', new Error('Payment completed on Pi but requester identity could not be verified via accessToken'), `paymentId:${paymentId} Domain:${domainName} Txid:${txid} body_username:${clientSuppliedUsername} — MANUEL İNCELEME GEREKİYOR`);
+        await sendTG(TG_CHAT_ID, `🚨 *ACİL — KİMLİK DOĞRULANAMADI / MANUEL İNCELEME GEREKİYOR*\n\nBir ödeme Pi tarafında tamamlandı (txid: ${txid}, domain: ${domainName}) ama isteği yapan kullanıcının kimliği accessToken ile doğrulanamadı. Bildirilen kullanıcı adı: @${clientSuppliedUsername || 'yok'}. Elle incelenip gerekirse iade edilmesi gerekiyor.`);
+        await sendNotificationToAdmin({
+          type: 'unverified_identity_refund_needed',
+          title: '🚨 Acil: Kimlik Doğrulanamadı (Elle İnceleme)',
+          body: `Ödeme Pi'de tamamlandı (txid: ${txid}, domain: ${domainName}) ama kimlik doğrulanamadı. Bildirilen kullanıcı: @${clientSuppliedUsername || 'yok'}.`,
+          domainName, buyer: clientSuppliedUsername || null, txid
+        });
+        return res.status(401).json({ error: "Kimliğiniz doğrulanamadı. Paranız alındıysa destek ekibine otomatik bildirim gitti, en kısa sürede sizinle iletişime geçilecek.", raceCondition: true });
+      }
+      // Client'ın gönderdiği username ile doğrulanan gerçek kullanıcı adı
+      // uyuşmuyorsa (ör. biri isteği elle değiştirmeye çalışmışsa), bunu
+      // logluyoruz ama işlemi DOĞRULANMIŞ kimlikle devam ettiriyoruz —
+      // spoof denemesi böylece hem engellenmiş hem kayıt altına alınmış olur.
+      if (clientSuppliedUsername && clientSuppliedUsername !== verifiedUsername) {
+        console.error(`[GÜVENLİK] username uyuşmazlığı — body:'${clientSuppliedUsername}' accessToken:'${verifiedUsername}' paymentId:${paymentId} domainName:${domainName}`);
+        await logSystemError('complete_username_mismatch', new Error('Client-supplied username did not match accessToken identity — possible spoof attempt'), `body_username:${clientSuppliedUsername} verified_username:${verifiedUsername} paymentId:${paymentId} Domain:${domainName} Txid:${txid}`);
+      }
+      username = verifiedUsername;
     }
 
     if (action === 'complete' && domainName && username) {
