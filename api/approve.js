@@ -97,7 +97,25 @@ async function deleteOffersForDomain(db, domainName) {
   }
 }
 
-// ─── Escrow / A2U Ödeme İstemcisi (Satıcıya Otomatik Havuz Ödemesi) ───────
+// YENİ: Bir domaini favorileyen kullanıcılara, o domainin fiyatı değiştiğinde
+// veya satıldığında bildirim gönderir. Öncesinde favoriler tamamen pasif bir
+// listeydi — kullanıcı favorilediği bir domain satılsa/ucuzlasa bile
+// bundan hiç haberdar olmuyordu, uygulamayı açıp kontrol etmesi gerekiyordu.
+async function notifyFavoriters(db, domainName, { excludeUsername, type, title, body } = {}) {
+  try {
+    const snap = await db.collection('users').where('favorites', 'array-contains', domainName).get();
+    if (snap.empty) return;
+    for (const doc of snap.docs) {
+      const username = doc.id;
+      if (excludeUsername && username === excludeUsername) continue;
+      await sendNotification(username, { type, role: 'buyer', title, body, domainName });
+    }
+  } catch (e) {
+    console.error(`notifyFavoriters hatası (${domainName}):`, e);
+  }
+}
+
+
 // NOT: Bunun çalışması için ortam değişkenlerine PI_WALLET_PRIVATE_SEED
 // eklenmesi ve `npm install pi-backend` ile paketin projeye kurulması
 // gerekir. PI_WALLET_PRIVATE_SEED, uygulamanızın kendi Pi cüzdanının
@@ -773,7 +791,18 @@ async function handlerImpl(req, res) {
       const domainSnap = await domainRef.get();
       if (!domainSnap.exists) return res.status(404).json({ error: "Domain bulunamadı" });
       if (domainSnap.data().sold === true) return res.status(400).json({ error: "Satılmış domain fiyatı değiştirilemez" });
+      const oldPrice = Number(domainSnap.data().price || 0);
       await domainRef.set({ price: priceNum }, { merge: true });
+      // YENİ: Favorileyen kullanıcılara fiyat değişikliğini bildir —
+      // özellikle fiyat düştüyse bu, alıcı için değerli bir "fırsat" sinyali.
+      if (priceNum !== oldPrice) {
+        const direction = priceNum < oldPrice ? '📉 düştü' : '📈 arttı';
+        await notifyFavoriters(db, dName, {
+          type: 'favorite_price_changed',
+          title: `${priceNum < oldPrice ? '🎉' : 'ℹ️'} Favori Domaininizin Fiyatı ${priceNum < oldPrice ? 'Düştü' : 'Değişti'}`,
+          body: `Favorilediğiniz "${dName}" domaininin fiyatı ${oldPrice} Pi'den ${priceNum} Pi'ye ${direction}.`
+        });
+      }
       return res.status(200).json({ success: true });
     } catch (e) {
       return res.status(500).json({ error: e.message });
@@ -2705,6 +2734,31 @@ async function handlerImpl(req, res) {
           body: `"${sale.domain}" domain satışınıza ait ${payoutAmount} Pi (komisyon düşülmüş), Pi hesabınıza gönderildi.`,
           domainName: sale.domain, amount: payoutAmount
         });
+        // YENİ: Satış tamamen sonuçlandığı (ödeme gerçekten gönderildiği)
+        // an, karşılıklı değerlendirme (puanlama) istemek için en doğru
+        // zaman — daha erken göndermek anlamsız (henüz devir/onay
+        // tamamlanmamış olabilir), daha geç göndermek unutulmaya sebep
+        // olur. Öncesinde hiçbir hatırlatma yoktu, kullanıcılar sadece
+        // kendiliğinden "Panelim"e girip değerlendirirse puan oluşuyordu
+        // — bu yüzden platformda neredeyse hiç değerlendirme birikmiyordu.
+        if (sale.user) {
+          await sendNotification(sale.user, {
+            type: 'rating_reminder',
+            role: 'buyer',
+            title: '⭐ Satıcıyı Değerlendirin',
+            body: `"${sale.domain}" alışverişiniz tamamlandı! Satıcı @${sale.sellerUsername}'i "Panelim → Alımlarım" içinden değerlendirmeyi unutmayın — bu, platformdaki diğer alıcılara yardımcı olur.`,
+            domainName: sale.domain
+          });
+        }
+        if (sale.sellerUsername && sale.user) {
+          await sendNotification(sale.sellerUsername, {
+            type: 'rating_reminder',
+            role: 'seller',
+            title: '⭐ Alıcıyı Değerlendirin',
+            body: `"${sale.domain}" satışınız tamamlandı! Alıcı @${sale.user}'i "Panelim → Gelirim" içinden değerlendirmeyi unutmayın.`,
+            domainName: sale.domain
+          });
+        }
         await sendTG(TG_CHAT_ID, `💸 *ÖDEME SERBEST BIRAKILDI*\n\n🌐 ${sale.domain}\n👤 @${sale.sellerUsername}\n💰 ${payoutAmount} Pi\n🔑 txid: ${txid}`);
         await logAdminAction(await getRealUsername(accessToken), 'release_seller_payment', `${sale.domain} → @${sale.sellerUsername}, ${payoutAmount} Pi`);
 
@@ -3773,6 +3827,41 @@ async function handlerImpl(req, res) {
   }
 
   // ── Satış Verisini Dışa Aktarım İçin Getir (CSV, admin'in tarayıcısında oluşturulur) ─
+  // YENİ: Normal bir kullanıcının (admin olmasına gerek yok) SADECE KENDİ
+  // satışlarını (muhasebe/vergi takibi için) CSV olarak dışa aktarabilmesi.
+  // Öncesinde bu özellik sadece admin panelinde vardı — sıradan bir satıcı
+  // kendi satış geçmişini dışa aktaramıyordu.
+  if (action === 'export_my_sales_data') {
+    const realUsername = await getRealUsername(accessToken);
+    if (!realUsername) return res.status(403).json({ error: "Geçersiz oturum" });
+    try {
+      const db = getDb();
+      const snap = await db.collection('domains').where('sold', '==', true).where('sellerUsername', '==', realUsername).get();
+      const rows = [];
+      snap.forEach(d => {
+        const data = d.data();
+        if (data.deleted === true) return;
+        const grossPrice = Number(data.price || 0);
+        const netEarning = data.payoutAmount != null
+          ? Number(data.payoutAmount)
+          : Math.round(grossPrice * (1 - PLATFORM_COMMISSION_RATE) * 1e7) / 1e7;
+        rows.push({
+          domain: d.id,
+          price: grossPrice,
+          netEarning,
+          buyer: data.buyer || '',
+          at: data.at ? new Date(data.at).toISOString() : '',
+          txid: data.txid || '',
+          payoutStatus: data.payoutStatus || ''
+        });
+      });
+      rows.sort((a, b) => (b.at || '').localeCompare(a.at || ''));
+      return res.status(200).json({ success: true, rows });
+    } catch (e) {
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
   if (action === 'export_sales_data') {
     const isAdmin = await verifyAdmin(accessToken);
     if (!isAdmin) return res.status(403).json({ error: "Yetki yok" });
@@ -4201,6 +4290,16 @@ async function handlerImpl(req, res) {
             title: '💰 Yeni Satış!',
             body: `@${username} tarafından "${domainName}" ${realPrice} Pi'ye satıldı.`,
             domainName, buyer: username, price: realPrice
+          });
+
+          // YENİ: Bu domaini favorileyen (ama satın alan kişi olmayan)
+          // diğer kullanıcılara "kaçırdınız" bildirimi — favoriler artık
+          // tamamen pasif bir liste değil.
+          await notifyFavoriters(db, domainName, {
+            excludeUsername: username,
+            type: 'favorite_sold',
+            title: '😢 Favori Domaininiz Satıldı',
+            body: `Favorilediğiniz "${domainName}" domaini başka bir alıcı tarafından satın alındı.`
           });
 
           if (sellerUsername && sellerUsername !== username) {
