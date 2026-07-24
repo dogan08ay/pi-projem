@@ -1122,20 +1122,22 @@
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#34d399" stroke-width="2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/></svg>
         <span style="color:#6ee7b7;" data-i18n="shareAppMenuItem"></span>
     </button>
-    <!-- YENİ: "Ana Ekrana Ekle" — manifest.json eklemek tek başına
-         görünür bir buton oluşturmuyordu, sadece tarayıcıya "bu yüklenebilir
-         bir PWA" bilgisini veriyordu. Bu buton, destekleyen tarayıcılarda
-         (Chrome/Android) native kurulum istemini tetikliyor; desteklemeyen
-         tarayıcılarda (Pi Browser, Safari/iOS gibi — bunlar
-         beforeinstallprompt'u desteklemiyor) elle nasıl ekleneceğini
-         adım adım gösteren bir bilgi kutusu açıyor. id="pwa-install-item"
-         ile varsayılan olarak gizli, sadece tarayıcı native istemi
-         destekliyorsa görünür hale getiriliyor (bkz. aşağıdaki JS) —
-         desteklemeyen tarayıcılarda buton yerine her zaman elle-ekleme
-         talimatını göstermek üzere tıklanabilir kalıyor.
-    -->
-    <button class="side-menu-item" id="pwa-install-item" onclick="window.handleAddToHomeScreen()">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fbbf24" stroke-width="2"><rect x="5" y="2" width="14" height="20" rx="2"/><path d="M12 18h.01"/><path d="M12 7v6M9 10l3 3 3-3"/></svg>
+    <!-- DÜZELTME: Önceki "Ana Ekrana Ekle" özelliği (manifest.json +
+         beforeinstallprompt) burada İŞE YARAMIYORDU — çünkü Pi Browser,
+         Pi uygulamalarını bir IFRAME içinde gösteriyor ve şu an Pi
+         uygulamalarını çalıştırabilen TEK tarayıcı. Standart tarayıcı
+         seviyesinde "ana ekrana ekle" istemi iframe içindeki içerik için
+         tetiklenmiyor; ayrıca "Safari/Chrome'a geç" tavsiyesi de YANLIŞTI
+         çünkü bu uygulama Pi SDK'sı gerektirdiği için SADECE Pi Browser
+         içinde çalışabiliyor — başka bir tarayıcıya geçmek uygulamayı
+         tamamen bozar. Pi Browser'ın kendi (2025'te eklenen) "Bookmark
+         DApp" özelliği tam olarak bu ihtiyacı karşılıyor — ama bu, Pi
+         Browser'ın KENDİ arayüzünde duruyor, bizim kodumuzun tetikleyebildiği
+         bir şey değil. Bu yüzden buton artık bir işlem YAPMIYOR, sadece
+         kullanıcıya Pi Browser'ın kendi menüsünden bu özelliği nasıl
+         bulacağını gösteren bir bilgi kutusu açıyor. -->
+    <button class="side-menu-item" onclick="window.showPiBrowserBookmarkInfo()">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fbbf24" stroke-width="2"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
         <span style="color:#fde68a;" data-i18n="addToHomeScreenMenuItem"></span>
     </button>
 
@@ -1412,16 +1414,15 @@
     </div>
 </div>
 
-<!-- YENİ: "Ana Ekrana Ekle" modalı. İçerik JS ile dolduruluyor çünkü
-     tarayıcıya göre değişiyor: destekleyen tarayıcılarda (Chrome/Android)
-     tek tıkla gerçek kurulum istemi tetikleniyor; desteklemeyenlerde
-     (Pi Browser, Safari/iOS) elle nasıl ekleneceğini gösteren adımlar
-     yazılıyor. -->
+<!-- DÜZELTME: Bu modal artık "ana ekrana ekleme" işlemini KENDİ yapmıyor
+     (bu, Pi Browser içinde iframe kısıtlaması yüzünden zaten mümkün
+     değildi) — sadece kullanıcıya Pi Browser'ın KENDİ "Bookmark DApp"
+     özelliğini nasıl bulacağını sabit bir metinle anlatıyor. -->
 <div id="pwa-install-modal" class="modal-overlay" style="display:none;">
     <div class="modal-content" style="border-color:#fbbf24;text-align:left;max-width:380px;">
         <div style="text-align:center;margin-bottom:10px;"><div style="font-size:2em;">📲</div>
         <h2 style="color:#fde68a;margin:4px 0;font-size:1em;font-weight:900;" data-i18n="addToHomeScreenTitle"></h2></div>
-        <div id="pwa-install-modal-body" style="font-size:0.8em;line-height:1.7;color:#cbd5e1;"></div>
+        <div id="pwa-install-modal-body" style="font-size:0.8em;line-height:1.7;color:#cbd5e1;" data-i18n="piBrowserBookmarkInfo"></div>
         <button class="pi-btn" style="background:#475569;animation:none;padding:10px;margin:12px 0 0 0;width:100%;" onclick="document.getElementById('pwa-install-modal').style.display='none'" data-i18n="close"></button>
     </div>
 </div>
@@ -2716,11 +2717,9 @@ const i18n = {
     hiwSection5Title:"Güvenlik Önlemleri",
     hiwSection5Body:"Tüm hassas veriler sunucu tarafında doğrulanır, admin yetkisi Pi Network'ün kendi kimlik doğrulama sistemi üzerinden kontrol edilir. Sistem, veri tutarlılığını ve bağlantı sağlığını düzenli olarak otomatik denetler.",
     shareAppMenuItem:"Uygulamayı Paylaş",shareAppTitle:"Uygulamayı Paylaş",
-    addToHomeScreenMenuItem:"Ana Ekrana Ekle",
-    addToHomeScreenTitle:"Ana Ekrana Ekle",
-    addToHomeScreenIOS:"<div style='display:flex;flex-direction:column;gap:10px;'><div><b>1.</b> Alt menüdeki <b>Paylaş</b> ikonuna (kare + yukarı ok) dokunun.</div><div><b>2.</b> Açılan listede <b>\"Ana Ekrana Ekle\"</b> seçeneğini bulun.</div><div><b>3.</b> Sağ üstteki <b>\"Ekle\"</b> butonuna dokunun.</div><div style='color:#94a3b8;font-size:0.9em;margin-top:4px;'>Not: Bu özellik Safari tarayıcısında çalışır. Pi Browser içindeyseniz, sağ üstteki ⋮ menüsünden \"Tarayıcıda Aç\" diyerek Safari'ye geçebilirsiniz.</div></div>",
-    addToHomeScreenAndroid:"<div style='display:flex;flex-direction:column;gap:10px;'><div><b>1.</b> Sağ üstteki <b>⋮</b> (üç nokta) menüsüne dokunun.</div><div><b>2.</b> <b>\"Ana ekrana ekle\"</b> veya <b>\"Uygulamayı yükle\"</b> seçeneğini bulun.</div><div><b>3.</b> Onaylayın.</div><div style='color:#94a3b8;font-size:0.9em;margin-top:4px;'>Not: Pi Browser içindeyseniz bu seçenek görünmeyebilir — sağ üstteki ⋮ menüsünden \"Tarayıcıda Aç\" diyerek Chrome'a geçebilirsiniz.</div></div>",
-    addToHomeScreenGeneric:"Tarayıcınızın menüsünden (genelde sağ üstte) <b>\"Ana Ekrana Ekle\"</b> veya <b>\"Uygulamayı Yükle\"</b> seçeneğini arayın.",
+    addToHomeScreenMenuItem:"Hızlı Erişim İçin Kaydet",
+    addToHomeScreenTitle:"Hızlı Erişim İçin Kaydet",
+    piBrowserBookmarkInfo:"<div style='display:flex;flex-direction:column;gap:10px;'><div>Bu uygulama sadece <b>Pi Browser</b> içinde çalışabildiği için (Pi ile giriş/ödeme başka hiçbir tarayıcıda desteklenmiyor), standart \"ana ekrana ekle\" yöntemi burada işe yaramıyor.</div><div>Bunun yerine, Pi Browser'ın <b>kendi \"Bookmark DApp\" (Uygulama Yer İmi)</b> özelliğini kullanabilirsiniz — bu, uygulamamıza hızlıca erişmenizi sağlar:</div><div style='color:#94a3b8;font-size:0.9em;'>Pi Browser'ın üst/alt menüsündeki yer imi (⭐ veya 🔖) simgesine dokunup buradan \"Bookmark\" seçeneğini kullanın. Menünün tam yeri Pi Browser sürümüne göre değişebilir.</div></div>",
     shareAppDesc:"Linki veya QR kodu paylaşarak arkadaşlarını .pi domain pazarına davet et!",
     copyBtn:"Kopyala",linkCopied:"✅ Link kopyalandı!",
     shareText:"Pi Network üzerinde .pi domain al-sat! Web3 Domain Gateway'i keşfet:",
@@ -3290,11 +3289,9 @@ const i18n = {
     hiwSection5Title:"Security Measures",
     hiwSection5Body:"All sensitive data is verified server-side, and admin authority is checked against Pi Network's own authentication system. The system automatically and regularly audits data consistency and connection health.",
     shareAppMenuItem:"Share App",shareAppTitle:"Share the App",
-    addToHomeScreenMenuItem:"Add to Home Screen",
-    addToHomeScreenTitle:"Add to Home Screen",
-    addToHomeScreenIOS:"<div style='display:flex;flex-direction:column;gap:10px;'><div><b>1.</b> Tap the <b>Share</b> icon (square with an up arrow) in the bottom bar.</div><div><b>2.</b> Find <b>\"Add to Home Screen\"</b> in the list.</div><div><b>3.</b> Tap <b>\"Add\"</b> in the top right.</div><div style='color:#94a3b8;font-size:0.9em;margin-top:4px;'>Note: this works in Safari. If you're in Pi Browser, use the ⋮ menu and \"Open in Browser\" to switch to Safari.</div></div>",
-    addToHomeScreenAndroid:"<div style='display:flex;flex-direction:column;gap:10px;'><div><b>1.</b> Tap the <b>⋮</b> (three dots) menu in the top right.</div><div><b>2.</b> Find <b>\"Add to Home screen\"</b> or <b>\"Install app\"</b>.</div><div><b>3.</b> Confirm.</div><div style='color:#94a3b8;font-size:0.9em;margin-top:4px;'>Note: this option may not appear in Pi Browser — use the ⋮ menu and \"Open in Browser\" to switch to Chrome.</div></div>",
-    addToHomeScreenGeneric:"Look for <b>\"Add to Home Screen\"</b> or <b>\"Install App\"</b> in your browser's menu (usually top right).",
+    addToHomeScreenMenuItem:"Save for Quick Access",
+    addToHomeScreenTitle:"Save for Quick Access",
+    piBrowserBookmarkInfo:"<div style='display:flex;flex-direction:column;gap:10px;'><div>Since this app only works inside <b>Pi Browser</b> (Pi sign-in/payments aren't supported in any other browser), the standard \"add to home screen\" method doesn't work here.</div><div>Instead, you can use Pi Browser's own <b>\"Bookmark DApp\"</b> feature to get quick access to our app:</div><div style='color:#94a3b8;font-size:0.9em;'>Tap the bookmark icon (⭐ or 🔖) in Pi Browser's menu bar and use \"Bookmark\" from there. The exact location may vary by Pi Browser version.</div></div>",
     shareAppDesc:"Share the link or QR code to invite friends to the .pi domain marketplace!",
     copyBtn:"Copy",linkCopied:"✅ Link copied!",
     shareText:"Buy & sell .pi domains on Pi Network! Check out Web3 Domain Gateway:",
@@ -4901,45 +4898,22 @@ window.openHowItWorksModal=function(){
     document.getElementById('how-it-works-modal').style.display='flex';
 };
 
-// ── "Ana Ekrana Ekle" (PWA kurulum) ────────────────────────────────────────
-// Chrome/Android gibi destekleyen tarayıcılar, sayfa "yüklenebilir" olduğunda
-// bu olayı ateşler ve native tarayıcı istemini (banner/butonu) GİZLER —
-// biz onu yakalayıp kendi butonumuzdan istediğimiz an tetikleyebiliyoruz.
-// Pi Browser / Safari gibi bu olayı hiç desteklemeyen tarayıcılarda bu event
-// asla ateşlenmez — o durumda handleAddToHomeScreen() elle-ekleme
-// talimatlarını gösterir.
-let deferredInstallPrompt=null;
-window.addEventListener('beforeinstallprompt',(e)=>{
-    e.preventDefault();
-    deferredInstallPrompt=e;
-});
-window.handleAddToHomeScreen=async function(){
-    if(deferredInstallPrompt){
-        // Tarayıcı native kurulum istemini destekliyor — direkt onu tetikle.
-        deferredInstallPrompt.prompt();
-        await deferredInstallPrompt.userChoice;
-        deferredInstallPrompt=null;
-        toggleSideMenu();
-        return;
-    }
-    // Native istem yok (Pi Browser, Safari/iOS, vb.) — platforma göre
-    // elle-ekleme talimatı göster.
-    const ua=navigator.userAgent||'';
-    const isIOS=/iPad|iPhone|iPod/.test(ua) || (navigator.platform==='MacIntel' && navigator.maxTouchPoints>1);
-    const isAndroid=/Android/.test(ua);
-    const body=document.getElementById('pwa-install-modal-body');
-    if(body){
-        if(isIOS){
-            body.innerHTML=t('addToHomeScreenIOS');
-        } else if(isAndroid){
-            body.innerHTML=t('addToHomeScreenAndroid');
-        } else {
-            body.innerHTML=t('addToHomeScreenGeneric');
-        }
-    }
+// ── "Ana Ekrana Ekle" → DÜZELTME ───────────────────────────────────────────
+// Önceki sürüm burada standart PWA "beforeinstallprompt" API'sini
+// dinleyip kendi kurulum istemimizi tetikliyordu. Bu, Pi Browser'da HİÇ
+// İŞE YARAMIYOR: Pi Browser, Pi uygulamalarını bir IFRAME içinde
+// gösteriyor ve bu API iframe içeriği için tetiklenmiyor. Ayrıca "başka
+// bir tarayıcıya geç" önerisi de YANLIŞTI — bu uygulama Pi SDK'sı
+// gerektirdiği için SADECE Pi Browser içinde çalışabiliyor. Pi Browser'ın
+// kendi "Bookmark DApp" özelliği tam olarak bu ihtiyacı karşılıyor ama bu
+// Pi Browser'ın KENDİ arayüzünde duruyor — bizim JS'imizin
+// tetikleyebileceği bir şey değil. Bu yüzden artık sadece bir bilgi
+// kutusu açıp kullanıcıyı Pi Browser'ın kendi menüsüne yönlendiriyoruz.
+window.showPiBrowserBookmarkInfo=function(){
     document.getElementById('pwa-install-modal').style.display='flex';
     toggleSideMenu();
 };
+
 // ── Puanlar/Yorumlar Tablosu ──────────────────────────────────────────────
 // Bir domain satışında hem alıcının satıcıya verdiği puanı hem de satıcının
 // alıcıya verdiği puanı (hangileri mevcutsa) TEK bir düzenli tabloda
