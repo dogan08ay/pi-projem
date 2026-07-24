@@ -6546,8 +6546,15 @@ window.openMaintenanceAdminLogin = function(){
 async function handleIncompletePayment(payment){
     try{
         const action=payment?.transaction?.txid?'complete':'cancel';
+        // GÜVENLİK DÜZELTMESİ: accessToken eklendi (bkz. approve.js —
+        // 'complete' adımı artık kimliği body'deki username yerine bu
+        // token'dan doğruluyor). Bu callback, Pi.authenticate() sürecinin
+        // içinde tetiklendiği için piAccessToken bazen henüz atanmamış
+        // olabilir; bu durumda backend işlemi güvenli şekilde reddedip
+        // admin'e bildirim gönderiyor, sessizce yanlış kullanıcıya
+        // yazmıyor.
         await fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},
-            body:JSON.stringify({paymentId:payment.identifier,action,txid:payment.transaction?.txid,username:currentUser,domainName:payment.metadata?.domain})});
+            body:JSON.stringify({paymentId:payment.identifier,action,txid:payment.transaction?.txid,username:currentUser,domainName:payment.metadata?.domain,accessToken:piAccessToken})});
     }catch(e){console.error("Pending payment error:",e);}
 }
 // LOGIN — FIX: Önceki sürümde Pi.authenticate çağrısı ile Firestore
@@ -6876,7 +6883,11 @@ document.getElementById("confirm-buy-btn").onclick=async()=>{
                     // bile kullanıcıya "satın alma başarılı" gösteriliyordu.
                     // Artık gerçek sonuca bakılıyor.
                     const r=await fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},
-                        body:JSON.stringify({paymentId:id,action:'complete',txid,username:currentUser,domainName:pendingDomain})});
+                        // GÜVENLİK DÜZELTMESİ: accessToken artık isteğe ekleniyor.
+                        // Backend, alıcıyı body'deki 'username' alanından değil,
+                        // bu token'dan doğruluyor (username sadece geriye dönük
+                        // uyumluluk/loglama için hâlâ gönderiliyor).
+                        body:JSON.stringify({paymentId:id,action:'complete',txid,username:currentUser,domainName:pendingDomain,accessToken:piAccessToken})});
                     const result=await r.json().catch(()=>({}));
                     if(!r.ok || result.error){
                         if(result.raceCondition){
