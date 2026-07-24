@@ -10,6 +10,15 @@
     <link rel="icon" type="image/png" sizes="512x512" href="assets/favicon-512.png">
     <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32.png">
     <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
+    <!-- YENİ: PWA / "Ana Ekrana Ekle" desteği. manifest.json içinde
+         isim, ikonlar ve tema rengi tanımlı — kullanıcı Pi Browser'da
+         "Ana ekrana ekle" dediğinde artık düzgün bir uygulama ikonu,
+         ismi ve splash-screen rengiyle açılıyor (sekme gibi değil). -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#0a0f1e">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Web3 Domain">
 
     <!-- Open Graph / WhatsApp, Telegram, Facebook önizlemesi -->
     <!-- NOT: og:image ve og:url mutlak (absolute) URL olmak zorunda; domain
@@ -1638,6 +1647,10 @@
                 <option value="refunded" data-i18n="soldFilterRefunded"></option>
             </select>
             <div id="my-sold-list" style="text-align:left;"></div>
+            <!-- YENİ: Satıcının kendi satış geçmişini (muhasebe/vergi
+                 takibi için) CSV olarak indirebilmesi. Öncesinde bu özellik
+                 sadece admin panelinde vardı. -->
+            <button onclick="window.exportMySalesCsv(this)" style="width:100%;padding:9px;margin-top:10px;border-radius:10px;border:1.5px solid #10b981;background:rgba(16,185,129,0.1);color:#6ee7b7;font-size:0.75em;font-weight:800;cursor:pointer;">⬇️ <span data-i18n="exportMySalesCsvBtn"></span></button>
         </div>
         <div class="user-tab-panel" id="utab-tickets">
             <div style="background:#1e1b3a;border:2px solid #6366f1;border-radius:12px;padding:10px;">
@@ -1927,6 +1940,14 @@
                 <input type="text" id="domain-search-input" oninput="window.onDomainSearchInput(this.value)" data-i18n-placeholder="searchPlaceholder" style="flex:1;min-width:0;background:#0f172a;border:1.5px solid #334155;border-radius:9px;padding:9px 10px;color:#e2e8f0;font-size:0.78em;">
                 <button type="button" id="favorites-filter-toggle" onclick="window.toggleFavoritesFilter()" aria-label="Sadece favorileri göster" style="flex-shrink:0;padding:0 12px;border-radius:9px;border:1.5px solid #f59e0b;background:rgba(245,158,11,0.1);color:#fbbf24;font-size:1em;cursor:pointer;">☆</button>
             </div>
+            <!-- YENİ: Sıralama seçeneği — önceden sadece "en yeni eklenen
+                 üstte" sabit sıralama vardı, fiyata göre sıralamak imkansızdı. -->
+            <select id="domain-sort-select" onchange="window.onDomainSortChange(this.value)" style="width:100%;margin-bottom:6px;background:#0f172a;border:1.5px solid #334155;border-radius:9px;padding:8px 10px;color:#e2e8f0;font-size:0.76em;font-weight:700;">
+                <option value="newest" data-i18n="sortNewest"></option>
+                <option value="price_asc" data-i18n="sortPriceAsc"></option>
+                <option value="price_desc" data-i18n="sortPriceDesc"></option>
+                <option value="az" data-i18n="sortAz"></option>
+            </select>
             <div class="filter-section-label" data-i18n="filterSectionLabel"></div>
             <button type="button" id="category-filter-btn" onclick="window.toggleCategoryFilterPanel()" class="category-select" style="display:flex;align-items:center;justify-content:space-between;cursor:pointer;">
                 <span id="category-filter-btn-label" data-i18n="filterAll"></span>
@@ -2582,6 +2603,7 @@ const i18n = {
     imageUploading:"Görsel yükleniyor...",imageUploadFailed:"Görsel yüklenemedi.",
     myActiveListings:"Satıştaki Domainleriniz",mySoldDomainsLabel:"Satılan Domainleriniz",
     searchPlaceholder:"🔍 Domain adı ara...",loginRequiredForFavorite:"Favorilere eklemek için giriş yapmalısınız.",
+    sortNewest:"🆕 En Yeni Eklenenler",sortPriceAsc:"💰 Fiyat: Düşükten Yükseğe",sortPriceDesc:"💰 Fiyat: Yüksekten Düşüğe",sortAz:"🔤 İsim (A-Z)",
     favoriteAddBtn:"Favorilere Ekle",favoriteRemoveBtn:"Favorilerden Çıkar",
     howItWorksMenuItem:"Nasıl Çalışır?",howItWorksTitle:"Nasıl Çalışır ve Nasıl Korunuyorsunuz?",
     activeNowLabel:"Şu An Aktif",activeUsersTitle:"Anlık Aktif Kullanıcılar",
@@ -2645,7 +2667,8 @@ const i18n = {
     csvCopiedMsg:"Panoya kopyalandı.",csvCopyManualHint:"Otomatik kopyalanamadı — metin kutusu seçili, elle kopyalayabilirsiniz.",
     csvDownloadFailHint:"İndirme başarısız oldu, bu tarayıcıda 'Panoya Kopyala' seçeneğini deneyin.",
     csvTryRefreshHint:"(Panel açıkken silinmiş bir satış olabilir, sayfayı yenileyip tekrar deneyin.)",
-    csvHeaderLabels:{domain:"Domain",price:"Fiyat",buyer:"Alıcı",sellerUsername:"Satıcı",at:"Tarih",txid:"İşlem No",payoutStatus:"Ödeme Durumu",type:"Tür"},
+    csvHeaderLabels:{domain:"Domain",price:"Satış Bedeli",netEarning:"Net Kazancınız",buyer:"Alıcı",sellerUsername:"Satıcı",at:"Tarih",txid:"İşlem No",payoutStatus:"Ödeme Durumu",type:"Tür"},
+    exportMySalesCsvBtn:"Satış Geçmişimi CSV Olarak İndir",
     noSalesLast30Days:"Son 30 günde satış yok.",noDataToExport:"Dışa aktarılacak veri yok.",
     salesCountUnit:"satış",trendMaxDayLabel:"En yüksek gün",trendTapHint:"Detay için bir çubuğa dokunun",
     trendTotalSummary:(count,vol)=>`Son 30 günde ${count} satış, toplam ${Math.round(vol*100)/100} Pi`,
@@ -3149,6 +3172,7 @@ const i18n = {
     imageUploading:"Uploading image...",imageUploadFailed:"Image upload failed.",
     myActiveListings:"Domains Currently on Sale",mySoldDomainsLabel:"Your Sold Domains",
     searchPlaceholder:"🔍 Search domain name...",loginRequiredForFavorite:"You need to log in to add favorites.",
+    sortNewest:"🆕 Newest First",sortPriceAsc:"💰 Price: Low to High",sortPriceDesc:"💰 Price: High to Low",sortAz:"🔤 Name (A-Z)",
     favoriteAddBtn:"Add to Favorites",favoriteRemoveBtn:"Remove from Favorites",
     howItWorksMenuItem:"How It Works",howItWorksTitle:"How It Works & How You're Protected",
     activeNowLabel:"Active Now",activeUsersTitle:"Currently Active Users",
@@ -3212,7 +3236,8 @@ const i18n = {
     csvCopiedMsg:"Copied to clipboard.",csvCopyManualHint:"Couldn't copy automatically — the text box is selected, you can copy it manually.",
     csvDownloadFailHint:"Download failed, try 'Copy to Clipboard' in this browser instead.",
     csvTryRefreshHint:"(A sale may have been deleted while the panel was open — refresh the page and try again.)",
-    csvHeaderLabels:{domain:"Domain",price:"Price",buyer:"Buyer",sellerUsername:"Seller",at:"Date",txid:"Transaction ID",payoutStatus:"Payout Status",type:"Type"},
+    csvHeaderLabels:{domain:"Domain",price:"Sale Price",netEarning:"Your Net Earning",buyer:"Buyer",sellerUsername:"Seller",at:"Date",txid:"Transaction ID",payoutStatus:"Payout Status",type:"Type"},
+    exportMySalesCsvBtn:"Download My Sales History as CSV",
     noSalesLast30Days:"No sales in the last 30 days.",noDataToExport:"No data to export.",
     salesCountUnit:"sales",trendMaxDayLabel:"Peak day",trendTapHint:"Tap a bar for details",
     trendTotalSummary:(count,vol)=>`${count} sales in the last 30 days, ${Math.round(vol*100)/100} Pi total`,
@@ -3634,8 +3659,8 @@ window.switchUserTab=function(tabId){
     // toggleReceivedOffersList). Sekme seviyesinde sadece transfer/anlaşmazlık
     // bildirimleri (ki bunlar panel içindeki "Satın Aldıklarım" / "Gelirim"
     // listesiyle ilgili, alt açılır panel değil) okundu yapılmaya devam ediyor.
-    if(tabId==='utab-purchases'){ markRoleNotificationsRead('buyer',['transfer_confirmation_reminder','dispute_response']); }
-    if(tabId==='utab-income'){ markRoleNotificationsRead('seller',['transfer_confirmation_reminder','dispute_response']); }
+    if(tabId==='utab-purchases'){ markRoleNotificationsRead('buyer',['transfer_confirmation_reminder','dispute_response','rating_reminder']); }
+    if(tabId==='utab-income'){ markRoleNotificationsRead('seller',['transfer_confirmation_reminder','dispute_response','rating_reminder']); }
 };
 // "Alımlarım" (buyer) / "Gelirim" (seller) / "İlanlarım" (seller) sekmesi
 // açılınca, o sekmeye ait bildirim tiplerini okundu yapar ve sekme rozetini
@@ -3665,6 +3690,16 @@ window.setSaleStatusFilter=function(val){
 // ── Arama + Favoriler ────────────────────────────────────────────────────
 let domainSearchQuery='';
 let showOnlyFavorites=false;
+// YENİ: Fiyata/tarihe göre sıralama. Öncesinde sıralama sabitti (sadece
+// en yeni eklenen en üstte) — domain sayısı arttıkça "en ucuzu bulmak"
+// gibi basit bir ihtiyaç bile imkansızdı. localStorage'da saklanıyor ki
+// kullanıcı tercihini her ziyarette tekrar seçmek zorunda kalmasın.
+let domainSortOrder=localStorage.getItem('w3dg_sort')||'newest';
+window.onDomainSortChange=function(val){
+    domainSortOrder=val;
+    localStorage.setItem('w3dg_sort',val);
+    debouncedRender();
+};
 let userFavorites=new Set(); // sunucudan (user_profiles.favorites) senkronize edilir, girişte doldurulur
 let domainSearchDebounceTimer=null;
 window.onDomainSearchInput=function(val){
@@ -3924,8 +3959,11 @@ function renderNotifBadgeAndList(){
     // rozet olarak gösterilir. Sekme açılınca kaybolur (bkz. switchUserTab).
     // FIX: teklif bildirimleri öncesinde 'role' alanı olmadan gönderiliyordu,
     // bu yüzden bu filtreye hiç girmiyor, rozet hiçbir zaman görünmüyordu.
-    const relevantTypes=['transfer_confirmation_reminder','dispute_response','offer_accepted','offer_rejected','offer_countered'];
-    const relevantTypesSeller=['transfer_confirmation_reminder','dispute_response'];
+    // YENİ: 'rating_reminder' (satış sonrası değerlendirme hatırlatıcısı)
+    // de artık ilgili sekme rozetine dahil — alıcı için Alımlarım,
+    // satıcı için Gelirim sekmesinde küçük bir rozet olarak görünür.
+    const relevantTypes=['transfer_confirmation_reminder','dispute_response','offer_accepted','offer_rejected','offer_countered','rating_reminder'];
+    const relevantTypesSeller=['transfer_confirmation_reminder','dispute_response','rating_reminder'];
     const listingsRelevantTypes=['offer_received','counter_offer_accepted','counter_offer_rejected'];
     const unreadBuyer=cachedNotifications.filter(n=>!n.read&&relevantTypes.includes(n.type)&&n.role==='buyer').length;
     const unreadSeller=cachedNotifications.filter(n=>!n.read&&relevantTypesSeller.includes(n.type)&&n.role==='seller').length;
@@ -5307,8 +5345,48 @@ window.exportSalesCsv=async function(btnEl){
         const fmtCell=(h,v)=>{
             if(v===undefined||v===null||v==='') return '<span style="color:#475569;">—</span>';
             if(h==='price') return `${escapeHtml(String(v))} Pi`;
-            if(h==='at'){ const d=new Date(Number(v)); return isNaN(d.getTime())?escapeHtml(String(v)):d.toLocaleString(locale,{day:'2-digit',month:'2-digit',year:'2-digit',hour:'2-digit',minute:'2-digit'}); }
+            if(h==='at'){ const d=new Date(v); return isNaN(d.getTime())?escapeHtml(String(v)):d.toLocaleString(locale,{day:'2-digit',month:'2-digit',year:'2-digit',hour:'2-digit',minute:'2-digit'}); }
             if(h==='buyer'||h==='sellerUsername') return '@'+escapeHtml(String(v));
+            return escapeHtml(String(v));
+        };
+        const theadHtml=headers.map(h=>`<th style="padding:7px 10px;font-size:0.62em;color:#818cf8;text-align:left;font-weight:800;text-transform:uppercase;white-space:nowrap;">${headerLabels[h]||h}</th>`).join('');
+        const rowsHtml=rows.map(r=>`<tr>${headers.map(h=>`<td style="padding:7px 10px;font-size:0.68em;color:#e2e8f0;border-top:1px solid #1e293b;white-space:nowrap;">${fmtCell(h,r[h])}</td>`).join('')}</tr>`).join('');
+        document.getElementById('csv-export-table-wrap').innerHTML=`<table style="width:100%;border-collapse:collapse;min-width:680px;">
+            <thead><tr style="background:#1e293b;position:sticky;top:0;">${theadHtml}</tr></thead>
+            <tbody>${rowsHtml}</tbody>
+        </table>`;
+        document.getElementById('csv-export-modal').style.display='flex';
+    }catch(e){ console.error('CSV export hatası:', e); showToast(t('genericError')); }
+    finally{ if(btn){ btn.disabled=false; btn.style.opacity='1'; if(originalText!==null) btn.innerHTML=originalText; } }
+};
+// YENİ: Admin'inkiyle AYNI modal/görünümü (csv-export-modal) kullanıyor,
+// tek fark backend'den SADECE bu kullanıcının kendi satışlarını çeken
+// 'export_my_sales_data' action'ını çağırması. Kod tekrarını azaltmak için
+// modal render mantığı burada da (kolonlar farklı olduğu için) ayrıca
+// yazıldı, ama görsel dil/UX birebir aynı.
+window.exportMySalesCsv=async function(btnEl){
+    const btn = btnEl || event?.currentTarget;
+    const originalText = btn ? btn.innerHTML : null;
+    if(btn){ btn.disabled=true; btn.style.opacity='0.6'; btn.innerHTML='⏳ ...'; }
+    try{
+        const r=await fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'export_my_sales_data',accessToken:piAccessToken})});
+        const result=await r.json();
+        if(!result.success){ showToast(result.error||t('genericError')); return; }
+        const rows=result.rows||[];
+        if(!rows.length){ showToast(t('noDataToExport')+' '+t('csvTryRefreshHint')); return; }
+        const headers=['domain','price','netEarning','buyer','at','txid','payoutStatus'];
+        const escapeCsv=(v)=>{ const s=String(v??''); return /[",\n]/.test(s) ? '"'+s.replace(/"/g,'""')+'"' : s; };
+        const csv=[headers.join(',')].concat(rows.map(r=>headers.map(h=>escapeCsv(r[h])).join(','))).join('\n');
+        lastCsvData={csv, count:rows.length};
+        document.getElementById('csv-export-summary').textContent = t('csvRowCount')(rows.length);
+
+        const headerLabels=t('csvHeaderLabels');
+        const locale=currentLang==='en'?'en-GB':'tr-TR';
+        const fmtCell=(h,v)=>{
+            if(v===undefined||v===null||v==='') return '<span style="color:#475569;">—</span>';
+            if(h==='price'||h==='netEarning') return `${escapeHtml(String(v))} Pi`;
+            if(h==='at'){ const d=new Date(v); return isNaN(d.getTime())?escapeHtml(String(v)):d.toLocaleString(locale,{day:'2-digit',month:'2-digit',year:'2-digit',hour:'2-digit',minute:'2-digit'}); }
+            if(h==='buyer') return '@'+escapeHtml(String(v));
             return escapeHtml(String(v));
         };
         const theadHtml=headers.map(h=>`<th style="padding:7px 10px;font-size:0.62em;color:#818cf8;text-align:left;font-weight:800;text-transform:uppercase;white-space:nowrap;">${headerLabels[h]||h}</th>`).join('');
@@ -5860,7 +5938,16 @@ function render(){
     const jwb2=document.getElementById('join-web3-banner'); if(jwb2) jwb2.style.display=isAuth?'none':'block';
 
     // ... gerisi aynı (domain-grid oluşturma kısmı değişmedi)
-    let sortedDomains=[...domains].filter(d=>!domainData[d.name]?.deleted).sort((a,b)=>(domainData[b.name]?.createdAt||0)-(domainData[a.name]?.createdAt||0));
+    // YENİ: Sıralama artık kullanıcının seçtiği domainSortOrder'a göre.
+    // Öncesinde her zaman "en yeni eklenen üstte" idi, seçenek yoktu.
+    let sortedDomains=[...domains].filter(d=>!domainData[d.name]?.deleted);
+    const priceOf=(d)=>Number(domainData[d.name]?.price||0);
+    if(domainSortOrder==='price_asc') sortedDomains.sort((a,b)=>priceOf(a)-priceOf(b));
+    else if(domainSortOrder==='price_desc') sortedDomains.sort((a,b)=>priceOf(b)-priceOf(a));
+    else if(domainSortOrder==='az') sortedDomains.sort((a,b)=>a.name.localeCompare(b.name));
+    else sortedDomains.sort((a,b)=>(domainData[b.name]?.createdAt||0)-(domainData[a.name]?.createdAt||0)); // 'newest' (varsayılan)
+    const sortSelectEl=document.getElementById('domain-sort-select');
+    if(sortSelectEl && sortSelectEl.value!==domainSortOrder) sortSelectEl.value=domainSortOrder;
     const isAdminViewing=isAuth&&currentUser===APP_CONFIG.adminUsername&&!window._viewAsUserMode;
     syncCategoryFilterCheckboxes();
     // Arama kutusu — domain adında (büyük/küçük harf duyarsız) geçen kısım
