@@ -2889,6 +2889,14 @@ const i18n = {
     changelogV1_6Item4:"Kullanıcılar kendi taleplerini, admin ise herhangi bir talebi kalıcı olarak silebiliyor",
     changelogV1_6Item5:"Talep listesi kullanıcı/konu/tarih/durum bilgilerini net çizgilerle ayrılmış tablo düzeninde gösteriyor",
 
+    changelogV2_3:"v2.3 - Topluluk ve Güven Güncellemesi",
+    changelogV2_3Item1:"🔒 Ödeme tamamlama adımında kimlik doğrulama güçlendirildi",
+    changelogV2_3Item2:"🏆 Liderlik Tablosu eklendi — puanına göre en aktif kullanıcıları gör",
+    changelogV2_3Item3:"✅ Güvenilir Satıcı rozeti eklendi — 5+ değerlendirme ve 4.5+ ortalaması olan satıcılar öne çıkıyor",
+    changelogV2_3Item4:"🎁 Referral (davet) sistemi eklendi — arkadaşını davet et, ilk alışverişinde ikiniz de bonus puan kazanın",
+    changelogV2_3Item5:"🚩 İlan şikayet etme özelliği eklendi — şüpheli/sahte bir ilanı artık bildirebilirsin",
+    changelogV2_3Item6:"❓ Sıkça Sorulan Sorular bölümü eklendi",
+    changelogV2_3Item7:"⚡ Admin paneline toplu ilan onaylama eklendi",
     changelogV2_2:"v2.2 - Pazar Yeri ve Şeffaflık Güncellemesi",
     changelogV2_2Item1:"🔍 Domain arama kutusu ve ⭐ Favoriler eklendi",
     changelogV2_2Item2:"⭐ Puanlama sistemi: alıcılar, ödeme tamamlanan satışlarda satıcıyı 1-5 yıldızla değerlendirebiliyor",
@@ -3505,6 +3513,14 @@ const i18n = {
     changelogV1_6Item4:"Users can delete their own tickets, and admin can permanently delete any ticket",
     changelogV1_6Item5:"Ticket list now shows user/subject/date/status in a clearly divided table layout",
 
+    changelogV2_3:"v2.3 - Community & Trust Update",
+    changelogV2_3Item1:"🔒 Strengthened identity verification in the payment completion step",
+    changelogV2_3Item2:"🏆 Added a Leaderboard — see the most active users ranked by points",
+    changelogV2_3Item3:"✅ Added a Trusted Seller badge — sellers with 5+ ratings and a 4.5+ average now stand out",
+    changelogV2_3Item4:"🎁 Added a referral system — invite a friend, both earn bonus points on their first purchase",
+    changelogV2_3Item5:"🚩 Added listing reports — you can now flag a suspicious or fake listing",
+    changelogV2_3Item6:"❓ Added a Frequently Asked Questions section",
+    changelogV2_3Item7:"⚡ Added bulk listing approval to the admin panel",
     changelogV2_2:"v2.2 - Marketplace & Transparency Update",
     changelogV2_2Item1:"🔍 Added a domain search box and ⭐ Favorites",
     changelogV2_2Item2:"⭐ Rating system: buyers can rate the seller 1-5 stars once a sale is fully paid out",
@@ -4257,6 +4273,7 @@ window.openChangelogModal=function(){
     const list=document.getElementById('changelog-list');
     if(!list) return;
     const versions=[
+        {v:t('changelogV2_3'),items:[t('changelogV2_3Item1'),t('changelogV2_3Item2'),t('changelogV2_3Item3'),t('changelogV2_3Item4'),t('changelogV2_3Item5'),t('changelogV2_3Item6'),t('changelogV2_3Item7')],date:'2026-07-25',icon:'🤝',color:'#34d399'},
         {v:t('changelogV2_2'),items:[t('changelogV2_2Item1'),t('changelogV2_2Item2'),t('changelogV2_2Item3'),t('changelogV2_2Item4'),t('changelogV2_2Item5'),t('changelogV2_2Item6'),t('changelogV2_2Item7'),t('changelogV2_2Item8')],date:'2026-07-16',icon:'✨',color:'#fbbf24'},
         {v:t('changelogV2_1'),items:[t('changelogV2_1Item1'),t('changelogV2_1Item2'),t('changelogV2_1Item3'),t('changelogV2_1Item4'),t('changelogV2_1Item5')],date:'2026-07-15',icon:'⚙️',color:'#818cf8'},
         {v:t('changelogV2_0'),items:[t('changelogV2_0Item1'),t('changelogV2_0Item2'),t('changelogV2_0Item3'),t('changelogV2_0Item4'),t('changelogV2_0Item5')],date:'2026-07-15',icon:'🛡️',color:'#10b981',featured:true},
