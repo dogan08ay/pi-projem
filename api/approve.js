@@ -33,6 +33,12 @@ const PiNetwork = resolvePiNetworkCtor();
 // ─── Admin Config ───────────────────────────────────────────────────────
 const ADMIN_USERNAME = process.env.ADMIN_USERNAME || 'doganay0808';
 const PLATFORM_COMMISSION_RATE = 0.05; // %5 komisyon
+// YENİ: "Güvenilir Satıcı" rozeti eşikleri — tek bir yerden yönetiliyor.
+const TRUSTED_SELLER_MIN_RATINGS = 5;
+const TRUSTED_SELLER_MIN_AVG = 4.5;
+// YENİ: Referral (davet) ödül miktarları.
+const REFERRAL_BONUS_REFERRER = 30; // davet eden kişiye
+const REFERRAL_BONUS_REFERRED = 15; // davet edilen (yeni) kişiye "hoş geldin" bonusu
 // İkili bir teklif pazarlığında (kabul veya karşı-teklif kabulü) anlaşma
 // sağlandığında, anlaşan alıcıya bu süre boyunca domaini SADECE kendisinin
 // satın alabileceği bir öncelik penceresi tanınır. Süre dolunca domain
@@ -114,6 +120,33 @@ async function notifyFavoriters(db, domainName, { excludeUsername, type, title, 
     console.error(`notifyFavoriters hatası (${domainName}):`, e);
   }
 }
+
+// YENİ: Bir kullanıcı ilk anlamlı işlemini (ilk satın alma) tamamladığında,
+// eğer birisi tarafından davet edilmişse hem davet edeni hem kendisini
+// ödüllendirir. "referralBonusGiven" bayrağı ile bunun SADECE BİR KEZ
+// verilmesi garanti ediliyor — kullanıcı defalarca alım yapsa bile ödül
+// tekrar tekrar verilmiyor.
+async function awardReferralBonusIfEligible(db, username) {
+  try {
+    const profileRef = db.collection('user_profiles').doc(username);
+    const profileSnap = await profileRef.get();
+    if (!profileSnap.exists) return;
+    const data = profileSnap.data();
+    if (!data.referredBy || data.referralBonusGiven) return;
+    await profileRef.set({ referralBonusGiven: true }, { merge: true });
+    await updateUserPoints(data.referredBy, REFERRAL_BONUS_REFERRER, `referral_bonus_for_${username}`);
+    await updateUserPoints(username, REFERRAL_BONUS_REFERRED, 'referral_welcome_bonus');
+    await sendNotification(data.referredBy, {
+      type: 'referral_bonus',
+      title: '🎉 Referans Ödülünüz Var!',
+      body: `Davet ettiğiniz @${username} ilk alışverişini tamamladı — ${REFERRAL_BONUS_REFERRER} bonus puan kazandınız!`
+    });
+    console.log(`[Referral Ödülü] @${data.referredBy} +${REFERRAL_BONUS_REFERRER}, @${username} +${REFERRAL_BONUS_REFERRED}`);
+  } catch (e) {
+    console.error(`awardReferralBonusIfEligible hatası (${username}):`, e);
+  }
+}
+
 
 
 // NOT: Bunun çalışması için ortam değişkenlerine PI_WALLET_PRIVATE_SEED
@@ -1760,6 +1793,69 @@ async function handlerImpl(req, res) {
   }
 
   // ── Satış Önerisini Onayla ────────────────────────────────────────────
+  // YENİ: Toplu onaylama. Öncesinde admin, bekleyen her ilanı tek tek
+  // (bir bir tıklayarak) onaylamak zorundaydı — ilan sayısı arttıkça bu
+  // yorucu bir tekrar işine dönüşüyordu. Bu action, tek tek onaylamayla
+  // AYNI mantığı (isim çakışması kontrolü, bildirim, puan, audit log)
+  // her seçilen istek için tekrarlıyor, sadece tek bir istekte topluca.
+  if (action === 'bulk_approve_sell_requests') {
+    const { requestIds } = req.body;
+    const isAdmin = await verifyAdmin(accessToken);
+    if (!isAdmin) return res.status(403).json({ error: "Yetki yok" });
+    if (!Array.isArray(requestIds) || requestIds.length === 0)
+      return res.status(400).json({ error: "En az bir istek seçilmelidir" });
+    if (requestIds.length > 50)
+      return res.status(400).json({ error: "Tek seferde en fazla 50 istek onaylanabilir" });
+
+    const db = getDb();
+    const adminUsername = await getRealUsername(accessToken);
+    const results = { approved: [], failed: [] };
+
+    for (const requestId of requestIds) {
+      try {
+        const requestRef = db.collection('sell_requests').doc(requestId);
+        const requestSnap = await requestRef.get();
+        if (!requestSnap.exists) { results.failed.push({ requestId, error: "Bulunamadı" }); continue; }
+        const reqData = requestSnap.data();
+        if (reqData.status !== 'pending') { results.failed.push({ requestId, domainName: reqData.domainName, error: "Zaten işlenmiş" }); continue; }
+
+        const domainRef = db.collection('domains').doc(reqData.domainName);
+        const existingDomain = await domainRef.get();
+        if (existingDomain.exists) {
+          results.failed.push({ requestId, domainName: reqData.domainName, error: existingDomain.data().deleted === true ? "Domain silinmiş durumda" : "Domain adı zaten mevcut" });
+          continue;
+        }
+
+        await domainRef.set({
+          sold: false, price: reqData.price,
+          img: reqData.img, type: reqData.domainType,
+          description: reqData.description || '',
+          sellerUsername: reqData.submittedBy,
+          sellerNote: reqData.sellerNote,
+          ownershipProof: reqData.ownershipProof || null,
+          txid: null, buyer: null, at: null,
+          deleted: false, deletedAt: null,
+          createdAt: Date.now()
+        });
+        await requestRef.set({ status: 'approved', resolvedAt: Date.now() }, { merge: true });
+
+        await sendNotification(reqData.submittedBy, {
+          type: 'sell_request_approved',
+          title: '✅ Domain Öneriniz Onaylandı!',
+          body: `"${reqData.domainName}" domaininiz markete eklendi. Satışa hazır!`,
+          domainName: reqData.domainName
+        });
+        await updateUserPoints(reqData.submittedBy, 20, 'domain_approved');
+        results.approved.push({ requestId, domainName: reqData.domainName });
+      } catch (e) {
+        results.failed.push({ requestId, error: e.message });
+      }
+    }
+
+    await logAdminAction(adminUsername, 'bulk_approve_sell_requests', `${results.approved.length} onaylandı, ${results.failed.length} başarısız`);
+    return res.status(200).json({ success: true, ...results });
+  }
+
   if (action === 'approve_sell_request') {
     const { requestId } = req.body;
     const isAdmin = await verifyAdmin(accessToken);
@@ -2103,13 +2199,44 @@ async function handlerImpl(req, res) {
   //  Bu yüzden her girişte sessizce senkronize ediyoruz.
   // ══════════════════════════════════════════════════════════════════════
   if (action === 'sync_user_uid') {
-    const { uid } = req.body;
+    const { uid, referralCode } = req.body;
     if (!uid) return res.status(400).json({ error: "uid zorunludur" });
     const realUsername = await getRealUsername(accessToken);
     if (!realUsername) return res.status(401).json({ error: "Geçersiz oturum" });
     try {
       const db = getDb();
       await db.collection('users').doc(realUsername).set({ piUid: uid, piUidSyncedAt: Date.now() }, { merge: true });
+
+      // YENİ: Referral (davet) sistemi. Öncesinde sadece genel bir "linki
+      // paylaş" vardı, kimin kimi getirdiğini takip eden/ödüllendiren bir
+      // mekanizma yoktu. Burada, SADECE bu kullanıcının profili DAHA ÖNCE
+      // hiç oluşturulmamışsa (yani gerçekten ilk kez giriş yapıyorsa) ve
+      // geçerli bir referralCode (davet eden kişinin kullanıcı adı)
+      // gönderilmişse, "kim tarafından davet edildiği" kalıcı olarak
+      // kaydediliyor. Sonradan tekrar giriş yapıldığında (referralCode
+      // olsun ya da olmasın) bir şey değişmiyor — sadece İLK girişte kayıt
+      // altına alınıyor, birisi kendi linkini defalarca kullanıp puan
+      // biriktiremesin diye.
+      if (referralCode && referralCode !== realUsername) {
+        const profileRef = db.collection('user_profiles').doc(realUsername);
+        const profileSnap = await profileRef.get();
+        const alreadyHasReferrer = profileSnap.exists && profileSnap.data().referredBy;
+        if (!alreadyHasReferrer) {
+          const referrerSnap = await db.collection('user_profiles').doc(referralCode).get();
+          // Davet eden kişinin gerçekten var olup olmadığını (en azından bir
+          // profili olup olmadığını) kontrol ediyoruz — rastgele/uydurma bir
+          // kullanıcı adıyla kayıt oluşmasın.
+          const referrerExists = referrerSnap.exists || (await db.collection('domains').where('sellerUsername', '==', referralCode).limit(1).get()).size > 0;
+          if (referrerExists) {
+            await profileRef.set({ referredBy: referralCode, referredAt: Date.now() }, { merge: true });
+            await db.collection('user_profiles').doc(referralCode).set({
+              referralCount: FieldValue.increment(1)
+            }, { merge: true });
+            console.log(`[Referral] @${realUsername}, @${referralCode} tarafından davet edildi.`);
+          }
+        }
+      }
+
       return res.status(200).json({ success: true });
     } catch (e) {
       console.error("sync_user_uid hatası:", e);
@@ -2139,6 +2266,94 @@ async function handlerImpl(req, res) {
       return res.status(500).json({ error: e.message });
     }
   }
+
+  // YENİ: İlan şikayet etme. Öncesinde şüpheli/sahte bir ilanı bildirecek
+  // hiçbir yol yoktu — kullanıcı böyle bir şeyle karşılaşırsa elle
+  // e-posta/Telegram'dan admin'e ulaşmak zorundaydı. submit_trademark_claim
+  // ile aynı desende (rate limit + admin bildirimi) yazıldı.
+  if (action === 'report_listing') {
+    if (!await checkRateLimit(clientIp, 'report_listing', 5, 3600000))
+      return res.status(429).json({ error: "Çok fazla bildirim gönderildi. Lütfen daha sonra tekrar deneyin." });
+
+    const realUsername = await getRealUsername(accessToken);
+    if (!realUsername) return res.status(403).json({ error: "Bildirim göndermek için giriş yapmalısınız." });
+
+    const { domainName: reportDomain, reason, comment } = req.body;
+    const validReasons = ['fake', 'inappropriate', 'price_manipulation', 'trademark', 'other'];
+    if (!reportDomain || !reason || !validReasons.includes(reason))
+      return res.status(400).json({ error: "Domain adı ve geçerli bir sebep zorunludur." });
+    if (String(comment || '').length > 1000)
+      return res.status(400).json({ error: "Yorum çok uzun." });
+
+    try {
+      const db = getDb();
+      const now = Date.now();
+
+      // Aynı kullanıcı aynı domaini birden fazla kez bildirmesin diye kontrol.
+      const existing = await db.collection('listing_reports')
+        .where('domainName', '==', reportDomain)
+        .where('reportedBy', '==', realUsername)
+        .where('status', '==', 'new')
+        .get();
+      if (!existing.empty) {
+        return res.status(400).json({ error: "Bu ilanı zaten bildirdiniz, inceleme sürüyor." });
+      }
+
+      const reportRef = db.collection('listing_reports').doc();
+      await reportRef.set({
+        domainName: String(reportDomain).trim(),
+        reason,
+        comment: String(comment || '').trim(),
+        reportedBy: realUsername,
+        status: 'new',
+        createdAt: now
+      });
+
+      await sendNotificationToAdmin({
+        type: 'listing_reported',
+        title: '🚩 İlan Şikayeti',
+        body: `@${realUsername}, "${reportDomain}" ilanını "${reason}" sebebiyle bildirdi.`,
+        domainName: reportDomain, reportId: reportRef.id
+      });
+      await sendTG(TG_CHAT_ID, `🚩 *İlan Şikayeti*\nDomain: ${reportDomain}\nSebep: ${reason}\nBildiren: @${realUsername}${comment ? '\nYorum: ' + comment : ''}`);
+
+      return res.status(200).json({ success: true });
+    } catch (e) {
+      console.error("report_listing hatası:", e);
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  // ── ADMIN: Bildirilen İlanları Listele/Yönet ────────────────────────────
+  if (action === 'get_listing_reports') {
+    const isAdmin = await verifyAdmin(accessToken);
+    if (!isAdmin) return res.status(403).json({ error: "Yetki yok" });
+    try {
+      const db = getDb();
+      const snap = await db.collection('listing_reports').where('status', '==', 'new').get();
+      const reports = [];
+      snap.forEach(d => reports.push({ id: d.id, ...d.data() }));
+      reports.sort((a, b) => b.createdAt - a.createdAt);
+      return res.status(200).json({ success: true, reports });
+    } catch (e) {
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  if (action === 'dismiss_listing_report') {
+    const isAdmin = await verifyAdmin(accessToken);
+    if (!isAdmin) return res.status(403).json({ error: "Yetki yok" });
+    const { reportId } = req.body;
+    if (!reportId) return res.status(400).json({ error: "reportId zorunludur" });
+    try {
+      const db = getDb();
+      await db.collection('listing_reports').doc(reportId).set({ status: 'dismissed', resolvedAt: Date.now(), resolvedBy: await getRealUsername(accessToken) }, { merge: true });
+      return res.status(200).json({ success: true });
+    } catch (e) {
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
 
   if (action === 'submit_trademark_claim') {
     if (!await checkRateLimit(clientIp, 'submit_trademark_claim', 3, 3600000))
@@ -3131,6 +3346,10 @@ async function handlerImpl(req, res) {
       const d = snap.exists ? snap.data() : {};
       const count = d.ratingCount || 0;
       const avg = count > 0 ? Math.round((d.ratingSum / count) * 10) / 10 : null;
+      // YENİ: "Güvenilir Satıcı" rozeti — yeterince değerlendirme almış
+      // (5+) VE ortalaması yüksek (4.5+) satıcılar otomatik olarak
+      // öne çıkarılıyor. Eşik değerleri burada tek bir yerden yönetiliyor.
+      const isTrusted = count >= TRUSTED_SELLER_MIN_RATINGS && avg !== null && avg >= TRUSTED_SELLER_MIN_AVG;
 
       // Yazılı yorumları toplamak için: bu satıcının sattığı domainleri
       // tara, buyerRating.comment dolu olanları en yeniden eskiye sırala.
@@ -3146,7 +3365,7 @@ async function handlerImpl(req, res) {
         recentReviews = withComments.slice(0, 5);
       } catch (_) { /* yorum toplama başarısız olsa da ana puan verisi dönsün */ }
 
-      return res.status(200).json({ success: true, avg, count, recentReviews });
+      return res.status(200).json({ success: true, avg, count, recentReviews, isTrusted });
     } catch (e) {
       return res.status(500).json({ error: e.message });
     }
@@ -3706,6 +3925,49 @@ async function handlerImpl(req, res) {
       }, { merge: true });
       return res.status(200).json({ success: true });
     } catch (e) {
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  // YENİ: Leaderboard — puan sistemi (updateUserPoints) zaten aylardır
+  // çalışıyordu ama bunu gösteren hiçbir ekran yoktu; changelog'da bile
+  // "leaderboard yakında geliyor" yazıyordu ama hiç yapılmamıştı. Veri
+  // zaten toplandığı için burada sadece sıralayıp döndürüyoruz.
+  if (action === 'get_leaderboard') {
+    try {
+      const db = getDb();
+      const snap = await db.collection('user_profiles')
+        .orderBy('points', 'desc')
+        .limit(50)
+        .get();
+      const list = [];
+      snap.forEach(d => {
+        const data = d.data();
+        if ((data.points || 0) <= 0) return; // hiç puanı olmayanları listede boşuna gösterme
+        list.push({ username: d.id, points: data.points || 0, badge: data.badge || null });
+      });
+      // Kendi sıramızı da (top 50'de olmasa bile) ayrıca hesaplayıp
+      // döndürüyoruz — kullanıcı listede kendini bulamazsa "kaçıncısın"
+      // bilgisi hâlâ görünsün diye.
+      let myRank = null, myPoints = null;
+      const realUsername = accessToken ? await getRealUsername(accessToken) : null;
+      if (realUsername) {
+        const myIndexInTop = list.findIndex(u => u.username === realUsername);
+        if (myIndexInTop >= 0) {
+          myRank = myIndexInTop + 1;
+          myPoints = list[myIndexInTop].points;
+        } else {
+          const myDoc = await db.collection('user_profiles').doc(realUsername).get();
+          myPoints = myDoc.exists ? (myDoc.data().points || 0) : 0;
+          if (myPoints > 0) {
+            const higherSnap = await db.collection('user_profiles').where('points', '>', myPoints).get();
+            myRank = higherSnap.size + 1;
+          }
+        }
+      }
+      return res.status(200).json({ success: true, list, myRank, myPoints, myUsername: realUsername });
+    } catch (e) {
+      console.error('get_leaderboard hatası:', e);
       return res.status(500).json({ error: e.message });
     }
   }
@@ -4327,6 +4589,10 @@ async function handlerImpl(req, res) {
           await db.collection('config').doc('platform_stats').set(statsIncrement, { merge: true });
 
           await updateUserPoints(username, realPrice, 'purchase');
+          // YENİ: Referral ödülü — bu kişi birisi tarafından davet
+          // edildiyse ve bu onun ilk (ödül almadığı) satın almasıysa,
+          // davet eden + kendisi bonus puan kazanır.
+          await awardReferralBonusIfEligible(db, username);
 
           await sendNotification(username, {
             type: 'purchase_success',
