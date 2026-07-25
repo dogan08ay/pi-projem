@@ -1122,6 +1122,13 @@
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#34d399" stroke-width="2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/></svg>
         <span style="color:#6ee7b7;" data-i18n="shareAppMenuItem"></span>
     </button>
+    <!-- YENİ: Leaderboard. Puan sistemi (updateUserPoints) aylardır aktif
+         çalışıyordu ama bunu gösteren bir ekran hiç yoktu — changelog'da
+         "leaderboard yakında geliyor" yazsa bile hiç yapılmamıştı. -->
+    <button class="side-menu-item" onclick="window.openLeaderboardModal()">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fbbf24" stroke-width="2"><path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0V4z"/><path d="M17 6h3a2 2 0 0 1-2 4M7 6H4a2 2 0 0 0 2 4"/></svg>
+        <span style="color:#fde68a;" data-i18n="leaderboardMenuItem"></span>
+    </button>
     <!-- KALDIRILDI: "Ana Ekrana Ekle" / "Hızlı Erişim İçin Kaydet" özelliği
          tamamen kaldırıldı. İki farklı deneme de (standart PWA istemi, sonra
          Pi Browser'ın "Bookmark DApp" özelliğine yönlendirme) hatalı çıktı —
@@ -1285,7 +1292,32 @@
         <h2 id="detail-modal-name" style="color:#f1f5f9;margin:8px 0 10px 0;font-size:1.1em;font-weight:900;"></h2>
         <div id="detail-modal-fields" style="display:flex;flex-direction:column;gap:8px;font-size:0.78em;color:#cbd5e1;line-height:1.4;margin-bottom:12px;background:#0f172a;padding:12px;border-radius:10px;"></div>
         <div id="detail-modal-action"></div>
+        <!-- YENİ: İlan şikayet etme — öncesinde şüpheli/sahte bir ilanı
+             bildirecek hiçbir yol yoktu. -->
+        <button onclick="window.openReportListingModal()" style="width:100%;background:none;border:none;color:#64748b;font-size:0.65em;text-decoration:underline;cursor:pointer;padding:8px 0 0 0;">🚩 <span data-i18n="reportListingLink"></span></button>
         <button class="pi-btn" style="background:#475569;animation:none;padding:10px;margin:8px 0 0 0;width:100%;" onclick="document.getElementById('domain-detail-modal').style.display='none'" data-i18n="close"></button>
+    </div>
+</div>
+
+<!-- YENİ: İlan şikayet formu modalı. -->
+<div id="report-listing-modal" class="modal-overlay" style="display:none;">
+    <div class="modal-content" style="border-color:#ef4444;text-align:left;max-width:380px;">
+        <h2 style="color:#f87171;margin:0 0 4px 0;font-size:1em;font-weight:900;">🚩 <span data-i18n="reportListingTitle"></span></h2>
+        <p style="color:#94a3b8;font-size:0.7em;margin:0 0 12px 0;" data-i18n="reportListingDesc"></p>
+        <div style="font-weight:800;color:#94a3b8;font-size:0.78em;margin-bottom:10px;">🌐 <span id="report-listing-domain-name"></span></div>
+        <label style="display:block;font-size:0.72em;font-weight:800;color:#cbd5e1;margin-bottom:6px;" data-i18n="reportReasonLabel"></label>
+        <select id="report-listing-reason" class="category-select" style="margin-bottom:10px;">
+            <option value="fake" data-i18n="reportReasonFake"></option>
+            <option value="inappropriate" data-i18n="reportReasonInappropriate"></option>
+            <option value="price_manipulation" data-i18n="reportReasonPriceManipulation"></option>
+            <option value="trademark" data-i18n="reportReasonTrademark"></option>
+            <option value="other" data-i18n="reportReasonOther"></option>
+        </select>
+        <textarea id="report-listing-comment" data-i18n-placeholder="reportCommentPlaceholder" style="width:100%;min-height:70px;background:#0f172a;border:1.5px solid #334155;border-radius:9px;padding:10px;color:#e2e8f0;font-size:0.78em;box-sizing:border-box;margin-bottom:12px;resize:vertical;"></textarea>
+        <div style="display:flex;gap:8px;">
+            <button class="pi-btn" style="background:#475569;animation:none;padding:10px;margin:0;flex:1;" onclick="document.getElementById('report-listing-modal').style.display='none'" data-i18n="cancel"></button>
+            <button class="pi-btn" style="background:#ef4444;animation:none;padding:10px;margin:0;flex:1;" onclick="window.submitListingReport()" data-i18n="reportSubmitBtn"></button>
+        </div>
     </div>
 </div>
 
@@ -1320,6 +1352,9 @@
     <div class="modal-content" style="border-color:#10b981;text-align:center;">
         <h2 style="color:#f1f5f9;margin:0 0 4px 0;font-size:1.05em;font-weight:900;">📤 <span data-i18n="shareAppTitle"></span></h2>
         <p style="color:#94a3b8;font-size:0.72em;margin:0 0 14px 0;" data-i18n="shareAppDesc"></p>
+        <!-- YENİ: Referral bonusu açıklaması — sadece giriş yapılmışsa
+             görünür (link o zaman kişisel referral linkine dönüşüyor). -->
+        <div id="share-referral-note" style="display:none;background:rgba(16,185,129,0.1);border:1px solid #10b981;border-radius:9px;padding:8px 10px;margin-bottom:12px;font-size:0.68em;color:#6ee7b7;font-weight:700;line-height:1.5;" data-i18n="referralBonusNote"></div>
         <img id="share-qr-img" src="" alt="QR" style="width:170px;height:170px;border-radius:12px;background:#fff;padding:8px;margin-bottom:14px;">
         <div style="display:flex;gap:6px;margin-bottom:14px;">
             <input id="share-link-input" readonly style="flex:1;min-width:0;background:#0f172a;border:1px solid #334155;border-radius:8px;padding:8px;color:#cbd5e1;font-size:0.72em;">
@@ -1402,6 +1437,32 @@
 
         </div>
         <button class="pi-btn" style="background:#475569;animation:none;padding:10px;margin:12px 0 0 0;width:100%;flex-shrink:0;" onclick="document.getElementById('how-it-works-modal').style.display='none'" data-i18n="close"></button>
+    </div>
+</div>
+
+<!-- YENİ: SSS modalı — akordeon (aç/kapa) şeklinde soru-cevaplar. -->
+<div id="faq-modal" class="modal-overlay" style="display:none;">
+    <div class="modal-content" style="border-color:#14b8a6;text-align:left;max-height:82vh;display:flex;flex-direction:column;">
+        <h2 style="color:#5eead4;margin:0 0 4px 0;font-size:1.05em;font-weight:900;">❓ <span data-i18n="faqTitle"></span></h2>
+        <div id="faq-list" style="flex:1;overflow-y:auto;font-size:0.8em;line-height:1.5;color:#cbd5e1;margin-top:8px;"></div>
+        <button class="pi-btn" style="background:#475569;animation:none;padding:10px;margin:12px 0 0 0;width:100%;flex-shrink:0;" onclick="document.getElementById('faq-modal').style.display='none'" data-i18n="close"></button>
+    </div>
+</div>
+
+<!-- YENİ: Leaderboard modalı. Liste + kendi sıramız backend'den
+     (get_leaderboard) çekilip window.renderLeaderboard() ile dolduruluyor. -->
+<div id="leaderboard-modal" class="modal-overlay" style="display:none;">
+    <div class="modal-content" style="border-color:#fbbf24;text-align:left;max-width:420px;">
+        <div style="text-align:center;margin-bottom:8px;">
+            <div style="font-size:2em;">🏆</div>
+            <h2 style="color:#fde68a;margin:4px 0;font-size:1.05em;font-weight:900;" data-i18n="leaderboardTitle"></h2>
+            <div style="font-size:0.68em;color:#94a3b8;" data-i18n="leaderboardSubtitle"></div>
+        </div>
+        <div id="leaderboard-my-rank" style="display:none;background:linear-gradient(135deg,#1e1b4b 0%,#1e293b 100%);border:1.5px solid #6366f1;border-radius:10px;padding:8px 12px;margin-bottom:10px;text-align:center;font-size:0.8em;color:#c7d2fe;font-weight:800;"></div>
+        <div id="leaderboard-list" style="max-height:50vh;overflow-y:auto;">
+            <p style="font-size:0.72em;opacity:0.5;text-align:center;" data-i18n="loadingLabel"></p>
+        </div>
+        <button class="pi-btn" style="background:#475569;animation:none;padding:10px;margin:12px 0 0 0;width:100%;flex-shrink:0;" onclick="document.getElementById('leaderboard-modal').style.display='none'" data-i18n="close"></button>
     </div>
 </div>
 
@@ -1553,6 +1614,12 @@
         <div style="padding:6px 8px 0 8px;">
             <button onclick="window.openHowItWorksModal()" style="width:100%;display:flex;align-items:center;justify-content:center;gap:6px;padding:9px;border-radius:10px;border:1.5px solid rgba(99,102,241,0.4);background:rgba(99,102,241,0.08);color:#a5b4fc;font-size:0.72em;font-weight:800;cursor:pointer;">📖 <span data-i18n="howItWorksMenuItem"></span></button>
         </div>
+        <!-- YENİ: SSS (Sıkça Sorulan Sorular) — öncesinde sadece "Nasıl
+             Çalışır?" (genel akış) vardı, spesifik soru-cevaplar için ayrı
+             bir yer yoktu. -->
+        <div style="padding:6px 8px 0 8px;">
+            <button onclick="window.openFaqModal()" style="width:100%;display:flex;align-items:center;justify-content:center;gap:6px;padding:9px;border-radius:10px;border:1.5px solid rgba(20,184,166,0.4);background:rgba(20,184,166,0.08);color:#5eead4;font-size:0.72em;font-weight:800;cursor:pointer;">❓ <span data-i18n="faqMenuItem"></span></button>
+        </div>
         
     </div>
 
@@ -1586,6 +1653,12 @@
                 <div style="background:#0f172a;border:1px solid #334155;border-radius:10px;padding:10px;text-align:center;"><div style="font-size:0.6em;color:#94a3b8;font-weight:700;margin-bottom:4px;" data-i18n="myListingsCount"></div><div id="up-listing-count" style="font-size:1.5em;font-weight:900;color:#34d399;">0</div></div>
             </div>
             <div id="up-badge-area" style="text-align:center;margin-bottom:6px;"></div>
+            <!-- YENİ: Referral (davet) istatistiği — kaç kişi davet edildi,
+                 tıklayınca doğrudan kişisel paylaşım linkini açar. -->
+            <button onclick="window.openShareAppModal()" id="up-referral-box" style="width:100%;background:linear-gradient(135deg,#064e3b 0%,#065f46 100%);border:1px solid #10b981;border-radius:10px;padding:9px 12px;margin-bottom:8px;cursor:pointer;text-align:left;align-items:center;justify-content:space-between;gap:8px;display:none;">
+                <div style="font-size:0.7em;color:#6ee7b7;font-weight:800;" data-i18n="referralStatLabel"></div>
+                <div style="display:flex;align-items:center;gap:6px;"><span id="up-referral-count" style="font-size:1.1em;font-weight:900;color:#34d399;">0</span><span style="font-size:0.8em;">📤</span></div>
+            </button>
             <div style="background:#0f172a;border:1px dashed #334155;border-radius:10px;padding:8px;margin-top:4px;">
                 <div style="font-size:0.6em;color:#64748b;font-weight:800;text-transform:uppercase;margin-bottom:6px;letter-spacing:0.5px;" data-i18n="badgeInfoTitle"></div>
                 <div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:4px;">
@@ -1731,6 +1804,8 @@
             <button class="admin-tab-btn" data-tab="tab-trademark" onclick="switchAdminTab('tab-trademark')">🔖<span data-i18n="trademarkTabLabel" style="font-size:0.9em;"></span><span class="pending-badge" id="trademark-count-badge" style="display:none;">0</span></button>
             <button class="admin-tab-btn" data-tab="tab-payouts" onclick="switchAdminTab('tab-payouts')">💸<span data-i18n="payoutsTabLabel" style="font-size:0.9em;"></span><span class="pending-badge" id="payouts-count-badge" style="display:none;">0</span></button>
             <button class="admin-tab-btn" data-tab="tab-offers" onclick="switchAdminTab('tab-offers')">🔄<span data-i18n="offersTabLabel" style="font-size:0.9em;"></span><span class="pending-badge" id="offers-count-badge" style="display:none;">0</span></button>
+            <!-- YENİ: Bildirilen İlanlar sekmesi. -->
+            <button class="admin-tab-btn" data-tab="tab-reports" onclick="switchAdminTab('tab-reports')">🚩<span data-i18n="reportsTabLabel" style="font-size:0.9em;"></span><span class="pending-badge" id="reports-count-badge" style="display:none;">0</span></button>
 
         </div>
         <div class="admin-tab-panel active" id="tab-users">
@@ -1935,6 +2010,20 @@
                 </div>
                 <div style="font-size:0.65em;color:#94a3b8;margin-bottom:8px;line-height:1.5;" data-i18n="offersTabExplainer"></div>
                 <div id="admin-offers-table-wrap" style="width:100%;box-sizing:border-box;overflow-x:auto;">
+                    <p style="font-size:0.75em;opacity:0.5;text-align:center;" data-i18n="clickToLoad"></p>
+                </div>
+            </div>
+        </div>
+        <!-- YENİ: Bildirilen İlanlar paneli. -->
+        <div class="admin-tab-panel" id="tab-reports">
+            <div style="background:#0a0f1e;border:2px solid #ef4444;border-radius:12px;padding:10px;box-sizing:border-box;max-width:100%;overflow-x:hidden;">
+                <div style="position:relative;display:flex;align-items:center;justify-content:center;padding:6px 34px 8px 6px;margin-bottom:8px;border-bottom:1px solid #7f1d1d;">
+                    <span style="font-size:0.72em;color:#fca5a5;font-weight:800;text-transform:uppercase;">🚩 <span data-i18n="reportsTabLabel"></span></span>
+                    <button id="reports-refresh-btn" class="panel-refresh-btn" onclick="window.loadListingReports()" title="Yenile">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+                    </button>
+                </div>
+                <div id="admin-reports-list">
                     <p style="font-size:0.75em;opacity:0.5;text-align:center;" data-i18n="clickToLoad"></p>
                 </div>
             </div>
@@ -2618,6 +2707,24 @@ const i18n = {
     sortNewest:"🆕 En Yeni Eklenenler",sortPriceAsc:"💰 Fiyat: Düşükten Yükseğe",sortPriceDesc:"💰 Fiyat: Yüksekten Düşüğe",sortAz:"🔤 İsim (A-Z)",
     favoriteAddBtn:"Favorilere Ekle",favoriteRemoveBtn:"Favorilerden Çıkar",
     howItWorksMenuItem:"Nasıl Çalışır?",howItWorksTitle:"Nasıl Çalışır ve Nasıl Korunuyorsunuz?",
+    faqMenuItem:"Sıkça Sorulan Sorular",
+    faqTitle:"Sıkça Sorulan Sorular",
+    faqQ1:"Ödemem güvende mi? Parayı verip domaini alamama riski var mı?",
+    faqA1:"Hayır. Ödediğiniz Pi doğrudan satıcıya gitmez — önce platformun emanet (escrow) cüzdanında bekler. Satıcı domaini size gerçekten devredip siz de \"teslim aldım\" onayı verdikten sonra ödeme satıcıya serbest bırakılır. Bir sorun yaşarsanız anlaşmazlık (itiraz) süreci başlatabilirsiniz.",
+    faqQ2:"Komisyon ne kadar, kim ödüyor?",
+    faqA2:"Platform, üçüncü taraf satıcılar tarafından satılan domainlerden %5 komisyon alıyor. Bu komisyon satış bedelinden düşülür — yani 100 Pi'lik bir domain satıldığında satıcı 95 Pi alır, alıcı yine 100 Pi öder. Kendi domainini satan admin için komisyon uygulanmaz.",
+    faqQ3:"TEST-Pİ ne demek, gerçek param kullanılıyor mu?",
+    faqA3:"Şu an sistem test ağında (Testnet) çalışıyor — yani kullanılan Pi'ler test amaçlıdır, gerçek Pi bakiyenizle hiçbir ilgisi yoktur ve gerçek bir değeri yoktur. Bu, platformun geliştirme/test aşamasında olduğu anlamına gelir.",
+    faqQ4:"Bir domaine teklif verirsem ne olur?",
+    faqA4:"Teklifiniz satıcıya iletilir. Satıcı doğrudan kabul edebilir, reddedebilir, ya da farklı bir fiyatla karşı teklif verebilir. Karşı teklife siz de yeni bir fiyatla yanıt verebilirsiniz — anlaşana kadar müzakere tek bir kayıt üzerinden devam eder.",
+    faqQ5:"Teklifim kabul edildi, ne kadar sürem var?",
+    faqA5:"Bir teklif kabul edildiğinde, o domain 15 dakika boyunca SADECE size (anlaşılan fiyatla) rezerve edilir. Bu süre içinde satın almazsanız rezervasyon süresi dolar, teklif geçerliliğini kaybeder ve domain eski fiyatıyla tekrar herkese açılır.",
+    faqQ6:"Satın aldıktan sonra ne yapmalıyım?",
+    faqA6:"Satın alma tamamlandıktan sonra, satıcıyla domain devrini gerçekleştirmeniz gerekir. Devir tamamlandığında \"Panelim → Alımlarım\" içinden \"teslim aldım\" onayınızı vermeniz gerekiyor — bu onay, ödemenin satıcıya serbest bırakılmasını sağlar.",
+    faqQ7:"Bir sorun yaşarsam (domain devredilmedi, vs.) ne yapabilirim?",
+    faqA7:"\"Panelim\" içinden ilgili satın alma için bir anlaşmazlık (itiraz) açabilirsiniz. Destek ekibi süreci inceleyip gerekirse ödemenin iadesini sağlar.",
+    faqQ8:"Hesabımı/verilerimi silebilir miyim?",
+    faqA8:"Evet, yan menüden hesap silme talebinde bulunabilirsiniz. Talebiniz incelenip gerekli veri işlemleri (anonimleştirme vb.) tamamlandıktan sonra sonuçlandırılır.",
     activeNowLabel:"Şu An Aktif",activeUsersTitle:"Anlık Aktif Kullanıcılar",
     activeUsersDesc:"Son 30 saniye içinde uygulamada aktif olan kullanıcılar. Butona her bastığınızda güncel veri çekilir.",
     refreshBtn:"🔄 Yenile",loadingLabel:"Yükleniyor...",noActiveUsers:"Şu anda aktif kullanıcı yok.",
@@ -2672,6 +2779,7 @@ const i18n = {
     panelRefreshFailedMsg:"⚠️ Veriler yenilenemedi (oturumunuzun süresi dolmuş olabilir). Sorun devam ederse çıkış yapıp tekrar giriş yapmayı deneyin.",
     retryBtn:"Tekrar Dene",requestTimeoutMsg:"İstek zaman aşımına uğradı (bağlantı yavaş olabilir).",
     sellerRatingLabel:"Satıcı Puanı",noRatingsYet:"Henüz değerlendirme yok",
+    trustedSellerBadge:"Güvenilir Satıcı",
     myRatingAsSellerLabel:"Satıcı Olarak Puanınız",ratingsCountSuffix:"değerlendirme",
     salesTrendTitle:"Satış Trendi (Son 30 Gün)",exportCsvBtn:"Satış Verilerini CSV Olarak İndir",
     csvCopyBtn:"Panoya Kopyala",csvDownloadBtn:"Dosya Olarak İndir",
@@ -2698,6 +2806,34 @@ const i18n = {
     hiwSection5Title:"Güvenlik Önlemleri",
     hiwSection5Body:"Tüm hassas veriler sunucu tarafında doğrulanır, admin yetkisi Pi Network'ün kendi kimlik doğrulama sistemi üzerinden kontrol edilir. Sistem, veri tutarlılığını ve bağlantı sağlığını düzenli olarak otomatik denetler.",
     shareAppMenuItem:"Uygulamayı Paylaş",shareAppTitle:"Uygulamayı Paylaş",
+    leaderboardMenuItem:"Liderlik Tablosu",
+    leaderboardTitle:"Liderlik Tablosu",
+    leaderboardSubtitle:"Alım-satım işlemlerinden kazanılan puanlara göre en aktif kullanıcılar",
+    leaderboardEmpty:"Henüz puan kazanan kimse yok — ilk sen ol!",
+    leaderboardYouTag:"Sen",
+    leaderboardYourRank:(rank,points)=>`Senin sıran: #${rank} (${Math.round(points*100)/100} puan)`,
+    leaderboardNoPointsYet:"Henüz puanınız yok — alım/satım yaparak puan kazanmaya başlayın!",
+    referralBonusNote:"🎁 Bu senin kişisel davet linkin! Arkadaşın bu linkten girip ilk alışverişini tamamlarsa, ikiniz de bonus puan kazanırsınız.",
+    referralStatLabel:"🎁 Davet Ettiğim Kişiler",
+    reportListingLink:"Bu ilanı bildir",
+    reportListingTitle:"İlanı Bildir",
+    reportListingDesc:"Bu ilanla ilgili bir sorun mu var? Bize bildirin, inceleyelim.",
+    reportReasonLabel:"Sebep",
+    reportReasonFake:"Sahte / Yanıltıcı İlan",
+    reportReasonInappropriate:"Uygunsuz İçerik",
+    reportReasonPriceManipulation:"Fiyat Manipülasyonu",
+    reportReasonTrademark:"Marka Hakkı İhlali",
+    reportReasonOther:"Diğer",
+    reportCommentPlaceholder:"İsterseniz kısa bir açıklama ekleyin (opsiyonel)...",
+    reportSubmitBtn:"Bildir",
+    reportSubmittedMsg:"✅ Bildiriminiz alındı, incelenecek. Teşekkürler!",
+    reportsTabLabel:"Şikayetler",
+    noReportsMsg:"Bekleyen ilan şikayeti yok.",
+    dismissReportBtn:"Kapat",
+    selectAllLabel:"Tümünü Seç",
+    bulkApproveBtn:"Seçilenleri Onayla",
+    bulkApproveConfirm:(n)=>`${n} ilanı topluca onaylamak istediğinize emin misiniz?`,
+    bulkApproveResultMsg:(ok,fail)=>fail>0?`✅ ${ok} ilan onaylandı, ❌ ${fail} ilan başarısız oldu (muhtemelen isim çakışması).`:`✅ ${ok} ilan başarıyla onaylandı.`,
     shareAppDesc:"Linki veya QR kodu paylaşarak arkadaşlarını .pi domain pazarına davet et!",
     copyBtn:"Kopyala",linkCopied:"✅ Link kopyalandı!",
     shareText:"Pi Network üzerinde .pi domain al-sat! Web3 Domain Gateway'i keşfet:",
@@ -3187,6 +3323,24 @@ const i18n = {
     sortNewest:"🆕 Newest First",sortPriceAsc:"💰 Price: Low to High",sortPriceDesc:"💰 Price: High to Low",sortAz:"🔤 Name (A-Z)",
     favoriteAddBtn:"Add to Favorites",favoriteRemoveBtn:"Remove from Favorites",
     howItWorksMenuItem:"How It Works",howItWorksTitle:"How It Works & How You're Protected",
+    faqMenuItem:"Frequently Asked Questions",
+    faqTitle:"Frequently Asked Questions",
+    faqQ1:"Is my payment safe? Could I pay and not get the domain?",
+    faqA1:"No. The Pi you pay doesn't go directly to the seller — it first sits in the platform's escrow wallet. It's only released to the seller after they actually transfer the domain to you AND you confirm \"received\" on your end. If something goes wrong, you can open a dispute.",
+    faqQ2:"How much is the commission, and who pays it?",
+    faqA2:"The platform takes a 5% commission on domains sold by third-party sellers. This is deducted from the sale price — so on a 100 Pi domain, the seller receives 95 Pi while the buyer still pays 100 Pi. No commission applies when the admin sells their own domain.",
+    faqQ3:"What does TEST-PI mean, is real money being used?",
+    faqA3:"The system currently runs on the Testnet — meaning the Pi used is for testing only, has no connection to your real Pi balance, and has no real value. This reflects that the platform is in a development/testing phase.",
+    faqQ4:"What happens if I make an offer on a domain?",
+    faqA4:"Your offer goes to the seller. They can accept it directly, reject it, or counter with a different price. You can respond to a counter-offer with a new price of your own — the negotiation continues on a single record until you reach an agreement.",
+    faqQ5:"My offer was accepted, how much time do I have?",
+    faqA5:"Once an offer is accepted, the domain is reserved exclusively for you (at the agreed price) for 15 minutes. If you don't complete the purchase in that time, the reservation expires, the offer becomes invalid, and the domain goes back on sale at its original price.",
+    faqQ6:"What should I do after purchasing?",
+    faqA6:"After your purchase completes, you need to arrange the domain transfer with the seller. Once it's transferred, confirm \"received\" from \"My Panel → My Purchases\" — this confirmation is what releases the payment to the seller.",
+    faqQ7:"What can I do if something goes wrong (domain not transferred, etc.)?",
+    faqA7:"You can open a dispute for that purchase from \"My Panel\". Our support team will review it and arrange a refund if needed.",
+    faqQ8:"Can I delete my account/data?",
+    faqA8:"Yes, you can request account deletion from the side menu. Your request will be reviewed and finalized once the necessary data handling (anonymization, etc.) is complete.",
     activeNowLabel:"Active Now",activeUsersTitle:"Currently Active Users",
     activeUsersDesc:"Users active in the app within the last 30 seconds. Fresh data is pulled each time you press the button.",
     refreshBtn:"🔄 Refresh",loadingLabel:"Loading...",noActiveUsers:"No active users right now.",
@@ -3241,6 +3395,7 @@ const i18n = {
     panelRefreshFailedMsg:"⚠️ Couldn't refresh your data (your session may have expired). If this persists, try logging out and back in.",
     retryBtn:"Retry",requestTimeoutMsg:"The request timed out (your connection may be slow).",
     sellerRatingLabel:"Seller Rating",noRatingsYet:"No ratings yet",
+    trustedSellerBadge:"Trusted Seller",
     myRatingAsSellerLabel:"Your Rating as a Seller",ratingsCountSuffix:"ratings",
     salesTrendTitle:"Sales Trend (Last 30 Days)",exportCsvBtn:"Download Sales Data as CSV",
     csvCopyBtn:"Copy to Clipboard",csvDownloadBtn:"Download as File",
@@ -3267,6 +3422,34 @@ const i18n = {
     hiwSection5Title:"Security Measures",
     hiwSection5Body:"All sensitive data is verified server-side, and admin authority is checked against Pi Network's own authentication system. The system automatically and regularly audits data consistency and connection health.",
     shareAppMenuItem:"Share App",shareAppTitle:"Share the App",
+    leaderboardMenuItem:"Leaderboard",
+    leaderboardTitle:"Leaderboard",
+    leaderboardSubtitle:"Most active users, ranked by points earned from buying and selling",
+    leaderboardEmpty:"No one has earned points yet — be the first!",
+    leaderboardYouTag:"You",
+    leaderboardYourRank:(rank,points)=>`Your rank: #${rank} (${Math.round(points*100)/100} points)`,
+    leaderboardNoPointsYet:"You don't have any points yet — start buying/selling to earn some!",
+    referralBonusNote:"🎁 This is your personal invite link! If a friend signs up through it and completes their first purchase, you'll both earn bonus points.",
+    referralStatLabel:"🎁 People I've Invited",
+    reportListingLink:"Report this listing",
+    reportListingTitle:"Report Listing",
+    reportListingDesc:"Is there an issue with this listing? Let us know and we'll take a look.",
+    reportReasonLabel:"Reason",
+    reportReasonFake:"Fake / Misleading Listing",
+    reportReasonInappropriate:"Inappropriate Content",
+    reportReasonPriceManipulation:"Price Manipulation",
+    reportReasonTrademark:"Trademark Violation",
+    reportReasonOther:"Other",
+    reportCommentPlaceholder:"Add a short note if you'd like (optional)...",
+    reportSubmitBtn:"Report",
+    reportSubmittedMsg:"✅ Your report has been received and will be reviewed. Thank you!",
+    reportsTabLabel:"Reports",
+    noReportsMsg:"No pending listing reports.",
+    dismissReportBtn:"Dismiss",
+    selectAllLabel:"Select All",
+    bulkApproveBtn:"Approve Selected",
+    bulkApproveConfirm:(n)=>`Are you sure you want to bulk-approve ${n} listings?`,
+    bulkApproveResultMsg:(ok,fail)=>fail>0?`✅ ${ok} listings approved, ❌ ${fail} failed (likely a name conflict).`:`✅ ${ok} listings approved successfully.`,
     shareAppDesc:"Share the link or QR code to invite friends to the .pi domain marketplace!",
     copyBtn:"Copy",linkCopied:"✅ Link copied!",
     shareText:"Buy & sell .pi domains on Pi Network! Check out Web3 Domain Gateway:",
@@ -3518,6 +3701,12 @@ function applyTranslations() {
 window.setLang=function(lang){ currentLang=lang; localStorage.setItem('w3dg_lang',lang); applyTranslations(); debouncedRender(); if(typeof adminTickets!=='undefined'&&adminTickets.length) renderAdminTicketList(); if(typeof myTickets!=='undefined'&&myTickets.length) renderTicketList(); document.getElementById('lang-picker').style.display='none'; };
 // STATE
 let currentUser=null,piAccessToken=null,isAuth=false;
+let currentDetailDomainName=null; // YENİ: İlan şikayet formu için
+// YENİ: Referral (davet) sistemi — URL'de ?ref=kullaniciadi varsa yakala.
+// Sadece bu değişkende tutuluyor, girişte sync_user_uid çağrısına
+// eklenip backend'e gönderiliyor (backend sadece kullanıcının GERÇEKTEN
+// ilk girişinde bunu kalıcı olarak kaydediyor).
+const referralCodeFromUrl=new URLSearchParams(window.location.search).get('ref');
 let domainData={},pendingDomain=null,pendingPrice=0;
 let adminLogUnsubscribe=null,adminStatsUnsubscribe=null,pendingDomainsUnsubscribe=null;
 let myOwnSellRequestsUnsubscribe=null;
@@ -3655,6 +3844,7 @@ window.switchAdminTab=function(tabId){
     if(tabId==='tab-stats'){ loadAllSalesDetail(); window.loadSalesTrendChart(); }
     if(tabId==='tab-tickets'){ adminLoadTickets(); markTicketsSeen(); }
     if(tabId==='tab-offers'){ window.loadAdminOffersTable(); const b=document.getElementById('offers-count-badge'); if(b) b.style.display='none'; }
+    if(tabId==='tab-reports'){ window.loadListingReports(); }
 };
 window.switchUserTab=function(tabId){
     document.querySelectorAll('.user-tab-btn').forEach(b=>b.classList.toggle('active',b.dataset.utab===tabId));
@@ -4124,6 +4314,7 @@ window.clearAllNotifications=async function(){
 // DOMAIN DETAY
 window.openDomainDetail=function(domainName){
     const domain=domains.find(d=>d.name===domainName); if(!domain) return;
+    currentDetailDomainName=domainName; // YENİ: İlan şikayet formu hangi domain için açıldığını bilsin diye.
     const data=domainData[domainName]||{sold:false,price:domain.price};
     const locale=currentLang==='en'?'en-GB':'tr-TR';
     document.getElementById('detail-modal-img').src=data.img||domain.img;
@@ -4152,13 +4343,16 @@ window.openDomainDetail=function(domainName){
                 if(!el||!res.success) return;
                 const ratingText = res.count>0 ? `⭐ ${res.avg} (${res.count})` : t('noRatingsYet');
                 el.style.display='flex'; el.style.flexDirection='column'; el.style.gap='6px';
+                // YENİ: Yeterince yüksek puanlı satıcılar için "Güvenilir
+                // Satıcı" rozeti — alıcının güvenini artırmak için.
+                const trustedBadge=res.isTrusted?` <span style="background:rgba(16,185,129,0.15);border:1px solid #10b981;color:#6ee7b7;font-size:0.62em;font-weight:900;padding:2px 7px;border-radius:20px;white-space:nowrap;">✅ ${t('trustedSellerBadge')}</span>`:'';
                 let reviewsHtml='';
                 if(res.recentReviews&&res.recentReviews.length){
                     reviewsHtml=`<div style="display:flex;flex-direction:column;gap:5px;margin-top:2px;padding-left:8px;border-left:2px solid #334155;">`+
                         res.recentReviews.map(rv=>`<div style="font-size:0.85em;color:#94a3b8;"><span style="color:#fbbf24;">${'★'.repeat(rv.stars)}${'☆'.repeat(5-rv.stars)}</span> "${escapeHtml(rv.comment)}"</div>`).join('')+
                         `</div>`;
                 }
-                el.innerHTML=`<div style="display:flex;gap:6px;align-items:baseline;"><span style="color:#64748b;flex-shrink:0;font-weight:700;min-width:100px;">⭐ ${t('sellerRatingLabel')}:</span><span style="color:#fbbf24;font-weight:900;">${ratingText}</span></div>${reviewsHtml}`;
+                el.innerHTML=`<div style="display:flex;gap:6px;align-items:baseline;flex-wrap:wrap;"><span style="color:#64748b;flex-shrink:0;font-weight:700;min-width:100px;">⭐ ${t('sellerRatingLabel')}:</span><span style="color:#fbbf24;font-weight:900;">${ratingText}</span>${trustedBadge}</div>${reviewsHtml}`;
             }).catch(()=>{});
     }
     if(data.sold){
@@ -4371,12 +4565,24 @@ function renderPendingDomains(pendingList){
     if(!container) return;
     if(!pendingList?.length){container.innerHTML=`<p style="font-size:0.75em;opacity:0.5;text-align:center;">${t('noPendingDomains')}</p>`;if(badge)badge.style.display='none';return;}
     if(badge){badge.style.display='inline-block';badge.innerText=pendingList.length;}
-    container.innerHTML=pendingList.map(p=>{
+    // YENİ: Toplu onaylama üst çubuğu — admin artık her ilanı tek tek
+    // onaylamak yerine birden fazlasını seçip tek seferde onaylayabiliyor.
+    const bulkBar=`<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;background:#0f172a;border:1px solid #334155;border-radius:8px;padding:8px 10px;margin-bottom:8px;">
+        <label style="display:flex;align-items:center;gap:6px;font-size:0.72em;color:#94a3b8;font-weight:700;cursor:pointer;">
+            <input type="checkbox" id="pending-select-all" onchange="window.togglePendingSelectAll(this.checked)" style="width:15px;height:15px;accent-color:#10b981;">
+            <span data-i18n="selectAllLabel"></span>
+        </label>
+        <button id="bulk-approve-btn" onclick="window.handleBulkApprove()" disabled style="padding:6px 12px;border-radius:7px;border:none;background:#10b981;color:#fff;font-size:0.7em;font-weight:800;cursor:pointer;opacity:0.4;">✅ <span data-i18n="bulkApproveBtn"></span> (<span id="bulk-approve-count">0</span>)</button>
+    </div>`;
+    container.innerHTML=bulkBar+pendingList.map(p=>{
         const safe=JSON.stringify(p).replace(/\\/g,'\\\\').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
         return `<div class="pending-domain-item">
-            <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px;">
-                <div><b style="color:#fbbf24;">${escapeHtml(p.domainName)}</b> <span class="domain-type-tag">${typeLabel(p.domainType)}</span></div>
-                <span style="color:#fbbf24;font-weight:900;font-size:0.9em;">${p.price} PI</span>
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px;gap:8px;">
+                <div style="display:flex;align-items:flex-start;gap:8px;min-width:0;">
+                    <input type="checkbox" class="pending-select-cb" value="${p.id}" onchange="window.updatePendingSelectionUI()" style="width:15px;height:15px;accent-color:#10b981;margin-top:3px;flex-shrink:0;">
+                    <div style="min-width:0;overflow:hidden;text-overflow:ellipsis;"><b style="color:#fbbf24;">${escapeHtml(p.domainName)}</b> <span class="domain-type-tag">${typeLabel(p.domainType)}</span></div>
+                </div>
+                <span style="color:#fbbf24;font-weight:900;font-size:0.9em;flex-shrink:0;">${p.price} PI</span>
             </div>
             <div style="font-size:0.72em;color:#94a3b8;margin-bottom:8px;">
                 👤 ${t('pendingSentBy')}${p.submittedBy}<br>
@@ -4389,6 +4595,34 @@ function renderPendingDomains(pendingList){
             </div>
         </div>`;}).join('');
 }
+// YENİ: Toplu seçim yardımcı fonksiyonları.
+window.togglePendingSelectAll=function(checked){
+    document.querySelectorAll('.pending-select-cb').forEach(cb=>cb.checked=checked);
+    window.updatePendingSelectionUI();
+};
+window.updatePendingSelectionUI=function(){
+    const selected=document.querySelectorAll('.pending-select-cb:checked').length;
+    const btn=document.getElementById('bulk-approve-btn');
+    const countEl=document.getElementById('bulk-approve-count');
+    if(countEl) countEl.textContent=selected;
+    if(btn){ btn.disabled=selected===0; btn.style.opacity=selected===0?'0.4':'1'; }
+    const allCbs=document.querySelectorAll('.pending-select-cb');
+    const selectAllCb=document.getElementById('pending-select-all');
+    if(selectAllCb) selectAllCb.checked=allCbs.length>0 && selected===allCbs.length;
+};
+window.handleBulkApprove=async function(){
+    const ids=Array.from(document.querySelectorAll('.pending-select-cb:checked')).map(cb=>cb.value);
+    if(!ids.length) return;
+    if(!confirm(t('bulkApproveConfirm')(ids.length))) return;
+    const btn=document.getElementById('bulk-approve-btn');
+    if(btn){ btn.disabled=true; btn.innerHTML='⏳ ...'; }
+    try{
+        const r=await fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'bulk_approve_sell_requests',requestIds:ids,accessToken:piAccessToken})});
+        const result=await r.json();
+        if(!result.success){ showToast(result.error||t('genericError')); return; }
+        showToast(t('bulkApproveResultMsg')(result.approved.length, result.failed.length));
+    }catch(e){ showToast(t('genericError')); }
+};
 window.handleApproveSellRequest=async function(requestId){
     if(!confirm(t('approveConfirm'))) return;
     const r=await fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'approve_sell_request',requestId,accessToken:piAccessToken})});
@@ -4593,6 +4827,46 @@ window.respondCounterOffer=async function(offerId, accept){
 // Öncesinde admin'in teklifleri görebileceği bir yer yoktu. Bu tablo
 // platformdaki TÜM teklifleri (kim, hangi domain, ne kadar, hangi durumda,
 // ne zaman) tek bakışta, karmaşa olmadan okunabilir şekilde gösterir.
+// YENİ: Bildirilen İlanlar paneli.
+window.loadListingReports=async function(){
+    const wrap=document.getElementById('admin-reports-list');
+    if(!wrap) return;
+    wrap.innerHTML=`<p style="font-size:0.75em;opacity:0.5;text-align:center;">${t('loadingLabel')}</p>`;
+    try{
+        const r=await fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'get_listing_reports',accessToken:piAccessToken})});
+        const result=await r.json();
+        if(!result.success){ wrap.innerHTML=`<p style="color:#f87171;font-size:0.75em;text-align:center;">${escapeHtml(result.error||t('genericError'))}</p>`; return; }
+        const reports=result.reports||[];
+        const badge=document.getElementById('reports-count-badge');
+        if(badge){ if(reports.length>0){badge.style.display='block';badge.textContent=reports.length>99?'99+':reports.length;} else {badge.style.display='none';} }
+        if(!reports.length){ wrap.innerHTML=`<p style="font-size:0.75em;opacity:0.5;text-align:center;">${t('noReportsMsg')}</p>`; return; }
+        const reasonLabel={fake:t('reportReasonFake'),inappropriate:t('reportReasonInappropriate'),price_manipulation:t('reportReasonPriceManipulation'),trademark:t('reportReasonTrademark'),other:t('reportReasonOther')};
+        const locale=currentLang==='en'?'en-GB':'tr-TR';
+        wrap.innerHTML=reports.map(rep=>`
+            <div style="background:#0f172a;border:1px solid #ef4444;border-radius:9px;padding:10px;margin-bottom:8px;">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+                    <span style="font-weight:900;color:#f1f5f9;font-size:0.85em;">🌐 ${escapeHtml(rep.domainName)}</span>
+                    <span style="font-size:0.6em;color:#64748b;">${new Date(rep.createdAt).toLocaleString(locale,{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})}</span>
+                </div>
+                <div style="font-size:0.72em;color:#fca5a5;font-weight:800;margin-bottom:4px;">🚩 ${reasonLabel[rep.reason]||rep.reason}</div>
+                <div style="font-size:0.7em;color:#94a3b8;margin-bottom:6px;">👤 @${escapeHtml(rep.reportedBy)}</div>
+                ${rep.comment?`<div style="font-size:0.7em;color:#cbd5e1;background:#1e293b;border-radius:6px;padding:6px 8px;margin-bottom:8px;">${escapeHtml(rep.comment)}</div>`:''}
+                <div style="display:flex;gap:6px;">
+                    <button onclick="window.openDomainDetail('${rep.domainName.replace(/'/g,"\\'")}')" style="flex:1;padding:6px;border-radius:6px;border:1px solid #64748b;background:none;color:#cbd5e1;font-size:0.65em;font-weight:800;cursor:pointer;">👁 ${t('viewBtn')}</button>
+                    <button onclick="window.dismissListingReport('${rep.id}')" style="flex:1;padding:6px;border-radius:6px;border:none;background:#334155;color:#94a3b8;font-size:0.65em;font-weight:800;cursor:pointer;">✔️ ${t('dismissReportBtn')}</button>
+                </div>
+            </div>`).join('');
+    }catch(e){ wrap.innerHTML=`<p style="color:#f87171;font-size:0.75em;text-align:center;">${t('genericError')}</p>`; }
+};
+window.dismissListingReport=async function(reportId){
+    try{
+        const r=await fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'dismiss_listing_report',accessToken:piAccessToken,reportId})});
+        const result=await r.json();
+        if(!result.success){ showToast(result.error||t('genericError')); return; }
+        window.loadListingReports();
+    }catch(e){ showToast(t('genericError')); }
+};
+
 window.loadAdminOffersTable=async function(){
     const wrap=document.getElementById('admin-offers-table-wrap');
     if(!wrap) return;
@@ -4873,6 +5147,91 @@ window.openHowItWorksModal=function(){
     document.getElementById('how-it-works-modal').style.display='flex';
 };
 
+// YENİ: SSS — içerik burada bir dizi olarak tutuluyor, i18n anahtarlarıyla.
+const faqItems=[
+    ['faqQ1','faqA1'],['faqQ2','faqA2'],['faqQ3','faqA3'],['faqQ4','faqA4'],
+    ['faqQ5','faqA5'],['faqQ6','faqA6'],['faqQ7','faqA7'],['faqQ8','faqA8']
+];
+window.openFaqModal=function(){
+    const list=document.getElementById('faq-list');
+    list.innerHTML=faqItems.map((pair,i)=>`
+        <div style="border-bottom:1px solid #1e293b;">
+            <button onclick="window.toggleFaqItem(${i})" style="width:100%;text-align:left;background:none;border:none;padding:10px 4px;display:flex;justify-content:space-between;align-items:center;gap:8px;cursor:pointer;color:#f1f5f9;font-weight:800;font-size:0.92em;">
+                <span>${t(pair[0])}</span>
+                <span id="faq-arrow-${i}" style="flex-shrink:0;color:#5eead4;transition:transform 0.2s;">▾</span>
+            </button>
+            <div id="faq-answer-${i}" style="display:none;padding:0 4px 10px 4px;color:#94a3b8;font-size:0.92em;">${t(pair[1])}</div>
+        </div>`).join('');
+    document.getElementById('faq-modal').style.display='flex';
+    toggleSideMenu();
+};
+window.toggleFaqItem=function(i){
+    const ans=document.getElementById('faq-answer-'+i);
+    const arrow=document.getElementById('faq-arrow-'+i);
+    const isOpen=ans.style.display==='block';
+    ans.style.display=isOpen?'none':'block';
+    arrow.style.transform=isOpen?'rotate(0deg)':'rotate(180deg)';
+};
+
+// YENİ: Leaderboard. Puan sistemi zaten aylardır çalışıyordu, sadece
+// gösterecek bir ekran yoktu.
+window.openLeaderboardModal=async function(){
+    toggleSideMenu();
+    document.getElementById('leaderboard-modal').style.display='flex';
+    const listEl=document.getElementById('leaderboard-list');
+    const myRankEl=document.getElementById('leaderboard-my-rank');
+    listEl.innerHTML=`<p style="font-size:0.72em;opacity:0.5;text-align:center;">${t('loadingLabel')}</p>`;
+    myRankEl.style.display='none';
+    try{
+        const r=await fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'get_leaderboard',accessToken:piAccessToken})});
+        const result=await r.json();
+        if(!result.success){ listEl.innerHTML=`<p style="color:#f87171;font-size:0.72em;text-align:center;">${t('genericError')}</p>`; return; }
+        const list=result.list||[];
+        if(!list.length){ listEl.innerHTML=`<p style="font-size:0.72em;opacity:0.5;text-align:center;">${t('leaderboardEmpty')}</p>`; return; }
+        const medalFor=(rank)=>rank===1?'🥇':rank===2?'🥈':rank===3?'🥉':null;
+        listEl.innerHTML=list.map((u,i)=>{
+            const rank=i+1;
+            const medal=medalFor(rank);
+            const isMe=result.myUsername && u.username===result.myUsername;
+            return `<div style="display:flex;align-items:center;gap:10px;padding:8px 6px;border-radius:8px;${isMe?'background:rgba(99,102,241,0.15);border:1px solid #6366f1;':'border-bottom:1px solid #1e293b;'}">
+                <div style="width:28px;text-align:center;font-weight:900;font-size:${medal?'1.2em':'0.85em'};color:${medal?'inherit':'#64748b'};flex-shrink:0;">${medal||rank}</div>
+                <div style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:0.82em;font-weight:800;color:${isMe?'#c7d2fe':'#e2e8f0'};">@${escapeHtml(u.username)}${isMe?' ('+t('leaderboardYouTag')+')':''}</div>
+                ${u.badge?`<div style="flex-shrink:0;font-size:0.72em;">${badgeHTML(u.badge)}</div>`:''}
+                <div style="flex-shrink:0;font-size:0.8em;font-weight:900;color:#fbbf24;">${Math.round(u.points*100)/100}</div>
+            </div>`;
+        }).join('');
+        // Kullanıcı top 50'de yoksa bile kendi sırasını üstte ayrı gösteriyoruz.
+        if(result.myUsername && result.myRank && !list.some(u=>u.username===result.myUsername)){
+            myRankEl.style.display='block';
+            myRankEl.textContent=t('leaderboardYourRank')(result.myRank, result.myPoints);
+        } else if(result.myUsername && !result.myRank){
+            myRankEl.style.display='block';
+            myRankEl.textContent=t('leaderboardNoPointsYet');
+        }
+    }catch(e){ listEl.innerHTML=`<p style="color:#f87171;font-size:0.72em;text-align:center;">${t('genericError')}</p>`; }
+};
+
+// YENİ: İlan şikayet etme.
+window.openReportListingModal=function(){
+    if(!isAuth){ showToast(t('loginRequired')); return; }
+    if(!currentDetailDomainName) return;
+    document.getElementById('report-listing-domain-name').textContent=currentDetailDomainName;
+    document.getElementById('report-listing-comment').value='';
+    document.getElementById('report-listing-reason').value='fake';
+    document.getElementById('report-listing-modal').style.display='flex';
+};
+window.submitListingReport=async function(){
+    const reason=document.getElementById('report-listing-reason').value;
+    const comment=document.getElementById('report-listing-comment').value.trim();
+    try{
+        const r=await fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'report_listing',accessToken:piAccessToken,domainName:currentDetailDomainName,reason,comment})});
+        const result=await r.json();
+        if(!result.success){ showToast(result.error||t('genericError')); return; }
+        document.getElementById('report-listing-modal').style.display='none';
+        showToast(t('reportSubmittedMsg'));
+    }catch(e){ showToast(t('genericError')); }
+};
+
 // ── Puanlar/Yorumlar Tablosu ──────────────────────────────────────────────
 // Bir domain satışında hem alıcının satıcıya verdiği puanı hem de satıcının
 // alıcıya verdiği puanı (hangileri mevcutsa) TEK bir düzenli tabloda
@@ -4933,10 +5292,14 @@ window.submitSellerRating=async function(domainName, stars){
     }catch(e){ showToast(t('genericError')); }
 };
 window.openShareAppModal=function(){
-    const url=window.location.origin+'/';
+    // YENİ: Giriş yapılmışsa link kişisel bir referral linkine dönüşüyor
+    // (?ref=kullaniciadi) — arkadaşı bu linkten ilk kez girip ilk
+    // alışverişini tamamlarsa ikisi de bonus puan kazanıyor.
+    const url=window.location.origin+'/'+(isAuth&&currentUser?('?ref='+encodeURIComponent(currentUser)):'');
     document.getElementById('share-link-input').value=url;
     document.getElementById('share-qr-img').src=`https://api.qrserver.com/v1/create-qr-code/?size=300x300&margin=8&data=${encodeURIComponent(url)}`;
     document.getElementById('share-native-btn').style.display=(navigator.share?'block':'none');
+    document.getElementById('share-referral-note').style.display=(isAuth&&currentUser)?'block':'none';
     document.getElementById('share-app-modal').style.display='flex';
     toggleSideMenu();
 };
@@ -5555,7 +5918,8 @@ window.refreshAdminPanel=async function(){
     try{
         await Promise.all([
             adminLoadTickets(),
-            loadUniqueBadgeCount()
+            loadUniqueBadgeCount(),
+            window.loadListingReports() // YENİ: şikayet rozetini de tazele
         ]);
         renderAdminPriceList();
         debouncedRender();
@@ -5586,6 +5950,17 @@ function renderUserPanel(){
     document.getElementById('up-spent').textContent=userTotalSpent.toFixed(2)+' Pi';
     document.getElementById('up-listing-count').textContent=userSellRequests.length;
     document.getElementById('up-badge-area').innerHTML=userProfile.badge?`<div style="font-size:1.1em;">${badgeHTML(userProfile.badge)}</div>`:'';
+    // YENİ: Referral sayacı — sadece en az 1 kişi davet edilmişse gösterilir.
+    const referralCount=userProfile.referralCount||0;
+    const referralBox=document.getElementById('up-referral-box');
+    if(referralBox){
+        if(referralCount>0){
+            referralBox.style.display='flex';
+            document.getElementById('up-referral-count').textContent=referralCount;
+        } else {
+            referralBox.style.display='none';
+        }
+    }
 
     // Satın alımlarım
     let myHtml='';
@@ -6643,7 +7018,7 @@ async function performPiConnect() {
             if (auth.user.uid) {
                 fetch('/api/approve', {
                     method: 'POST', headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ action: 'sync_user_uid', accessToken: piAccessToken, uid: auth.user.uid })
+                    body: JSON.stringify({ action: 'sync_user_uid', accessToken: piAccessToken, uid: auth.user.uid, referralCode: referralCodeFromUrl })
                 }).catch(()=>{});
             }
 
