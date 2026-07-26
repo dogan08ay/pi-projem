@@ -1667,6 +1667,10 @@
                  edebileceği sekme — öncesinde bir şikayet gönderildiğinde
                  kullanıcı bunun akıbetini hiçbir şekilde göremiyordu. -->
             <button class="user-tab-btn" style="position:relative;" data-utab="utab-myreports" onclick="switchUserTab('utab-myreports')">🚩<span data-i18n="myReportsTab"></span><span class="pending-badge" id="user-reports-tab-badge" style="display:none;">0</span></button>
+            <!-- YENİ: kullanıcının tüm geçmiş işlemlerini (ilan, satın alma,
+                 şikayet, destek talebi, marka itirazı) tek bir yerden,
+                 konu başlıklarıyla ayrılmış şekilde görebildiği sekme. -->
+            <button class="user-tab-btn" data-utab="utab-history" onclick="switchUserTab('utab-history')">🕓<span data-i18n="myHistoryTab"></span></button>
 
         </div>
         <div class="user-tab-panel active" id="utab-overview">
@@ -1813,6 +1817,50 @@
                 <div id="my-reports-list">
                     <div class="skeleton-ticket-row"><div class="skeleton" style="width:34px;height:34px;border-radius:8px;"></div><div style="flex:1;"><div class="skeleton skeleton-line" style="width:60%;margin:0 0 6px 0;"></div><div class="skeleton skeleton-line" style="width:35%;height:8px;margin:0;"></div></div></div>
                 </div>
+            </div>
+        </div>
+
+        <!-- YENİ: "Geçmişim" — ilan/satın alma/şikayet/destek/marka itirazı
+             geçmişinin tek yerden, konu başlıklarına ayrılmış şekilde
+             okunduğu panel. Bu görünüm ayrı bir "log" veritabanı tutmuyor;
+             mevcut verileri canlı sorguluyor — bu yüzden bir domain/talep
+             silinirse buradan da otomatik kayboluyor. -->
+        <div class="user-tab-panel" id="utab-history">
+            <div style="font-size:0.65em;color:#94a3b8;margin-bottom:8px;line-height:1.5;padding:0 2px;" data-i18n="myHistoryNote"></div>
+
+            <div style="background:#1e1b3a;border:2px solid #6366f1;border-radius:12px;padding:10px;margin-bottom:10px;">
+                <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;padding-bottom:7px;border-bottom:1px solid #3730a3;">
+                    <span style="display:flex;align-items:center;gap:6px;font-size:0.72em;color:#a5b4fc;font-weight:800;text-transform:uppercase;">🏷️ <span data-i18n="historyListingsTitle"></span></span>
+                </div>
+                <div id="history-listings-list"><p style="font-size:0.75em;opacity:0.5;text-align:center;" data-i18n="loadingLabel"></p></div>
+            </div>
+
+            <div style="background:#1e1b3a;border:2px solid #10b981;border-radius:12px;padding:10px;margin-bottom:10px;">
+                <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;padding-bottom:7px;border-bottom:1px solid #065f46;">
+                    <span style="display:flex;align-items:center;gap:6px;font-size:0.72em;color:#6ee7b7;font-weight:800;text-transform:uppercase;">🛒 <span data-i18n="historyPurchasesTitle"></span></span>
+                </div>
+                <div id="history-purchases-list"><p style="font-size:0.75em;opacity:0.5;text-align:center;" data-i18n="loadingLabel"></p></div>
+            </div>
+
+            <div style="background:#1e1b3a;border:2px solid #ef4444;border-radius:12px;padding:10px;margin-bottom:10px;">
+                <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;padding-bottom:7px;border-bottom:1px solid #7f1d1d;">
+                    <span style="display:flex;align-items:center;gap:6px;font-size:0.72em;color:#fca5a5;font-weight:800;text-transform:uppercase;">🚩 <span data-i18n="historyReportsTitle"></span></span>
+                </div>
+                <div id="history-reports-list"><p style="font-size:0.75em;opacity:0.5;text-align:center;" data-i18n="loadingLabel"></p></div>
+            </div>
+
+            <div style="background:#1e1b3a;border:2px solid #f59e0b;border-radius:12px;padding:10px;margin-bottom:10px;">
+                <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;padding-bottom:7px;border-bottom:1px solid #78350f;">
+                    <span style="display:flex;align-items:center;gap:6px;font-size:0.72em;color:#fbbf24;font-weight:800;text-transform:uppercase;">🎫 <span data-i18n="historyTicketsTitle"></span></span>
+                </div>
+                <div id="history-tickets-list"><p style="font-size:0.75em;opacity:0.5;text-align:center;" data-i18n="loadingLabel"></p></div>
+            </div>
+
+            <div style="background:#1e1b3a;border:2px solid #64748b;border-radius:12px;padding:10px;">
+                <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;padding-bottom:7px;border-bottom:1px solid #334155;">
+                    <span style="display:flex;align-items:center;gap:6px;font-size:0.72em;color:#cbd5e1;font-weight:800;text-transform:uppercase;">🔖 <span data-i18n="historyTrademarkTitle"></span></span>
+                </div>
+                <div id="history-trademark-list"><p style="font-size:0.75em;opacity:0.5;text-align:center;" data-i18n="loadingLabel"></p></div>
             </div>
         </div>
     </div>
@@ -2943,6 +2991,22 @@ const i18n = {
     reportStageResolved:"Çözüldü",
     reportStageClosed:"Kapatıldı",
     reportAdminNoteLabel:"Yönetici Notu",
+    myHistoryTab:"Geçmişim",
+    myHistoryNote:"Tüm ilan, satın alma, şikayet, destek talebi ve marka itirazı geçmişinizi burada konu başlıklarına ayrılmış şekilde görebilirsiniz. İlgili domain veya kayıt silinirse buradan da otomatik kalkar.",
+    historyListingsTitle:"İlanlarım",
+    historyPurchasesTitle:"Satın Aldıklarım",
+    historyReportsTitle:"Şikayetlerim",
+    historyTicketsTitle:"Destek Taleplerim",
+    historyTrademarkTitle:"Marka İtirazlarım",
+    historyEmptyMsg:"Bu konuda henüz bir kaydınız yok.",
+    historyPriceLabel:"Fiyat",
+    historySellerLabel:"Satıcı",
+    historyStatusPending:"Onay Bekliyor",
+    historyStatusApproved:"Onaylandı",
+    historyStatusRejected:"Reddedildi",
+    historyStatusWithdrawn:"Geri Çekildi",
+    historyStatusActive:"Satışta",
+    historyStatusSold:"Satıldı",
     selectAllLabel:"Tümünü Seç",
     bulkApproveBtn:"Seçilenleri Onayla",
     bulkApproveConfirm:(n)=>`${n} ilanı topluca onaylamak istediğinize emin misiniz?`,
@@ -3596,6 +3660,22 @@ const i18n = {
     reportStageResolved:"Resolved",
     reportStageClosed:"Closed",
     reportAdminNoteLabel:"Admin Note",
+    myHistoryTab:"My History",
+    myHistoryNote:"See your full listing, purchase, report, support ticket, and trademark claim history here, organized by topic. If the related domain or record is deleted, it disappears from here automatically too.",
+    historyListingsTitle:"My Listings",
+    historyPurchasesTitle:"My Purchases",
+    historyReportsTitle:"My Reports",
+    historyTicketsTitle:"My Support Tickets",
+    historyTrademarkTitle:"My Trademark Claims",
+    historyEmptyMsg:"No records yet in this category.",
+    historyPriceLabel:"Price",
+    historySellerLabel:"Seller",
+    historyStatusPending:"Pending Approval",
+    historyStatusApproved:"Approved",
+    historyStatusRejected:"Rejected",
+    historyStatusWithdrawn:"Withdrawn",
+    historyStatusActive:"For Sale",
+    historyStatusSold:"Sold",
     selectAllLabel:"Select All",
     bulkApproveBtn:"Approve Selected",
     bulkApproveConfirm:(n)=>`Are you sure you want to bulk-approve ${n} listings?`,
@@ -4009,6 +4089,7 @@ window.switchUserTab=function(tabId){
     if(tabId==='utab-tickets'){ loadMyTickets(); markMyTicketsSeen(); }
     if(tabId==='utab-trademark'){ loadMyTrademarkClaims(); }
     if(tabId==='utab-myreports'){ loadMyReports(); localStorage.setItem('w3dg_reports_seen_at', Date.now().toString()); const b=document.getElementById('user-reports-tab-badge'); if(b) b.style.display='none'; }
+    if(tabId==='utab-history'){ loadMyActivityHistory(); }
     // FIX: teklif bildirim tipleri (offer_accepted/offer_rejected/offer_countered,
     // offer_received/counter_offer_accepted/counter_offer_rejected) artık BURADA
     // (sekme açılışında) okundu işaretlenmiyor. Çünkü kullanıcı sekmeyi açar açmaz
@@ -8712,6 +8793,73 @@ function renderMyReports(reports) {
             ${timelineHtml}
             <div style="font-size:0.65em;color:#64748b;margin-bottom:6px;">🕓 ${created}</div>
             ${rp.adminNote ? `<div style="font-size:0.7em;color:#cbd5e1;background:#1e293b;border:1px solid ${currentColor}55;border-radius:6px;padding:7px 9px;"><span style="color:${currentColor};font-weight:800;">📩 ${t('reportAdminNoteLabel')}:</span> ${escapeHtml(rp.adminNote)}</div>` : ''}
+        </div>`;
+    }).join('');
+}
+
+// YENİ: "Geçmişim" — tüm geçmiş işlem kayıtlarını tek seferde çekip her
+// konu başlığının kendi listesine dağıtıyor.
+async function loadMyActivityHistory() {
+    if (!isAuth) return;
+    const ids = ['history-listings-list', 'history-purchases-list', 'history-reports-list', 'history-tickets-list', 'history-trademark-list'];
+    ids.forEach(id => { const el = document.getElementById(id); if (el) el.innerHTML = `<p style="font-size:0.75em;opacity:0.5;text-align:center;">${t('loadingLabel')}</p>`; });
+    try {
+        const r = await fetch('/api/approve', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'get_my_activity_history', accessToken: piAccessToken })
+        });
+        const result = await r.json();
+        if (!result.success) {
+            ids.forEach(id => { const el = document.getElementById(id); if (el) el.innerHTML = `<p style="color:#f87171;font-size:0.75em;text-align:center;">${escapeHtml(result.error || t('genericError'))}</p>`; });
+            return;
+        }
+        renderHistorySection('history-listings-list', result.listings, 'listings');
+        renderHistorySection('history-purchases-list', result.purchases, 'purchases');
+        renderHistorySection('history-reports-list', result.reports, 'reports');
+        renderHistorySection('history-tickets-list', result.tickets, 'tickets');
+        renderHistorySection('history-trademark-list', result.trademarkClaims, 'trademark');
+    } catch (e) {
+        console.error("Geçmiş işlemler yüklenemedi:", e);
+        ids.forEach(id => { const el = document.getElementById(id); if (el) el.innerHTML = `<p style="color:#f87171;font-size:0.75em;text-align:center;">${t('genericError')}</p>`; });
+    }
+}
+// Tek bir ortak satır şablonu — 5 farklı konu için de aynı okunabilir
+// düzeni (başlık + durum rozeti + tarih + detay satırı) kullanıyor.
+function renderHistorySection(containerId, items, kind) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+    if (!items || !items.length) {
+        container.innerHTML = `<p style="font-size:0.75em;opacity:0.5;text-align:center;">${t('historyEmptyMsg')}</p>`;
+        return;
+    }
+    const locale = currentLang === 'en' ? 'en-GB' : 'tr-TR';
+    const fmtDate = (ts) => ts ? new Date(ts).toLocaleDateString(locale, { day: '2-digit', month: '2-digit', year: 'numeric' }) + ' ' + new Date(ts).toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' }) : '-';
+    const statusColors = {
+        pending: '#f59e0b', approved: '#10b981', rejected: '#ef4444', withdrawn: '#64748b', active: '#3b82f6', sold: '#10b981',
+        new: '#3b82f6', reviewing: '#f59e0b', resolved: '#10b981', closed: '#64748b', answered: '#f59e0b',
+    };
+    const statusLabelKeys = {
+        pending: 'historyStatusPending', approved: 'historyStatusApproved', rejected: 'historyStatusRejected', withdrawn: 'historyStatusWithdrawn',
+        active: 'historyStatusActive', sold: 'historyStatusSold',
+        new: 'ticketStatusNew', reviewing: 'ticketStatusReviewing', resolved: 'ticketStatusResolved', closed: 'ticketStatusClosed', answered: 'ticketStatusAnswered'
+    };
+    const reasonLabel = { fake: t('reportReasonFake'), inappropriate: t('reportReasonInappropriate'), price_manipulation: t('reportReasonPriceManipulation'), trademark: t('reportReasonTrademark'), other: t('reportReasonOther') };
+    container.innerHTML = items.map(it => {
+        const color = statusColors[it.status] || '#6366f1';
+        const statusLabel = statusLabelKeys[it.status] ? t(statusLabelKeys[it.status]) : (it.status || '-');
+        let title = '', detailLine = '';
+        if (kind === 'listings') { title = `🌐 ${escapeHtml(it.domainName)}`; detailLine = `${t('historyPriceLabel')}: ${it.price ?? '-'} π`; }
+        else if (kind === 'purchases') { title = `🌐 ${escapeHtml(it.domainName)}`; detailLine = `${t('historyPriceLabel')}: ${it.price ?? '-'} π${it.sellerUsername ? ' · ' + t('historySellerLabel') + ': @' + escapeHtml(it.sellerUsername) : ''}`; }
+        else if (kind === 'reports') { title = `🌐 ${escapeHtml(it.domainName || '-')}`; detailLine = `🚩 ${reasonLabel[it.reason] || it.reason || '-'}`; }
+        else if (kind === 'tickets') { title = `🎫 ${escapeHtml(it.subject || '-')}`; detailLine = it.category ? escapeHtml(it.category) : ''; }
+        else if (kind === 'trademark') { title = `🌐 ${escapeHtml(it.domainName || '-')}`; detailLine = it.companyName ? `🏢 ${escapeHtml(it.companyName)}` : ''; }
+        return `<div style="background:#0f172a;border:1px solid #334155;border-left:4px solid ${color};border-radius:9px;padding:9px 10px;margin-bottom:7px;">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:6px;margin-bottom:3px;">
+                <div style="font-size:0.78em;font-weight:800;color:#e2e8f0;">${title}</div>
+                <span class="ticket-status-badge" style="background:${color}22;color:${color};border:1px solid ${color}55;white-space:nowrap;">${statusLabel}</span>
+            </div>
+            ${detailLine ? `<div style="font-size:0.68em;color:#94a3b8;margin-bottom:3px;">${detailLine}</div>` : ''}
+            <div style="font-size:0.62em;color:#64748b;">🕓 ${fmtDate(it.at)}</div>
         </div>`;
     }).join('');
 }
