@@ -1866,7 +1866,7 @@
             <!-- YENİ: filtre başlıkları — öncesinde 5 bölüm de her zaman
                  üst üste gösteriliyordu, karışık/kalabalık duruyordu.
                  Artık "Tümü" ya da tek bir konu seçilebiliyor. -->
-            <div id="history-filter-bar" style="display:flex;gap:5px;overflow-x:auto;margin-bottom:10px;padding-bottom:2px;-webkit-overflow-scrolling:touch;">
+            <div id="history-filter-bar" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;">
                 <button class="history-filter-btn active" data-filter="all" onclick="window.setHistoryFilter('all')" style="flex-shrink:0;padding:6px 12px;border-radius:20px;border:1.5px solid #6366f1;background:#6366f1;color:#fff;font-size:0.65em;font-weight:800;cursor:pointer;white-space:nowrap;" data-i18n="historyFilterAll"></button>
                 <button class="history-filter-btn" data-filter="listings" onclick="window.setHistoryFilter('listings')" style="flex-shrink:0;padding:6px 12px;border-radius:20px;border:1.5px solid #6366f1;background:none;color:#a5b4fc;font-size:0.65em;font-weight:800;cursor:pointer;white-space:nowrap;">🏷️ <span data-i18n="historyListingsTitle"></span></button>
                 <button class="history-filter-btn" data-filter="purchases" onclick="window.setHistoryFilter('purchases')" style="flex-shrink:0;padding:6px 12px;border-radius:20px;border:1.5px solid #10b981;background:none;color:#6ee7b7;font-size:0.65em;font-weight:800;cursor:pointer;white-space:nowrap;">🛒 <span data-i18n="historyPurchasesTitle"></span></button>
