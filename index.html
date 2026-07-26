@@ -1454,6 +1454,20 @@
 <!-- YENİ: Leaderboard modalı. Liste + kendi sıramız backend'den
      (get_leaderboard) çekilip window.renderLeaderboard() ile dolduruluyor. -->
 <!-- YENİ: Ödeme mutabakatı raporu modalı. -->
+<!-- YENİ: şikayet durumu güncelleme modalı — admin İncelemeye Al/Çözüldü/
+     Kapat derken isteğe bağlı bir not girebiliyor, bu not raporlayan
+     kullanıcıya bildirim olarak gidiyor. -->
+<div id="report-status-modal" class="modal-overlay" style="display:none;">
+    <div class="modal-content" style="border-color:#ef4444;text-align:left;max-width:420px;">
+        <h2 id="report-status-modal-title" style="color:#fca5a5;margin:0 0 10px 0;font-size:1.05em;font-weight:900;"></h2>
+        <textarea id="report-status-note-input" rows="3" maxlength="500" placeholder="" data-i18n-placeholder="reportStatusModalNotePlaceholder" style="width:100%;box-sizing:border-box;background:#0f172a;border:1.5px solid #334155;border-radius:8px;padding:9px;color:#e2e8f0;font-size:0.8em;resize:vertical;margin-bottom:12px;font-family:inherit;"></textarea>
+        <div style="display:flex;gap:8px;">
+            <button onclick="document.getElementById('report-status-modal').style.display='none'" style="flex:1;padding:10px;border:1px solid #475569;border-radius:8px;background:none;color:#94a3b8;font-size:0.8em;font-weight:700;cursor:pointer;" data-i18n="cancel"></button>
+            <button id="report-status-confirm-btn" onclick="window.confirmReportStatusUpdate()" style="flex:1;padding:10px;border:none;border-radius:8px;background:linear-gradient(135deg,#ef4444,#f87171);color:#fff;font-size:0.8em;font-weight:800;cursor:pointer;" data-i18n="reportStatusModalConfirmBtn"></button>
+        </div>
+    </div>
+</div>
+
 <div id="reconcile-modal" class="modal-overlay" style="display:none;">
     <div class="modal-content" style="border-color:#f59e0b;text-align:left;max-width:460px;max-height:82vh;display:flex;flex-direction:column;">
         <h2 style="color:#fbbf24;margin:0 0 4px 0;font-size:1.05em;font-weight:900;">🔍 <span data-i18n="reconcileModalTitle"></span></h2>
@@ -1649,6 +1663,10 @@
             <button class="user-tab-btn" style="position:relative;" data-utab="utab-income" onclick="switchUserTab('utab-income')">💰<span data-i18n="myIncome"></span><span class="pending-badge" id="user-income-tab-badge" style="display:none;">0</span></button>
             <button class="user-tab-btn" style="position:relative;" data-utab="utab-tickets" onclick="switchUserTab('utab-tickets')">🎫<span data-i18n="myTickets"></span><span class="pending-badge" id="user-ticket-tab-badge" style="display:none;">0</span></button>
             <button class="user-tab-btn" style="position:relative;" data-utab="utab-trademark" onclick="switchUserTab('utab-trademark')">🔖<span data-i18n="myTrademarkClaims"></span><span class="pending-badge" id="user-trademark-tab-badge" style="display:none;">0</span></button>
+            <!-- YENİ: kullanıcının kendi bildirdiği ilan şikayetlerini takip
+                 edebileceği sekme — öncesinde bir şikayet gönderildiğinde
+                 kullanıcı bunun akıbetini hiçbir şekilde göremiyordu. -->
+            <button class="user-tab-btn" style="position:relative;" data-utab="utab-myreports" onclick="switchUserTab('utab-myreports')">🚩<span data-i18n="myReportsTab"></span><span class="pending-badge" id="user-reports-tab-badge" style="display:none;">0</span></button>
 
         </div>
         <div class="user-tab-panel active" id="utab-overview">
@@ -1782,6 +1800,21 @@
                 </div>
             </div>
         </div>
+
+        <!-- YENİ: "Şikayetlerim" — kullanıcının bildirdiği ilan
+             şikayetlerinin durumunu (Gönderildi → İnceleniyor →
+             Çözüldü/Kapatıldı) aşama aşama takip edebildiği panel. -->
+        <div class="user-tab-panel" id="utab-myreports">
+            <div style="background:#1e1b3a;border:2px solid #ef4444;border-radius:12px;padding:10px;">
+                <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;padding-bottom:7px;border-bottom:1px solid #7f1d1d;">
+                    <span style="display:flex;align-items:center;gap:6px;font-size:0.72em;color:#fca5a5;font-weight:800;text-transform:uppercase;">🚩 <span data-i18n="myReportsTab"></span></span>
+                </div>
+                <div style="font-size:0.65em;color:#94a3b8;margin-bottom:8px;line-height:1.5;" data-i18n="myReportsNote"></div>
+                <div id="my-reports-list">
+                    <div class="skeleton-ticket-row"><div class="skeleton" style="width:34px;height:34px;border-radius:8px;"></div><div style="flex:1;"><div class="skeleton skeleton-line" style="width:60%;margin:0 0 6px 0;"></div><div class="skeleton skeleton-line" style="width:35%;height:8px;margin:0;"></div></div></div>
+                </div>
+            </div>
+        </div>
     </div>
     <div id="view-as-user-box" style="display:none;align-items:center;gap:8px;background:linear-gradient(135deg,rgba(99,102,241,0.18) 0%,rgba(67,56,202,0.20) 100%);border:1.5px solid #6366f1;border-radius:10px;padding:8px 10px;margin:16px auto 16px auto;width:calc(100% - 16px);box-sizing:border-box;box-shadow:0 4px 14px rgba(99,102,241,0.25);">
         <span style="font-size:1.1em;flex-shrink:0;">👁️</span>
@@ -1794,15 +1827,33 @@
                 <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
             </button>
         </h3>
-        <button id="checkup-btn" onclick="window.runSystemCheckup()" style="display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:9px;margin-bottom:8px;border:1.5px solid rgba(20,184,166,0.5);border-radius:10px;background:linear-gradient(135deg,rgba(20,184,166,0.18) 0%,rgba(15,118,110,0.20) 100%);color:#5eead4;font-size:0.75em;font-weight:800;cursor:pointer;">🩺 <span data-i18n="runSystemCheckupBtn"></span></button>
-        <button id="cleanup-orphaned-btn" onclick="window.handleCleanupOrphanedOffers()" style="display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:9px;margin-bottom:8px;border:1.5px solid rgba(168,85,247,0.5);border-radius:10px;background:linear-gradient(135deg,rgba(168,85,247,0.18) 0%,rgba(107,33,168,0.20) 100%);color:#d8b4fe;font-size:0.75em;font-weight:800;cursor:pointer;">🧹 <span data-i18n="cleanupOrphanedBtn"></span></button>
-        <button onclick="window.openAuditLogModal()" style="display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:9px;margin-bottom:8px;border:1.5px solid rgba(148,163,184,0.4);border-radius:10px;background:rgba(148,163,184,0.08);color:#cbd5e1;font-size:0.75em;font-weight:800;cursor:pointer;">📋 <span data-i18n="adminAuditLogBtn"></span></button>
-        <button onclick="window.openDeletionRequestsModal()" style="display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:9px;margin-bottom:8px;border:1.5px solid rgba(239,68,68,0.4);border-radius:10px;background:rgba(239,68,68,0.08);color:#fca5a5;font-size:0.75em;font-weight:800;cursor:pointer;">🗑️ <span data-i18n="deletionRequestsBtn"></span></button>
-        <div id="maintenance-control-box" style="display:flex;align-items:center;gap:8px;background:linear-gradient(135deg,rgba(239,68,68,0.16) 0%,rgba(127,29,29,0.20) 100%);border:1.5px solid rgba(239,68,68,0.45);border-radius:10px;padding:8px 10px;margin-bottom:8px;">
-            <span id="maintenance-status-dot" style="width:9px;height:9px;border-radius:50%;background:#10b981;flex-shrink:0;box-shadow:0 0 6px #10b981;"></span>
-            <span id="maintenance-status-text" style="font-size:0.68em;color:#94a3b8;font-weight:700;flex:1;" data-i18n="maintenanceStatusLive"></span>
-            <button id="maintenance-toggle-btn" onclick="window.toggleMaintenanceMode()" style="padding:6px 12px;border:none;border-radius:8px;background:linear-gradient(135deg,#ef4444,#f87171);color:#fff;font-size:0.65em;font-weight:800;cursor:pointer;white-space:nowrap;" data-i18n="maintenanceEnableBtn"></button>
+        <!-- YENİ: Sistem araçları artık kendi başlıklı, çerçeveli bölümünde —
+             öncesinde 4 buton + bakım kutusu, sekmelerle (kullanıcılar,
+             satış istatistikleri vb.) aynı görsel seviyede art arda
+             diziliydi, dağınık görünüyordu. -->
+        <div style="background:#0f172a;border:1.5px solid rgba(20,184,166,0.35);border-radius:14px;padding:10px;margin-bottom:10px;">
+            <div style="display:flex;align-items:center;gap:6px;margin-bottom:9px;padding-bottom:7px;border-bottom:1px solid rgba(20,184,166,0.25);">
+                <span style="font-size:0.78em;color:#5eead4;font-weight:900;text-transform:uppercase;letter-spacing:0.5px;">🛠️ <span data-i18n="systemToolsSectionTitle"></span></span>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;">
+                <button id="checkup-btn" onclick="window.runSystemCheckup()" style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:12px 6px;border:1.5px solid rgba(20,184,166,0.5);border-radius:11px;background:linear-gradient(135deg,rgba(20,184,166,0.18) 0%,rgba(15,118,110,0.20) 100%);color:#5eead4;font-size:0.7em;font-weight:800;cursor:pointer;text-align:center;line-height:1.3;"><span style="font-size:1.5em;">🩺</span><span data-i18n="runSystemCheckupBtn"></span></button>
+                <button id="cleanup-orphaned-btn" onclick="window.handleCleanupOrphanedOffers()" style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:12px 6px;border:1.5px solid rgba(168,85,247,0.5);border-radius:11px;background:linear-gradient(135deg,rgba(168,85,247,0.18) 0%,rgba(107,33,168,0.20) 100%);color:#d8b4fe;font-size:0.7em;font-weight:800;cursor:pointer;text-align:center;line-height:1.3;"><span style="font-size:1.5em;">🧹</span><span data-i18n="cleanupOrphanedBtn"></span></button>
+                <button onclick="window.openAuditLogModal()" style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:12px 6px;border:1.5px solid rgba(148,163,184,0.4);border-radius:11px;background:rgba(148,163,184,0.08);color:#cbd5e1;font-size:0.7em;font-weight:800;cursor:pointer;text-align:center;line-height:1.3;"><span style="font-size:1.5em;">📋</span><span data-i18n="adminAuditLogBtn"></span></button>
+                <button onclick="window.openDeletionRequestsModal()" style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:12px 6px;border:1.5px solid rgba(239,68,68,0.4);border-radius:11px;background:rgba(239,68,68,0.08);color:#fca5a5;font-size:0.7em;font-weight:800;cursor:pointer;text-align:center;line-height:1.3;"><span style="font-size:1.5em;">🗑️</span><span data-i18n="deletionRequestsBtn"></span></button>
+            </div>
+            <div id="maintenance-control-box" style="display:flex;align-items:center;gap:8px;background:linear-gradient(135deg,rgba(239,68,68,0.16) 0%,rgba(127,29,29,0.20) 100%);border:1.5px solid rgba(239,68,68,0.45);border-radius:10px;padding:8px 10px;">
+                <span id="maintenance-status-dot" style="width:9px;height:9px;border-radius:50%;background:#10b981;flex-shrink:0;box-shadow:0 0 6px #10b981;"></span>
+                <span id="maintenance-status-text" style="font-size:0.68em;color:#94a3b8;font-weight:700;flex:1;" data-i18n="maintenanceStatusLive"></span>
+                <button id="maintenance-toggle-btn" onclick="window.toggleMaintenanceMode()" style="padding:6px 12px;border:none;border-radius:8px;background:linear-gradient(135deg,#ef4444,#f87171);color:#fff;font-size:0.65em;font-weight:800;cursor:pointer;white-space:nowrap;" data-i18n="maintenanceEnableBtn"></button>
+            </div>
         </div>
+        <!-- YENİ: Yönetim sekmeleri (kullanıcılar, istatistikler, onaylar vb.)
+             artık ayrı, kendi başlıklı çerçevesi içinde — sistem
+             araçlarından net şekilde görsel olarak ayrılıyor. -->
+        <div style="background:#0f172a;border:1.5px solid rgba(99,102,241,0.35);border-radius:14px;padding:10px;">
+            <div style="display:flex;align-items:center;gap:6px;margin-bottom:9px;padding-bottom:7px;border-bottom:1px solid rgba(99,102,241,0.25);">
+                <span style="font-size:0.78em;color:#a5b4fc;font-weight:900;text-transform:uppercase;letter-spacing:0.5px;">📊 <span data-i18n="managementTabsSectionTitle"></span></span>
+            </div>
         <div class="admin-tabs">
             <button class="admin-tab-btn active" data-tab="tab-users" onclick="switchAdminTab('tab-users')">👥<span data-i18n="users" style="font-size:0.9em;"></span></button>
             <button class="admin-tab-btn" data-tab="tab-stats" onclick="switchAdminTab('tab-stats')">📈<span data-i18n="salesStats" style="font-size:0.9em;"></span></button>
@@ -2043,6 +2094,7 @@
                 </div>
             </div>
         </div>
+        </div>
 </div>
 
     <!-- Market -->
@@ -2094,17 +2146,21 @@
             </select>
         </div>
         <div id="premium-lock" class="premium-lock-overlay">
-            <div class="secure-badge" style="background:linear-gradient(165deg,#0a0f1e 0%,#0f172a 30%,#1e1b4b 50%,#0f172a 70%,#0a0f1e 100%);border:2px solid rgba(129,140,248,0.55);border-radius:16px;padding:20px 18px;box-shadow:0 4px 20px rgba(0,0,0,0.4),0 0 22px rgba(99,102,241,0.25),inset 0 1px 0 rgba(255,255,255,0.05);width:92%;margin:8px 0;backdrop-filter:blur(10px);">
-            <div style="display:flex;justify-content:center;margin-bottom:12px;">
-                <div style="position:relative;width:110px;height:110px;">
+            <div class="secure-badge" style="background:linear-gradient(165deg,#0a0f1e 0%,#0f172a 30%,#1e1b4b 50%,#0f172a 70%,#0a0f1e 100%);border:2px solid rgba(129,140,248,0.55);border-radius:16px;padding:14px 16px;box-shadow:0 4px 20px rgba(0,0,0,0.4),0 0 22px rgba(99,102,241,0.25),inset 0 1px 0 rgba(255,255,255,0.05);width:92%;margin:6px 0;backdrop-filter:blur(10px);">
+            <!-- DÜZENLENDİ (kullanıcı geri bildirimi — "alt çizgi ekranı
+                 kaydırmadan görünmüyor"): ikon ve boşluklar biraz
+                 küçültüldü ki kartın TAMAMI (alt çizgisi dahil) kısa
+                 ekranlarda bile kaydırmaya gerek kalmadan sığsın. -->
+            <div style="display:flex;justify-content:center;margin-bottom:8px;">
+                <div style="position:relative;width:88px;height:88px;">
                 <!-- Rotating ring effect -->
-                <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:130px;height:130px;border-radius:50%;border:2px solid rgba(59,130,246,0.3);border-top-color:#3b82f6;animation:spin-ring 3s linear infinite;"></div>
-                <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:120px;height:120px;border-radius:50%;border:2px solid rgba(99,102,241,0.2);border-bottom-color:#818cf8;animation:spin-ring 4s linear infinite reverse;"></div>
+                <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:104px;height:104px;border-radius:50%;border:2px solid rgba(59,130,246,0.3);border-top-color:#3b82f6;animation:spin-ring 3s linear infinite;"></div>
+                <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:96px;height:96px;border-radius:50%;border:2px solid rgba(99,102,241,0.2);border-bottom-color:#818cf8;animation:spin-ring 4s linear infinite reverse;"></div>
                 <!-- Pulse glow -->
-                <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:100px;height:100px;border-radius:50%;background:radial-gradient(circle,rgba(59,130,246,0.15) 0%,transparent 70%);animation:icon-pulse-glow 2s ease-in-out infinite;"></div>
+                <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:80px;height:80px;border-radius:50%;background:radial-gradient(circle,rgba(59,130,246,0.15) 0%,transparent 70%);animation:icon-pulse-glow 2s ease-in-out infinite;"></div>
                 <!-- Icon with glow -->
                 <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);animation:shield-pulse 2.5s ease-in-out infinite;filter:drop-shadow(0 0 15px rgba(59,130,246,0.6)) drop-shadow(0 0 30px rgba(99,102,241,0.3));">
-                <img src="assets/secure-shield.webp" style="width:90px;height:90px;object-fit:contain;position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);display:block;filter:drop-shadow(0 0 10px rgba(59,130,246,0.5));" alt="Secure Connection">
+                <img src="assets/secure-shield.webp" style="width:72px;height:72px;object-fit:contain;position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);display:block;filter:drop-shadow(0 0 10px rgba(59,130,246,0.5));" alt="Secure Connection">
                 </div>
             </div>
             </div>
@@ -2112,11 +2168,11 @@
      kutusunda (dış karttan ayrı, net görünen bir iç çerçeve) — öncesinde
      hem dış kartın hem bu başlığın çerçevesi çok soluktu (opacity 0.2-0.25),
      koyu arka planla neredeyse hiç fark edilmiyordu. -->
-<div style="display:flex;justify-content:center;margin-bottom:10px;">
-    <div class="secure-badge-title" style="display:inline-block;color:#c7d2fe;font-size:1.0em;font-weight:900;text-shadow:0 0 15px rgba(199,210,254,0.4);letter-spacing:1px;border:1.5px solid rgba(129,140,248,0.55);background:rgba(99,102,241,0.14);border-radius:20px;padding:7px 18px;box-shadow:0 0 14px rgba(99,102,241,0.2);" data-i18n="secureConnection"></div>
+<div style="display:flex;justify-content:center;margin-bottom:7px;">
+    <div class="secure-badge-title" style="display:inline-block;color:#c7d2fe;font-size:0.95em;font-weight:900;text-shadow:0 0 15px rgba(199,210,254,0.4);letter-spacing:1px;border:1.5px solid rgba(129,140,248,0.55);background:rgba(99,102,241,0.14);border-radius:20px;padding:6px 16px;box-shadow:0 0 14px rgba(99,102,241,0.2);" data-i18n="secureConnection"></div>
 </div>
-                <div class="secure-badge-body" style="color:#e0e7ff;font-size:0.85em;line-height:1.6;margin-bottom:8px;font-weight:600;border-bottom:1px solid rgba(129,140,248,0.35);padding-bottom:10px;word-wrap:break-word;overflow-wrap:break-word;white-space:normal;" data-i18n="testNetBadgeBody"></div>
-                <div class="secure-badge-warning" style="color:#fbbf24;font-size:0.9em;font-weight:900;line-height:1.3;text-transform:uppercase;text-shadow:0 0 12px rgba(251,191,36,0.4);letter-spacing:1.2px;" data-i18n="testNetWarning"></div>
+                <div class="secure-badge-body" style="color:#e0e7ff;font-size:0.8em;line-height:1.45;margin-bottom:6px;font-weight:600;border-bottom:1px solid rgba(129,140,248,0.35);padding-bottom:7px;word-wrap:break-word;overflow-wrap:break-word;white-space:normal;" data-i18n="testNetBadgeBody"></div>
+                <div class="secure-badge-warning" style="color:#fbbf24;font-size:0.85em;font-weight:900;line-height:1.25;text-transform:uppercase;text-shadow:0 0 12px rgba(251,191,36,0.4);letter-spacing:1.1px;" data-i18n="testNetWarning"></div>
             </div>
             <!-- FIX (kullanıcı geri bildirimi — "Ayrıcalıklı Web3 dünyasına
                  katılmak ve güvenli bağlantı kurmak için yazısı nerede"):
@@ -2315,6 +2371,13 @@ function showToast(message) {
         if (!container) { console.log('[toast]', text); return; }
         const el = document.createElement('div');
         el.className = `toast-item toast-${type}`;
+        // BUG DÜZELTMESİ: birçok yerde showToast() zaten mesajın başına kendi
+        // simgesini ekleyerek çağrılıyordu (ör. "✅ ${n} domain güncellendi").
+        // Yukarıdaki algılama da aynı simgeyi ayrıca bir <span> olarak
+        // gösterdiğinden ekranda İKİ tik/uyarı simgesi yan yana görünüyordu.
+        // Metnin başındaki bu simgeyi burada temizliyoruz — simge zaten
+        // ayrı bir ikon olarak gösteriliyor.
+        const displayText = text.replace(/^[\s]*(?:✅|⚠️|❌|🔴|ℹ️)+[\s]*/u, '');
         // Kenarlığın ÇİZGİSİNİ TAKİP EDEN ışık segmenti: stroke-dasharray/
         // stroke-dashoffset animasyonu ile SVG rect'in kendi kenarı üzerinde
         // dolaşan bir "kuyruklu yıldız" segmenti. pathLength="100" sayesinde
@@ -2329,8 +2392,8 @@ function showToast(message) {
                 </rect>
             </svg>
             <span class="toast-icon">${icon}</span><span class="toast-text"></span>`;
-        el.querySelector('.toast-text').textContent = text;
-        const duration = Math.min(9000, Math.max(3500, text.length * 60));
+        el.querySelector('.toast-text').textContent = displayText;
+        const duration = Math.min(9000, Math.max(3500, displayText.length * 60));
         const remove = () => {
             el.classList.add('toast-leaving');
             setTimeout(() => el.remove(), 200);
@@ -2465,6 +2528,7 @@ const i18n = {
     profileSettings:"Profil Ayarları",myPanel:"Panelim",sellMyDomain:"Domainimi Satışa Çıkar",
     languageOptions:"Dil Seçenekleri",logout:"Çıkış Yap",connectWithPi:"<span style='display:inline-flex;align-items:center;gap:10px;'><span style='display:inline-block;animation:logo-pulse 1.5s ease-in-out infinite;font-size:1.3em;'>π</span><span style='font-size:1.05em;'>Pi ile Bağlan</span></span>",
     runSystemCheckupBtn:"Sistem Kontrolü Yap",cleanupOrphanedBtn:"Yetim Verileri Temizle",adminAuditLogBtn:"Admin İşlem Günlüğü",deletionRequestsBtn:"Hesap Silme Talepleri",
+    systemToolsSectionTitle:"Sistem Araçları",managementTabsSectionTitle:"Yönetim ve İstatistikler",
     scanningLabel:"Taranıyor...",checkupFailMsg:"Kontrol yapılamadı",checkupErrorMsg:"Kontrol sırasında bir hata oluştu. Lütfen tekrar deneyin.",
     checkupAllGoodMsg:"✅ Hiçbir sorun bulunamadı, her şey yolunda!",
     checkupSummaryMsg:(s)=>`Tarandı: ${s.domainsScanned||0} domain (${s.soldCount||0} satılmış), ${s.salesScanned||0} satış kaydı, ${s.sellRequestsScanned||0} satış talebi, ${s.trademarkClaimsScanned||0} marka hakkı talebi, ${s.offersScanned||0} teklif kaydı (${s.orphanedOffers||0} yetim), son 7 günde ${s.backgroundErrors||0} arka plan hatası.`,
@@ -2863,6 +2927,22 @@ const i18n = {
     reportsTabLabel:"Şikayetler",
     noReportsMsg:"Bekleyen ilan şikayeti yok.",
     dismissReportBtn:"Kapat",
+    reportStatusNew:"Yeni",
+    reportStatusReviewing:"İnceleniyor",
+    reportActionReviewing:"İncelemeye Al",
+    reportActionResolved:"Çözüldü",
+    reportActionClosed:"Kapat",
+    reportStatusUpdatedMsg:"Durum güncellendi, kullanıcıya bildirim gönderildi.",
+    reportStatusModalNotePlaceholder:"İsterseniz kullanıcıya gönderilecek bir açıklama yazın (opsiyonel)...",
+    reportStatusModalConfirmBtn:"Onayla ve Bildir",
+    myReportsTab:"Şikayetlerim",
+    myReportsNote:"Bildirdiğiniz ilan şikayetlerinin durumunu buradan takip edebilirsiniz.",
+    myReportsEmpty:"Henüz bir ilan bildirmediniz.",
+    reportStageSubmitted:"Gönderildi",
+    reportStageReviewing:"İnceleniyor",
+    reportStageResolved:"Çözüldü",
+    reportStageClosed:"Kapatıldı",
+    reportAdminNoteLabel:"Yönetici Notu",
     selectAllLabel:"Tümünü Seç",
     bulkApproveBtn:"Seçilenleri Onayla",
     bulkApproveConfirm:(n)=>`${n} ilanı topluca onaylamak istediğinize emin misiniz?`,
@@ -3105,6 +3185,7 @@ const i18n = {
     profileSettings:"Profile Settings",myPanel:"My Panel",sellMyDomain:"List My Domain for Sale",
     languageOptions:"Language Options",logout:"Sign Out",connectWithPi:"<span style='display:inline-flex;align-items:center;gap:10px;'><span style='display:inline-block;animation:logo-pulse 1.5s ease-in-out infinite;font-size:1.3em;'>π</span><span style='font-size:1.05em;'>Connect with Pi</span></span>",
     runSystemCheckupBtn:"Run System Checkup",cleanupOrphanedBtn:"Clean Up Orphaned Data",adminAuditLogBtn:"Admin Action Log",deletionRequestsBtn:"Account Deletion Requests",
+    systemToolsSectionTitle:"System Tools",managementTabsSectionTitle:"Management & Statistics",
     scanningLabel:"Scanning...",checkupFailMsg:"Checkup failed",checkupErrorMsg:"An error occurred during the checkup. Please try again.",
     checkupAllGoodMsg:"✅ No issues found, everything looks good!",
     checkupSummaryMsg:(s)=>`Scanned: ${s.domainsScanned||0} domains (${s.soldCount||0} sold), ${s.salesScanned||0} sales records, ${s.sellRequestsScanned||0} sell requests, ${s.trademarkClaimsScanned||0} trademark claims, ${s.offersScanned||0} offer records (${s.orphanedOffers||0} orphaned), ${s.backgroundErrors||0} background errors in the last 7 days.`,
@@ -3499,6 +3580,22 @@ const i18n = {
     reportsTabLabel:"Reports",
     noReportsMsg:"No pending listing reports.",
     dismissReportBtn:"Dismiss",
+    reportStatusNew:"New",
+    reportStatusReviewing:"Reviewing",
+    reportActionReviewing:"Start Review",
+    reportActionResolved:"Resolved",
+    reportActionClosed:"Close",
+    reportStatusUpdatedMsg:"Status updated, the user has been notified.",
+    reportStatusModalNotePlaceholder:"Optionally add a note to send to the user...",
+    reportStatusModalConfirmBtn:"Confirm & Notify",
+    myReportsTab:"My Reports",
+    myReportsNote:"Track the status of the listing reports you've submitted here.",
+    myReportsEmpty:"You haven't reported any listings yet.",
+    reportStageSubmitted:"Submitted",
+    reportStageReviewing:"Reviewing",
+    reportStageResolved:"Resolved",
+    reportStageClosed:"Closed",
+    reportAdminNoteLabel:"Admin Note",
     selectAllLabel:"Select All",
     bulkApproveBtn:"Approve Selected",
     bulkApproveConfirm:(n)=>`Are you sure you want to bulk-approve ${n} listings?`,
@@ -3904,13 +4001,14 @@ window.switchAdminTab=function(tabId){
     if(tabId==='tab-stats'){ loadAllSalesDetail(); window.loadSalesTrendChart(); }
     if(tabId==='tab-tickets'){ adminLoadTickets(); markTicketsSeen(); }
     if(tabId==='tab-offers'){ window.loadAdminOffersTable(); const b=document.getElementById('offers-count-badge'); if(b) b.style.display='none'; }
-    if(tabId==='tab-reports'){ window.loadListingReports(); }
+    if(tabId==='tab-reports'){ window.loadListingReports(); window.startReportsPolling(); } else { window.stopReportsPolling(); }
 };
 window.switchUserTab=function(tabId){
     document.querySelectorAll('.user-tab-btn').forEach(b=>b.classList.toggle('active',b.dataset.utab===tabId));
     document.querySelectorAll('.user-tab-panel').forEach(p=>p.classList.toggle('active',p.id===tabId));
     if(tabId==='utab-tickets'){ loadMyTickets(); markMyTicketsSeen(); }
     if(tabId==='utab-trademark'){ loadMyTrademarkClaims(); }
+    if(tabId==='utab-myreports'){ loadMyReports(); localStorage.setItem('w3dg_reports_seen_at', Date.now().toString()); const b=document.getElementById('user-reports-tab-badge'); if(b) b.style.display='none'; }
     // FIX: teklif bildirim tipleri (offer_accepted/offer_rejected/offer_countered,
     // offer_received/counter_offer_accepted/counter_offer_rejected) artık BURADA
     // (sekme açılışında) okundu işaretlenmiyor. Çünkü kullanıcı sekmeyi açar açmaz
@@ -4889,6 +4987,7 @@ window.respondCounterOffer=async function(offerId, accept){
 // platformdaki TÜM teklifleri (kim, hangi domain, ne kadar, hangi durumda,
 // ne zaman) tek bakışta, karmaşa olmadan okunabilir şekilde gösterir.
 // YENİ: Bildirilen İlanlar paneli.
+let _reportsPollTimer = null;
 window.loadListingReports=async function(){
     const wrap=document.getElementById('admin-reports-list');
     if(!wrap) return;
@@ -4898,34 +4997,87 @@ window.loadListingReports=async function(){
         const result=await r.json();
         if(!result.success){ wrap.innerHTML=`<p style="color:#f87171;font-size:0.75em;text-align:center;">${escapeHtml(result.error||t('genericError'))}</p>`; return; }
         const reports=result.reports||[];
+        // BUG DÜZELTMESİ: rozet artık sadece TÜM açık şikayet sayısını değil,
+        // backend'in hesapladığı "okunmamış" (unseenCount) sayısını
+        // gösteriyor. Paneli açıp listeyi görüntülemek zaten "okundu"
+        // sayılıyor (bkz. mark_reports_seen çağrısı aşağıda) — admin'in
+        // tek tek "kapat" demesine gerek kalmadan rozet temizleniyor.
         const badge=document.getElementById('reports-count-badge');
         if(badge){ if(reports.length>0){badge.style.display='block';badge.textContent=reports.length>99?'99+':reports.length;} else {badge.style.display='none';} }
-        if(!reports.length){ wrap.innerHTML=`<p style="font-size:0.75em;opacity:0.5;text-align:center;">${t('noReportsMsg')}</p>`; return; }
-        const reasonLabel={fake:t('reportReasonFake'),inappropriate:t('reportReasonInappropriate'),price_manipulation:t('reportReasonPriceManipulation'),trademark:t('reportReasonTrademark'),other:t('reportReasonOther')};
-        const locale=currentLang==='en'?'en-GB':'tr-TR';
-        wrap.innerHTML=reports.map(rep=>`
-            <div style="background:#0f172a;border:1px solid #ef4444;border-radius:9px;padding:10px;margin-bottom:8px;">
-                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
-                    <span style="font-weight:900;color:#f1f5f9;font-size:0.85em;">🌐 ${escapeHtml(rep.domainName)}</span>
-                    <span style="font-size:0.6em;color:#64748b;">${new Date(rep.createdAt).toLocaleString(locale,{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})}</span>
-                </div>
-                <div style="font-size:0.72em;color:#fca5a5;font-weight:800;margin-bottom:4px;">🚩 ${reasonLabel[rep.reason]||rep.reason}</div>
-                <div style="font-size:0.7em;color:#94a3b8;margin-bottom:6px;">👤 @${escapeHtml(rep.reportedBy)}</div>
-                ${rep.comment?`<div style="font-size:0.7em;color:#cbd5e1;background:#1e293b;border-radius:6px;padding:6px 8px;margin-bottom:8px;">${escapeHtml(rep.comment)}</div>`:''}
-                <div style="display:flex;gap:6px;">
-                    <button onclick="window.openDomainDetail('${rep.domainName.replace(/'/g,"\\'")}')" style="flex:1;padding:6px;border-radius:6px;border:1px solid #64748b;background:none;color:#cbd5e1;font-size:0.65em;font-weight:800;cursor:pointer;">👁 ${t('viewBtn')}</button>
-                    <button onclick="window.dismissListingReport('${rep.id}')" style="flex:1;padding:6px;border-radius:6px;border:none;background:#334155;color:#94a3b8;font-size:0.65em;font-weight:800;cursor:pointer;">✔️ ${t('dismissReportBtn')}</button>
-                </div>
-            </div>`).join('');
+        if(!reports.length){ wrap.innerHTML=`<p style="font-size:0.75em;opacity:0.5;text-align:center;">${t('noReportsMsg')}</p>`; }
+        else{
+            const reasonLabel={fake:t('reportReasonFake'),inappropriate:t('reportReasonInappropriate'),price_manipulation:t('reportReasonPriceManipulation'),trademark:t('reportReasonTrademark'),other:t('reportReasonOther')};
+            const locale=currentLang==='en'?'en-GB':'tr-TR';
+            const statusPill={new:`<span style="background:rgba(239,68,68,0.15);border:1px solid #ef4444;color:#f87171;font-size:0.6em;font-weight:900;padding:2px 8px;border-radius:20px;">${t('reportStatusNew')}</span>`,
+                reviewing:`<span style="background:rgba(245,158,11,0.15);border:1px solid #f59e0b;color:#fbbf24;font-size:0.6em;font-weight:900;padding:2px 8px;border-radius:20px;">${t('reportStatusReviewing')}</span>`};
+            wrap.innerHTML=reports.map(rep=>`
+                <div style="background:#0f172a;border:1px solid #ef4444;border-radius:9px;padding:10px;margin-bottom:8px;">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;gap:6px;">
+                        <span style="font-weight:900;color:#f1f5f9;font-size:0.85em;">🌐 ${escapeHtml(rep.domainName)}</span>
+                        ${statusPill[rep.status]||''}
+                    </div>
+                    <div style="font-size:0.6em;color:#64748b;margin-bottom:4px;">${new Date(rep.createdAt).toLocaleString(locale,{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})}</div>
+                    <div style="font-size:0.72em;color:#fca5a5;font-weight:800;margin-bottom:4px;">🚩 ${reasonLabel[rep.reason]||rep.reason}</div>
+                    <div style="font-size:0.7em;color:#94a3b8;margin-bottom:6px;">👤 @${escapeHtml(rep.reportedBy)}</div>
+                    ${rep.comment?`<div style="font-size:0.7em;color:#cbd5e1;background:#1e293b;border-radius:6px;padding:6px 8px;margin-bottom:8px;">${escapeHtml(rep.comment)}</div>`:''}
+                    <div style="display:flex;gap:6px;flex-wrap:wrap;">
+                        <button onclick="window.openDomainDetail('${rep.domainName.replace(/'/g,"\\'")}')" style="flex:1;min-width:70px;padding:6px;border-radius:6px;border:1px solid #64748b;background:none;color:#cbd5e1;font-size:0.65em;font-weight:800;cursor:pointer;">${t('viewBtn')}</button>
+                        ${rep.status==='new'?`<button onclick="window.openReportStatusModal('${rep.id}','reviewing')" style="flex:1;min-width:70px;padding:6px;border-radius:6px;border:1px solid #f59e0b;background:rgba(245,158,11,0.12);color:#fbbf24;font-size:0.65em;font-weight:800;cursor:pointer;">🔎 ${t('reportActionReviewing')}</button>`:''}
+                        <button onclick="window.openReportStatusModal('${rep.id}','resolved')" style="flex:1;min-width:70px;padding:6px;border-radius:6px;border:1px solid #10b981;background:rgba(16,185,129,0.12);color:#6ee7b7;font-size:0.65em;font-weight:800;cursor:pointer;">✅ ${t('reportActionResolved')}</button>
+                        <!-- DÜZENLENDİ: "Kapat" artık amacına uygun renkte (nötr
+                             gri/kırmızımsı) — öncesinde yeşil bir onay
+                             simgesiyle (✔️) gösteriliyordu, sanki olumlu bir
+                             işlemmiş gibi görünüyordu; bu aslında "asılsız/
+                             işlem yapılmadan kapat" anlamına geliyor. -->
+                        <button onclick="window.openReportStatusModal('${rep.id}','closed')" style="flex:1;min-width:70px;padding:6px;border-radius:6px;border:1px solid #64748b;background:rgba(100,116,139,0.12);color:#94a3b8;font-size:0.65em;font-weight:800;cursor:pointer;">🚫 ${t('reportActionClosed')}</button>
+                    </div>
+                </div>`).join('');
+        }
+        // YENİ: paneli açıp listeyi görüntülemek "görüldü" sayılır — rozeti
+        // hemen temizle. Yeni gelen bir şikayet ise sonraki poll'da veya bir
+        // dahaki panel açılışında tekrar rozeti yükseltecek.
+        try{
+            await fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'mark_reports_seen',accessToken:piAccessToken})});
+            if(badge) badge.style.display='none';
+        }catch(e){}
     }catch(e){ wrap.innerHTML=`<p style="color:#f87171;font-size:0.75em;text-align:center;">${t('genericError')}</p>`; }
 };
-window.dismissListingReport=async function(reportId){
+// YENİ: Bildirilen İlanlar sekmesi açıkken 10 saniyede bir otomatik
+// yenileniyor — yeni bir şikayet geldiğinde admin panel açık kalsa bile
+// listeye/rozete neredeyse anında yansısın diye. Sekmeden çıkılınca durur.
+window.startReportsPolling=function(){
+    window.stopReportsPolling();
+    _reportsPollTimer=setInterval(()=>{
+        if(document.getElementById('tab-reports')?.classList.contains('active')) window.loadListingReports();
+    },10000);
+};
+window.stopReportsPolling=function(){
+    if(_reportsPollTimer){ clearInterval(_reportsPollTimer); _reportsPollTimer=null; }
+};
+// YENİ: durum güncelleme (İncelemeye Al / Çözüldü / Kapat) için not girme
+// modalı — girilen açıklama, raporlayan kullanıcıya bildirim olarak gidiyor.
+let _reportStatusTarget=null;
+window.openReportStatusModal=function(reportId,newStatus){
+    _reportStatusTarget={reportId,newStatus};
+    const titles={reviewing:t('reportActionReviewing'),resolved:t('reportActionResolved'),closed:t('reportActionClosed')};
+    document.getElementById('report-status-modal-title').textContent=titles[newStatus]||'';
+    document.getElementById('report-status-note-input').value='';
+    document.getElementById('report-status-modal').style.display='flex';
+};
+window.confirmReportStatusUpdate=async function(){
+    if(!_reportStatusTarget) return;
+    const note=document.getElementById('report-status-note-input').value.trim();
+    const btn=document.getElementById('report-status-confirm-btn');
+    btn.disabled=true; btn.style.opacity='0.6';
     try{
-        const r=await fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'dismiss_listing_report',accessToken:piAccessToken,reportId})});
+        const r=await fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'update_report_status',accessToken:piAccessToken,reportId:_reportStatusTarget.reportId,newStatus:_reportStatusTarget.newStatus,note})});
         const result=await r.json();
         if(!result.success){ showToast(result.error||t('genericError')); return; }
+        showToast(t('reportStatusUpdatedMsg'));
+        document.getElementById('report-status-modal').style.display='none';
         window.loadListingReports();
     }catch(e){ showToast(t('genericError')); }
+    finally{ btn.disabled=false; btn.style.opacity='1'; }
 };
 
 window.loadAdminOffersTable=async function(){
@@ -5228,7 +5380,6 @@ window.openFaqModal=function(){
         </div>`).join('');
     document.getElementById('info-modal').style.display='flex';
     window.switchInfoTab('faq');
-    toggleSideMenu();
 };
 // YENİ: iki sekme (Nasıl Çalışır / SSS) arasında geçiş — aktif olan
 // belirgin (dolu renkli), diğeri sönük (outline) gösterilir.
@@ -8483,6 +8634,84 @@ function renderMyTrademarkClaims(claims) {
             <div style="font-size:0.65em;color:#64748b;margin-bottom:8px;">🕓 ${t('trademarkSubmittedOn')}: ${created}</div>
             ${canWithdraw ? `<button onclick="withdrawMyTrademarkClaim('${c.id}')" style="width:100%;padding:7px;border:1px solid #64748b;background:rgba(100,116,139,0.15);color:#cbd5e1;border-radius:6px;font-size:0.65em;font-weight:700;cursor:pointer;">↩️ ${t('trademarkWithdrawBtn')}</button>` : ''}
             ${canDelete ? `<button onclick="deleteMyTrademarkClaim('${c.id}')" style="width:100%;padding:7px;border:1px solid #ef4444;background:rgba(239,68,68,0.12);color:#fca5a5;border-radius:6px;font-size:0.65em;font-weight:700;cursor:pointer;">🗑️ ${t('trademarkDeleteBtn')}</button>` : ''}
+        </div>`;
+    }).join('');
+}
+
+// YENİ: "Şikayetlerim" — kullanıcının bildirdiği ilan şikayetlerini takip
+// panelinin veri/render mantığı. Aşama göstergesi trademark talepleri
+// panelindeki zaman çizelgesiyle aynı desende, ama burada 4 SABİT kolon var
+// (Gönderildi / İnceleniyor / Çözüldü / Kapatıldı) — Çözüldü ve Kapatıldı
+// birbirini dışlayan iki farklı SONUÇ olduğu için, hangisi gerçekleştiyse
+// sadece o kolon aydınlanıyor, diğeri sönük kalıyor.
+async function loadMyReports() {
+    if (!isAuth) return;
+    try {
+        const r = await fetch('/api/approve', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'get_my_reports', accessToken: piAccessToken })
+        });
+        const result = await r.json();
+        if (result.success) {
+            const reports = result.reports || [];
+            renderMyReports(reports);
+            // YENİ: rozet — son görüntülemeden beri durumu değişmiş (statusUpdatedAt
+            // > lastSeen) bir şikayet varsa gösterilir. Basitlik için istemci
+            // tarafında (localStorage) takip ediliyor; sekme açılınca temizlenir.
+            const lastSeen = Number(localStorage.getItem('w3dg_reports_seen_at') || 0);
+            const updatedCount = reports.filter(rp => (rp.statusUpdatedAt || 0) > lastSeen).length;
+            const badge = document.getElementById('user-reports-tab-badge');
+            if (badge) {
+                if (updatedCount > 0) { badge.style.display = 'inline-block'; badge.textContent = updatedCount > 99 ? '99+' : updatedCount; }
+                else badge.style.display = 'none';
+            }
+        }
+    } catch (e) {
+        console.error("Şikayetlerim yüklenemedi:", e);
+    }
+}
+function renderMyReports(reports) {
+    const container = document.getElementById('my-reports-list');
+    if (!container) return;
+    if (!reports.length) {
+        container.innerHTML = `<div class="ticket-empty-state"><div class="empty-icon">🚩</div><div style="font-size:0.78em;color:#64748b;">${t('myReportsEmpty')}</div></div>`;
+        return;
+    }
+    const locale = currentLang === 'en' ? 'en-GB' : 'tr-TR';
+    const reasonLabel = { fake: t('reportReasonFake'), inappropriate: t('reportReasonInappropriate'), price_manipulation: t('reportReasonPriceManipulation'), trademark: t('reportReasonTrademark'), other: t('reportReasonOther') };
+    const cols = [
+        { key: 'new', label: t('reportStageSubmitted'), color: '#3b82f6' },
+        { key: 'reviewing', label: t('reportStageReviewing'), color: '#f59e0b' },
+        { key: 'resolved', label: t('reportStageResolved'), color: '#10b981' },
+        { key: 'closed', label: t('reportStageClosed'), color: '#64748b' }
+    ];
+    container.innerHTML = reports.map(rp => {
+        const created = rp.createdAt ? new Date(rp.createdAt).toLocaleDateString(locale, { day: '2-digit', month: '2-digit' }) + ' ' + new Date(rp.createdAt).toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' }) : '-';
+        // Hangi kolonlar "aktif/geçilmiş" sayılır: new her zaman, reviewing
+        // status new'den ileriyse, resolved/closed ise SADECE o kesin sonuca
+        // ulaşılmışsa (ikisi birbirini dışlar, aynı anda ikisi de yanmaz).
+        const reachedReviewing = rp.status === 'reviewing' || rp.status === 'resolved' || rp.status === 'closed';
+        const isActive = { new: true, reviewing: reachedReviewing, resolved: rp.status === 'resolved', closed: rp.status === 'closed' };
+        const timelineHtml = `
+            <div style="display:flex;align-items:flex-start;gap:3px;margin:8px 0;">
+                ${cols.map(c => `
+                    <div style="flex:1;text-align:center;">
+                        <div style="height:4px;border-radius:2px;background:${isActive[c.key] ? c.color : '#334155'};margin-bottom:4px;"></div>
+                        <div style="font-size:0.52em;font-weight:${isActive[c.key] ? '800' : '600'};color:${isActive[c.key] ? c.color : '#475569'};line-height:1.25;">${c.label}</div>
+                    </div>
+                `).join('')}
+            </div>`;
+        const currentColor = cols.find(c => c.key === rp.status)?.color || '#3b82f6';
+        const currentLabel = cols.find(c => c.key === rp.status)?.label || rp.status;
+        return `<div style="background:#0f172a;border:1px solid #334155;border-left:4px solid ${currentColor};border-radius:10px;padding:10px;margin-bottom:8px;">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:6px;margin-bottom:4px;">
+                <div style="font-size:0.8em;font-weight:800;color:#e2e8f0;">🌐 ${escapeHtml(rp.domainName)}</div>
+                <span class="ticket-status-badge" style="background:${currentColor}22;color:${currentColor};border:1px solid ${currentColor}55;">${currentLabel}</span>
+            </div>
+            <div style="font-size:0.68em;color:#fca5a5;font-weight:700;margin-bottom:2px;">🚩 ${reasonLabel[rp.reason] || rp.reason}</div>
+            ${timelineHtml}
+            <div style="font-size:0.65em;color:#64748b;margin-bottom:6px;">🕓 ${created}</div>
+            ${rp.adminNote ? `<div style="font-size:0.7em;color:#cbd5e1;background:#1e293b;border:1px solid ${currentColor}55;border-radius:6px;padding:7px 9px;"><span style="color:${currentColor};font-weight:800;">📩 ${t('reportAdminNoteLabel')}:</span> ${escapeHtml(rp.adminNote)}</div>` : ''}
         </div>`;
     }).join('');
 }
