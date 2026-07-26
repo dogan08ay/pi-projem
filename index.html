@@ -2234,15 +2234,30 @@
                 <div class="secure-badge-body" style="color:#e0e7ff;font-size:0.8em;line-height:1.45;margin-bottom:6px;font-weight:600;border-bottom:1px solid rgba(129,140,248,0.35);padding-bottom:7px;word-wrap:break-word;overflow-wrap:break-word;white-space:normal;" data-i18n="testNetBadgeBody"></div>
                 <div class="secure-badge-warning" style="color:#fbbf24;font-size:0.85em;font-weight:900;line-height:1.25;text-transform:uppercase;text-shadow:0 0 12px rgba(251,191,36,0.4);letter-spacing:1.1px;" data-i18n="testNetWarning"></div>
             </div>
-            <!-- FIX (kullanıcı geri bildirimi — "Ayrıcalıklı Web3 dünyasına
-                 katılmak ve güvenli bağlantı kurmak için yazısı nerede"):
-                 Bu metin (connectPrompt) burada dururken, bir önceki
-                 düzeltmede #global-connect-bar'ı OPAK yaptığımız için artık
-                 barın altında tamamen ÖRTÜLÜYORDU — silinmedi ama görünmez
-                 oldu. Aşağıya (spacer'dan sonra) taşımak yerine, "useButton"
-                 metniyle birlikte GÖRÜNMESİ gereken asıl yer olan
-                 #global-connect-bar'ın İÇİNE taşındı (bkz. aşağıda). -->
-            <div id="connect-bar-spacer" style="flex-shrink:0;height:150px;width:100%;" aria-hidden="true"></div>
+            <!-- DÜZENLENDİ (kullanıcı geri bildirimi — tekrarlayan "boşluk"
+                 şikayeti): "Pi ile Bağlan" barı artık position:fixed +
+                 ayrı bir spacer'la boşluk REZERVE ETMİYOR. Onun yerine
+                 doğrudan burada, normal akışta, Güvenli Bağlantı kartının
+                 hemen altında render ediliyor. Böylece rezerve edilen
+                 boşluk ile barın gerçek konumu arasında ASLA uyumsuzluk
+                 olamaz — çünkü artık "rezerve edilen" diye bir şey yok,
+                 içerik olduğu yerde akıyor. Görünürlüğü hâlâ render()
+                 içinde isAuth durumuna göre JS ile kontrol ediliyor. -->
+            <div id="global-connect-bar" style="display:none;width:100%;box-sizing:border-box;padding:10px 2px 2px 2px;text-align:center;">
+                <div style="background:linear-gradient(165deg,#1e1b4b 0%,#0f172a 100%);border:2px solid rgba(96,165,250,0.5);border-radius:14px;padding:10px 12px;box-shadow:0 0 16px rgba(59,130,246,0.2);">
+                    <p style="font-size:0.72em;color:#cbd5e1;font-weight:600;line-height:1.4;margin:0 0 6px 0;" data-i18n="connectPrompt"></p>
+                    <div style="color:#fbbf24;font-weight:700;margin-bottom:6px;font-size:0.7em;" data-i18n="useButton"></div>
+                    <button class="pi-btn pi-connect-btn" onclick="window.loginWithPi()" data-i18n="connectWithPi"></button>
+                </div>
+                <!-- İletişim paneli ikinci çerçevenin DIŞINDA, çerçevesiz,
+                     ince bir üst ayraçla görsel olarak ayrı bir bölüm gibi
+                     duruyor. -->
+                <div class="footer-section" style="border:none;background:none;padding:8px 0 0 0;margin:6px 0 0 0;border-radius:0;border-top:1px solid rgba(148,163,184,0.15);">
+                    <div class="footer-row" style="font-size:0.65em;margin-bottom:2px;">📩 <span data-i18n="contactUs"></span>: <a href="mailto:doganay08@hotmail.com" onclick="window.location.href=this.href;return false;">doganay08@hotmail.com</a></div>
+                    <div class="footer-row" style="font-size:0.65em;margin-bottom:2px;">💬 <span data-i18n="community"></span>: <a href="https://t.me/+5jZi9vrcNMM2NGVk" target="_blank" rel="noopener noreferrer" data-i18n="telegramGroup">TELEGRAM GRUBUMUZ</a></div>
+                    <div style="margin-top:2px;font-size:0.6em;"><a href="#" onclick="openLegalModal('privacy');return false;" style="cursor:pointer;" data-i18n="privacyPolicy">GİZLİLİK POLİTİKASI</a> | <a href="#" onclick="openLegalModal('terms');return false;" style="cursor:pointer;" data-i18n="termsOfUse">KULLANIM ŞARTLARI</a></div>
+                </div>
+            </div>
         </div>
         <div class="domain-grid locked-content" id="domain-list">
             <div id="domain-list-loading" style="display:contents;">
@@ -2269,40 +2284,6 @@
      .container'daki justify-content:space-between + .main-scroll'un
      flex:1 1 auto büyümesi yüzünden aralarında devasa boş alan oluşmasına
      sebep oluyordu. -->
-
-<!-- ═══════════════════════════════════════════════════════════════
-     GİRİŞ EKRANI İÇİN GERÇEKTEN VİEWPORT'A SABİT "Pi ile Bağlan" BARI
-     (kök neden düzeltmesi — bkz. #premium-lock içindeki FIX 2 notu)
-     Bu element BİLEREK .main-scroll'un VE #market-card'ın tamamen
-     DIŞINDA duruyor: ikisinde de overflow (hidden / auto) var, ve CSS'te
-     overflow'lu bir kutu İÇİNDEKİ her şeyi (position:fixed dahil!)
-     kendi sınırlarına kırpar. Burada, .container'ın doğrudan altında
-     ama hiçbir overflow'lu ebeveyni olmadan durduğu için, position:fixed
-     artık gerçekten söz verdiği şeyi yapıyor: ekran ne kadar dar/kısa
-     olursa olsun, kaydırmaya hiç gerek kalmadan HER ZAMAN görünür.
-     Görünürlüğü CSS'ten değil, render() içinde isAuth durumuna göre
-     JS ile kontrol ediliyor (bkz. render() fonksiyonundaki senkronizasyon). -->
-<div id="global-connect-bar" style="display:none;position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:600px;box-sizing:border-box;padding:6px 8px calc(6px + env(safe-area-inset-bottom,0px)) 8px;background:rgba(10,15,30,0.98);z-index:110;text-align:center;">
-    <!-- YENİ (kullanıcı geri bildirimi — "ikinci çerçeve içinde pi ile
-         bağlan butonu ile üzerindeki yazılar olsun"): Bu blok artık kendi
-         belirgin çerçevesi/arka planıyla, "Güvenli Bağlantı" kartının
-         altında AYRI, GÖRÜNÜR bir ikinci kart gibi duruyor — öncesinde
-         çerçevesiz, düz metin olarak duruyordu ve boşlukla karışıp
-         "bozuk/eksik" görünüyordu. -->
-    <div style="background:linear-gradient(165deg,#1e1b4b 0%,#0f172a 100%);border:2px solid rgba(96,165,250,0.5);border-radius:14px;padding:10px 12px;box-shadow:0 0 16px rgba(59,130,246,0.2);">
-        <p style="font-size:0.72em;color:#cbd5e1;font-weight:600;line-height:1.4;margin:0 0 6px 0;" data-i18n="connectPrompt"></p>
-        <div style="color:#fbbf24;font-weight:700;margin-bottom:6px;font-size:0.7em;" data-i18n="useButton"></div>
-        <button class="pi-btn pi-connect-btn" onclick="window.loginWithPi()" data-i18n="connectWithPi"></button>
-    </div>
-    <!-- YENİ: iletişim paneli artık ikinci çerçevenin DIŞINDA, çerçevesiz,
-         ince bir üst ayraçla görsel olarak ayrı bir bölüm gibi duruyor —
-         "Pi ile Bağlan" kartına ait bir alt-parçaymış gibi görünmüyor. -->
-    <div class="footer-section" style="border:none;background:none;padding:8px 0 0 0;margin:6px 0 0 0;border-radius:0;border-top:1px solid rgba(148,163,184,0.15);">
-        <div class="footer-row" style="font-size:0.65em;margin-bottom:2px;">📩 <span data-i18n="contactUs"></span>: <a href="mailto:doganay08@hotmail.com" onclick="window.location.href=this.href;return false;">doganay08@hotmail.com</a></div>
-        <div class="footer-row" style="font-size:0.65em;margin-bottom:2px;">💬 <span data-i18n="community"></span>: <a href="https://t.me/+5jZi9vrcNMM2NGVk" target="_blank" rel="noopener noreferrer" data-i18n="telegramGroup">TELEGRAM GRUBUMUZ</a></div>
-        <div style="margin-top:2px;font-size:0.6em;"><a href="#" onclick="openLegalModal('privacy');return false;" style="cursor:pointer;" data-i18n="privacyPolicy">GİZLİLİK POLİTİKASI</a> | <a href="#" onclick="openLegalModal('terms');return false;" style="cursor:pointer;" data-i18n="termsOfUse">KULLANIM ŞARTLARI</a></div>
-    </div>
-</div>
 
 
 <!-- ═══════════════════════════════════════════════════════════════
@@ -6884,41 +6865,13 @@ function syncMarketCardMinHeight(){
     const mc=document.getElementById("market-card");
     const lock=document.getElementById("premium-lock");
     if(!mc||!lock) return;
-    // FIX (kök neden — "Pi ile Bağlan" üstündeki yazılar üst üste
-    // biniyor / aralarında garip boşluk oluşuyor"): #connect-bar-spacer
-    // öncesinde SABİT 74px'ti — ama #global-connect-bar'ın gerçek
-    // yüksekliği cihaza göre değişiyor (özellikle çentikli telefonlarda
-    // safe-area-inset-bottom farklı, font render farkları da yükseklik
-    // farkı yaratıyor). 74px bazı cihazlarda YETERSİZ kalıp barın
-    // içeriğin üzerine binmesine (üst üste binme), bazılarında da FAZLA
-    // gelip gereksiz boşluk bırakmasına sebep oluyordu. Artık spacer'ın
-    // yüksekliği #global-connect-bar'ın GERÇEK ölçülen yüksekliğine
-    // (offsetHeight) birebir eşitleniyor — hangi cihaz olursa olsun,
-    // önce alttaki bar ne kadar yer kaplıyorsa spacer da tam o kadar
-    // boşluk bırakıyor, çakışma da fazla boşluk da imkansız hale geliyor.
-    // FIX (kök neden — "ilk açılışta üst üste biniyor, yukarı kaydırınca
-    // düzeliyor"): Bu fonksiyon sayfa 'load' olayında ve document.fonts.ready
-    // içinde de tetikleniyor — bu olaylar render()'dan ÖNCE ateşlenebiliyor
-    // (özellikle Firestore bağlantısı yavaşsa). O anda #global-connect-bar
-    // henüz render() tarafından hiç gösterilmemiş (hâlâ varsayılan
-    // display:none) olabiliyordu; eski kod bunu "bar gösterilmiyor" sanıp
-    // spacer'ı YANLIŞLIKLA 0px'e düşürüyordu — bu da barın altındaki son
-    // metin satırının üzerine binmesine sebep oluyordu. Artık: render() en
-    // az BİR KEZ çalışıp isAuth durumunu (ve dolayısıyla barın gerçek
-    // görünürlüğünü) kesinleştirmeden, spacer'a HİÇ dokunulmuyor — güvenli
-    // varsayılan (92px) olduğu gibi kalıyor, asla 0'a zorlanmıyor.
-    if(firstRenderDone){
-        const bar=document.getElementById('global-connect-bar');
-        const spacer=document.getElementById('connect-bar-spacer');
-        if(spacer){
-            if(bar && !isAuth){
-                // +6px güvenlik payı: milimetrik ölçüm farklarına karşı ekstra tampon.
-                spacer.style.height=((bar.offsetHeight||92)+6)+"px";
-            } else {
-                spacer.style.height="0px";
-            }
-        }
-    }
+    // DÜZENLENDİ: #global-connect-bar artık normal akışta, #premium-lock'un
+    // içinde render ediliyor (position:fixed + ayrı bir #connect-bar-spacer
+    // ile boşluk rezerve etme yöntemi kaldırıldı — bu yöntem, rezerve
+    // edilen boşluk ile barın gerçek yüksekliği arasında cihaza göre
+    // uyuşmazlık yaratıp ya üst üste binmeye ya da garip boşluklara sebep
+    // oluyordu). Artık lock.scrollHeight zaten barın gerçek içeriğini de
+    // doğal olarak kapsıyor, ayrı bir yükseklik hesaplamasına gerek yok.
     // FIX: Giriş yapılmamışken market-card'ın boyu, ARKADA GİZLİ duran
     // (blur'lu) domain-list'in yüksekliğine göre değil, SADECE görünen
     // kilit ekranının (lock) kendi yüksekliğine göre ayarlanmalı.
