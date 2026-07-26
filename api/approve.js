@@ -1479,8 +1479,8 @@ async function handlerImpl(req, res) {
       // platform_stats
       if (!statsSnap.exists) {
         addIssue('info', 'Kazanç istatistik kaydı (config/platform_stats) henüz oluşmamış', 'Kazanç sekmesi ilk açıldığında otomatik oluşturulur, bu normaldir.');
-      } else if (statsSnap.data().statsVersion !== 2) {
-        addIssue('warning', 'Kazanç istatistikleri eski formatta (statsVersion≠2)', 'Kazanç sekmesini bir kez açtığınızda otomatik güncellenir.');
+      } else if (statsSnap.data().statsVersion !== 3) {
+        addIssue('warning', 'Kazanç istatistikleri eski formatta (statsVersion≠3)', 'Kazanç sekmesini bir kez açtığınızda otomatik güncellenir.');
       }
 
       // Bakım modu açık mı — unutulmuş olabilir
@@ -1687,7 +1687,7 @@ async function handlerImpl(req, res) {
       // Kalıcı gelir defterini de sıfırla — aksi halde Kazanç ekranı reset
       // sonrası hâlâ eski (silinmiş) satışlardan gelen toplamları gösterir.
       await db.collection('config').doc('platform_stats').set({
-        totalVolume: 0, userOwnedVolume: 0, platformEarnings: 0, adminOwnEarnings: 0, statsVersion: 2, resetAt: Date.now()
+        totalVolume: 0, userOwnedVolume: 0, platformEarnings: 0, adminOwnEarnings: 0, statsVersion: 3, resetAt: Date.now()
       });
 
       const resetTimestamp = Date.now();
@@ -2306,7 +2306,10 @@ async function handlerImpl(req, res) {
         comment: String(comment || '').trim(),
         reportedBy: realUsername,
         status: 'new',
-        createdAt: now
+        createdAt: now,
+        // YENİ: aşama geçmişi — kullanıcıya gösterilecek takip ekranı
+        // (Bildirim Gönderildi → İnceleniyor → Çözüldü/Kapatıldı) için.
+        statusHistory: [{ status: 'new', at: now, note: null, by: null }]
       });
 
       await sendNotificationToAdmin({
@@ -2330,26 +2333,114 @@ async function handlerImpl(req, res) {
     if (!isAdmin) return res.status(403).json({ error: "Yetki yok" });
     try {
       const db = getDb();
-      const snap = await db.collection('listing_reports').where('status', '==', 'new').get();
+      // Sadece hâlâ açık olan (yeni ya da inceleniyor) şikayetleri
+      // listeliyoruz — çözülmüş/kapatılmış olanlar bu listeyi kalabalık
+      // etmesin diye kaldırıldı; onlar artık raporlayan kullanıcının kendi
+      // "Şikayetlerim" panelinden takip ediliyor.
+      const snap = await db.collection('listing_reports').where('status', 'in', ['new', 'reviewing']).get();
       const reports = [];
       snap.forEach(d => reports.push({ id: d.id, ...d.data() }));
       reports.sort((a, b) => b.createdAt - a.createdAt);
-      return res.status(200).json({ success: true, reports });
+
+      // YENİ: "okunmamış" sayısı artık mark_tickets_seen ile AYNI desende —
+      // tek bir seenAt zaman damgasıyla karşılaştırılıyor. Böylece admin
+      // panelini açıp listeyi görüntülemek rozeti temizliyor (dismiss etmek
+      // ZORUNDA kalmadan), yeni gelen bir şikayet ise anında rozeti tekrar
+      // yükseltiyor.
+      const seenSnap = await db.collection('system_config').doc('admin_report_seen').get();
+      const seenAt = seenSnap.exists ? (seenSnap.data().seenAt || 0) : 0;
+      const unseenCount = reports.filter(r => (r.createdAt || 0) > seenAt).length;
+
+      return res.status(200).json({ success: true, reports, unseenCount, seenAt });
     } catch (e) {
+      console.error("get_listing_reports hatası:", e);
       return res.status(500).json({ error: e.message });
     }
   }
 
-  if (action === 'dismiss_listing_report') {
+  // ── Admin: Şikayet Bildirimlerini Görüldü Olarak İşaretle ──────────────
+  if (action === 'mark_reports_seen') {
     const isAdmin = await verifyAdmin(accessToken);
     if (!isAdmin) return res.status(403).json({ error: "Yetki yok" });
-    const { reportId } = req.body;
-    if (!reportId) return res.status(400).json({ error: "reportId zorunludur" });
     try {
       const db = getDb();
-      await db.collection('listing_reports').doc(reportId).set({ status: 'dismissed', resolvedAt: Date.now(), resolvedBy: await getRealUsername(accessToken) }, { merge: true });
+      const now = Date.now();
+      await db.collection('system_config').doc('admin_report_seen').set({ seenAt: now }, { merge: true });
+      return res.status(200).json({ success: true, seenAt: now });
+    } catch (e) {
+      console.error("mark_reports_seen hatası:", e);
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  // ══════════════════════════════════════════════════════════════════════
+  //  Şikayet Durum Güncelleme (Admin) — "İncelemeye Al" / "Çözüldü" /
+  //  "Kapat". Öncesinde tek bir "dismiss" (kapat) seçeneği vardı ve
+  //  raporlayan kullanıcı bildirdiği şikayete ne olduğunu HİÇBİR ŞEKİLDE
+  //  göremiyordu. Artık her durum değişikliği, isteğe bağlı bir açıklama
+  //  notuyla birlikte raporlayan kullanıcıya bildirim olarak gidiyor VE
+  //  statusHistory dizisine ekleniyor (kullanıcının "Şikayetlerim"
+  //  panelindeki aşama takibi bunu kullanıyor).
+  // ══════════════════════════════════════════════════════════════════════
+  if (action === 'update_report_status') {
+    const isAdmin = await verifyAdmin(accessToken);
+    if (!isAdmin) return res.status(403).json({ error: "Yetki yok" });
+    const { reportId, newStatus, note } = req.body;
+    const validStatuses = ['reviewing', 'resolved', 'closed'];
+    if (!reportId || !validStatuses.includes(newStatus))
+      return res.status(400).json({ error: "reportId ve geçerli bir newStatus (reviewing/resolved/closed) zorunludur." });
+    const cleanNote = String(note || '').trim().slice(0, 500);
+    try {
+      const db = getDb();
+      const adminUsername = await getRealUsername(accessToken);
+      const reportRef = db.collection('listing_reports').doc(reportId);
+      const snap = await reportRef.get();
+      if (!snap.exists) return res.status(404).json({ error: "Şikayet bulunamadı." });
+      const rep = snap.data();
+      const now = Date.now();
+
+      await reportRef.set({
+        status: newStatus,
+        adminNote: cleanNote || null,
+        statusUpdatedAt: now,
+        statusUpdatedBy: adminUsername,
+        statusHistory: FieldValue.arrayUnion({ status: newStatus, at: now, note: cleanNote || null, by: adminUsername })
+      }, { merge: true });
+
+      const statusLabel = { reviewing: 'İnceleniyor', resolved: 'Çözüldü', closed: 'Kapatıldı' }[newStatus];
+      await sendNotification(rep.reportedBy, {
+        type: 'report_status_update',
+        title: `🚩 Şikayetiniz Güncellendi: ${statusLabel}`,
+        body: `"${rep.domainName}" için bildirdiğiniz şikayetin durumu "${statusLabel}" olarak güncellendi.${cleanNote ? ' Not: ' + cleanNote : ''}`,
+        domainName: rep.domainName, reportId, newStatus
+      });
+
+      await logAdminAction(adminUsername, 'update_report_status', `${reportId} (${rep.domainName}) → ${newStatus}${cleanNote ? ': ' + cleanNote : ''}`);
       return res.status(200).json({ success: true });
     } catch (e) {
+      console.error("update_report_status hatası:", e);
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  // ══════════════════════════════════════════════════════════════════════
+  //  Kullanıcı: Kendi Bildirdiği Şikayetleri Takip Et ("Şikayetlerim")
+  //  Öncesinde bir kullanıcı bir ilanı şikayet ettiğinde bu konuda hiçbir
+  //  geri bildirim alamıyordu — şikayeti kara kutuya düşüyordu. Artık
+  //  kendi şikayetlerinin aşamasını (statusHistory ile) buradan görebiliyor.
+  // ══════════════════════════════════════════════════════════════════════
+  if (action === 'get_my_reports') {
+    const realUsername = await getRealUsername(accessToken);
+    if (!realUsername) return res.status(403).json({ error: "Geçersiz oturum" });
+    try {
+      const db = getDb();
+      const snap = await db.collection('listing_reports').where('reportedBy', '==', realUsername).get();
+      const reports = [];
+      snap.forEach(d => reports.push({ id: d.id, ...d.data() }));
+      reports.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+      return res.status(200).json({ success: true, reports });
+    } catch (e) {
+      console.error("get_my_reports hatası:", e);
       return res.status(500).json({ error: e.message });
     }
   }
