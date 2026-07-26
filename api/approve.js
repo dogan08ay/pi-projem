@@ -103,6 +103,28 @@ async function deleteOffersForDomain(db, domainName) {
   }
 }
 
+// YENİ: bir domain kalıcı olarak silindiğinde, o domain hakkındaki ilan
+// şikayetlerinin de silinmesi için — aksi halde şikayet artık var olmayan
+// bir domain'e işaret ederek hem admin panelinde hem "Şikayetlerim"
+// panelinde anlamsız/yetim bir kayıt olarak kalıyordu.
+async function deleteListingReportsForDomain(db, domainName) {
+  try {
+    const snap = await db.collection('listing_reports').where('domainName', '==', domainName).get();
+    if (snap.empty) return 0;
+    const docs = snap.docs;
+    for (let i = 0; i < docs.length; i += 400) {
+      const batch = db.batch();
+      docs.slice(i, i + 400).forEach(d => batch.delete(d.ref));
+      await batch.commit();
+    }
+    console.log(`[Şikayet kayıtları silindi] ${domainName} için ${docs.length} şikayet kaydı silindi`);
+    return docs.length;
+  } catch (e) {
+    console.error(`deleteListingReportsForDomain hatası (${domainName}):`, e);
+    return 0;
+  }
+}
+
 // YENİ: Bir domaini favorileyen kullanıcılara, o domainin fiyatı değiştiğinde
 // veya satıldığında bildirim gönderir. Öncesinde favoriler tamamen pasif bir
 // listeydi — kullanıcı favorilediği bir domain satılsa/ucuzlasa bile
@@ -1285,6 +1307,7 @@ async function handlerImpl(req, res) {
       // doğrudan çağrılan bir akış olursa diye burada da garanti altına
       // alınıyor — deleteOffersForDomain zaten kayıt yoksa hiçbir şey yapmaz).
       await deleteOffersForDomain(db, permDelName);
+      await deleteListingReportsForDomain(db, permDelName);
 
       console.log(`Domain kalıcı silindi: ${permDelName}`);
       return res.status(200).json({ success: true });
@@ -1598,28 +1621,45 @@ async function handlerImpl(req, res) {
   // var olmayan VEYA "deleted:true" olan domainlere ait tüm teklif
   // kayıtlarını tarar ve kalıcı olarak siler. Idempotent'tir — temiz bir
   // veritabanında tekrar çalıştırıldığında hiçbir şey silmez.
+  // GÜNCELLEME: bu action artık sadece "offers" değil, aynı zamanda
+  // "listing_reports" (ilan şikayetleri) için de yetim kayıt taraması
+  // yapıyor. Öncesinde bir domain silindiğinde (özellikle bu düzeltmeden
+  // ÖNCE silinmiş eski domainler için) o domain hakkındaki şikayetler
+  // Firestore'da öylece kalıyor, ne admin panelinde ne "Şikayetlerim"
+  // panelinde anlamlı bir karşılığı olmayan yetim veri olarak duruyordu.
   if (action === 'cleanup_orphaned_offers') {
     const isAdmin = await verifyAdmin(accessToken);
     if (!isAdmin) return res.status(403).json({ error: "Yetki yok" });
     try {
       const db = getDb();
-      const [domainsSnap, offersSnap] = await Promise.all([
+      const [domainsSnap, offersSnap, reportsSnap] = await Promise.all([
         db.collection('domains').get(),
-        db.collection('offers').get()
+        db.collection('offers').get(),
+        db.collection('listing_reports').get()
       ]);
 
       const domainStatusMap = {};
       domainsSnap.forEach(d => { domainStatusMap[d.id] = d.data().deleted === true; });
+      const isOrphanDomain = (dn) => !dn || !(dn in domainStatusMap) || domainStatusMap[dn] === true;
 
       const orphanDocs = [];
       const affectedDomains = {};
       offersSnap.forEach(o => {
         const dn = o.data().domainName;
         if (!dn) return;
-        const isOrphan = !(dn in domainStatusMap) || domainStatusMap[dn] === true;
-        if (isOrphan) {
+        if (isOrphanDomain(dn)) {
           orphanDocs.push(o.ref);
           affectedDomains[dn] = (affectedDomains[dn] || 0) + 1;
+        }
+      });
+      let orphanReportCount = 0;
+      reportsSnap.forEach(rp => {
+        const dn = rp.data().domainName;
+        if (!dn) return;
+        if (isOrphanDomain(dn)) {
+          orphanDocs.push(rp.ref);
+          affectedDomains[dn] = (affectedDomains[dn] || 0) + 1;
+          orphanReportCount++;
         }
       });
 
@@ -1634,8 +1674,8 @@ async function handlerImpl(req, res) {
       }
 
       const affectedList = Object.entries(affectedDomains).map(([domainName, count]) => ({ domainName, count }));
-      await logAdminAction(await getRealUsername(accessToken), 'cleanup_orphaned_offers', `${orphanDocs.length} kayıt / ${affectedList.length} domain`);
-      console.log(`[Yetim veri temizliği] ${orphanDocs.length} teklif kaydı silindi (${affectedList.length} domain)`);
+      await logAdminAction(await getRealUsername(accessToken), 'cleanup_orphaned_offers', `${orphanDocs.length} kayıt (${orphanReportCount} şikayet dahil) / ${affectedList.length} domain`);
+      console.log(`[Yetim veri temizliği] ${orphanDocs.length} kayıt silindi (${orphanReportCount} şikayet dahil, ${affectedList.length} domain)`);
       return res.status(200).json({ success: true, deletedCount: orphanDocs.length, affectedDomains: affectedList });
     } catch (e) {
       console.error("cleanup_orphaned_offers hatası:", e);
@@ -2436,7 +2476,18 @@ async function handlerImpl(req, res) {
       const db = getDb();
       const snap = await db.collection('listing_reports').where('reportedBy', '==', realUsername).get();
       const reports = [];
-      snap.forEach(d => reports.push({ id: d.id, ...d.data() }));
+      // BUG DÜZELTMESİ: eski sürümde şikayetler sadece 'new'/'dismissed'
+      // durumundaydı (henüz İncelemeye Al/Çözüldü aşamaları yoktu). Yeni
+      // durum sistemi new/reviewing/resolved/closed kullanıyor — 'dismissed'
+      // hiçbirine karşılık gelmediği için ekranda çevrilmemiş, İngilizce ham
+      // haliyle görünüyordu. Burada normalize ediyoruz (gösterim amaçlı,
+      // veritabanı kaydını değiştirmiyoruz) — 'dismissed' artık 'closed' ile
+      // aynı şekilde (Kapatıldı) gösteriliyor.
+      snap.forEach(d => {
+        const data = d.data();
+        if (data.status === 'dismissed') data.status = 'closed';
+        reports.push({ id: d.id, ...data });
+      });
       reports.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
       return res.status(200).json({ success: true, reports });
     } catch (e) {
