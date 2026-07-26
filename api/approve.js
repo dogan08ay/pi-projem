@@ -2496,6 +2496,92 @@ async function handlerImpl(req, res) {
     }
   }
 
+  // ══════════════════════════════════════════════════════════════════════
+  //  Kullanıcı: Geçmiş İşlem Kayıtları ("Geçmişim")
+  //  Önceden kullanıcının ilan verme/satın alma/şikayet/destek talebi/marka
+  //  itirazı geçmişini tek bir yerden görebileceği bir ekran yoktu — her
+  //  biri farklı bir sekmede dağınık duruyordu. Bu action, YENİ bir yazma
+  //  (write) yolu / ayrı bir "activity_log" koleksiyonu OLUŞTURMUYOR —
+  //  bilerek böyle tasarlandı: zaten var olan koleksiyonları (sell_requests,
+  //  domains, listing_reports, tickets, trademark_claims) CANLI olarak
+  //  sorguluyor. Bunun iki büyük faydası var: (1) mevcut hiçbir action'a
+  //  dokunmaya, her yere yeni bir log-yazma satırı eklemeye gerek kalmadı
+  //  — yani hata riski çok düşük; (2) kullanıcı bir talebi geri çekip
+  //  sildiğinde ya da bir domain kalıcı silindiğinde, bu geçmiş görünümü
+  //  otomatik olarak güncel kalıyor (silinen kayıt zaten sorguda hiç
+  //  görünmüyor) — kullanıcının istediği "domain silinirse oradan da
+  //  temizlensin" davranışı ekstra kod yazılmadan kendiliğinden sağlanıyor.
+  // ══════════════════════════════════════════════════════════════════════
+  if (action === 'get_my_activity_history') {
+    const realUsername = await getRealUsername(accessToken);
+    if (!realUsername) return res.status(403).json({ error: "Geçersiz oturum" });
+    try {
+      const db = getDb();
+      const [sellReqSnap, purchasesSnap, listingsSnap, reportsSnap, ticketsSnap, claimsSnap] = await Promise.all([
+        db.collection('sell_requests').where('submittedBy', '==', realUsername).get(),
+        db.collection('domains').where('buyer', '==', realUsername).get(),
+        db.collection('domains').where('sellerUsername', '==', realUsername).get(),
+        db.collection('listing_reports').where('reportedBy', '==', realUsername).get(),
+        db.collection('tickets').where('createdBy', '==', realUsername).get(),
+        db.collection('trademark_claims').where('submittedByUsername', '==', realUsername).get()
+      ]);
+
+      const listings = [];
+      sellReqSnap.forEach(d => {
+        const x = d.data();
+        listings.push({ id: d.id, domainName: x.domainName, price: x.price, status: x.status, at: x.submittedAt || 0 });
+      });
+      // Onaylanmış eski satış talepleri (sell_requests) yanında, hâlâ
+      // yayında olan ilanların GÜNCEL fiyat/durumunu da göstermek için
+      // domains koleksiyonundan da ekliyoruz — aynı domain iki kaynakta da
+      // varsa (sell_request + domains), domains'teki güncel bilgi esas
+      // alınır (fiyat değişmiş olabilir).
+      listingsSnap.forEach(d => {
+        const x = d.data();
+        if (x.deleted === true) return; // silinmiş domain — kendiliğinden düşer
+        const existingIdx = listings.findIndex(l => l.domainName === d.id);
+        const entry = { id: d.id, domainName: d.id, price: x.price, status: x.sold ? 'sold' : 'active', at: x.createdAt || 0 };
+        if (existingIdx >= 0) listings[existingIdx] = entry; else listings.push(entry);
+      });
+
+      const purchases = [];
+      purchasesSnap.forEach(d => {
+        const x = d.data();
+        if (x.deleted === true || x.sold !== true) return;
+        purchases.push({ id: d.id, domainName: d.id, price: x.price, at: x.at || 0, sellerUsername: x.sellerUsername || null });
+      });
+
+      const reports = [];
+      reportsSnap.forEach(d => {
+        const x = d.data();
+        reports.push({ id: d.id, domainName: x.domainName, reason: x.reason, status: x.status === 'dismissed' ? 'closed' : x.status, at: x.createdAt || 0 });
+      });
+
+      const tickets = [];
+      ticketsSnap.forEach(d => {
+        const x = d.data();
+        tickets.push({ id: d.id, subject: x.subject, category: x.category, status: x.status, at: x.createdAt || x.lastUpdate || 0 });
+      });
+
+      const trademarkClaims = [];
+      claimsSnap.forEach(d => {
+        const x = d.data();
+        trademarkClaims.push({ id: d.id, domainName: x.domainName, companyName: x.companyName, status: x.status, at: x.createdAt || 0 });
+      });
+
+      listings.sort((a, b) => (b.at || 0) - (a.at || 0));
+      purchases.sort((a, b) => (b.at || 0) - (a.at || 0));
+      reports.sort((a, b) => (b.at || 0) - (a.at || 0));
+      tickets.sort((a, b) => (b.at || 0) - (a.at || 0));
+      trademarkClaims.sort((a, b) => (b.at || 0) - (a.at || 0));
+
+      return res.status(200).json({ success: true, listings, purchases, reports, tickets, trademarkClaims });
+    } catch (e) {
+      console.error("get_my_activity_history hatası:", e);
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
 
   if (action === 'submit_trademark_claim') {
     if (!await checkRateLimit(clientIp, 'submit_trademark_claim', 3, 3600000))
