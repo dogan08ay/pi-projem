@@ -1828,35 +1828,47 @@
         <div class="user-tab-panel" id="utab-history">
             <div style="font-size:0.65em;color:#94a3b8;margin-bottom:8px;line-height:1.5;padding:0 2px;" data-i18n="myHistoryNote"></div>
 
-            <div style="background:#1e1b3a;border:2px solid #6366f1;border-radius:12px;padding:10px;margin-bottom:10px;">
+            <!-- YENİ: filtre başlıkları — öncesinde 5 bölüm de her zaman
+                 üst üste gösteriliyordu, karışık/kalabalık duruyordu.
+                 Artık "Tümü" ya da tek bir konu seçilebiliyor. -->
+            <div id="history-filter-bar" style="display:flex;gap:5px;overflow-x:auto;margin-bottom:10px;padding-bottom:2px;-webkit-overflow-scrolling:touch;">
+                <button class="history-filter-btn active" data-filter="all" onclick="window.setHistoryFilter('all')" style="flex-shrink:0;padding:6px 12px;border-radius:20px;border:1.5px solid #6366f1;background:#6366f1;color:#fff;font-size:0.65em;font-weight:800;cursor:pointer;white-space:nowrap;" data-i18n="historyFilterAll"></button>
+                <button class="history-filter-btn" data-filter="listings" onclick="window.setHistoryFilter('listings')" style="flex-shrink:0;padding:6px 12px;border-radius:20px;border:1.5px solid #6366f1;background:none;color:#a5b4fc;font-size:0.65em;font-weight:800;cursor:pointer;white-space:nowrap;">🏷️ <span data-i18n="historyListingsTitle"></span></button>
+                <button class="history-filter-btn" data-filter="purchases" onclick="window.setHistoryFilter('purchases')" style="flex-shrink:0;padding:6px 12px;border-radius:20px;border:1.5px solid #10b981;background:none;color:#6ee7b7;font-size:0.65em;font-weight:800;cursor:pointer;white-space:nowrap;">🛒 <span data-i18n="historyPurchasesTitle"></span></button>
+                <button class="history-filter-btn" data-filter="reports" onclick="window.setHistoryFilter('reports')" style="flex-shrink:0;padding:6px 12px;border-radius:20px;border:1.5px solid #ef4444;background:none;color:#fca5a5;font-size:0.65em;font-weight:800;cursor:pointer;white-space:nowrap;">🚩 <span data-i18n="historyReportsTitle"></span></button>
+                <button class="history-filter-btn" data-filter="tickets" onclick="window.setHistoryFilter('tickets')" style="flex-shrink:0;padding:6px 12px;border-radius:20px;border:1.5px solid #f59e0b;background:none;color:#fbbf24;font-size:0.65em;font-weight:800;cursor:pointer;white-space:nowrap;">🎫 <span data-i18n="historyTicketsTitle"></span></button>
+                <button class="history-filter-btn" data-filter="trademark" onclick="window.setHistoryFilter('trademark')" style="flex-shrink:0;padding:6px 12px;border-radius:20px;border:1.5px solid #64748b;background:none;color:#cbd5e1;font-size:0.65em;font-weight:800;cursor:pointer;white-space:nowrap;">🔖 <span data-i18n="historyTrademarkTitle"></span></button>
+            </div>
+
+            <div id="history-section-listings" style="background:#1e1b3a;border:2px solid #6366f1;border-radius:12px;padding:10px;margin-bottom:10px;">
                 <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;padding-bottom:7px;border-bottom:1px solid #3730a3;">
                     <span style="display:flex;align-items:center;gap:6px;font-size:0.72em;color:#a5b4fc;font-weight:800;text-transform:uppercase;">🏷️ <span data-i18n="historyListingsTitle"></span></span>
                 </div>
                 <div id="history-listings-list"><p style="font-size:0.75em;opacity:0.5;text-align:center;" data-i18n="loadingLabel"></p></div>
             </div>
 
-            <div style="background:#1e1b3a;border:2px solid #10b981;border-radius:12px;padding:10px;margin-bottom:10px;">
+            <div id="history-section-purchases" style="background:#1e1b3a;border:2px solid #10b981;border-radius:12px;padding:10px;margin-bottom:10px;">
                 <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;padding-bottom:7px;border-bottom:1px solid #065f46;">
                     <span style="display:flex;align-items:center;gap:6px;font-size:0.72em;color:#6ee7b7;font-weight:800;text-transform:uppercase;">🛒 <span data-i18n="historyPurchasesTitle"></span></span>
                 </div>
                 <div id="history-purchases-list"><p style="font-size:0.75em;opacity:0.5;text-align:center;" data-i18n="loadingLabel"></p></div>
             </div>
 
-            <div style="background:#1e1b3a;border:2px solid #ef4444;border-radius:12px;padding:10px;margin-bottom:10px;">
+            <div id="history-section-reports" style="background:#1e1b3a;border:2px solid #ef4444;border-radius:12px;padding:10px;margin-bottom:10px;">
                 <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;padding-bottom:7px;border-bottom:1px solid #7f1d1d;">
                     <span style="display:flex;align-items:center;gap:6px;font-size:0.72em;color:#fca5a5;font-weight:800;text-transform:uppercase;">🚩 <span data-i18n="historyReportsTitle"></span></span>
                 </div>
                 <div id="history-reports-list"><p style="font-size:0.75em;opacity:0.5;text-align:center;" data-i18n="loadingLabel"></p></div>
             </div>
 
-            <div style="background:#1e1b3a;border:2px solid #f59e0b;border-radius:12px;padding:10px;margin-bottom:10px;">
+            <div id="history-section-tickets" style="background:#1e1b3a;border:2px solid #f59e0b;border-radius:12px;padding:10px;margin-bottom:10px;">
                 <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;padding-bottom:7px;border-bottom:1px solid #78350f;">
                     <span style="display:flex;align-items:center;gap:6px;font-size:0.72em;color:#fbbf24;font-weight:800;text-transform:uppercase;">🎫 <span data-i18n="historyTicketsTitle"></span></span>
                 </div>
                 <div id="history-tickets-list"><p style="font-size:0.75em;opacity:0.5;text-align:center;" data-i18n="loadingLabel"></p></div>
             </div>
 
-            <div style="background:#1e1b3a;border:2px solid #64748b;border-radius:12px;padding:10px;">
+            <div id="history-section-trademark" style="background:#1e1b3a;border:2px solid #64748b;border-radius:12px;padding:10px;">
                 <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;padding-bottom:7px;border-bottom:1px solid #334155;">
                     <span style="display:flex;align-items:center;gap:6px;font-size:0.72em;color:#cbd5e1;font-weight:800;text-transform:uppercase;">🔖 <span data-i18n="historyTrademarkTitle"></span></span>
                 </div>
@@ -2270,19 +2282,22 @@
      olursa olsun, kaydırmaya hiç gerek kalmadan HER ZAMAN görünür.
      Görünürlüğü CSS'ten değil, render() içinde isAuth durumuna göre
      JS ile kontrol ediliyor (bkz. render() fonksiyonundaki senkronizasyon). -->
-<div id="global-connect-bar" style="display:none;position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:600px;box-sizing:border-box;padding:8px 8px calc(8px + env(safe-area-inset-bottom,0px)) 8px;background:rgba(10,15,30,0.98);z-index:110;text-align:center;">
-    <p style="font-size:0.72em;color:#cbd5e1;font-weight:600;line-height:1.4;margin:0 0 6px 0;" data-i18n="connectPrompt"></p>
-    <div style="color:#fbbf24;font-weight:700;margin-bottom:6px;font-size:0.7em;" data-i18n="useButton"></div>
-    <button class="pi-btn pi-connect-btn" onclick="window.loginWithPi()" data-i18n="connectWithPi"></button>
-    <!-- FIX (kullanıcı isteği — "iletişim panelini giriş yaptıktan sonra
-         görünen ile aynı olsun"): Bu artık giriş sonrası görünen
-         .footer-section ile BİREBİR AYNI class/yapı/etiketleri kullanıyor
-         (aynı "footer-row" satırları, aynı "contactUs"/"community" çevirileri) —
-         görsel olarak ayrı/farklı bir "kısaltılmış" versiyon değil, aynı
-         panelin ta kendisi. Giriş yapılmamışken HER ZAMAN görünen
-         (position:fixed) bu barın içinde durduğu için kaydırmaya gerek
-         kalmadan ilk açılışta garanti görünür. -->
-    <div class="footer-section" style="border:none;background:none;padding:6px 0 0 0;margin:0;border-radius:0;">
+<div id="global-connect-bar" style="display:none;position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:600px;box-sizing:border-box;padding:6px 8px calc(6px + env(safe-area-inset-bottom,0px)) 8px;background:rgba(10,15,30,0.98);z-index:110;text-align:center;">
+    <!-- YENİ (kullanıcı geri bildirimi — "ikinci çerçeve içinde pi ile
+         bağlan butonu ile üzerindeki yazılar olsun"): Bu blok artık kendi
+         belirgin çerçevesi/arka planıyla, "Güvenli Bağlantı" kartının
+         altında AYRI, GÖRÜNÜR bir ikinci kart gibi duruyor — öncesinde
+         çerçevesiz, düz metin olarak duruyordu ve boşlukla karışıp
+         "bozuk/eksik" görünüyordu. -->
+    <div style="background:linear-gradient(165deg,#1e1b4b 0%,#0f172a 100%);border:2px solid rgba(96,165,250,0.5);border-radius:14px;padding:10px 12px;box-shadow:0 0 16px rgba(59,130,246,0.2);">
+        <p style="font-size:0.72em;color:#cbd5e1;font-weight:600;line-height:1.4;margin:0 0 6px 0;" data-i18n="connectPrompt"></p>
+        <div style="color:#fbbf24;font-weight:700;margin-bottom:6px;font-size:0.7em;" data-i18n="useButton"></div>
+        <button class="pi-btn pi-connect-btn" onclick="window.loginWithPi()" data-i18n="connectWithPi"></button>
+    </div>
+    <!-- YENİ: iletişim paneli artık ikinci çerçevenin DIŞINDA, çerçevesiz,
+         ince bir üst ayraçla görsel olarak ayrı bir bölüm gibi duruyor —
+         "Pi ile Bağlan" kartına ait bir alt-parçaymış gibi görünmüyor. -->
+    <div class="footer-section" style="border:none;background:none;padding:8px 0 0 0;margin:6px 0 0 0;border-radius:0;border-top:1px solid rgba(148,163,184,0.15);">
         <div class="footer-row" style="font-size:0.65em;margin-bottom:2px;">📩 <span data-i18n="contactUs"></span>: <a href="mailto:doganay08@hotmail.com" onclick="window.location.href=this.href;return false;">doganay08@hotmail.com</a></div>
         <div class="footer-row" style="font-size:0.65em;margin-bottom:2px;">💬 <span data-i18n="community"></span>: <a href="https://t.me/+5jZi9vrcNMM2NGVk" target="_blank" rel="noopener noreferrer" data-i18n="telegramGroup">TELEGRAM GRUBUMUZ</a></div>
         <div style="margin-top:2px;font-size:0.6em;"><a href="#" onclick="openLegalModal('privacy');return false;" style="cursor:pointer;" data-i18n="privacyPolicy">GİZLİLİK POLİTİKASI</a> | <a href="#" onclick="openLegalModal('terms');return false;" style="cursor:pointer;" data-i18n="termsOfUse">KULLANIM ŞARTLARI</a></div>
@@ -2992,6 +3007,7 @@ const i18n = {
     reportStageClosed:"Kapatıldı",
     reportAdminNoteLabel:"Yönetici Notu",
     myHistoryTab:"Geçmişim",
+    historyFilterAll:"Tümü",
     myHistoryNote:"Tüm ilan, satın alma, şikayet, destek talebi ve marka itirazı geçmişinizi burada konu başlıklarına ayrılmış şekilde görebilirsiniz. İlgili domain veya kayıt silinirse buradan da otomatik kalkar.",
     historyListingsTitle:"İlanlarım",
     historyPurchasesTitle:"Satın Aldıklarım",
@@ -3661,6 +3677,7 @@ const i18n = {
     reportStageClosed:"Closed",
     reportAdminNoteLabel:"Admin Note",
     myHistoryTab:"My History",
+    historyFilterAll:"All",
     myHistoryNote:"See your full listing, purchase, report, support ticket, and trademark claim history here, organized by topic. If the related domain or record is deleted, it disappears from here automatically too.",
     historyListingsTitle:"My Listings",
     historyPurchasesTitle:"My Purchases",
@@ -8799,6 +8816,27 @@ function renderMyReports(reports) {
 
 // YENİ: "Geçmişim" — tüm geçmiş işlem kayıtlarını tek seferde çekip her
 // konu başlığının kendi listesine dağıtıyor.
+// YENİ: "Geçmişim" filtre başlıkları — "Tümü" veya tek bir konu seçilebilir.
+let _historyFilter = 'all';
+window.setHistoryFilter = function(filter) {
+    _historyFilter = filter;
+    document.querySelectorAll('.history-filter-btn').forEach(btn => {
+        const isActive = btn.dataset.filter === filter;
+        btn.classList.toggle('active', isActive);
+        const color = btn.style.borderColor;
+        if (isActive) { btn.style.background = color; btn.style.color = '#fff'; }
+        else {
+            btn.style.background = 'none';
+            const colorMap = { listings: '#a5b4fc', purchases: '#6ee7b7', reports: '#fca5a5', tickets: '#fbbf24', trademark: '#cbd5e1', all: '#a5b4fc' };
+            btn.style.color = colorMap[btn.dataset.filter] || '#cbd5e1';
+        }
+    });
+    const sections = ['listings', 'purchases', 'reports', 'tickets', 'trademark'];
+    sections.forEach(s => {
+        const el = document.getElementById('history-section-' + s);
+        if (el) el.style.display = (filter === 'all' || filter === s) ? 'block' : 'none';
+    });
+};
 async function loadMyActivityHistory() {
     if (!isAuth) return;
     const ids = ['history-listings-list', 'history-purchases-list', 'history-reports-list', 'history-tickets-list', 'history-trademark-list'];
