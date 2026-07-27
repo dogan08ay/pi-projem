@@ -1170,6 +1170,10 @@
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#818cf8" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.5-7 8-7s8 3 8 7"/></svg>
         <span style="color:#818cf8;" data-i18n="aboutUsMenuItem"></span>
     </button>
+    <button class="side-menu-item" onclick="toggleSideMenu();window.openSystemStatusModal();">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#4ade80" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M9 12l2 2 4-4"/></svg>
+        <span style="color:#4ade80;" data-i18n="systemStatusMenuItem"></span>
+    </button>
     <div class="side-menu-divider"></div>
     <div class="side-menu-section-label" data-i18n="contactSection"></div>
     <a href="mailto:doganay08@hotmail.com" class="side-menu-item" style="text-decoration:none;color:#38bdf8;display:flex;align-items:center;gap:6px;padding:5px 8px;border-radius:7px;font-weight:700;font-size:0.7em;cursor:pointer;margin-bottom:2px;text-align:left;background:transparent;border:none;width:100%;box-sizing:border-box;transition:background 0.15s;">
@@ -1210,6 +1214,13 @@
             <div style="display:flex;justify-content:space-between;align-items:center;"><span style="font-size:0.78em;color:#94a3b8;font-weight:700;">🕒 <span data-i18n="lastSeen"></span></span><span style="font-size:0.82em;color:#f1f5f9;font-weight:800;" id="profile-last-seen">—</span></div>
             <div style="display:flex;justify-content:space-between;align-items:center;"><span style="font-size:0.78em;color:#94a3b8;font-weight:700;">🛒 <span data-i18n="purchasedDomainLabel"></span></span><span style="font-size:0.82em;color:#fbbf24;font-weight:900;" id="profile-domain-count">0</span></div>
             <div style="display:flex;justify-content:space-between;align-items:center;"><span style="font-size:0.78em;color:#94a3b8;font-weight:700;">⭐ <span data-i18n="totalPoints"></span></span><span style="font-size:0.82em;color:#a5b4fc;font-weight:900;" id="profile-points">0</span></div>
+        </div>
+        <div id="onboarding-checklist-box" style="background:#0f172a;border-radius:12px;padding:12px;text-align:left;margin-top:10px;display:none;">
+            <div style="font-size:0.75em;font-weight:800;color:#a5b4fc;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;">
+                <span>🚀 <span data-i18n="onboardingChecklistTitle"></span></span>
+                <span id="onboarding-progress-text" style="color:#94a3b8;font-weight:700;">0/4</span>
+            </div>
+            <div id="onboarding-checklist-items" style="display:flex;flex-direction:column;gap:6px;"></div>
         </div>
         <button class="pi-btn" style="background:#6366f1;animation:none;padding:10px;margin:14px 0 0 0;width:100%;" onclick="document.getElementById('profile-modal').style.display='none'" data-i18n="close"></button>
     </div>
@@ -1380,7 +1391,7 @@
         <input type="number" id="offer-price-input" min="0.001" step="0.001" style="width:100%;box-sizing:border-box;background:#0f172a;border:1.5px solid #334155;border-radius:9px;padding:10px;color:#e2e8f0;font-size:0.9em;margin-bottom:10px;">
         <label style="display:block;font-size:0.7em;color:#94a3b8;font-weight:700;margin-bottom:5px;" data-i18n="offerMessageLabel"></label>
         <textarea id="offer-message-input" maxlength="300" rows="2" style="width:100%;box-sizing:border-box;background:#0f172a;border:1.5px solid #334155;border-radius:9px;padding:10px;color:#e2e8f0;font-size:0.82em;margin-bottom:14px;resize:vertical;"></textarea>
-        <button onclick="window.confirmSubmitOffer()" style="width:100%;padding:10px;border-radius:9px;border:none;background:linear-gradient(135deg,#f59e0b,#d97706);color:#1e1b4b;font-weight:900;font-size:0.82em;cursor:pointer;margin-bottom:8px;" data-i18n="sendOfferBtn"></button>
+        <button id="offer-submit-btn" onclick="window.confirmSubmitOffer()" style="width:100%;padding:10px;border-radius:9px;border:none;background:linear-gradient(135deg,#f59e0b,#d97706);color:#1e1b4b;font-weight:900;font-size:0.82em;cursor:pointer;margin-bottom:8px;" data-i18n="sendOfferBtn"></button>
         <button class="pi-btn" style="background:#475569;animation:none;padding:10px;margin:0;width:100%;" onclick="document.getElementById('offer-modal').style.display='none'" data-i18n="close"></button>
     </div>
 </div>
@@ -1471,6 +1482,17 @@
         <p style="color:#94a3b8;font-size:0.68em;margin:0 0 10px 0;line-height:1.5;" data-i18n="reconcileModalDesc"></p>
         <div id="reconcile-result-list" style="flex:1;overflow-y:auto;font-size:0.78em;"></div>
         <button class="pi-btn" style="background:#475569;animation:none;padding:10px;margin:12px 0 0 0;width:100%;flex-shrink:0;" onclick="document.getElementById('reconcile-modal').style.display='none'" data-i18n="close"></button>
+    </div>
+</div>
+
+<div id="system-status-modal" class="modal-overlay" style="display:none;">
+    <div class="modal-content" style="border-color:#818cf8;text-align:center;max-width:380px;">
+        <div id="status-icon" style="font-size:2.4em;margin-bottom:6px;">⏳</div>
+        <h2 style="color:#c7d2fe;margin:0 0 6px 0;font-size:1.05em;font-weight:900;" data-i18n="systemStatusTitle"></h2>
+        <div id="status-main-text" style="font-size:0.85em;font-weight:800;margin-bottom:6px;">—</div>
+        <div id="status-detail-text" style="font-size:0.75em;color:#94a3b8;margin-bottom:10px;"></div>
+        <div style="font-size:0.62em;color:#64748b;" id="status-updated-text"></div>
+        <button class="pi-btn" style="background:#475569;animation:none;padding:10px;margin:14px 0 0 0;width:100%;" onclick="document.getElementById('system-status-modal').style.display='none'" data-i18n="close"></button>
     </div>
 </div>
 
@@ -2760,6 +2782,18 @@ const i18n = {
     piVerifiedLabel:"Pi ile Doğrulanmış",
     piVerifiedTooltip:"Bu kullanıcı, resmi Pi SDK giriş akışıyla gerçek bir Pi Network hesabına sahip olduğunu doğruladı. Not: bu, Pi Network'ün resmi KYC (kimlik) doğrulamasının yerine geçmez.",
     aboutUsMenuItem:"Hakkımızda",aboutUsTitle:"Hakkımızda",aboutUsRoleLabel:"Bağımsız Geliştirici · Kurucu",
+    onboardingChecklistTitle:"Başlangıç Adımların",
+    onboardingStepLogin:"Pi ile giriş yaptın",
+    onboardingStepFavorite:"İlk favorini ekle",
+    onboardingStepTrade:"İlk alım/satımını yap",
+    onboardingStepInvite:"Bir arkadaşını davet et",
+    systemStatusMenuItem:"Sistem Durumu",systemStatusTitle:"Sistem Durumu",
+    systemStatusChecking:"Kontrol ediliyor...",systemStatusOperational:"Her şey normal çalışıyor",
+    systemStatusIssue:"Bazı hizmetlerde sorun olabilir",systemStatusUnknown:"Durum bilgisi şu anda alınamadı.",
+    systemStatusLastChecked:"Son kontrol",
+    downloadReceiptBtn:"Makbuzu Görüntüle/Yazdır",receiptTitle:"Satış Makbuzu",
+    receiptBuyerLabel:"Alıcı",receiptPrintBtn:"🖨️ Yazdır / PDF Olarak Kaydet",
+    receiptTestnetNote:"Bu makbuz, sistemin test ağında (Testnet) çalıştığı döneme aittir ve gerçek bir Pi ödemesini temsil etmez. Yalnızca işlem kaydı amaçlıdır.",
     noDomainsFoundTitle:"Aramanızla eşleşen domain bulunamadı.",
     noDomainsFoundSub:"Farklı bir anahtar kelime deneyin ya da filtreleri temizleyin.",
     aboutUsBody1:"Web3 Domain Gateway, Pi Network ekosistemi için tek bir bağımsız geliştirici tarafından tasarlanıp geliştirilen bir .pi domain al-sat pazar yeridir.",
@@ -2940,6 +2974,7 @@ const i18n = {
     panelRefreshFailedMsg:"⚠️ Veriler yenilenemedi (oturumunuzun süresi dolmuş olabilir). Sorun devam ederse çıkış yapıp tekrar giriş yapmayı deneyin.",
     retryBtn:"Tekrar Dene",requestTimeoutMsg:"İstek zaman aşımına uğradı (bağlantı yavaş olabilir).",
     sellerRatingLabel:"Satıcı Puanı",noRatingsYet:"Henüz değerlendirme yok",
+    sellerTierGold:"Altın Satıcı (30+ satış)",sellerTierSilver:"Gümüş Satıcı (15+ satış)",sellerTierBronze:"Bronz Satıcı (5+ satış)",
     trustedSellerBadge:"Güvenilir Satıcı",
     myRatingAsSellerLabel:"Satıcı Olarak Puanınız",ratingsCountSuffix:"değerlendirme",
     salesTrendTitle:"Satış Trendi (Son 30 Gün)",exportCsvBtn:"Satış Verilerini CSV Olarak İndir",
@@ -3441,6 +3476,18 @@ const i18n = {
     piVerifiedLabel:"Pi Verified",
     piVerifiedTooltip:"This user confirmed ownership of a real Pi Network account through the official Pi SDK login flow. Note: this does not replace Pi Network's official KYC (identity) verification.",
     aboutUsMenuItem:"About Us",aboutUsTitle:"About Us",aboutUsRoleLabel:"Independent Developer · Founder",
+    onboardingChecklistTitle:"Getting Started",
+    onboardingStepLogin:"Log in with Pi",
+    onboardingStepFavorite:"Add your first favorite",
+    onboardingStepTrade:"Make your first purchase/sale",
+    onboardingStepInvite:"Invite a friend",
+    systemStatusMenuItem:"System Status",systemStatusTitle:"System Status",
+    systemStatusChecking:"Checking...",systemStatusOperational:"All systems operational",
+    systemStatusIssue:"Some services may be experiencing issues",systemStatusUnknown:"Status information is currently unavailable.",
+    systemStatusLastChecked:"Last checked",
+    downloadReceiptBtn:"View/Print Receipt",receiptTitle:"Sale Receipt",
+    receiptBuyerLabel:"Buyer",receiptPrintBtn:"🖨️ Print / Save as PDF",
+    receiptTestnetNote:"This receipt is from the period when the system ran on the Testnet and does not represent a real Pi payment. It is for record-keeping purposes only.",
     noDomainsFoundTitle:"No domains match your search.",
     noDomainsFoundSub:"Try a different keyword or clear your filters.",
     aboutUsBody1:"Web3 Domain Gateway is a .pi domain marketplace designed and built by a single independent developer for the Pi Network ecosystem.",
@@ -3621,6 +3668,7 @@ const i18n = {
     panelRefreshFailedMsg:"⚠️ Couldn't refresh your data (your session may have expired). If this persists, try logging out and back in.",
     retryBtn:"Retry",requestTimeoutMsg:"The request timed out (your connection may be slow).",
     sellerRatingLabel:"Seller Rating",noRatingsYet:"No ratings yet",
+    sellerTierGold:"Gold Seller (30+ sales)",sellerTierSilver:"Silver Seller (15+ sales)",sellerTierBronze:"Bronze Seller (5+ sales)",
     trustedSellerBadge:"Trusted Seller",
     myRatingAsSellerLabel:"Your Rating as a Seller",ratingsCountSuffix:"ratings",
     salesTrendTitle:"Sales Trend (Last 30 Days)",exportCsvBtn:"Download Sales Data as CSV",
@@ -4045,7 +4093,31 @@ function updateSideMenuProfile(){
         logoutBtn.style.display='none'; sellBtn.style.display='none';
     }
 }
+// YENİ: Basit sistem durumu (status) sayfası. Varsayılan olarak "normal
+// çalışıyor" gösterir; admin panelden system/status belgesine bakım/kesinti
+// bilgisi girilirse burada otomatik yansır.
 window.scrollToUserPanel=function(){toggleSideMenu();setTimeout(()=>document.getElementById('user-panel')?.scrollIntoView({behavior:'smooth'}),350);};
+window.openSystemStatusModal=async function(){
+    document.getElementById('system-status-modal').style.display='flex';
+    document.getElementById('status-icon').textContent='⏳';
+    document.getElementById('status-main-text').textContent=t('systemStatusChecking');
+    document.getElementById('status-detail-text').textContent='';
+    document.getElementById('status-updated-text').textContent='';
+    try{
+        const r=await fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'get_system_status'})});
+        const res=await r.json();
+        const ok=res.success && res.operational!==false;
+        document.getElementById('status-icon').textContent=ok?'✅':'⚠️';
+        document.getElementById('status-main-text').innerHTML=`<span style="color:${ok?'#4ade80':'#fbbf24'};">${ok?t('systemStatusOperational'):t('systemStatusIssue')}</span>`;
+        document.getElementById('status-detail-text').textContent=res.message||'';
+        if(res.updatedAt) document.getElementById('status-updated-text').textContent=t('systemStatusLastChecked')+': '+new Date(res.updatedAt).toLocaleString(currentLang==='en'?'en-GB':'tr-TR');
+    }catch(e){
+        // Durum servisine ulaşılamazsa bile paniğe yol açmayacak nötr bir
+        // mesaj gösterilir; "her şey bozuk" gibi yanlış bir izlenim verilmez.
+        document.getElementById('status-icon').textContent='ℹ️';
+        document.getElementById('status-main-text').textContent=t('systemStatusUnknown');
+    }
+};
 window.toggleLangPicker=function(){const p=document.getElementById('lang-picker');p.style.display=p.style.display==='none'?'block':'none';};
 
 // PROFILE MODAL
@@ -4061,8 +4133,32 @@ window.openProfileModal=function(){
     document.getElementById('profile-last-seen').innerText=new Date().toLocaleDateString(locale,{day:'2-digit',month:'2-digit',year:'numeric'})+' '+new Date().toLocaleTimeString(locale,{hour:'2-digit',minute:'2-digit'});
     document.getElementById('profile-domain-count').innerText=domains.filter(d=>domainData[d.name]?.sold&&domainData[d.name]?.buyer===currentUser).length;
     document.getElementById('profile-points').innerText=Math.round((userProfile.points||0)*100)/100;
+    renderOnboardingChecklist();
     toggleSideMenu();
 };
+// YENİ: Yeni kullanıcıların uygulamayı daha hızlı benimsemesi için basit bir
+// ilerleme kontrol listesi. Tamamı gerçekten yapılmış eylemlere dayanır
+// (giriş, favori, alım/satım, davet) — sahte/otomatik "tamamlandı" yoktur.
+function renderOnboardingChecklist(){
+    const box=document.getElementById('onboarding-checklist-box');
+    const itemsEl=document.getElementById('onboarding-checklist-items');
+    if(!box||!itemsEl) return;
+    const steps=[
+        {done:true, key:'onboardingStepLogin'},
+        {done:(userFavorites&&userFavorites.size>0), key:'onboardingStepFavorite'},
+        {done:((userActiveListings?.length||0)>0)||((userSoldDomains?.length||0)>0)||((userTotalSpent||0)>0), key:'onboardingStepTrade'},
+        {done:((userProfile.referralCount||0)>0), key:'onboardingStepInvite'}
+    ];
+    const doneCount=steps.filter(s=>s.done).length;
+    document.getElementById('onboarding-progress-text').innerText=doneCount+'/'+steps.length;
+    itemsEl.innerHTML=steps.map(s=>`<div style="display:flex;align-items:center;gap:7px;font-size:0.78em;color:${s.done?'#e2e8f0':'#64748b'};">
+        <span style="flex-shrink:0;">${s.done?'✅':'⬜'}</span><span style="text-decoration:${s.done?'line-through':'none'};">${t(s.key)}</span>
+    </div>`).join('');
+    // Tamamen bitince kutuyu birkaç gün sonra gizlemek yerine her zaman
+    // göster; kullanıcı isterse görüp geçer, rahatsız edici olmaması için
+    // sade tutuldu.
+    box.style.display='block';
+}
 
 // LOGOUT
 window.handleLogout=async function(){
@@ -4620,13 +4716,16 @@ window.openDomainDetail=function(domainName){
                 // YENİ: Yeterince yüksek puanlı satıcılar için "Güvenilir
                 // Satıcı" rozeti — alıcının güvenini artırmak için.
                 const trustedBadge=res.isTrusted?` <span style="background:rgba(16,185,129,0.15);border:1px solid #10b981;color:#6ee7b7;font-size:0.62em;font-weight:900;padding:2px 7px;border-radius:20px;white-space:nowrap;">✅ ${t('trustedSellerBadge')}</span>`:'';
+                const tierMap={gold:['🏅',t('sellerTierGold'),'#fbbf24','rgba(251,191,36,0.15)','#fbbf24'],silver:['🥈',t('sellerTierSilver'),'#cbd5e1','rgba(203,213,225,0.12)','#cbd5e1'],bronze:['🥉',t('sellerTierBronze'),'#d97706','rgba(217,119,6,0.12)','#f59e0b']};
+                const tierInfo=res.sellerTier&&tierMap[res.sellerTier];
+                const tierBadge=tierInfo?` <span title="${res.salesCount} ${t('salesCountUnit')}" style="background:${tierInfo[3]};border:1px solid ${tierInfo[4]};color:${tierInfo[2]};font-size:0.62em;font-weight:900;padding:2px 7px;border-radius:20px;white-space:nowrap;">${tierInfo[0]} ${tierInfo[1]}</span>`:'';
                 let reviewsHtml='';
                 if(res.recentReviews&&res.recentReviews.length){
                     reviewsHtml=`<div style="display:flex;flex-direction:column;gap:5px;margin-top:2px;padding-left:8px;border-left:2px solid #334155;">`+
                         res.recentReviews.map(rv=>`<div style="font-size:0.85em;color:#94a3b8;"><span style="color:#fbbf24;">${'★'.repeat(rv.stars)}${'☆'.repeat(5-rv.stars)}</span> "${escapeHtml(rv.comment)}"</div>`).join('')+
                         `</div>`;
                 }
-                el.innerHTML=`<div style="display:flex;gap:6px;align-items:baseline;flex-wrap:wrap;"><span style="color:#64748b;flex-shrink:0;font-weight:700;min-width:100px;">⭐ ${t('sellerRatingLabel')}:</span><span style="color:#fbbf24;font-weight:900;">${ratingText}</span>${trustedBadge}</div>${reviewsHtml}`;
+                el.innerHTML=`<div style="display:flex;gap:6px;align-items:baseline;flex-wrap:wrap;"><span style="color:#64748b;flex-shrink:0;font-weight:700;min-width:100px;">⭐ ${t('sellerRatingLabel')}:</span><span style="color:#fbbf24;font-weight:900;">${ratingText}</span>${trustedBadge}${tierBadge}</div>${reviewsHtml}`;
             }).catch(()=>{});
     }
     if(data.sold){
@@ -5041,11 +5140,18 @@ window.openOfferModal=function(domainName){
     document.getElementById('offer-message-input').value='';
     document.getElementById('offer-modal').style.display='flex';
 };
+let _offerSubmitInFlight=false;
 window.confirmSubmitOffer=async function(){
+    // YENİ: hızlı art arda tıklamalarla aynı teklifin birden fazla kez
+    // gönderilmesini (istemsiz "spam") önlemek için basit bir kilit.
+    if(_offerSubmitInFlight) return;
     const domainName=document.getElementById('offer-price-input').dataset.domain;
     const offerPrice=parseFloat(document.getElementById('offer-price-input').value);
     const message=document.getElementById('offer-message-input').value;
     if(!offerPrice||offerPrice<=0){ showToast(t('invalidOfferPrice')); return; }
+    const btn=document.getElementById('offer-submit-btn');
+    _offerSubmitInFlight=true;
+    if(btn){btn.disabled=true;btn.style.opacity='0.6';}
     try{
         const r=await fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'submit_offer',domainName,offerPrice,message,accessToken:piAccessToken})});
         const result=await r.json();
@@ -5053,6 +5159,7 @@ window.confirmSubmitOffer=async function(){
         document.getElementById('offer-modal').style.display='none';
         showToast(t('offerSentSuccess'));
     }catch(e){ showToast(t('genericError')); }
+    finally{ _offerSubmitInFlight=false; if(btn){btn.disabled=false;btn.style.opacity='1';} }
 };
 window.withdrawOffer=async function(offerId){
     if(!confirm(t('confirmWithdrawOffer'))) return;
@@ -6365,6 +6472,7 @@ function renderUserPanel(){
                     </div>
                     ${confirmHtml}
                     ${ratingHtml}
+                    <button onclick="window.printReceipt('${d.name}')" style="margin-top:8px;padding:6px 10px;border-radius:8px;border:1px solid #6366f1;background:rgba(99,102,241,0.08);color:#a5b4fc;font-size:0.68em;font-weight:800;cursor:pointer;">🧾 ${t('downloadReceiptBtn')}</button>
                 </div>
                 ${dogrulaBtn}
             </div>`;
@@ -7705,6 +7813,43 @@ function usdEstimateHtml(price){
 function piVerifiedBadge(){
     return `<span class="pi-verified-badge" title="${t('piVerifiedTooltip')}">✓ ${t('piVerifiedLabel')}</span>`;
 }
+// YENİ: Tamamlanmış bir alım için basit, yazdırılabilir/PDF olarak
+// kaydedilebilir bir makbuz. Yeni kütüphane eklemeden (jsPDF vb.), tarayıcının
+// yerleşik "Yazdır → PDF olarak kaydet" özelliğini kullanan ayrı bir
+// pencere açıyoruz — böylece ek bağımlılık veya CDN riski olmuyor.
+window.printReceipt=function(domainName){
+    const data=domainData[domainName];
+    if(!data){ showToast(t('genericError')); return; }
+    const locale=currentLang==='en'?'en-GB':'tr-TR';
+    const dateStr=data.at?new Date(data.at).toLocaleString(locale):'—';
+    const win=window.open('','_blank');
+    if(!win){ showToast(t('genericError')); return; }
+    win.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>${t('receiptTitle')} — ${escapeHtml(domainName)}</title>
+    <style>
+        body{font-family:Arial,sans-serif;color:#1e293b;padding:32px;max-width:520px;margin:0 auto;}
+        h1{font-size:1.2em;margin-bottom:2px;}
+        .sub{color:#64748b;font-size:0.85em;margin-bottom:24px;}
+        table{width:100%;border-collapse:collapse;font-size:0.92em;}
+        td{padding:8px 4px;border-bottom:1px solid #e2e8f0;}
+        td:first-child{color:#64748b;width:45%;}
+        .note{margin-top:24px;font-size:0.75em;color:#94a3b8;line-height:1.5;}
+        @media print{ button{display:none;} }
+    </style></head><body>
+        <h1>Web3 Domain Gateway</h1>
+        <div class="sub">${t('receiptTitle')}</div>
+        <table>
+            <tr><td>${t('detailFieldDomain')}</td><td><b>${escapeHtml(domainName)}</b></td></tr>
+            <tr><td>${t('detailFieldPrice')}</td><td><b>${data.price} Pi</b></td></tr>
+            <tr><td>${t('saleDateLabel')}</td><td>${dateStr}</td></tr>
+            <tr><td>${t('detailFieldSellerUser')}</td><td>${data.sellerUsername?'@'+escapeHtml(data.sellerUsername):t('systemSellerLabel')}</td></tr>
+            <tr><td>${t('receiptBuyerLabel')}</td><td>@${escapeHtml(currentUser||'')}</td></tr>
+            <tr><td>${t('detailFieldTxid')}</td><td style="word-break:break-all;">${data.txid||'—'}</td></tr>
+        </table>
+        <div class="note">${t('receiptTestnetNote')}</div>
+        <button onclick="window.print()" style="margin-top:24px;padding:10px 16px;border-radius:8px;border:none;background:#6366f1;color:#fff;font-weight:800;cursor:pointer;">${t('receiptPrintBtn')}</button>
+    </body></html>`);
+    win.document.close();
+};
 // YENİ: Tek tip, ikonlu boş durum (empty state) gösterimi. Öncesinde
 // birçok liste (bildirimler, tekliflerim, alımlarım, ilanlarım, lider
 // tablosu, domain arama sonucu vb.) sadece soluk düz bir metin gösteriyordu.
@@ -8378,7 +8523,9 @@ window.closeTicketCreateModal = function() {
 };
 
 // ── KULLANICI: Ticket gönder ──────────────────────────────────────────
+let _ticketSubmitInFlight=false;
 window.submitTicket = async function() {
+    if(_ticketSubmitInFlight) return;
     const subject = document.getElementById('ticket-subject').value.trim();
     const message = document.getElementById('ticket-message').value.trim();
     const category = document.getElementById('ticket-category').value;
@@ -8387,6 +8534,9 @@ window.submitTicket = async function() {
     if (!subject) { showToast(t('ticketEmptySubject')); return; }
     if (!message) { showToast(t('ticketEmptyMessage')); return; }
 
+    const btn=document.getElementById('ticket-submit-btn');
+    _ticketSubmitInFlight=true;
+    if(btn){btn.disabled=true;btn.style.opacity='0.6';}
     try {
         const r = await fetch('/api/approve', {
             method: 'POST',
@@ -8406,10 +8556,16 @@ window.submitTicket = async function() {
             closeTicketCreateModal();
             await loadMyTickets();
         } else {
-            showToast(t('ticketSubmitFail') + (result.error || ''));
+            // YENİ: hız sınırlaması (429/rate limit) sunucudan dönerse,
+            // kullanıcıya bunun bir hata değil kısa süreli bir bekleme
+            // olduğu net şekilde belirtiliyor.
+            showToast(result.error||t('ticketSubmitFail'));
         }
     } catch (e) {
         console.error('Ticket gönderme hatası:', e); showToast(t('ticketSubmitFail'));
+    } finally {
+        _ticketSubmitInFlight=false;
+        if(btn){btn.disabled=false;btn.style.opacity='1';}
     }
 };
 
@@ -9522,7 +9678,7 @@ document.addEventListener('input', function(e) {
         </div>
         <div style="display:flex;gap:8px;margin-top:4px;">
             <button class="pi-btn" style="background:#475569;flex:1;animation:none;padding:10px;margin:0;" onclick="closeTicketCreateModal()" data-i18n="cancel"></button>
-            <button class="pi-btn" style="background:#6366f1;flex:1;animation:none;padding:10px;margin:0;" onclick="submitTicket()" data-i18n="ticketSubmit"></button>
+            <button id="ticket-submit-btn" class="pi-btn" style="background:#6366f1;flex:1;animation:none;padding:10px;margin:0;" onclick="submitTicket()" data-i18n="ticketSubmit"></button>
         </div>
     </div>
 </div>
