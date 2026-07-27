@@ -36,6 +36,10 @@ const PLATFORM_COMMISSION_RATE = 0.05; // %5 komisyon
 // YENİ: "Güvenilir Satıcı" rozeti eşikleri — tek bir yerden yönetiliyor.
 const TRUSTED_SELLER_MIN_RATINGS = 5;
 const TRUSTED_SELLER_MIN_AVG = 4.5;
+// YENİ: Kademeli satıcı rozeti eşikleri (tamamlanmış satış adedine göre).
+const SELLER_TIER_BRONZE = 5;
+const SELLER_TIER_SILVER = 15;
+const SELLER_TIER_GOLD = 30;
 // YENİ: Referral (davet) ödül miktarları.
 const REFERRAL_BONUS_REFERRER = 30; // davet eden kişiye
 const REFERRAL_BONUS_REFERRED = 15; // davet edilen (yeni) kişiye "hoş geldin" bonusu
@@ -805,6 +809,17 @@ async function handlerImpl(req, res) {
           domainName
         });
       }
+
+      // YENİ: Bu domaini favorileyen diğer kullanıcılara (önceki alıcı
+      // hariç, o zaten kendi bildirimini yukarıda aldı) domainin tekrar
+      // satışa çıktığını bildir — notifyFavoriters, fiyat değişikliğinde
+      // kullanılan aynı mekanizma.
+      await notifyFavoriters(db, domainName, {
+        excludeUsername: prevBuyer,
+        type: 'favorite_relisted',
+        title: '🔄 Favori Domaininiz Tekrar Satışta',
+        body: `Favorilediğiniz "${domainName}" domaini tekrar satışa çıktı.`
+      });
 
       console.log(`Domain tekrar satılık yapıldı: ${domainName}`);
       return res.status(200).json({ success: true });
@@ -3565,6 +3580,28 @@ async function handlerImpl(req, res) {
   }
 
   // ── Satıcının Ortalama Puanını + Son Yorumlarını Getir (herkese açık) ──
+  // ── Sistem Durumu (Status Page) — herkese açık, basit sağlık göstergesi ──
+  if (action === 'get_system_status') {
+    try {
+      const db = getDb();
+      const snap = await db.collection('system').doc('status').get();
+      // Belge yoksa (henüz admin panelden bir kesinti/bakım bildirimi
+      // girilmediyse) varsayılan olarak "her şey normal çalışıyor" döner.
+      const d = snap.exists ? snap.data() : {};
+      return res.status(200).json({
+        success: true,
+        operational: d.operational !== false,
+        message: d.message || '',
+        updatedAt: d.updatedAt || null
+      });
+    } catch (e) {
+      // Durum servisinin kendisi başarısız olsa bile kullanıcıya hata
+      // göstermek yerine "normal" varsayımıyla düşsün (fail-open) — bir
+      // durum sayfası hatası paniğe yol açmamalı.
+      return res.status(200).json({ success: true, operational: true, message: '' });
+    }
+  }
+
   if (action === 'get_seller_rating') {
     const { sellerUsername } = req.body;
     if (!sellerUsername) return res.status(400).json({ error: "Geçersiz kullanıcı adı" });
@@ -3582,18 +3619,26 @@ async function handlerImpl(req, res) {
       // Yazılı yorumları toplamak için: bu satıcının sattığı domainleri
       // tara, buyerRating.comment dolu olanları en yeniden eskiye sırala.
       let recentReviews = [];
+      let salesCount = 0;
       try {
         const domSnap = await db.collection('domains').where('sellerUsername', '==', sellerUsername).limit(100).get();
         const withComments = [];
         domSnap.forEach(dd => {
-          const br = dd.data().buyerRating;
+          const dData = dd.data();
+          if (dData.sold) salesCount++;
+          const br = dData.buyerRating;
           if (br && br.comment) withComments.push({ stars: br.stars, comment: br.comment, at: br.at, domain: dd.id });
         });
         withComments.sort((a, b) => b.at - a.at);
         recentReviews = withComments.slice(0, 5);
       } catch (_) { /* yorum toplama başarısız olsa da ana puan verisi dönsün */ }
+      // YENİ: tamamlanmış satış adedine göre kademeli satıcı rozeti.
+      let sellerTier = null;
+      if (salesCount >= SELLER_TIER_GOLD) sellerTier = 'gold';
+      else if (salesCount >= SELLER_TIER_SILVER) sellerTier = 'silver';
+      else if (salesCount >= SELLER_TIER_BRONZE) sellerTier = 'bronze';
 
-      return res.status(200).json({ success: true, avg, count, recentReviews, isTrusted });
+      return res.status(200).json({ success: true, avg, count, recentReviews, isTrusted, salesCount, sellerTier });
     } catch (e) {
       return res.status(500).json({ error: e.message });
     }
