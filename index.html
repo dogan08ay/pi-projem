@@ -8925,22 +8925,35 @@ function renderMyTrademarkClaims(claims) {
     const locale = currentLang === 'en' ? 'en-GB' : 'tr-TR';
     const statusMap = { new: t('trademarkStatusNew'), reviewing: t('trademarkStatusReviewing'), resolved: t('trademarkStatusResolved'), rejected: t('trademarkStatusRejected'), withdrawn: t('trademarkStatusWithdrawn') };
     const statusColor = { new: '#3b82f6', reviewing: '#f59e0b', resolved: '#10b981', rejected: '#ef4444', withdrawn: '#64748b' };
-    // Aşama sırası: kullanıcıya süreci basit bir zaman çizelgesi gibi göstermek için.
-    const stageOrder = ['new', 'reviewing', 'resolved'];
-    const stageLabels = [t('trademarkStageReceived'), t('trademarkStageReviewing'), t('trademarkStageResolved')];
+    // DÜZENLENDİ: öncesinde talep reddedilince (rejected) ilerleme çubuğu
+    // TAMAMEN kayboluyordu — sadece kırmızı bir rozet kalıyordu, süreç hiç
+    // takip edilmemiş gibi görünüyordu. Artık "Şikayetlerim" panelindeki
+    // gibi 4 SABİT kolon var (Alındı/İnceleniyor/Çözüldü/Reddedildi);
+    // Çözüldü ve Reddedildi birbirini dışlayan iki farklı SONUÇ olduğu için
+    // hangisi gerçekleştiyse sadece o kolon aydınlanıyor. Sadece "geri
+    // çekildi" (withdrawn) durumu çubuğu göstermiyor — çünkü bu bir admin
+    // kararı değil, kullanıcının kendi isteğiyle iptal etmesi; süreç
+    // "sonuçlanmadı", kullanıcı yarıda bıraktı.
+    const cols = [
+        { key: 'new', label: t('trademarkStageReceived'), color: '#3b82f6' },
+        { key: 'reviewing', label: t('trademarkStageReviewing'), color: '#f59e0b' },
+        { key: 'resolved', label: t('trademarkStageResolved'), color: '#10b981' },
+        { key: 'rejected', label: t('trademarkStatusRejected'), color: '#ef4444' }
+    ];
 
     container.innerHTML = filtered.map(c => {
         const created = c.createdAt ? new Date(c.createdAt).toLocaleDateString(locale, { day: '2-digit', month: '2-digit' }) + ' ' + new Date(c.createdAt).toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' }) : '-';
         const canWithdraw = c.status === 'new' || c.status === 'reviewing';
         const canDelete = c.status === 'resolved';
-        const currentStageIdx = stageOrder.indexOf(c.status);
-        const isTerminal = c.status === 'rejected' || c.status === 'withdrawn';
-        const timelineHtml = isTerminal ? '' : `
-            <div style="display:flex;align-items:flex-start;gap:4px;margin:8px 0;">
-                ${stageOrder.map((st, i) => `
+        const isWithdrawn = c.status === 'withdrawn';
+        const reachedReviewing = c.status === 'reviewing' || c.status === 'resolved' || c.status === 'rejected';
+        const isActive = { new: true, reviewing: reachedReviewing, resolved: c.status === 'resolved', rejected: c.status === 'rejected' };
+        const timelineHtml = isWithdrawn ? '' : `
+            <div style="display:flex;align-items:flex-start;gap:3px;margin:8px 0;">
+                ${cols.map(col => `
                     <div style="flex:1;text-align:center;">
-                        <div style="height:4px;border-radius:2px;background:${i <= currentStageIdx ? statusColor[c.status] : '#334155'};margin-bottom:4px;"></div>
-                        <div style="font-size:0.55em;font-weight:${i <= currentStageIdx ? '800' : '600'};color:${i <= currentStageIdx ? statusColor[c.status] : '#475569'};line-height:1.3;">${stageLabels[i]}</div>
+                        <div style="height:4px;border-radius:2px;background:${isActive[col.key] ? col.color : '#334155'};margin-bottom:4px;"></div>
+                        <div style="font-size:0.52em;font-weight:${isActive[col.key] ? '800' : '600'};color:${isActive[col.key] ? col.color : '#475569'};line-height:1.25;">${col.label}</div>
                     </div>
                 `).join('')}
             </div>`;
