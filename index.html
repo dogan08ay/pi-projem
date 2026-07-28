@@ -998,17 +998,22 @@
 .tour-highlight::before {
   content: "";
   position: absolute;
-  inset: -5px;
-  border-radius: 18px;
-  padding: 3px;
-  background: conic-gradient(from 0deg, #f472b6, #fbbf24, #34d399, #38bdf8, #818cf8, #f472b6);
-  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
-  -webkit-mask-composite: xor;
-  mask-composite: exclude;
-  animation: tour-ring-spin 2.2s linear infinite;
+  inset: -4px;
+  border-radius: 16px;
   pointer-events: none;
+  background-image:
+    repeating-linear-gradient(90deg, #f472b6 0 8px, #fbbf24 8px 16px, #38bdf8 16px 24px, #34d399 24px 32px),
+    repeating-linear-gradient(90deg, #f472b6 0 8px, #fbbf24 8px 16px, #38bdf8 16px 24px, #34d399 24px 32px),
+    repeating-linear-gradient(180deg, #f472b6 0 8px, #fbbf24 8px 16px, #38bdf8 16px 24px, #34d399 24px 32px),
+    repeating-linear-gradient(180deg, #f472b6 0 8px, #fbbf24 8px 16px, #38bdf8 16px 24px, #34d399 24px 32px);
+  background-size: 32px 3px, 32px 3px, 3px 32px, 3px 32px;
+  background-position: 0 0, 0 100%, 0 0, 100% 0;
+  background-repeat: repeat-x, repeat-x, repeat-y, repeat-y;
+  animation: tour-border-march 1s linear infinite;
 }
-@keyframes tour-ring-spin { to { transform: rotate(360deg); } }
+@keyframes tour-border-march {
+  to { background-position: 32px 0, -32px 100%, 0 -32px, 100% 32px; }
+}
 .tour-tooltip {
   position: fixed; z-index: 10002;
   background: linear-gradient(160deg,#1e1b4b 0%,#0f172a 100%);
