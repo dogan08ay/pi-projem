@@ -4830,7 +4830,9 @@ window.openDomainDetail=function(domainName){
         actionHtml+=`<button onclick="window.toggleFavorite('${domainName}')" style="width:100%;padding:9px;margin-bottom:8px;border-radius:9px;border:1.5px solid #f59e0b;background:${isFav?'rgba(245,158,11,0.9)':'rgba(245,158,11,0.1)'};color:${isFav?'#1e1b4b':'#fbbf24'};font-weight:800;font-size:0.78em;cursor:pointer;">${isFav?'★ '+t('favoriteRemoveBtn'):'☆ '+t('favoriteAddBtn')}</button>`;
     }
     if(!data.sold&&isAuth){
-        const isOwnListing=data.sellerUsername && data.sellerUsername===currentUser;
+        // İSTİSNA: admin kendi ilanını da test amaçlı satın alabilsin diye
+        // bu kısıtlamadan muaf — backend'de de aynı istisna var.
+        const isOwnListing=data.sellerUsername && data.sellerUsername===currentUser && currentUser!==APP_CONFIG.adminUsername;
         if(isOwnListing){
             actionHtml+=`<div style="width:100%;padding:10px;font-size:0.9em;border-radius:9px;background:#334155;color:#94a3b8;text-align:center;font-weight:800;">👤 ${t('ownListingTag')}</div>`;
         } else {
@@ -7067,7 +7069,9 @@ function render(){
             // karıştırıcı, gereksiz bir bekleme). Artık buton hiç
             // gösterilmiyor — kendi ilanınız olduğu net bir etiketle
             // belirtiliyor.
-            const isOwnListing = isAuth && data.sellerUsername && data.sellerUsername===currentUser;
+            // İSTİSNA: admin kendi ilanını da test amaçlı satın alabilsin diye
+            // bu kısıtlamadan muaf — backend'de de aynı istisna var.
+            const isOwnListing = isAuth && data.sellerUsername && data.sellerUsername===currentUser && currentUser!==APP_CONFIG.adminUsername;
             if(isOwnListing){
                 const ownTag=document.createElement('div');
                 ownTag.className='btn-buy';
