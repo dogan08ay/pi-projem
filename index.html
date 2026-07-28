@@ -66,10 +66,8 @@
         .domain-card{background:linear-gradient(145deg,#1a2332 0%,#141d2b 50%,#1a1a3e 100%);padding:5px 8px 8px 8px;border-radius:12px;border:1.5px solid #4a5d7a;display:flex;flex-direction:column;align-items:center;transition:transform 0.25s,box-shadow 0.25s,border-color 0.25s;animation:card-rise 0.5s ease backwards;cursor:pointer;min-width:0;max-width:100%;box-sizing:border-box;}
         .domain-card:hover,.domain-card:active{transform:translateY(-4px) scale(1.02);box-shadow:0 10px 20px -6px rgba(99,102,241,0.45),0 0 0 1.5px rgba(129,140,248,0.6);border-color:#818cf8;}
         @keyframes card-rise{0%{opacity:0;transform:translateY(14px) scale(0.96);}100%{opacity:1;transform:translateY(0) scale(1);}}
-        .detail-hint{position:absolute;top:6px;left:6px;z-index:3;display:flex;align-items:center;gap:3px;background:rgba(99,102,241,0.92);color:#fff;font-size:0.52em;font-weight:800;letter-spacing:0.2px;padding:3px 7px 3px 5px;border-radius:20px;pointer-events:none;box-shadow:0 0 10px rgba(99,102,241,0.55);animation:detail-hint-pulse 2.2s ease-in-out infinite;white-space:nowrap;}
-        .detail-hint svg{width:9px;height:9px;flex-shrink:0;animation:detail-hint-tap 2.2s ease-in-out infinite;}
-        @keyframes detail-hint-pulse{0%,100%{opacity:0.8;transform:scale(1);box-shadow:0 0 6px rgba(99,102,241,0.45);}50%{opacity:1;transform:scale(1.07);box-shadow:0 0 14px rgba(129,140,248,0.85);}}
-        @keyframes detail-hint-tap{0%,60%,100%{transform:translateY(0);}30%{transform:translateY(1.5px);}}
+        .domain-card::before{content:"";position:absolute;inset:0;border-radius:12px;box-shadow:0 0 0 2px rgba(129,140,248,0.65),0 0 10px 1px rgba(99,102,241,0.5);opacity:0;pointer-events:none;animation:card-tap-glow 2.6s ease-in-out infinite;}
+        @keyframes card-tap-glow{0%,100%{opacity:0;}45%{opacity:1;}70%{opacity:0;}}
 #changelog-list::-webkit-scrollbar{width:5px;}
 #changelog-list::-webkit-scrollbar-thumb{background:#f59e0b;border-radius:10px;}
         .domain-img{width:100%;height:52px;margin-bottom:4px;border-radius:8px;object-fit:contain;background:linear-gradient(135deg,#2a3a52 0%,#1e293b 100%);padding:2px;}
@@ -2938,7 +2936,6 @@ const i18n = {
     ownershipVerifiedMsg:"Sahiplik doğrulandı olarak işaretlendi.",
     ownershipUnverifiedMsg:"Sahiplik doğrulaması kaldırıldı.",
     priceHistoryLabel:"Geçmiş Satış Fiyatları",
-    tapForDetailHint:"Detay için dokun",
     sellerProfileUnknownJoinDate:"Bilinmiyor",
     sellerProfileRatingLabel:"Puan",
     sellerProfileActiveListingsLabel:"Aktif İlan",
@@ -3648,7 +3645,6 @@ const i18n = {
     ownershipVerifiedMsg:"Marked as ownership verified.",
     ownershipUnverifiedMsg:"Ownership verification removed.",
     priceHistoryLabel:"Past Sale Prices",
-    tapForDetailHint:"Tap for details",
     sellerProfileUnknownJoinDate:"Unknown",
     sellerProfileRatingLabel:"Rating",
     sellerProfileActiveListingsLabel:"Active Listings",
@@ -4781,7 +4777,7 @@ window.openDomainDetail=function(domainName){
     rows+=row('🏷️',t('detailFieldType'),typeLabel(domain.type));
     rows+=row('💰',t('detailFieldPrice'),`${data.price} Pi`,statusColor,true);
     rows+=row('📌',t('detailFieldStatus'),statusLabel,statusColor,true);
-    const sellerClickable=data.sellerUsername?`<span onclick="window.openSellerProfile('${data.sellerUsername.replace(/'/g,"\\'")}')" style="cursor:pointer;text-decoration:underline;text-decoration-style:dotted;">@${escapeHtml(data.sellerUsername)}</span> ${piVerifiedBadge()}`:t('systemSellerLabel');
+    const sellerClickable=data.sellerUsername?`<span onclick="window.openSellerProfile('${data.sellerUsername.replace(/'/g,"\\'")}')" style="cursor:pointer;color:#a5b4fc;font-weight:800;text-decoration:underline;text-decoration-style:dotted;text-underline-offset:3px;">@${escapeHtml(data.sellerUsername)} <span style="font-size:0.9em;font-weight:900;">›</span></span> ${piVerifiedBadge()}`:t('systemSellerLabel');
     // YENİ: Admin, satıcının domain sahipliğini kanıtladığını (ownershipProof)
     // fiilen inceleyip onayladıysa bu rozet gösteriliyor — alıcıya ek güven.
     const ownershipBadge=data.ownershipVerified?` <span style="background:rgba(59,130,246,0.15);border:1px solid #3b82f6;color:#93c5fd;font-size:0.62em;font-weight:900;padding:2px 7px;border-radius:20px;white-space:nowrap;">🛡️ ${t('ownershipVerifiedBadge')}</span>`:'';
@@ -7029,8 +7025,7 @@ function render(){
         const imgSrc=data.img||d.img;
         const favBtn=isAuth?`<button onclick="window.toggleFavorite('${d.name}',event)" aria-label="${userFavorites.has(d.name)?'Favorilerden çıkar':'Favorilere ekle'}" style="position:absolute;top:6px;right:6px;z-index:3;width:26px;height:26px;border-radius:50%;border:none;background:rgba(15,23,42,0.7);color:${userFavorites.has(d.name)?'#fbbf24':'#94a3b8'};font-size:0.95em;display:flex;align-items:center;justify-content:center;cursor:pointer;backdrop-filter:blur(4px);">${userFavorites.has(d.name)?'★':'☆'}</button>`:'';
         card.style.position='relative';
-        const detailHint=`<div class="detail-hint"><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="12" r="9.5" stroke="currentColor" stroke-width="2"/><path d="M12 16V11" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/><circle cx="12" cy="7.6" r="1.2" fill="currentColor"/></svg>${t('tapForDetailHint')}</div>`;
-        card.innerHTML=`${detailHint}${favBtn}<img src="${imgSrc}" class="domain-img" onerror="this.src='data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMDAiIGhlaWdodD0iMTAwIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjNDc1NTY5Ii8+PC9zdmc+'">${tTag}${hiddenTag}<div class="domain-name">${d.name} <span style="color:#fbbf24;font-weight:800;">(${data.price} π)</span></div><div class="domain-price">${data.price} PI</div>${usdEstimateHtml(data.price)}`;
+        card.innerHTML=`${favBtn}<img src="${imgSrc}" class="domain-img" onerror="this.src='data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMDAiIGhlaWdodD0iMTAwIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjNDc1NTY5Ii8+PC9zdmc+'">${tTag}${hiddenTag}<div class="domain-name">${d.name} <span style="color:#fbbf24;font-weight:800;">(${data.price} π)</span></div><div class="domain-price">${data.price} PI</div>${usdEstimateHtml(data.price)}`;
 
         if(data.sold){
             // Satıcılı bir satışta, escrow ödemesi admin tarafından serbest
