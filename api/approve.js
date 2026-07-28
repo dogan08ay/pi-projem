@@ -3675,6 +3675,19 @@ async function handlerImpl(req, res) {
         withComments.sort((a, b) => b.at - a.at);
         recentReviews = withComments.slice(0, 5);
       } catch (_) { /* yorum toplama başarısız olsa da ana puan verisi dönsün */ }
+      // DÜZELTME: joinedAt SADECE domains.createdAt alanına bakıyordu. Bu alan
+      // sonradan eklendiği için, bu güncellemeden ÖNCE listelenmiş (ve o
+      // tarihten beri hiç yeni domain eklememiş) satıcılarda createdAt hiç
+      // yoktu ve "Bilinmiyor" görünüyordu. sell_requests.submittedAt her
+      // zaman var olan, satıcının platforma ilk katıldığı gerçek anı temsil
+      // eden bir alan — bunu da hesaba katıp ikisinin en erkenini kullanıyoruz.
+      try {
+        const reqSnap = await db.collection('sell_requests').where('submittedBy', '==', sellerUsername).limit(100).get();
+        reqSnap.forEach(rd => {
+          const at = rd.data().submittedAt;
+          if (at && (joinedAt === null || at < joinedAt)) joinedAt = at;
+        });
+      } catch (_) { /* eski üyelik tarihi hesaplanamazsa sessizce geç */ }
       // YENİ: tamamlanmış satış adedine göre kademeli satıcı rozeti.
       let sellerTier = null;
       if (salesCount >= SELLER_TIER_GOLD) sellerTier = 'gold';
