@@ -1465,6 +1465,15 @@
 <!-- YENİ: şikayet durumu güncelleme modalı — admin İncelemeye Al/Çözüldü/
      Kapat derken isteğe bağlı bir not girebiliyor, bu not raporlayan
      kullanıcıya bildirim olarak gidiyor. -->
+<!-- YENİ: Satıcı profili modalı — kullanıcı adına tıklanınca açılıyor. -->
+<div id="seller-profile-modal" class="modal-overlay" style="display:none;">
+    <div class="modal-content" style="border-color:#6366f1;text-align:left;max-width:420px;">
+        <h2 id="seller-profile-username" style="color:#c7d2fe;margin:0 0 12px 0;font-size:1.1em;font-weight:900;"></h2>
+        <div id="seller-profile-body"></div>
+        <button class="pi-btn" style="background:#475569;animation:none;padding:10px;margin:14px 0 0 0;width:100%;" onclick="document.getElementById('seller-profile-modal').style.display='none'" data-i18n="close"></button>
+    </div>
+</div>
+
 <div id="report-status-modal" class="modal-overlay" style="display:none;">
     <div class="modal-content" style="border-color:#ef4444;text-align:left;max-width:420px;">
         <h2 id="report-status-modal-title" style="color:#fca5a5;margin:0 0 10px 0;font-size:1.05em;font-weight:900;"></h2>
@@ -2217,6 +2226,12 @@
                 <input type="text" id="domain-search-input" oninput="window.onDomainSearchInput(this.value)" data-i18n-placeholder="searchPlaceholder" style="flex:1;min-width:0;background:#0f172a;border:1.5px solid #334155;border-radius:9px;padding:9px 10px;color:#e2e8f0;font-size:0.78em;">
                 <button type="button" id="favorites-filter-toggle" onclick="window.toggleFavoritesFilter()" aria-label="Sadece favorileri göster" style="flex-shrink:0;padding:0 12px;border-radius:9px;border:1.5px solid #f59e0b;background:rgba(245,158,11,0.1);color:#fbbf24;font-size:1em;cursor:pointer;">☆</button>
             </div>
+            <!-- YENİ: Fiyat aralığı filtresi (min/max Pi). -->
+            <div style="display:flex;gap:6px;margin-bottom:6px;align-items:center;">
+                <input type="number" id="price-min-input" min="0" oninput="window.onPriceRangeInput()" data-i18n-placeholder="priceMinPlaceholder" style="flex:1;min-width:0;background:#0f172a;border:1.5px solid #334155;border-radius:9px;padding:8px 9px;color:#e2e8f0;font-size:0.76em;">
+                <span style="color:#64748b;font-size:0.75em;flex-shrink:0;">—</span>
+                <input type="number" id="price-max-input" min="0" oninput="window.onPriceRangeInput()" data-i18n-placeholder="priceMaxPlaceholder" style="flex:1;min-width:0;background:#0f172a;border:1.5px solid #334155;border-radius:9px;padding:8px 9px;color:#e2e8f0;font-size:0.76em;">
+            </div>
             <!-- DÜZENLENDİ: Öncesinde sıralama (tam genişlik select), bir
                  etiket satırı, ve kategori filtresi (tam genişlik buton)
                  alt alta 3 ayrı satır olarak duruyordu — dağınık/amatör
@@ -2911,6 +2926,20 @@ const i18n = {
     imageUploading:"Görsel yükleniyor...",imageUploadFailed:"Görsel yüklenemedi.",
     myActiveListings:"Satıştaki Domainleriniz",mySoldDomainsLabel:"Satılan Domainleriniz",
     searchPlaceholder:"🔍 Domain adı ara...",loginRequiredForFavorite:"Favorilere eklemek için giriş yapmalısınız.",
+    priceMinPlaceholder:"Min Pi",
+    priceMaxPlaceholder:"Max Pi",
+    ownershipVerifiedBadge:"Sahiplik Doğrulandı",
+    ownershipVerifyBtn:"Sahipliği Doğrula",
+    ownershipUnverifyBtn:"Doğrulamayı Kaldır",
+    ownershipVerifiedMsg:"Sahiplik doğrulandı olarak işaretlendi.",
+    ownershipUnverifiedMsg:"Sahiplik doğrulaması kaldırıldı.",
+    priceHistoryLabel:"Geçmiş Satış Fiyatları",
+    sellerProfileUnknownJoinDate:"Bilinmiyor",
+    sellerProfileRatingLabel:"Puan",
+    sellerProfileActiveListingsLabel:"Aktif İlan",
+    sellerProfileSalesLabel:"Satış",
+    sellerProfileJoinedLabel:"Üyelik",
+    recentReviewsLabel:"Son Değerlendirmeler",
     sortNewest:"🆕 En Yeni Eklenenler",sortPriceAsc:"💰 Fiyat: Düşükten Yükseğe",sortPriceDesc:"💰 Fiyat: Yüksekten Düşüğe",sortAz:"🔤 İsim (A-Z)",
     favoriteAddBtn:"Favorilere Ekle",favoriteRemoveBtn:"Favorilerden Çıkar",
     howItWorksMenuItem:"Nasıl Çalışır?",howItWorksTitle:"Nasıl Çalışır ve Nasıl Korunuyorsunuz?",
@@ -3606,6 +3635,20 @@ const i18n = {
     imageUploading:"Uploading image...",imageUploadFailed:"Image upload failed.",
     myActiveListings:"Domains Currently on Sale",mySoldDomainsLabel:"Your Sold Domains",
     searchPlaceholder:"🔍 Search domain name...",loginRequiredForFavorite:"You need to log in to add favorites.",
+    priceMinPlaceholder:"Min Pi",
+    priceMaxPlaceholder:"Max Pi",
+    ownershipVerifiedBadge:"Ownership Verified",
+    ownershipVerifyBtn:"Verify Ownership",
+    ownershipUnverifyBtn:"Remove Verification",
+    ownershipVerifiedMsg:"Marked as ownership verified.",
+    ownershipUnverifiedMsg:"Ownership verification removed.",
+    priceHistoryLabel:"Past Sale Prices",
+    sellerProfileUnknownJoinDate:"Unknown",
+    sellerProfileRatingLabel:"Rating",
+    sellerProfileActiveListingsLabel:"Active Listings",
+    sellerProfileSalesLabel:"Sales",
+    sellerProfileJoinedLabel:"Member Since",
+    recentReviewsLabel:"Recent Reviews",
     sortNewest:"🆕 Newest First",sortPriceAsc:"💰 Price: Low to High",sortPriceDesc:"💰 Price: High to Low",sortAz:"🔤 Name (A-Z)",
     favoriteAddBtn:"Add to Favorites",favoriteRemoveBtn:"Remove from Favorites",
     howItWorksMenuItem:"How It Works",howItWorksTitle:"How It Works & How You're Protected",
@@ -4287,6 +4330,19 @@ window.onDomainSearchInput=function(val){
     clearTimeout(domainSearchDebounceTimer);
     domainSearchDebounceTimer=setTimeout(()=>{ domainSearchQuery=val.trim().toLowerCase(); debouncedRender(); },200);
 };
+// YENİ: Fiyat aralığı filtresi.
+let priceMinFilter=null, priceMaxFilter=null;
+let priceRangeDebounceTimer=null;
+window.onPriceRangeInput=function(){
+    clearTimeout(priceRangeDebounceTimer);
+    priceRangeDebounceTimer=setTimeout(()=>{
+        const minVal=document.getElementById('price-min-input').value;
+        const maxVal=document.getElementById('price-max-input').value;
+        priceMinFilter = minVal!==''&&!isNaN(minVal) ? Number(minVal) : null;
+        priceMaxFilter = maxVal!==''&&!isNaN(maxVal) ? Number(maxVal) : null;
+        debouncedRender();
+    },250);
+};
 window.toggleFavoritesFilter=function(){
     showOnlyFavorites=!showOnlyFavorites;
     const btn=document.getElementById('favorites-filter-toggle');
@@ -4719,7 +4775,21 @@ window.openDomainDetail=function(domainName){
     rows+=row('🏷️',t('detailFieldType'),typeLabel(domain.type));
     rows+=row('💰',t('detailFieldPrice'),`${data.price} Pi`,statusColor,true);
     rows+=row('📌',t('detailFieldStatus'),statusLabel,statusColor,true);
-    rows+=row('👤',t('detailFieldSellerUser'),data.sellerUsername?('@'+data.sellerUsername+' '+piVerifiedBadge()):t('systemSellerLabel'));
+    const sellerClickable=data.sellerUsername?`<span onclick="window.openSellerProfile('${data.sellerUsername.replace(/'/g,"\\'")}')" style="cursor:pointer;text-decoration:underline;text-decoration-style:dotted;">@${escapeHtml(data.sellerUsername)}</span> ${piVerifiedBadge()}`:t('systemSellerLabel');
+    // YENİ: Admin, satıcının domain sahipliğini kanıtladığını (ownershipProof)
+    // fiilen inceleyip onayladıysa bu rozet gösteriliyor — alıcıya ek güven.
+    const ownershipBadge=data.ownershipVerified?` <span style="background:rgba(59,130,246,0.15);border:1px solid #3b82f6;color:#93c5fd;font-size:0.62em;font-weight:900;padding:2px 7px;border-radius:20px;white-space:nowrap;">🛡️ ${t('ownershipVerifiedBadge')}</span>`:'';
+    rows+=row('👤',t('detailFieldSellerUser'),sellerClickable+ownershipBadge);
+    rows+=`<div id="detail-price-history-row" style="display:none;"></div>`;
+    fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'get_domain_price_history',domainName})})
+        .then(r=>r.json()).then(res=>{
+            const el=document.getElementById('detail-price-history-row');
+            if(!el||!res.success||!res.history||!res.history.length) return;
+            const locale2=currentLang==='en'?'en-GB':'tr-TR';
+            const items=res.history.map(h=>`<span style="background:#1e293b;border-radius:6px;padding:2px 8px;white-space:nowrap;">${h.price} Pi <span style="color:#64748b;">· ${new Date(h.at).toLocaleDateString(locale2,{day:'2-digit',month:'2-digit',year:'2-digit'})}</span></span>`).join('');
+            el.style.display='flex'; el.style.flexDirection='column'; el.style.gap='4px';
+            el.innerHTML=`<span style="color:#64748b;font-weight:700;font-size:0.85em;">📈 ${t('priceHistoryLabel')}:</span><div style="display:flex;gap:5px;flex-wrap:wrap;font-size:0.72em;color:#cbd5e1;">${items}</div>`;
+        }).catch(()=>{});
     rows+=`<div id="detail-seller-rating-row" style="display:none;"></div>`;
     if(data.sellerUsername){
         fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'get_seller_rating',sellerUsername:data.sellerUsername})})
@@ -4773,8 +4843,64 @@ window.openDomainDetail=function(domainName){
         actionHtml+=`<div style="margin-top:8px;padding:7px 10px;border-radius:8px;font-size:0.68em;font-weight:800;text-align:center;${isMine?'background:rgba(16,185,129,0.15);border:1px solid #10b981;color:#6ee7b7;':'background:rgba(148,163,184,0.12);border:1px solid #64748b;color:#94a3b8;'}">${isMine?t('reservedForYouMsg')(minutesLeft):t('reservedForOtherMsg')(minutesLeft)}</div>`;
     }
     if(!data.sold&&isAuth){actionHtml+=`<button onclick="if(domainData['${domainName}']&&domainData['${domainName}'].sellerUsername===currentUser){showToast(t('cannotOfferOwnDomain'));}else{window.openOfferModal('${domainName}');}" style="width:100%;padding:9px;margin-top:8px;border-radius:9px;border:1.5px solid #f59e0b;background:rgba(245,158,11,0.1);color:#fbbf24;font-weight:800;font-size:0.78em;cursor:pointer;">💬 ${t('makeOfferBtn')}</button>`;}
+    // YENİ (admin-only): satıcının domain sahipliğini kanıtlayan belgeyi
+    // (ownershipProof, sell_request onayı sırasında toplanmıştı) fiilen
+    // inceleyip "Sahiplik Doğrulandı" rozetini açıp kapatabiliyor.
+    if(isAuth&&currentUser===APP_CONFIG.adminUsername&&!window._viewAsUserMode){
+        const isVerified=!!data.ownershipVerified;
+        actionHtml+=`<button onclick="window.toggleOwnershipVerified('${domainName}',${!isVerified})" style="width:100%;padding:9px;margin-top:8px;border-radius:9px;border:1.5px solid ${isVerified?'#64748b':'#3b82f6'};background:${isVerified?'rgba(100,116,139,0.12)':'rgba(59,130,246,0.12)'};color:${isVerified?'#94a3b8':'#93c5fd'};font-weight:800;font-size:0.78em;cursor:pointer;">${isVerified?'❌ '+t('ownershipUnverifyBtn'):'🛡️ '+t('ownershipVerifyBtn')}</button>`;
+    }
     actionEl.innerHTML=actionHtml;
     document.getElementById('domain-detail-modal').style.display='flex';
+};
+
+window.toggleOwnershipVerified=async function(domainName,verified){
+    try{
+        const r=await fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'toggle_ownership_verified',domainName,verified,accessToken:piAccessToken})});
+        const result=await r.json();
+        if(!r.ok||!result.success){showToast(result.error||t('genericError'));return;}
+        showToast(verified?t('ownershipVerifiedMsg'):t('ownershipUnverifiedMsg'));
+        window.openDomainDetail(domainName);
+    }catch(e){showToast(t('genericError'));}
+};
+
+// YENİ: Satıcı profili — kullanıcı adına tıklayınca puan/rozet/aktif ilan
+// sayısı/üyelik tarihini gösteren bir mini profil kartı.
+window.openSellerProfile=async function(username){
+    const modal=document.getElementById('seller-profile-modal');
+    const body=document.getElementById('seller-profile-body');
+    body.innerHTML=`<p style="font-size:0.8em;opacity:0.5;text-align:center;padding:20px 0;">${t('loadingLabel')}</p>`;
+    modal.style.display='flex';
+    document.getElementById('seller-profile-username').textContent='@'+username;
+    try{
+        const r=await fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'get_seller_rating',sellerUsername:username})});
+        const res=await r.json();
+        if(!res.success){ body.innerHTML=`<p style="color:#f87171;font-size:0.8em;text-align:center;">${t('genericError')}</p>`; return; }
+        const locale=currentLang==='en'?'en-GB':'tr-TR';
+        const joinedStr=res.joinedAt?new Date(res.joinedAt).toLocaleDateString(locale,{day:'2-digit',month:'long',year:'numeric'}):t('sellerProfileUnknownJoinDate');
+        const ratingText=res.count>0?`⭐ ${res.avg} <span style="color:#64748b;font-size:0.75em;">(${res.count})</span>`:t('noRatingsYet');
+        const trustedBadge=res.isTrusted?`<span style="background:rgba(16,185,129,0.15);border:1px solid #10b981;color:#6ee7b7;font-size:0.65em;font-weight:900;padding:3px 9px;border-radius:20px;">✅ ${t('trustedSellerBadge')}</span>`:'';
+        const tierMap={gold:['🏅',t('sellerTierGold'),'#fbbf24','rgba(251,191,36,0.15)'],silver:['🥈',t('sellerTierSilver'),'#cbd5e1','rgba(203,213,225,0.12)'],bronze:['🥉',t('sellerTierBronze'),'#d97706','rgba(217,119,6,0.12)']};
+        const tierInfo=res.sellerTier&&tierMap[res.sellerTier];
+        const tierBadge=tierInfo?`<span style="background:${tierInfo[3]};border:1px solid ${tierInfo[2]};color:${tierInfo[2]};font-size:0.65em;font-weight:900;padding:3px 9px;border-radius:20px;">${tierInfo[0]} ${tierInfo[1]}</span>`:'';
+        const statBox=(icon,label,value)=>`<div style="flex:1;background:#0f172a;border:1px solid #334155;border-radius:9px;padding:10px 6px;text-align:center;"><div style="font-size:1.3em;">${icon}</div><div style="font-size:0.95em;font-weight:900;color:#e2e8f0;margin:2px 0;">${value}</div><div style="font-size:0.62em;color:#64748b;font-weight:700;">${label}</div></div>`;
+        let reviewsHtml='';
+        if(res.recentReviews&&res.recentReviews.length){
+            reviewsHtml=`<div style="margin-top:12px;"><div style="font-size:0.7em;color:#64748b;font-weight:800;margin-bottom:6px;text-transform:uppercase;">${t('recentReviewsLabel')}</div><div style="display:flex;flex-direction:column;gap:6px;">`+
+                res.recentReviews.map(rv=>`<div style="background:#0f172a;border:1px solid #334155;border-radius:8px;padding:8px;font-size:0.78em;"><span style="color:#fbbf24;">${'★'.repeat(rv.stars)}${'☆'.repeat(5-rv.stars)}</span> <span style="color:#cbd5e1;">"${escapeHtml(rv.comment)}"</span></div>`).join('')+
+                `</div></div>`;
+        }
+        body.innerHTML=`
+            <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;">${trustedBadge}${tierBadge}</div>
+            <div style="display:flex;gap:8px;margin-bottom:10px;">
+                ${statBox('⭐',t('sellerProfileRatingLabel'),ratingText)}
+                ${statBox('🏷️',t('sellerProfileActiveListingsLabel'),res.activeListings||0)}
+                ${statBox('✅',t('sellerProfileSalesLabel'),res.salesCount||0)}
+            </div>
+            <div style="font-size:0.72em;color:#94a3b8;">🗓️ ${t('sellerProfileJoinedLabel')}: <span style="color:#e2e8f0;font-weight:700;">${joinedStr}</span></div>
+            ${reviewsHtml}
+        `;
+    }catch(e){ body.innerHTML=`<p style="color:#f87171;font-size:0.8em;text-align:center;">${t('genericError')}</p>`; }
 };
 
 // SATIŞ ÖNERİSİ DETAY (Admin) — başlık/açıklama formatında sıralı gösterim
@@ -6818,6 +6944,13 @@ function render(){
     // Favoriler filtresi
     if(showOnlyFavorites){
         sortedDomains = sortedDomains.filter(d=>userFavorites.has(d.name));
+    }
+    // YENİ: Fiyat aralığı filtresi.
+    if(priceMinFilter!==null){
+        sortedDomains = sortedDomains.filter(d=>priceOf(d)>=priceMinFilter);
+    }
+    if(priceMaxFilter!==null){
+        sortedDomains = sortedDomains.filter(d=>priceOf(d)<=priceMaxFilter);
     }
     // GÜVENLİK/GÖRÜNÜRLÜK: Pasife alınmış (ödemesi kesinleşmiş, satıştan
     // kaldırılmış) domainler artık admin'e özel değil — herkes "Pasif"
