@@ -4688,8 +4688,11 @@ async function handlerImpl(req, res) {
         // (dolayısıyla herhangi bir para hareketinden) ÖNCEYE koyuyoruz —
         // hem net bir hata mesajı dönüyor hem de kullanıcı boşuna Pi
         // cüzdanında onay vermiş olmuyor.
+        // İSTİSNA: sadece admin, kendi test/deneme amaçlı satın alımlarını
+        // yapabilsin diye bu kontrolden BİLEREK muaf tutuluyor — normal
+        // kullanıcılar için engel aynen geçerli.
         const requesterUsername = await getRealUsername(accessToken);
-        if (dData.sellerUsername && requesterUsername && dData.sellerUsername === requesterUsername) {
+        if (dData.sellerUsername && requesterUsername && dData.sellerUsername === requesterUsername && requesterUsername !== ADMIN_USERNAME) {
           return res.status(403).json({ error: "Bu domainin satıcısı sizsiniz — kendi ilanınızı satın alamazsınız.", ownListing: true });
         }
         // Anlaşılan teklif sonrası öncelik penceresi: bu süre boyunca domain
@@ -4791,7 +4794,9 @@ async function handlerImpl(req, res) {
           // katmanı olarak) tekrarlanıyor — teorik olarak approve ile
           // complete arasındaki dar zaman diliminde sellerUsername
           // değişmiş olabilir ya da approve adımı bir şekilde atlanmış olabilir.
-          if (domainSnap.data().sellerUsername && domainSnap.data().sellerUsername === username) {
+          // İSTİSNA: admin için burada da aynı muafiyet geçerli (bkz. yukarı,
+          // 'approve' aşamasındaki aynı istisna).
+          if (domainSnap.data().sellerUsername && domainSnap.data().sellerUsername === username && username !== ADMIN_USERNAME) {
             return { ok: false, reason: 'own_listing' };
           }
           // Rezervasyon kontrolü BURADA (transaction içinde) da tekrarlanıyor
