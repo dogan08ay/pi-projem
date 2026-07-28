@@ -135,7 +135,13 @@ async function deleteListingReportsForDomain(db, domainName) {
 // bundan hiç haberdar olmuyordu, uygulamayı açıp kontrol etmesi gerekiyordu.
 async function notifyFavoriters(db, domainName, { excludeUsername, type, title, body } = {}) {
   try {
-    const snap = await db.collection('users').where('favorites', 'array-contains', domainName).get();
+    // BUG DÜZELTMESİ: favoriler 'toggle_favorite' action'ında
+    // 'user_profiles' koleksiyonuna yazılıyor (bkz. aşağıdaki toggle_favorite
+    // action'ı), ama bu sorgu yanlışlıkla 'users' koleksiyonunu tarıyordu —
+    // hiçbir hata vermeden her zaman boş sonuç döndüğü için, favori
+    // bildirimleri (fiyat düştü/satıldı/tekrar satışa çıktı) sessizce hiç
+    // kimseye gitmiyordu.
+    const snap = await db.collection('user_profiles').where('favorites', 'array-contains', domainName).get();
     if (snap.empty) return;
     for (const doc of snap.docs) {
       const username = doc.id;
@@ -844,6 +850,36 @@ async function handlerImpl(req, res) {
       return res.status(200).json({ success: true, hidden: !!hide });
     } catch (e) {
       console.error("toggle_hide_domain hatası:", e);
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  // ══════════════════════════════════════════════════════════════════════
+  //  ADMIN: "Sahiplik Doğrulandı" Rozeti
+  //  Domain eklerken sell_requests'e bir 'ownershipProof' metni zaten
+  //  toplanıyordu, ama bunu admin'in incelediğini/onayladığını gösteren
+  //  ayrı bir görsel işaret yoktu — alıcı, satıcının domaine gerçekten
+  //  sahip olduğunu kanıtladığını hiçbir şekilde göremiyordu. Bu action
+  //  sadece o kanıtın admin tarafından fiilen incelenip onaylandığını
+  //  işaretliyor; domainin kendisini değiştirmiyor.
+  // ══════════════════════════════════════════════════════════════════════
+  if (action === 'toggle_ownership_verified') {
+    const { domainName, verified } = req.body;
+    const isAdmin = await verifyAdmin(accessToken);
+    if (!isAdmin) return res.status(403).json({ error: "Yetki yok" });
+    if (!domainName) return res.status(400).json({ error: "Geçersiz domain adı" });
+    try {
+      const db = getDb();
+      const adminUsername = await getRealUsername(accessToken);
+      await db.collection('domains').doc(domainName).set({
+        ownershipVerified: !!verified,
+        ownershipVerifiedAt: verified ? Date.now() : null,
+        ownershipVerifiedBy: verified ? adminUsername : null
+      }, { merge: true });
+      await logAdminAction(adminUsername, 'toggle_ownership_verified', `${domainName}: ${verified ? 'doğrulandı' : 'doğrulama kaldırıldı'}`);
+      return res.status(200).json({ success: true, ownershipVerified: !!verified });
+    } catch (e) {
+      console.error("toggle_ownership_verified hatası:", e);
       return res.status(500).json({ error: e.message });
     }
   }
@@ -3620,12 +3656,19 @@ async function handlerImpl(req, res) {
       // tara, buyerRating.comment dolu olanları en yeniden eskiye sırala.
       let recentReviews = [];
       let salesCount = 0;
+      let activeListings = 0;
+      let joinedAt = null;
       try {
         const domSnap = await db.collection('domains').where('sellerUsername', '==', sellerUsername).limit(100).get();
         const withComments = [];
         domSnap.forEach(dd => {
           const dData = dd.data();
           if (dData.sold) salesCount++;
+          // YENİ: "Üyelik" (satıcı profili sayfası) için — kaç aktif ilanı
+          // var ve platforma katılalı ne kadar oldu. Ekstra bir Firestore
+          // okuması gerektirmiyor, zaten çekilen domSnap'ten hesaplanıyor.
+          if (!dData.sold && dData.deleted !== true && dData.hidden !== true) activeListings++;
+          if (dData.createdAt && (joinedAt === null || dData.createdAt < joinedAt)) joinedAt = dData.createdAt;
           const br = dData.buyerRating;
           if (br && br.comment) withComments.push({ stars: br.stars, comment: br.comment, at: br.at, domain: dd.id });
         });
@@ -3638,7 +3681,33 @@ async function handlerImpl(req, res) {
       else if (salesCount >= SELLER_TIER_SILVER) sellerTier = 'silver';
       else if (salesCount >= SELLER_TIER_BRONZE) sellerTier = 'bronze';
 
-      return res.status(200).json({ success: true, avg, count, recentReviews, isTrusted, salesCount, sellerTier });
+      return res.status(200).json({ success: true, avg, count, recentReviews, isTrusted, salesCount, sellerTier, activeListings, joinedAt });
+    } catch (e) {
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  // ══════════════════════════════════════════════════════════════════════
+  //  Domain Bazlı Fiyat Geçmişi (herkese açık, giriş gerektirmez)
+  //  Bir domain daha önce satılıp tekrar satışa çıkmış olabilir — alıcıya
+  //  "bu domain geçmişte kaça satıldı" bilgisini gösteriyoruz. global_sales
+  //  koleksiyonu zaten her tamamlanmış satışı domain adına göre tutuyor,
+  //  bu yüzden yeni bir veri yapısına gerek yok, sadece bu domaine ait
+  //  kayıtları filtreleyip döndürüyoruz.
+  // ══════════════════════════════════════════════════════════════════════
+  if (action === 'get_domain_price_history') {
+    const { domainName } = req.body;
+    if (!domainName) return res.status(400).json({ error: "Geçersiz domain adı" });
+    try {
+      const db = getDb();
+      const snap = await db.collection('global_sales').where('domain', '==', domainName).get();
+      const history = [];
+      snap.forEach(d => {
+        const x = d.data();
+        history.push({ price: x.price, at: x.at || 0 });
+      });
+      history.sort((a, b) => (b.at || 0) - (a.at || 0));
+      return res.status(200).json({ success: true, history: history.slice(0, 20) });
     } catch (e) {
       return res.status(500).json({ error: e.message });
     }
