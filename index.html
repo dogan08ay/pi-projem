@@ -4859,6 +4859,13 @@ window.toggleOwnershipVerified=async function(domainName,verified){
         const r=await fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'toggle_ownership_verified',domainName,verified,accessToken:piAccessToken})});
         const result=await r.json();
         if(!r.ok||!result.success){showToast(result.error||t('genericError'));return;}
+        // BUG DÜZELTMESİ: öncesinde burada doğrudan openDomainDetail çağrılıyordu
+        // ama yerel domainData önbelleği henüz güncellenmemiş oluyordu — Firestore
+        // dinleyicisi (onSnapshot) güncellemeyi biraz gecikmeli getirdiği için,
+        // modal her seferinde ESKİ durumu gösteriyor, buton hiç "Doğrulandı"ya
+        // dönmüyordu; bu yüzden "Doğrula" sonsuza kadar tekrar tekrar tıklanabilir
+        // görünüyordu. Şimdi yerel önbellek anında güncelleniyor.
+        if(domainData[domainName]) domainData[domainName].ownershipVerified=verified;
         showToast(verified?t('ownershipVerifiedMsg'):t('ownershipUnverifiedMsg'));
         window.openDomainDetail(domainName);
     }catch(e){showToast(t('genericError'));}
