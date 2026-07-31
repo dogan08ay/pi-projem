@@ -1050,17 +1050,30 @@
 .tour-arrow path {
   fill: none;
   stroke: #22c55e;
-  stroke-width: 2.5;
+  stroke-width: 3;
   stroke-linecap: round;
-  stroke-dasharray: 7 6;
-  filter: drop-shadow(0 0 5px rgba(34,197,94,0.9)) drop-shadow(0 0 2px rgba(34,197,94,0.9));
-  animation: tour-arrow-flow 0.6s linear infinite;
+  stroke-dasharray: 9 7;
+  filter: drop-shadow(0 0 6px rgba(34,197,94,0.9)) drop-shadow(0 0 2px rgba(34,197,94,0.9));
+  animation: tour-arrow-flow 0.7s linear infinite;
 }
-.tour-arrow circle.tour-arrow-dot {
+.tour-arrow circle.tour-arrow-dot,
+.tour-arrow circle.tour-arrow-end {
   fill: #22c55e;
-  filter: drop-shadow(0 0 5px rgba(34,197,94,0.9));
+  filter: drop-shadow(0 0 6px rgba(34,197,94,0.95));
 }
-@keyframes tour-arrow-flow { to { stroke-dashoffset: -13; } }
+.tour-arrow circle.tour-arrow-end {
+  animation: tour-end-pulse 1s ease-in-out infinite;
+}
+@keyframes tour-end-pulse { 0%,100%{ r:5; opacity:1; } 50%{ r:7; opacity:0.6; } }
+@keyframes tour-arrow-flow { to { stroke-dashoffset: -16; } }
+.tour-hand {
+  position: fixed; z-index: 10004;
+  font-size: 22px; line-height: 1; pointer-events: none;
+  filter: drop-shadow(0 0 6px rgba(34,197,94,0.9));
+  transition: top 0.35s ease, left 0.35s ease;
+  animation: tour-hand-tap 1s ease-in-out infinite;
+}
+@keyframes tour-hand-tap { 0%,100%{ transform: translateY(0) rotate(var(--tour-hand-rot,0deg)); } 50%{ transform: translateY(3px) rotate(var(--tour-hand-rot,0deg)); } }
 .tour-tooltip h4 { margin: 0 0 6px 0; font-size: 0.95em; color: #a5b4fc; font-weight: 900; }
 .tour-tooltip p { margin: 0 0 12px 0; font-size: 0.8em; color: #cbd5e1; line-height: 1.5; }
 .tour-dots { display:flex; gap:5px; margin-bottom: 10px; }
@@ -8419,6 +8432,7 @@ function tourCleanup() {
     tourEls?.highlight?.remove();
     tourEls?.tooltip?.remove();
     tourEls?.arrowSvg?.remove();
+    tourEls?.hand?.remove();
     tourEls = null;
     window.removeEventListener('resize', tourReposition);
 }
@@ -8520,25 +8534,40 @@ function tourReposition() {
     }
 }
 
-// Tanıtım kartından, o an anlatılan menüye doğru kıvrımlı (navigasyon tarzı) bir ok çizer.
+// Tanıtım kartından, o an anlatılan menüye doğru tek, yumuşak bir kavisle
+// (referans görseldeki gibi: başlangıçta parmak/işaret ikonu, bitişte
+// yanıp sönen bir nokta) bağlanan ok çizer.
 function tourUpdateArrow(tooltipRect, highlightRect) {
     const tcx = tooltipRect.left + tooltipRect.width / 2;
     const hcx = highlightRect.left + highlightRect.width / 2;
-    let sx, sy, ex, ey;
+    let sx, sy, ex, ey, goingDown;
     if (tooltipRect.top < highlightRect.top) {
         // Kart hedefin üstünde: oku karttan aşağı, hedefe doğru çiz
-        sx = tcx; sy = tooltipRect.bottom + 2;
-        ex = hcx; ey = highlightRect.top - 6;
+        sx = tcx; sy = tooltipRect.bottom - 4;
+        ex = hcx; ey = highlightRect.top - 8;
+        goingDown = true;
     } else {
         // Kart hedefin altında: oku karttan yukarı, hedefe doğru çiz
-        sx = tcx; sy = tooltipRect.top - 2;
-        ex = hcx; ey = highlightRect.bottom + 6;
+        sx = tcx; sy = tooltipRect.top + 4;
+        ex = hcx; ey = highlightRect.bottom + 8;
+        goingDown = false;
     }
     const dx = ex - sx, dy = ey - sy;
-    const curve = Math.max(-70, Math.min(70, dx * 0.6)) || (dy > 0 ? 45 : -45);
-    const cx1 = sx + curve, cy1 = sy + dy * 0.3;
-    const cx2 = ex - curve, cy2 = ey - dy * 0.3;
+    // Tek yumuşak S-kavis: yatayda hedefe yaklaşırken, dikeyde düz akan tek bir eğri.
+    const cx1 = sx + dx * 0.15, cy1 = sy + dy * 0.55;
+    const cx2 = sx + dx * 0.85, cy2 = sy + dy * 0.45;
     tourEls.arrowPath.setAttribute('d', `M ${sx} ${sy} C ${cx1} ${cy1}, ${cx2} ${cy2}, ${ex} ${ey}`);
+
+    if (tourEls.arrowEnd) { tourEls.arrowEnd.setAttribute('cx', ex); tourEls.arrowEnd.setAttribute('cy', ey); }
+
+    // Başlangıç noktasına, kavisin yönüne göre hafif döndürülmüş bir "dokun" eli yerleştir.
+    if (tourEls.hand) {
+        const angleDeg = Math.atan2(cy1 - sy, cx1 - sx) * 180 / Math.PI;
+        const rot = goingDown ? (angleDeg + 90) : (angleDeg - 90);
+        tourEls.hand.style.setProperty('--tour-hand-rot', rot + 'deg');
+        tourEls.hand.style.left = (sx - 11) + 'px';
+        tourEls.hand.style.top = (goingDown ? sy - 6 : sy - 26) + 'px';
+    }
     if (tourEls.arrowDot) { tourEls.arrowDot.setAttribute('cx', sx); tourEls.arrowDot.setAttribute('cy', sy); }
 }
 
@@ -8606,18 +8635,23 @@ async function startOnboardingTour() {
     overlay.addEventListener('click', tourFinish); // ekrana dokununca turu kapat (güvenlik ağı)
     const highlight = document.createElement('div');
     highlight.className = 'tour-highlight';
-    document.body.insertAdjacentHTML('beforeend', `<svg class="tour-arrow" id="tour-arrow-svg"><defs><marker id="tour-arrow-head" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 Z" fill="#22c55e"/></marker></defs><circle class="tour-arrow-dot" id="tour-arrow-dot" r="4"/><path id="tour-arrow-path" marker-end="url(#tour-arrow-head)"/></svg>`);
+    document.body.insertAdjacentHTML('beforeend', `<svg class="tour-arrow" id="tour-arrow-svg"><path id="tour-arrow-path"/><circle class="tour-arrow-dot" id="tour-arrow-dot" r="3.5"/><circle class="tour-arrow-end" id="tour-arrow-end" r="5"/></svg>`);
     const arrowSvg = document.getElementById('tour-arrow-svg');
     const arrowPath = document.getElementById('tour-arrow-path');
     const arrowDot = document.getElementById('tour-arrow-dot');
+    const arrowEnd = document.getElementById('tour-arrow-end');
+    const hand = document.createElement('div');
+    hand.className = 'tour-hand';
+    hand.textContent = '👆';
     const tooltip = document.createElement('div');
     tooltip.className = 'tour-tooltip';
     tooltip.addEventListener('click', (e) => e.stopPropagation());
 
     document.body.appendChild(overlay);
     document.body.appendChild(highlight);
+    document.body.appendChild(hand);
     document.body.appendChild(tooltip);
-    tourEls = { overlay, highlight, tooltip, arrowSvg, arrowPath, arrowDot };
+    tourEls = { overlay, highlight, tooltip, arrowSvg, arrowPath, arrowDot, arrowEnd, hand };
 
     window.addEventListener('resize', tourReposition);
     tourRenderStep();
