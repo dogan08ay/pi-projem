@@ -1038,11 +1038,14 @@
 }
 .tour-tooltip h4 { margin: 0 0 6px 0; font-size: 0.95em; color: #a5b4fc; font-weight: 900; }
 .tour-tooltip p { margin: 0 0 12px 0; font-size: 0.8em; color: #cbd5e1; line-height: 1.5; }
-.tour-dots { display:flex; gap:5px; margin-bottom: 10px; }
-.tour-dot { width:6px; height:6px; border-radius:50%; background:rgba(148,163,184,0.35); }
-.tour-dot.active { background:#818cf8; width:16px; border-radius:4px; }
+.tour-progress-row { display:flex; align-items:center; gap:8px; margin-bottom: 10px; }
+.tour-progress-track { flex:1; height:5px; border-radius:3px; background:rgba(148,163,184,0.2); overflow:hidden; }
+.tour-progress-fill { height:100%; border-radius:3px; background:linear-gradient(90deg,#6366f1,#818cf8); transition:width 0.3s ease; }
+.tour-progress-text { font-size:0.68em; font-weight:800; color:#94a3b8; white-space:nowrap; }
 .tour-actions { display:flex; justify-content:space-between; align-items:center; gap:8px; }
+.tour-actions-right { display:flex; align-items:center; gap:6px; }
 .tour-skip { background:none; border:none; color:#64748b; font-size:0.72em; font-weight:700; cursor:pointer; padding:6px 4px; }
+.tour-back { background:rgba(148,163,184,0.12); border:1px solid rgba(148,163,184,0.35); color:#cbd5e1; font-size:0.72em; font-weight:800; cursor:pointer; padding:8px 12px; border-radius:8px; }
 .tour-next { background:linear-gradient(135deg,#6366f1,#818cf8); border:none; color:#fff; font-size:0.75em; font-weight:800; cursor:pointer; padding:8px 16px; border-radius:8px; }
 
 /* ── Toast Bildirim Sistemi (native alert() yerine) ───────────────────── */
@@ -3381,10 +3384,12 @@ const i18n = {
     tourStepShareTitle:"Uygulamayı Paylaş",
     tourStepShareDesc:"Linki veya QR kodu paylaşarak arkadaşlarınızı .pi domain pazarına davet edin — büyümemize yardımcı olun!",
     tourNext:"İleri",
+    tourBack:"Geri",
     tourFinish:"Anladım",
     tourSkip:"Geç",
     tourReplay:"Uygulama Turu",
     tourNotReady:"Uygulama turu şu anda başlatılamadı. Lütfen sayfanın tamamen yüklenmesini bekleyip tekrar deneyin.",
+    tourExitConfirm:"Turu kapatmak için tekrar dokunun",
   },
   en: {
     menu:"Menu",account:"Account",preferences:"Preferences",connected:"Connected",
@@ -4102,10 +4107,12 @@ const i18n = {
     tourStepShareTitle:"Share the App",
     tourStepShareDesc:"Share the link or QR code to invite friends to the .pi domain marketplace — help us grow!",
     tourNext:"Next",
+    tourBack:"Back",
     tourFinish:"Got it",
     tourSkip:"Skip",
     tourReplay:"App Tour",
     tourNotReady:"The app tour couldn't start right now. Please wait for the page to fully load and try again.",
+    tourExitConfirm:"Tap again to close the tour",
   }
 };
 let currentLang = localStorage.getItem('w3dg_lang') || 'tr';
@@ -8388,6 +8395,23 @@ const TOUR_STEPS = [
 ];
 let tourStepIndex = 0;
 let tourEls = null;
+let tourExitConfirmPending = false;
+let tourExitConfirmTimer = null;
+
+// Ekrana (overlay'e) yanlışlıkla dokunulduğunda turu ANINDA kapatmak yerine,
+// ilk dokunuşta bir uyarı gösterip yalnızca KISA SÜRE İÇİNDE gelen ikinci bir
+// dokunuşta kapatıyoruz — kazara kapanmayı önleyen basit bir güvenlik ağı.
+function tourHandleOverlayClick() {
+    if (tourExitConfirmPending) {
+        clearTimeout(tourExitConfirmTimer);
+        tourExitConfirmPending = false;
+        tourFinish();
+        return;
+    }
+    tourExitConfirmPending = true;
+    if (typeof showToast === 'function') showToast(t('tourExitConfirm'));
+    tourExitConfirmTimer = setTimeout(() => { tourExitConfirmPending = false; }, 2500);
+}
 
 function tourCleanup() {
     tourEls?.overlay?.remove();
@@ -8396,14 +8420,36 @@ function tourCleanup() {
     tourEls?.hand?.remove();
     tourEls = null;
     window.removeEventListener('resize', tourReposition);
+    if (window.visualViewport) window.visualViewport.removeEventListener('resize', tourReposition);
+    clearTimeout(tourExitConfirmTimer);
+    tourExitConfirmPending = false;
 }
 
 function tourFinish() {
     localStorage.setItem('w3dg_tour_done', '1');
+    // Turun GERÇEKTEN sonuna gelinip "Anladım" mı denildi, yoksa erken mi
+    // "Geç" denildi — bunu cleanup'tan ÖNCE, index sıfırlanmadan kaydediyoruz.
+    const completedFully = tourStepIndex >= TOUR_STEPS.length - 1;
     // Son adım (Paylaş) yan menüyü açık bırakabiliyor — tur bitince kapat.
     const m=document.getElementById('side-menu'),o=document.getElementById('side-menu-overlay');
     if(m&&m.classList.contains('open')){ m.classList.remove('open'); o.classList.remove('open'); }
     tourCleanup();
+
+    // YENİ: Tur baştan sona tamamlandıysa, kullanıcıyı "şimdi ne yapmalıyım"
+    // boşluğunda bırakmamak için doğrudan profil ekranındaki "Başlangıç
+    // Adımların" kontrol listesine yönlendiriyoruz. Sadece giriş yapmış
+    // kullanıcılarda gösterilebildiği için isAuth şartı var.
+    if (completedFully && typeof isAuth !== 'undefined' && isAuth && typeof openProfileModal === 'function') {
+        setTimeout(() => {
+            openProfileModal();
+            // openProfileModal() normalde açık bir yan menüden çağrıldığı için
+            // sonunda toggleSideMenu() çalıştırıp menüyü KAPATIR; burada menü
+            // zaten kapalı olduğundan aynı toggle onu YENİDEN AÇAR — bunu telafi
+            // ediyoruz ki tur sonrası ekranda istenmeden yan menü açılmasın.
+            const m2=document.getElementById('side-menu'), o2=document.getElementById('side-menu-overlay');
+            if(m2&&m2.classList.contains('open')){ m2.classList.remove('open'); o2.classList.remove('open'); }
+        }, 250);
+    }
 }
 
 // Hedef elementin DOM'da belirip KONUMUNUN artık değişmediğini (yani üzerinde
@@ -8570,15 +8616,21 @@ async function tourRenderStep() {
     }
 
     const isLast = tourStepIndex === TOUR_STEPS.length - 1;
-    const dots = TOUR_STEPS.map((_, i) => `<div class="tour-dot ${i === tourStepIndex ? 'active' : ''}"></div>`).join('');
+    const progressPct = ((tourStepIndex + 1) / TOUR_STEPS.length * 100).toFixed(1);
 
     tourEls.tooltip.innerHTML = `
         <h4>${t(step.titleKey)}</h4>
         <p>${t(step.descKey)}</p>
-        <div class="tour-dots">${dots}</div>
+        <div class="tour-progress-row">
+            <div class="tour-progress-track"><div class="tour-progress-fill" style="width:${progressPct}%"></div></div>
+            <div class="tour-progress-text">${tourStepIndex + 1}/${TOUR_STEPS.length}</div>
+        </div>
         <div class="tour-actions">
             <button class="tour-skip" onclick="event.stopPropagation();window.tourFinish()">${t('tourSkip')}</button>
-            <button class="tour-next" onclick="event.stopPropagation();window.tourNextStep()">${isLast ? t('tourFinish') : t('tourNext')}</button>
+            <div class="tour-actions-right">
+                ${tourStepIndex > 0 ? `<button class="tour-back" onclick="event.stopPropagation();window.tourPrevStep()">${t('tourBack')}</button>` : ''}
+                <button class="tour-next" onclick="event.stopPropagation();window.tourNextStep()">${isLast ? t('tourFinish') : t('tourNext')}</button>
+            </div>
         </div>`;
 
     requestAnimationFrame(tourReposition);
@@ -8588,6 +8640,11 @@ window.tourNextStep = function() {
     if (!tourEls) return;
     tourStepIndex++;
     if (tourStepIndex >= TOUR_STEPS.length) { tourFinish(); return; }
+    tourRenderStep();
+};
+window.tourPrevStep = function() {
+    if (!tourEls || tourStepIndex <= 0) return;
+    tourStepIndex--;
     tourRenderStep();
 };
 window.tourFinish = tourFinish;
@@ -8608,7 +8665,7 @@ async function startOnboardingTour() {
 
     const overlay = document.createElement('div');
     overlay.className = 'tour-overlay';
-    overlay.addEventListener('click', tourFinish); // ekrana dokununca turu kapat (güvenlik ağı)
+    overlay.addEventListener('click', tourHandleOverlayClick); // ekrana dokununca anında değil, tekrar dokununca kapat
     const highlight = document.createElement('div');
     highlight.className = 'tour-highlight';
     const hand = document.createElement('div');
@@ -8625,6 +8682,10 @@ async function startOnboardingTour() {
     tourEls = { overlay, highlight, tooltip, hand };
 
     window.addEventListener('resize', tourReposition);
+    // YENİ: Mobilde klavye açılması / adres çubuğu gizlenmesi gibi durumlarda
+    // 'resize' her zaman güvenilir tetiklenmeyebiliyor; visualViewport bunun
+    // için daha isabetli bir sinyal.
+    if (window.visualViewport) window.visualViewport.addEventListener('resize', tourReposition);
     tourRenderStep();
 }
 window.startOnboardingTour = startOnboardingTour;
