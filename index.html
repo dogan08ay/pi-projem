@@ -1042,7 +1042,7 @@
   animation: tour-border-march 0.9s linear infinite;
 }
 .tour-arrow {
-  position: fixed; inset: 0; z-index: 10001;
+  position: fixed; inset: 0; z-index: 10003;
   width: 100vw; height: 100vh;
   pointer-events: none;
   overflow: visible;
@@ -8501,8 +8501,17 @@ function tourReposition() {
     Object.assign(tooltip.style, { top: top + 'px', left: left + 'px' });
 
     if (tourEls.arrowPath) {
-        const tRect = tooltip.getBoundingClientRect();
-        const hRect = tourEls.highlight.getBoundingClientRect();
+        // ÖNEMLİ: getBoundingClientRect() burada kullanılmaz. .tour-highlight ve
+        // .tour-tooltip'te top/left için CSS transition tanımlı olduğundan, stil
+        // değiştirildiği anda getBoundingClientRect hâlâ BİR ÖNCEKİ adımın konumunu
+        // döndürüyordu (geçiş animasyonu henüz ilerlemeden ölçülüyordu) — bu yüzden
+        // ok bir önceki menünün yerini gösteriyordu. Bunun yerine, az önce
+        // hesapladığımız HEDEF konumları doğrudan kullanıyoruz; böylece ok her zaman
+        // o anki adımın gerçek/nihai konumuna göre çizilir.
+        const hTop = visTop - pad, hHeight = clampedHeight + pad * 2;
+        const hRect = { left: rect.left - pad, top: hTop, width: rect.width + pad * 2, height: hHeight, bottom: hTop + hHeight };
+        const tHeight = tooltip.offsetHeight;
+        const tRect = { left: left, top: top, width: tooltip.offsetWidth, height: tHeight, bottom: top + tHeight };
         tourUpdateArrow(tRect, hRect);
     }
 }
