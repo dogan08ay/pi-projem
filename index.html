@@ -8536,7 +8536,16 @@ async function tourRenderStep() {
     if (!tourEls) return; // bu arada tur kapatılmış olabilir (ör. skip)
     tourEnsurePrereqs();
     const step = TOUR_STEPS[tourStepIndex];
-    if (typeof step.before === 'function') { try { step.before(); } catch (e) {} }
+    if (typeof step.before === 'function') {
+        try { step.before(); } catch (e) {}
+        // ÖNEMLİ: step.before() bir panel/menü açıyorsa (ör. yan menü), bu panel
+        // CSS transition ile kayarak açılıyor (bkz. .side-menu{transition:transform 0.3s}).
+        // Hedefin konumunu hemen ölçmek, animasyon henüz başlamadan ÖNCEKİ (ör. ekran
+        // dışındaki) konumu yakalıyordu — bu yüzden el işareti bir köşede/ekran
+        // dışında kalıp doğru yeri gösteremiyordu. Ölçümden önce animasyonun
+        // bitmesi için kısa bir süre bekliyoruz.
+        await new Promise(resolve => setTimeout(resolve, 340));
+    }
     const stepIndexAtStart = tourStepIndex;
     // Hedefi anında aramak yerine, hazır olması için kısa süre bekle.
     // Önceki mantık hedefi bulamayınca ANINDA bir sonraki adıma atlıyordu; bu da
