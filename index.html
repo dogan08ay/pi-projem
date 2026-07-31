@@ -8406,21 +8406,36 @@ function tourFinish() {
     tourCleanup();
 }
 
-// Hedef elementin DOM'da belirip anlamlı bir boyut kazanmasını kısa süre bekleyerek kontrol eder.
-// Panel açılış animasyonları / veri yüklemeleri yüzünden eleman anlık olarak hazır olmayabilir;
-// bu fonksiyon olmadan tur bir adım sonra hedefi bulamayınca sessizce kapanıyordu.
-function tourWaitForTarget(selector, maxAttempts = 15, interval = 120) {
+// Hedef elementin DOM'da belirip KONUMUNUN artık değişmediğini (yani üzerinde
+// çalışan her türlü kayma/geçiş animasyonunun — yan menü, sekme geçişi, modal —
+// gerçekten bittiğini) doğrulayarak bekler. Sabit bir süre tahmin etmek yerine
+// art arda birkaç karede aynı konumu görene kadar bekliyoruz: animasyonu olmayan
+// adımlarda neredeyse anında devam eder, animasyonlu adımlarda ise animasyon tam
+// bitene kadar bekleyip HATALI/ERKEN bir konumu asla ölçmez.
+function tourWaitForTarget(selector, maxFrames = 90, requiredStableFrames = 5) {
     return new Promise(resolve => {
-        let attempts = 0;
-        (function check() {
+        let lastRect = null, stableFrames = 0, frame = 0;
+        (function tick() {
+            frame++;
             const el = document.querySelector(selector);
             if (el) {
                 const r = el.getBoundingClientRect();
-                if (r.width >= 10 && r.height >= 10) { resolve(el); return; }
+                if (r.width >= 10 && r.height >= 10) {
+                    if (lastRect &&
+                        Math.abs(r.top - lastRect.top) < 0.5 &&
+                        Math.abs(r.left - lastRect.left) < 0.5 &&
+                        Math.abs(r.width - lastRect.width) < 0.5 &&
+                        Math.abs(r.height - lastRect.height) < 0.5) {
+                        stableFrames++;
+                    } else {
+                        stableFrames = 0;
+                    }
+                    lastRect = r;
+                    if (stableFrames >= requiredStableFrames) { resolve(el); return; }
+                }
             }
-            attempts++;
-            if (attempts >= maxAttempts) { resolve(null); return; }
-            setTimeout(check, interval);
+            if (frame >= maxFrames) { resolve(el || null); return; }
+            requestAnimationFrame(tick);
         })();
     });
 }
@@ -8536,21 +8551,12 @@ async function tourRenderStep() {
     if (!tourEls) return; // bu arada tur kapatılmış olabilir (ör. skip)
     tourEnsurePrereqs();
     const step = TOUR_STEPS[tourStepIndex];
-    if (typeof step.before === 'function') {
-        try { step.before(); } catch (e) {}
-        // ÖNEMLİ: step.before() bir panel/menü açıyorsa (ör. yan menü), bu panel
-        // CSS transition ile kayarak açılıyor (bkz. .side-menu{transition:transform 0.3s}).
-        // Hedefin konumunu hemen ölçmek, animasyon henüz başlamadan ÖNCEKİ (ör. ekran
-        // dışındaki) konumu yakalıyordu — bu yüzden el işareti bir köşede/ekran
-        // dışında kalıp doğru yeri gösteremiyordu. Ölçümden önce animasyonun
-        // bitmesi için kısa bir süre bekliyoruz.
-        await new Promise(resolve => setTimeout(resolve, 340));
-    }
+    if (typeof step.before === 'function') { try { step.before(); } catch (e) {} }
     const stepIndexAtStart = tourStepIndex;
-    // Hedefi anında aramak yerine, hazır olması için kısa süre bekle.
-    // Önceki mantık hedefi bulamayınca ANINDA bir sonraki adıma atlıyordu; bu da
-    // panelin henüz açılmadığı durumlarda arka arkaya adım atlayıp turun
-    // "İleri" denince aniden kapanmasına sebep oluyordu.
+    // Hedefi anında aramak yerine, konumu gerçekten sabitlenene kadar bekle
+    // (bkz. tourWaitForTarget) — panel/menü/sekme geçiş animasyonları veya veri
+    // render'ı yüzünden eleman anlık olarak hazır olmayabilir ya da yanlış
+    // konumda ölçülebilir.
     const target = await tourWaitForTarget(step.selector);
     if (!tourEls || tourStepIndex !== stepIndexAtStart) return; // bu süre zarfında tur değişti/kapandı
     if (!target) {
