@@ -1025,6 +1025,38 @@
   transition: top 0.35s ease, left 0.35s ease;
   box-sizing: border-box;
 }
+.tour-tooltip::before {
+  content: "";
+  position: absolute;
+  inset: -6px;
+  border-radius: 18px;
+  pointer-events: none;
+  background-image:
+    repeating-linear-gradient(90deg, #22c55e 0 9px, transparent 9px 18px),
+    repeating-linear-gradient(90deg, #22c55e 0 9px, transparent 9px 18px),
+    repeating-linear-gradient(180deg, #22c55e 0 9px, transparent 9px 18px),
+    repeating-linear-gradient(180deg, #22c55e 0 9px, transparent 9px 18px);
+  background-size: 18px 2.5px, 18px 2.5px, 2.5px 18px, 2.5px 18px;
+  background-position: 0 0, 0 100%, 0 0, 100% 0;
+  background-repeat: repeat-x, repeat-x, repeat-y, repeat-y;
+  animation: tour-border-march 0.9s linear infinite;
+}
+.tour-arrow {
+  position: fixed; inset: 0; z-index: 10001;
+  width: 100vw; height: 100vh;
+  pointer-events: none;
+  overflow: visible;
+}
+.tour-arrow path {
+  fill: none;
+  stroke: #fbbf24;
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-dasharray: 9 8;
+  filter: drop-shadow(0 0 4px rgba(251,191,36,0.85));
+  animation: tour-arrow-flow 0.7s linear infinite;
+}
+@keyframes tour-arrow-flow { to { stroke-dashoffset: -17; } }
 .tour-tooltip h4 { margin: 0 0 6px 0; font-size: 0.95em; color: #a5b4fc; font-weight: 900; }
 .tour-tooltip p { margin: 0 0 12px 0; font-size: 0.8em; color: #cbd5e1; line-height: 1.5; }
 .tour-dots { display:flex; gap:5px; margin-bottom: 10px; }
@@ -8382,6 +8414,7 @@ function tourCleanup() {
     tourEls?.overlay?.remove();
     tourEls?.highlight?.remove();
     tourEls?.tooltip?.remove();
+    tourEls?.arrowSvg?.remove();
     tourEls = null;
     window.removeEventListener('resize', tourReposition);
 }
@@ -8466,6 +8499,33 @@ function tourReposition() {
     if (top < 8) top = anchorBottom + 14;
     if (top + tooltip.offsetHeight > vh - 8) top = Math.max(8, anchorTop - 14 - tooltip.offsetHeight);
     Object.assign(tooltip.style, { top: top + 'px', left: left + 'px' });
+
+    if (tourEls.arrowPath) {
+        const tRect = tooltip.getBoundingClientRect();
+        const hRect = tourEls.highlight.getBoundingClientRect();
+        tourUpdateArrow(tRect, hRect);
+    }
+}
+
+// Tanıtım kartından, o an anlatılan menüye doğru kıvrımlı (navigasyon tarzı) bir ok çizer.
+function tourUpdateArrow(tooltipRect, highlightRect) {
+    const tcx = tooltipRect.left + tooltipRect.width / 2;
+    const hcx = highlightRect.left + highlightRect.width / 2;
+    let sx, sy, ex, ey;
+    if (tooltipRect.top < highlightRect.top) {
+        // Kart hedefin üstünde: oku karttan aşağı, hedefe doğru çiz
+        sx = tcx; sy = tooltipRect.bottom + 2;
+        ex = hcx; ey = highlightRect.top - 6;
+    } else {
+        // Kart hedefin altında: oku karttan yukarı, hedefe doğru çiz
+        sx = tcx; sy = tooltipRect.top - 2;
+        ex = hcx; ey = highlightRect.bottom + 6;
+    }
+    const dx = ex - sx, dy = ey - sy;
+    const curve = Math.max(-70, Math.min(70, dx * 0.6)) || (dy > 0 ? 45 : -45);
+    const cx1 = sx + curve, cy1 = sy + dy * 0.3;
+    const cx2 = ex - curve, cy2 = ey - dy * 0.3;
+    tourEls.arrowPath.setAttribute('d', `M ${sx} ${sy} C ${cx1} ${cy1}, ${cx2} ${cy2}, ${ex} ${ey}`);
 }
 
 async function tourRenderStep() {
@@ -8532,6 +8592,9 @@ async function startOnboardingTour() {
     overlay.addEventListener('click', tourFinish); // ekrana dokununca turu kapat (güvenlik ağı)
     const highlight = document.createElement('div');
     highlight.className = 'tour-highlight';
+    document.body.insertAdjacentHTML('beforeend', `<svg class="tour-arrow" id="tour-arrow-svg"><defs><marker id="tour-arrow-head" markerWidth="9" markerHeight="9" refX="6.5" refY="4.5" orient="auto"><path d="M0,0 L9,4.5 L0,9 Z" fill="#fbbf24"/></marker></defs><path id="tour-arrow-path" marker-end="url(#tour-arrow-head)"/></svg>`);
+    const arrowSvg = document.getElementById('tour-arrow-svg');
+    const arrowPath = document.getElementById('tour-arrow-path');
     const tooltip = document.createElement('div');
     tooltip.className = 'tour-tooltip';
     tooltip.addEventListener('click', (e) => e.stopPropagation());
@@ -8539,7 +8602,7 @@ async function startOnboardingTour() {
     document.body.appendChild(overlay);
     document.body.appendChild(highlight);
     document.body.appendChild(tooltip);
-    tourEls = { overlay, highlight, tooltip };
+    tourEls = { overlay, highlight, tooltip, arrowSvg, arrowPath };
 
     window.addEventListener('resize', tourReposition);
     tourRenderStep();
