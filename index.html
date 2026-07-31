@@ -1025,22 +1025,6 @@
   transition: top 0.35s ease, left 0.35s ease;
   box-sizing: border-box;
 }
-.tour-tooltip::before {
-  content: "";
-  position: absolute;
-  inset: -6px;
-  border-radius: 18px;
-  pointer-events: none;
-  background-image:
-    repeating-linear-gradient(90deg, #22c55e 0 9px, transparent 9px 18px),
-    repeating-linear-gradient(90deg, #22c55e 0 9px, transparent 9px 18px),
-    repeating-linear-gradient(180deg, #22c55e 0 9px, transparent 9px 18px),
-    repeating-linear-gradient(180deg, #22c55e 0 9px, transparent 9px 18px);
-  background-size: 18px 2.5px, 18px 2.5px, 2.5px 18px, 2.5px 18px;
-  background-position: 0 0, 0 100%, 0 0, 100% 0;
-  background-repeat: repeat-x, repeat-x, repeat-y, repeat-y;
-  animation: tour-border-march 0.9s linear infinite;
-}
 .tour-hand {
   position: fixed; z-index: 10004;
   font-size: 24px; line-height: 1; pointer-events: none;
@@ -8511,18 +8495,28 @@ function tourReposition() {
     }
 }
 
-// Parmak işaretini tooltip'in hedefe bakan kenarına yerleştirir ve
-// GERÇEK açıyı (o noktadan hedefin merkezine olan vektör) hesaplayarak
-// döndürür — böylece her zaman anlatılan öğeyi doğru yönde işaret eder.
+// Parmak işaretini, tooltip kutusunun hedefe bakan KENARINDAN (üst, alt, sağ,
+// sol veya çapraz — hangisi hedefe dönükse) çıkaracak şekilde yerleştirir ve
+// oradan hedefin tam merkezine olan gerçek açıya göre döndürür.
 function tourUpdateArrow(tooltipRect, highlightRect) {
     const hcx = highlightRect.left + highlightRect.width / 2;
     const hcy = highlightRect.top + highlightRect.height / 2;
-    // Tooltip hedefin üstünde mi altında mı — ok, tooltip'in hedefe bakan kenarından çıkar.
-    const goingDown = tooltipRect.top < highlightRect.top;
-    const anchorX = tooltipRect.left + tooltipRect.width / 2;
-    const anchorY = goingDown ? tooltipRect.bottom : tooltipRect.top;
+    const tcx = tooltipRect.left + tooltipRect.width / 2;
+    const tcy = tooltipRect.top + tooltipRect.height / 2;
 
-    const dx = hcx - anchorX, dy = hcy - anchorY;
+    let dx = hcx - tcx, dy = hcy - tcy;
+    if (dx === 0 && dy === 0) dy = 1; // aynı merkezdeyse aşağı yönü varsay
+
+    // Tooltip merkezinden hedefe doğru çizilen ışının, tooltip dikdörtgeninin
+    // sınırıyla kesiştiği noktayı bul — bu, kenar ne yönde olursa olsun
+    // parmağın her zaman doğru kenardan çıkmasını sağlar.
+    const hw = tooltipRect.width / 2, hh = tooltipRect.height / 2;
+    const tX = dx !== 0 ? hw / Math.abs(dx) : Infinity;
+    const tY = dy !== 0 ? hh / Math.abs(dy) : Infinity;
+    const edgeT = Math.min(tX, tY);
+    const anchorX = tcx + dx * edgeT;
+    const anchorY = tcy + dy * edgeT;
+
     const dist = Math.max(1, Math.hypot(dx, dy));
     const ux = dx / dist, uy = dy / dist;
 
@@ -8533,7 +8527,7 @@ function tourUpdateArrow(tooltipRect, highlightRect) {
     tourEls.hand.style.setProperty('--tour-hand-rot', rot + 'deg');
 
     // İkonu, tooltip kenarından hedefe doğru biraz kaydırarak konumlandır (üst üste binmesin).
-    const offset = 22, iconHalf = 12;
+    const offset = 16, iconHalf = 12;
     tourEls.hand.style.left = (anchorX + ux * offset - iconHalf) + 'px';
     tourEls.hand.style.top = (anchorY + uy * offset - iconHalf) + 'px';
 }
