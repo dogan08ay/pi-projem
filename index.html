@@ -8649,20 +8649,24 @@ function tourReposition() {
     }
 
     const pad = 6;
-    // Çok uzun elementlerde (ör. domain listesi) spotlight'ı görünür alanla sınırla
-    const visTop = Math.max(rect.top, 0);
-    const visBottom = Math.min(rect.bottom, vh);
-    const clampedHeight = Math.min(rect.height, Math.max(120, visBottom - visTop));
+    // Çok uzun elementlerde (ör. domain listesi) ya da bir üst kapsayıcı
+    // tarafından kısmen kırpılan elementlerde (ör. yan menü öğeleri), vurguyu
+    // GERÇEKTEN GÖRÜNEN alanla sınırlıyoruz — ham (kırpılmamış) dikdörtgene göre
+    // çizmek, vurgunun menünün dışına taşıp yanlış/tutarsız görünmesine yol
+    // açıyordu.
+    const visTop = Math.max(visRect.top, 0);
+    const visBottom = Math.min(visRect.bottom, vh);
+    const clampedHeight = Math.min(visRect.height, Math.max(120, visBottom - visTop));
 
     Object.assign(tourEls.highlight.style, {
         top: (visTop - pad) + 'px',
-        left: (rect.left - pad) + 'px',
-        width: (rect.width + pad * 2) + 'px',
+        left: (visRect.left - pad) + 'px',
+        width: (visRect.width + pad * 2) + 'px',
         height: (clampedHeight + pad * 2) + 'px'
     });
 
     const tooltip = tourEls.tooltip;
-    let top, left = Math.min(Math.max(12, rect.left), vw - 292);
+    let top, left = Math.min(Math.max(12, visRect.left), vw - 292);
     const anchorTop = visTop, anchorBottom = visTop + clampedHeight;
     if (step.placement === 'bottom') {
         top = anchorBottom + 14;
@@ -8683,7 +8687,7 @@ function tourReposition() {
         // hesapladığımız HEDEF konumları doğrudan kullanıyoruz; böylece ok her zaman
         // o anki adımın gerçek/nihai konumuna göre çizilir.
         const hTop = visTop - pad, hHeight = clampedHeight + pad * 2;
-        const hRect = { left: rect.left - pad, top: hTop, width: rect.width + pad * 2, height: hHeight, bottom: hTop + hHeight };
+        const hRect = { left: visRect.left - pad, top: hTop, width: visRect.width + pad * 2, height: hHeight, bottom: hTop + hHeight };
         const tHeight = tooltip.offsetHeight;
         const tRect = { left: left, top: top, width: tooltip.offsetWidth, height: tHeight, bottom: top + tHeight };
         tourUpdateArrow(tRect, hRect);
