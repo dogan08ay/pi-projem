@@ -8406,6 +8406,7 @@ let tourStepIndex = 0;
 let tourEls = null;
 let tourExitConfirmPending = false;
 let tourExitConfirmTimer = null;
+let tourInitialState = null; // tur başlamadan ÖNCE panel/menü/modal açık mıydı — bitince buna geri dönülür
 
 // Ekrana (overlay'e) yanlışlıkla dokunulduğunda turu ANINDA kapatmak yerine,
 // ilk dokunuşta bir uyarı gösterip yalnızca KISA SÜRE İÇİNDE gelen ikinci bir
@@ -8434,14 +8435,34 @@ function tourCleanup() {
     tourExitConfirmPending = false;
 }
 
+// Tur başlamadan ÖNCEKİ panel/menü/modal durumuna geri döner (bkz. tourInitialState).
+function tourRestoreInitialState() {
+    if (!tourInitialState) return;
+    const panel = document.getElementById('user-panel');
+    const menu = document.getElementById('side-menu'), menuOverlay = document.getElementById('side-menu-overlay');
+    const modal = document.getElementById('domain-detail-modal');
+    if (panel) { panel.style.display = tourInitialState.panelOpen ? 'block' : 'none'; if (tourInitialState.panelOpen) { panel.style.opacity = '1'; panel.style.transform = 'none'; } }
+    if (menu && menuOverlay) {
+        if (tourInitialState.menuOpen) { menu.classList.add('open'); menuOverlay.classList.add('open'); }
+        else { menu.classList.remove('open'); menuOverlay.classList.remove('open'); }
+    }
+    if (modal) modal.style.display = tourInitialState.modalOpen ? 'flex' : 'none';
+    tourInitialState = null;
+}
+
 function tourFinish() {
     localStorage.setItem('w3dg_tour_done', '1');
     // Turun GERÇEKTEN sonuna gelinip "Anladım" mı denildi, yoksa erken mi
     // "Geç" denildi — bunu cleanup'tan ÖNCE, index sıfırlanmadan kaydediyoruz.
     const completedFully = tourStepIndex >= TOUR_STEPS.length - 1;
-    // Son adım (Paylaş) yan menüyü açık bırakabiliyor — tur bitince kapat.
-    const m=document.getElementById('side-menu'),o=document.getElementById('side-menu-overlay');
-    if(m&&m.classList.contains('open')){ m.classList.remove('open'); o.classList.remove('open'); }
+
+    // ÖNEMLİ: Tur ilerledikçe adımların ihtiyacına göre paneli/menüyü/modalı
+    // açıp kapatıyordu (bkz. tourSyncContext), ama bitince hiçbiri eski haline
+    // DÖNDÜRÜLMÜYORDU — bu yüzden ör. tur başlamadan önce "Panelim" açıksa bile
+    // son adımın (Paylaş) ihtiyacı olmadığı için kapattığı panel, tur bitince
+    // öylece kapalı kalıyordu ("panelim kayboluyor"). Şimdi tam olarak tur
+    // başlamadan ÖNCEKİ duruma geri dönüyoruz.
+    tourRestoreInitialState();
     tourCleanup();
 
     // Tur baştan sona tamamlandıysa (erken "Geç" ile değil), kullanıcıyı zorla
@@ -8461,11 +8482,18 @@ function tourFinish() {
 // bitene kadar bekleyip HATALI/ERKEN bir konumu asla ölçmez.
 function tourWaitForTarget(selector, maxFrames = 90, requiredStableFrames = 5) {
     return new Promise(resolve => {
-        let lastRect = null, stableFrames = 0, frame = 0;
+        let lastRect = null, stableFrames = 0, frame = 0, everSeen = false;
+        // Hedef DOM'da HİÇ belirmiyorsa (ör. bu hesabın domain listesi boş
+        // olduğu için tıklanacak bir kart yok, ya da hesap zaten doğrulanmış
+        // olduğu için "Doğrula" butonu hiç render edilmiyor), tam 1.5sn beklemek
+        // yerine çok daha kısa sürede vazgeçiyoruz. Art arda birkaç adım böyle
+        // başarısız olursa bile tur "donmuş" gibi hissettirmez.
+        const EXISTENCE_GRACE_FRAMES = 36; // ~600ms @60fps
         (function tick() {
             frame++;
             const el = document.querySelector(selector);
             if (el) {
+                everSeen = true;
                 const r = el.getBoundingClientRect();
                 if (r.width >= 10 && r.height >= 10) {
                     if (lastRect &&
@@ -8481,6 +8509,7 @@ function tourWaitForTarget(selector, maxFrames = 90, requiredStableFrames = 5) {
                     if (stableFrames >= requiredStableFrames) { resolve(el); return; }
                 }
             }
+            if (!everSeen && frame >= EXISTENCE_GRACE_FRAMES) { resolve(null); return; }
             if (frame >= maxFrames) { resolve(el || null); return; }
             requestAnimationFrame(tick);
         })();
@@ -8691,6 +8720,14 @@ window.tourPrevStep = function() {
 window.tourFinish = tourFinish;
 
 async function startOnboardingTour() {
+    // Tur, ilerledikçe panel/menü/modalı açıp kapatacak (bkz. tourSyncContext).
+    // Bitince kullanıcıyı tur başlamadan ÖNCEKİ ekranda bırakmak için o anki
+    // durumu burada, herhangi bir şeyi değiştirmeden ÖNCE kaydediyoruz.
+    tourInitialState = {
+        panelOpen: (() => { const e = document.getElementById('user-panel'); return !!e && e.style.display !== 'none'; })(),
+        menuOpen: (() => { const e = document.getElementById('side-menu'); return !!e && e.classList.contains('open'); })(),
+        modalOpen: (() => { const e = document.getElementById('domain-detail-modal'); return !!e && e.style.display !== 'none'; })()
+    };
     tourSyncContext(TOUR_STEPS[0]);
     // Hedefi anında aramak yerine kısa süre bekleyerek ara: sayfa/panel
     // henüz render olmamış olabilir. Önceden bu durumda tur hiç açılmadan
@@ -8698,6 +8735,10 @@ async function startOnboardingTour() {
     const firstTarget = await tourWaitForTarget(TOUR_STEPS[0].selector);
     if (!firstTarget) {
         showToast(t('tourNotReady'));
+        // Tur başlatılamadı ama tourSyncContext yukarıda panel/menü/modalı zaten
+        // değiştirmişti — kullanıcıyı olduğu ekranda BIRAKMAK için eski haline
+        // dön (turu "tamamlandı" işaretlemeden, sadece görsel durumu düzelterek).
+        tourRestoreInitialState();
         return;
     }
 
