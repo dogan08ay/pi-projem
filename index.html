@@ -2500,11 +2500,18 @@
 //  Mesaj içeriğine bakarak (✅/⚠️/❌/Hata gibi işaretler) otomatik
 //  success/error/info renklendirmesi yapar.
 // ═══════════════════════════════════════════════════════════════════════
-function showToast(message) {
+function showToast(message, forceType) {
     try {
         const text = String(message ?? '');
         let type = 'info', icon = 'ℹ️';
-        if (/^✅|başarı|güncellendi|eklendi|gönderildi|onaylandı|kaydedildi/i.test(text) && !/hata|başarısız/i.test(text)) {
+        if (forceType === 'success' || forceType === 'error' || forceType === 'info') {
+            // Çağıran taraf tipi zaten biliyorsa (ör. tur bitiş bildirimi), metne
+            // dayalı tahmine güvenmek yerine doğrudan bu tipi kullan — böylece
+            // önemli/kutlama niteliğindeki mesajlar her zaman göze çarpan
+            // (yeşil) stille gösterilir, sıradan bir "info" gibi sönük kalmaz.
+            type = forceType;
+            icon = forceType === 'success' ? '✅' : forceType === 'error' ? '⚠️' : 'ℹ️';
+        } else if (/^✅|başarı|güncellendi|eklendi|gönderildi|onaylandı|kaydedildi/i.test(text) && !/hata|başarısız/i.test(text)) {
             type = 'success'; icon = '✅';
         } else if (/^(⚠️|❌|🔴)|hata|başarısız|yetki yok|geçersiz|bulunamadı|error/i.test(text)) {
             type = 'error'; icon = '⚠️';
@@ -8442,7 +8449,7 @@ function tourFinish() {
     // gösteriyoruz — "Başlangıç Adımların" listesine menüden profilime girerek
     // istediği zaman kendisi bakabilir.
     if (completedFully && typeof isAuth !== 'undefined' && isAuth && typeof showToast === 'function') {
-        setTimeout(() => showToast(t('tourFinishedNudge')), 300);
+        setTimeout(() => showToast(t('tourFinishedNudge'), 'success'), 300);
     }
 }
 
