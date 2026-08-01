@@ -8475,6 +8475,32 @@ function tourFinish() {
     }
 }
 
+// Bir elementin sadece VAR OLUP OLMADIĞINA değil, gerçekten GÖRÜNÜR olup
+// olmadığına bakar: üst kapsayıcılardan biri overflow:hidden ise ve eleman o
+// kapsayıcının sınırlarının dışına taşıyorsa (ör. yan menüde 14 öğe var ama
+// menü kaydırılamıyor — alttaki öğeler kırpılıp görünmez kalabiliyor), bunu
+// "görünür değil" olarak sayar. Sadece getBoundingClientRect().width/height
+// kontrolü bunu YAKALAYAMAZ çünkü kırpılan elementin kendi boyutu değişmez.
+function tourGetVisibleRect(el) {
+    let r = el.getBoundingClientRect();
+    let top = r.top, left = r.left, right = r.right, bottom = r.bottom;
+    let node = el.parentElement;
+    let hops = 0;
+    while (node && node !== document.body && hops < 12) {
+        const cs = getComputedStyle(node);
+        if (cs.overflow === 'hidden' || cs.overflowY === 'hidden' || cs.overflowX === 'hidden') {
+            const ar = node.getBoundingClientRect();
+            top = Math.max(top, ar.top);
+            left = Math.max(left, ar.left);
+            right = Math.min(right, ar.right);
+            bottom = Math.min(bottom, ar.bottom);
+        }
+        node = node.parentElement;
+        hops++;
+    }
+    return { top, left, right, bottom, width: Math.max(0, right - left), height: Math.max(0, bottom - top) };
+}
+
 // Hedef elementin DOM'da belirip KONUMUNUN artık değişmediğini (yani üzerinde
 // çalışan her türlü kayma/geçiş animasyonunun — yan menü, sekme geçişi, modal —
 // gerçekten bittiğini) doğrulayarak bekler. Sabit bir süre tahmin etmek yerine
@@ -8495,7 +8521,9 @@ function tourWaitForTarget(selector, maxFrames = 90, requiredStableFrames = 5) {
             const el = document.querySelector(selector);
             if (el) {
                 everSeen = true;
-                const r = el.getBoundingClientRect();
+                // ÖNEMLİ: ham getBoundingClientRect değil, kırpılmayı da hesaba
+                // katan GERÇEK görünür alan kullanılıyor (bkz. tourGetVisibleRect).
+                const r = tourGetVisibleRect(el);
                 if (r.width >= 10 && r.height >= 10) {
                     if (lastRect &&
                         Math.abs(r.top - lastRect.top) < 0.5 &&
@@ -8567,18 +8595,40 @@ function tourSyncContext(step) {
     }
 }
 
+// Bir adımın hedefi (hiç bulunamadığı ya da bulunup da bir türlü düzgün
+// konumlandırılamadığı için) gösterilemiyorsa, kullanıcının geldiği YÖNDE bir
+// sonraki geçerli adıma atlar. Turu her zaman İLERİ atlamak (eski davranış),
+// "Geri" ile böyle bir adıma gelindiğinde kullanıcıyı anında tekrar ileri
+// fırlatıp "Geri" tuşunun hiçbir şey yapmamış gibi görünmesine yol açıyordu.
+function tourSkipUnavailableStep() {
+    if (tourDirection === 'backward') {
+        if (tourStepIndex <= 0) { tourFinish(); return; } // en baştaki adım bile gösterilemiyorsa turu düzgünce kapat
+        tourStepIndex--;
+    } else {
+        if (tourStepIndex >= TOUR_STEPS.length - 1) { tourFinish(); return; }
+        tourStepIndex++;
+    }
+    tourRenderStep();
+}
+
 // Adım her değiştiğinde konumu TEK bir karede denemek yerine, hedef gerçekten
 // ölçülebilir olana kadar art arda birkaç kare boyunca yeniden dener. Tek
 // seferlik deneme, hedefin (ör. yeniden açılan modal içeriği) o an TAM olarak
 // hazır olmadığı ender durumlarda pointer'ın bir önceki adımın konumunda
 // "donmuş" görünmesine yol açıyordu — metin doğru adıma güncellenmiş olsa bile.
+// Birkaç denemeden sonra hâlâ konumlandırılamıyorsa (ör. hedef kalıcı olarak
+// kırpılmışsa), donuk kalmak yerine bu adımı da "gösterilemiyor" kabul edip
+// aynı yönde bir sonraki geçerli adıma atlar.
 function tourRepositionUntilReady(forStepIndex, maxFrames = 40) {
     let frame = 0;
     (function tick() {
         if (!tourEls || tourStepIndex !== forStepIndex) return; // bu arada adım değişti/tur kapandı
         const ok = tourReposition();
+        if (ok) return;
         frame++;
-        if (!ok && frame < maxFrames) requestAnimationFrame(tick);
+        if (frame < maxFrames) { requestAnimationFrame(tick); return; }
+        if (!tourEls || tourStepIndex !== forStepIndex) return;
+        tourSkipUnavailableStep();
     })();
 }
 
@@ -8594,7 +8644,12 @@ function tourReposition() {
     // aksi halde resize sırasında turu istemeden ileri attırıyordu.
     if (!target) return false;
     const rect = target.getBoundingClientRect();
-    if (rect.width < 10 || rect.height < 10) return false;
+    // ÖNEMLİ: Ham boyut yerine, üst kapsayıcılardaki kırpmayı da hesaba katan
+    // GERÇEK görünür alanı kontrol ediyoruz — aksi halde ör. yan menüde
+    // taşıp kırpılan bir öğe "başarılı" sayılıp üzerine anlamsız/yanlış
+    // konumda bir vurgu çizilebiliyordu.
+    const visRect = tourGetVisibleRect(target);
+    if (visRect.width < 10 || visRect.height < 10) return false;
     const vh = window.innerHeight, vw = window.innerWidth;
 
     if (rect.bottom < 0 || rect.top > vh) {
@@ -8696,20 +8751,13 @@ async function tourRenderStep() {
     if (!tourEls || tourStepIndex !== stepIndexAtStart) return; // bu süre zarfında tur değişti/kapandı
     if (!target) {
         // ÖNEMLİ: Bu adımın hedefi bu hesapta gerçekten yoksa (ör. hesap zaten
-        // doğrulanmışsa "Doğrula" butonu hiç render edilmez), hangi YÖNDE
-        // geliniyorsa o yönde atla. Eskiden her zaman İLERİ atlıyordu; bu
-        // yüzden "Geri" ile böyle bir adıma gelindiğinde kod onu aynı anda
-        // tekrar ileri atlatıp kullanıcıyı olduğu yere geri fırlatıyordu —
-        // "Geri" tuşu göz önünde hiçbir şey yapmamış gibi görünüyordu.
-        if (tourDirection === 'backward') {
-            if (tourStepIndex <= 0) { tourFinish(); return; } // en baştaki adım bile yoksa turu düzgünce kapat
-            tourStepIndex--;
-            tourRenderStep();
-            return;
-        }
-        if (tourStepIndex >= TOUR_STEPS.length - 1) { tourFinish(); return; }
-        tourStepIndex++;
-        tourRenderStep();
+        // doğrulanmışsa "Doğrula" butonu hiç render edilmez, ya da yan menüde
+        // taşıp kırpılan bir öğeyse), hangi YÖNDE geliniyorsa o yönde atla.
+        // Eskiden her zaman İLERİ atlıyordu; bu yüzden "Geri" ile böyle bir
+        // adıma gelindiğinde kod onu aynı anda tekrar ileri atlatıp kullanıcıyı
+        // olduğu yere geri fırlatıyordu — "Geri" tuşu hiçbir şey yapmamış gibi
+        // görünüyordu.
+        tourSkipUnavailableStep();
         return;
     }
 
