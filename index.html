@@ -8567,23 +8567,40 @@ function tourSyncContext(step) {
     }
 }
 
+// Adım her değiştiğinde konumu TEK bir karede denemek yerine, hedef gerçekten
+// ölçülebilir olana kadar art arda birkaç kare boyunca yeniden dener. Tek
+// seferlik deneme, hedefin (ör. yeniden açılan modal içeriği) o an TAM olarak
+// hazır olmadığı ender durumlarda pointer'ın bir önceki adımın konumunda
+// "donmuş" görünmesine yol açıyordu — metin doğru adıma güncellenmiş olsa bile.
+function tourRepositionUntilReady(forStepIndex, maxFrames = 40) {
+    let frame = 0;
+    (function tick() {
+        if (!tourEls || tourStepIndex !== forStepIndex) return; // bu arada adım değişti/tur kapandı
+        const ok = tourReposition();
+        frame++;
+        if (!ok && frame < maxFrames) requestAnimationFrame(tick);
+    })();
+}
+
 function tourReposition() {
-    if (!tourEls) return;
+    // true: konum başarıyla güncellendi. false: hedef o an ölçülemedi (henüz
+    // render/animasyon bitmemiş olabilir) — çağıran taraf bunu tekrar deneyip
+    // denemeyeceğine karar verir.
+    if (!tourEls) return true; // tur zaten kapalı, tekrar denemeye gerek yok
     const step = TOUR_STEPS[tourStepIndex];
     const target = document.querySelector(step.selector);
-    // ÖNEMLİ: Bu fonksiyon sadece pencere/viewport boyutu değiştiğinde konumu
-    // GÜNCELLEMEK içindir — adım ilerletmek bu fonksiyonun işi değil. Hedef o an
-    // ölçülemiyorsa (ör. geçici bir animasyon karesi) sessizce çık; aksi halde
-    // resize sırasında turu istemeden ileri attırıyordu ("Geri" derken bile).
-    if (!target) return;
+    // ÖNEMLİ: Bu fonksiyon konumu GÜNCELLEMEK içindir — adım ilerletmek bu
+    // fonksiyonun işi değil. Hedef o an ölçülemiyorsa sessizce false döner;
+    // aksi halde resize sırasında turu istemeden ileri attırıyordu.
+    if (!target) return false;
     const rect = target.getBoundingClientRect();
-    if (rect.width < 10 || rect.height < 10) return;
+    if (rect.width < 10 || rect.height < 10) return false;
     const vh = window.innerHeight, vw = window.innerWidth;
 
     if (rect.bottom < 0 || rect.top > vh) {
         target.scrollIntoView({ behavior: 'smooth', block: 'center' });
         setTimeout(tourReposition, 300);
-        return;
+        return true;
     }
 
     const pad = 6;
@@ -8626,6 +8643,7 @@ function tourReposition() {
         const tRect = { left: left, top: top, width: tooltip.offsetWidth, height: tHeight, bottom: top + tHeight };
         tourUpdateArrow(tRect, hRect);
     }
+    return true;
 }
 
 // Parmak işaretini, tooltip kutusunun hedefe bakan KENARINDAN (üst, alt, sağ,
@@ -8713,7 +8731,7 @@ async function tourRenderStep() {
             </div>
         </div>`;
 
-    requestAnimationFrame(tourReposition);
+    tourRepositionUntilReady(tourStepIndex);
 }
 
 window.tourNextStep = function() {
