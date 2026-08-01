@@ -3390,6 +3390,7 @@ const i18n = {
     tourReplay:"Uygulama Turu",
     tourNotReady:"Uygulama turu şu anda başlatılamadı. Lütfen sayfanın tamamen yüklenmesini bekleyip tekrar deneyin.",
     tourExitConfirm:"Turu kapatmak için tekrar dokunun",
+    tourFinishedNudge:"Turu tamamladın 🎉 Menü → Profilim'de seni bekleyen \"Başlangıç Adımların\" var.",
   },
   en: {
     menu:"Menu",account:"Account",preferences:"Preferences",connected:"Connected",
@@ -4113,6 +4114,7 @@ const i18n = {
     tourReplay:"App Tour",
     tourNotReady:"The app tour couldn't start right now. Please wait for the page to fully load and try again.",
     tourExitConfirm:"Tap again to close the tour",
+    tourFinishedNudge:"Tour complete 🎉 Check out \"Getting Started\" under Menu → My Profile whenever you're ready.",
   }
 };
 let currentLang = localStorage.getItem('w3dg_lang') || 'tr';
@@ -8376,22 +8378,22 @@ window.submitTrademarkClaim = async function(){
 //  yan menüdeki "Uygulama Turu" ile istenildiğinde tekrar açılabilir.
 // ═══════════════════════════════════════════════════════════════════════
 const TOUR_STEPS = [
-    { selector: '#domain-list', titleKey: 'tourStep1Title', descKey: 'tourStep1Desc', placement: 'top' },
-    { selector: '#domain-list .domain-card', titleKey: 'tourStepCardTapTitle', descKey: 'tourStepCardTapDesc', placement: 'bottom' },
-    { selector: '.seller-link-pulse', titleKey: 'tourStepSellerLinkTitle', descKey: 'tourStepSellerLinkDesc', placement: 'top', before: () => { const modal=document.getElementById('domain-detail-modal'); if(!modal||modal.style.display==='none'){ const c=document.querySelector('#domain-list .domain-card'); if(c) c.click(); } } },
-    { selector: '#detail-price-history-row', titleKey: 'tourStepPriceHistoryTitle', descKey: 'tourStepPriceHistoryDesc', placement: 'top', before: () => { const modal=document.getElementById('domain-detail-modal'); if(!modal||modal.style.display==='none'){ const c=document.querySelector('#domain-list .domain-card'); if(c) c.click(); } } },
-    { selector: '#hamburger-btn', titleKey: 'tourStep2Title', descKey: 'tourStep2Desc', placement: 'bottom', before: () => { const modal=document.getElementById('domain-detail-modal'); if(modal) modal.style.display='none'; } },
-    { selector: '#notif-btn', titleKey: 'tourStep3Title', descKey: 'tourStep3Desc', placement: 'bottom' },
-    { selector: '[data-utab="utab-overview"]', titleKey: 'tourStepOverviewTitle', descKey: 'tourStepOverviewDesc', placement: 'top', before: () => window.switchUserTab && window.switchUserTab('utab-overview') },
-    { selector: '[data-utab="utab-purchases"]', titleKey: 'tourStepPurchasesTitle', descKey: 'tourStepPurchasesDesc', placement: 'top', before: () => window.switchUserTab && window.switchUserTab('utab-purchases') },
-    { selector: '.verify-btn', titleKey: 'tourStepVerifyTitle', descKey: 'tourStepVerifyDesc', placement: 'top', before: () => window.switchUserTab && window.switchUserTab('utab-purchases') },
-    { selector: '[data-utab="utab-income"]', titleKey: 'tourStepIncomeTitle', descKey: 'tourStepIncomeDesc', placement: 'top', before: () => window.switchUserTab && window.switchUserTab('utab-income') },
-    { selector: '[data-utab="utab-listings"]', titleKey: 'tourStepListingsTitle', descKey: 'tourStepListingsDesc', placement: 'top', before: () => window.switchUserTab && window.switchUserTab('utab-listings') },
-    { selector: '[data-utab="utab-trademark"]', titleKey: 'tourStepTrademarkTitle', descKey: 'tourStepTrademarkDesc', placement: 'top', before: () => window.switchUserTab && window.switchUserTab('utab-trademark') },
-    { selector: '[data-utab="utab-myreports"]', titleKey: 'tourStepMyReportsTitle', descKey: 'tourStepMyReportsDesc', placement: 'top', before: () => window.switchUserTab && window.switchUserTab('utab-myreports') },
-    { selector: '[data-utab="utab-history"]', titleKey: 'tourStepHistoryTitle', descKey: 'tourStepHistoryDesc', placement: 'top', before: () => window.switchUserTab && window.switchUserTab('utab-history') },
-    { selector: '[data-utab="utab-tickets"]', titleKey: 'tourStep4Title', descKey: 'tourStep4Desc', placement: 'top', before: () => window.switchUserTab && window.switchUserTab('utab-tickets') },
-    { selector: '.side-menu-item[onclick*="openShareAppModal"]', titleKey: 'tourStepShareTitle', descKey: 'tourStepShareDesc', placement: 'left', before: () => { const m=document.getElementById('side-menu'),o=document.getElementById('side-menu-overlay'); if(m&&!m.classList.contains('open')){m.classList.add('open');o.classList.add('open');updateSideMenuProfile();applyTranslations();} } }
+    { selector: '#domain-list', titleKey: 'tourStep1Title', descKey: 'tourStep1Desc', placement: 'top', context: 'main' },
+    { selector: '#domain-list .domain-card', titleKey: 'tourStepCardTapTitle', descKey: 'tourStepCardTapDesc', placement: 'bottom', context: 'main' },
+    { selector: '.seller-link-pulse', titleKey: 'tourStepSellerLinkTitle', descKey: 'tourStepSellerLinkDesc', placement: 'top', context: 'modal' },
+    { selector: '#detail-price-history-row', titleKey: 'tourStepPriceHistoryTitle', descKey: 'tourStepPriceHistoryDesc', placement: 'top', context: 'modal' },
+    { selector: '#hamburger-btn', titleKey: 'tourStep2Title', descKey: 'tourStep2Desc', placement: 'bottom', context: 'main' },
+    { selector: '#notif-btn', titleKey: 'tourStep3Title', descKey: 'tourStep3Desc', placement: 'bottom', context: 'main' },
+    { selector: '[data-utab="utab-overview"]', titleKey: 'tourStepOverviewTitle', descKey: 'tourStepOverviewDesc', placement: 'top', context: 'panel', tab: 'utab-overview' },
+    { selector: '[data-utab="utab-purchases"]', titleKey: 'tourStepPurchasesTitle', descKey: 'tourStepPurchasesDesc', placement: 'top', context: 'panel', tab: 'utab-purchases' },
+    { selector: '.verify-btn', titleKey: 'tourStepVerifyTitle', descKey: 'tourStepVerifyDesc', placement: 'top', context: 'panel', tab: 'utab-purchases' },
+    { selector: '[data-utab="utab-income"]', titleKey: 'tourStepIncomeTitle', descKey: 'tourStepIncomeDesc', placement: 'top', context: 'panel', tab: 'utab-income' },
+    { selector: '[data-utab="utab-listings"]', titleKey: 'tourStepListingsTitle', descKey: 'tourStepListingsDesc', placement: 'top', context: 'panel', tab: 'utab-listings' },
+    { selector: '[data-utab="utab-trademark"]', titleKey: 'tourStepTrademarkTitle', descKey: 'tourStepTrademarkDesc', placement: 'top', context: 'panel', tab: 'utab-trademark' },
+    { selector: '[data-utab="utab-myreports"]', titleKey: 'tourStepMyReportsTitle', descKey: 'tourStepMyReportsDesc', placement: 'top', context: 'panel', tab: 'utab-myreports' },
+    { selector: '[data-utab="utab-history"]', titleKey: 'tourStepHistoryTitle', descKey: 'tourStepHistoryDesc', placement: 'top', context: 'panel', tab: 'utab-history' },
+    { selector: '[data-utab="utab-tickets"]', titleKey: 'tourStep4Title', descKey: 'tourStep4Desc', placement: 'top', context: 'panel', tab: 'utab-tickets' },
+    { selector: '.side-menu-item[onclick*="openShareAppModal"]', titleKey: 'tourStepShareTitle', descKey: 'tourStepShareDesc', placement: 'left', context: 'menu' }
 ];
 let tourStepIndex = 0;
 let tourEls = null;
@@ -8435,20 +8437,12 @@ function tourFinish() {
     if(m&&m.classList.contains('open')){ m.classList.remove('open'); o.classList.remove('open'); }
     tourCleanup();
 
-    // YENİ: Tur baştan sona tamamlandıysa, kullanıcıyı "şimdi ne yapmalıyım"
-    // boşluğunda bırakmamak için doğrudan profil ekranındaki "Başlangıç
-    // Adımların" kontrol listesine yönlendiriyoruz. Sadece giriş yapmış
-    // kullanıcılarda gösterilebildiği için isAuth şartı var.
-    if (completedFully && typeof isAuth !== 'undefined' && isAuth && typeof openProfileModal === 'function') {
-        setTimeout(() => {
-            openProfileModal();
-            // openProfileModal() normalde açık bir yan menüden çağrıldığı için
-            // sonunda toggleSideMenu() çalıştırıp menüyü KAPATIR; burada menü
-            // zaten kapalı olduğundan aynı toggle onu YENİDEN AÇAR — bunu telafi
-            // ediyoruz ki tur sonrası ekranda istenmeden yan menü açılmasın.
-            const m2=document.getElementById('side-menu'), o2=document.getElementById('side-menu-overlay');
-            if(m2&&m2.classList.contains('open')){ m2.classList.remove('open'); o2.classList.remove('open'); }
-        }, 250);
+    // Tur baştan sona tamamlandıysa (erken "Geç" ile değil), kullanıcıyı zorla
+    // profil ekranına atmak yerine, oraya nazikçe yönlendiren hafif bir bildirim
+    // gösteriyoruz — "Başlangıç Adımların" listesine menüden profilime girerek
+    // istediği zaman kendisi bakabilir.
+    if (completedFully && typeof isAuth !== 'undefined' && isAuth && typeof showToast === 'function') {
+        setTimeout(() => showToast(t('tourFinishedNudge')), 300);
     }
 }
 
@@ -8486,14 +8480,53 @@ function tourWaitForTarget(selector, maxFrames = 90, requiredStableFrames = 5) {
     });
 }
 
-// Turun ihtiyaç duyduğu paneli (kullanıcı paneli) — henüz kapalıysa — anında görünür yapar.
-// Böylece "Destek Talepleri" adımı, panel kullanıcı tarafından açılmamış olsa bile çalışır.
-function tourEnsurePrereqs() {
-    const up = document.getElementById('user-panel');
-    if (up && up.style.display === 'none') {
-        up.style.display = 'block';
-        up.style.opacity = '1';
-        up.style.transform = 'none';
+// Her adımın "bağlamını" (context) baz alarak, o adımın İHTİYAÇ DUYMADIĞI her
+// paneli kapatır ve ihtiyaç duyduğunu açar. Önceki sürümde her adım sadece
+// KENDİ before()'unu çalıştırıyordu ve önceki adımın açtığı panel/menüyü asla
+// kapatmıyordu — bu yüzden "Geri" ile giderken (ör. Paylaş adımından geri
+// dönünce yan menü açık kalıyor, kullanıcı panelinden ana sayfaya dönünce
+// panel açık kalıp sayfa düzenini kaydırıyordu) hedef, arkada kalan bir panel
+// tarafından örtülüyor ya da yanlış konumda ölçülüyordu. Şimdi yön fark etmeksizin
+// (ileri de geri de) her adımda durum baştan deterministik olarak kuruluyor.
+function tourSyncContext(step) {
+    const modal = document.getElementById('domain-detail-modal');
+    const menu = document.getElementById('side-menu');
+    const menuOverlay = document.getElementById('side-menu-overlay');
+    const panel = document.getElementById('user-panel');
+
+    // Kullanıcı paneli (Hesabım sekmeleri)
+    if (panel) {
+        if (step.context === 'panel') {
+            panel.style.display = 'block';
+            panel.style.opacity = '1';
+            panel.style.transform = 'none';
+            if (step.tab && typeof window.switchUserTab === 'function') window.switchUserTab(step.tab);
+        } else {
+            panel.style.display = 'none';
+        }
+    }
+
+    // Yan menü (hamburger menü)
+    if (menu && menuOverlay) {
+        if (step.context === 'menu') {
+            if (!menu.classList.contains('open')) {
+                menu.classList.add('open'); menuOverlay.classList.add('open');
+                if (typeof updateSideMenuProfile === 'function') updateSideMenuProfile();
+                if (typeof applyTranslations === 'function') applyTranslations();
+            }
+        } else if (menu.classList.contains('open')) {
+            menu.classList.remove('open'); menuOverlay.classList.remove('open');
+        }
+    }
+
+    // Domain detay modalı
+    if (step.context === 'modal') {
+        if (!modal || modal.style.display === 'none') {
+            const c = document.querySelector('#domain-list .domain-card');
+            if (c) c.click();
+        }
+    } else if (modal) {
+        modal.style.display = 'none';
     }
 }
 
@@ -8501,13 +8534,15 @@ function tourReposition() {
     if (!tourEls) return;
     const step = TOUR_STEPS[tourStepIndex];
     const target = document.querySelector(step.selector);
-    if (!target) { tourNextStep(); return; }
+    // ÖNEMLİ: Bu fonksiyon sadece pencere/viewport boyutu değiştiğinde konumu
+    // GÜNCELLEMEK içindir — adım ilerletmek bu fonksiyonun işi değil. Hedef o an
+    // ölçülemiyorsa (ör. geçici bir animasyon karesi) sessizce çık; aksi halde
+    // resize sırasında turu istemeden ileri attırıyordu ("Geri" derken bile).
+    if (!target) return;
     const rect = target.getBoundingClientRect();
+    if (rect.width < 10 || rect.height < 10) return;
     const vh = window.innerHeight, vw = window.innerWidth;
 
-    // Hedef ekran dışındaysa (yukarı/aşağı kaydırılmış), kapatmak yerine
-    // görünür alana kaydırıp yeniden konumlandır — turun aniden kaybolmasını önler.
-    if (rect.width < 10 || rect.height < 10) { tourNextStep(); return; }
     if (rect.bottom < 0 || rect.top > vh) {
         target.scrollIntoView({ behavior: 'smooth', block: 'center' });
         setTimeout(tourReposition, 300);
@@ -8595,9 +8630,8 @@ function tourUpdateArrow(tooltipRect, highlightRect) {
 
 async function tourRenderStep() {
     if (!tourEls) return; // bu arada tur kapatılmış olabilir (ör. skip)
-    tourEnsurePrereqs();
     const step = TOUR_STEPS[tourStepIndex];
-    if (typeof step.before === 'function') { try { step.before(); } catch (e) {} }
+    tourSyncContext(step);
     const stepIndexAtStart = tourStepIndex;
     // Hedefi anında aramak yerine, konumu gerçekten sabitlenene kadar bekle
     // (bkz. tourWaitForTarget) — panel/menü/sekme geçiş animasyonları veya veri
@@ -8650,7 +8684,7 @@ window.tourPrevStep = function() {
 window.tourFinish = tourFinish;
 
 async function startOnboardingTour() {
-    tourEnsurePrereqs();
+    tourSyncContext(TOUR_STEPS[0]);
     // Hedefi anında aramak yerine kısa süre bekleyerek ara: sayfa/panel
     // henüz render olmamış olabilir. Önceden bu durumda tur hiç açılmadan
     // sessizce iptal oluyordu ("tıklayınca açılmıyor").
