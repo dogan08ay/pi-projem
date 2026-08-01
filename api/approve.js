@@ -222,6 +222,50 @@ function describePiApiError(e) {
   return full;
 }
 
+// ── GÜVENLİK: Ödenen Tutarın Gerçekten Doğrulanması ────────────────────────
+// ÖNCEKİ HAL: 'complete' adımı, domainin Firestore'daki fiyatını (server
+// tarafında GÜVENİLİR) kullanarak "sold:true, price:realPrice" yazıyordu,
+// ama Pi'nin GERÇEKTE ne kadar ödeme aldığı hiçbir zaman kontrol edilmiyordu.
+// Ödeme tutarı istemci tarafında (Pi.createPayment({amount,...})) belirlendiği
+// için, DevTools/proxy ile değiştirilebilir bir değerdi — biri teorik olarak
+// 50 π'lik bir domain için 0.01 π'lik bir ödeme yaratıp yine de domaini
+// "50 π'ye satıldı" olarak aldırabilirdi; cüzdana gerçekte sadece 0.01 π
+// düşerdi. Bu fonksiyon, complete'ten HEMEN önce Pi'nin kendi kaydındaki
+// ödeme detayını (GET /v2/payments/{paymentId}) çekip gerçek `amount` alanını
+// döndürür — artık hiçbir yere client'ın beyanına güvenilmiyor, sadece Pi'nin
+// kendi sunucusunun söylediğine güveniliyor.
+async function fetchPiPaymentDetails(paymentId) {
+  const PI_API_KEY = process.env.APP_SECRET;
+  try {
+    const response = await fetch(`https://api.minepi.com/v2/payments/${paymentId}`, {
+      headers: { 'Authorization': `Key ${PI_API_KEY}` }
+    });
+    if (!response.ok) {
+      console.error(`[Ödeme Doğrulama] Pi'den ödeme detayı alınamadı (HTTP ${response.status}), paymentId:${paymentId}`);
+      return null;
+    }
+    return await response.json();
+  } catch (e) {
+    console.error(`[Ödeme Doğrulama] Pi'den ödeme detayı çekilirken hata, paymentId:${paymentId}:`, e.message || e);
+    return null;
+  }
+}
+
+// Gerçekte ödenen tutarın, beklenen fiyata (küçük bir kayan-nokta toleransıyla)
+// eşit ya da fazla olduğunu doğrular. true/false değil, ayrıntılı bir sonuç
+// nesnesi döner ki hem loglama hem admin bildirimi bundan yararlanabilsin.
+function verifyPaidAmount(paymentDetails, expectedPrice) {
+  const paidAmount = Number(paymentDetails?.amount);
+  if (!Number.isFinite(paidAmount)) {
+    return { ok: false, reason: 'amount_missing', paidAmount: null };
+  }
+  const TOLERANCE = 0.0000001; // Pi'nin kendi ondalık hassasiyetine göre küçük bir pay
+  if (paidAmount + TOLERANCE < expectedPrice) {
+    return { ok: false, reason: 'amount_mismatch', paidAmount };
+  }
+  return { ok: true, paidAmount };
+}
+
 // ─── Firebase Admin Başlatma ───────────────────────────────────────────────
 function getAdminApp() {
   if (getApps().length > 0) return getApps()[0];
@@ -4788,6 +4832,21 @@ async function handlerImpl(req, res) {
         // reservedFor durumuna bakar.
         await revertExpiredReservation(db, domainName);
 
+        // ── GÜVENLİK: Ödemenin GERÇEKTEN ne kadar olduğunu Pi'nin kendi
+        // kaydından doğruluyoruz. Ödeme tutarı istemci tarafında
+        // (Pi.createPayment) belirlendiği için client'ın beyanına
+        // GÜVENİLMİYOR — sadece Pi'nin sunucusunun söylediğine güveniliyor.
+        // Bu isteği transaction'ın DIŞINDA atıyoruz çünkü Firestore
+        // transaction'ları çakışma olursa otomatik tekrar denenebiliyor;
+        // içeride dış bir ağ isteği tutmak hem gereksiz tekrara hem de
+        // gereksiz yere uzayan bir kilide yol açardı.
+        const paymentDetails = await fetchPiPaymentDetails(paymentId);
+        if (!paymentDetails) {
+          console.error(`[GÜVENLİK] Ödeme detayı doğrulanamadan complete denendi. paymentId:${paymentId} domainName:${domainName} txid:${txid} @${username}`);
+          await logSystemError('complete_amount_unverifiable', new Error('Could not fetch payment details from Pi to verify amount'), `paymentId:${paymentId} Domain:${domainName} Txid:${txid} @${username}`);
+          return res.status(503).json({ error: "Ödemeniz şu anda doğrulanamadı, lütfen birkaç saniye sonra tekrar deneyin. Sorun devam ederse destek ekibiyle iletişime geçin." });
+        }
+
         // YENİ (yarış durumu sertleştirmesi — ASIL KORUMA): Öncesinde burada
         // "oku, kontrol et, sonra yaz" ayrı ayrı adımlardı — iki ödeme
         // neredeyse aynı anda 'complete' olursa (ikisi de gerçek Pi
@@ -4802,7 +4861,24 @@ async function handlerImpl(req, res) {
           const domainSnap = await tx.get(domainRef);
           const realPrice = domainSnap.exists ? domainSnap.data().price : null;
           if (typeof realPrice !== 'number') return { ok: false, reason: 'invalid_domain' };
-          if (domainSnap.data().sold === true) return { ok: false, reason: 'already_sold' };
+          if (domainSnap.data().sold === true) {
+            // YENİ: Bu isteği yapan kullanıcı zaten bu domainin kayıtlı
+            // alıcısıysa (ya da aynı txid tekrar geldiyse), bu bir yarış
+            // durumu DEĞİL — ağ hatası/çift tıklama/yeniden deneme sonrası
+            // kendi başarılı alımını tekrar 'complete' etmeye çalışıyor
+            // demektir. Böyle bir durumda sessizce "zaten tamam" deyip
+            // idempotent şekilde başarı dönüyoruz; aksi halde (eski
+            // davranış) bu, gerçekte hiçbir sorun olmayan bir işlemi
+            // "ACİL MANUEL İADE GEREKİYOR" yanlış alarmına çeviriyor,
+            // admin'e boşuna acil Telegram mesajı gidiyor ve kullanıcıya
+            // — domaini zaten elindeyken — "iade edilecek" diye yanlış bir
+            // mesaj gösteriliyordu.
+            const dd = domainSnap.data();
+            if (dd.buyer === username || (txid && dd.txid === txid)) {
+              return { ok: true, alreadyCompleted: true, realPrice: dd.price, sellerUsername: dd.sellerUsername || null, previousBuyer: null, code: null };
+            }
+            return { ok: false, reason: 'already_sold' };
+          }
           // YENİ: 'approve' aşamasındaki kontrolün aynısı burada da (savunma
           // katmanı olarak) tekrarlanıyor — teorik olarak approve ile
           // complete arasındaki dar zaman diliminde sellerUsername
@@ -4818,6 +4894,16 @@ async function handlerImpl(req, res) {
           const dData = domainSnap.data();
           if (dData.reservedFor && dData.reservedUntil && dData.reservedUntil > Date.now() && dData.reservedFor !== username) {
             return { ok: false, reason: 'reserved', reservedUntil: dData.reservedUntil };
+          }
+
+          // ── GÜVENLİK: Gerçek ödenen tutar, domainin (transaction içinde
+          // az önce okunan, dolayısıyla güncel) fiyatını karşılıyor mu?
+          // Karşılamıyorsa domaini SATILMIŞ olarak işaretlemiyoruz —
+          // aksi halde biri örneğin 50 π'lik bir domain için 0.01 π'lik bir
+          // ödemeyle domaini alabilirdi.
+          const amountCheck = verifyPaidAmount(paymentDetails, realPrice);
+          if (!amountCheck.ok) {
+            return { ok: false, reason: 'amount_mismatch', paidAmount: amountCheck.paidAmount, realPrice };
           }
 
           const code = "WEB3-" + Math.random().toString(36).substr(2, 6).toUpperCase();
@@ -4841,6 +4927,26 @@ async function handlerImpl(req, res) {
 
         if (!txResult.ok) {
           if (txResult.reason === 'invalid_domain') return res.status(400).json({ error: "Geçersiz domain" });
+          if (txResult.reason === 'amount_mismatch') {
+            // ── GÜVENLİK: Ödeme Pi blockchain'inde tamamlanmış olabilir ama
+            // gönderilen tutar domainin fiyatını karşılamıyor. Bu ya bir
+            // manipülasyon denemesi ya da bir eşitleme sorunu (kur/rounding)
+            // olabilir — otomatik tamamlamıyoruz, admin'i acil uyarıp elle
+            // incelemesini istiyoruz. Domain SATILMIŞ işaretlenmedi.
+            console.error(`[GÜVENLİK] Tutar uyuşmazlığı — @${username} "${domainName}" için ${txResult.paidAmount} π ödedi ama fiyat ${txResult.realPrice} π. paymentId:${paymentId} txid:${txid}`);
+            await logSystemError('complete_amount_mismatch', new Error('Paid amount does not match domain price'), `Alıcı:@${username} Domain:${domainName} Ödenen:${txResult.paidAmount} Beklenen:${txResult.realPrice} paymentId:${paymentId} Txid:${txid} — MANUEL İNCELEME GEREKİYOR`);
+            await sendTG(TG_CHAT_ID, `🚨 *ACİL — TUTAR UYUŞMAZLIĞI / MANUEL İNCELEME GEREKİYOR*\n\n@${username} "${domainName}" için ödeme yaptı ama ödenen tutar (${txResult.paidAmount} π) domainin fiyatını (${txResult.realPrice} π) karşılamıyor.\npaymentId: ${paymentId}\ntxid: ${txid}\n\nDomain SATILMIŞ olarak işaretlenmedi. Lütfen elle inceleyip gerekirse iade/tahsilat sürecini başlatın.`);
+            await sendNotificationToAdmin({
+              type: 'amount_mismatch_review_needed',
+              title: '🚨 Acil: Tutar Uyuşmazlığı — Elle İnceleme',
+              body: `@${username}, "${domainName}" için ${txResult.paidAmount} π ödedi ama beklenen fiyat ${txResult.realPrice} π. Elle inceleme gerekiyor.`,
+              domainName, buyer: username, txid, paidAmount: txResult.paidAmount, expectedPrice: txResult.realPrice
+            });
+            return res.status(402).json({
+              error: "Ödemeniz, bu domainin güncel fiyatıyla eşleşmiyor. Bu işlem güvenlik nedeniyle tamamlanamadı ve destek ekibine otomatik olarak bildirildi; en kısa sürede sizinle iletişime geçilecek.",
+              amountMismatch: true
+            });
+          }
           if (txResult.reason === 'reserved') {
             // Domain, anlaşma sağlanan BAŞKA bir alıcı için rezerve edilmiş.
             // 'approve' aşamasındaki ön-kontrol bunu genelde daha en baştan
@@ -4902,6 +5008,18 @@ async function handlerImpl(req, res) {
             error: "Bu domain, ödemeniz tamamlanırken çok kısa bir süre önce başka biri tarafından satın alınmış. Paranız alındığı için otomatik olarak destek ekibine bildirildi, en kısa sürede sizinle iletişime geçip iadenizi yapacaklar.",
             raceCondition: true
           });
+        }
+
+        // YENİ: Bu, kullanıcının kendi ÖNCEDEN başarılı olmuş alımını
+        // (ör. ağ hatası sonrası) tekrar 'complete' etmesi — puanlar,
+        // istatistikler ve bildirimler İLK tamamlanmada zaten işlendi.
+        // Burada TEKRAR çalıştırırsak puan/istatistik iki katına çıkar ve
+        // kullanıcıya/satıcıya/admin'e aynı bildirimler ikinci kez gider.
+        // Bu yüzden hiçbir yan etkiyi tekrarlamadan, doğrudan başarı
+        // yanıtı dönüyoruz (idempotent no-op).
+        if (txResult.alreadyCompleted) {
+          console.log(`[Idempotent Tekrar] @${username}, ${domainName} için complete'i tekrar çağırdı — zaten tamamlanmıştı, yan etkiler atlandı.`);
+          return res.status(200).json({ ...data, success: true, alreadyCompleted: true });
         }
 
         const { realPrice, sellerUsername, previousBuyer, code } = txResult;
