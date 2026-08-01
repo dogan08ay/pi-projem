@@ -8407,6 +8407,7 @@ let tourEls = null;
 let tourExitConfirmPending = false;
 let tourExitConfirmTimer = null;
 let tourInitialState = null; // tur başlamadan ÖNCE panel/menü/modal açık mıydı — bitince buna geri dönülür
+let tourDirection = 'forward'; // 'forward' | 'backward' — hedefi olmayan bir adıma denk gelince hangi yöne atlanacağını belirler
 
 // Ekrana (overlay'e) yanlışlıkla dokunulduğunda turu ANINDA kapatmak yerine,
 // ilk dokunuşta bir uyarı gösterip yalnızca KISA SÜRE İÇİNDE gelen ikinci bir
@@ -8676,9 +8677,18 @@ async function tourRenderStep() {
     const target = await tourWaitForTarget(step.selector);
     if (!tourEls || tourStepIndex !== stepIndexAtStart) return; // bu süre zarfında tur değişti/kapandı
     if (!target) {
-        // Bu adımın hedefi gerçekten bulunamadıysa turu aniden kapatmak yerine
-        // sessizce bir sonraki adıma geç; sadece son adımdaysak ve hiçbir hedef
-        // yoksa turu düzgünce sonlandır.
+        // ÖNEMLİ: Bu adımın hedefi bu hesapta gerçekten yoksa (ör. hesap zaten
+        // doğrulanmışsa "Doğrula" butonu hiç render edilmez), hangi YÖNDE
+        // geliniyorsa o yönde atla. Eskiden her zaman İLERİ atlıyordu; bu
+        // yüzden "Geri" ile böyle bir adıma gelindiğinde kod onu aynı anda
+        // tekrar ileri atlatıp kullanıcıyı olduğu yere geri fırlatıyordu —
+        // "Geri" tuşu göz önünde hiçbir şey yapmamış gibi görünüyordu.
+        if (tourDirection === 'backward') {
+            if (tourStepIndex <= 0) { tourFinish(); return; } // en baştaki adım bile yoksa turu düzgünce kapat
+            tourStepIndex--;
+            tourRenderStep();
+            return;
+        }
         if (tourStepIndex >= TOUR_STEPS.length - 1) { tourFinish(); return; }
         tourStepIndex++;
         tourRenderStep();
@@ -8708,12 +8718,14 @@ async function tourRenderStep() {
 
 window.tourNextStep = function() {
     if (!tourEls) return;
+    tourDirection = 'forward';
     tourStepIndex++;
     if (tourStepIndex >= TOUR_STEPS.length) { tourFinish(); return; }
     tourRenderStep();
 };
 window.tourPrevStep = function() {
     if (!tourEls || tourStepIndex <= 0) return;
+    tourDirection = 'backward';
     tourStepIndex--;
     tourRenderStep();
 };
@@ -8744,6 +8756,7 @@ async function startOnboardingTour() {
 
     tourCleanup();
     tourStepIndex = 0;
+    tourDirection = 'forward';
 
     const overlay = document.createElement('div');
     overlay.className = 'tour-overlay';
