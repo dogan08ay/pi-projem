@@ -412,6 +412,33 @@ async function sendNotification(targetUsername, notification) {
   } catch (e) {
     console.error(`Bildirim gönderilemedi (hedef: @${targetUsername}, tip: ${notification?.type||'?'}):`, e.message || e);
   }
+
+  // YENİ: Kullanıcı Telegram ve/veya e-posta bağladıysa, AYNI bildirimi
+  // oraya da iletiyoruz — böylece uygulamayı açmadan da haberi oluyor.
+  // Uygulama-içi bildirim yukarıda zaten YAZILDI; burası başarısız olsa
+  // bile (Telegram/e-posta API'si geçici çökse bile) kullanıcı en azından
+  // uygulama içindeki bildirimi görür — bu yüzden ayrı bir try/catch'te,
+  // sessizce loglayıp devam ediyoruz; ana bildirim akışını asla bozmuyor.
+  try {
+    const db = getDb();
+    const profSnap = await db.collection('user_profiles').doc(targetUsername).get();
+    if (profSnap.exists) {
+      const prof = profSnap.data();
+      const text = `${notification.title ? notification.title + '\n\n' : ''}${notification.body || ''}`;
+      if (prof.telegramChatId) {
+        await sendTG(prof.telegramChatId, text);
+      }
+      if (prof.email && prof.emailVerified) {
+        await sendEmail(
+          prof.email,
+          notification.title || 'Yeni Bildirim',
+          `<p style="font-family:sans-serif;font-size:15px;color:#111;">${(notification.body || '').replace(/\n/g, '<br>')}</p>`
+        );
+      }
+    }
+  } catch (e) {
+    console.error(`[Dış Bildirim] @${targetUsername} için Telegram/e-posta gönderilemedi:`, e.message || e);
+  }
 }
 
 async function sendNotificationToAdmin(notification) {
@@ -432,6 +459,53 @@ async function sendTG(chatId, text) {
       body: JSON.stringify({ chat_id: chatId, text, parse_mode: 'Markdown' })
     });
   } catch (e) { console.error("TG Error:", e); }
+}
+
+// Bot kullanıcı adı (ör. "DomainMarketBot") sık değişmeyeceği için, her
+// bağlama isteğinde Telegram'a sormak yerine bir kere çekip bellekte
+// (fonksiyonun sıcak/warm çağrıları arasında) tutuyoruz.
+let cachedBotUsername = null;
+async function getCachedBotUsername() {
+  if (cachedBotUsername) return cachedBotUsername;
+  if (!TG_BOT_TOKEN) return null;
+  try {
+    const resp = await fetch(`https://api.telegram.org/bot${TG_BOT_TOKEN}/getMe`);
+    const data = await resp.json();
+    if (data?.result?.username) {
+      cachedBotUsername = data.result.username;
+      return cachedBotUsername;
+    }
+    console.error('[Telegram] getMe beklenmeyen yanıt döndürdü:', JSON.stringify(data));
+  } catch (e) {
+    console.error('[Telegram] Bot kullanıcı adı alınamadı:', e.message || e);
+  }
+  return null;
+}
+
+// ─── E-posta Yardımcısı (Resend API) ──────────────────────────────────────
+// NOT: Resend kullanılıyor çünkü SMTP/nodemailer kurmaya göre serverless
+// ortamda çok daha basit (tek bir fetch isteği) ve ücretsiz katmanı bu
+// ölçekteki bir uygulama için yeterli. Ortam değişkenlerine RESEND_API_KEY
+// ve (isteğe bağlı, yoksa Resend'in test adresi kullanılır) MAIL_FROM
+// eklemeniz yeterli — https://resend.com üzerinden ücretsiz hesap açılır.
+const RESEND_API_KEY = process.env.RESEND_API_KEY;
+const MAIL_FROM = process.env.MAIL_FROM || 'onboarding@resend.dev';
+
+async function sendEmail(to, subject, htmlBody) {
+  if (!RESEND_API_KEY || !to) return;
+  try {
+    const resp = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${RESEND_API_KEY}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ from: MAIL_FROM, to: [to], subject, html: htmlBody })
+    });
+    if (!resp.ok) {
+      const errText = await resp.text().catch(() => '');
+      console.error(`[E-posta] Gönderilemedi (HTTP ${resp.status}) → ${to}: ${errText}`);
+    }
+  } catch (e) {
+    console.error(`[E-posta] Gönderim hatası → ${to}:`, e.message || e);
+  }
 }
 
 // ─── Sistem Hata Günlüğü ────────────────────────────────────────────────────
@@ -2375,6 +2449,240 @@ async function handlerImpl(req, res) {
       return res.status(200).json({ success: true });
     } catch (e) {
       console.error("sync_user_uid hatası:", e);
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  // ══════════════════════════════════════════════════════════════════════
+  //  BİLDİRİM TERCİHLERİ — Telegram Bağlama ve E-posta Bağlama
+  //  Amaç: sendNotification() zaten her önemli olayda (satış, teklif,
+  //  escrow hatırlatması vb.) çağrılıyor; kullanıcı burada Telegram/e-posta
+  //  bağlarsa, TEK bir değişiklikle (bkz. sendNotification üstündeki YENİ
+  //  blok) o bildirimler otomatik olarak oraya da gidiyor — uygulamayı
+  //  açmadan da haberdar oluyorlar.
+  // ══════════════════════════════════════════════════════════════════════
+
+  // ── Telegram Bağlama Başlat: tek kullanımlık kod üret, bot linkini dön ──
+  if (action === 'link_telegram_start') {
+    const realUsername = await getRealUsername(accessToken);
+    if (!realUsername) return res.status(401).json({ error: "Geçersiz oturum" });
+    if (!await checkRateLimit(clientIp, 'link_telegram_start', 5, 60000))
+      return res.status(429).json({ error: "Çok fazla istek. Lütfen bekleyin." });
+    if (!TG_BOT_TOKEN) return res.status(503).json({ error: "Telegram bildirimleri şu anda kullanılamıyor" });
+    try {
+      const db = getDb();
+      const botUsername = await getCachedBotUsername();
+      if (!botUsername) return res.status(503).json({ error: "Bot bilgisi alınamadı, lütfen daha sonra tekrar deneyin" });
+
+      const code = Math.random().toString(36).substr(2, 8).toUpperCase();
+      await db.collection('telegram_link_codes').doc(code).set({
+        username: realUsername, createdAt: Date.now()
+      });
+
+      return res.status(200).json({ success: true, botUrl: `https://t.me/${botUsername}?start=${code}` });
+    } catch (e) {
+      console.error("link_telegram_start hatası:", e);
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  // ── Bildirim Tercihleri Durumu (Telegram bağlı mı, e-posta var mı) ──────
+  if (action === 'get_notification_prefs') {
+    const realUsername = await getRealUsername(accessToken);
+    if (!realUsername) return res.status(401).json({ error: "Geçersiz oturum" });
+    try {
+      const db = getDb();
+      const snap = await db.collection('user_profiles').doc(realUsername).get();
+      const d = snap.exists ? snap.data() : {};
+      return res.status(200).json({
+        success: true,
+        telegramLinked: !!d.telegramChatId,
+        email: d.email || null,
+        emailVerified: !!d.emailVerified
+      });
+    } catch (e) {
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  // ── Telegram Bağlantısını Kaldır ────────────────────────────────────────
+  if (action === 'unlink_telegram') {
+    const realUsername = await getRealUsername(accessToken);
+    if (!realUsername) return res.status(401).json({ error: "Geçersiz oturum" });
+    try {
+      const db = getDb();
+      await db.collection('user_profiles').doc(realUsername).set({
+        telegramChatId: FieldValue.delete(), telegramLinkedAt: FieldValue.delete()
+      }, { merge: true });
+      return res.status(200).json({ success: true });
+    } catch (e) {
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  // ── E-posta Ekle: kaydet + 6 haneli doğrulama kodu gönder ──────────────
+  // NOT: E-posta, doğrulanana (emailVerified:true) kadar bildirim
+  // göndermede KULLANILMIYOR (bkz. sendNotification) — aksi halde biri
+  // başkasının e-postasını girip ona istenmeyen bildirim/spam gönderebilirdi.
+  if (action === 'set_profile_email') {
+    const { email } = req.body;
+    const realUsername = await getRealUsername(accessToken);
+    if (!realUsername) return res.status(401).json({ error: "Geçersiz oturum" });
+    if (!await checkRateLimit(clientIp, 'set_profile_email', 5, 60000))
+      return res.status(429).json({ error: "Çok fazla istek. Lütfen bekleyin." });
+    const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!email || typeof email !== 'string' || email.length > 254 || !EMAIL_RE.test(email.trim())) {
+      return res.status(400).json({ error: "Geçerli bir e-posta adresi girin" });
+    }
+    if (!RESEND_API_KEY) return res.status(503).json({ error: "E-posta bildirimleri şu anda kullanılamıyor" });
+    const cleanEmail = email.trim().toLowerCase();
+    try {
+      const db = getDb();
+      const code = Math.floor(100000 + Math.random() * 900000).toString();
+      await db.collection('user_profiles').doc(realUsername).set({
+        email: cleanEmail,
+        emailVerified: false,
+        emailVerifyCode: code,
+        emailVerifyCodeAt: Date.now()
+      }, { merge: true });
+
+      await sendEmail(cleanEmail, 'Doğrulama Kodunuz',
+        `<div style="font-family:sans-serif;">
+          <p>Merhaba,</p>
+          <p>Hesabınıza (<b>@${realUsername}</b>) bu e-posta adresini bağlamak için doğrulama kodunuz:</p>
+          <h2 style="letter-spacing:6px;">${code}</h2>
+          <p style="color:#666;font-size:13px;">Bu kod 15 dakika geçerlidir. Bu isteği siz yapmadıysanız bu e-postayı görmezden gelebilirsiniz.</p>
+        </div>`
+      );
+
+      return res.status(200).json({ success: true });
+    } catch (e) {
+      console.error("set_profile_email hatası:", e);
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  // ── E-posta Doğrulama Kodu Onayı ────────────────────────────────────────
+  if (action === 'verify_profile_email') {
+    const { code } = req.body;
+    const realUsername = await getRealUsername(accessToken);
+    if (!realUsername) return res.status(401).json({ error: "Geçersiz oturum" });
+    if (!code) return res.status(400).json({ error: "Kod gerekli" });
+    try {
+      const db = getDb();
+      const ref = db.collection('user_profiles').doc(realUsername);
+      const snap = await ref.get();
+      if (!snap.exists || !snap.data().emailVerifyCode) {
+        return res.status(400).json({ error: "Önce bir e-posta adresi ekleyin" });
+      }
+      const d = snap.data();
+      if (!d.emailVerifyCodeAt || Date.now() - d.emailVerifyCodeAt > 15 * 60000) {
+        return res.status(400).json({ error: "Kodun süresi doldu, lütfen tekrar isteyin" });
+      }
+      if (String(code).trim() !== d.emailVerifyCode) {
+        return res.status(400).json({ error: "Kod hatalı" });
+      }
+      await ref.set({
+        emailVerified: true,
+        emailVerifyCode: FieldValue.delete(),
+        emailVerifyCodeAt: FieldValue.delete()
+      }, { merge: true });
+      return res.status(200).json({ success: true });
+    } catch (e) {
+      console.error("verify_profile_email hatası:", e);
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  // ── E-postayı Kaldır ─────────────────────────────────────────────────────
+  if (action === 'remove_profile_email') {
+    const realUsername = await getRealUsername(accessToken);
+    if (!realUsername) return res.status(401).json({ error: "Geçersiz oturum" });
+    try {
+      const db = getDb();
+      await db.collection('user_profiles').doc(realUsername).set({
+        email: FieldValue.delete(),
+        emailVerified: FieldValue.delete(),
+        emailVerifyCode: FieldValue.delete(),
+        emailVerifyCodeAt: FieldValue.delete()
+      }, { merge: true });
+      return res.status(200).json({ success: true });
+    } catch (e) {
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  // ══════════════════════════════════════════════════════════════════════
+  //  ADMIN: Kullanıcı Detayı Görüntüleme ve Doğrudan E-posta Gönderme
+  //  Amaç: bir kullanıcı e-posta bağladığında, admin'in onu destek amaçlı
+  //  bulup (satın alma/satış/ticket geçmişiyle birlikte) hem görebilmesi
+  //  hem de doğrudan e-posta atabilmesi.
+  // ══════════════════════════════════════════════════════════════════════
+
+  // ── Admin: Bir Kullanıcının Tüm Aktivitesini Görüntüle ──────────────────
+  if (action === 'admin_get_user_details') {
+    const isAdmin = await verifyAdmin(accessToken);
+    if (!isAdmin) return res.status(403).json({ error: "Yetki yok" });
+    const { username: targetUsername } = req.body;
+    if (!targetUsername) return res.status(400).json({ error: "Kullanıcı adı gerekli" });
+    try {
+      const db = getDb();
+      const [profileSnap, purchasesSnap, salesSnap, ticketsSnap] = await Promise.all([
+        db.collection('user_profiles').doc(targetUsername).get(),
+        db.collection('global_sales').where('user', '==', targetUsername).get(),
+        db.collection('global_sales').where('sellerUsername', '==', targetUsername).get(),
+        db.collection('tickets').where('createdBy', '==', targetUsername).get()
+      ]);
+
+      const profile = profileSnap.exists ? profileSnap.data() : null;
+      const purchases = []; purchasesSnap.forEach(d => purchases.push({ id: d.id, ...d.data() }));
+      const sales = []; salesSnap.forEach(d => sales.push({ id: d.id, ...d.data() }));
+      const tickets = []; ticketsSnap.forEach(d => tickets.push({ id: d.id, ...d.data() }));
+
+      return res.status(200).json({
+        success: true,
+        username: targetUsername,
+        profile: profile ? {
+          points: profile.points || 0,
+          badge: profile.badge || null,
+          email: profile.email || null,
+          emailVerified: !!profile.emailVerified,
+          telegramLinked: !!profile.telegramChatId,
+          ratingSum: profile.ratingSum || 0,
+          ratingCount: profile.ratingCount || 0
+        } : null,
+        purchases, sales, tickets
+      });
+    } catch (e) {
+      console.error("admin_get_user_details hatası:", e);
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  // ── Admin: Kullanıcıya Doğrudan E-posta Gönder ──────────────────────────
+  if (action === 'admin_send_email_to_user') {
+    const isAdmin = await verifyAdmin(accessToken);
+    if (!isAdmin) return res.status(403).json({ error: "Yetki yok" });
+    const { username: targetUsername, subject, message } = req.body;
+    if (!targetUsername || !subject || !message) {
+      return res.status(400).json({ error: "Kullanıcı adı, konu ve mesaj gerekli" });
+    }
+    if (!RESEND_API_KEY) return res.status(503).json({ error: "E-posta gönderimi şu anda kullanılamıyor" });
+    try {
+      const db = getDb();
+      const profileSnap = await db.collection('user_profiles').doc(targetUsername).get();
+      const profile = profileSnap.exists ? profileSnap.data() : null;
+      if (!profile || !profile.email || !profile.emailVerified) {
+        return res.status(400).json({ error: "Bu kullanıcının doğrulanmış bir e-posta adresi yok" });
+      }
+      await sendEmail(profile.email, subject,
+        `<div style="font-family:sans-serif;white-space:pre-wrap;">${String(message).replace(/</g, '&lt;')}</div>`
+      );
+      const adminUsername = await getRealUsername(accessToken);
+      await logAdminAction(adminUsername, 'admin_send_email_to_user', `@${targetUsername} (${profile.email}) — konu: "${subject}"`);
+      return res.status(200).json({ success: true });
+    } catch (e) {
+      console.error("admin_send_email_to_user hatası:", e);
       return res.status(500).json({ error: e.message });
     }
   }
