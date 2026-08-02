@@ -1261,6 +1261,31 @@
             </div>
             <div id="onboarding-checklist-items" style="display:flex;flex-direction:column;gap:6px;"></div>
         </div>
+        <div id="notification-prefs-box" style="background:#0f172a;border-radius:12px;padding:12px;text-align:left;margin-top:10px;display:flex;flex-direction:column;gap:10px;">
+            <div style="font-size:0.75em;font-weight:800;color:#a5b4fc;">🔔 <span data-i18n="notifPrefsTitle"></span></div>
+            <div style="font-size:0.68em;color:#64748b;margin-top:-6px;" data-i18n="notifPrefsHelp"></div>
+
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
+                <span style="font-size:0.78em;color:#cbd5e1;font-weight:700;">📨 Telegram</span>
+                <button id="telegram-link-btn" onclick="window.handleTelegramLinkClick()" class="pi-btn" style="background:#0ea5e9;animation:none;padding:6px 12px;font-size:0.72em;width:auto;margin:0;border-radius:8px;"></button>
+            </div>
+
+            <div style="display:flex;flex-direction:column;gap:6px;">
+                <span style="font-size:0.78em;color:#cbd5e1;font-weight:700;">✉️ E-posta</span>
+                <div id="email-not-set-ui" style="display:flex;gap:6px;">
+                    <input type="email" id="profile-email-input" data-i18n-placeholder="emailAddPlaceholder" style="flex:1;min-width:0;background:#1e293b;border:1.5px solid #334155;border-radius:8px;padding:8px;color:#e2e8f0;font-size:0.76em;box-sizing:border-box;">
+                    <button onclick="window.handleSetProfileEmail()" class="pi-btn" data-i18n="emailAddBtn" style="background:#6366f1;animation:none;padding:8px 12px;font-size:0.72em;width:auto;margin:0;border-radius:8px;"></button>
+                </div>
+                <div id="email-verify-ui" style="display:none;gap:6px;">
+                    <input type="text" id="profile-email-code-input" maxlength="6" inputmode="numeric" data-i18n-placeholder="emailCodePlaceholder" style="flex:1;min-width:0;background:#1e293b;border:1.5px solid #334155;border-radius:8px;padding:8px;color:#e2e8f0;font-size:0.76em;box-sizing:border-box;letter-spacing:3px;">
+                    <button onclick="window.handleVerifyProfileEmail()" class="pi-btn" data-i18n="emailVerifyBtn" style="background:#22c55e;animation:none;padding:8px 12px;font-size:0.72em;width:auto;margin:0;border-radius:8px;"></button>
+                </div>
+                <div id="email-linked-ui" style="display:none;justify-content:space-between;align-items:center;">
+                    <span id="email-linked-address" style="font-size:0.76em;color:#4ade80;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></span>
+                    <button onclick="window.handleRemoveProfileEmail()" data-i18n="emailRemoveBtn" style="background:none;border:none;color:#f87171;font-size:0.7em;font-weight:700;cursor:pointer;flex-shrink:0;margin-left:8px;"></button>
+                </div>
+            </div>
+        </div>
         <button class="pi-btn" style="background:#6366f1;animation:none;padding:10px;margin:14px 0 0 0;width:100%;" onclick="document.getElementById('profile-modal').style.display='none'" data-i18n="close"></button>
     </div>
 </div>
@@ -3394,6 +3419,25 @@ const i18n = {
     tourNotReady:"Uygulama turu şu anda başlatılamadı. Lütfen sayfanın tamamen yüklenmesini bekleyip tekrar deneyin.",
     tourExitConfirm:"Turu kapatmak için tekrar dokunun",
     tourFinishedNudge:"Turu tamamladın 🎉 Menü → Profilim'de seni bekleyen \"Başlangıç Adımların\" var.",
+    notifPrefsTitle:"Bildirim Tercihleri",
+    notifPrefsHelp:"Uygulamayı açık tutmadan da satış, teklif ve escrow bildirimlerini almak için bağlayın.",
+    telegramConnect:"Bağla",
+    telegramDisconnect:"Kaldır",
+    telegramConnecting:"Bekleniyor…",
+    telegramLinkedLabel:"✅ Bağlandı",
+    telegramLinkOpened:"Telegram açıldı, botu başlattıktan sonra buraya dönün.",
+    telegramLinkFailed:"Bağlantı başlatılamadı, lütfen tekrar deneyin.",
+    telegramUnlinked:"Telegram bağlantısı kaldırıldı.",
+    emailAddPlaceholder:"ornek@eposta.com",
+    emailAddBtn:"Ekle",
+    emailInvalid:"Geçerli bir e-posta adresi girin.",
+    emailCodeSent:"Doğrulama kodu e-postanıza gönderildi.",
+    emailCodePlaceholder:"6 haneli kod",
+    emailVerifyBtn:"Onayla",
+    emailVerified:"E-posta doğrulandı!",
+    emailCodeInvalid:"Kod hatalı ya da süresi dolmuş.",
+    emailRemoveBtn:"Kaldır",
+    emailRemoved:"E-posta kaldırıldı.",
   },
   en: {
     menu:"Menu",account:"Account",preferences:"Preferences",connected:"Connected",
@@ -4114,6 +4158,25 @@ const i18n = {
     tourNotReady:"The app tour couldn't start right now. Please wait for the page to fully load and try again.",
     tourExitConfirm:"Tap again to close the tour",
     tourFinishedNudge:"Tour complete 🎉 Check out \"Getting Started\" under Menu → My Profile whenever you're ready.",
+    notifPrefsTitle:"Notification Preferences",
+    notifPrefsHelp:"Connect these to get sale, offer, and escrow notifications without keeping the app open.",
+    telegramConnect:"Connect",
+    telegramDisconnect:"Disconnect",
+    telegramConnecting:"Waiting…",
+    telegramLinkedLabel:"✅ Connected",
+    telegramLinkOpened:"Telegram opened — come back here after starting the bot.",
+    telegramLinkFailed:"Couldn't start the connection, please try again.",
+    telegramUnlinked:"Telegram disconnected.",
+    emailAddPlaceholder:"you@email.com",
+    emailAddBtn:"Add",
+    emailInvalid:"Enter a valid email address.",
+    emailCodeSent:"A verification code was sent to your email.",
+    emailCodePlaceholder:"6-digit code",
+    emailVerifyBtn:"Verify",
+    emailVerified:"Email verified!",
+    emailCodeInvalid:"Code is wrong or expired.",
+    emailRemoveBtn:"Remove",
+    emailRemoved:"Email removed.",
   }
 };
 let currentLang = localStorage.getItem('w3dg_lang') || 'tr';
@@ -4260,12 +4323,120 @@ window.openProfileModal=function(){
     document.getElementById('profile-domain-count').innerText=domains.filter(d=>domainData[d.name]?.sold&&domainData[d.name]?.buyer===currentUser).length;
     document.getElementById('profile-points').innerText=Math.round((userProfile.points||0)*100)/100;
     renderOnboardingChecklist();
+    loadNotificationPrefs();
     toggleSideMenu();
 };
+// YENİ: Bildirim Tercihleri (Telegram + E-posta) — Panelim açıldığında
+// mevcut durumu çeker ve UI'yı ona göre kurar.
+async function loadNotificationPrefs(){
+    if(!isAuth) return;
+    try{
+        const r=await fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'get_notification_prefs',accessToken:piAccessToken})});
+        const d=await r.json();
+        if(!d.success) return;
+
+        const tgBtn=document.getElementById('telegram-link-btn');
+        if(d.telegramLinked){
+            tgBtn.innerText=t('telegramDisconnect');
+            tgBtn.style.background='#475569';
+            tgBtn.onclick=window.handleTelegramUnlinkClick;
+        }else{
+            tgBtn.innerText=t('telegramConnect');
+            tgBtn.style.background='#0ea5e9';
+            tgBtn.onclick=window.handleTelegramLinkClick;
+        }
+
+        const notSetUI=document.getElementById('email-not-set-ui');
+        const verifyUI=document.getElementById('email-verify-ui');
+        const linkedUI=document.getElementById('email-linked-ui');
+        notSetUI.style.display='none'; verifyUI.style.display='none'; linkedUI.style.display='none';
+        if(d.emailVerified && d.email){
+            linkedUI.style.display='flex';
+            document.getElementById('email-linked-address').innerText='✅ '+d.email;
+        }else if(d.email){
+            // E-posta girilmiş ama henüz doğrulanmamış — kod bekleniyor.
+            verifyUI.style.display='flex';
+        }else{
+            notSetUI.style.display='flex';
+        }
+    }catch(e){ console.error('loadNotificationPrefs hatası:',e); }
+}
+
+window.handleTelegramLinkClick=async function(){
+    if(!isAuth){showToast(t('profileLoginRequired'));return;}
+    const btn=document.getElementById('telegram-link-btn');
+    btn.disabled=true; btn.innerText=t('telegramConnecting');
+    try{
+        const r=await fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'link_telegram_start',accessToken:piAccessToken})});
+        const d=await r.json();
+        btn.disabled=false;
+        if(d.success && d.botUrl){
+            window.open(d.botUrl,'_blank');
+            showToast(t('telegramLinkOpened'));
+            // Kullanıcı Telegram'dan dönünce durumun güncel görünmesi için
+            // birkaç saniye sonra sessizce tekrar kontrol ediyoruz.
+            setTimeout(loadNotificationPrefs,4000);
+            setTimeout(loadNotificationPrefs,9000);
+        }else{
+            btn.innerText=t('telegramConnect');
+            showToast(d.error||t('telegramLinkFailed'));
+        }
+    }catch(e){
+        btn.disabled=false; btn.innerText=t('telegramConnect');
+        showToast(t('telegramLinkFailed'));
+    }
+};
+
+window.handleTelegramUnlinkClick=async function(){
+    try{
+        const r=await fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'unlink_telegram',accessToken:piAccessToken})});
+        const d=await r.json();
+        if(d.success){ showToast(t('telegramUnlinked')); loadNotificationPrefs(); }
+    }catch(e){ console.error('handleTelegramUnlinkClick hatası:',e); }
+};
+
+window.handleSetProfileEmail=async function(){
+    const input=document.getElementById('profile-email-input');
+    const email=(input.value||'').trim();
+    if(!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){ showToast(t('emailInvalid')); return; }
+    try{
+        const r=await fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'set_profile_email',email,accessToken:piAccessToken})});
+        const d=await r.json();
+        if(d.success){
+            showToast(t('emailCodeSent'));
+            document.getElementById('email-not-set-ui').style.display='none';
+            document.getElementById('email-verify-ui').style.display='flex';
+        }else{
+            showToast(d.error||t('emailInvalid'));
+        }
+    }catch(e){ showToast(t('emailInvalid')); }
+};
+
+window.handleVerifyProfileEmail=async function(){
+    const input=document.getElementById('profile-email-code-input');
+    const code=(input.value||'').trim();
+    if(!code) return;
+    try{
+        const r=await fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'verify_profile_email',code,accessToken:piAccessToken})});
+        const d=await r.json();
+        if(d.success){ showToast(t('emailVerified'),'success'); loadNotificationPrefs(); }
+        else{ showToast(d.error||t('emailCodeInvalid')); }
+    }catch(e){ showToast(t('emailCodeInvalid')); }
+};
+
+window.handleRemoveProfileEmail=async function(){
+    try{
+        const r=await fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'remove_profile_email',accessToken:piAccessToken})});
+        const d=await r.json();
+        if(d.success){ showToast(t('emailRemoved')); loadNotificationPrefs(); }
+    }catch(e){ console.error('handleRemoveProfileEmail hatası:',e); }
+};
+
 // YENİ: Yeni kullanıcıların uygulamayı daha hızlı benimsemesi için basit bir
 // ilerleme kontrol listesi. Tamamı gerçekten yapılmış eylemlere dayanır
 // (giriş, favori, alım/satım, davet) — sahte/otomatik "tamamlandı" yoktur.
 function renderOnboardingChecklist(){
+
     const box=document.getElementById('onboarding-checklist-box');
     const itemsEl=document.getElementById('onboarding-checklist-items');
     if(!box||!itemsEl) return;
