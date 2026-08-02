@@ -2982,10 +2982,37 @@ async function handlerImpl(req, res) {
       const snap = await db.collection('global_sales')
         .where('payoutStatus', 'in', ['pending', 'no_seller', 'processing', 'released', 'failed', 'refund_processing', 'refunded', 'refund_failed'])
         .get();
+      const now = Date.now();
+      // YENİ: Admin panele her gün bakmazsa, onay bekleyen bir escrow
+      // (payoutStatus:'pending') haftalarca sessizce takılı kalabiliyordu —
+      // önceden bunun ne kadar süredir beklediğini görmenin tek yolu
+      // elle tarihleri karşılaştırmaktı. Artık her kayda, ne kadar süredir
+      // beklediği (pendingHours) ve belirli bir eşiği (48 saat) aşıp
+      // aşmadığı (isStale) hesaplanıp ekleniyor; bekleyenler en üste, en
+      // uzun süre bekleyen en başa gelecek şekilde sıralanıyor — admin
+      // panele girer girmez en acil olanı ilk anda görüyor.
+      const STALE_THRESHOLD_HOURS = 48;
       const payouts = [];
-      snap.forEach(doc => payouts.push({ id: doc.id, ...doc.data() }));
-      payouts.sort((a, b) => (b.at || 0) - (a.at || 0));
-      return res.status(200).json({ success: true, payouts });
+      snap.forEach(doc => {
+        const d = doc.data();
+        const pendingHours = d.payoutStatus === 'pending' && typeof d.at === 'number'
+          ? Math.round((now - d.at) / 3600000 * 10) / 10
+          : null;
+        payouts.push({
+          id: doc.id, ...d,
+          pendingHours,
+          isStale: pendingHours !== null && pendingHours >= STALE_THRESHOLD_HOURS
+        });
+      });
+      payouts.sort((a, b) => {
+        // 1) Eski/takılı kalmış 'pending' kayıtlar en üstte (en uzun bekleyen en başta)
+        if (a.isStale !== b.isStale) return a.isStale ? -1 : 1;
+        if (a.isStale && b.isStale) return (b.pendingHours || 0) - (a.pendingHours || 0);
+        // 2) Geri kalanı eskisi gibi en yeniden en eskiye
+        return (b.at || 0) - (a.at || 0);
+      });
+      const staleCount = payouts.filter(p => p.isStale).length;
+      return res.status(200).json({ success: true, payouts, staleCount });
     } catch (e) {
       console.error("get_pending_payouts hatası:", e);
       return res.status(500).json({ error: e.message });
@@ -5075,7 +5102,14 @@ async function handlerImpl(req, res) {
           await sendNotification(username, {
             type: 'purchase_success',
             title: '🎉 Satın Alma Başarılı!',
-            body: `"${domainName}" domainini ${realPrice} Pi karşılığında satın aldınız! Satıcıyla devri tamamladıktan sonra "Panelim" içinden teslim aldığınızı onaylamayı unutmayın.`,
+            // YENİ: Eskiden "satıcıyla devri tamamladıktan sonra onayla"
+            // deniyordu ama Pi tarafında self-servis bir "domaini başka
+            // kullanıcıya devret" özelliği olduğu doğrulanamadı — bu
+            // ifade, var olmayan bir düğmeyi arayan kafası karışık
+            // kullanıcılara yol açabilirdi. Artık gerçek süreç (satıcıyla
+            // Destek Talepleri üzerinden, admin aracılığıyla koordinasyon)
+            // açıkça anlatılıyor.
+            body: `"${domainName}" domainini ${realPrice} Pi karşılığında satın aldınız! Domainin devir/teslim sürecini satıcıyla koordine etmek için "Panelim → Destek Talepleri" üzerinden bize ulaşın — devri aldığınızı onayladıktan sonra ödeme satıcıya serbest bırakılır.`,
             domainName, txid
           });
 
@@ -5100,7 +5134,10 @@ async function handlerImpl(req, res) {
             await sendNotification(sellerUsername, {
               type: 'your_domain_sold',
               title: '🏆 Domaininiz Satıldı!',
-              body: `"${domainName}" domaininiz @${username} tarafından ${realPrice} Pi'ye satın alındı! Domaini alıcıya devrettikten sonra lütfen "Panelim" içinden devri tamamladığınızı onaylayın — ödeme, hem sizin hem alıcının onayı görüldükten sonra admin tarafından serbest bırakılır (%${Math.round(PLATFORM_COMMISSION_RATE * 100)} komisyon düşülerek).`,
+              // YENİ: Aynı netlik satıcı tarafında da — "devrettikten sonra
+              // onayla" yerine, devrin NASIL koordine edileceği açıkça
+              // belirtiliyor.
+              body: `"${domainName}" domaininiz @${username} tarafından ${realPrice} Pi'ye satın alındı! Devir/teslim sürecini koordine etmek için "Panelim → Destek Talepleri" üzerinden bize ulaşın. Alıcı devri aldığını onayladıktan sonra ödemeniz serbest bırakılır (%${Math.round(PLATFORM_COMMISSION_RATE * 100)} komisyon düşülerek).`,
               domainName, buyer: username, price: realPrice
             });
           }
