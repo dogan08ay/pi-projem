@@ -486,10 +486,12 @@ async function getCachedBotUsername() {
 // NOT: Resend kullanılıyor çünkü SMTP/nodemailer kurmaya göre serverless
 // ortamda çok daha basit (tek bir fetch isteği) ve ücretsiz katmanı bu
 // ölçekteki bir uygulama için yeterli. Ortam değişkenlerine RESEND_API_KEY
-// ve (isteğe bağlı, yoksa Resend'in test adresi kullanılır) MAIL_FROM
-// eklemeniz yeterli — https://resend.com üzerinden ücretsiz hesap açılır.
+// ekleyin. MAIL_FROM da eklenmeli — resend.com'da dofiay.com domaini
+// doğrulanınca gönderen adres olarak info@dofiay.com kullanılabilir hale
+// gelir (domain doğrulanmadan bu adresten gönderim Resend tarafından
+// reddedilir, o yüzden aşağıdaki varsayılan sadece bir referans/hatırlatma).
 const RESEND_API_KEY = process.env.RESEND_API_KEY;
-const MAIL_FROM = process.env.MAIL_FROM || 'onboarding@resend.dev';
+const MAIL_FROM = process.env.MAIL_FROM || 'info@dofiay.com';
 
 async function sendEmail(to, subject, htmlBody) {
   if (!RESEND_API_KEY || !to) return;
@@ -497,7 +499,7 @@ async function sendEmail(to, subject, htmlBody) {
     const resp = await fetch('https://api.resend.com/emails', {
       method: 'POST',
       headers: { 'Authorization': `Bearer ${RESEND_API_KEY}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ from: MAIL_FROM, to: [to], subject, html: htmlBody })
+      body: JSON.stringify({ from: MAIL_FROM, to: [to], subject, html: wrapEmailHtml(htmlBody) })
     });
     if (!resp.ok) {
       const errText = await resp.text().catch(() => '');
@@ -506,6 +508,17 @@ async function sendEmail(to, subject, htmlBody) {
   } catch (e) {
     console.error(`[E-posta] Gönderim hatası → ${to}:`, e.message || e);
   }
+}
+
+// Her giden e-postanın altına aynı, sabit marka/footer'ı ekler — böylece
+// alıcı hangi akıştan (doğrulama, bildirim, admin mesajı) geldiğine
+// bakmaksızın e-postayı hep aynı, tanıdık kaynaktan gelmiş gibi görür.
+function wrapEmailHtml(innerHtml) {
+  return `<div style="max-width:480px;margin:0 auto;font-family:sans-serif;">
+    ${innerHtml}
+    <hr style="border:none;border-top:1px solid #e5e7eb;margin:24px 0 12px 0;">
+    <p style="color:#9ca3af;font-size:11px;">Bu e-posta Web3 Domain Gateway (dofiay.com) tarafından gönderildi. Bildirim tercihlerinizi uygulamadaki "Panelim" ekranından yönetebilirsiniz.</p>
+  </div>`;
 }
 
 // ─── Sistem Hata Günlüğü ────────────────────────────────────────────────────
@@ -2549,7 +2562,7 @@ async function handlerImpl(req, res) {
       await sendEmail(cleanEmail, 'Doğrulama Kodunuz',
         `<div style="font-family:sans-serif;">
           <p>Merhaba,</p>
-          <p>Hesabınıza (<b>@${realUsername}</b>) bu e-posta adresini bağlamak için doğrulama kodunuz:</p>
+          <p><b>Web3 Domain Gateway</b> hesabınıza (<b>@${realUsername}</b>) bu e-posta adresini bağlamak için doğrulama kodunuz:</p>
           <h2 style="letter-spacing:6px;">${code}</h2>
           <p style="color:#666;font-size:13px;">Bu kod 15 dakika geçerlidir. Bu isteği siz yapmadıysanız bu e-postayı görmezden gelebilirsiniz.</p>
         </div>`
