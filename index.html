@@ -3234,6 +3234,10 @@ const i18n = {
     changelogV1_6Item4:"Kullanıcılar kendi taleplerini, admin ise herhangi bir talebi kalıcı olarak silebiliyor",
     changelogV1_6Item5:"Talep listesi kullanıcı/konu/tarih/durum bilgilerini net çizgilerle ayrılmış tablo düzeninde gösteriyor",
 
+    changelogV2_4:"v2.4 - Uygulama Turu Güncellemesi",
+    changelogV2_4Item1:"👤 Uygulama turuna 'Profil Ayarları' tanıtım adımı eklendi — profilinizdeki hesap özeti, başlangıç adımları ve bildirim tercihleri artık tur sırasında gösteriliyor",
+    changelogV2_4Item2:"🔔 Tur, e-posta veya Telegram bağlamanın önemini artık ayrı bir kartla anlatıyor — böylece önemli bildirimleri (onay, satış, destek talebi) kaçırma riski azalıyor",
+    changelogV2_4Item3:"⚡ Uygulama turunda adımlar arası geçiş belirgin şekilde hızlandırıldı — menü ve sekme açılış animasyonlarının tur sırasında yol açtığı gecikme giderildi",
     changelogV2_3:"v2.3 - Topluluk ve Güven Güncellemesi",
     changelogV2_3Item1:"🔒 Ödeme tamamlama adımında kimlik doğrulama güçlendirildi",
     changelogV2_3Item2:"🏆 Liderlik Tablosu eklendi — puanına göre en aktif kullanıcıları gör",
@@ -3395,6 +3399,10 @@ const i18n = {
     tourStep3Desc:"Domain onayı, satış ve destek talebi güncellemeleri gibi bildirimleriniz burada birikir.",
     tourStep4Title:"Destek Talepleri",
     tourStep4Desc:"Bir sorununuz mu var? Buradan destek talebi açıp ekibimizle doğrudan yazışabilirsiniz.",
+    tourStepProfileSettingsTitle:"👤 Profil Ayarları",
+    tourStepProfileSettingsDesc:"Buradan profilinize girebilirsiniz: giriş/son görülme tarihiniz, satın aldığınız domain sayısı, puanınız, başlangıç adımlarınız ve bildirim tercihleriniz tek ekranda toplanır.",
+    tourStepNotifPrefsTitle:"🔔 Bildirimleri Kaçırmayın",
+    tourStepNotifPrefsDesc:"Uygulamayı sürekli açık tutmasanız bile önemli anları kaçırmamak için e-posta veya Telegram'ınızı bağlayın — domain onayı, satış ve destek talebi güncellemeleri doğrudan size ulaşsın.",
     tourStepOverviewTitle:"Genel Panel",
     tourStepOverviewDesc:"Hesap özetinizi, bakiyenizi ve genel istatistiklerinizi burada tek bakışta görürsünüz.",
     tourStepPurchasesTitle:"Alımlarım",
@@ -3973,6 +3981,10 @@ const i18n = {
     changelogV1_6Item4:"Users can delete their own tickets, and admin can permanently delete any ticket",
     changelogV1_6Item5:"Ticket list now shows user/subject/date/status in a clearly divided table layout",
 
+    changelogV2_4:"v2.4 - App Tour Update",
+    changelogV2_4Item1:"👤 Added a 'Profile Settings' step to the app tour — your account summary, getting-started checklist, and notification preferences are now shown during the tour",
+    changelogV2_4Item2:"🔔 The tour now has a dedicated card explaining why connecting email or Telegram matters — so you're less likely to miss important notifications (approvals, sales, support tickets)",
+    changelogV2_4Item3:"⚡ Noticeably sped up the transitions between app tour steps — removed the lag caused by menu and tab opening animations during the tour",
     changelogV2_3:"v2.3 - Community & Trust Update",
     changelogV2_3Item1:"🔒 Strengthened identity verification in the payment completion step",
     changelogV2_3Item2:"🏆 Added a Leaderboard — see the most active users ranked by points",
@@ -4134,6 +4146,10 @@ const i18n = {
     tourStep3Desc:"Updates about approvals, sales, and support tickets show up here.",
     tourStep4Title:"Support Tickets",
     tourStep4Desc:"Have an issue? Open a support ticket here and chat directly with our team.",
+    tourStepProfileSettingsTitle:"👤 Profile Settings",
+    tourStepProfileSettingsDesc:"Manage your profile here: your login/last-seen dates, purchased domain count, points, getting-started checklist, and notification preferences, all on one screen.",
+    tourStepNotifPrefsTitle:"🔔 Never Miss an Update",
+    tourStepNotifPrefsDesc:"Even when you're not keeping the app open, connect your email or Telegram so you don't miss what matters — domain approvals, sales, and support ticket updates will reach you directly.",
     tourStepOverviewTitle:"Overview",
     tourStepOverviewDesc:"See your account summary, balance, and overall stats here at a glance.",
     tourStepPurchasesTitle:"My Purchases",
@@ -4310,8 +4326,14 @@ window.openSystemStatusModal=async function(){
 window.toggleLangPicker=function(){const p=document.getElementById('lang-picker');p.style.display=p.style.display==='none'?'block':'none';};
 
 // PROFILE MODAL
-window.openProfileModal=function(){
-    if(!isAuth){showToast(t('profileLoginRequired'));return;}
+// İçerik doldurma ve menü kapatma AYRI fonksiyonlara bölündü. Önceden ikisi
+// tek fonksiyondaydı ve toggleSideMenu() koşulsuz çağrılıyordu — bu da
+// Uygulama Turu'nun (bkz. TOUR_STEPS, context:'profile') paneli menü zaten
+// KAPALIYKEN açmak istediği durumlarda toggleSideMenu()'nün menüyü yanlışlıkla
+// yeniden AÇMASINA yol açıyordu (toggle, mevcut duruma bakmaksızın tersine
+// çevirir). Artık tur, sadece içerik dolduran fonksiyonu çağırıp menü
+// durumunu kendi context yönetimiyle (tourSyncContext) ayrıca kontrol ediyor.
+function renderProfileModalContent(){
     document.getElementById('profile-modal').style.display='flex';
     document.getElementById('profile-modal-username').innerText='@'+currentUser;
     document.getElementById('profile-modal-avatar').innerText=currentUser.charAt(0).toUpperCase();
@@ -4324,6 +4346,10 @@ window.openProfileModal=function(){
     document.getElementById('profile-points').innerText=Math.round((userProfile.points||0)*100)/100;
     renderOnboardingChecklist();
     loadNotificationPrefs();
+}
+window.openProfileModal=function(){
+    if(!isAuth){showToast(t('profileLoginRequired'));return;}
+    renderProfileModalContent();
     toggleSideMenu();
 };
 // YENİ: Bildirim Tercihleri (Telegram + E-posta) — Panelim açıldığında
@@ -4936,6 +4962,7 @@ window.openChangelogModal=function(){
     const list=document.getElementById('changelog-list');
     if(!list) return;
     const versions=[
+        {v:t('changelogV2_4'),items:[t('changelogV2_4Item1'),t('changelogV2_4Item2'),t('changelogV2_4Item3')],date:'2026-08-04',icon:'🧭',color:'#a78bfa'},
         {v:t('changelogV2_3'),items:[t('changelogV2_3Item1'),t('changelogV2_3Item2'),t('changelogV2_3Item3'),t('changelogV2_3Item4'),t('changelogV2_3Item5'),t('changelogV2_3Item6'),t('changelogV2_3Item7')],date:'2026-07-25',icon:'🤝',color:'#34d399'},
         {v:t('changelogV2_2'),items:[t('changelogV2_2Item1'),t('changelogV2_2Item2'),t('changelogV2_2Item3'),t('changelogV2_2Item4'),t('changelogV2_2Item5'),t('changelogV2_2Item6'),t('changelogV2_2Item7'),t('changelogV2_2Item8')],date:'2026-07-16',icon:'✨',color:'#fbbf24'},
         {v:t('changelogV2_1'),items:[t('changelogV2_1Item1'),t('changelogV2_1Item2'),t('changelogV2_1Item3'),t('changelogV2_1Item4'),t('changelogV2_1Item5')],date:'2026-07-15',icon:'⚙️',color:'#818cf8'},
@@ -8553,6 +8580,8 @@ const TOUR_STEPS = [
     { selector: '.seller-link-pulse', titleKey: 'tourStepSellerLinkTitle', descKey: 'tourStepSellerLinkDesc', placement: 'top', context: 'modal' },
     { selector: '#hamburger-btn', titleKey: 'tourStep2Title', descKey: 'tourStep2Desc', placement: 'bottom', context: 'main' },
     { selector: '#notif-btn', titleKey: 'tourStep3Title', descKey: 'tourStep3Desc', placement: 'bottom', context: 'main' },
+    { selector: '.side-menu-item[onclick*="openProfileModal"]', titleKey: 'tourStepProfileSettingsTitle', descKey: 'tourStepProfileSettingsDesc', placement: 'left', context: 'menu' },
+    { selector: '#notification-prefs-box', titleKey: 'tourStepNotifPrefsTitle', descKey: 'tourStepNotifPrefsDesc', placement: 'top', context: 'profile' },
     { selector: '[data-utab="utab-overview"]', titleKey: 'tourStepOverviewTitle', descKey: 'tourStepOverviewDesc', placement: 'top', context: 'panel', tab: 'utab-overview' },
     { selector: '[data-utab="utab-purchases"]', titleKey: 'tourStepPurchasesTitle', descKey: 'tourStepPurchasesDesc', placement: 'top', context: 'panel', tab: 'utab-purchases' },
     { selector: '[data-utab="utab-income"]', titleKey: 'tourStepIncomeTitle', descKey: 'tourStepIncomeDesc', placement: 'top', context: 'panel', tab: 'utab-income' },
@@ -8719,6 +8748,7 @@ function tourSyncContext(step) {
     const menu = document.getElementById('side-menu');
     const menuOverlay = document.getElementById('side-menu-overlay');
     const panel = document.getElementById('user-panel');
+    const profileModal = document.getElementById('profile-modal');
 
     // Kullanıcı paneli (Hesabım sekmeleri)
     if (panel) {
@@ -8726,17 +8756,54 @@ function tourSyncContext(step) {
             panel.style.display = 'block';
             panel.style.opacity = '1';
             panel.style.transform = 'none';
-            if (step.tab && typeof window.switchUserTab === 'function') window.switchUserTab(step.tab);
+            if (step.tab && typeof window.switchUserTab === 'function') {
+                window.switchUserTab(step.tab);
+                // FIX (yavaşlık): sekme değişince .user-tab-panel.active üzerindeki
+                // "card-rise" giriş animasyonu (transform: translateY+scale, 0.3s)
+                // baştan oynuyordu. tourWaitForTarget hedefin konumu birkaç kare
+                // ÜST ÜSTE SABİT kalana kadar bekler; animasyon transform kullandığı
+                // için konum ~300ms boyunca sürekli değişiyor ve bu da "İleri"ye
+                // her basışta turun gözle görülür şekilde yavaş/donuk hissetmesine
+                // yol açıyordu. Tur sırasında bu tek seferlik giriş animasyonu
+                // gerçek bir bilgi taşımadığından, tur içinde sekme geçişlerinde
+                // devre dışı bırakılıyor — adım geçişleri artık anında gerçekleşir.
+                const activePanelEl = document.getElementById(step.tab);
+                if (activePanelEl) activePanelEl.style.animation = 'none';
+            }
         } else {
             panel.style.display = 'none';
         }
+    }
+
+    // Profil Ayarları modalı (context:'profile' — bkz. TOUR_STEPS notif tercihleri adımı).
+    // ÖNEMLİ: window.openProfileModal() yerine renderProfileModalContent() çağrılıyor,
+    // çünkü openProfileModal() menüyü KOŞULSUZ toggleSideMenu() ile kapatır; menü bu
+    // adıma gelmeden önce (ör. context:'menu' adımından) zaten kapatılmış olabilir ve
+    // bir toggle çağrısı bu durumda menüyü yanlışlıkla yeniden AÇARDI.
+    if (step.context === 'profile') {
+        if ((!profileModal || profileModal.style.display === 'none') && isAuth && typeof renderProfileModalContent === 'function') {
+            renderProfileModalContent();
+        }
+    } else if (profileModal) {
+        profileModal.style.display = 'none';
     }
 
     // Yan menü (hamburger menü)
     if (menu && menuOverlay) {
         if (step.context === 'menu') {
             if (!menu.classList.contains('open')) {
+                // FIX (yavaşlık): yan menü normalde 0.3s'lik bir kayma (transform)
+                // animasyonuyla açılır; tourWaitForTarget hedefin konumu birkaç
+                // kare üst üste sabit kalana kadar beklediği için bu animasyon
+                // "İleri"ye her basışta ~300ms'lik gözle görülür bir gecikmeye
+                // yol açıyordu. Tur sırasında animasyonu atlayıp menüyü doğrudan
+                // açık konuma getiriyoruz; transition'ı bir sonraki karede geri
+                // koyarak tur dışındaki normal aç/kapat animasyonunu koruyoruz
+                // (transition'ı yeniden etkinleştirmek, değeri zaten hedefe
+                // ulaşmış olduğu için animasyonu tekrar TETİKLEMEZ).
+                menu.style.transition = 'none';
                 menu.classList.add('open'); menuOverlay.classList.add('open');
+                requestAnimationFrame(() => { menu.style.transition = ''; });
                 if (typeof updateSideMenuProfile === 'function') updateSideMenuProfile();
                 if (typeof applyTranslations === 'function') applyTranslations();
             }
