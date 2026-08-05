@@ -1287,10 +1287,15 @@
             </div>
 
             <!-- YENİ: Web Push (tarayıcı bildirimleri). Desteklenmeyen
-                 tarayıcılarda (bkz. isWebPushSupported()) JS ile gizlenir. -->
-            <div id="webpush-row" style="display:none;justify-content:space-between;align-items:center;gap:8px;">
-                <span style="font-size:0.78em;color:#cbd5e1;font-weight:700;">🔔 <span data-i18n="webPushLabel"></span></span>
-                <button id="webpush-toggle-btn" onclick="window.enableWebPush()" class="pi-btn" style="background:#8b5cf6;animation:none;padding:6px 12px;font-size:0.72em;width:auto;margin:0;border-radius:8px;"></button>
+                 ortamlarda (ör. Pi Browser) buton gizlenip yerine kısa bir
+                 açıklama gösterilir — satırın kendisi HER ZAMAN görünür,
+                 böylece kullanıcı özelliğin var olduğunu bilir. -->
+            <div id="webpush-row" style="display:none;flex-direction:column;gap:4px;">
+                <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
+                    <span style="font-size:0.78em;color:#cbd5e1;font-weight:700;">🔔 <span data-i18n="webPushLabel"></span></span>
+                    <button id="webpush-toggle-btn" onclick="window.enableWebPush()" class="pi-btn" style="background:#8b5cf6;animation:none;padding:6px 12px;font-size:0.72em;width:auto;margin:0;border-radius:8px;"></button>
+                </div>
+                <div id="webpush-unsupported-note" style="display:none;font-size:0.66em;color:#94a3b8;line-height:1.4;"></div>
             </div>
         </div>
         <button class="pi-btn" style="background:#6366f1;animation:none;padding:10px;margin:14px 0 0 0;width:100%;" onclick="document.getElementById('profile-modal').style.display='none'" data-i18n="close"></button>
@@ -3061,7 +3066,7 @@ const i18n = {
     webPushPermissionDenied:"Bildirim izni reddedildi. Tarayıcı ayarlarından bu site için bildirimlere izin vermeniz gerekiyor.",
     webPushSaveFail:"Bildirim aboneliği kaydedilemedi: ",
     webPushError:"Bir hata oluştu.",
-    webPushUnsupported:"Tarayıcınız web push bildirimlerini desteklemiyor.",
+    webPushUnsupported:"Bu tarayıcı (ör. Pi Browser) tarayıcı bildirimlerini desteklemiyor. Bildirim almak için yukarıdan Telegram veya e-posta bağlayabilirsiniz.",
     deleteConfirm:(n)=>`"${n}" domainini silmek istediğinize emin misiniz? (Geçmiş veriler korunur, gerekirse geri eklenebilir.)`,
     deleteFail:"Domain silme başarısız: ",deleteError:"Bir hata oluştu.",
     deleteSuccess:(n)=>`"${n}" domaini silindi.`,
@@ -3850,7 +3855,7 @@ const i18n = {
     webPushPermissionDenied:"Notification permission denied. You'll need to allow notifications for this site in your browser settings.",
     webPushSaveFail:"Couldn't save notification subscription: ",
     webPushError:"An error occurred.",
-    webPushUnsupported:"Your browser doesn't support web push notifications.",
+    webPushUnsupported:"This browser (e.g. Pi Browser) doesn't support browser notifications. Connect Telegram or email above to get notified instead.",
     deleteConfirm:(n)=>`Are you sure you want to delete "${n}"? (Historical data is preserved and it can be re-added later.)`,
     deleteFail:"Domain deletion failed: ",deleteError:"An error occurred.",
     deleteSuccess:(n)=>`"${n}" has been deleted.`,
@@ -7917,8 +7922,21 @@ function renderWebPushButton(enabled){
 async function refreshWebPushButtonState(){
     const row=document.getElementById('webpush-row');
     if(!row) return;
-    if(!isWebPushSupported()){ row.style.display='none'; return; }
     row.style.display='flex';
+    const btn=document.getElementById('webpush-toggle-btn');
+    const noteEl=document.getElementById('webpush-unsupported-note');
+    if(!isWebPushSupported()){
+        // FIX: Önceden bu durumda tüm satır gizleniyordu — Pi Browser gibi
+        // web push'u desteklemeyen ortamlarda kullanıcı özelliğin var
+        // olduğunu hiç görmüyordu, sadece "kayboldu" sanıyordu. Artık
+        // satır her zaman görünür; desteklenmiyorsa buton yerine kısa bir
+        // açıklama gösteriliyor.
+        if(btn) btn.style.display='none';
+        if(noteEl){ noteEl.style.display='block'; noteEl.innerText=t('webPushUnsupported'); }
+        return;
+    }
+    if(btn) btn.style.display='inline-block';
+    if(noteEl) noteEl.style.display='none';
     try{
         const reg=await navigator.serviceWorker.ready;
         const subscription=await reg.pushManager.getSubscription();
