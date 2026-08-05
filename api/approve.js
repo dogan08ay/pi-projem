@@ -4792,6 +4792,133 @@ async function handlerImpl(req, res) {
     }
   }
 
+  // ══════════════════════════════════════════════════════════════════════
+  //  ALICI-SATICI MESAJLAŞMA (Direct Messaging) — bir domain ilanı
+  //  üzerinden iki kullanıcı doğrudan yazışabilir. 'tickets' sistemine çok
+  //  benzer bir desen kullanıyor: her konuşma TEK bir dokümanda,
+  //  'messages' dizisi arrayUnion ile büyüyor. Konu bazlı (domain'e özel)
+  //  olduğu için konuşma ID'si deterministik üretiliyor:
+  //  "domainAdi__kullanici1_kullanici2" (kullanıcı adları alfabetik
+  //  sıralı) — böylece aynı domain için aynı iki kullanıcı arasında ASLA
+  //  birden fazla konuşma dokümanı oluşmaz, tekrar mesajlaşmaya
+  //  başladıklarında hep aynı konuşma devam eder.
+  // ══════════════════════════════════════════════════════════════════════
+  if (action === 'send_message') {
+    const { domainName, conversationId: existingConvId, text: rawText } = req.body;
+    const realUsername = await getRealUsername(accessToken);
+    if (!realUsername) return res.status(403).json({ error: "Geçersiz oturum" });
+    if (!await checkRateLimit(clientIp, 'send_message', 20, 60000))
+      return res.status(429).json({ error: "Çok fazla mesaj gönderildi. Lütfen biraz bekleyip tekrar deneyin." });
+    const text = String(rawText || '').trim().slice(0, 1000);
+    if (!text) return res.status(400).json({ error: "Mesaj boş olamaz" });
+    try {
+      const db = getDb();
+      let conversationId = existingConvId;
+      let otherUsername = null;
+      let convDomainName = domainName;
+
+      if (conversationId) {
+        // Devam eden bir konuşmaya yanıt.
+        const convSnap = await db.collection('conversations').doc(conversationId).get();
+        if (!convSnap.exists) return res.status(404).json({ error: "Konuşma bulunamadı" });
+        const convData = convSnap.data();
+        if (!Array.isArray(convData.participants) || !convData.participants.includes(realUsername))
+          return res.status(403).json({ error: "Bu konuşmaya mesaj gönderme yetkiniz yok" });
+        otherUsername = convData.participants.find(u => u !== realUsername);
+        convDomainName = convData.domainName;
+      } else {
+        // Yeni bir konuşma — domain'in satıcısıyla başlatılır.
+        if (!domainName) return res.status(400).json({ error: "Geçersiz domain adı" });
+        const domainSnap = await db.collection('domains').doc(domainName).get();
+        if (!domainSnap.exists) return res.status(404).json({ error: "Domain bulunamadı" });
+        const sellerUsername = domainSnap.data().sellerUsername;
+        if (!sellerUsername) return res.status(400).json({ error: "Bu domainin bir satıcısı yok, mesaj gönderilemez" });
+        if (sellerUsername === realUsername) return res.status(400).json({ error: "Kendi ilanınıza mesaj gönderemezsiniz" });
+        otherUsername = sellerUsername;
+        const pair = [realUsername, sellerUsername].sort();
+        // FIX: domain adındaki '/' Firestore doküman ID'sini bozar; domain
+        // adları zaten isValidDomainName ile doğrulandığı için pratikte
+        // '/' içermez ama yine de güvenlik payı olarak temizleniyor.
+        const safeDomain = domainName.replace(/[\/\s]/g, '_');
+        conversationId = `${safeDomain}__${pair[0]}_${pair[1]}`;
+      }
+
+      const now = Date.now();
+      const convRef = db.collection('conversations').doc(conversationId);
+      const existing = await convRef.get();
+      if (!existing.exists) {
+        await convRef.set({
+          domainName: convDomainName,
+          participants: [realUsername, otherUsername].sort(),
+          messages: [{ from: realUsername, text, timestamp: now }],
+          lastMessageAt: now,
+          lastMessageBy: realUsername,
+          readBy: { [realUsername]: now }
+        });
+      } else {
+        await convRef.update({
+          messages: FieldValue.arrayUnion({ from: realUsername, text, timestamp: now }),
+          lastMessageAt: now,
+          lastMessageBy: realUsername,
+          [`readBy.${realUsername}`]: now
+        });
+      }
+
+      await sendNotification(otherUsername, {
+        type: 'new_message',
+        title: '💬 Yeni Mesaj',
+        body: `@${realUsername} size "${convDomainName}" hakkında mesaj gönderdi: "${text.length > 80 ? text.slice(0, 80) + '…' : text}"`,
+        domainName: convDomainName,
+        conversationId
+      });
+
+      return res.status(200).json({ success: true, conversationId });
+    } catch (e) {
+      console.error("send_message hatası:", e);
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  if (action === 'get_conversations') {
+    const realUsername = await getRealUsername(accessToken);
+    if (!realUsername) return res.status(403).json({ error: "Geçersiz oturum" });
+    try {
+      const db = getDb();
+      const snap = await db.collection('conversations').where('participants', 'array-contains', realUsername).get();
+      const conversations = [];
+      snap.forEach(doc => {
+        const data = doc.data();
+        const myReadAt = (data.readBy && data.readBy[realUsername]) || 0;
+        const unread = (data.lastMessageAt || 0) > myReadAt && data.lastMessageBy !== realUsername;
+        conversations.push({ id: doc.id, ...data, unread });
+      });
+      conversations.sort((a, b) => (b.lastMessageAt || 0) - (a.lastMessageAt || 0));
+      return res.status(200).json({ success: true, conversations });
+    } catch (e) {
+      console.error("get_conversations hatası:", e);
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  if (action === 'mark_conversation_read') {
+    const { conversationId } = req.body;
+    const realUsername = await getRealUsername(accessToken);
+    if (!realUsername) return res.status(403).json({ error: "Geçersiz oturum" });
+    if (!conversationId) return res.status(400).json({ error: "Geçersiz ID" });
+    try {
+      const db = getDb();
+      const convRef = db.collection('conversations').doc(conversationId);
+      const snap = await convRef.get();
+      if (!snap.exists) return res.status(404).json({ error: "Konuşma bulunamadı" });
+      if (!Array.isArray(snap.data().participants) || !snap.data().participants.includes(realUsername))
+        return res.status(403).json({ error: "Yetkiniz yok" });
+      await convRef.update({ [`readBy.${realUsername}`]: Date.now() });
+      return res.status(200).json({ success: true });
+    } catch (e) {
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
   // YENİ: Leaderboard — puan sistemi (updateUserPoints) zaten aylardır
   // çalışıyordu ama bunu gösteren hiçbir ekran yoktu; changelog'da bile
   // "leaderboard yakında geliyor" yazıyordu ama hiç yapılmamıştı. Veri
