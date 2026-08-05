@@ -153,6 +153,49 @@ async function notifyFavoriters(db, domainName, { excludeUsername, type, title, 
   }
 }
 
+// YENİ: Kayıtlı Arama Bildirimleri ────────────────────────────────────
+// Bir kullanıcı 'save_search' ile bir kategori/anahtar kelime/azami fiyat
+// kombinasyonu kaydettiyse, o kritere uyan YENİ bir domain markete
+// eklendiğinde (add_domain VEYA approve_sell_request) kendisine bildirim
+// gönderilir. Dosya başındaki notta belirtildiği gibi bu projede cron
+// (zamanlanmış görev) yok — bu yüzden kontrol, notifyFavoriters ile aynı
+// felsefeyle, domainin gerçekten yayına girdiği ANDA tetiklenen olay-
+// güdümlü (event-driven) bir kontrol olarak çalışıyor; ayrı bir
+// zamanlanmış tarama gerektirmiyor. 'saved_searches' koleksiyonu şu an
+// küçük ölçekli olduğu için (kullanıcı başına en fazla 10, bkz.
+// 'save_search' action'ı) tam koleksiyon taraması burada kabul edilebilir
+// bir maliyet — recompute_all_ratings ve reconcile gibi diğer admin
+// işlemleri de aynı şekilde tam tarama yapıyor.
+async function notifySavedSearches(db, domainName, domainData) {
+  try {
+    const snap = await db.collection('saved_searches').get();
+    if (snap.empty) return;
+    const notifiedUsernames = new Set(); // aynı kullanıcının birden fazla eşleşen araması olsa bile TEK bildirim
+    const nameLower = domainName.toLowerCase();
+    const descLower = (domainData.description || '').toLowerCase();
+    for (const doc of snap.docs) {
+      const s = doc.data();
+      if (!s.username || s.username === domainData.sellerUsername) continue; // kendi ilanı için bildirim gönderme
+      if (notifiedUsernames.has(s.username)) continue;
+      if (s.domainType && s.domainType !== (domainData.type || 'genel')) continue;
+      if (typeof s.maxPrice === 'number' && Number(domainData.price) > s.maxPrice) continue;
+      if (s.keyword) {
+        const kw = String(s.keyword).toLowerCase();
+        if (!nameLower.includes(kw) && !descLower.includes(kw)) continue;
+      }
+      notifiedUsernames.add(s.username);
+      await sendNotification(s.username, {
+        type: 'saved_search_match',
+        title: '🔎 Kayıtlı Aramanıza Uygun Yeni Domain!',
+        body: `"${domainName}" domaini kayıtlı arama kriterlerinize uyuyor (${domainData.price} Pi).`,
+        domainName
+      });
+    }
+  } catch (e) {
+    console.error(`notifySavedSearches hatası (${domainName}):`, e);
+  }
+}
+
 // YENİ: Bir kullanıcı ilk anlamlı işlemini (ilk satın alma) tamamladığında,
 // eğer birisi tarafından davet edilmişse hem davet edeni hem kendisini
 // ödüllendirir. "referralBonusGiven" bayrağı ile bunun SADECE BİR KEZ
@@ -1083,6 +1126,8 @@ async function handlerImpl(req, res) {
         // panelinde normal bir satıcı kaydı olarak görünüyor.
         sellerUsername: ADMIN_USERNAME
       });
+      // YENİ: Kayıtlı arama kriterlerine uyan kullanıcılara bildirim.
+      await notifySavedSearches(db, newName, { type: domainType || 'genel', price: priceNum, description: description || '', sellerUsername: ADMIN_USERNAME });
       return res.status(200).json({ success: true });
     } catch (e) {
       return res.status(500).json({ error: e.message });
@@ -2113,6 +2158,9 @@ async function handlerImpl(req, res) {
         createdAt: Date.now()
       });
       await requestRef.set({ status: 'approved', resolvedAt: Date.now() }, { merge: true });
+
+      // YENİ: Kayıtlı arama kriterlerine uyan kullanıcılara bildirim.
+      await notifySavedSearches(db, reqData.domainName, { type: reqData.domainType, price: reqData.price, description: reqData.description || '', sellerUsername: reqData.submittedBy });
 
       await sendNotification(reqData.submittedBy, {
         type: 'sell_request_approved',
@@ -4670,6 +4718,74 @@ async function handlerImpl(req, res) {
       await ref.set({
         favorites: addFavorite ? FieldValue.arrayUnion(domainName) : FieldValue.arrayRemove(domainName)
       }, { merge: true });
+      return res.status(200).json({ success: true });
+    } catch (e) {
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  // ══════════════════════════════════════════════════════════════════════
+  //  KAYITLI ARAMA (Saved Search) — kullanıcı bir kategori/anahtar kelime/
+  //  azami fiyat kombinasyonu kaydeder; bu kritere uyan YENİ bir domain
+  //  eklendiğinde bildirim alır (bkz. notifySavedSearches, add_domain ve
+  //  approve_sell_request içindeki çağrılar).
+  // ══════════════════════════════════════════════════════════════════════
+  if (action === 'save_search') {
+    const { domainType, keyword, maxPrice } = req.body;
+    const realUsername = await getRealUsername(accessToken);
+    if (!realUsername) return res.status(403).json({ error: "Geçersiz oturum" });
+    if (!await checkRateLimit(clientIp, 'save_search', 10, 60000))
+      return res.status(429).json({ error: "Çok fazla istek, lütfen bekleyin." });
+    const cleanKeyword = (keyword || '').toString().trim().slice(0, 60);
+    const cleanType = (domainType || '').toString().trim();
+    const cleanMaxPrice = (maxPrice !== undefined && maxPrice !== null && maxPrice !== '') ? Number(maxPrice) : null;
+    if (!cleanKeyword && !cleanType && (cleanMaxPrice === null || isNaN(cleanMaxPrice) || cleanMaxPrice <= 0))
+      return res.status(400).json({ error: "En az bir arama kriteri (kategori, anahtar kelime veya azami fiyat) girmelisiniz" });
+    try {
+      const db = getDb();
+      // FIX: Kötüye kullanımı/aşırı bildirim spam'ini önlemek için
+      // kullanıcı başına en fazla 10 kayıtlı arama.
+      const existingSnap = await db.collection('saved_searches').where('username', '==', realUsername).get();
+      if (existingSnap.size >= 10)
+        return res.status(400).json({ error: "En fazla 10 kayıtlı arama oluşturabilirsiniz. Yeni eklemek için önce birini silin." });
+      const docRef = await db.collection('saved_searches').add({
+        username: realUsername,
+        domainType: cleanType || null,
+        keyword: cleanKeyword || null,
+        maxPrice: (cleanMaxPrice !== null && !isNaN(cleanMaxPrice) && cleanMaxPrice > 0) ? cleanMaxPrice : null,
+        createdAt: Date.now()
+      });
+      return res.status(200).json({ success: true, id: docRef.id });
+    } catch (e) {
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  if (action === 'get_saved_searches') {
+    const realUsername = await getRealUsername(accessToken);
+    if (!realUsername) return res.status(403).json({ error: "Geçersiz oturum" });
+    try {
+      const db = getDb();
+      const snap = await db.collection('saved_searches').where('username', '==', realUsername).get();
+      const searches = snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+      return res.status(200).json({ success: true, searches });
+    } catch (e) {
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  if (action === 'delete_saved_search') {
+    const { searchId } = req.body;
+    const realUsername = await getRealUsername(accessToken);
+    if (!realUsername) return res.status(403).json({ error: "Geçersiz oturum" });
+    if (!searchId) return res.status(400).json({ error: "Geçersiz ID" });
+    try {
+      const db = getDb();
+      const ref = db.collection('saved_searches').doc(searchId);
+      const snap = await ref.get();
+      if (!snap.exists) return res.status(404).json({ error: "Kayıtlı arama bulunamadı" });
+      if (snap.data().username !== realUsername) return res.status(403).json({ error: "Bu aramayı silme yetkiniz yok" });
+      await ref.delete();
       return res.status(200).json({ success: true });
     } catch (e) {
       return res.status(500).json({ error: e.message });
