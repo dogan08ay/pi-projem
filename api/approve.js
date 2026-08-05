@@ -2,6 +2,7 @@ import { initializeApp, getApps, cert } from 'firebase-admin/app';
 import { getFirestore, FieldValue, Timestamp } from 'firebase-admin/firestore';
 import { getStorage } from 'firebase-admin/storage';
 import { getDatabase } from 'firebase-admin/database';
+import webpush from 'web-push';
 import * as PiNetworkPkg from 'pi-backend';
 // pi-backend gerçek bir native ESM paketi (package.json'ında "type":"module"
 // ve doğru "exports" haritası var) — yani `import PiNetwork from 'pi-backend'`
@@ -33,6 +34,20 @@ const PiNetwork = resolvePiNetworkCtor();
 // ─── Admin Config ───────────────────────────────────────────────────────
 const ADMIN_USERNAME = process.env.ADMIN_USERNAME || 'doganay0808';
 const PLATFORM_COMMISSION_RATE = 0.05; // %5 komisyon
+// YENİ: Web Push (tarayıcı bildirimleri) — VAPID anahtar çifti Vercel'de
+// ortam değişkeni olarak (VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY, VAPID_SUBJECT)
+// tanımlanmalı. Anahtarlar tanımlı değilse web push sessizce devre dışı
+// kalır (uygulamanın geri kalanı normal çalışmaya devam eder) — bu yüzden
+// burada throw etmiyoruz, sadece bir bayrak tutuyoruz.
+const VAPID_PUBLIC_KEY = process.env.VAPID_PUBLIC_KEY;
+const VAPID_PRIVATE_KEY = process.env.VAPID_PRIVATE_KEY;
+const VAPID_SUBJECT = process.env.VAPID_SUBJECT || 'mailto:[email protected]';
+const WEB_PUSH_ENABLED = !!(VAPID_PUBLIC_KEY && VAPID_PRIVATE_KEY);
+if (WEB_PUSH_ENABLED) {
+  webpush.setVapidDetails(VAPID_SUBJECT, VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY);
+} else {
+  console.warn('[WebPush] VAPID_PUBLIC_KEY/VAPID_PRIVATE_KEY tanımlı değil — tarayıcı bildirimleri devre dışı.');
+}
 // YENİ: "Güvenilir Satıcı" rozeti eşikleri — tek bir yerden yönetiliyor.
 const TRUSTED_SELLER_MIN_RATINGS = 5;
 const TRUSTED_SELLER_MIN_AVG = 4.5;
@@ -478,9 +493,47 @@ async function sendNotification(targetUsername, notification) {
           `<p style="font-family:sans-serif;font-size:15px;color:#111;">${(notification.body || '').replace(/\n/g, '<br>')}</p>`
         );
       }
+      // YENİ: Tarayıcı push bildirimi (varsa kayıtlı abonelikler).
+      await sendWebPush(db, targetUsername, prof, notification);
     }
   } catch (e) {
     console.error(`[Dış Bildirim] @${targetUsername} için Telegram/e-posta gönderilemedi:`, e.message || e);
+  }
+}
+
+// YENİ: Web Push (tarayıcı bildirimi) gönderici. Bir kullanıcının kayıtlı
+// TÜM cihaz aboneliklerine (pushSubscriptions dizisi, bkz. save_push_subscription)
+// aynı bildirimi gönderir. Bir abonelik artık geçersizse (kullanıcı
+// bildirim iznini kaldırmış, tarayıcıyı kaldırmış vb.) push servisi 404/410
+// döner — bu durumda o aboneliği veritabanından sessizce siliyoruz, aksi
+// halde her bildiride aynı hatayı almaya devam ederiz.
+async function sendWebPush(db, targetUsername, prof, notification) {
+  if (!WEB_PUSH_ENABLED) return;
+  const subs = Array.isArray(prof.pushSubscriptions) ? prof.pushSubscriptions : [];
+  if (!subs.length) return;
+  const payload = JSON.stringify({
+    title: notification.title || 'Yeni Bildirim',
+    body: notification.body || '',
+    url: notification.domainName ? `/?domain=${encodeURIComponent(notification.domainName)}` : '/'
+  });
+  const stillValid = [];
+  let changed = false;
+  for (const sub of subs) {
+    try {
+      await webpush.sendNotification(sub, payload);
+      stillValid.push(sub);
+    } catch (e) {
+      if (e.statusCode === 404 || e.statusCode === 410) {
+        changed = true; // süresi dolmuş/iptal edilmiş abonelik — listeden düşür
+      } else {
+        console.error(`[WebPush] @${targetUsername} gönderim hatası:`, e.statusCode || e.message);
+        stillValid.push(sub); // geçici bir hata olabilir, aboneliği hemen silme
+      }
+    }
+  }
+  if (changed) {
+    try { await db.collection('user_profiles').doc(targetUsername).set({ pushSubscriptions: stillValid }, { merge: true }); }
+    catch (e) { /* önemsiz — bir sonraki bildiride tekrar denenir */ }
   }
 }
 
@@ -2559,7 +2612,8 @@ async function handlerImpl(req, res) {
         success: true,
         telegramLinked: !!d.telegramChatId,
         email: d.email || null,
-        emailVerified: !!d.emailVerified
+        emailVerified: !!d.emailVerified,
+        pushSubscriptionCount: Array.isArray(d.pushSubscriptions) ? d.pushSubscriptions.length : 0
       });
     } catch (e) {
       return res.status(500).json({ error: e.message });
@@ -4913,6 +4967,55 @@ async function handlerImpl(req, res) {
       if (!Array.isArray(snap.data().participants) || !snap.data().participants.includes(realUsername))
         return res.status(403).json({ error: "Yetkiniz yok" });
       await convRef.update({ [`readBy.${realUsername}`]: Date.now() });
+      return res.status(200).json({ success: true });
+    } catch (e) {
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  // ══════════════════════════════════════════════════════════════════════
+  //  WEB PUSH (Tarayıcı Bildirimleri) — kullanıcı bir cihazda/tarayıcıda
+  //  bildirim iznini verince, tarayıcının verdiği "subscription" nesnesi
+  //  (endpoint + şifreleme anahtarları) burada saklanır. Bir kullanıcının
+  //  birden fazla cihazı/tarayıcısı olabileceği için 'user_profiles'
+  //  dokümanında bir DİZİ (pushSubscriptions) olarak tutuluyor; aynı
+  //  endpoint tekrar gelirse (ör. sayfa yenilenince tekrar subscribe
+  //  olunduğunda) eskisinin üzerine yazılır, çoğaltılmaz.
+  // ══════════════════════════════════════════════════════════════════════
+  if (action === 'save_push_subscription') {
+    const { subscription } = req.body;
+    const realUsername = await getRealUsername(accessToken);
+    if (!realUsername) return res.status(403).json({ error: "Geçersiz oturum" });
+    if (!subscription || !subscription.endpoint || !subscription.keys)
+      return res.status(400).json({ error: "Geçersiz abonelik verisi" });
+    try {
+      const db = getDb();
+      const ref = db.collection('user_profiles').doc(realUsername);
+      const snap = await ref.get();
+      const existing = (snap.exists && Array.isArray(snap.data().pushSubscriptions)) ? snap.data().pushSubscriptions : [];
+      // FIX: aynı endpoint zaten kayıtlıysa çoğaltma — üzerine yaz.
+      const filtered = existing.filter(s => s.endpoint !== subscription.endpoint);
+      // Kötüye kullanımı önlemek için kullanıcı başına makul bir cihaz sınırı.
+      filtered.push({ endpoint: subscription.endpoint, keys: subscription.keys, addedAt: Date.now() });
+      const trimmed = filtered.slice(-10);
+      await ref.set({ pushSubscriptions: trimmed }, { merge: true });
+      return res.status(200).json({ success: true });
+    } catch (e) {
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  if (action === 'remove_push_subscription') {
+    const { endpoint } = req.body;
+    const realUsername = await getRealUsername(accessToken);
+    if (!realUsername) return res.status(403).json({ error: "Geçersiz oturum" });
+    try {
+      const db = getDb();
+      const ref = db.collection('user_profiles').doc(realUsername);
+      const snap = await ref.get();
+      const existing = (snap.exists && Array.isArray(snap.data().pushSubscriptions)) ? snap.data().pushSubscriptions : [];
+      const filtered = endpoint ? existing.filter(s => s.endpoint !== endpoint) : [];
+      await ref.set({ pushSubscriptions: filtered }, { merge: true });
       return res.status(200).json({ success: true });
     } catch (e) {
       return res.status(500).json({ error: e.message });
