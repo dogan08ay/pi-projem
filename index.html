@@ -1285,6 +1285,13 @@
                     <button onclick="window.handleRemoveProfileEmail()" data-i18n="emailRemoveBtn" style="background:none;border:none;color:#f87171;font-size:0.7em;font-weight:700;cursor:pointer;flex-shrink:0;margin-left:8px;"></button>
                 </div>
             </div>
+
+            <!-- YENİ: Web Push (tarayıcı bildirimleri). Desteklenmeyen
+                 tarayıcılarda (bkz. isWebPushSupported()) JS ile gizlenir. -->
+            <div id="webpush-row" style="display:none;justify-content:space-between;align-items:center;gap:8px;">
+                <span style="font-size:0.78em;color:#cbd5e1;font-weight:700;">🔔 <span data-i18n="webPushLabel"></span></span>
+                <button id="webpush-toggle-btn" onclick="window.enableWebPush()" class="pi-btn" style="background:#8b5cf6;animation:none;padding:6px 12px;font-size:0.72em;width:auto;margin:0;border-radius:8px;"></button>
+            </div>
         </div>
         <button class="pi-btn" style="background:#6366f1;animation:none;padding:10px;margin:14px 0 0 0;width:100%;" onclick="document.getElementById('profile-modal').style.display='none'" data-i18n="close"></button>
     </div>
@@ -3045,6 +3052,16 @@ const i18n = {
     newMsgBadge:"YENİ",
     messageSellerBtn:"Mesaj Gönder",
     chatReplyPlaceholder:"Mesajınızı yazın...",
+    webPushLabel:"Tarayıcı Bildirimleri",
+    webPushConnect:"Etkinleştir",
+    webPushDisconnect:"Kapat",
+    webPushEnabling:"Bağlanıyor...",
+    webPushEnabled:"Tarayıcı bildirimleri açıldı! Uygulama kapalıyken bile bildirim alacaksınız.",
+    webPushDisabled:"Tarayıcı bildirimleri kapatıldı.",
+    webPushPermissionDenied:"Bildirim izni reddedildi. Tarayıcı ayarlarından bu site için bildirimlere izin vermeniz gerekiyor.",
+    webPushSaveFail:"Bildirim aboneliği kaydedilemedi: ",
+    webPushError:"Bir hata oluştu.",
+    webPushUnsupported:"Tarayıcınız web push bildirimlerini desteklemiyor.",
     deleteConfirm:(n)=>`"${n}" domainini silmek istediğinize emin misiniz? (Geçmiş veriler korunur, gerekirse geri eklenebilir.)`,
     deleteFail:"Domain silme başarısız: ",deleteError:"Bir hata oluştu.",
     deleteSuccess:(n)=>`"${n}" domaini silindi.`,
@@ -3824,6 +3841,16 @@ const i18n = {
     newMsgBadge:"NEW",
     messageSellerBtn:"Message Seller",
     chatReplyPlaceholder:"Write your message...",
+    webPushLabel:"Browser Notifications",
+    webPushConnect:"Enable",
+    webPushDisconnect:"Disable",
+    webPushEnabling:"Connecting...",
+    webPushEnabled:"Browser notifications are on! You'll get notified even when the app is closed.",
+    webPushDisabled:"Browser notifications turned off.",
+    webPushPermissionDenied:"Notification permission denied. You'll need to allow notifications for this site in your browser settings.",
+    webPushSaveFail:"Couldn't save notification subscription: ",
+    webPushError:"An error occurred.",
+    webPushUnsupported:"Your browser doesn't support web push notifications.",
     deleteConfirm:(n)=>`Are you sure you want to delete "${n}"? (Historical data is preserved and it can be re-added later.)`,
     deleteFail:"Domain deletion failed: ",deleteError:"An error occurred.",
     deleteSuccess:(n)=>`"${n}" has been deleted.`,
@@ -4557,6 +4584,12 @@ async function loadNotificationPrefs(){
         }else{
             notSetUI.style.display='flex';
         }
+
+        // YENİ: Web push butonunun gerçek durumu tarayıcı API'sinden
+        // okunur (bkz. refreshWebPushButtonState) — backend'den gelen
+        // pushSubscriptionCount sadece bilgi amaçlı, buton state'i için
+        // kullanılmıyor çünkü bu CİHAZDAKİ abonelik durumu önemli.
+        refreshWebPushButtonState();
     }catch(e){ console.error('loadNotificationPrefs hatası:',e); }
 }
 
@@ -7790,6 +7823,107 @@ if(window.ResizeObserver){
         const lockEl=document.getElementById('premium-lock');
         if(lockEl) _lockObserver.observe(lockEl);
     }
+}
+
+// ══════════════════════════════════════════════════════════════════════
+//  WEB PUSH (Tarayıcı Bildirimleri) ──────────────────────────────────────
+//  ÖNEMLİ: Bu, sadece VAPID_PUBLIC_KEY sabiti aşağıda backend'deki
+//  VAPID_PUBLIC_KEY ortam değişkeniyle AYNI anahtar çiftinden geliyorsa
+//  çalışır. Anahtarları değiştirirseniz (yeni bir çift üretirseniz) hem
+//  burayı hem Vercel'deki env değişkenini güncellemeniz gerekir.
+//  NOT: Pi Browser / bazı mobil WebView'lar Web Push API'sini
+//  desteklemeyebilir — bu yüzden her yerde "tarayıcı destekliyor mu"
+//  kontrolü yapılıyor; desteklenmeyen ortamlarda buton sessizce
+//  gizleniyor, hiçbir hata göstermiyor.
+// ══════════════════════════════════════════════════════════════════════
+const VAPID_PUBLIC_KEY = 'BI65NOU_V5Cw3bDkTa_09MQY1boKViY-U8rrQy_EQabXRZEDai2haF9spSk2Q7SLGi6tmBwu0b2KPV8OGPMUcXI';
+
+function isWebPushSupported(){
+    return ('serviceWorker' in navigator) && ('PushManager' in window) && ('Notification' in window);
+}
+function urlBase64ToUint8Array(base64String){
+    const padding='='.repeat((4-base64String.length%4)%4);
+    const base64=(base64String+padding).replace(/-/g,'+').replace(/_/g,'/');
+    const rawData=atob(base64);
+    const outputArray=new Uint8Array(rawData.length);
+    for(let i=0;i<rawData.length;++i) outputArray[i]=rawData.charCodeAt(i);
+    return outputArray;
+}
+if(isWebPushSupported()){
+    navigator.serviceWorker.register('/sw.js').catch(e=>console.error('SW kayıt hatası:',e));
+}
+window.enableWebPush=async function(){
+    if(!isAuth){ showToast(t('profileLoginRequired')); return; }
+    if(!isWebPushSupported()){ showToast(t('webPushUnsupported')); return; }
+    const btn=document.getElementById('webpush-toggle-btn');
+    if(btn){ btn.disabled=true; btn.innerText=t('webPushEnabling'); }
+    try{
+        const permission=await Notification.requestPermission();
+        if(permission!=='granted'){
+            showToast(t('webPushPermissionDenied'));
+            renderWebPushButton(false);
+            return;
+        }
+        const reg=await navigator.serviceWorker.ready;
+        const subscription=await reg.pushManager.subscribe({
+            userVisibleOnly:true,
+            applicationServerKey:urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
+        });
+        const r=await fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'save_push_subscription',subscription:subscription.toJSON(),accessToken:piAccessToken})});
+        const result=await r.json();
+        if(!r.ok||!result.success){ showToast(t('webPushSaveFail')+(result.error||'')); renderWebPushButton(false); return; }
+        showToast(t('webPushEnabled'));
+        renderWebPushButton(true);
+    }catch(e){
+        console.error('Web push etkinleştirme hatası:',e);
+        showToast(t('webPushError'));
+        renderWebPushButton(false);
+    }
+};
+window.disableWebPush=async function(){
+    const btn=document.getElementById('webpush-toggle-btn');
+    if(btn){ btn.disabled=true; }
+    try{
+        if(isWebPushSupported()){
+            const reg=await navigator.serviceWorker.ready;
+            const subscription=await reg.pushManager.getSubscription();
+            if(subscription){
+                await fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'remove_push_subscription',endpoint:subscription.endpoint,accessToken:piAccessToken})}).catch(()=>{});
+                await subscription.unsubscribe();
+            }
+        }
+        showToast(t('webPushDisabled'));
+    }catch(e){ console.error('Web push kapatma hatası:',e); }
+    renderWebPushButton(false);
+};
+function renderWebPushButton(enabled){
+    const btn=document.getElementById('webpush-toggle-btn');
+    if(!btn) return;
+    btn.disabled=false;
+    if(enabled){
+        btn.innerText=t('webPushDisconnect');
+        btn.style.background='#475569';
+        btn.onclick=window.disableWebPush;
+    }else{
+        btn.innerText=t('webPushConnect');
+        btn.style.background='#8b5cf6';
+        btn.onclick=window.enableWebPush;
+    }
+}
+// Profil modalı her açıldığında (loadNotificationPrefs içinden çağrılır)
+// gerçek tarayıcı abonelik durumunu kontrol edip butonu ona göre çizer —
+// böylece kullanıcı başka bir cihazda bildirimi kapatmış olsa bile bu
+// cihazdaki gerçek durum (tarayıcı API'sinden) doğru gösterilir.
+async function refreshWebPushButtonState(){
+    const row=document.getElementById('webpush-row');
+    if(!row) return;
+    if(!isWebPushSupported()){ row.style.display='none'; return; }
+    row.style.display='flex';
+    try{
+        const reg=await navigator.serviceWorker.ready;
+        const subscription=await reg.pushManager.getSubscription();
+        renderWebPushButton(!!subscription && Notification.permission==='granted');
+    }catch(e){ renderWebPushButton(false); }
 }
 
 // ADMIN LOG / STATS

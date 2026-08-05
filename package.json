@@ -4,6 +4,7 @@
   "type": "module",
   "dependencies": {
     "firebase-admin": "^12.7.0",
-    "pi-backend": "^0.1.3"
+    "pi-backend": "^0.1.3",
+    "web-push": "^3.6.7"
   }
 }
