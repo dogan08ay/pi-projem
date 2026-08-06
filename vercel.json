@@ -12,6 +12,9 @@
     },
     "api/config.js": {
       "maxDuration": 10
+    },
+    "api/telegram-webhook.js": {
+      "maxDuration": 10
     }
   },
   "routes": [
@@ -24,16 +27,16 @@
       "dest": "/api/config.js"
     },
     {
+      "src": "/api/telegram-webhook",
+      "dest": "/api/telegram-webhook.js"
+    },
+    {
       "src": "/privacy.html",
       "dest": "/privacy.html"
     },
     {
       "src": "/terms.html",
       "dest": "/terms.html"
-    },
-    {
-      "src": "/validation-key.txt",
-      "dest": "/validation-key.txt"
     },
     {
       "src": "/assets/(.*)",
