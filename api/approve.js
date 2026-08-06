@@ -4954,6 +4954,28 @@ async function handlerImpl(req, res) {
     }
   }
 
+  // YENİ (admin-only): Kullanıcılar arası TÜM doğrudan mesajlaşmaları
+  // görüntüleme — moderasyon/denetim amaçlı. Admin bir katılımcı olmadığı
+  // için 'participants array-contains' filtresi kullanılamaz, bu yüzden
+  // TÜM 'conversations' koleksiyonu çekiliyor (ölçek büyüdükçe burası
+  // sayfalama gerektirebilir, ama şimdilik get_admin_earnings'teki tam
+  // koleksiyon taraması ile aynı kabul edilebilir maliyet mantığı geçerli).
+  if (action === 'get_all_conversations') {
+    const isAdmin = await verifyAdmin(accessToken);
+    if (!isAdmin) return res.status(403).json({ error: "Yetki yok" });
+    try {
+      const db = getDb();
+      const snap = await db.collection('conversations').get();
+      const conversations = [];
+      snap.forEach(doc => conversations.push({ id: doc.id, ...doc.data() }));
+      conversations.sort((a, b) => (b.lastMessageAt || 0) - (a.lastMessageAt || 0));
+      return res.status(200).json({ success: true, conversations });
+    } catch (e) {
+      console.error("get_all_conversations hatası:", e);
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
   if (action === 'mark_conversation_read') {
     const { conversationId } = req.body;
     const realUsername = await getRealUsername(accessToken);
