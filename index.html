@@ -1088,7 +1088,26 @@
 }
 @media (max-width:480px) { #toast-container{ top:auto; bottom:16px; } }
 
-
+/* YENİ: Makbuz yazdırma — window.open() ile ayrı bir pencere/sekme açmak
+   yerine (bkz. printReceipt fonksiyonu), makbuz doğrudan sayfa içinde bir
+   modalda gösteriliyor ve yazdırma bu ANA pencere üzerinden tetikleniyor.
+   FIX (kök neden): Pi Browser gibi kısıtlı web view'lar window.open('','_blank')
+   çağrısına genelde boş bir about:blank sekmesi/penceresiyle karşılık
+   veriyor, içine document.write() ile yazılan içerik hiç görünmüyordu —
+   kullanıcı "makbuz butonuna basıyorum, boş sayfa açılıyor" diye
+   bildirmişti. Bu CSS kuralı, yazdırma sırasında sayfadaki HER ŞEYİ
+   gizleyip sadece #receipt-print-area içeriğini gösteriyor; böylece hem
+   ekranda makbuz görülebiliyor hem de aynı pencerede yazdırma/PDF
+   kaydetme çalışıyor — ayrı pencereye hiç ihtiyaç yok.
+*/
+@media print {
+    body > *:not(#receipt-modal) { display:none !important; }
+    #receipt-modal { position:static !important; background:#fff !important; display:block !important; }
+    #receipt-modal .modal-content { border:none !important; box-shadow:none !important; max-width:none !important; }
+    #receipt-print-area { color:#1e293b; }
+    #receipt-print-area table td { color:#1e293b !important; }
+    .receipt-no-print { display:none !important; }
+}
 
 </style>
 </head>
@@ -1369,6 +1388,19 @@
         </div>
         <div id="changelog-list" style="max-height:55vh;overflow-y:auto;text-align:left;margin-bottom:12px;"></div>
         <button class="pi-btn" style="background:#f59e0b;animation:none;padding:10px;margin:0;width:100%;" onclick="document.getElementById('changelog-modal').style.display='none'" data-i18n="close"></button>
+    </div>
+</div>
+
+<!-- YENİ: Makbuz — printReceipt() tarafından doldurulur, window.print()
+     ile bu pencere üzerinden yazdırılır (bkz. yukarıdaki @media print
+     kuralı). Ayrı bir pencere/sekme AÇILMIYOR. -->
+<div id="receipt-modal" class="modal-overlay" style="display:none;">
+    <div class="modal-content" style="border-color:#6366f1;max-height:88vh;overflow-y:auto;text-align:left;">
+        <div id="receipt-print-area"></div>
+        <div class="receipt-no-print" style="display:flex;gap:8px;margin-top:16px;">
+            <button onclick="window.print()" style="flex:1;padding:10px;border-radius:9px;border:none;background:#6366f1;color:#fff;font-weight:800;cursor:pointer;font-size:0.8em;" data-i18n="receiptPrintBtn"></button>
+            <button onclick="document.getElementById('receipt-modal').style.display='none'" style="flex-shrink:0;padding:10px 16px;border-radius:9px;border:1px solid #475569;background:transparent;color:#94a3b8;font-weight:800;cursor:pointer;font-size:0.8em;" data-i18n="close"></button>
+        </div>
     </div>
 </div>
 
@@ -2094,6 +2126,9 @@
             <button class="admin-tab-btn" data-tab="tab-offers" onclick="switchAdminTab('tab-offers')">🔄<span data-i18n="offersTabLabel" style="font-size:0.9em;"></span><span class="pending-badge" id="offers-count-badge" style="display:none;">0</span></button>
             <!-- YENİ: Bildirilen İlanlar sekmesi. -->
             <button class="admin-tab-btn" data-tab="tab-reports" onclick="switchAdminTab('tab-reports')">🚩<span data-i18n="reportsTabLabel" style="font-size:0.9em;"></span><span class="pending-badge" id="reports-count-badge" style="display:none;">0</span></button>
+            <!-- YENİ: Admin, kullanıcılar arası doğrudan mesajlaşmaları
+                 (alıcı-satıcı) takip edebilsin diye. -->
+            <button class="admin-tab-btn" data-tab="tab-messages" onclick="switchAdminTab('tab-messages')">💬<span data-i18n="adminMessagesTabLabel" style="font-size:0.9em;"></span></button>
 
         </div>
         <div class="admin-tab-panel active" id="tab-users">
@@ -2317,6 +2352,24 @@
                     </button>
                 </div>
                 <div id="admin-reports-list">
+                    <p style="font-size:0.75em;opacity:0.5;text-align:center;" data-i18n="clickToLoad"></p>
+                </div>
+            </div>
+        </div>
+
+        <!-- YENİ: Kullanıcılar arası mesajlaşma takibi — her ikili
+             diyalog ayrı bir kart olarak listelenir, tıklanınca o
+             konuşmanın tüm mesajları (salt-okunur) görüntülenir. -->
+        <div class="admin-tab-panel" id="tab-messages">
+            <div style="background:#0a0f1e;border:2px solid #06b6d4;border-radius:12px;padding:10px;box-sizing:border-box;max-width:100%;overflow-x:hidden;">
+                <div style="position:relative;display:flex;align-items:center;justify-content:center;padding:6px 34px 8px 6px;margin-bottom:8px;border-bottom:1px solid #164e63;">
+                    <span style="font-size:0.72em;color:#67e8f9;font-weight:800;text-transform:uppercase;">💬 <span data-i18n="adminMessagesTabLabel"></span></span>
+                    <button id="admin-messages-refresh-btn" class="panel-refresh-btn" onclick="window.loadAdminConversations()" title="Yenile">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+                    </button>
+                </div>
+                <input type="text" id="admin-messages-search" oninput="window.renderAdminConversationsList()" placeholder="🔍" data-i18n-placeholder="adminMessagesSearchPlaceholder" style="width:100%;box-sizing:border-box;background:#0f172a;border:1.5px solid #164e63;border-radius:8px;padding:8px 10px;color:#e2e8f0;font-size:0.78em;margin-bottom:8px;">
+                <div id="admin-messages-list">
                     <p style="font-size:0.75em;opacity:0.5;text-align:center;" data-i18n="clickToLoad"></p>
                 </div>
             </div>
@@ -2837,7 +2890,11 @@ const i18n = {
     trademarkTrackingNote:"Gerekli inceleme adımlarını ve geri dönüşleri, giriş yaptıysanız \"Panelim → 🔖 Marka Hakkı İtiraz Bildirimi\" menüsünden takip edebilirsiniz.",
     trademarkSuccess:"Talebiniz alındı. Ekibimiz en kısa sürede inceleyip size dönüş yapacaktır.",
     trademarkError:"Talep gönderilemedi. Lütfen tekrar deneyin.",
-    trademarkTabLabel:"Marka Hakkı",
+    trademarkTabLabel:"Marka Hakkı Talepleri",
+    adminMessagesTabLabel:"Kullanıcı Mesajları",
+    adminMessagesSearchPlaceholder:"Kullanıcı adı veya domain ara...",
+    adminNoConversations:"Henüz hiç kullanıcı mesajlaşması yok.",
+    adminMsgCountSuffix:"mesaj",
     trademarkStatusNew:"Yeni",
     trademarkStatusReviewing:"İnceleniyor",
     trademarkStatusResolved:"Çözüldü",
@@ -3096,6 +3153,7 @@ const i18n = {
     ownershipVerifiedMsg:"Sahiplik doğrulandı olarak işaretlendi.",
     ownershipUnverifiedMsg:"Sahiplik doğrulaması kaldırıldı.",
     priceHistoryLabel:"Geçmiş Satış Fiyatları",
+    receiptFieldPriceCol:"Satış Fiyatı",
     tapForDetailHint:"Detay için dokun",
     sellerDetailHint:"satıcı detayı için tıklayın",
     sellerProfileUnknownJoinDate:"Bilinmiyor",
@@ -3627,7 +3685,11 @@ const i18n = {
     trademarkTrackingNote:"If you're logged in, you can track the review steps and updates from \"My Panel → 🔖 Trademark Claim\".",
     trademarkSuccess:"Your claim has been received. Our team will review it and get back to you soon.",
     trademarkError:"The claim could not be submitted. Please try again.",
-    trademarkTabLabel:"Trademark",
+    trademarkTabLabel:"Trademark Claims",
+    adminMessagesTabLabel:"User Messages",
+    adminMessagesSearchPlaceholder:"Search username or domain...",
+    adminNoConversations:"No user conversations yet.",
+    adminMsgCountSuffix:"messages",
     trademarkStatusNew:"New",
     trademarkStatusReviewing:"Reviewing",
     trademarkStatusResolved:"Resolved",
@@ -3885,6 +3947,7 @@ const i18n = {
     ownershipVerifiedMsg:"Marked as ownership verified.",
     ownershipUnverifiedMsg:"Ownership verification removed.",
     priceHistoryLabel:"Past Sale Prices",
+    receiptFieldPriceCol:"Sale Price",
     tapForDetailHint:"Tap for details",
     sellerDetailHint:"tap for seller details",
     sellerProfileUnknownJoinDate:"Unknown",
@@ -4613,6 +4676,20 @@ window.handleTelegramLinkClick=async function(){
             // birkaç saniye sonra sessizce tekrar kontrol ediyoruz.
             setTimeout(loadNotificationPrefs,4000);
             setTimeout(loadNotificationPrefs,9000);
+            // FIX (kök neden — "Başlat'a basıp dönünce hâlâ Bağla
+            // görünüyor"): Sabit 4sn/9sn kontrolü, kullanıcı Telegram'da
+            // botu bulup "Başlat"a basmadan ÖNCE dolabiliyordu (bu işlem
+            // birkaç saniyeden fazla sürebilir) — o noktadan sonra hiçbir
+            // otomatik kontrol kalmıyordu. Artık uygulamaya ne zaman geri
+            // dönülürse dönülsün (visibilitychange), tek seferlik bir
+            // kontrol daha tetikleniyor.
+            const recheckOnReturn=()=>{
+                if(document.visibilityState==='visible'){
+                    loadNotificationPrefs();
+                    document.removeEventListener('visibilitychange',recheckOnReturn);
+                }
+            };
+            document.addEventListener('visibilitychange',recheckOnReturn);
         }else{
             btn.innerText=t('telegramConnect');
             showToast(d.error||t('telegramLinkFailed'));
@@ -4749,6 +4826,7 @@ window.switchAdminTab=function(tabId){
     if(tabId==='tab-tickets'){ adminLoadTickets(); markTicketsSeen(); }
     if(tabId==='tab-offers'){ window.loadAdminOffersTable(); const b=document.getElementById('offers-count-badge'); if(b) b.style.display='none'; }
     if(tabId==='tab-reports'){ window.loadListingReports(); window.startReportsPolling(); } else { window.stopReportsPolling(); }
+    if(tabId==='tab-messages'){ window.loadAdminConversations(); }
 };
 window.switchUserTab=function(tabId){
     document.querySelectorAll('.user-tab-btn').forEach(b=>b.classList.toggle('active',b.dataset.utab===tabId));
@@ -5367,9 +5445,27 @@ window.openDomainDetail=function(domainName){
             const el=document.getElementById('detail-price-history-row');
             if(!el||!res.success||!res.history||!res.history.length) return;
             const locale2=currentLang==='en'?'en-GB':'tr-TR';
-            const items=res.history.map(h=>`<span style="background:#1e293b;border-radius:6px;padding:2px 8px;white-space:nowrap;">${h.price} Pi <span style="color:#64748b;">· ${new Date(h.at).toLocaleDateString(locale2,{day:'2-digit',month:'2-digit',year:'2-digit'})}</span></span>`).join('');
+            // FIX: Öncesinde bu bilgi küçük "rozet" (chip) balonları olarak
+            // yan yana diziliyordu — birden fazla geçmiş satış olduğunda
+            // hangi fiyatın hangi tarihe ait olduğunu ayırt etmek zordu.
+            // Artık düzgün bir tablo: her satırda "Satış Fiyatı" ve "Satış
+            // Tarihi" ayrı sütunlarda.
+            const rowsHtml=res.history.map(h=>{
+                const dateStr=h.at?new Date(h.at).toLocaleDateString(locale2,{day:'2-digit',month:'2-digit',year:'numeric'}):'—';
+                return `<tr>
+                    <td style="padding:5px 8px;border-bottom:1px solid #1e293b;color:#4ade80;font-weight:800;white-space:nowrap;">${h.price} Pi</td>
+                    <td style="padding:5px 8px;border-bottom:1px solid #1e293b;color:#94a3b8;white-space:nowrap;">${dateStr}</td>
+                </tr>`;
+            }).join('');
             el.style.display='flex'; el.style.flexDirection='column'; el.style.gap='4px';
-            el.innerHTML=`<span style="color:#64748b;font-weight:700;font-size:0.85em;">📈 ${t('priceHistoryLabel')}:</span><div style="display:flex;gap:5px;flex-wrap:wrap;font-size:0.72em;color:#cbd5e1;">${items}</div>`;
+            el.innerHTML=`<span style="color:#64748b;font-weight:700;font-size:0.85em;">📈 ${t('priceHistoryLabel')}:</span>
+                <table style="width:100%;border-collapse:collapse;font-size:0.76em;background:#0f172a;border-radius:8px;overflow:hidden;">
+                    <thead><tr>
+                        <th style="text-align:left;padding:5px 8px;color:#64748b;font-weight:700;border-bottom:1.5px solid #334155;">${t('receiptFieldPriceCol')}</th>
+                        <th style="text-align:left;padding:5px 8px;color:#64748b;font-weight:700;border-bottom:1.5px solid #334155;">${t('saleDateLabel')}</th>
+                    </tr></thead>
+                    <tbody>${rowsHtml}</tbody>
+                </table>`;
         }).catch(()=>{});
     rows+=`<div id="detail-seller-rating-row" style="display:none;"></div>`;
     if(data.sellerUsername){
@@ -5425,7 +5521,7 @@ window.openDomainDetail=function(domainName){
         const minutesLeft=Math.max(1,Math.ceil((data.reservedUntil-Date.now())/60000));
         actionHtml+=`<div style="margin-top:8px;padding:7px 10px;border-radius:8px;font-size:0.68em;font-weight:800;text-align:center;${isMine?'background:rgba(16,185,129,0.15);border:1px solid #10b981;color:#6ee7b7;':'background:rgba(148,163,184,0.12);border:1px solid #64748b;color:#94a3b8;'}">${isMine?t('reservedForYouMsg')(minutesLeft):t('reservedForOtherMsg')(minutesLeft)}</div>`;
     }
-    if(!data.sold&&isAuth){actionHtml+=`<button onclick="if(domainData['${domainName}']&&domainData['${domainName}'].sellerUsername===currentUser){showToast(t('cannotOfferOwnDomain'));}else{window.openOfferModal('${domainName}');}" style="width:100%;padding:9px;margin-top:8px;border-radius:9px;border:1.5px solid #f59e0b;background:rgba(245,158,11,0.1);color:#fbbf24;font-weight:800;font-size:0.78em;cursor:pointer;">💬 ${t('makeOfferBtn')}</button>`;}
+    if(!data.sold&&isAuth){actionHtml+=`<button onclick="window.handleOfferButtonClick('${domainName}')" style="width:100%;padding:9px;margin-top:8px;border-radius:9px;border:1.5px solid #f59e0b;background:rgba(245,158,11,0.1);color:#fbbf24;font-weight:800;font-size:0.78em;cursor:pointer;">💬 ${t('makeOfferBtn')}</button>`;}
     // YENİ: Alıcı-satıcı doğrudan mesajlaşma — sadece satıcısı olan ve
     // kendi ilanımız olmayan domainlerde gösterilir (satış durumundan
     // bağımsız — devir sonrası sorular için de kullanılabilsin diye).
@@ -5876,6 +5972,21 @@ window.openOfferModal=function(domainName){
     document.getElementById('offer-price-input').dataset.domain=domainName;
     document.getElementById('offer-message-input').value='';
     document.getElementById('offer-modal').style.display='flex';
+};
+// FIX: Domain detay ekranındaki "Teklif Ver" butonu, tıklama mantığını
+// karmaşık bir inline onclick string'i İÇİNDE tutuyordu (domain adı doğrudan
+// string'e enjekte ediliyordu). Domain adında tırnak/özel karakter varsa bu
+// HTML attribute'unu bozup butonu tamamen tepkisiz hale getirebiliyordu —
+// "tıklıyorum ama hiçbir şey olmuyor" hissi tam olarak buradan geliyordu.
+// Artık mantık normal bir JS fonksiyonunda, tıklama anında kontrol ediliyor
+// (kart butonuyla AYNI desen) ve domain adı hiçbir HTML string'ine
+// enjekte edilmiyor.
+window.handleOfferButtonClick=function(domainName){
+    if(!isAuth){ showToast(t('loginRequired')); return; }
+    const d=domainData[domainName];
+    if(d && d.sellerUsername && d.sellerUsername===currentUser){ showToast(t('cannotOfferOwnDomain')); return; }
+    document.getElementById('domain-detail-modal').style.display='none';
+    window.openOfferModal(domainName);
 };
 let _offerSubmitInFlight=false;
 window.confirmSubmitOffer=async function(){
@@ -8720,33 +8831,22 @@ window.printReceipt=function(domainName){
     if(!data){ showToast(t('genericError')); return; }
     const locale=currentLang==='en'?'en-GB':'tr-TR';
     const dateStr=data.at?new Date(data.at).toLocaleString(locale):'—';
-    const win=window.open('','_blank');
-    if(!win){ showToast(t('genericError')); return; }
-    win.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>${t('receiptTitle')} — ${escapeHtml(domainName)}</title>
-    <style>
-        body{font-family:Arial,sans-serif;color:#1e293b;padding:32px;max-width:520px;margin:0 auto;}
-        h1{font-size:1.2em;margin-bottom:2px;}
-        .sub{color:#64748b;font-size:0.85em;margin-bottom:24px;}
-        table{width:100%;border-collapse:collapse;font-size:0.92em;}
-        td{padding:8px 4px;border-bottom:1px solid #e2e8f0;}
-        td:first-child{color:#64748b;width:45%;}
-        .note{margin-top:24px;font-size:0.75em;color:#94a3b8;line-height:1.5;}
-        @media print{ button{display:none;} }
-    </style></head><body>
-        <h1>Web3 Domain Gateway</h1>
-        <div class="sub">${t('receiptTitle')}</div>
-        <table>
-            <tr><td>${t('detailFieldDomain')}</td><td><b>${escapeHtml(domainName)}</b></td></tr>
-            <tr><td>${t('detailFieldPrice')}</td><td><b>${data.price} Pi</b></td></tr>
-            <tr><td>${t('saleDateLabel')}</td><td>${dateStr}</td></tr>
-            <tr><td>${t('detailFieldSellerUser')}</td><td>${data.sellerUsername?'@'+escapeHtml(data.sellerUsername):t('systemSellerLabel')}</td></tr>
-            <tr><td>${t('receiptBuyerLabel')}</td><td>@${escapeHtml(currentUser||'')}</td></tr>
-            <tr><td>${t('detailFieldTxid')}</td><td style="word-break:break-all;">${data.txid||'—'}</td></tr>
+    document.getElementById('receipt-print-area').innerHTML=`
+        <div style="text-align:center;margin-bottom:6px;">
+            <div style="font-size:1.1em;font-weight:900;color:#e2e8f0;">Web3 Domain Gateway</div>
+            <div style="font-size:0.8em;color:#94a3b8;margin-bottom:14px;">${t('receiptTitle')}</div>
+        </div>
+        <table style="width:100%;border-collapse:collapse;font-size:0.85em;">
+            <tr><td style="padding:8px 4px;border-bottom:1px solid #334155;color:#64748b;width:45%;">${t('detailFieldDomain')}</td><td style="padding:8px 4px;border-bottom:1px solid #334155;color:#e2e8f0;"><b>${escapeHtml(domainName)}</b></td></tr>
+            <tr><td style="padding:8px 4px;border-bottom:1px solid #334155;color:#64748b;">${t('detailFieldPrice')}</td><td style="padding:8px 4px;border-bottom:1px solid #334155;color:#e2e8f0;"><b>${data.price} Pi</b></td></tr>
+            <tr><td style="padding:8px 4px;border-bottom:1px solid #334155;color:#64748b;">${t('saleDateLabel')}</td><td style="padding:8px 4px;border-bottom:1px solid #334155;color:#e2e8f0;">${dateStr}</td></tr>
+            <tr><td style="padding:8px 4px;border-bottom:1px solid #334155;color:#64748b;">${t('detailFieldSellerUser')}</td><td style="padding:8px 4px;border-bottom:1px solid #334155;color:#e2e8f0;">${data.sellerUsername?'@'+escapeHtml(data.sellerUsername):t('systemSellerLabel')}</td></tr>
+            <tr><td style="padding:8px 4px;border-bottom:1px solid #334155;color:#64748b;">${t('receiptBuyerLabel')}</td><td style="padding:8px 4px;border-bottom:1px solid #334155;color:#e2e8f0;">@${escapeHtml(currentUser||'')}</td></tr>
+            <tr><td style="padding:8px 4px;color:#64748b;">${t('detailFieldTxid')}</td><td style="padding:8px 4px;color:#e2e8f0;word-break:break-all;">${data.txid||'—'}</td></tr>
         </table>
-        <div class="note">${t('receiptTestnetNote')}</div>
-        <button onclick="window.print()" style="margin-top:24px;padding:10px 16px;border-radius:8px;border:none;background:#6366f1;color:#fff;font-weight:800;cursor:pointer;">${t('receiptPrintBtn')}</button>
-    </body></html>`);
-    win.document.close();
+        <div style="margin-top:16px;font-size:0.68em;color:#64748b;line-height:1.5;">${t('receiptTestnetNote')}</div>
+    `;
+    document.getElementById('receipt-modal').style.display='flex';
 };
 // YENİ: Tek tip, ikonlu boş durum (empty state) gösterimi. Öncesinde
 // birçok liste (bildirimler, tekliflerim, alımlarım, ilanlarım, lider
@@ -10063,6 +10163,79 @@ window.sendChatReply=async function(){
     }catch(e){ showToast(t('sendMessageError')); }
 };
 
+// ══════════════════════════════════════════════════════════════════════
+//  ADMIN: Kullanıcılar Arası Mesajlaşma Takibi (salt okunur) ────────────
+// ══════════════════════════════════════════════════════════════════════
+let adminConversations=[];
+window.loadAdminConversations=async function(){
+    const listEl=document.getElementById('admin-messages-list');
+    if(listEl) listEl.innerHTML=`<p style="font-size:0.75em;opacity:0.5;text-align:center;">…</p>`;
+    try{
+        const r=await fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'get_all_conversations',accessToken:piAccessToken})});
+        const result=await r.json();
+        if(!result.success){ if(listEl) listEl.innerHTML=`<p style="font-size:0.75em;color:#f87171;text-align:center;">${result.error||t('genericError')}</p>`; return; }
+        adminConversations=result.conversations||[];
+        window.renderAdminConversationsList();
+    }catch(e){ if(listEl) listEl.innerHTML=`<p style="font-size:0.75em;color:#f87171;text-align:center;">${t('genericError')}</p>`; }
+};
+window.renderAdminConversationsList=function(){
+    const listEl=document.getElementById('admin-messages-list');
+    if(!listEl) return;
+    const searchEl=document.getElementById('admin-messages-search');
+    const q=(searchEl?searchEl.value:'').trim().toLowerCase();
+    let items=adminConversations;
+    if(q){
+        items=items.filter(c=>{
+            const participants=(c.participants||[]).join(' ').toLowerCase();
+            const domain=(c.domainName||'').toLowerCase();
+            return participants.includes(q)||domain.includes(q);
+        });
+    }
+    if(!items.length){
+        listEl.innerHTML=emptyState('💬',t('adminNoConversations'));
+        return;
+    }
+    const locale=currentLang==='en'?'en-GB':'tr-TR';
+    listEl.innerHTML=items.map(c=>{
+        const participants=(c.participants||[]).map(u=>'@'+escapeHtml(u)).join(' ↔ ');
+        const msgCount=(c.messages||[]).length;
+        const lastMsg=msgCount?c.messages[msgCount-1]:null;
+        const preview=lastMsg?escapeHtml(lastMsg.text.length>70?lastMsg.text.slice(0,70)+'…':lastMsg.text):'';
+        const timeStr=c.lastMessageAt?new Date(c.lastMessageAt).toLocaleDateString(locale,{day:'2-digit',month:'2-digit',year:'2-digit',hour:'2-digit',minute:'2-digit'}):'—';
+        return `<div onclick="window.openAdminConversationDetail('${c.id}')" style="background:#0f172a;border:1.5px solid #164e63;border-radius:10px;padding:9px 10px;margin-bottom:7px;cursor:pointer;">
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:3px;">
+                <div style="font-weight:800;color:#e2e8f0;font-size:0.8em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${participants}</div>
+                <span style="font-size:0.58em;color:#64748b;white-space:nowrap;flex-shrink:0;">${timeStr}</span>
+            </div>
+            <div style="font-size:0.7em;color:#67e8f9;margin-bottom:3px;">🏷️ ${escapeHtml(c.domainName||'—')} <span style="color:#475569;">· ${msgCount} ${t('adminMsgCountSuffix')}</span></div>
+            <div style="font-size:0.72em;color:#94a3b8;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${preview}</div>
+        </div>`;
+    }).join('');
+};
+window.openAdminConversationDetail=function(conversationId){
+    const conv=adminConversations.find(c=>c.id===conversationId);
+    if(!conv) return;
+    const locale=currentLang==='en'?'en-GB':'tr-TR';
+    const participants=(conv.participants||[]).map(u=>'@'+escapeHtml(u)).join(' ↔ ');
+    document.getElementById('admin-chat-view-header').innerHTML=`<div class="ticket-detail-header"><h4>💬 ${participants} — ${escapeHtml(conv.domainName||'')}</h4></div>`;
+    const messagesContainer=document.getElementById('admin-chat-view-messages');
+    messagesContainer.innerHTML=(conv.messages||[]).map((msg,idx)=>{
+        // Admin bir katılımcı olmadığı için "sen/o" ayrımı yok — her
+        // mesaj kimden geldiği açıkça yazılarak gösteriliyor. Renk
+        // ayrımı (user/admin sınıfı) sadece görsel olarak iki tarafı
+        // ayırt etmek için, ilk katılımcıya göre atanıyor.
+        const isFirstParticipant=conv.participants&&msg.from===conv.participants[0];
+        const time=msg.timestamp?new Date(msg.timestamp).toLocaleString(locale,{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}):'';
+        return `<div class="ticket-message ${isFirstParticipant?'user':'admin'}">
+            <div class="ticket-message-header"><span>👤 @${escapeHtml(msg.from)}</span><span style="font-weight:700;text-transform:none;opacity:0.85;">${time}</span></div>
+            <div class="ticket-message-text">${escapeHtml(msg.text)}</div>
+        </div>`;
+    }).join('');
+    document.getElementById('admin-chat-view-modal').style.display='flex';
+    setTimeout(()=>{ messagesContainer.scrollTop=messagesContainer.scrollHeight; },50);
+};
+
+
 // ── KULLANICI: Ticket paneline scroll ──────────────────────────────────
 window.scrollToTicketPanel = function() {
     if (!isAuth) { showToast(t('loginRequired')); return; }
@@ -10556,7 +10729,20 @@ function renderAdminPayouts(payouts) {
 
     container.innerHTML = filtered.map(p => {
         const when = p.at ? new Date(p.at).toLocaleDateString(locale, { day: '2-digit', month: '2-digit' }) + ' ' + new Date(p.at).toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' }) : '-';
-        const commissionAmt = Math.round((p.price - (p.payoutAmount || 0)) * 1e7) / 1e7;
+        // FIX (kök neden — "komisyon tutarı yanlış/tam fiyat gösteriyor"):
+        // Bu satır önceden `p.price - (p.payoutAmount||0)` şeklindeydi.
+        // payoutAmount henüz yazılmamış (null/undefined) eski bir kayıtta
+        // bu ifade 0'a düşüyor, yani komisyon = TÜM satış fiyatı olarak
+        // gösteriliyordu (satıcının payı sıfırmış gibi bir izlenim
+        // veriyordu) — halbuki gerçek komisyon her zaman ~%5. Artık
+        // payoutAmount yoksa, aynı satıcı-payı formülüyle (fiyatın
+        // %95'i / commissionRate'e göre) BEKLENEN payout hesaplanıp ondan
+        // düşülüyor, tıpkı kullanıcı panelindeki "Toplam Gelir" ile aynı
+        // mantık kullanılarak.
+        const effectivePayout = p.payoutAmount != null
+            ? Number(p.payoutAmount)
+            : Math.round(Number(p.price || 0) * (1 - (p.commissionRate || 0.05)) * 1e7) / 1e7;
+        const commissionAmt = Math.round((p.price - effectivePayout) * 1e7) / 1e7;
         const canRelease = p.payoutStatus === 'pending' || p.payoutStatus === 'failed';
         const canRefund = p.payoutStatus === 'pending' || p.payoutStatus === 'failed' || p.payoutStatus === 'refund_failed';
         const row = (label, value) => value ? `<tr><td style="padding:5px 8px 5px 0;font-size:0.62em;color:#94a3b8;font-weight:700;white-space:nowrap;vertical-align:top;width:1%;">${label}</td><td style="padding:5px 0;font-size:0.72em;color:#e2e8f0;word-break:break-word;">${value}</td></tr>` : '';
@@ -10595,7 +10781,7 @@ function renderAdminPayouts(payouts) {
         const tableHtml = `<table style="width:100%;border-collapse:collapse;margin-bottom:8px;table-layout:auto;"><tbody>
             ${row(t('ticketTableUser'), `@${escapeHtml(p.user || '-')}`)}
             ${row(t('payoutColSeller'), p.sellerUsername ? '🏷️ @' + escapeHtml(p.sellerUsername) : '—')}
-            ${row(t('payoutColAmount'), `${p.price} Pi &nbsp;→&nbsp; <span style="color:#6ee7b7;font-weight:700;">${p.payoutAmount != null ? p.payoutAmount : '-'} Pi</span> <span style="color:#64748b;">(%${Math.round((p.commissionRate || 0.05) * 100)}: ${commissionAmt} Pi)</span>`)}
+            ${row(t('payoutColAmount'), `${p.price} Pi &nbsp;→&nbsp; <span style="color:#6ee7b7;font-weight:700;">${effectivePayout} Pi</span> <span style="color:#64748b;">(%${Math.round((p.commissionRate || 0.05) * 100)}: ${commissionAmt} Pi)</span>`)}
             ${p.sellerUsername ? row(t('detailFieldPaymentTo'), t('paymentToUsernameNote').replace('{user}','@'+escapeHtml(p.sellerUsername))) : ''}
             ${p.payoutStatus === 'no_seller' ? row(t('payoutColNote'), `<span style="color:#94a3b8;">⚠️ ${t('payoutNoSellerWarning')}</span>`) : ''}
             ${(p.payoutStatus === 'failed' && p.payoutError) ? row(t('payoutColError'), `<span style="color:#f87171;">${escapeHtml(p.payoutError)}</span>`) : ''}
@@ -11086,6 +11272,16 @@ document.addEventListener('input', function(e) {
             <button class="pi-btn" style="background:#06b6d4;animation:none;padding:10px 14px;margin:0;flex-shrink:0;" onclick="window.sendChatReply()" data-i18n="ticketSendReply"></button>
         </div>
         <button class="pi-btn" style="background:#475569;animation:none;padding:12px;margin:8px 0 0 0;width:100%;position:sticky;bottom:0;z-index:20;box-shadow:0 -6px 12px -4px rgba(0,0,0,0.6);" onclick="window.closeChatDetailModal()" data-i18n="close"></button>
+    </div>
+</div>
+
+<!-- YENİ (admin-only): kullanıcılar arası bir konuşmayı SALT OKUNUR
+     görüntüleme — admin bu pencereden mesaj gönderemez, sadece izler. -->
+<div id="admin-chat-view-modal" class="modal-overlay" style="display:none;">
+    <div class="modal-content ticket-modal-content" style="text-align:left;position:relative;border-color:#06b6d4;">
+        <div id="admin-chat-view-header"></div>
+        <div id="admin-chat-view-messages" class="ticket-messages"></div>
+        <button class="pi-btn" style="background:#475569;animation:none;padding:12px;margin:8px 0 0 0;width:100%;" onclick="document.getElementById('admin-chat-view-modal').style.display='none'" data-i18n="close"></button>
     </div>
 </div>
 
