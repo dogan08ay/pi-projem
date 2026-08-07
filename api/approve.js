@@ -4986,6 +4986,53 @@ async function handlerImpl(req, res) {
     }
   }
 
+  // ══════════════════════════════════════════════════════════════════════
+  //  Pi AD NETWORK — Reklam İzleyerek İlan Öne Çıkarma (backend doğrulama)
+  //  Kaynak: https://github.com/pi-apps/pi-platform-docs/blob/master/platform_API.md
+  //  ("Verify a rewarded ad status" — GET /ads_network/status/:adId).
+  //  KRİTİK: adId istemciden geldiği için asla doğrudan güvenilmiyor —
+  //  Pi'nin kendi sunucusuna sorup mediator_ack_status==='granted'
+  //  olduğunu TEYİT ETMEDEN ödül (öne çıkarma) verilmiyor. Aksi halde
+  //  SDK'yı atlatan biri sahte adId göndererek bedava öne çıkarma
+  //  kazanabilirdi.
+  // ══════════════════════════════════════════════════════════════════════
+  if (action === 'verify_rewarded_ad') {
+    const { adId, domainName } = req.body;
+    const realUsername = await getRealUsername(accessToken);
+    if (!realUsername) return res.status(403).json({ error: "Geçersiz oturum" });
+    if (!adId || !domainName) return res.status(400).json({ error: "Eksik bilgi" });
+    if (!await checkRateLimit(clientIp, 'verify_rewarded_ad', 10, 60000))
+      return res.status(429).json({ error: "Çok fazla istek, lütfen bekleyin." });
+    try {
+      const db = getDb();
+      const domainRef = db.collection('domains').doc(domainName);
+      const domainSnap = await domainRef.get();
+      if (!domainSnap.exists) return res.status(404).json({ error: "Domain bulunamadı" });
+      const domData = domainSnap.data();
+      if (domData.sellerUsername !== realUsername)
+        return res.status(403).json({ error: "Bu ilan size ait değil" });
+      if (domData.sold) return res.status(400).json({ error: "Satılmış bir ilanı öne çıkaramazsınız" });
+
+      const PI_API_KEY = process.env.APP_SECRET;
+      if (!PI_API_KEY) return res.status(503).json({ error: "Reklam doğrulama şu anda kullanılamıyor" });
+      const verifyResp = await fetch(`https://api.minepi.com/v2/ads_network/status/${encodeURIComponent(adId)}`, {
+        headers: { 'Authorization': `Key ${PI_API_KEY}` }
+      });
+      if (!verifyResp.ok) return res.status(400).json({ error: "Reklam doğrulanamadı (Pi sunucusuna ulaşılamadı)" });
+      const adStatus = await verifyResp.json();
+      if (adStatus.mediator_ack_status !== 'granted')
+        return res.status(400).json({ error: "Reklam izleme Pi tarafından onaylanmadı, ödül verilemiyor" });
+
+      const BOOST_DURATION_MS = 24 * 60 * 60 * 1000;
+      const boostedUntil = Date.now() + BOOST_DURATION_MS;
+      await domainRef.set({ boostedUntil }, { merge: true });
+      return res.status(200).json({ success: true, boostedUntil });
+    } catch (e) {
+      console.error("verify_rewarded_ad hatası:", e);
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
   if (action === 'mark_conversation_read') {
     const { conversationId } = req.body;
     const realUsername = await getRealUsername(accessToken);
