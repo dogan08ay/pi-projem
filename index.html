@@ -6874,7 +6874,18 @@ window.loadAdminEarnings=async function(){
         const r=await fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'get_admin_earnings',accessToken:piAccessToken})});
         const result=await r.json();
         if(result.success){
-            const fmt=(n)=>(Math.round(Number(n||0)*100)/100)+' Pi';
+            // FIX (kök neden — "0.009 Pi'lik komisyon 0.01 olarak
+            // görünüyor"): Bu fonksiyon her zaman 2 ondalık basamağa
+            // yuvarlıyordu. Hesabın kendisi (backend'de) tam doğruydu,
+            // ama küçük tutarlarda (ör. 0.009) 2 basamağa yuvarlama
+            // görünen rakamı yanlış gösteriyordu. Artık tam ondalık
+            // hassasiyet (Pi'nin kendi hassasiyeti olan 7 basamağa
+            // kadar) korunuyor, sadece gereksiz sondaki sıfırlar
+            // temizleniyor.
+            const fmt=(n)=>{
+                const num=Math.round(Number(n||0)*1e7)/1e7;
+                return (num % 1 === 0 ? num.toFixed(0) : num.toFixed(7).replace(/0+$/,'').replace(/\.$/,''))+' Pi';
+            };
             const platformEl=document.getElementById('admin-platform-earnings');
             const totalEl=document.getElementById('admin-total-volume');
             const userEl=document.getElementById('admin-user-volume');
@@ -10739,7 +10750,18 @@ function renderAdminPayouts(payouts) {
         // %95'i / commissionRate'e göre) BEKLENEN payout hesaplanıp ondan
         // düşülüyor, tıpkı kullanıcı panelindeki "Toplam Gelir" ile aynı
         // mantık kullanılarak.
-        const effectivePayout = p.payoutAmount != null
+        // FIX (kök neden — "0.18 Pi'lik satışta komisyon 0.009 yerine
+        // 0.01, satıcı payı 0.171 yerine 0.18 görünüyor"): Bu satır
+        // önceden HENÜZ ÖDENMEMİŞ kayıtlarda bile saklı payoutAmount
+        // değerine güveniyordu — bazı eski kayıtlarda bu alan yanlış
+        // (satış fiyatının tamamına eşit) olabiliyordu. Artık ödeme
+        // henüz serbest bırakılmadıysa (status 'released' değilse) HER
+        // ZAMAN fiyat+komisyon oranından taze hesaplanıyor — böylece
+        // ekranda görünen rakam, "Öde" butonuna basıldığında GERÇEKTEN
+        // gönderilecek rakamla (bkz. release_seller_payment) birebir
+        // aynı oluyor. Sadece zaten ödenmiş (released) kayıtlarda,
+        // GERÇEKTEN gönderilmiş olan tarihi tutar korunuyor.
+        const effectivePayout = (p.payoutStatus === 'released' && p.payoutAmount != null)
             ? Number(p.payoutAmount)
             : Math.round(Number(p.price || 0) * (1 - (p.commissionRate || 0.05)) * 1e7) / 1e7;
         const commissionAmt = Math.round((p.price - effectivePayout) * 1e7) / 1e7;
