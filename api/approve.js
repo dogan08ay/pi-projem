@@ -3661,7 +3661,17 @@ async function handlerImpl(req, res) {
         });
       }
 
-      const payoutAmount = sale.payoutAmount || Math.round(sale.price * (1 - PLATFORM_COMMISSION_RATE) * 1e7) / 1e7;
+      // FIX (kök neden — "satıcıya komisyon kesilmeden tam tutar
+      // gönderiliyor" riski): Bu satır önceden `sale.payoutAmount ||
+      // hesapla` şeklindeydi — yani kayıtta HERHANGİ bir sayı varsa
+      // (yanlış/eski/bozuk olsa bile) ona güveniliyordu. Bazı eski
+      // kayıtlarda bu alan satış fiyatının TAMAMINA eşit yanlış
+      // yazılmış olabiliyordu (ör. komisyon mantığı eklenmeden önceki
+      // kayıtlar) — bu durumda satıcıya %100'ü gönderilir, platform
+      // hiç komisyon almazdı. Artık gönderilecek tutar HER ZAMAN satış
+      // fiyatı ve komisyon oranından TAZE hesaplanıyor; kayıtlı
+      // payoutAmount alanına asla güvenilmiyor.
+      const payoutAmount = Math.round(sale.price * (1 - (sale.commissionRate || PLATFORM_COMMISSION_RATE)) * 1e7) / 1e7;
 
       // ══════════════════════════════════════════════════════════════════
       //  KURTARMA (RESCUE/RECOVERY) MEKANİZMASI
