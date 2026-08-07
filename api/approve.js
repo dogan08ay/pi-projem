@@ -5154,12 +5154,15 @@ async function handlerImpl(req, res) {
         // (satış anında zaten hesaplanıp domain kaydına yazılıyor —
         // bkz. PLATFORM_COMMISSION_RATE). "Toplam Gelir" alanı bu yüzden
         // satıcının cüzdanına gerçekte GİRMEYECEK olan tutarı gösteriyordu.
-        // Artık net (komisyon düşülmüş) tutar toplanıyor; payoutAmount
-        // henüz yazılmamış çok eski kayıtlar için aynı formülle (fiyatın
-        // %95'i) hesaplanıyor.
-        const netAmount = data.payoutAmount != null
+        // Artık net (komisyon düşülmüş) tutar toplanıyor.
+        // 2. FIX: data.payoutAmount, ödeme HENÜZ serbest bırakılmamışken
+        // bile bazı eski/hatalı kayıtlarda satış fiyatına eşit (yanlış)
+        // olabiliyordu. Artık SADECE ödeme gerçekten gönderilmişse
+        // (payoutStatus:'released') saklı değere güveniliyor; aksi
+        // halde her zaman fiyattan taze %95 hesaplanıyor.
+        const netAmount = (data.payoutStatus === 'released' && data.payoutAmount != null)
           ? Number(data.payoutAmount)
-          : Math.round(Number(data.price || 0) * (1 - PLATFORM_COMMISSION_RATE) * 1e7) / 1e7;
+          : Math.round(Number(data.price || 0) * (1 - (data.commissionRate || PLATFORM_COMMISSION_RATE)) * 1e7) / 1e7;
         totalEarned += netAmount;
         soldDomains.push({ name: d.id, ...data });
       });
@@ -5238,9 +5241,13 @@ async function handlerImpl(req, res) {
         const data = d.data();
         if (data.deleted === true) return;
         const grossPrice = Number(data.price || 0);
-        const netEarning = data.payoutAmount != null
+        // FIX: aynı "sadece ödeme gerçekten serbest bırakıldıysa saklı
+        // değere güven" mantığı burada da uygulanıyor (bkz. yukarıdaki
+        // aynı düzeltme) — CSV dışa aktarımında da satıcı payı yanlış
+        // (komisyonsuz) görünmesin diye.
+        const netEarning = (data.payoutStatus === 'released' && data.payoutAmount != null)
           ? Number(data.payoutAmount)
-          : Math.round(grossPrice * (1 - PLATFORM_COMMISSION_RATE) * 1e7) / 1e7;
+          : Math.round(grossPrice * (1 - (data.commissionRate || PLATFORM_COMMISSION_RATE)) * 1e7) / 1e7;
         rows.push({
           domain: d.id,
           price: grossPrice,
@@ -5347,7 +5354,7 @@ async function handlerImpl(req, res) {
       // payoutStatus/price/payoutAmount alanlarının doğrudan yansımasıdır.
       // (platform_stats belgesine yine de referans/debug amaçlı yazılıyor,
       // ama artık OKUMA tarafında asla güvenilmiyor.)
-      let totalVolume = 0, userOwnedVolume = 0, adminOwnEarnings = 0, platformEarnings = 0;
+      let totalVolume = 0, userOwnedVolume = 0, userOwnedVolumeNet = 0, adminOwnEarnings = 0, platformEarnings = 0;
       allDomainsSnap.forEach(d => {
         const data = d.data();
         const price = Number(data.price || 0);
@@ -5355,6 +5362,12 @@ async function handlerImpl(req, res) {
         totalVolume += price;
         if (data.sellerUsername) {
           userOwnedVolume += price;
+          // YENİ: "Satıcılara Ait Pay" kartı önceden BRÜT tutarı (komisyon
+          // düşülmemiş) gösteriyordu — etiketi "satıcılara ait pay" dese
+          // bile rakamın kendisi satıcıların gerçekte eline geçecek NET
+          // tutar değildi. Artık her domain için ayrı ayrı %5 (veya o
+          // domaine özel commissionRate) düşülüp toplanıyor.
+          userOwnedVolumeNet += Math.round(price * (1 - (data.commissionRate || PLATFORM_COMMISSION_RATE)) * 1e7) / 1e7;
           if (data.sellerUsername === ADMIN_USERNAME) {
             // Admin'in kendi domaini: escrow/serbest bırakma adımı yok,
             // satış anında kesinleşmiş sayılır.
@@ -5371,12 +5384,13 @@ async function handlerImpl(req, res) {
       });
       totalVolume = Math.round(totalVolume * 1e7) / 1e7;
       userOwnedVolume = Math.round(userOwnedVolume * 1e7) / 1e7;
+      userOwnedVolumeNet = Math.round(userOwnedVolumeNet * 1e7) / 1e7;
       adminOwnEarnings = Math.round(adminOwnEarnings * 1e7) / 1e7;
       platformEarnings = Math.round(platformEarnings * 1e7) / 1e7;
       // Referans/debug amaçlı kaydediyoruz (okuma tarafı artık buna
       // güvenmiyor, sadece Sistem Kontrolü gibi araçlar için bilgi amaçlı).
       db.collection('config').doc('platform_stats').set({
-        totalVolume, userOwnedVolume, platformEarnings, adminOwnEarnings, statsVersion: 3, recalculatedAt: Date.now()
+        totalVolume, userOwnedVolume, userOwnedVolumeNet, platformEarnings, adminOwnEarnings, statsVersion: 3, recalculatedAt: Date.now()
       }).catch(e => console.error('[platform_stats] referans yazımı başarısız (önemsiz):', e.message));
 
       allSalesDetail.sort((a, b) => (b.at || 0) - (a.at || 0));
@@ -5385,6 +5399,7 @@ async function handlerImpl(req, res) {
         success: true,
         totalVolume,
         userOwnedVolume,
+        userOwnedVolumeNet,
         platformEarnings,
         adminOwnEarnings,
         adminOwnSoldDomains,
