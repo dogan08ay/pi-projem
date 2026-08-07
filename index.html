@@ -5018,12 +5018,43 @@ window.toggleFavorite=async function(domainName, evt){
     // İyimser (optimistic) güncelleme — sunucu yanıtını beklemeden arayüzü güncelle
     if(wasFav) userFavorites.delete(domainName); else userFavorites.add(domainName);
     debouncedRender();
+    // FIX (kök neden — "kartı kapatıp açmadan durum değişmiyor"):
+    // debouncedRender() arka plandaki domain listesini/kartlarını
+    // güncelliyor, ama o an AÇIK olan domain detay modalının içeriği
+    // (openDomainDetail tarafından bir kerelik oluşturulmuş statik HTML)
+    // bu render'ın kapsamında değil — o yüzden favori butonu, modal
+    // kapatılıp yeniden açılana kadar eski haliyle kalıyordu. Artık,
+    // modal hâlâ AYNI domain için açıksa, butonu doğrudan (yeniden
+    // render etmeden) yerinde güncelliyoruz.
+    const detailFavBtn=document.getElementById('detail-fav-btn');
+    if(detailFavBtn && document.getElementById('domain-detail-modal').style.display!=='none'){
+        const nowFav=userFavorites.has(domainName);
+        detailFavBtn.style.background=nowFav?'rgba(245,158,11,0.9)':'rgba(245,158,11,0.1)';
+        detailFavBtn.style.color=nowFav?'#1e1b4b':'#fbbf24';
+        detailFavBtn.innerHTML=nowFav?'★ '+t('favoriteRemoveBtn'):'☆ '+t('favoriteAddBtn');
+    }
     try{
         const r=await fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'toggle_favorite',domainName,addFavorite:!wasFav,accessToken:piAccessToken})});
         const result=await r.json();
-        if(!result.success){ if(wasFav) userFavorites.add(domainName); else userFavorites.delete(domainName); debouncedRender(); }
+        if(!result.success){
+            if(wasFav) userFavorites.add(domainName); else userFavorites.delete(domainName);
+            debouncedRender();
+            if(detailFavBtn){
+                const revertedFav=userFavorites.has(domainName);
+                detailFavBtn.style.background=revertedFav?'rgba(245,158,11,0.9)':'rgba(245,158,11,0.1)';
+                detailFavBtn.style.color=revertedFav?'#1e1b4b':'#fbbf24';
+                detailFavBtn.innerHTML=revertedFav?'★ '+t('favoriteRemoveBtn'):'☆ '+t('favoriteAddBtn');
+            }
+        }
     }catch(e){
-        if(wasFav) userFavorites.add(domainName); else userFavorites.delete(domainName); debouncedRender();
+        if(wasFav) userFavorites.add(domainName); else userFavorites.delete(domainName);
+        debouncedRender();
+        if(detailFavBtn){
+            const revertedFav=userFavorites.has(domainName);
+            detailFavBtn.style.background=revertedFav?'rgba(245,158,11,0.9)':'rgba(245,158,11,0.1)';
+            detailFavBtn.style.color=revertedFav?'#1e1b4b':'#fbbf24';
+            detailFavBtn.innerHTML=revertedFav?'★ '+t('favoriteRemoveBtn'):'☆ '+t('favoriteAddBtn');
+        }
     }
 };
 
@@ -5504,7 +5535,7 @@ window.openDomainDetail=function(domainName){
     let actionHtml='';
     if(isAuth){
         const isFav=userFavorites.has(domainName);
-        actionHtml+=`<button onclick="window.toggleFavorite('${domainName}')" style="width:100%;padding:9px;margin-bottom:8px;border-radius:9px;border:1.5px solid #f59e0b;background:${isFav?'rgba(245,158,11,0.9)':'rgba(245,158,11,0.1)'};color:${isFav?'#1e1b4b':'#fbbf24'};font-weight:800;font-size:0.78em;cursor:pointer;">${isFav?'★ '+t('favoriteRemoveBtn'):'☆ '+t('favoriteAddBtn')}</button>`;
+        actionHtml+=`<button id="detail-fav-btn" onclick="window.toggleFavorite('${domainName}')" style="width:100%;padding:9px;margin-bottom:8px;border-radius:9px;border:1.5px solid #f59e0b;background:${isFav?'rgba(245,158,11,0.9)':'rgba(245,158,11,0.1)'};color:${isFav?'#1e1b4b':'#fbbf24'};font-weight:800;font-size:0.78em;cursor:pointer;">${isFav?'★ '+t('favoriteRemoveBtn'):'☆ '+t('favoriteAddBtn')}</button>`;
     }
     if(!data.sold&&isAuth){
         // İSTİSNA: admin kendi ilanını da test amaçlı satın alabilsin diye
