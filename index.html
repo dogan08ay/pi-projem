@@ -1690,6 +1690,7 @@
             <div class="item-row"><span class="item-title" data-i18n="payment"></span><span class="item-red-val-small blink-red" data-i18n="onlyTestPi"></span></div>
             <div class="item-row"><span class="item-title" data-i18n="balance"></span><span class="item-red-val-small blink-red" data-i18n="realPiSafe"></span></div>
             <div class="item-row"><span class="item-title" data-i18n="password"></span><span class="item-red-val-small blink-red" data-i18n="passwordPrivate"></span></div>
+            <div id="pre-buy-highvalue-warning" style="display:none;margin-top:10px;padding:8px 10px;background:rgba(245,158,11,0.1);border:1px solid #f59e0b;border-radius:10px;font-size:0.78em;color:#fde68a;line-height:1.5;"></div>
         </div>
         <div style="display:flex;gap:10px;margin-top:15px;">
             <button class="pi-btn" style="background:#475569;flex:1;animation:none;padding:10px;margin:0;" onclick="document.getElementById('pre-buy-modal').style.display='none'" data-i18n="cancel"></button>
@@ -2797,6 +2798,99 @@ function waitForPi() {
         }, 100);
     });
 }
+
+// ══════════════════════════════════════════════════════════════════════
+//  Pi AD NETWORK — Reklam İzleyerek İlan Öne Çıkarma ─────────────────────
+//  Kaynak (resmi Pi SDK/Platform API dokümantasyonu):
+//  https://github.com/pi-apps/pi-platform-docs/blob/master/ads.md
+//  https://github.com/pi-apps/pi-platform-docs/blob/master/platform_API.md
+//  Akış: Pi.Ads.isAdReady -> (gerekirse) Pi.Ads.requestAd -> Pi.Ads.showAd
+//  -> dönen adId backend'e gönderilip Pi Platform API'sinden
+//  (GET /ads_network/status/:adId, mediator_ack_status==='granted')
+//  DOĞRULANDIKTAN SONRA ödül (24 saat öne çıkarma) veriliyor — istemci
+//  tarafından "reklamı izledim" denilmesi TEK BAŞINA yeterli değil,
+//  aksi halde kötü niyetli bir kullanıcı SDK'yı atlatıp sahte ödül
+//  talep edebilirdi (bkz. resmi dokümandaki uyarı).
+// ══════════════════════════════════════════════════════════════════════
+let _adNetworkSupported=null; // null = henüz kontrol edilmedi
+async function checkAdNetworkSupport(){
+    if(_adNetworkSupported!==null) return _adNetworkSupported;
+    try{
+        if(typeof Pi==='undefined'||typeof Pi.nativeFeaturesList!=='function'){ _adNetworkSupported=false; return false; }
+        const features=await Pi.nativeFeaturesList();
+        _adNetworkSupported=Array.isArray(features)&&features.includes('ad_network');
+    }catch(e){ _adNetworkSupported=false; }
+    return _adNetworkSupported;
+}
+window.handleWatchAdForBoost=async function(domainName){
+    if(!isAuth){ showToast(t('loginRequired')); return; }
+    const existing=domainData[domainName];
+    if(existing&&existing.boostedUntil&&existing.boostedUntil>Date.now()){
+        showToast(t('watchAdBoostAlreadyBoosted')); return;
+    }
+    const supported=await checkAdNetworkSupport();
+    if(!supported){ showToast(t('watchAdBoostNotSupported')); return; }
+    const btn=document.getElementById('boost-ad-btn-'+domainName.replace(/[^a-zA-Z0-9]/g,'_'));
+    if(btn){ btn.disabled=true; btn.innerText='⏳ '+t('watchAdBoostLoading'); }
+    try{
+        let ready=await Pi.Ads.isAdReady('rewarded');
+        if(!ready||ready.ready!==true){
+            const reqResp=await Pi.Ads.requestAd('rewarded');
+            if(!reqResp||reqResp.result!=='AD_LOADED'){
+                showToast(t('watchAdBoostUnavailable'));
+                if(btn){ btn.disabled=false; btn.innerText='🎬 '+t('watchAdBoostBtn'); }
+                return;
+            }
+        }
+        const showResp=await Pi.Ads.showAd('rewarded');
+        if(!showResp||showResp.result!=='AD_REWARDED'||!showResp.adId){
+            if(btn){ btn.disabled=false; btn.innerText='🎬 '+t('watchAdBoostBtn'); }
+            return; // kullanıcı reklamı yarıda kapattı vb. — sessizce bırak, hata değil
+        }
+        if(btn) btn.innerText='⏳ '+t('watchAdBoostVerifying');
+        const r=await fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'verify_rewarded_ad',adId:showResp.adId,domainName,accessToken:piAccessToken})});
+        const result=await r.json();
+        if(!r.ok||!result.success){
+            showToast(t('watchAdBoostFail')+(result.error?(' ('+result.error+')'):''));
+            if(btn){ btn.disabled=false; btn.innerText='🎬 '+t('watchAdBoostBtn'); }
+            return;
+        }
+        if(domainData[domainName]) domainData[domainName].boostedUntil=result.boostedUntil;
+        showToast(t('watchAdBoostSuccess'));
+        debouncedRender();
+        if(typeof renderUserPanel==='function') renderUserPanel();
+    }catch(e){
+        console.error('Reklam/öne çıkarma hatası:',e);
+        showToast(t('watchAdBoostError'));
+        if(btn){ btn.disabled=false; btn.innerText='🎬 '+t('watchAdBoostBtn'); }
+    }
+};
+
+// ══════════════════════════════════════════════════════════════════════
+//  Yüksek Tutarlı İşlem Uyarısı ──────────────────────────────────────────
+//  ÖNEMLİ (dürüstlük): Bu uygulamanın Pi Network'ün resmi KYC (kimlik)
+//  doğrulama durumuna erişimi YOK — bu yüzden "bu kullanıcı KYC'siz"
+//  gibi kesin bir iddiada bulunmuyoruz (bu yanlış olabilir ve yanıltıcı
+//  olurdu). Bunun yerine, belirli bir tutarın üzerindeki satın almalarda,
+//  alıcıyı satıcının ilan sayfasındaki güven sinyallerini (puan, sahiplik
+//  doğrulaması rozeti) kontrol etmeye teşvik eden GENEL bir dikkat notu
+//  gösteriyoruz — gerçek olmayan bir garanti vermeden.
+const HIGH_VALUE_WARNING_THRESHOLD_PI = 50;
+window.openPreBuyModal=function(domainName, price){
+    pendingDomain=domainName; pendingPrice=price;
+    const warnEl=document.getElementById('pre-buy-highvalue-warning');
+    if(warnEl){
+        const data=domainData[domainName]||{};
+        if(Number(price)>=HIGH_VALUE_WARNING_THRESHOLD_PI && !data.ownershipVerified){
+            warnEl.style.display='block';
+            warnEl.innerHTML='⚠️ '+t('highValueWarning');
+        } else {
+            warnEl.style.display='none';
+        }
+    }
+    document.getElementById('pre-buy-modal').style.display='flex';
+};
+
 const i18n = {
   tr: {
     menu:"Menü",account:"Hesap",preferences:"Tercihler",connected:"Bağlı",
@@ -3142,12 +3236,24 @@ const i18n = {
     myListingsStatusTitle:"📋 İlan Son Durumu",withdrawnAtLabel:"Geri Çekilme:",approvalDateLabel:"Onay Tarihi",listingDateLabel:"İlan Tarihi",
     deleteListingBtn:"🗑️ İlanı Sil",editResubmitBtn:"✏️ Düzenle & Yeniden Gönder",withdrawRequestBtn:"🚫 İlanı Geri Çek",rejectReasonLabel:"Red Sebebi",
     domainOnSale:"Satışta",domainSold:"Satıldı",sellerLabel:"Satıcı:",descriptionEmpty:"Açıklama girilmemiş.",
+    boostedTag:"Öne Çıkan",
+    watchAdBoostBtn:"Reklam İzle, 24 Saat Öne Çıkar",
+    watchAdBoostAlreadyBoosted:"Bu ilan zaten öne çıkarılmış durumda.",
+    watchAdBoostNotSupported:"Reklamlar bu Pi Browser sürümünde desteklenmiyor. Lütfen Pi Browser'ı güncelleyin.",
+    watchAdBoostLoading:"Reklam yükleniyor...",
+    watchAdBoostUnavailable:"Şu anda gösterilecek reklam yok, lütfen birazdan tekrar deneyin.",
+    watchAdBoostVerifying:"Reklam doğrulanıyor...",
+    watchAdBoostSuccess:"🔥 İlanınız 24 saat boyunca öne çıkarıldı!",
+    watchAdBoostFail:"Reklam ödülü doğrulanamadı, öne çıkarma uygulanmadı.",
+    watchAdBoostError:"Bir hata oluştu.",
     imageUploading:"Görsel yükleniyor...",imageUploadFailed:"Görsel yüklenemedi.",
     myActiveListings:"Satıştaki Domainleriniz",mySoldDomainsLabel:"Satılan Domainleriniz",
     searchPlaceholder:"🔍 Domain adı ara...",loginRequiredForFavorite:"Favorilere eklemek için giriş yapmalısınız.",
     priceMinPlaceholder:"Min Pi",
     priceMaxPlaceholder:"Max Pi",
     ownershipVerifiedBadge:"Sahiplik Doğrulandı",
+    ownershipVerifiedTooltip:"Admin, bu satıcının sunduğu sahiplik kanıtını inceleyip onayladı. Doğrulanma tarihi:",
+    highValueWarning:"Bu yüksek tutarlı bir işlem. Devam etmeden önce satıcının puanını ve profilini incelemenizi, mümkünse \"Sahiplik Doğrulandı\" rozetine sahip ilanları tercih etmenizi öneririz.",
     ownershipVerifyBtn:"Sahipliği Doğrula",
     ownershipUnverifyBtn:"Doğrulamayı Kaldır",
     ownershipVerifiedMsg:"Sahiplik doğrulandı olarak işaretlendi.",
@@ -3936,12 +4042,24 @@ const i18n = {
     myListingsStatusTitle:"📋 Listing Status",withdrawnAtLabel:"Withdrawn:",approvalDateLabel:"Approval Date",listingDateLabel:"Listing Date",
     deleteListingBtn:"🗑️ Delete Listing",editResubmitBtn:"✏️ Edit & Resubmit",withdrawRequestBtn:"🚫 Withdraw Request",rejectReasonLabel:"Reject Reason",
     domainOnSale:"On Sale",domainSold:"Sold",sellerLabel:"Seller:",descriptionEmpty:"No description provided.",
+    boostedTag:"Featured",
+    watchAdBoostBtn:"Watch Ad, Feature for 24h",
+    watchAdBoostAlreadyBoosted:"This listing is already featured.",
+    watchAdBoostNotSupported:"Ads aren't supported on this Pi Browser version. Please update Pi Browser.",
+    watchAdBoostLoading:"Loading ad...",
+    watchAdBoostUnavailable:"No ad available right now, please try again shortly.",
+    watchAdBoostVerifying:"Verifying ad...",
+    watchAdBoostSuccess:"🔥 Your listing has been featured for 24 hours!",
+    watchAdBoostFail:"Couldn't verify the ad reward, boost was not applied.",
+    watchAdBoostError:"An error occurred.",
     imageUploading:"Uploading image...",imageUploadFailed:"Image upload failed.",
     myActiveListings:"Domains Currently on Sale",mySoldDomainsLabel:"Your Sold Domains",
     searchPlaceholder:"🔍 Search domain name...",loginRequiredForFavorite:"You need to log in to add favorites.",
     priceMinPlaceholder:"Min Pi",
     priceMaxPlaceholder:"Max Pi",
     ownershipVerifiedBadge:"Ownership Verified",
+    ownershipVerifiedTooltip:"Admin reviewed and approved this seller's proof of ownership. Verified on:",
+    highValueWarning:"This is a high-value transaction. We recommend checking the seller's rating and profile before proceeding, and preferring listings with the \"Ownership Verified\" badge when possible.",
     ownershipVerifyBtn:"Verify Ownership",
     ownershipUnverifyBtn:"Remove Verification",
     ownershipVerifiedMsg:"Marked as ownership verified.",
@@ -5468,7 +5586,11 @@ window.openDomainDetail=function(domainName){
     const sellerClickable=data.sellerUsername?`<span class="seller-link-pulse" onclick="window.openSellerProfile('${data.sellerUsername.replace(/'/g,"\\'")}')" style="cursor:pointer;color:#a5b4fc;font-weight:800;text-decoration:underline;text-decoration-style:dotted;text-underline-offset:3px;">@${escapeHtml(data.sellerUsername)} <span style="font-size:0.9em;font-weight:900;">›</span></span> ${piVerifiedBadge()} <span style="font-size:0.82em;color:#64748b;font-weight:600;">(${t('sellerDetailHint')})</span>`:t('systemSellerLabel');
     // YENİ: Admin, satıcının domain sahipliğini kanıtladığını (ownershipProof)
     // fiilen inceleyip onayladıysa bu rozet gösteriliyor — alıcıya ek güven.
-    const ownershipBadge=data.ownershipVerified?` <span style="background:rgba(59,130,246,0.15);border:1px solid #3b82f6;color:#93c5fd;font-size:0.62em;font-weight:900;padding:2px 7px;border-radius:20px;white-space:nowrap;">🛡️ ${t('ownershipVerifiedBadge')}</span>`:'';
+    // FIX: rozete fare/dokunuşla ipucu (tooltip) eklendi — hangi tarihte
+    // doğrulandığını göstererek şeffaflığı artırıyor (data zaten
+    // ownershipVerifiedAt olarak saklanıyordu, sadece gösterilmiyordu).
+    const ownershipVerifiedDateStr=data.ownershipVerifiedAt?new Date(data.ownershipVerifiedAt).toLocaleDateString(currentLang==='en'?'en-GB':'tr-TR',{day:'2-digit',month:'2-digit',year:'numeric'}):'';
+    const ownershipBadge=data.ownershipVerified?` <span title="${t('ownershipVerifiedTooltip')}${ownershipVerifiedDateStr?' ('+ownershipVerifiedDateStr+')':''}" style="background:rgba(59,130,246,0.15);border:1px solid #3b82f6;color:#93c5fd;font-size:0.62em;font-weight:900;padding:2px 7px;border-radius:20px;white-space:nowrap;cursor:help;">🛡️ ${t('ownershipVerifiedBadge')}</span>`:'';
     rows+=row('👤',t('detailFieldSellerUser'),sellerClickable+ownershipBadge);
     rows+=`<div id="detail-price-history-row" style="display:none;"></div>`;
     fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'get_domain_price_history',domainName})})
@@ -5544,7 +5666,7 @@ window.openDomainDetail=function(domainName){
         if(isOwnListing){
             actionHtml+=`<div style="width:100%;padding:10px;font-size:0.9em;border-radius:9px;background:#334155;color:#94a3b8;text-align:center;font-weight:800;">👤 ${t('ownListingTag')}</div>`;
         } else {
-            actionHtml+=`<button class="btn-buy" style="width:100%;padding:10px;font-size:0.9em;" onclick="document.getElementById('domain-detail-modal').style.display='none';pendingDomain='${domainName}';pendingPrice=${data.price};document.getElementById('pre-buy-modal').style.display='flex';">${t('buyNow')}</button>`;
+            actionHtml+=`<button class="btn-buy" style="width:100%;padding:10px;font-size:0.9em;" onclick="document.getElementById('domain-detail-modal').style.display='none';window.openPreBuyModal('${domainName}',${data.price});">${t('buyNow')}</button>`;
         }
     }
     if(!data.sold && data.reservedFor && data.reservedUntil && data.reservedUntil>Date.now()){
@@ -7449,8 +7571,9 @@ function renderUserPanel(){
                             <span style="color:#fecaca;word-break:break-word;flex:1;font-size:0.85em;">${escapeHtml(d.ownershipProof)}</span>
                         </div>`:''}
                     </div>
-                    <!-- Withdraw listing button -->
+                    <!-- Withdraw listing + Reklamla Öne Çıkar butonları -->
                     <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;">
+                        ${(d.boostedUntil&&d.boostedUntil>Date.now())?`<span style="font-size:0.6em;background:linear-gradient(135deg,#f59e0b,#ea580c);color:#fff;font-weight:800;padding:3px 8px;border-radius:5px;">🔥 ${t('boostedTag')}</span>`:`<button id="boost-ad-btn-${d.name.replace(/[^a-zA-Z0-9]/g,'_')}" onclick="window.handleWatchAdForBoost('${d.name}')" style="background:rgba(139,92,246,0.15);border:1px solid #8b5cf6;color:#c4b5fd;padding:3px 8px;border-radius:5px;font-size:0.6em;font-weight:800;cursor:pointer;">🎬 ${t('watchAdBoostBtn')}</button>`}
                         <button onclick="handleWithdrawListing('${d.name}')" style="margin-left:auto;background:#ef4444;color:#fff;border:none;padding:3px 8px;border-radius:5px;font-size:0.6em;font-weight:800;cursor:pointer;">🗑️ ${t('withdrawListing')}</button>
                     </div>
                 </div>`).join('');
@@ -7727,6 +7850,14 @@ function render(){
     else if(domainSortOrder==='price_desc') sortedDomains.sort((a,b)=>priceOf(b)-priceOf(a));
     else if(domainSortOrder==='az') sortedDomains.sort((a,b)=>a.name.localeCompare(b.name));
     else sortedDomains.sort((a,b)=>(domainData[b.name]?.createdAt||0)-(domainData[a.name]?.createdAt||0)); // 'newest' (varsayılan)
+    // YENİ (Pi Ad Network): reklam izleyerek "öne çıkarılmış" (boosted)
+    // ilanlar, seçili sıralama ne olursa olsun en üstte gösterilir —
+    // satılmamış olmaları şartıyla. Array.sort() kararlı (stable) olduğu
+    // için, bu ikinci sort mevcut sıralamayı BOZMAZ, sadece boosted
+    // olanları gruplar halinde öne alır.
+    const _nowTs=Date.now();
+    const _isBoosted=(d)=>{ const dd=domainData[d.name]; return !!(dd && dd.boostedUntil && dd.boostedUntil>_nowTs && !dd.sold); };
+    sortedDomains.sort((a,b)=>(_isBoosted(b)?1:0)-(_isBoosted(a)?1:0));
     const sortSelectEl=document.getElementById('domain-sort-select');
     if(sortSelectEl && sortSelectEl.value!==domainSortOrder) sortSelectEl.value=domainSortOrder;
     const isAdminViewing=isAuth&&currentUser===APP_CONFIG.adminUsername&&!window._viewAsUserMode;
@@ -7805,10 +7936,14 @@ function render(){
         const tTag=d.type?`<span class="domain-type-tag">${typeLabel(d.type)}</span>`:'';
         const isFinalizedSale=data.hidden&&data.payoutStatus==='released';
         const hiddenTag=isFinalizedSale?`<span class="domain-type-tag" style="background:#065f46;color:#6ee7b7;">✅ ${t('finalizedSaleTag')}</span>`:(data.hidden?`<span class="domain-type-tag" style="background:#475569;">🙈 ${t('hiddenTag')}</span>`:'');
+        // YENİ (Pi Ad Network): satıcı reklam izleyerek ilanını 24 saatliğine
+        // öne çıkarabiliyor (bkz. handleWatchAdForBoost) — bu rozet o süre
+        // boyunca kartta görünür.
+        const boostTag=(data.boostedUntil&&data.boostedUntil>Date.now()&&!data.sold)?`<span class="domain-type-tag" style="background:linear-gradient(135deg,#f59e0b,#ea580c);color:#fff;">🔥 ${t('boostedTag')}</span>`:'';
         const imgSrc=data.img||d.img;
         const favBtn=isAuth?`<button onclick="window.toggleFavorite('${d.name}',event)" aria-label="${userFavorites.has(d.name)?'Favorilerden çıkar':'Favorilere ekle'}" style="position:absolute;top:6px;right:6px;z-index:3;width:26px;height:26px;border-radius:50%;border:none;background:rgba(15,23,42,0.7);color:${userFavorites.has(d.name)?'#fbbf24':'#94a3b8'};font-size:0.95em;display:flex;align-items:center;justify-content:center;cursor:pointer;backdrop-filter:blur(4px);">${userFavorites.has(d.name)?'★':'☆'}</button>`:'';
         card.style.position='relative';
-        card.innerHTML=`${favBtn}<img src="${imgSrc}" class="domain-img" onerror="this.src='data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMDAiIGhlaWdodD0iMTAwIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjNDc1NTY5Ii8+PC9zdmc+'">${tTag}${hiddenTag}<div class="domain-name">${d.name} <span style="color:#fbbf24;font-weight:800;">(${data.price} π)</span></div><div class="domain-price">${data.price} PI</div>${usdEstimateHtml(data.price)}<div class="card-tap-hint">👆 ${t('tapForDetailHint')}</div>`;
+        card.innerHTML=`${favBtn}<img src="${imgSrc}" class="domain-img" onerror="this.src='data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMDAiIGhlaWdodD0iMTAwIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjNDc1NTY5Ii8+PC9zdmc+'">${boostTag}${tTag}${hiddenTag}<div class="domain-name">${d.name} <span style="color:#fbbf24;font-weight:800;">(${data.price} π)</span></div><div class="domain-price">${data.price} PI</div>${usdEstimateHtml(data.price)}<div class="card-tap-hint">👆 ${t('tapForDetailHint')}</div>`;
 
         if(data.sold){
             // Satıcılı bir satışta, escrow ödemesi admin tarafından serbest
@@ -7869,8 +8004,7 @@ function render(){
             btn.onclick=(e)=>{
                 e.stopPropagation();
                 if(!isAuth){showToast(t('loginRequired'));return;}
-                pendingDomain=d.name;pendingPrice=data.price;
-                document.getElementById('pre-buy-modal').style.display='flex';
+                window.openPreBuyModal(d.name,data.price);
             };
             card.appendChild(btn);
             }
