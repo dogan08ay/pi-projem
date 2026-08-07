@@ -3346,7 +3346,7 @@ const i18n = {
     grossVolumeWarning:"⚠️ Aşağıdaki tutarlar SENİN kazancın DEĞİLDİR. Platformda bugüne kadar el değiştirmiş TÜM satış paralarının toplamıdır — satıcılara giden pay da dahildir. Sadece bilgi/istatistik amaçlıdır.",
     totalVolumeAll:"Toplam Satış Hacmi",userOwnedVolume:"Satıcılara Ait Pay (Benim Değil)",
     totalVolumeAllExplain:"Satıcısı fark etmeksizin, şimdiye kadar tamamlanmış TÜM satışların fiyatları toplamı.",
-    userOwnedVolumeExplain:"\"Sahibi belli\" (satıcı adı kayıtlı) domainlerin satış toplamı. Bunun %95'i ilgili satıcılara ait/ödenir — sadece %5 komisyon kısmı yukarıdaki Net Kazanç'a dahil edilir.",
+    userOwnedVolumeExplain:"\"Sahibi belli\" (satıcı adı kayıtlı) domainlerin satışından, %5 platform komisyonu düşüldükten SONRA satıcılara kalan net toplam tutar.",
     refreshBtn:"🔄 Yenile",viewBtn:"👁 Gör",
     resetDangerTitle:"TEHLİKELİ BÖLGE — GERİ DÖNÜŞÜ YOK",
     resetDangerNote:"global_sales, daily_stats tamamen silinir. Tüm kullanıcı puanları/rozetleri sıfırlanır. Marketin kendisi ve domain durumları etkilenmez. Bu işlem GERİ ALINAMAZ.",
@@ -4140,7 +4140,7 @@ const i18n = {
     grossVolumeWarning:"⚠️ The figures below are NOT your earnings. This is the total of ALL money that has changed hands on the platform so far — including the share paid out to sellers. For information/statistics only.",
     totalVolumeAll:"Total Sales Volume",userOwnedVolume:"Sellers' Share (Not Mine)",
     totalVolumeAllExplain:"Total price of ALL completed sales so far, regardless of who the seller is.",
-    userOwnedVolumeExplain:"Total of sales where the domain has a recorded seller. 95% of this belongs to/is paid out to those sellers — only the 5% commission portion is included in Net Earnings above.",
+    userOwnedVolumeExplain:"Net total that sellers receive after the 5% platform commission is deducted from sales of domains with a recorded seller.",
     refreshBtn:"🔄 Refresh",viewBtn:"👁 View",
     resetDangerTitle:"DANGER ZONE — IRREVERSIBLE",
     resetDangerNote:"global_sales and daily_stats will be permanently deleted. All user points/badges will be reset to zero. The market and domain statuses are NOT affected.",
@@ -6893,7 +6893,7 @@ window.loadAdminEarnings=async function(){
             const netTotalEl=document.getElementById('admin-net-total-earnings');
             if(platformEl) platformEl.textContent=fmt(result.platformEarnings);
             if(totalEl) totalEl.textContent=fmt(result.totalVolume);
-            if(userEl) userEl.textContent=fmt(result.userOwnedVolume);
+            if(userEl) userEl.textContent=fmt(result.userOwnedVolumeNet!=null?result.userOwnedVolumeNet:result.userOwnedVolume);
             if(ownEl) ownEl.textContent=fmt(result.adminOwnEarnings);
             // YENİ: "Net Kazancım" bölümünün alt toplamı — komisyon geliri +
             // kendi domain satış gelirim. Bu, cüzdanıma gerçekten giren
@@ -7601,11 +7601,18 @@ function renderUserPanel(){
                                          ham satış bedelini (d.price) gösteriyordu — halbuki
                                          satıştan %5 platform komisyonu kesiliyor, satıcının
                                          cüzdanına giden gerçek tutar bu değil. Artık burada
-                                         GERÇEKTEN cüzdana giren net tutar (d.payoutAmount;
-                                         henüz yazılmamışsa aynı formülle hesaplanan %95)
-                                         gösteriliyor, yanına da ham satış bedeli küçük bir
-                                         not olarak ekleniyor ki komisyon şeffaf olsun. -->
-                                    +${(d.payoutAmount!=null?Number(d.payoutAmount):Math.round(Number(d.price||0)*0.95*1e7)/1e7)} Pi
+                                         GERÇEKTEN cüzdana giren net tutar gösteriliyor.
+                                         2. FIX: d.payoutAmount, ödeme HENÜZ serbest
+                                         bırakılmamışken bile (bazı eski/hatalı kayıtlarda
+                                         satış fiyatına eşit olacak şekilde) yanlış saklanmış
+                                         olabiliyordu — bu da komisyon hiç kesilmemiş gibi
+                                         görünmesine yol açıyordu. Artık ödeme SADECE zaten
+                                         gerçekten gönderilmişse (payoutStatus:'released')
+                                         saklı değere güveniliyor; aksi halde (henüz
+                                         ödenmemişken) HER ZAMAN fiyat üzerinden taze %95
+                                         hesaplanıyor — admin panelindeki mantıkla birebir
+                                         tutarlı. -->
+                                    +${(d.payoutStatus==='released'&&d.payoutAmount!=null?Number(d.payoutAmount):Math.round(Number(d.price||0)*(1-(d.commissionRate||0.05))*1e7)/1e7)} Pi
                                 </span>
                                 <span style="color:#64748b;font-size:0.85em;">(${t('detailFieldSalePrice')}: ${d.price} Pi, %5 ${t('commissionLabelShort')})</span>
                             </div>
