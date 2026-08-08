@@ -2933,6 +2933,19 @@ const i18n = {
     profileSettings:"Profil Ayarları",myPanel:"Panelim",sellMyDomain:"Domainimi Satışa Çıkar",
     languageOptions:"Dil Seçenekleri",logout:"Çıkış Yap",connectWithPi:"<span style='display:inline-flex;align-items:center;gap:10px;'><span style='display:inline-block;animation:logo-pulse 1.5s ease-in-out infinite;font-size:1.3em;'>π</span><span style='font-size:1.05em;'>Pi ile Bağlan</span></span>",
     runSystemCheckupBtn:"Sistem Kontrolü Yap",cleanupOrphanedBtn:"Yetim Verileri Temizle",adminAuditLogBtn:"Admin İşlem Günlüğü",deletionRequestsBtn:"Hesap Silme Talepleri",
+    auditCatPayments:"Ödemeler & Kazançlar",
+    auditCatListings:"Satış Talepleri & İlanlar",
+    auditCatOffers:"Teklifler",
+    auditCatDisputes:"Anlaşmazlıklar",
+    auditCatReports:"Şikayetler",
+    auditCatTrademark:"Marka Hakkı",
+    auditCatAccounts:"Hesap İşlemleri",
+    auditCatSystem:"Sistem",
+    auditCatOther:"Diğer",
+    auditFieldAdmin:"Admin",
+    auditFieldTime:"Tarih/Saat",
+    auditFieldAction:"İşlem",
+    auditFieldDetails:"Detay",
     systemToolsSectionTitle:"Sistem Araçları",managementTabsSectionTitle:"Yönetim ve İstatistikler",
     scanningLabel:"Taranıyor...",checkupFailMsg:"Kontrol yapılamadı",checkupErrorMsg:"Kontrol sırasında bir hata oluştu. Lütfen tekrar deneyin.",
     checkupAllGoodMsg:"✅ Hiçbir sorun bulunamadı, her şey yolunda!",
@@ -3225,6 +3238,8 @@ const i18n = {
     savedSearchesTitle:"🔔 Kayıtlı Aramalarım",
     savedSearchesSubtitle:"Kriterlerinize uyan yeni bir domain eklendiğinde bildirim alırsınız.",
     savedSearchesEmpty:"Henüz kayıtlı bir aramanız yok. Filtreleri ayarlayıp \"Bu Aramayı Kaydet\"e basın.",
+    savedSearchMatchesLabel:"Yeni Eşleşmeler",
+    savedSearchCriteriaLabel:"Kayıtlı Kriterleriniz",
     saveSearchNoCriteria:"Kaydetmek için önce bir arama kriteri seçin: tek bir kategori, anahtar kelime veya azami fiyat.",
     saveSearchSuccess:"Arama kaydedildi! Kritere uyan yeni bir domain eklendiğinde bildirim alacaksınız.",
     saveSearchFail:"Arama kaydedilemedi: ",
@@ -3462,6 +3477,11 @@ const i18n = {
     myReportsTab:"Şikayetlerim",
     myReportsNote:"Bildirdiğiniz ilan şikayetlerinin durumunu buradan takip edebilirsiniz.",
     myReportsEmpty:"Henüz bir ilan bildirmediniz.",
+    reportsArchivedNotice:(n)=>`${n} şikayet başvurunuz sonuçlandı ve buradan kaldırıldı — geçmiş başvurularınızı "Geçmişim" bölümünden takip edebilirsiniz.`,
+    deleteReportFromHistoryBtn:"Sil",
+    deleteReportConfirm:"Bu şikayet kaydını kalıcı olarak silmek istediğinize emin misiniz?",
+    deleteReportSuccess:"Şikayet kaydı silindi.",
+    deleteReportFail:"Silme başarısız: ",
     reportStageSubmitted:"Gönderildi",
     reportStageReviewing:"İnceleniyor",
     reportStageResolved:"Çözüldü",
@@ -3762,6 +3782,19 @@ const i18n = {
     profileSettings:"Profile Settings",myPanel:"My Panel",sellMyDomain:"List My Domain for Sale",
     languageOptions:"Language Options",logout:"Sign Out",connectWithPi:"<span style='display:inline-flex;align-items:center;gap:10px;'><span style='display:inline-block;animation:logo-pulse 1.5s ease-in-out infinite;font-size:1.3em;'>π</span><span style='font-size:1.05em;'>Connect with Pi</span></span>",
     runSystemCheckupBtn:"Run System Checkup",cleanupOrphanedBtn:"Clean Up Orphaned Data",adminAuditLogBtn:"Admin Action Log",deletionRequestsBtn:"Account Deletion Requests",
+    auditCatPayments:"Payments & Earnings",
+    auditCatListings:"Sell Requests & Listings",
+    auditCatOffers:"Offers",
+    auditCatDisputes:"Disputes",
+    auditCatReports:"Reports",
+    auditCatTrademark:"Trademark",
+    auditCatAccounts:"Account Actions",
+    auditCatSystem:"System",
+    auditCatOther:"Other",
+    auditFieldAdmin:"Admin",
+    auditFieldTime:"Date/Time",
+    auditFieldAction:"Action",
+    auditFieldDetails:"Details",
     systemToolsSectionTitle:"System Tools",managementTabsSectionTitle:"Management & Statistics",
     scanningLabel:"Scanning...",checkupFailMsg:"Checkup failed",checkupErrorMsg:"An error occurred during the checkup. Please try again.",
     checkupAllGoodMsg:"✅ No issues found, everything looks good!",
@@ -4050,6 +4083,8 @@ const i18n = {
     savedSearchesTitle:"🔔 My Saved Searches",
     savedSearchesSubtitle:"You'll get notified when a new domain matches your criteria.",
     savedSearchesEmpty:"You don't have any saved searches yet. Set your filters and tap \"Save This Search\".",
+    savedSearchMatchesLabel:"New Matches",
+    savedSearchCriteriaLabel:"Your Saved Criteria",
     saveSearchNoCriteria:"Pick at least one search criterion first: a single category, a keyword, or a max price.",
     saveSearchSuccess:"Search saved! You'll be notified when a matching new domain is listed.",
     saveSearchFail:"Couldn't save search: ",
@@ -4287,6 +4322,11 @@ const i18n = {
     myReportsTab:"My Reports",
     myReportsNote:"Track the status of the listing reports you've submitted here.",
     myReportsEmpty:"You haven't reported any listings yet.",
+    reportsArchivedNotice:(n)=>`${n} of your reports have been resolved and removed from here — you can still track past reports in "My History".`,
+    deleteReportFromHistoryBtn:"Delete",
+    deleteReportConfirm:"Are you sure you want to permanently delete this report record?",
+    deleteReportSuccess:"Report record deleted.",
+    deleteReportFail:"Delete failed: ",
     reportStageSubmitted:"Submitted",
     reportStageReviewing:"Reviewing",
     reportStageResolved:"Resolved",
@@ -5025,7 +5065,7 @@ window.switchUserTab=function(tabId){
     if(tabId==='utab-tickets'){ loadMyTickets(); markMyTicketsSeen(); }
     if(tabId==='utab-messages'){ window.loadMyConversations(); }
     if(tabId==='utab-trademark'){ loadMyTrademarkClaims(); }
-    if(tabId==='utab-myreports'){ loadMyReports(); localStorage.setItem('w3dg_reports_seen_at', Date.now().toString()); const b=document.getElementById('user-reports-tab-badge'); if(b) b.style.display='none'; }
+    if(tabId==='utab-myreports'){ loadMyReports(); localStorage.setItem('w3dg_reports_seen_at', Date.now().toString()); const b=document.getElementById('user-reports-tab-badge'); if(b) b.style.display='none'; window.startMyReportsPolling(); } else { window.stopMyReportsPolling(); }
     if(tabId==='utab-history'){ loadMyActivityHistory(); }
     // FIX: teklif bildirim tipleri (offer_accepted/offer_rejected/offer_countered,
     // offer_received/counter_offer_accepted/counter_offer_rejected) artık BURADA
@@ -5106,19 +5146,21 @@ window.onPriceRangeInput=function(){
 //  tetiklenir).
 // ══════════════════════════════════════════════════════════════════════
 let cachedSavedSearches=[];
-window.refreshSavedSearchesBadge=async function(){
-    if(!isAuth||!piAccessToken) return;
-    try{
-        const r=await fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'get_saved_searches',accessToken:piAccessToken})});
-        const result=await r.json();
-        if(!result.success) return;
-        cachedSavedSearches=result.searches||[];
-        const badge=document.getElementById('saved-searches-count-badge');
-        if(badge){
-            if(cachedSavedSearches.length>0){ badge.style.display='inline-block'; badge.textContent=cachedSavedSearches.length; }
-            else badge.style.display='none';
-        }
-    }catch(e){ /* sessizce geç — sadece rozet sayısı, kritik değil */ }
+// FIX (kök neden — "rozet hiç kaybolmuyordu"): Bu fonksiyon önceden
+// kaç tane KAYITLI ARAMA olduğunu gösteriyordu (cachedSavedSearches.length)
+// — bu sayı doğası gereği hiç sıfıra inmiyordu (aramaları silmediğiniz
+// sürece), yani bir "bildirim" gibi davranmıyordu. Artık gerçek bir
+// bildirim rozeti gibi çalışıyor: kaydedilen bir aramaya uyan YENİ bir
+// domain eklendiğinde arka planda zaten gönderilen 'saved_search_match'
+// tipindeki OKUNMAMIŞ bildirimlerin sayısını gösteriyor (aynı merkezi
+// bildirim önbelleği — cachedNotifications — kullanılıyor, bu yüzden
+// bildirim zili her yenilendiğinde bu rozet de otomatik güncelleniyor).
+window.refreshSavedSearchesBadge=function(){
+    const badge=document.getElementById('saved-searches-count-badge');
+    if(!badge) return;
+    const unseenMatches=cachedNotifications.filter(n=>n.type==='saved_search_match'&&!n.read).length;
+    if(unseenMatches>0){ badge.style.display='inline-block'; badge.textContent=unseenMatches>99?'99+':unseenMatches; }
+    else badge.style.display='none';
 };
 window.handleSaveCurrentSearch=async function(){
     if(!isAuth){ showToast(t('profileLoginRequired')); return; }
@@ -5148,11 +5190,31 @@ window.handleSaveCurrentSearch=async function(){
 function renderSavedSearchesList(){
     const listEl=document.getElementById('saved-searches-list');
     if(!listEl) return;
+    let html='';
+    // YENİ: Kaydedilen kriterlere uyan YENİ domainleri gösteren bildirim
+    // kartları — badge'in gösterdiği "okunmamış eşleşme" bildirimlerinin
+    // GERÇEK İÇERİĞİ burada görünür oluyor (önceden sadece kriterler
+    // listeleniyordu, hangi domainin eşleştiği hiçbir yerde görünmüyordu).
+    const matchNotifs=cachedNotifications.filter(n=>n.type==='saved_search_match').sort((a,b)=>(b.ts||0)-(a.ts||0)).slice(0,20);
+    if(matchNotifs.length){
+        const locale=currentLang==='en'?'en-GB':'tr-TR';
+        html+=`<div style="font-size:0.68em;color:#94a3b8;font-weight:800;text-transform:uppercase;margin-bottom:6px;">🔎 ${t('savedSearchMatchesLabel')}</div>`;
+        html+=matchNotifs.map(n=>{
+            const timeStr=n.ts?new Date(n.ts).toLocaleDateString(locale,{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}):'';
+            return `<div style="background:${n.read?'#0f172a':'rgba(99,102,241,0.12)'};border:1.5px solid ${n.read?'#334155':'#6366f1'};border-radius:10px;padding:8px 10px;margin-bottom:6px;">
+                <div style="font-size:0.74em;color:#e2e8f0;line-height:1.4;">${escapeHtml(n.body||n.title||'')}</div>
+                <div style="font-size:0.6em;color:#64748b;margin-top:3px;">🕓 ${timeStr}</div>
+            </div>`;
+        }).join('');
+        html+=`<div style="height:1px;background:#334155;margin:10px 0;"></div>`;
+        html+=`<div style="font-size:0.68em;color:#94a3b8;font-weight:800;text-transform:uppercase;margin-bottom:6px;">📋 ${t('savedSearchCriteriaLabel')}</div>`;
+    }
     if(!cachedSavedSearches.length){
-        listEl.innerHTML=emptyState('🔔',t('savedSearchesEmpty'));
+        html+=emptyState('🔔',t('savedSearchesEmpty'));
+        listEl.innerHTML=html;
         return;
     }
-    listEl.innerHTML=cachedSavedSearches.map(s=>{
+    html+=cachedSavedSearches.map(s=>{
         const parts=[];
         if(s.domainType) parts.push(`🏷️ ${typeLabel(s.domainType)}`);
         if(s.keyword) parts.push(`🔍 "${escapeHtml(s.keyword)}"`);
@@ -5162,6 +5224,7 @@ function renderSavedSearchesList(){
             <button onclick="window.handleDeleteSavedSearch('${s.id}')" style="flex-shrink:0;background:#ef4444;color:#fff;border:none;padding:5px 9px;border-radius:6px;font-size:0.62em;font-weight:800;cursor:pointer;">🗑️</button>
         </div>`;
     }).join('');
+    listEl.innerHTML=html;
 }
 window.openSavedSearchesModal=async function(){
     if(!isAuth){ showToast(t('profileLoginRequired')); return; }
@@ -5174,8 +5237,13 @@ window.openSavedSearchesModal=async function(){
         if(!result.success){ listEl.innerHTML=`<p style="font-size:0.75em;opacity:0.5;text-align:center;">${t('saveSearchError')}</p>`; return; }
         cachedSavedSearches=result.searches||[];
         renderSavedSearchesList();
-        const badge=document.getElementById('saved-searches-count-badge');
-        if(badge){ if(cachedSavedSearches.length>0){badge.style.display='inline-block';badge.textContent=cachedSavedSearches.length;} else badge.style.display='none'; }
+        // FIX (kök neden — "rozet hiç kaybolmuyordu"): sekme/modal
+        // GERÇEKTEN açılıp görüldüğünde, ilgili 'saved_search_match'
+        // bildirimleri okundu işaretlenir — genel bildirim ziline
+        // dokunmadan, sadece bu rozet temizlenir.
+        cachedNotifications=cachedNotifications.map(n=>n.type==='saved_search_match'?{...n,read:true}:n);
+        window.refreshSavedSearchesBadge();
+        fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'mark_type_notifications_read',types:['saved_search_match'],accessToken:piAccessToken})}).catch(()=>{});
     }catch(e){ listEl.innerHTML=`<p style="font-size:0.75em;opacity:0.5;text-align:center;">${t('saveSearchError')}</p>`; }
 };
 window.handleDeleteSavedSearch=async function(searchId){
@@ -5186,8 +5254,6 @@ window.handleDeleteSavedSearch=async function(searchId){
         if(!r.ok||!result.success){ showToast(t('savedSearchDeleteFail')+(result.error||'')); return; }
         cachedSavedSearches=cachedSavedSearches.filter(s=>s.id!==searchId);
         renderSavedSearchesList();
-        const badge=document.getElementById('saved-searches-count-badge');
-        if(badge){ if(cachedSavedSearches.length>0){badge.style.display='inline-block';badge.textContent=cachedSavedSearches.length;} else badge.style.display='none'; }
         showToast(t('savedSearchDeleteSuccess'));
     }catch(e){ showToast(t('savedSearchDeleteError')); }
 };
@@ -5457,6 +5523,10 @@ async function fetchNotifications(silent){
 }
 function renderNotifBadgeAndList(){
     const unread=cachedNotifications.filter(n=>!n.read).length;
+    // YENİ: bildirim önbelleği her yenilendiğinde (fetchNotifications
+    // polling'i dahil), "Kayıtlı Aramalarım" rozeti de otomatik senkron
+    // kalsın diye burada da tetikleniyor.
+    window.refreshSavedSearchesBadge();
     const badge=document.getElementById('notif-badge');
     const btn=document.getElementById('notif-btn');
     const menuBadge=document.getElementById('side-menu-notif-badge');
@@ -6943,6 +7013,33 @@ window.resolveDeletionRequest=async function(requestId){
         window.openDeletionRequestsModal();
     }catch(e){ showToast(t('genericError')); }
 };
+// ══════════════════════════════════════════════════════════════════════
+//  ADMIN İŞLEM GÜNLÜĞÜ — Konu Başlıklarına Göre Gruplu Görünüm ──────────
+//  FIX (kullanıcı isteği): önceden TÜM kayıtlar tek bir liste halinde alt
+//  alta diziliyordu (100 kayıt olsa 100 satır) — belli bir konuyu bulmak
+//  için hepsini taramak gerekiyordu. Artık kayıtlar konu başlıklarına
+//  (Ödemeler, Satış Talepleri, Şikayetler, vb.) göre gruplanıp akordeon
+//  (aç/kapa) başlıklar halinde gösteriliyor; her başlıkta kaç kayıt
+//  olduğu görünüyor, tıklayınca o konunun kendi listesi açılıyor, bir
+//  kayda tıklayınca da tam detayı (admin, tam tarih/saat, ham detay
+//  metni) açılıyor.
+// ══════════════════════════════════════════════════════════════════════
+const AUDIT_LOG_CATEGORIES = [
+    { key: 'payments',   icon: '💰', labelKey: 'auditCatPayments',   actions: ['release_seller_payment', 'refund_buyer', 'export_sales_data', 'reset_platform_stats'] },
+    { key: 'listings',   icon: '📋', labelKey: 'auditCatListings',   actions: ['approve_sell_request', 'reject_sell_request', 'bulk_approve_sell_requests', 'delete_domain', 'toggle_ownership_verified'] },
+    { key: 'offers',     icon: '💬', labelKey: 'auditCatOffers',     actions: ['respond_offer', 'counter_offer', 'respond_counter_offer'] },
+    { key: 'disputes',   icon: '⚖️', labelKey: 'auditCatDisputes',   actions: ['resolve_dispute'] },
+    { key: 'reports',    icon: '🚩', labelKey: 'auditCatReports',    actions: ['update_report_status'] },
+    { key: 'trademark',  icon: '🔖', labelKey: 'auditCatTrademark',  actions: ['update_trademark_claim_status', 'approve_trademark_claim'] },
+    { key: 'accounts',   icon: '👤', labelKey: 'auditCatAccounts',   actions: ['resolve_deletion_request', 'admin_send_email_to_user'] },
+    { key: 'system',     icon: '🛠️', labelKey: 'auditCatSystem',     actions: ['set_maintenance_mode', 'cleanup_orphaned_offers', 'recompute_all_ratings'] },
+];
+function auditCategoryFor(actionName) {
+    return AUDIT_LOG_CATEGORIES.find(c => c.actions.includes(actionName)) || { key: 'other', icon: '📄', labelKey: 'auditCatOther' };
+}
+let _auditLogEntries = [];
+let _auditLogOpenCategory = null;
+let _auditLogOpenEntryId = null;
 window.openAuditLogModal=async function(){
     const resultsEl=document.getElementById('audit-log-results');
     resultsEl.innerHTML=`<div style="text-align:center;color:#64748b;font-size:0.75em;padding:20px;">${t('loadingLabel')}</div>`;
@@ -6951,20 +7048,73 @@ window.openAuditLogModal=async function(){
         const r=await fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'get_admin_audit_log',accessToken:piAccessToken})});
         const result=await r.json();
         if(!result.success){ resultsEl.innerHTML=`<div style="color:#f87171;font-size:0.75em;text-align:center;">${result.error||'Yüklenemedi'}</div>`; return; }
-        if(!result.entries||!result.entries.length){ resultsEl.innerHTML=`<div style="color:#64748b;font-size:0.75em;text-align:center;padding:20px;">Henüz kayıt yok.</div>`; return; }
-        resultsEl.innerHTML=result.entries.map(e=>`
-            <div style="background:#0f172a;border-radius:9px;padding:9px 10px;border-left:3px solid #64748b;">
-                <div style="display:flex;justify-content:space-between;gap:8px;margin-bottom:3px;">
-                    <b style="color:#cbd5e1;font-size:0.7em;">${e.action}</b>
-                    <span style="color:#64748b;font-size:0.62em;flex-shrink:0;">${new Date(e.ts).toLocaleString('tr-TR')}</span>
-                </div>
-                <div style="color:#94a3b8;font-size:0.68em;">👤 @${e.admin}${e.details?' — '+e.details:''}</div>
-            </div>
-        `).join('');
+        _auditLogEntries=result.entries||[];
+        _auditLogOpenCategory=null;
+        _auditLogOpenEntryId=null;
+        renderAuditLogGrouped();
     }catch(e){
         resultsEl.innerHTML=`<div style="color:#f87171;font-size:0.75em;text-align:center;">Bir hata oluştu.</div>`;
     }
 };
+window.toggleAuditCategory=function(catKey){
+    _auditLogOpenCategory = (_auditLogOpenCategory===catKey) ? null : catKey;
+    _auditLogOpenEntryId=null; // kategori değişince açık detay da kapansın
+    renderAuditLogGrouped();
+};
+window.toggleAuditEntry=function(entryId){
+    _auditLogOpenEntryId = (_auditLogOpenEntryId===entryId) ? null : entryId;
+    renderAuditLogGrouped();
+};
+function renderAuditLogGrouped(){
+    const resultsEl=document.getElementById('audit-log-results');
+    if(!resultsEl) return;
+    if(!_auditLogEntries.length){ resultsEl.innerHTML=`<div style="color:#64748b;font-size:0.75em;text-align:center;padding:20px;">Henüz kayıt yok.</div>`; return; }
+    const locale=currentLang==='en'?'en-GB':'tr-TR';
+    // Kayıtları kategoriye göre grupla, her grup içinde zaten en yeni-en
+    // eski sırayla geliyor (backend orderBy('ts','desc') ile veriyor).
+    const grouped={};
+    _auditLogEntries.forEach(e=>{
+        const cat=auditCategoryFor(e.action);
+        if(!grouped[cat.key]) grouped[cat.key]=[];
+        grouped[cat.key].push(e);
+    });
+    const allCats=[...AUDIT_LOG_CATEGORIES, {key:'other',icon:'📄',labelKey:'auditCatOther'}];
+    resultsEl.innerHTML=allCats.filter(c=>grouped[c.key]&&grouped[c.key].length).map(cat=>{
+        const items=grouped[cat.key];
+        const isOpen=_auditLogOpenCategory===cat.key;
+        const rows=items.map(e=>{
+            const isEntryOpen=_auditLogOpenEntryId===e.id;
+            const shortTime=new Date(e.ts).toLocaleDateString(locale,{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
+            const fullTime=new Date(e.ts).toLocaleString(locale);
+            return `<div style="border-bottom:1px solid #1e293b;">
+                <div onclick="window.toggleAuditEntry('${e.id}')" style="display:flex;justify-content:space-between;align-items:center;gap:8px;padding:8px 4px;cursor:pointer;">
+                    <div style="flex:1;min-width:0;">
+                        <div style="color:#cbd5e1;font-size:0.7em;font-weight:800;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(e.action)}</div>
+                        <div style="color:#64748b;font-size:0.62em;">👤 @${escapeHtml(e.admin)} · ${shortTime}</div>
+                    </div>
+                    <span style="color:#64748b;font-size:0.7em;flex-shrink:0;transform:${isEntryOpen?'rotate(90deg)':'rotate(0deg)'};transition:transform 0.15s;">▶</span>
+                </div>
+                ${isEntryOpen?`<div style="background:#0f172a;border-radius:8px;padding:9px 10px;margin:0 4px 8px 4px;font-size:0.7em;color:#94a3b8;line-height:1.6;">
+                    <div><b style="color:#cbd5e1;">${t('auditFieldAdmin')}:</b> @${escapeHtml(e.admin)}</div>
+                    <div><b style="color:#cbd5e1;">${t('auditFieldTime')}:</b> ${fullTime}</div>
+                    <div><b style="color:#cbd5e1;">${t('auditFieldAction')}:</b> ${escapeHtml(e.action)}</div>
+                    ${e.details?`<div style="margin-top:4px;word-break:break-word;"><b style="color:#cbd5e1;">${t('auditFieldDetails')}:</b> ${escapeHtml(e.details)}</div>`:''}
+                </div>`:''}
+            </div>`;
+        }).join('');
+        return `<div style="background:#0f172a;border:1.5px solid #334155;border-radius:10px;margin-bottom:8px;overflow:hidden;">
+            <div onclick="window.toggleAuditCategory('${cat.key}')" style="display:flex;justify-content:space-between;align-items:center;gap:8px;padding:11px 12px;cursor:pointer;background:${isOpen?'rgba(99,102,241,0.12)':'transparent'};">
+                <div style="font-size:0.78em;font-weight:900;color:#e2e8f0;">${cat.icon} ${t(cat.labelKey)}</div>
+                <div style="display:flex;align-items:center;gap:8px;">
+                    <span style="background:#334155;color:#cbd5e1;font-size:0.65em;font-weight:800;padding:2px 8px;border-radius:10px;">${items.length}</span>
+                    <span style="color:#64748b;font-size:0.75em;transform:${isOpen?'rotate(90deg)':'rotate(0deg)'};transition:transform 0.15s;">▶</span>
+                </div>
+            </div>
+            ${isOpen?`<div style="padding:0 8px;">${rows}</div>`:''}
+        </div>`;
+    }).join('');
+}
+
 window.runSystemCheckup=async function(){
     const btn=document.getElementById('checkup-btn');
     // FIX: btn.textContent=... kullanmak, butonun içindeki
@@ -8930,6 +9080,15 @@ async function performPiConnect() {
                             adminPanel.style.opacity = '1';
                             adminPanel.style.transform = 'translateY(0)';
                         });
+                        // FIX (kök neden — "Ağ Modu kutusu girişte '...' yazıp
+                        // sayfa yenilenince düzeliyor"): admin paneli ilk
+                        // açıldığında hiçbir veri çekilmiyordu — Ağ Modu, şikayet
+                        // rozeti, mesaj rozeti gibi kutular sadece admin manuel
+                        // "Yenile"ye basınca ya da tarayıcı yenilenince (ki o da
+                        // aslında yeniden login akışını tetiklediği için çalışıyordu)
+                        // dolduruluyordu. Artık panel ilk açıldığı anda da
+                        // dolduruluyor.
+                        window.refreshAdminPanel();
                     }
 
                     // c) Kullanıcı durum metni fade in
@@ -10891,11 +11050,54 @@ async function loadMyReports() {
                 if (updatedCount > 0) { badge.style.display = 'inline-block'; badge.textContent = updatedCount > 99 ? '99+' : updatedCount; }
                 else badge.style.display = 'none';
             }
+            // YENİ: Kapatılan/Çözülen başvurular bu sekmede kalabalık
+            // birikmesin diye — kullanıcı onları BU görüntülemede bir kez
+            // gördükten sonra arka planda "Geçmişim"e taşınıyor (bkz.
+            // archive_resolved_reports; kayıt SİLİNMİYOR, sadece bu
+            // aktif listeden düşüyor). Bir dahaki açılışta artık burada
+            // görünmeyecekler.
+            const finishedNow = reports.filter(rp => rp.status === 'resolved' || rp.status === 'closed');
+            // FIX: arşivleme isteği (aşağıda) ağ hatası yüzünden başarısız
+            // olursa, 7sn'lik pollingde AYNI kayıt için toast tekrar tekrar
+            // çıkabilirdi. Bu oturum boyunca hangi kayıtlar için zaten
+            // bildirim gösterildiğini bir Set'te tutup tekrarını önlüyoruz.
+            const newlyFinished = finishedNow.filter(rp => !_reportsArchiveNoticeShown.has(rp.id));
+            if (newlyFinished.length > 0) {
+                newlyFinished.forEach(rp => _reportsArchiveNoticeShown.add(rp.id));
+                showToast(t('reportsArchivedNotice')(newlyFinished.length));
+                fetch('/api/approve', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action: 'archive_resolved_reports', accessToken: piAccessToken })
+                }).catch(e => console.error('archive_resolved_reports hatası:', e));
+            }
         }
     } catch (e) {
         console.error("Şikayetlerim yüklenemedi:", e);
     }
 }
+// YENİ: "Şikayetlerim" sekmesi açıkken periyodik olarak sessizce yeniden
+// yüklenir — admin bir işlem yapınca (İncelemeye Al/Çözüldü/Kapatıldı),
+// kullanıcının başka bir sayfaya gidip GERİ DÖNMESİNE gerek kalmadan bu
+// birkaç saniye içinde otomatik yansır. Sadece bu sekme AKTİFKEN çalışır,
+// başka bir sekmeye geçilince durur (bkz. switchUserTab hook'u).
+// GÜVENLİK NOTU: Bu uygulama Firebase Authentication değil Pi girişini
+// kullandığı için, tarayıcıdan doğrudan Firestore'a bağlanıp kullanıcıya
+// özel veri okumak (onSnapshot) güvenli bir şekilde kısıtlanamaz —
+// Firestore kuralları "bu isteği kim yapıyor" bilgisini bilemez. Bu
+// yüzden gerçek anlık (canlı) senkron yerine, mevcut güvenli sunucu
+// doğrulamalı (/api/approve, Pi accessToken kontrollü) uç nokta kısa
+// aralıklarla çağrılıyor — pratikte neredeyse anlık, ama güvenli.
+let _myReportsPollTimer = null;
+let _reportsArchiveNoticeShown = new Set();
+window.startMyReportsPolling = function () {
+    window.stopMyReportsPolling();
+    _myReportsPollTimer = setInterval(() => {
+        if (document.getElementById('utab-myreports')?.classList.contains('active')) loadMyReports();
+    }, 7000);
+};
+window.stopMyReportsPolling = function () {
+    if (_myReportsPollTimer) { clearInterval(_myReportsPollTimer); _myReportsPollTimer = null; }
+};
 function renderMyReports(reports) {
     const container = document.getElementById('my-reports-list');
     if (!container) return;
@@ -11019,6 +11221,13 @@ function renderHistorySection(containerId, items, kind) {
         else if (kind === 'reports') { title = `🌐 ${escapeHtml(it.domainName || '-')}`; detailLine = `🚩 ${reasonLabel[it.reason] || it.reason || '-'}`; }
         else if (kind === 'tickets') { title = `🎫 ${escapeHtml(it.subject || '-')}`; detailLine = it.category ? escapeHtml(it.category) : ''; }
         else if (kind === 'trademark') { title = `🌐 ${escapeHtml(it.domainName || '-')}`; detailLine = it.companyName ? `🏢 ${escapeHtml(it.companyName)}` : ''; }
+        // YENİ: "Geçmişim"deki sonuçlanmış (resolved/closed) şikayet
+        // kayıtları kullanıcı isterse kalıcı olarak silinebilsin diye bir
+        // silme butonu — trademark taleplerindeki AYNI desen (bkz.
+        // deleteMyTrademarkClaim) kullanılıyor.
+        const deleteBtn = (kind === 'reports' && (it.status === 'resolved' || it.status === 'closed'))
+            ? `<button onclick="window.deleteMyReportHistory('${it.id}')" style="margin-top:6px;background:none;border:1px solid #ef4444;color:#f87171;padding:3px 9px;border-radius:6px;font-size:0.62em;font-weight:800;cursor:pointer;">🗑️ ${t('deleteReportFromHistoryBtn')}</button>`
+            : '';
         return `<div style="background:#0f172a;border:1px solid #334155;border-left:4px solid ${color};border-radius:9px;padding:9px 10px;margin-bottom:7px;">
             <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:6px;margin-bottom:3px;">
                 <div style="font-size:0.78em;font-weight:800;color:#e2e8f0;">${title}</div>
@@ -11026,9 +11235,25 @@ function renderHistorySection(containerId, items, kind) {
             </div>
             ${detailLine ? `<div style="font-size:0.68em;color:#94a3b8;margin-bottom:3px;">${detailLine}</div>` : ''}
             <div style="font-size:0.62em;color:#64748b;">🕓 ${fmtDate(it.at)}</div>
+            ${deleteBtn}
         </div>`;
     }).join('');
 }
+window.deleteMyReportHistory = async function(reportId) {
+    if (!confirm(t('deleteReportConfirm'))) return;
+    try {
+        const r = await fetch('/api/approve', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'delete_my_report', reportId, accessToken: piAccessToken })
+        });
+        const result = await r.json();
+        if (result.success) { showToast(t('deleteReportSuccess')); loadMyActivityHistory(); }
+        else showToast(t('deleteReportFail') + (result.error || ''));
+    } catch (e) {
+        console.error("Şikayet kaydı silinemedi:", e);
+        showToast(t('deleteReportFail'));
+    }
+};
 
 window.deleteMyTrademarkClaim = async function(claimId) {
     if (!confirm(t('trademarkDeleteMyConfirm'))) return;
