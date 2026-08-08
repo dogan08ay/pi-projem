@@ -5086,9 +5086,32 @@ async function handlerImpl(req, res) {
       const conversations = [];
       snap.forEach(doc => conversations.push({ id: doc.id, ...doc.data() }));
       conversations.sort((a, b) => (b.lastMessageAt || 0) - (a.lastMessageAt || 0));
-      return res.status(200).json({ success: true, conversations });
+      // YENİ: get_listing_reports ile AYNI desen — tek bir seenAt zaman
+      // damgasıyla "okunmamış konuşma" sayısı hesaplanıyor. Admin bir
+      // konuşmanın KATILIMCISI olmadığı için (bkz. get_conversations'taki
+      // kullanıcıya özel readBy alanı) burada tüm platform için TEK bir
+      // "admin son ne zaman baktı" zaman damgası kullanılıyor.
+      const seenSnap = await db.collection('system_config').doc('admin_messages_seen').get();
+      const seenAt = seenSnap.exists ? (seenSnap.data().seenAt || 0) : 0;
+      const unseenCount = conversations.filter(c => (c.lastMessageAt || 0) > seenAt).length;
+      return res.status(200).json({ success: true, conversations, unseenCount, seenAt });
     } catch (e) {
       console.error("get_all_conversations hatası:", e);
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  // ── Admin: Kullanıcı Mesajları Bildirimini Görüldü Olarak İşaretle ─────
+  if (action === 'mark_admin_messages_seen') {
+    const isAdmin = await verifyAdmin(accessToken);
+    if (!isAdmin) return res.status(403).json({ error: "Yetki yok" });
+    try {
+      const db = getDb();
+      const now = Date.now();
+      await db.collection('system_config').doc('admin_messages_seen').set({ seenAt: now }, { merge: true });
+      return res.status(200).json({ success: true, seenAt: now });
+    } catch (e) {
+      console.error("mark_admin_messages_seen hatası:", e);
       return res.status(500).json({ error: e.message });
     }
   }
