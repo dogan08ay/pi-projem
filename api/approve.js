@@ -984,6 +984,31 @@ async function handlerImpl(req, res) {
     }
   }
 
+  // ── Belirli TİPTEKİ Bildirimleri Okundu Yap (role şartı olmadan) ───────
+  // "Kayıtlı Aramalarım" rozeti için: sadece 'saved_search_match' tipindeki
+  // bildirimler okundu yapılır, genel bildirim zili (🔔) etkilenmez.
+  // mark_role_notifications_read'e çok benzer ama role zorunlu değil.
+  if (action === 'mark_type_notifications_read') {
+    const { types } = req.body;
+    const realUsername = await getRealUsername(accessToken);
+    if (!realUsername) return res.status(403).json({ error: "Geçersiz oturum" });
+    if (!Array.isArray(types) || !types.length) return res.status(400).json({ error: "Geçersiz tip listesi" });
+    try {
+      const rtdb = getRtdb();
+      const ref = rtdb.ref(`notifications/${realUsername}`);
+      const snap = await ref.once('value');
+      const updates = {};
+      snap.forEach(child => {
+        const v = child.val();
+        if (!v.read && types.includes(v.type)) updates[`${child.key}/read`] = true;
+      });
+      if (Object.keys(updates).length > 0) await ref.update(updates);
+      return res.status(200).json({ success: true });
+    } catch (e) {
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
   // ── Bildirim Sil ──────────────────────────────────────────────────────
   if (action === 'delete_notification') {
     const { notifId } = req.body;
@@ -3055,8 +3080,15 @@ async function handlerImpl(req, res) {
       // haliyle görünüyordu. Burada normalize ediyoruz (gösterim amaçlı,
       // veritabanı kaydını değiştirmiyoruz) — 'dismissed' artık 'closed' ile
       // aynı şekilde (Kapatıldı) gösteriliyor.
+      // YENİ: Kullanıcı bir kez "Çözüldü/Kapatıldı" durumundaki şikayetini
+      // görüntüledikten sonra (bkz. archive_resolved_reports), o kayıt
+      // burada artık DÖNMÜYOR — "Şikayetlerim" sekmesi kalabalıklaşmasın
+      // diye. Kayıt SİLİNMİYOR, sadece archivedByUser:true işaretleniyor;
+      // "Geçmişim" sekmesinde (get_my_activity_history, filtre YOK) hâlâ
+      // görünmeye devam ediyor.
       snap.forEach(d => {
         const data = d.data();
+        if (data.archivedByUser === true) return;
         if (data.status === 'dismissed') data.status = 'closed';
         reports.push({ id: d.id, ...data });
       });
@@ -3064,6 +3096,62 @@ async function handlerImpl(req, res) {
       return res.status(200).json({ success: true, reports });
     } catch (e) {
       console.error("get_my_reports hatası:", e);
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  // YENİ: Kullanıcı "Şikayetlerim"i açıp Çözüldü/Kapatıldı durumundaki
+  // başvurularını gördükten sonra frontend bunu çağırır — o başvurular
+  // bir daha "Şikayetlerim"de görünmez (get_my_reports'taki filtreye
+  // bakın), ama "Geçmişim"den hâlâ takip edilebilir ve istenirse
+  // silinebilir (bkz. delete_my_report).
+  if (action === 'archive_resolved_reports') {
+    const realUsername = await getRealUsername(accessToken);
+    if (!realUsername) return res.status(403).json({ error: "Geçersiz oturum" });
+    try {
+      const db = getDb();
+      const snap = await db.collection('listing_reports')
+        .where('reportedBy', '==', realUsername)
+        .where('status', 'in', ['resolved', 'closed', 'dismissed'])
+        .get();
+      const batch = db.batch();
+      let archivedCount = 0;
+      snap.forEach(d => {
+        const data = d.data();
+        if (data.archivedByUser === true) return;
+        batch.set(d.ref, { archivedByUser: true, archivedAt: Date.now() }, { merge: true });
+        archivedCount++;
+      });
+      if (archivedCount > 0) await batch.commit();
+      return res.status(200).json({ success: true, archivedCount });
+    } catch (e) {
+      console.error("archive_resolved_reports hatası:", e);
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  // YENİ: Kullanıcı, "Geçmişim"deki (artık kapanmış) bir şikayet kaydını
+  // kalıcı olarak silebilir. Sadece SONUÇLANMIŞ (resolved/closed/dismissed)
+  // başvurular silinebilir — hâlâ incelenmekte olan bir şikayeti kullanıcı
+  // silip "kanıtı yok etmiş" gibi bir duruma düşülmesin diye.
+  if (action === 'delete_my_report') {
+    const { reportId } = req.body;
+    const realUsername = await getRealUsername(accessToken);
+    if (!realUsername) return res.status(403).json({ error: "Geçersiz oturum" });
+    if (!reportId) return res.status(400).json({ error: "Geçersiz ID" });
+    try {
+      const db = getDb();
+      const ref = db.collection('listing_reports').doc(reportId);
+      const snap = await ref.get();
+      if (!snap.exists) return res.status(404).json({ error: "Kayıt bulunamadı" });
+      const data = snap.data();
+      if (data.reportedBy !== realUsername) return res.status(403).json({ error: "Bu kaydı silme yetkiniz yok" });
+      if (!['resolved', 'closed', 'dismissed'].includes(data.status))
+        return res.status(400).json({ error: "Sadece sonuçlanmış (çözüldü/kapatıldı) başvurular silinebilir" });
+      await ref.delete();
+      return res.status(200).json({ success: true });
+    } catch (e) {
+      console.error("delete_my_report hatası:", e);
       return res.status(500).json({ error: e.message });
     }
   }
