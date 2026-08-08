@@ -1404,6 +1404,19 @@
     </div>
 </div>
 
+<!-- YENİ: Ağ Modu Yönetimi (Testnet/Mainnet) — kritik bir işlem olduğu
+     için tek tıkla değil, net bir onay ekranıyla değiştirilir. -->
+<div id="network-mode-modal" class="modal-overlay" style="display:none;">
+    <div class="modal-content" style="border-color:#f59e0b;max-height:88vh;overflow-y:auto;text-align:left;">
+        <div style="text-align:center;margin-bottom:12px;">
+            <div style="font-size:2em;margin-bottom:6px;">🌐</div>
+            <h2 style="color:#fbbf24;margin:0;font-size:1.1em;font-weight:900;" data-i18n="networkModeModalTitle"></h2>
+        </div>
+        <div id="network-mode-modal-body" style="font-size:0.8em;color:#cbd5e1;line-height:1.6;"></div>
+        <button style="background:#475569;border:none;border-radius:9px;padding:10px;margin-top:14px;width:100%;color:#fff;font-weight:800;cursor:pointer;" onclick="document.getElementById('network-mode-modal').style.display='none'" data-i18n="close"></button>
+    </div>
+</div>
+
 <!-- YENİ: Kayıtlı Aramalarım — kullanıcının kaydettiği tüm aramaları
      listeler, her birinin yanında silme butonu vardır. -->
 <div id="saved-searches-modal" class="modal-overlay" style="display:none;">
@@ -2106,6 +2119,14 @@
                 <span id="maintenance-status-text" style="font-size:0.68em;color:#94a3b8;font-weight:700;flex:1;" data-i18n="maintenanceStatusLive"></span>
                 <button id="maintenance-toggle-btn" onclick="window.toggleMaintenanceMode()" style="padding:6px 12px;border:none;border-radius:8px;background:linear-gradient(135deg,#ef4444,#f87171);color:#fff;font-size:0.65em;font-weight:800;cursor:pointer;white-space:nowrap;" data-i18n="maintenanceEnableBtn"></button>
             </div>
+            <!-- YENİ: Ağ Modu (Testnet/Mainnet) — admin panelinden tek
+                 tuşla değiştirilebilir, Vercel'e girmeye gerek kalmaz
+                 (bkz. approve.js: getNetworkMode / set_network_mode). -->
+            <div id="network-mode-control-box" style="display:flex;align-items:center;gap:8px;background:linear-gradient(135deg,rgba(245,158,11,0.14) 0%,rgba(120,53,15,0.18) 100%);border:1.5px solid rgba(245,158,11,0.45);border-radius:10px;padding:8px 10px;margin-top:8px;">
+                <span id="network-mode-status-dot" style="width:9px;height:9px;border-radius:50%;background:#f59e0b;flex-shrink:0;box-shadow:0 0 6px #f59e0b;"></span>
+                <span id="network-mode-status-text" style="font-size:0.68em;color:#94a3b8;font-weight:700;flex:1;">…</span>
+                <button id="network-mode-toggle-btn" onclick="window.openNetworkModeModal()" style="padding:6px 12px;border:none;border-radius:8px;background:linear-gradient(135deg,#f59e0b,#ea580c);color:#fff;font-size:0.65em;font-weight:800;cursor:pointer;white-space:nowrap;" data-i18n="networkModeManageBtn"></button>
+            </div>
         </div>
         <!-- YENİ: Yönetim sekmeleri (kullanıcılar, istatistikler, onaylar vb.)
              artık ayrı, kendi başlıklı çerçevesi içinde — sistem
@@ -2719,7 +2740,11 @@ function skeletonTicketRowsHTML(n = 3) {
 let APP_CONFIG = {
   adminUsername: 'doganay0808',
   contactEmail: 'doganay08@hotmail.com',
-  telegramGroup: 'https://t.me/+5jZi9vrcNMM2NGVk'
+  telegramGroup: 'https://t.me/+5jZi9vrcNMM2NGVk',
+  // GÜVENLİ VARSAYILAN: /api/config'e hiç ulaşılamazsa bile (ağ hatası
+  // vb.) uygulama Testnet modunda kalır — asla yanlışlıkla Mainnet'e
+  // "düşmez".
+  piSandboxMode: true,
 };
 
 async function loadAppConfig() {
@@ -2780,22 +2805,32 @@ window.piSdkTimedOut = false;
 let piReady = false;
 function waitForPi() {
     return new Promise(resolve => {
-        if (typeof Pi !== 'undefined') { if (!piReady) { Pi.init({ version:"2.0", sandbox:true }); piReady=true; } resolve(); return; }
-        const TIMEOUT_MS = 6000;
-        const startedAt = Date.now();
-        const check = setInterval(() => {
-            if (typeof Pi !== 'undefined') {
-                clearInterval(check);
-                if (!piReady) { Pi.init({ version:"2.0", sandbox:true }); piReady=true; }
-                resolve();
-                return;
-            }
-            if (Date.now() - startedAt > TIMEOUT_MS) {
-                clearInterval(check);
-                window.piSdkTimedOut = true;
-                resolve();
-            }
-        }, 100);
+        // FIX (Mainnet hazırlığı): Pi.init() artık sabit `sandbox:true`
+        // yerine, /api/config'ten gelen APP_CONFIG.piSandboxMode değerini
+        // kullanıyor. `configReady` (sayfa yüklenir yüklenmez başlayan bir
+        // fetch) burada bekleniyor ki Pi.init() ÇAĞRILMADAN ÖNCE doğru mod
+        // bilgisi elimizde olsun — bu genellikle anlık sürer (kullanıcı
+        // "Pi ile Bağlan"a basana kadar çoktan tamamlanmış olur) ama
+        // garantiye almak için açıkça await ediliyor.
+        configReady.finally(() => {
+            const sandboxMode = APP_CONFIG.piSandboxMode !== false; // güvenli varsayılan: true
+            if (typeof Pi !== 'undefined') { if (!piReady) { Pi.init({ version:"2.0", sandbox:sandboxMode }); piReady=true; } resolve(); return; }
+            const TIMEOUT_MS = 6000;
+            const startedAt = Date.now();
+            const check = setInterval(() => {
+                if (typeof Pi !== 'undefined') {
+                    clearInterval(check);
+                    if (!piReady) { Pi.init({ version:"2.0", sandbox:sandboxMode }); piReady=true; }
+                    resolve();
+                    return;
+                }
+                if (Date.now() - startedAt > TIMEOUT_MS) {
+                    clearInterval(check);
+                    window.piSdkTimedOut = true;
+                    resolve();
+                }
+            }, 100);
+        });
     });
 }
 
@@ -3342,6 +3377,25 @@ const i18n = {
     buyerRatedSellerLabel:"Alıcı → Satıcı",sellerRatedBuyerLabel:"Satıcı → Alıcı",noCommentGiven:"Yorum yok",
     confirmRatingOfBuyerPrompt:(n)=>`Alıcıya ${n} yıldız vermek istediğinize emin misiniz? Bu işlem geri alınamaz.`,
     genericError:"Bir hata oluştu, lütfen tekrar deneyin.",
+    networkModeManageBtn:"Yönet",
+    networkModeModalTitle:"Ağ Modu (Testnet / Mainnet)",
+    networkModeMainnetActive:"MAINNET aktif — gerçek Pi ile işlem yapılıyor",
+    networkModeTestnetActive:"Testnet aktif — sadece Test-Pi kullanılıyor",
+    networkModeCurrentLabel:"Şu anki mod",
+    networkModeRealMoney:"gerçek para",
+    networkModeTestMoney:"test parası, değersiz",
+    networkModeExplain:"Bu ayar hem uygulamanın (Pi ile giriş/ödeme penceresi) hem sunucunun (ödeme onaylama, satıcı ödemeleri) hangi ağa bağlanacağını belirler. İkisi her zaman birlikte, senkron değişir.",
+    networkModeSwitchToMainnetWarning:"Mainnet'e geçmek, ARTIK GERÇEK Pi ile ödeme alınıp gönderileceği anlamına gelir. Geri dönüşü olmayan işlemler başlar.",
+    networkModeKeysReady:"Mainnet anahtarları (APP_SECRET_MAINNET, PI_WALLET_PRIVATE_SEED_MAINNET) Vercel'de tanımlı, geçişe hazır.",
+    networkModeKeysMissing:"Mainnet anahtarları henüz Vercel'de tanımlı değil. Önce APP_SECRET_MAINNET ve PI_WALLET_PRIVATE_SEED_MAINNET değerlerini ekleyip yeniden deploy edin.",
+    networkModeSwitchToMainnetBtn:"Mainnet'e Geç",
+    networkModeSwitchToTestnetBtn:"Testnet'e Geri Dön",
+    networkModeConfirmMainnet:"GERÇEK Pi ile işlem yapmaya başlayacaksınız. Emin misiniz?",
+    networkModeConfirmTestnet:"Testnet'e (test parası) geri dönmek istediğinize emin misiniz?",
+    networkModeTypeToConfirm:"Onaylamak için kutuya büyük harflerle \"MAINNET\" yazın:",
+    networkModeConfirmCancelled:"Onaylanmadığı için iptal edildi.",
+    networkModeSwitchedToMainnet:"🔴 Mainnet'e geçildi — artık gerçek Pi ile işlem yapılıyor.",
+    networkModeSwitchedToTestnet:"🟢 Testnet'e geri dönüldü.",
     panelRefreshFailedMsg:"⚠️ Veriler yenilenemedi (oturumunuzun süresi dolmuş olabilir). Sorun devam ederse çıkış yapıp tekrar giriş yapmayı deneyin.",
     retryBtn:"Tekrar Dene",requestTimeoutMsg:"İstek zaman aşımına uğradı (bağlantı yavaş olabilir).",
     sellerRatingLabel:"Satıcı Puanı",noRatingsYet:"Henüz değerlendirme yok",
@@ -4148,6 +4202,25 @@ const i18n = {
     buyerRatedSellerLabel:"Buyer → Seller",sellerRatedBuyerLabel:"Seller → Buyer",noCommentGiven:"No comment",
     confirmRatingOfBuyerPrompt:(n)=>`Are you sure you want to give the buyer ${n} star${n>1?'s':''}? This cannot be undone.`,
     genericError:"Something went wrong, please try again.",
+    networkModeManageBtn:"Manage",
+    networkModeModalTitle:"Network Mode (Testnet / Mainnet)",
+    networkModeMainnetActive:"MAINNET active — transacting with real Pi",
+    networkModeTestnetActive:"Testnet active — using Test-Pi only",
+    networkModeCurrentLabel:"Current mode",
+    networkModeRealMoney:"real money",
+    networkModeTestMoney:"test money, no value",
+    networkModeExplain:"This setting controls which network both the app (Pi login/payment popup) and the server (payment approval, seller payouts) connect to. Both always change together, in sync.",
+    networkModeSwitchToMainnetWarning:"Switching to Mainnet means payments will now be sent and received with REAL Pi. Transactions become irreversible.",
+    networkModeKeysReady:"Mainnet keys (APP_SECRET_MAINNET, PI_WALLET_PRIVATE_SEED_MAINNET) are configured in Vercel, ready to switch.",
+    networkModeKeysMissing:"Mainnet keys aren't configured in Vercel yet. Add APP_SECRET_MAINNET and PI_WALLET_PRIVATE_SEED_MAINNET first, then redeploy.",
+    networkModeSwitchToMainnetBtn:"Switch to Mainnet",
+    networkModeSwitchToTestnetBtn:"Switch Back to Testnet",
+    networkModeConfirmMainnet:"You're about to start transacting with REAL Pi. Are you sure?",
+    networkModeConfirmTestnet:"Are you sure you want to switch back to Testnet (test money)?",
+    networkModeTypeToConfirm:"Type \"MAINNET\" in capital letters to confirm:",
+    networkModeConfirmCancelled:"Cancelled — confirmation didn't match.",
+    networkModeSwitchedToMainnet:"🔴 Switched to Mainnet — now transacting with real Pi.",
+    networkModeSwitchedToTestnet:"🟢 Switched back to Testnet.",
     panelRefreshFailedMsg:"⚠️ Couldn't refresh your data (your session may have expired). If this persists, try logging out and back in.",
     retryBtn:"Retry",requestTimeoutMsg:"The request timed out (your connection may be slow).",
     sellerRatingLabel:"Seller Rating",noRatingsYet:"No ratings yet",
@@ -7392,7 +7465,8 @@ window.refreshAdminPanel=async function(){
         await Promise.all([
             adminLoadTickets(),
             loadUniqueBadgeCount(),
-            window.loadListingReports() // YENİ: şikayet rozetini de tazele
+            window.loadListingReports(), // YENİ: şikayet rozetini de tazele
+            window.loadNetworkModeStatus() // YENİ: Ağ Modu (Testnet/Mainnet) durumu
         ]);
         renderAdminPriceList();
         debouncedRender();
@@ -8542,6 +8616,70 @@ onSnapshot(doc(db,"config","app_status"),(snap)=>{
 });
 window.openMaintenanceAdminLogin = function(){
     window.loginWithPi();
+};
+
+// ══════════════════════════════════════════════════════════════════════
+//  AĞ MODU (Testnet/Mainnet) — Admin Panel Menüsü ────────────────────────
+// ══════════════════════════════════════════════════════════════════════
+let _networkModeInfo=null;
+window.loadNetworkModeStatus=async function(){
+    try{
+        const r=await fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'get_network_mode',accessToken:piAccessToken})});
+        const result=await r.json();
+        if(!result.success) return;
+        _networkModeInfo=result;
+        const dot=document.getElementById('network-mode-status-dot');
+        const text=document.getElementById('network-mode-status-text');
+        if(dot&&text){
+            if(result.mode==='mainnet'){
+                dot.style.background='#ef4444'; dot.style.boxShadow='0 0 6px #ef4444';
+                text.innerText='🔴 '+t('networkModeMainnetActive');
+            }else{
+                dot.style.background='#10b981'; dot.style.boxShadow='0 0 6px #10b981';
+                text.innerText='🟢 '+t('networkModeTestnetActive');
+            }
+        }
+    }catch(e){ console.error('Ağ modu yüklenemedi:',e); }
+};
+window.openNetworkModeModal=async function(){
+    await window.loadNetworkModeStatus(); // her açılışta taze veri — bayat bilgiyle kritik bir karar verilmesin
+    const info=_networkModeInfo||{mode:'testnet',mainnetKeysConfigured:false,testnetKeysConfigured:true};
+    const bodyEl=document.getElementById('network-mode-modal-body');
+    const isMainnet=info.mode==='mainnet';
+    let html=`<p><b>${t('networkModeCurrentLabel')}:</b> ${isMainnet?'🔴 Mainnet ('+t('networkModeRealMoney')+')':'🟢 Testnet ('+t('networkModeTestMoney')+')'}</p>`;
+    html+=`<p style="margin-top:8px;">${t('networkModeExplain')}</p>`;
+    if(!isMainnet){
+        html+=`<div style="margin-top:12px;padding:10px;background:rgba(239,68,68,0.08);border:1px solid #ef4444;border-radius:10px;">
+            <p style="color:#fca5a5;font-weight:800;margin:0 0 6px 0;">⚠️ ${t('networkModeSwitchToMainnetWarning')}</p>
+            <p style="margin:0 0 10px 0;font-size:0.9em;">${info.mainnetKeysConfigured?('✅ '+t('networkModeKeysReady')):('❌ '+t('networkModeKeysMissing'))}</p>
+            <button ${info.mainnetKeysConfigured?'':'disabled'} onclick="window.confirmSetNetworkMode('mainnet')" style="width:100%;padding:10px;border:none;border-radius:8px;background:${info.mainnetKeysConfigured?'linear-gradient(135deg,#ef4444,#b91c1c)':'#475569'};color:#fff;font-weight:900;cursor:${info.mainnetKeysConfigured?'pointer':'not-allowed'};">🔴 ${t('networkModeSwitchToMainnetBtn')}</button>
+        </div>`;
+    }else{
+        html+=`<div style="margin-top:12px;padding:10px;background:rgba(16,185,129,0.08);border:1px solid #10b981;border-radius:10px;">
+            <button onclick="window.confirmSetNetworkMode('testnet')" style="width:100%;padding:10px;border:none;border-radius:8px;background:linear-gradient(135deg,#10b981,#059669);color:#fff;font-weight:900;cursor:pointer;">🟢 ${t('networkModeSwitchToTestnetBtn')}</button>
+        </div>`;
+    }
+    bodyEl.innerHTML=html;
+    document.getElementById('network-mode-modal').style.display='flex';
+};
+window.confirmSetNetworkMode=async function(newMode){
+    const confirmMsg=newMode==='mainnet'?t('networkModeConfirmMainnet'):t('networkModeConfirmTestnet');
+    if(!confirm(confirmMsg)) return;
+    if(newMode==='mainnet'){
+        // Ekstra güvenlik: gerçek parayla ilgili en kritik geçiş, tek bir
+        // "Tamam" tıklamasıyla yanlışlıkla tetiklenmesin diye, admin'in
+        // "MAINNET" yazarak niyetini doğrulaması isteniyor.
+        const typed=prompt(t('networkModeTypeToConfirm'));
+        if(typed!=='MAINNET'){ showToast(t('networkModeConfirmCancelled')); return; }
+    }
+    try{
+        const r=await fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'set_network_mode',mode:newMode,accessToken:piAccessToken})});
+        const result=await r.json();
+        if(!r.ok||!result.success){ showToast(result.error||t('genericError')); return; }
+        showToast(newMode==='mainnet'?t('networkModeSwitchedToMainnet'):t('networkModeSwitchedToTestnet'));
+        document.getElementById('network-mode-modal').style.display='none';
+        window.loadNetworkModeStatus();
+    }catch(e){ showToast(t('genericError')); }
 };
 
 // INCOMPLETE PAYMENT
