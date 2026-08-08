@@ -48,6 +48,51 @@ if (WEB_PUSH_ENABLED) {
 } else {
   console.warn('[WebPush] VAPID_PUBLIC_KEY/VAPID_PRIVATE_KEY tanımlı değil — tarayıcı bildirimleri devre dışı.');
 }
+
+// ══════════════════════════════════════════════════════════════════════
+//  AĞ MODU (Testnet / Mainnet) — Admin Panelinden Yönetilir ─────────────
+//  TEK doğruluk kaynağı: Firestore'daki config/platform_settings.piSandboxMode.
+//  Hem /api/config.js (istemcinin Pi.init sandbox bayrağı için) hem burası
+//  (sunucunun hangi API anahtarı/cüzdanı kullanacağı için) AYNI bu alanı
+//  okur — böylece istemci ve sunucu asla birbirinden farklı ağa
+//  bağlanamaz (biri Testnet'te kalıp diğeri Mainnet'e geçmiş gibi bir
+//  tutarsızlık durumu oluşamaz).
+//
+//  Her iki ağ için AYRI kimlik bilgileri gerekir (Pi Developer Portal'da
+//  Testnet ve Mainnet ayrı uygulamalar olarak kayıtlıdır, her birinin
+//  kendi Server API Key'i ve kendi uygulama cüzdanı vardır):
+//    APP_SECRET_TESTNET / APP_SECRET_MAINNET
+//    PI_WALLET_PRIVATE_SEED_TESTNET / PI_WALLET_PRIVATE_SEED_MAINNET
+//  Geriye dönük uyumluluk için eski tekil APP_SECRET / PI_WALLET_PRIVATE_SEED
+//  değişkenleri, *_TESTNET karşılığı hiç tanımlanmamışsa yedek olarak
+//  kullanılır (böylece bu değişiklik mevcut kurulumu BOZMAZ).
+// ══════════════════════════════════════════════════════════════════════
+let _networkModeCache = null; // { mode, at }
+const NETWORK_MODE_CACHE_MS = 30000; // 30sn — admin panelden değişiklik en geç bu sürede tüm sunucu instance'larına yansır
+async function getNetworkMode(db) {
+  const now = Date.now();
+  if (_networkModeCache && (now - _networkModeCache.at) < NETWORK_MODE_CACHE_MS) {
+    return _networkModeCache.mode;
+  }
+  let mode = 'testnet'; // GÜVENLİ VARSAYILAN — Firestore okunamazsa asla yanlışlıkla Mainnet'e düşülmez
+  try {
+    const snap = await db.collection('config').doc('platform_settings').get();
+    if (snap.exists && snap.data().piSandboxMode === false) mode = 'mainnet';
+  } catch (e) {
+    console.error('[getNetworkMode] Firestore okunamadı, güvenli varsayılan (testnet) kullanılıyor:', e.message);
+  }
+  _networkModeCache = { mode, at: now };
+  return mode;
+}
+function getPiApiKeyForMode(mode) {
+  if (mode === 'mainnet') return process.env.APP_SECRET_MAINNET || null;
+  return process.env.APP_SECRET_TESTNET || process.env.APP_SECRET || null;
+}
+function getWalletSeedForMode(mode) {
+  if (mode === 'mainnet') return process.env.PI_WALLET_PRIVATE_SEED_MAINNET || null;
+  return process.env.PI_WALLET_PRIVATE_SEED_TESTNET || process.env.PI_WALLET_PRIVATE_SEED || null;
+}
+
 // YENİ: "Güvenilir Satıcı" rozeti eşikleri — tek bir yerden yönetiliyor.
 const TRUSTED_SELLER_MIN_RATINGS = 5;
 const TRUSTED_SELLER_MIN_AVG = 4.5;
@@ -245,10 +290,17 @@ async function awardReferralBonusIfEligible(db, username) {
 // "S..." ile başlayan private seed'idir (Developer Portal / cüzdan
 // kurulumunuzdan alınır) — ASLA istemciye/tarayıcıya gönderilmemelidir.
 let piClient = null;
-function getPiClient() {
-  if (piClient) return piClient;
-  const apiKey = process.env.APP_SECRET;
-  const walletSeed = process.env.PI_WALLET_PRIVATE_SEED;
+let _piClientMode = null;
+async function getPiClient(db) {
+  // FIX (Mainnet hazırlığı): artık hangi ağdaysak (bkz. getNetworkMode)
+  // ona uygun anahtar/cüzdanla client kuruluyor. Önbellek (piClient),
+  // mod DEĞİŞTİĞİNDE de yeniden oluşturuluyor — aksi halde admin panelden
+  // Mainnet'e geçilse bile bu sunucu instance'ı eski (testnet) client'ı
+  // kullanmaya devam ederdi.
+  const mode = await getNetworkMode(db);
+  if (piClient && _piClientMode === mode) return piClient;
+  const apiKey = getPiApiKeyForMode(mode);
+  const walletSeed = getWalletSeedForMode(mode);
   if (!apiKey || !walletSeed) return null;
   if (typeof PiNetwork !== 'function') {
     // Buraya düşüyorsak sorun 'new' çağrısında değil, pi-backend paketinin
@@ -258,6 +310,7 @@ function getPiClient() {
     throw new Error("pi-backend paketi doğru şekilde yüklenemedi (constructor bulunamadı) — Vercel Function Logs'a bakın.");
   }
   piClient = new PiNetwork(apiKey, walletSeed);
+  _piClientMode = mode;
   return piClient;
 }
 
@@ -292,8 +345,9 @@ function describePiApiError(e) {
 // ödeme detayını (GET /v2/payments/{paymentId}) çekip gerçek `amount` alanını
 // döndürür — artık hiçbir yere client'ın beyanına güvenilmiyor, sadece Pi'nin
 // kendi sunucusunun söylediğine güveniliyor.
-async function fetchPiPaymentDetails(paymentId) {
-  const PI_API_KEY = process.env.APP_SECRET;
+async function fetchPiPaymentDetails(paymentId, db) {
+  const mode = await getNetworkMode(db);
+  const PI_API_KEY = getPiApiKeyForMode(mode);
   try {
     const response = await fetch(`https://api.minepi.com/v2/payments/${paymentId}`, {
       headers: { 'Authorization': `Key ${PI_API_KEY}` }
@@ -3654,7 +3708,7 @@ async function handlerImpl(req, res) {
         });
       }
 
-      const pi = getPiClient();
+      const pi = await getPiClient(db);
       if (!pi) {
         return res.status(500).json({
           error: "Sunucuda escrow ödeme istemcisi yapılandırılmamış (PI_WALLET_PRIVATE_SEED / pi-backend paketi eksik). Lütfen ortam değişkenlerini kontrol edin."
@@ -3835,7 +3889,7 @@ async function handlerImpl(req, res) {
         });
       }
 
-      const pi = getPiClient();
+      const pi = await getPiClient(db);
       if (!pi) {
         return res.status(500).json({
           error: "Sunucuda escrow ödeme istemcisi yapılandırılmamış (PI_WALLET_PRIVATE_SEED / pi-backend paketi eksik)."
@@ -4970,6 +5024,59 @@ async function handlerImpl(req, res) {
   // TÜM 'conversations' koleksiyonu çekiliyor (ölçek büyüdükçe burası
   // sayfalama gerektirebilir, ama şimdilik get_admin_earnings'teki tam
   // koleksiyon taraması ile aynı kabul edilebilir maliyet mantığı geçerli).
+  // ══════════════════════════════════════════════════════════════════════
+  //  AĞ MODU (Testnet/Mainnet) — Admin Panel Menüsü ────────────────────────
+  //  bkz. dosya başındaki getNetworkMode/getPiApiKeyForMode/getWalletSeedForMode
+  // ══════════════════════════════════════════════════════════════════════
+  if (action === 'get_network_mode') {
+    const isAdmin = await verifyAdmin(accessToken);
+    if (!isAdmin) return res.status(403).json({ error: "Yetki yok" });
+    try {
+      const db = getDb();
+      const mode = await getNetworkMode(db);
+      // Admin'in, Mainnet'e geçmeden ÖNCE gerekli anahtarların Vercel'de
+      // tanımlı olup olmadığını görebilmesi için (gizli değerleri asla
+      // döndürmeden, sadece "var/yok" bilgisiyle).
+      return res.status(200).json({
+        success: true,
+        mode,
+        mainnetKeysConfigured: !!(process.env.APP_SECRET_MAINNET && process.env.PI_WALLET_PRIVATE_SEED_MAINNET),
+        testnetKeysConfigured: !!(process.env.APP_SECRET_TESTNET || process.env.APP_SECRET)
+      });
+    } catch (e) {
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  if (action === 'set_network_mode') {
+    const { mode: newMode } = req.body;
+    const isAdmin = await verifyAdmin(accessToken);
+    if (!isAdmin) return res.status(403).json({ error: "Yetki yok" });
+    if (newMode !== 'testnet' && newMode !== 'mainnet')
+      return res.status(400).json({ error: "Geçersiz mod (testnet veya mainnet olmalı)" });
+    try {
+      const db = getDb();
+      // GÜVENLİK: Mainnet'e geçerken, o anahtarlar Vercel'de tanımlı
+      // DEĞİLSE geçişe İZİN VERİLMİYOR — aksi halde ödemeler sessizce
+      // kırılırdı (anahtar yok -> Pi API'ye istek atılamaz).
+      if (newMode === 'mainnet') {
+        if (!process.env.APP_SECRET_MAINNET || !process.env.PI_WALLET_PRIVATE_SEED_MAINNET) {
+          return res.status(400).json({ error: "Mainnet'e geçilemiyor: Vercel'de APP_SECRET_MAINNET ve/veya PI_WALLET_PRIVATE_SEED_MAINNET tanımlı değil. Önce bu değerleri ekleyip yeniden deploy edin." });
+        }
+      }
+      await db.collection('config').doc('platform_settings').set({
+        piSandboxMode: newMode !== 'mainnet',
+        networkModeChangedAt: Date.now(),
+        networkModeChangedBy: (await getRealUsername(accessToken)) || ADMIN_USERNAME
+      }, { merge: true });
+      _networkModeCache = { mode: newMode, at: Date.now() }; // bu instance'ta anında yansısın
+      piClient = null; _piClientMode = null; // bir sonraki kullanımda doğru anahtarla yeniden kurulsun
+      return res.status(200).json({ success: true, mode: newMode });
+    } catch (e) {
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
   if (action === 'get_all_conversations') {
     const isAdmin = await verifyAdmin(accessToken);
     if (!isAdmin) return res.status(403).json({ error: "Yetki yok" });
@@ -5013,7 +5120,7 @@ async function handlerImpl(req, res) {
         return res.status(403).json({ error: "Bu ilan size ait değil" });
       if (domData.sold) return res.status(400).json({ error: "Satılmış bir ilanı öne çıkaramazsınız" });
 
-      const PI_API_KEY = process.env.APP_SECRET;
+      const PI_API_KEY = getPiApiKeyForMode(await getNetworkMode(db));
       if (!PI_API_KEY) return res.status(503).json({ error: "Reklam doğrulama şu anda kullanılamıyor" });
       const verifyResp = await fetch(`https://api.minepi.com/v2/ads_network/status/${encodeURIComponent(adId)}`, {
         headers: { 'Authorization': `Key ${PI_API_KEY}` }
@@ -5557,7 +5664,7 @@ async function handlerImpl(req, res) {
     }
   }
 
-  const PI_API_KEY = process.env.APP_SECRET;
+  const PI_API_KEY = getPiApiKeyForMode(await getNetworkMode(getDb()));
   const body = action === 'complete' ? { txid } : {};
   const url = `https://api.minepi.com/v2/payments/${paymentId}/${action}`;
 
@@ -5628,7 +5735,7 @@ async function handlerImpl(req, res) {
         // transaction'ları çakışma olursa otomatik tekrar denenebiliyor;
         // içeride dış bir ağ isteği tutmak hem gereksiz tekrara hem de
         // gereksiz yere uzayan bir kilide yol açardı.
-        const paymentDetails = await fetchPiPaymentDetails(paymentId);
+        const paymentDetails = await fetchPiPaymentDetails(paymentId, db);
         if (!paymentDetails) {
           console.error(`[GÜVENLİK] Ödeme detayı doğrulanamadan complete denendi. paymentId:${paymentId} domainName:${domainName} txid:${txid} @${username}`);
           await logSystemError('complete_amount_unverifiable', new Error('Could not fetch payment details from Pi to verify amount'), `paymentId:${paymentId} Domain:${domainName} Txid:${txid} @${username}`);
