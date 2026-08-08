@@ -2150,7 +2150,7 @@
             <button class="admin-tab-btn" data-tab="tab-reports" onclick="switchAdminTab('tab-reports')">🚩<span data-i18n="reportsTabLabel" style="font-size:0.9em;"></span><span class="pending-badge" id="reports-count-badge" style="display:none;">0</span></button>
             <!-- YENİ: Admin, kullanıcılar arası doğrudan mesajlaşmaları
                  (alıcı-satıcı) takip edebilsin diye. -->
-            <button class="admin-tab-btn" data-tab="tab-messages" onclick="switchAdminTab('tab-messages')">💬<span data-i18n="adminMessagesTabLabel" style="font-size:0.9em;"></span></button>
+            <button class="admin-tab-btn" data-tab="tab-messages" onclick="switchAdminTab('tab-messages')">💬<span data-i18n="adminMessagesTabLabel" style="font-size:0.9em;"></span><span class="pending-badge" id="admin-messages-count-badge" style="display:none;">0</span></button>
 
         </div>
         <div class="admin-tab-panel active" id="tab-users">
@@ -6284,6 +6284,28 @@ window.respondCounterOffer=async function(offerId, accept){
 // ne zaman) tek bakışta, karmaşa olmadan okunabilir şekilde gösterir.
 // YENİ: Bildirilen İlanlar paneli.
 let _reportsPollTimer = null;
+// YENİ: Rozet-ONLY hafif kontrol — admin panel her yenilendiğinde (tab
+// değiştirmeden, sadece "refresh" butonuna basınca ya da panel ilk
+// açıldığında) çağrılır. BUG DÜZELTMESİ: öncesinde bu amaçla doğrudan
+// loadListingReports() çağrılıyordu — ama o fonksiyon sonunda HER ZAMAN
+// mark_reports_seen'i de tetikliyordu. Yani admin "Bildirilen İlanlar"
+// sekmesine hiç girmeden, sadece paneli yenileyerek bile şikayetleri
+// "görülmüş" olarak işaretliyordu — rozet, admin fark etmeden kayboluyordu.
+// Bu fonksiyon SADECE rozeti (backend'in hesapladığı gerçek "okunmamış"
+// sayısıyla) günceller, hiçbir şeyi "görüldü" olarak işaretlemez.
+window.refreshReportsBadge=async function(){
+    try{
+        const r=await fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'get_listing_reports',accessToken:piAccessToken})});
+        const result=await r.json();
+        if(!result.success) return;
+        const badge=document.getElementById('reports-count-badge');
+        if(badge){
+            const n=result.unseenCount||0;
+            if(n>0){ badge.style.display='block'; badge.textContent=n>99?'99+':n; }
+            else badge.style.display='none';
+        }
+    }catch(e){ /* rozet güncellemesi kritik değil, sessizce geç */ }
+};
 window.loadListingReports=async function(){
     const wrap=document.getElementById('admin-reports-list');
     if(!wrap) return;
@@ -7465,7 +7487,8 @@ window.refreshAdminPanel=async function(){
         await Promise.all([
             adminLoadTickets(),
             loadUniqueBadgeCount(),
-            window.loadListingReports(), // YENİ: şikayet rozetini de tazele
+            window.refreshReportsBadge(), // FIX: sadece rozeti günceller, "görüldü" işaretlemez (bkz. yukarıdaki not)
+            window.refreshAdminMessagesBadge(), // YENİ: kullanıcı mesajları rozeti
             window.loadNetworkModeStatus() // YENİ: Ağ Modu (Testnet/Mainnet) durumu
         ]);
         renderAdminPriceList();
@@ -10497,7 +10520,32 @@ window.loadAdminConversations=async function(){
         if(!result.success){ if(listEl) listEl.innerHTML=`<p style="font-size:0.75em;color:#f87171;text-align:center;">${result.error||t('genericError')}</p>`; return; }
         adminConversations=result.conversations||[];
         window.renderAdminConversationsList();
+        // YENİ: sekmeye GİRİLDİĞİNDE (bkz. switchAdminTab hook) rozet
+        // "görüldü" olarak işaretlenir — panelin genel yenilemesinde DEĞİL
+        // (bkz. refreshAdminMessagesBadge, aynı düzeltme mantığı
+        // reports-count-badge için de uygulandı).
+        try{
+            await fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'mark_admin_messages_seen',accessToken:piAccessToken})});
+            const badge=document.getElementById('admin-messages-count-badge');
+            if(badge) badge.style.display='none';
+        }catch(e){}
     }catch(e){ if(listEl) listEl.innerHTML=`<p style="font-size:0.75em;color:#f87171;text-align:center;">${t('genericError')}</p>`; }
+};
+// YENİ: Rozet-ONLY hafif kontrol — reports-count-badge ile aynı desen.
+// refreshAdminPanel() bunu çağırır; "görüldü" işaretlemez, sadece sayıyı
+// gösterir.
+window.refreshAdminMessagesBadge=async function(){
+    try{
+        const r=await fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'get_all_conversations',accessToken:piAccessToken})});
+        const result=await r.json();
+        if(!result.success) return;
+        const badge=document.getElementById('admin-messages-count-badge');
+        if(badge){
+            const n=result.unseenCount||0;
+            if(n>0){ badge.style.display='block'; badge.textContent=n>99?'99+':n; }
+            else badge.style.display='none';
+        }
+    }catch(e){ /* rozet güncellemesi kritik değil, sessizce geç */ }
 };
 window.renderAdminConversationsList=function(){
     const listEl=document.getElementById('admin-messages-list');
