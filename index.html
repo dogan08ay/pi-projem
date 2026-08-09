@@ -1479,7 +1479,7 @@
     <div class="modal-content" style="border-color:#64748b;text-align:left;max-height:82vh;display:flex;flex-direction:column;">
         <h2 style="color:#e2e8f0;margin:0 0 10px 0;font-size:1em;font-weight:900;display:flex;align-items:center;gap:6px;">📋 <span data-i18n="adminAuditLogBtn"></span></h2>
         <div style="font-size:0.65em;color:#64748b;margin-bottom:10px;">Son 100 kayıt, en yeni üstte. Kim, ne zaman, ne yaptı.</div>
-        <div id="audit-log-results" style="flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:6px;"></div>
+        <div id="audit-log-results" style="flex:1;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;display:flex;flex-direction:column;gap:6px;"></div>
         <button class="pi-btn" style="background:#475569;animation:none;padding:10px;margin:12px 0 0 0;width:100%;flex-shrink:0;" onclick="document.getElementById('audit-log-modal').style.display='none'" data-i18n="close"></button>
     </div>
 </div>
@@ -3476,7 +3476,7 @@ const i18n = {
     reportStatusModalConfirmBtn:"Onayla ve Bildir",
     myReportsTab:"Şikayetlerim",
     myReportsNote:"Bildirdiğiniz ilan şikayetlerinin durumunu buradan takip edebilirsiniz.",
-    myReportsEmpty:"Henüz bir ilan bildirmediniz.",
+    myReportsEmpty:"Henüz bir ilan bildirmediniz. (Geçmiş ve çözülerek kapatılmış şikayetlerinize \"Geçmişim\" menüsündeki \"Şikayetler\" başlığından ulaşabilirsiniz.)",
     reportsArchivedNotice:(n)=>`${n} şikayet başvurunuz sonuçlandı ve buradan kaldırıldı — geçmiş başvurularınızı "Geçmişim" bölümünden takip edebilirsiniz.`,
     deleteReportFromHistoryBtn:"Sil",
     deleteReportConfirm:"Bu şikayet kaydını kalıcı olarak silmek istediğinize emin misiniz?",
@@ -4321,7 +4321,7 @@ const i18n = {
     reportStatusModalConfirmBtn:"Confirm & Notify",
     myReportsTab:"My Reports",
     myReportsNote:"Track the status of the listing reports you've submitted here.",
-    myReportsEmpty:"You haven't reported any listings yet.",
+    myReportsEmpty:"You haven't reported any listings yet. (You can find your past and resolved/closed reports under the \"Reports\" section in \"My History\".)",
     reportsArchivedNotice:(n)=>`${n} of your reports have been resolved and removed from here — you can still track past reports in "My History".`,
     deleteReportFromHistoryBtn:"Delete",
     deleteReportConfirm:"Are you sure you want to permanently delete this report record?",
@@ -6397,7 +6397,8 @@ window.loadListingReports=async function(){
             const reasonLabel={fake:t('reportReasonFake'),inappropriate:t('reportReasonInappropriate'),price_manipulation:t('reportReasonPriceManipulation'),trademark:t('reportReasonTrademark'),other:t('reportReasonOther')};
             const locale=currentLang==='en'?'en-GB':'tr-TR';
             const statusPill={new:`<span style="background:rgba(239,68,68,0.15);border:1px solid #ef4444;color:#f87171;font-size:0.6em;font-weight:900;padding:2px 8px;border-radius:20px;">${t('reportStatusNew')}</span>`,
-                reviewing:`<span style="background:rgba(245,158,11,0.15);border:1px solid #f59e0b;color:#fbbf24;font-size:0.6em;font-weight:900;padding:2px 8px;border-radius:20px;">${t('reportStatusReviewing')}</span>`};
+                reviewing:`<span style="background:rgba(245,158,11,0.15);border:1px solid #f59e0b;color:#fbbf24;font-size:0.6em;font-weight:900;padding:2px 8px;border-radius:20px;">${t('reportStatusReviewing')}</span>`,
+                resolved:`<span style="background:rgba(16,185,129,0.15);border:1px solid #10b981;color:#6ee7b7;font-size:0.6em;font-weight:900;padding:2px 8px;border-radius:20px;">${t('reportStageResolved')}</span>`};
             wrap.innerHTML=reports.map(rep=>`
                 <div style="background:#0f172a;border:1px solid #ef4444;border-radius:9px;padding:10px;margin-bottom:8px;">
                     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;gap:6px;">
@@ -6411,7 +6412,10 @@ window.loadListingReports=async function(){
                     <div style="display:flex;gap:6px;flex-wrap:wrap;">
                         <button onclick="window.openDomainDetail('${rep.domainName.replace(/'/g,"\\'")}')" style="flex:1;min-width:70px;padding:6px;border-radius:6px;border:1px solid #64748b;background:none;color:#cbd5e1;font-size:0.65em;font-weight:800;cursor:pointer;">${t('viewBtn')}</button>
                         ${rep.status==='new'?`<button onclick="window.openReportStatusModal('${rep.id}','reviewing')" style="flex:1;min-width:70px;padding:6px;border-radius:6px;border:1px solid #f59e0b;background:rgba(245,158,11,0.12);color:#fbbf24;font-size:0.65em;font-weight:800;cursor:pointer;">🔎 ${t('reportActionReviewing')}</button>`:''}
-                        <button onclick="window.openReportStatusModal('${rep.id}','resolved')" style="flex:1;min-width:70px;padding:6px;border-radius:6px;border:1px solid #10b981;background:rgba(16,185,129,0.12);color:#6ee7b7;font-size:0.65em;font-weight:800;cursor:pointer;">✅ ${t('reportActionResolved')}</button>
+                        <!-- FIX: bir şikayet zaten 'resolved' ise "Çözüldü"
+                             butonu tekrar gösterilmiyor — bir sonraki mantıklı
+                             adım artık sadece "Kapat". -->
+                        ${rep.status!=='resolved'?`<button onclick="window.openReportStatusModal('${rep.id}','resolved')" style="flex:1;min-width:70px;padding:6px;border-radius:6px;border:1px solid #10b981;background:rgba(16,185,129,0.12);color:#6ee7b7;font-size:0.65em;font-weight:800;cursor:pointer;">✅ ${t('reportActionResolved')}</button>`:''}
                         <!-- DÜZENLENDİ: "Kapat" artık amacına uygun renkte (nötr
                              gri/kırmızımsı) — öncesinde yeşil bir onay
                              simgesiyle (✔️) gösteriliyordu, sanki olumlu bir
