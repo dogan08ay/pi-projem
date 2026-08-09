@@ -7118,7 +7118,7 @@ function renderAuditLogGrouped(){
                 </div>`:''}
             </div>`;
         }).join('');
-        return `<div style="background:#0f172a;border:1.5px solid #334155;border-radius:10px;margin-bottom:8px;overflow:hidden;">
+        return `<div style="background:#0f172a;border:1.5px solid #334155;border-radius:10px;margin-bottom:8px;overflow:hidden;flex-shrink:0;">
             <div onclick="window.toggleAuditCategory('${cat.key}')" style="display:flex;justify-content:space-between;align-items:center;gap:8px;padding:11px 12px;cursor:pointer;background:${isOpen?'rgba(99,102,241,0.12)':'transparent'};">
                 <div style="font-size:0.78em;font-weight:900;color:#e2e8f0;">${cat.icon} ${t(cat.labelKey)}</div>
                 <div style="display:flex;align-items:center;gap:8px;">
