@@ -2970,11 +2970,15 @@ async function handlerImpl(req, res) {
     if (!isAdmin) return res.status(403).json({ error: "Yetki yok" });
     try {
       const db = getDb();
-      // Sadece hâlâ açık olan (yeni ya da inceleniyor) şikayetleri
-      // listeliyoruz — çözülmüş/kapatılmış olanlar bu listeyi kalabalık
-      // etmesin diye kaldırıldı; onlar artık raporlayan kullanıcının kendi
-      // "Şikayetlerim" panelinden takip ediliyor.
-      const snap = await db.collection('listing_reports').where('status', 'in', ['new', 'reviewing']).get();
+      // FIX (kök neden — "admin 'çözüldü'ye kadar gidebiliyor, 'kapat'a hiç
+      // erişemiyordu"): Bu sorgu önceden SADECE 'new' ve 'reviewing'
+      // durumundaki şikayetleri getiriyordu. Bir şikayet 'resolved'
+      // (Çözüldü) yapılır yapılmaz bu listeden anında kayboluyordu — yani
+      // admin o rapora bir daha ASLA erişip "Kapat"a basamıyordu, kayıt
+      // sonsuza dek 'resolved' durumunda askıda kalıyordu. Artık 'resolved'
+      // durumundakiler de listede kalmaya devam ediyor (SADECE 'closed'
+      // olanlar kaldırılıyor — onlar gerçekten bitmiş sayılır).
+      const snap = await db.collection('listing_reports').where('status', 'in', ['new', 'reviewing', 'resolved']).get();
       const reports = [];
       snap.forEach(d => reports.push({ id: d.id, ...d.data() }));
       reports.sort((a, b) => b.createdAt - a.createdAt);
