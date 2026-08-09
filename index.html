@@ -1476,10 +1476,22 @@
 </div>
 
 <div id="audit-log-modal" class="modal-overlay" style="display:none;">
-    <div class="modal-content" style="border-color:#64748b;text-align:left;max-height:82vh;display:flex;flex-direction:column;">
-        <h2 style="color:#e2e8f0;margin:0 0 10px 0;font-size:1em;font-weight:900;display:flex;align-items:center;gap:6px;">📋 <span data-i18n="adminAuditLogBtn"></span></h2>
-        <div style="font-size:0.65em;color:#64748b;margin-bottom:10px;">Son 100 kayıt, en yeni üstte. Kim, ne zaman, ne yaptı.</div>
-        <div id="audit-log-results" style="flex:1;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;display:flex;flex-direction:column;gap:6px;"></div>
+    <div class="modal-content" style="border-color:#64748b;text-align:left;max-height:82vh;overflow:hidden;display:flex;flex-direction:column;">
+        <h2 style="color:#e2e8f0;margin:0 0 10px 0;font-size:1em;font-weight:900;display:flex;align-items:center;gap:6px;flex-shrink:0;">📋 <span data-i18n="adminAuditLogBtn"></span></h2>
+        <div style="font-size:0.65em;color:#64748b;margin-bottom:10px;flex-shrink:0;">Son 100 kayıt, en yeni üstte. Kim, ne zaman, ne yaptı.</div>
+        <!-- FIX (kök neden — "başlık açılınca diğerleri görünmüyor, ekran
+             kendi içinde kaymıyor"): Üstteki .modal-content'in TEMEL CSS
+             sınıfı (bkz. .modal-content{...overflow-y:auto...}) zaten
+             KENDİSİ de kaydırılabilir durumdaydı. Bu, aşağıdaki listenin
+             kendi içinde kaymasıyla ÇAKIŞIYORDU — ikisi iç içe scroll
+             konteyneri olunca tarayıcı hangisinin kayacağına düzgün karar
+             veremiyor, sonuç olarak liste kendi sınırını aşıp TÜM modalı
+             büyütüyor, başlıklar da o büyüyen alanın neresinde kaldığına
+             göre yarım kırpılmış görünüyordu. Çözüm: .modal-content'i
+             overflow:hidden yapıp SADECE #audit-log-results'ın kaymasına
+             izin veriyoruz — .ticket-messages'da (Destek Talepleri) zaten
+             ÇALIŞAN aynı desen (sabit max-height + overflow-y:auto). -->
+        <div id="audit-log-results" style="max-height:52vh;overflow-y:auto;-webkit-overflow-scrolling:touch;display:flex;flex-direction:column;gap:6px;"></div>
         <button class="pi-btn" style="background:#475569;animation:none;padding:10px;margin:12px 0 0 0;width:100%;flex-shrink:0;" onclick="document.getElementById('audit-log-modal').style.display='none'" data-i18n="close"></button>
     </div>
 </div>
