@@ -1266,7 +1266,68 @@ async function handlerImpl(req, res) {
     }
   }
 
-  // ── Geriye Dönük Düzeltme: Eski "satıcısız" admin domainlerine sahip ekle ─
+  // ══════════════════════════════════════════════════════════════════════
+  //  TOPLU DOMAIN İÇE AKTARMA (CSV) — add_domain'deki AYNI doğrulama/
+  //  oluşturma mantığı, birden çok satır için tek istekte. Her satır
+  //  bağımsız değerlendirilir — biri hatalıysa (geçersiz format, zaten
+  //  kayıtlı, vb.) diğerleri etkilenmez; sonunda hangi satırın başarılı/
+  //  başarısız olduğunu gösteren bir liste dönülür.
+  // ══════════════════════════════════════════════════════════════════════
+  if (action === 'bulk_add_domains') {
+    const { rows } = req.body;
+    const isAdmin = await verifyAdmin(accessToken);
+    if (!isAdmin) return res.status(403).json({ error: "Yetki yok" });
+    if (!Array.isArray(rows) || !rows.length) return res.status(400).json({ error: "Geçersiz veya boş liste" });
+    // Tek seferde makul bir üst sınır — Firestore batch limiti (500) ve
+    // fonksiyon zaman aşımı riskini önlemek için.
+    if (rows.length > 200) return res.status(400).json({ error: "Tek seferde en fazla 200 domain eklenebilir. Lütfen dosyayı bölün." });
+    try {
+      const db = getDb();
+      const results = [];
+      for (const row of rows) {
+        const newName = String(row.domainName || '').trim();
+        const priceNum = Number(row.price);
+        const domainType = row.type || 'genel';
+        const description = row.description || '';
+        if (!newName || !priceNum || priceNum <= 0) {
+          results.push({ domainName: newName || '(boş)', success: false, error: "Geçersiz isim veya fiyat" });
+          continue;
+        }
+        if (!isValidDomainName(newName)) {
+          results.push({ domainName: newName, success: false, error: "Geçersiz domain adı formatı" });
+          continue;
+        }
+        try {
+          const domainRef = db.collection('domains').doc(newName);
+          const existing = await domainRef.get();
+          if (existing.exists) {
+            results.push({ domainName: newName, success: false, error: "Zaten kayıtlı" });
+            continue;
+          }
+          await domainRef.set({
+            sold: false, price: priceNum,
+            img: 'assets/default.jpeg',
+            type: domainType, description,
+            txid: null, buyer: null, at: null,
+            deleted: false, deletedAt: null,
+            createdAt: Date.now(),
+            sellerUsername: ADMIN_USERNAME
+          });
+          await notifySavedSearches(db, newName, { type: domainType, price: priceNum, description, sellerUsername: ADMIN_USERNAME }).catch(() => {});
+          results.push({ domainName: newName, success: true });
+        } catch (e) {
+          results.push({ domainName: newName, success: false, error: e.message });
+        }
+      }
+      const successCount = results.filter(r => r.success).length;
+      await logAdminAction(await getRealUsername(accessToken), 'bulk_add_domains', `${successCount}/${rows.length} domain başarıyla eklendi`);
+      return res.status(200).json({ success: true, results, successCount, totalCount: rows.length });
+    } catch (e) {
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+
   // add_domain fix'inden ÖNCE eklenmiş, henüz SATILMAMIŞ domainlerde
   // sellerUsername alanı yok. Bu action, sadece sold!==true ve deleted!==true
   // olan ve sellerUsername'i hâlâ boş olan domainlere ADMIN_USERNAME yazar.
@@ -4925,12 +4986,43 @@ async function handlerImpl(req, res) {
     try {
       const db = getDb();
       const ref = db.collection('user_profiles').doc(realUsername);
-      await ref.set({
-        favorites: addFavorite ? FieldValue.arrayUnion(domainName) : FieldValue.arrayRemove(domainName)
-      }, { merge: true });
+      // YENİ: satıcılara "kaç kişi favoriledi" bilgisini gösterebilmek için
+      // domain kaydında da bir favoriteCount sayacı tutuluyor. Aynı işlemin
+      // (ör. çift tıklama) sayacı yanlışlıkla iki kez artırmasını/azaltmasını
+      // önlemek için önce mevcut durumu okuyup GERÇEKTEN bir değişiklik
+      // olacaksa sayaç güncelleniyor.
+      const profSnap = await ref.get();
+      const currentFavs = profSnap.exists ? (profSnap.data().favorites || []) : [];
+      const alreadyFav = currentFavs.includes(domainName);
+      if (addFavorite && !alreadyFav) {
+        await ref.set({ favorites: FieldValue.arrayUnion(domainName) }, { merge: true });
+        await db.collection('domains').doc(domainName).set({ favoriteCount: FieldValue.increment(1) }, { merge: true }).catch(() => {});
+      } else if (!addFavorite && alreadyFav) {
+        await ref.set({ favorites: FieldValue.arrayRemove(domainName) }, { merge: true });
+        await db.collection('domains').doc(domainName).set({ favoriteCount: FieldValue.increment(-1) }, { merge: true }).catch(() => {});
+      }
       return res.status(200).json({ success: true });
     } catch (e) {
       return res.status(500).json({ error: e.message });
+    }
+  }
+
+  // YENİ: Domain detay ekranı görüntülenme sayacı — satıcıların ilanlarına
+  // ne kadar ilgi olduğunu görebilmesi için. Giriş yapmamış ziyaretçiler
+  // için de çalışır (herkese açık bir bilgi). Sayaç kritik olmadığı için
+  // herhangi bir hata sessizce yutulur — sayfanın geri kalanını asla
+  // bozmaz.
+  if (action === 'increment_domain_view') {
+    const { domainName } = req.body;
+    if (!domainName) return res.status(200).json({ success: false });
+    if (!await checkRateLimit(clientIp, 'increment_domain_view', 60, 60000))
+      return res.status(200).json({ success: true });
+    try {
+      const db = getDb();
+      await db.collection('domains').doc(domainName).set({ viewCount: FieldValue.increment(1) }, { merge: true });
+      return res.status(200).json({ success: true });
+    } catch (e) {
+      return res.status(200).json({ success: false });
     }
   }
 
