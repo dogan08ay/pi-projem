@@ -3454,6 +3454,15 @@ const i18n = {
     sellerRatingLabel:"Satıcı Puanı",noRatingsYet:"Henüz değerlendirme yok",
     sellerTierGold:"Altın Satıcı (30+ satış)",sellerTierSilver:"Gümüş Satıcı (15+ satış)",sellerTierBronze:"Bronz Satıcı (5+ satış)",
     trustedSellerBadge:"Güvenilir Satıcı",
+    trustScoreLabel:"Güven Skoru",
+    trustLevelExpert:"Uzman Satıcı",
+    trustLevelTrusted:"Güvenilir Satıcı",
+    trustLevelGrowing:"Gelişen Satıcı",
+    trustLevelNew:"Yeni Satıcı",
+    avgResponseTimeLabel:(t)=>`Genelde ${t} içinde yanıt verir`,
+    minutesUnit:"dk",
+    hoursUnit:"sa",
+    daysUnit:"gün",
     myRatingAsSellerLabel:"Satıcı Olarak Puanınız",ratingsCountSuffix:"değerlendirme",
     salesTrendTitle:"Satış Trendi (Son 30 Gün)",exportCsvBtn:"Satış Verilerini CSV Olarak İndir",
     csvCopyBtn:"Panoya Kopyala",csvDownloadBtn:"Dosya Olarak İndir",
@@ -4315,6 +4324,15 @@ const i18n = {
     sellerRatingLabel:"Seller Rating",noRatingsYet:"No ratings yet",
     sellerTierGold:"Gold Seller (30+ sales)",sellerTierSilver:"Silver Seller (15+ sales)",sellerTierBronze:"Bronze Seller (5+ sales)",
     trustedSellerBadge:"Trusted Seller",
+    trustScoreLabel:"Trust Score",
+    trustLevelExpert:"Expert Seller",
+    trustLevelTrusted:"Trusted Seller",
+    trustLevelGrowing:"Growing Seller",
+    trustLevelNew:"New Seller",
+    avgResponseTimeLabel:(t)=>`Usually replies within ${t}`,
+    minutesUnit:"min",
+    hoursUnit:"hr",
+    daysUnit:"days",
     myRatingAsSellerLabel:"Your Rating as a Seller",ratingsCountSuffix:"ratings",
     salesTrendTitle:"Sales Trend (Last 30 Days)",exportCsvBtn:"Download Sales Data as CSV",
     csvCopyBtn:"Copy to Clipboard",csvDownloadBtn:"Download as File",
@@ -5846,7 +5864,32 @@ window.openDomainDetail=function(domainName){
                         res.recentReviews.map(rv=>`<div style="font-size:0.85em;color:#94a3b8;"><span style="color:#fbbf24;">${'★'.repeat(rv.stars)}${'☆'.repeat(5-rv.stars)}</span> "${escapeHtml(rv.comment)}"</div>`).join('')+
                         `</div>`;
                 }
-                el.innerHTML=`<div style="display:flex;gap:6px;align-items:baseline;flex-wrap:wrap;"><span style="color:#64748b;flex-shrink:0;font-weight:700;min-width:100px;">⭐ ${t('sellerRatingLabel')}:</span><span style="color:#fbbf24;font-weight:900;">${ratingText}</span>${trustedBadge}${tierBadge}</div>${reviewsHtml}`;
+                // YENİ: Birleşik Güven Skoru — puan, satış geçmişi, sahiplik
+                // doğrulaması, yanıt hızı ve hesap yaşını TEK bir sayıya
+                // indirgeyen özet gösterge. Aşağıdaki ayrıntılı rozetlerin
+                // (yıldız, kademe, doğrulama) "neden" bu skoru oluşturduğunu
+                // açıklayan bir başlık gibi düşünülebilir.
+                const trustLevelMap={
+                    expert:['🏆',t('trustLevelExpert'),'#fbbf24','rgba(251,191,36,0.14)','#fbbf24'],
+                    trusted:['🛡️',t('trustLevelTrusted'),'#6ee7b7','rgba(16,185,129,0.14)','#10b981'],
+                    growing:['🌱',t('trustLevelGrowing'),'#93c5fd','rgba(59,130,246,0.14)','#3b82f6'],
+                    new:['🆕',t('trustLevelNew'),'#cbd5e1','rgba(100,116,139,0.14)','#64748b']
+                };
+                const tl=trustLevelMap[res.trustLevel]||trustLevelMap.new;
+                let responseTimeText='';
+                if(res.avgResponseMinutes!=null){
+                    const m=res.avgResponseMinutes;
+                    const human=m<60?`${m} ${t('minutesUnit')}`:(m<1440?`${Math.round(m/60)} ${t('hoursUnit')}`:`${Math.round(m/1440)} ${t('daysUnit')}`);
+                    responseTimeText=`<div style="font-size:0.68em;color:#94a3b8;margin-top:4px;">⚡ ${t('avgResponseTimeLabel')(human)}</div>`;
+                }
+                const trustScoreHtml=`<div style="background:${tl[3]};border:1.5px solid ${tl[4]};border-radius:10px;padding:8px 10px;margin-bottom:8px;">
+                    <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
+                        <span style="font-size:0.8em;font-weight:900;color:${tl[2]};">${tl[0]} ${t('trustScoreLabel')}: ${res.trustScore}/100</span>
+                        <span style="font-size:0.66em;font-weight:800;color:${tl[2]};background:rgba(0,0,0,0.2);padding:2px 8px;border-radius:20px;">${tl[1]}</span>
+                    </div>
+                    ${responseTimeText}
+                </div>`;
+                el.innerHTML=`${trustScoreHtml}<div style="display:flex;gap:6px;align-items:baseline;flex-wrap:wrap;"><span style="color:#64748b;flex-shrink:0;font-weight:700;min-width:100px;">⭐ ${t('sellerRatingLabel')}:</span><span style="color:#fbbf24;font-weight:900;">${ratingText}</span>${trustedBadge}${tierBadge}</div>${reviewsHtml}`;
             }).catch(()=>{});
     }
     if(data.sold){
@@ -5935,6 +5978,28 @@ window.openSellerProfile=async function(username){
         const tierInfo=res.sellerTier&&tierMap[res.sellerTier];
         const tierBadge=tierInfo?`<span style="background:${tierInfo[3]};border:1px solid ${tierInfo[2]};color:${tierInfo[2]};font-size:0.65em;font-weight:900;padding:3px 9px;border-radius:20px;">${tierInfo[0]} ${tierInfo[1]}</span>`:'';
         const statBox=(icon,label,value)=>`<div style="flex:1;background:#0f172a;border:1px solid #334155;border-radius:9px;padding:10px 6px;text-align:center;"><div style="font-size:1.3em;">${icon}</div><div style="font-size:0.95em;font-weight:900;color:#e2e8f0;margin:2px 0;">${value}</div><div style="font-size:0.62em;color:#64748b;font-weight:700;">${label}</div></div>`;
+        // YENİ: Birleşik Güven Skoru — satıcı profilinin EN ÜSTÜNDE, büyük
+        // ve net bir başlık olarak. Aşağıdaki rozetler/istatistikler bu
+        // skorun bileşenlerini (neden bu skor?) açıklıyor.
+        const trustLevelMap={
+            expert:['🏆',t('trustLevelExpert'),'#fbbf24','rgba(251,191,36,0.14)','#fbbf24'],
+            trusted:['🛡️',t('trustLevelTrusted'),'#6ee7b7','rgba(16,185,129,0.14)','#10b981'],
+            growing:['🌱',t('trustLevelGrowing'),'#93c5fd','rgba(59,130,246,0.14)','#3b82f6'],
+            new:['🆕',t('trustLevelNew'),'#cbd5e1','rgba(100,116,139,0.14)','#64748b']
+        };
+        const tl=trustLevelMap[res.trustLevel]||trustLevelMap.new;
+        let responseTimeText='';
+        if(res.avgResponseMinutes!=null){
+            const m=res.avgResponseMinutes;
+            const human=m<60?`${m} ${t('minutesUnit')}`:(m<1440?`${Math.round(m/60)} ${t('hoursUnit')}`:`${Math.round(m/1440)} ${t('daysUnit')}`);
+            responseTimeText=`<span style="margin-left:8px;">⚡ ${t('avgResponseTimeLabel')(human)}</span>`;
+        }
+        const verifiedText=res.hasVerifiedListing?`<span style="margin-left:8px;">🛡️ ${t('ownershipVerifiedBadge')}</span>`:'';
+        const trustScoreHtml=`<div style="background:${tl[3]};border:1.5px solid ${tl[4]};border-radius:12px;padding:12px;margin-bottom:12px;text-align:center;">
+            <div style="font-size:1.7em;font-weight:900;color:${tl[2]};">${tl[0]} ${res.trustScore}<span style="font-size:0.5em;color:#64748b;">/100</span></div>
+            <div style="font-size:0.75em;font-weight:800;color:${tl[2]};margin-top:2px;">${t('trustScoreLabel')} — ${tl[1]}</div>
+            <div style="font-size:0.62em;color:#94a3b8;margin-top:6px;">${responseTimeText}${verifiedText}</div>
+        </div>`;
         let reviewsHtml='';
         if(res.recentReviews&&res.recentReviews.length){
             reviewsHtml=`<div style="margin-top:12px;"><div style="font-size:0.7em;color:#64748b;font-weight:800;margin-bottom:6px;text-transform:uppercase;">${t('recentReviewsLabel')}</div><div style="display:flex;flex-direction:column;gap:6px;">`+
@@ -5942,6 +6007,7 @@ window.openSellerProfile=async function(username){
                 `</div></div>`;
         }
         body.innerHTML=`
+            ${trustScoreHtml}
             <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;">${trustedBadge}${tierBadge}</div>
             <div style="display:flex;gap:8px;margin-bottom:10px;">
                 ${statBox('⭐',t('sellerProfileRatingLabel'),ratingText)}
