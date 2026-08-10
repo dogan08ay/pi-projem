@@ -2249,6 +2249,16 @@
                 <textarea id="new-domain-desc" data-i18n-placeholder="descriptionPlaceholder" class="admin-date-picker" rows="2" style="resize:none;margin-bottom:0;"></textarea>
                 <button class="pi-btn" style="margin:4px 0 0 0;animation:none;background:#10b981;padding:8px;" onclick="handleAddDomain()" data-i18n="addDomainBtn"></button>
             </div>
+            <!-- YENİ: Toplu Domain İçe Aktarma (CSV) — çok sayıda domain
+                 eklerken tek tek form doldurmak yerine bir CSV dosyası
+                 yüklenip önizlenip toplu eklenebilir. -->
+            <div style="margin-top:16px;padding-top:14px;border-top:1px dashed #4c1d95;">
+                <div style="font-size:0.72em;color:#a5b4fc;font-weight:800;margin-bottom:6px;">📤 <span data-i18n="bulkImportTitle"></span></div>
+                <div style="font-size:0.62em;color:#64748b;margin-bottom:8px;line-height:1.5;" data-i18n="bulkImportNote"></div>
+                <input type="file" id="bulk-import-file-input" accept=".csv" style="display:none;" onchange="window.handleBulkImportFileSelect(event)">
+                <button class="pi-btn" style="margin:0;animation:none;background:#6366f1;padding:8px;" onclick="document.getElementById('bulk-import-file-input').click()" data-i18n="bulkImportChooseFileBtn"></button>
+                <div id="bulk-import-preview" style="margin-top:10px;"></div>
+            </div>
         </div>
         <div class="admin-tab-panel" id="tab-earnings">
             <div style="position:relative;display:flex;align-items:center;justify-content:center;padding:6px 34px 12px 6px;margin-bottom:12px;border-bottom:1px solid #312e81;">
@@ -3007,6 +3017,21 @@ const i18n = {
     saleDetailDomain:"Domain",saleDetailBuyer:"Alıcı",saleDetailDate:"Tarih",saleDetailPrice:"Tutar",saleDetailSeller:"Satıcı",
     salesCount:"SATIŞ ADEDİ",volumePi:"HACİM (Pİ)",noPendingDomains:"Bekleyen domain önerisi yok.",
     addDomainBtn:"Domain Ekle",newDomainPlaceholder:"domain-adi.pi",
+    bulkImportTitle:"Toplu Domain İçe Aktar (CSV)",
+    bulkImportNote:"CSV dosyanızın ilk satırı başlık olmalı: domainName,price,type,description (type ve description isteğe bağlı).",
+    bulkImportChooseFileBtn:"CSV Dosyası Seç",
+    bulkImportEmptyFile:"Dosya boş ya da sadece başlık satırı içeriyor.",
+    bulkImportHeaderError:"CSV başlığında 'domainName' ve 'price' sütunları bulunamadı.",
+    bulkImportParseError:"Dosya okunamadı, formatını kontrol edin.",
+    bulkImportPreviewLabel:(n)=>`${n} satır bulundu — önizleme:`,
+    bulkImportMoreRows:(n)=>`... ve ${n} satır daha (hepsi içe aktarılacak, sadece önizleme sınırlı)`,
+    bulkImportColName:"Domain",
+    bulkImportColPrice:"Fiyat",
+    bulkImportColType:"Tip",
+    bulkImportSubmitBtn:(n)=>`${n} Domaini İçe Aktar`,
+    bulkImportConfirm:(n)=>`${n} domain eklenecek. Onaylıyor musunuz?`,
+    bulkImportDoneLabel:(ok,total)=>`${ok}/${total} domain başarıyla eklendi.`,
+    bulkImportFailedLabel:"Eklenemeyenler:",
     newDomainPricePlaceholder:"Fiyat (Pİ)",newDomainImgPlaceholder:"Görsel yolu (opsiyonel)",
     availableDomains:"Satın Alabileceğiniz Domainler",filterAll:"Hepsi",filtersSelectedSuffix:"seçili",
     saleStatusFilterLabel:"Satış Durumu",saleStatusForSale:"Satışta Olanlar",saleStatusSold:"Satılanlar",
@@ -3299,6 +3324,7 @@ const i18n = {
     deleteListingBtn:"🗑️ İlanı Sil",editResubmitBtn:"✏️ Düzenle & Yeniden Gönder",withdrawRequestBtn:"🚫 İlanı Geri Çek",rejectReasonLabel:"Red Sebebi",
     domainOnSale:"Satışta",domainSold:"Satıldı",sellerLabel:"Satıcı:",descriptionEmpty:"Açıklama girilmemiş.",
     boostedTag:"Öne Çıkan",
+    listingStatsLabel:"İlgi",
     watchAdBoostBtn:"Reklam İzle, 24 Saat Öne Çıkar",
     watchAdBoostAlreadyBoosted:"Bu ilan zaten öne çıkarılmış durumda.",
     watchAdBoostNotSupported:"Reklamlar bu Pi Browser sürümünde desteklenmiyor. Lütfen Pi Browser'ı güncelleyin.",
@@ -3853,6 +3879,21 @@ const i18n = {
     saleDetailDomain:"Domain",saleDetailBuyer:"Buyer",saleDetailDate:"Date",saleDetailPrice:"Amount",saleDetailSeller:"Seller",
     salesCount:"SALES COUNT",volumePi:"VOLUME (PI)",noPendingDomains:"No pending domain submissions.",
     addDomainBtn:"Add Domain",newDomainPlaceholder:"domain-name.pi",
+    bulkImportTitle:"Bulk Import Domains (CSV)",
+    bulkImportNote:"Your CSV's first row must be a header: domainName,price,type,description (type and description are optional).",
+    bulkImportChooseFileBtn:"Choose CSV File",
+    bulkImportEmptyFile:"File is empty or only contains a header row.",
+    bulkImportHeaderError:"Couldn't find 'domainName' and 'price' columns in the CSV header.",
+    bulkImportParseError:"Couldn't read the file, please check its format.",
+    bulkImportPreviewLabel:(n)=>`${n} rows found — preview:`,
+    bulkImportMoreRows:(n)=>`... and ${n} more rows (all will be imported, preview is limited)`,
+    bulkImportColName:"Domain",
+    bulkImportColPrice:"Price",
+    bulkImportColType:"Type",
+    bulkImportSubmitBtn:(n)=>`Import ${n} Domains`,
+    bulkImportConfirm:(n)=>`${n} domains will be added. Confirm?`,
+    bulkImportDoneLabel:(ok,total)=>`${ok}/${total} domains added successfully.`,
+    bulkImportFailedLabel:"Failed:",
     newDomainPricePlaceholder:"Price (PI)",newDomainImgPlaceholder:"Image path (optional)",
     availableDomains:"Domains Available for Purchase",filterAll:"All",filtersSelectedSuffix:"selected",
     saleStatusFilterLabel:"Sale Status",saleStatusForSale:"Available for Sale",saleStatusSold:"Sold",
@@ -4144,6 +4185,7 @@ const i18n = {
     deleteListingBtn:"🗑️ Delete Listing",editResubmitBtn:"✏️ Edit & Resubmit",withdrawRequestBtn:"🚫 Withdraw Request",rejectReasonLabel:"Reject Reason",
     domainOnSale:"On Sale",domainSold:"Sold",sellerLabel:"Seller:",descriptionEmpty:"No description provided.",
     boostedTag:"Featured",
+    listingStatsLabel:"Interest",
     watchAdBoostBtn:"Watch Ad, Feature for 24h",
     watchAdBoostAlreadyBoosted:"This listing is already featured.",
     watchAdBoostNotSupported:"Ads aren't supported on this Pi Browser version. Please update Pi Browser.",
@@ -5719,6 +5761,15 @@ window.clearAllNotifications=async function(){
 window.openDomainDetail=function(domainName){
     const domain=domains.find(d=>d.name===domainName); if(!domain) return;
     currentDetailDomainName=domainName; // YENİ: İlan şikayet formu hangi domain için açıldığını bilsin diye.
+    // YENİ: Görüntülenme sayacı — satıcıların ilanlarına ilgiyi görebilmesi
+    // için. Aynı kişi aynı domaini art arda açıp kapatarak sayacı şişirmesin
+    // diye kullanıcı+domain+gün bazında bir kereye indiriliyor (localStorage).
+    const _viewKey='w3dg_viewed_'+domainName;
+    const _today=new Date().toDateString();
+    if(localStorage.getItem(_viewKey)!==_today){
+        localStorage.setItem(_viewKey,_today);
+        fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'increment_domain_view',domainName})}).catch(()=>{});
+    }
     const data=domainData[domainName]||{sold:false,price:domain.price};
     const locale=currentLang==='en'?'en-GB':'tr-TR';
     document.getElementById('detail-modal-img').src=data.img||domain.img;
@@ -6249,6 +6300,108 @@ window.handleAddDomain=async function(){
     if(!r.ok||!result.success) showToast(t('addDomainFail')+(result.error||''));
     else{showToast(t('addDomainSuccess')(name));['new-domain-name','new-domain-price','new-domain-img','new-domain-desc'].forEach(id=>document.getElementById(id).value='');}
 };
+
+// ══════════════════════════════════════════════════════════════════════
+//  TOPLU DOMAIN İÇE AKTARMA (CSV) ────────────────────────────────────────
+//  Beklenen sütunlar (ilk satır başlık): domainName,price,type,description
+//  "type" ve "description" isteğe bağlı — boş bırakılabilir.
+// ══════════════════════════════════════════════════════════════════════
+let _bulkImportRows=[];
+function parseCsvLine(line){
+    // Basit ama tırnak içindeki virgülleri doğru işleyen bir CSV satır
+    // ayrıştırıcı (tam bir CSV kütüphanesi gerektirmeyecek kadar basit
+    // veriler için yeterli: domain adı, fiyat, tip, kısa açıklama).
+    const result=[]; let cur=''; let inQuotes=false;
+    for(let i=0;i<line.length;i++){
+        const ch=line[i];
+        if(ch==='"'){ inQuotes=!inQuotes; continue; }
+        if(ch===','&&!inQuotes){ result.push(cur.trim()); cur=''; continue; }
+        cur+=ch;
+    }
+    result.push(cur.trim());
+    return result;
+}
+window.handleBulkImportFileSelect=function(event){
+    const file=event.target.files[0];
+    if(!file) return;
+    const reader=new FileReader();
+    reader.onload=function(e){
+        try{
+            const text=e.target.result;
+            const lines=text.split(/\r?\n/).filter(l=>l.trim().length>0);
+            if(lines.length<2){ showToast(t('bulkImportEmptyFile')); return; }
+            const header=parseCsvLine(lines[0]).map(h=>h.toLowerCase());
+            const nameIdx=header.indexOf('domainname'); const priceIdx=header.indexOf('price');
+            const typeIdx=header.indexOf('type'); const descIdx=header.indexOf('description');
+            if(nameIdx===-1||priceIdx===-1){ showToast(t('bulkImportHeaderError')); return; }
+            _bulkImportRows=lines.slice(1).map(line=>{
+                const cols=parseCsvLine(line);
+                return {
+                    domainName:(cols[nameIdx]||'').trim(),
+                    price:Number(cols[priceIdx]),
+                    type:typeIdx!==-1?(cols[typeIdx]||'genel').trim():'genel',
+                    description:descIdx!==-1?(cols[descIdx]||'').trim():''
+                };
+            }).filter(r=>r.domainName);
+            renderBulkImportPreview();
+        }catch(err){ showToast(t('bulkImportParseError')); }
+        event.target.value=''; // aynı dosya tekrar seçilebilsin diye
+    };
+    reader.readAsText(file,'UTF-8');
+};
+function renderBulkImportPreview(){
+    const el=document.getElementById('bulk-import-preview');
+    if(!el) return;
+    if(!_bulkImportRows.length){ el.innerHTML=''; return; }
+    const rowsHtml=_bulkImportRows.slice(0,50).map(r=>{
+        const valid=r.domainName&&r.price>0;
+        return `<tr>
+            <td style="padding:4px 6px;color:${valid?'#e2e8f0':'#f87171'};border-bottom:1px solid #1e293b;">${escapeHtml(r.domainName)}</td>
+            <td style="padding:4px 6px;color:#94a3b8;border-bottom:1px solid #1e293b;">${r.price||'—'}</td>
+            <td style="padding:4px 6px;color:#94a3b8;border-bottom:1px solid #1e293b;">${escapeHtml(r.type)}</td>
+        </tr>`;
+    }).join('');
+    const moreNote=_bulkImportRows.length>50?`<div style="font-size:0.6em;color:#64748b;margin-top:4px;">${t('bulkImportMoreRows')(_bulkImportRows.length-50)}</div>`:'';
+    el.innerHTML=`
+        <div style="font-size:0.68em;color:#a5b4fc;font-weight:800;margin-bottom:6px;">${t('bulkImportPreviewLabel')(_bulkImportRows.length)}</div>
+        <div style="max-height:220px;overflow-y:auto;border:1px solid #334155;border-radius:8px;">
+            <table style="width:100%;border-collapse:collapse;font-size:0.68em;">
+                <thead><tr style="position:sticky;top:0;background:#1e1b4b;">
+                    <th style="text-align:left;padding:5px 6px;color:#a5b4fc;">${t('bulkImportColName')}</th>
+                    <th style="text-align:left;padding:5px 6px;color:#a5b4fc;">${t('bulkImportColPrice')}</th>
+                    <th style="text-align:left;padding:5px 6px;color:#a5b4fc;">${t('bulkImportColType')}</th>
+                </tr></thead>
+                <tbody>${rowsHtml}</tbody>
+            </table>
+        </div>
+        ${moreNote}
+        <button class="pi-btn" style="margin:8px 0 0 0;animation:none;background:#10b981;padding:8px;" onclick="window.handleBulkImportSubmit()">✅ ${t('bulkImportSubmitBtn')(_bulkImportRows.length)}</button>
+        <div id="bulk-import-results" style="margin-top:8px;"></div>
+    `;
+}
+window.handleBulkImportSubmit=async function(){
+    if(!_bulkImportRows.length) return;
+    if(!confirm(t('bulkImportConfirm')(_bulkImportRows.length))) return;
+    const resultsEl=document.getElementById('bulk-import-results');
+    if(resultsEl) resultsEl.innerHTML=`<p style="font-size:0.7em;color:#64748b;">${t('loadingLabel')}</p>`;
+    try{
+        const r=await fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'bulk_add_domains',rows:_bulkImportRows,accessToken:piAccessToken})});
+        const result=await r.json();
+        if(!r.ok||!result.success){ if(resultsEl) resultsEl.innerHTML=`<p style="font-size:0.7em;color:#f87171;">${result.error||t('genericError')}</p>`; return; }
+        const failedRows=(result.results||[]).filter(x=>!x.success);
+        let html=`<div style="font-size:0.72em;color:#6ee7b7;font-weight:800;">✅ ${t('bulkImportDoneLabel')(result.successCount,result.totalCount)}</div>`;
+        if(failedRows.length){
+            html+=`<div style="margin-top:6px;font-size:0.65em;color:#f87171;font-weight:700;">${t('bulkImportFailedLabel')}</div>`;
+            html+=failedRows.map(f=>`<div style="font-size:0.62em;color:#fca5a5;">• ${escapeHtml(f.domainName)}: ${escapeHtml(f.error||'')}</div>`).join('');
+        }
+        if(resultsEl) resultsEl.innerHTML=html;
+        showToast(t('bulkImportDoneLabel')(result.successCount,result.totalCount));
+        _bulkImportRows=[];
+        debouncedRender();
+        renderAdminPriceList();
+    }catch(e){ if(resultsEl) resultsEl.innerHTML=`<p style="font-size:0.7em;color:#f87171;">${t('genericError')}</p>`; }
+};
+
 window.openDeleteAccountModal=async function(){
     if(!isAuth){ showToast(t('loginRequiredGeneric')); return; }
     document.getElementById('delete-account-modal').style.display='flex';
@@ -7042,7 +7195,7 @@ window.resolveDeletionRequest=async function(requestId){
 // ══════════════════════════════════════════════════════════════════════
 const AUDIT_LOG_CATEGORIES = [
     { key: 'payments',   icon: '💰', labelKey: 'auditCatPayments',   actions: ['release_seller_payment', 'refund_buyer', 'export_sales_data', 'reset_platform_stats'] },
-    { key: 'listings',   icon: '📋', labelKey: 'auditCatListings',   actions: ['approve_sell_request', 'reject_sell_request', 'bulk_approve_sell_requests', 'delete_domain', 'toggle_ownership_verified'] },
+    { key: 'listings',   icon: '📋', labelKey: 'auditCatListings',   actions: ['approve_sell_request', 'reject_sell_request', 'bulk_approve_sell_requests', 'delete_domain', 'toggle_ownership_verified', 'bulk_add_domains'] },
     { key: 'offers',     icon: '💬', labelKey: 'auditCatOffers',     actions: ['respond_offer', 'counter_offer', 'respond_counter_offer'] },
     { key: 'disputes',   icon: '⚖️', labelKey: 'auditCatDisputes',   actions: ['resolve_dispute'] },
     { key: 'reports',    icon: '🚩', labelKey: 'auditCatReports',    actions: ['update_report_status'] },
@@ -7812,6 +7965,12 @@ function renderUserPanel(){
                         <div style="display:flex;gap:6px;align-items:baseline;">
                             <span style="color:#64748b;flex-shrink:0;font-weight:700;min-width:90px;">💰 ${t('detailFieldPrice')}:</span>
                             <span style="color:#fbbf24;font-weight:900;">${d.price} Pi</span>
+                        </div>
+                        <!-- YENİ: Satıcının ilanına olan ilgiyi görebilmesi için
+                             görüntülenme ve favori sayısı. -->
+                        <div style="display:flex;gap:6px;align-items:baseline;">
+                            <span style="color:#64748b;flex-shrink:0;font-weight:700;min-width:90px;">📊 ${t('listingStatsLabel')}:</span>
+                            <span style="color:#94a3b8;">👁️ ${d.viewCount||0} · ⭐ ${d.favoriteCount||0}</span>
                         </div>
                         <div style="display:flex;gap:6px;align-items:baseline;">
                             <span style="color:#64748b;flex-shrink:0;font-weight:700;min-width:90px;">📅 ${t('approvalDateLabel')}:</span>
