@@ -4405,7 +4405,70 @@ async function handlerImpl(req, res) {
       else if (salesCount >= SELLER_TIER_SILVER) sellerTier = 'silver';
       else if (salesCount >= SELLER_TIER_BRONZE) sellerTier = 'bronze';
 
-      return res.status(200).json({ success: true, avg, count, recentReviews, isTrusted, salesCount, sellerTier, activeListings, joinedAt });
+      // YENİ: Satıcının en az bir "Sahiplik Doğrulandı" işaretli ilanı var mı?
+      // (ownershipVerified domain bazlı bir alan — satıcı bazında özetliyoruz.)
+      let hasVerifiedListing = false;
+      try {
+        const domSnap2 = await db.collection('domains').where('sellerUsername', '==', sellerUsername).where('ownershipVerified', '==', true).limit(1).get();
+        hasVerifiedListing = !domSnap2.empty;
+      } catch (_) { /* bu sinyal olmadan da skor hesaplanabilir */ }
+
+      // YENİ: Ortalama mesaj yanıt süresi — mesajlaşma sistemi (conversations
+      // koleksiyonu) zaten var, buradan ek bir veri toplama olmadan
+      // hesaplanabiliyor. Her konuşmada, satıcı KONUŞMAYI BAŞLATMADIYSA
+      // (yani karşı taraf ilk mesajı attıysa), satıcının o konuşmadaki İLK
+      // yanıtına kadar geçen süre ölçülüyor, sonra tüm konuşmalardaki bu
+      // sürelerin ortalaması alınıyor.
+      let avgResponseMinutes = null;
+      try {
+        const convSnap = await db.collection('conversations').where('participants', 'array-contains', sellerUsername).limit(50).get();
+        const responseTimes = [];
+        convSnap.forEach(cd => {
+          const msgs = cd.data().messages || [];
+          if (msgs.length < 2 || msgs[0].from === sellerUsername) return;
+          const sellerReply = msgs.find(m => m.from === sellerUsername);
+          if (!sellerReply) return;
+          const diffMinutes = (sellerReply.timestamp - msgs[0].timestamp) / 60000;
+          // 30 günden uzun süren "yanıtları" ortalamaya katmıyoruz — muhtemelen
+          // satıcı o konuşmayı çoktan unutmuş, gerçek bir yanıt süresi sinyali
+          // değil, ortalamayı anlamsızca bozar.
+          if (diffMinutes >= 0 && diffMinutes < 43200) responseTimes.push(diffMinutes);
+        });
+        if (responseTimes.length > 0) {
+          avgResponseMinutes = Math.round(responseTimes.reduce((a, b) => a + b, 0) / responseTimes.length);
+        }
+      } catch (_) { /* yanıt süresi hesaplanamazsa trust score'da nötr puan verilir */ }
+
+      // ══════════════════════════════════════════════════════════════════
+      //  BİRLEŞİK GÜVEN SKORU (0-100) ────────────────────────────────────
+      //  Amaç: puan, doğrulama, satış geçmişi, yanıt hızı ve hesap yaşı gibi
+      //  DAĞINIK sinyalleri alıcının TEK bakışta anlayacağı bir sayıya
+      //  indirgemek. Her bileşen için makul bir üst sınır (ağırlık) var;
+      //  hiçbir veri yokken (ör. hiç değerlendirme almamış yeni bir satıcı)
+      //  o bileşen için CEZALANDIRICI 0 değil, NÖTR bir puan veriliyor —
+      //  aksi halde her yeni satıcı "güvenilmez" görünürdü, ki bu adil değil.
+      // ══════════════════════════════════════════════════════════════════
+      let trustScore = 0;
+      trustScore += count > 0 ? (avg / 5) * 40 : 20;              // Puan — 40
+      trustScore += Math.min(20, salesCount * 2);                  // Satış geçmişi — 20
+      if (hasVerifiedListing) trustScore += 15;                    // Sahiplik doğrulama — 15
+      if (avgResponseMinutes !== null) {                           // Yanıt hızı — 15
+        if (avgResponseMinutes <= 60) trustScore += 15;
+        else if (avgResponseMinutes <= 360) trustScore += 10;
+        else if (avgResponseMinutes <= 1440) trustScore += 5;
+      } else {
+        trustScore += 5;
+      }
+      if (joinedAt) trustScore += Math.min(10, (Date.now() - joinedAt) / 86400000 / 18); // Hesap yaşı — 10
+      trustScore = Math.round(Math.min(100, Math.max(0, trustScore)));
+
+      let trustLevel;
+      if (trustScore >= 80) trustLevel = 'expert';
+      else if (trustScore >= 60) trustLevel = 'trusted';
+      else if (trustScore >= 40) trustLevel = 'growing';
+      else trustLevel = 'new';
+
+      return res.status(200).json({ success: true, avg, count, recentReviews, isTrusted, salesCount, sellerTier, activeListings, joinedAt, hasVerifiedListing, avgResponseMinutes, trustScore, trustLevel });
     } catch (e) {
       return res.status(500).json({ error: e.message });
     }
