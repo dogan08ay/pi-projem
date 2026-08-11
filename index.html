@@ -158,6 +158,11 @@
         .user-tab-btn{min-width:0;background:linear-gradient(135deg,#1e293b 0%,#0f172a 100%);border:1.5px solid #334155;color:#94a3b8;padding:7px 3px;border-radius:8px;font-size:0.62em;font-weight:800;cursor:pointer;white-space:normal;line-height:1.25;transition:all 0.2s;text-align:center;box-shadow:0 2px 8px rgba(0,0,0,0.3);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;min-height:40px;position:relative;}
         .user-tab-btn span[data-i18n]{overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;word-break:break-word;}
         .user-tab-btn.active{background:rgba(16,185,129,0.15);border-color:#10b981;color:#6ee7b7;}
+        /* YENİ: "Yardım & Şikayetler" birleşik sekmesi içindeki alt seçim
+           (pill) butonları — bkz. Destek Taleplerim/Marka Hakkı/Şikayetlerim
+           birleştirmesi. */
+        .help-pill-btn{flex:1;padding:7px 4px;border-radius:8px;border:1.5px solid #334155;background:#0f172a;color:#94a3b8;font-size:0.62em;font-weight:800;cursor:pointer;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;position:relative;}
+        .help-pill-btn.active{border-color:#6366f1;background:rgba(99,102,241,0.15);color:#a5b4fc;}
         .user-tab-panel{display:none;}
         .user-tab-panel.active{display:block;animation:card-rise 0.3s ease backwards;}
         .filter-section{margin-top:5px;padding-top:4px;border-top:1px solid rgba(99,102,241,0.15);min-height:45px;}
@@ -1857,14 +1862,33 @@
             <button class="user-tab-btn" style="position:relative;" data-utab="utab-purchases" onclick="switchUserTab('utab-purchases')">🛒 <span data-i18n="myPurchases"></span><span class="pending-badge" id="user-purchases-tab-badge" style="display:none;">0</span></button>
             <button class="user-tab-btn" style="position:relative;" data-utab="utab-listings" onclick="switchUserTab('utab-listings')">🏷️<span data-i18n="myListings"></span><span class="pending-badge" id="user-listings-tab-badge" style="display:none;">0</span></button>
             <button class="user-tab-btn" style="position:relative;" data-utab="utab-income" onclick="switchUserTab('utab-income')">💰<span data-i18n="myIncome"></span><span class="pending-badge" id="user-income-tab-badge" style="display:none;">0</span></button>
-            <button class="user-tab-btn" style="position:relative;" data-utab="utab-tickets" onclick="switchUserTab('utab-tickets')">🎫<span data-i18n="myTickets"></span><span class="pending-badge" id="user-ticket-tab-badge" style="display:none;">0</span></button>
             <!-- YENİ: Alıcı-satıcı doğrudan mesajlaşma sekmesi. -->
             <button class="user-tab-btn" style="position:relative;" data-utab="utab-messages" onclick="switchUserTab('utab-messages')">💬<span data-i18n="myMessages"></span><span class="pending-badge" id="user-messages-tab-badge" style="display:none;">0</span></button>
-            <button class="user-tab-btn" style="position:relative;" data-utab="utab-trademark" onclick="switchUserTab('utab-trademark')">🔖<span data-i18n="myTrademarkClaims"></span><span class="pending-badge" id="user-trademark-tab-badge" style="display:none;">0</span></button>
-            <!-- YENİ: kullanıcının kendi bildirdiği ilan şikayetlerini takip
-                 edebileceği sekme — öncesinde bir şikayet gönderildiğinde
-                 kullanıcı bunun akıbetini hiçbir şekilde göremiyordu. -->
-            <button class="user-tab-btn" style="position:relative;" data-utab="utab-myreports" onclick="switchUserTab('utab-myreports')">🚩<span data-i18n="myReportsTab"></span><span class="pending-badge" id="user-reports-tab-badge" style="display:none;">0</span></button>
+            <!-- BİRLEŞTİRİLDİ: Öncesinde "Destek Taleplerim", "Marka Hakkı
+                 Talepleri" ve "Şikayetlerim" ayrı ayrı 3 sekmeydi — yeni bir
+                 kullanıcı "bir sorunum var" dediğinde hangisine gireceğini
+                 bilemiyordu, üçü de kavramsal olarak aynı ihtiyacı
+                 ("yardım/şikayet") karşılıyordu. Artık TEK bir sekme altında,
+                 içeride üç seçenekli bir alt-navigasyon (pill) ile ayrılıyor
+                 (bkz. #utab-help ve renderHelpGroupTabs). Alttaki panel
+                 ID'leri (utab-tickets/utab-trademark/utab-myreports) ve
+                 onlara bağlı TÜM mevcut mantık (loadMyTickets, rozet
+                 sayaçları, polling vb.) hiç değişmeden aynen çalışmaya
+                 devam ediyor — sadece dış görünüşte birleştirildi. -->
+            <button class="user-tab-btn" style="position:relative;" data-utab="utab-help-group" onclick="switchUserTab('utab-tickets')">🆘<span data-i18n="helpGroupTab"></span><span class="pending-badge" id="user-help-group-tab-badge" style="display:none;">0</span></button>
+            <!-- FIX: Bu üç badge, eski (artık kaldırılmış) ayrı sekme
+                 butonlarının İÇİNDEYDİ. Onları silince loadMyTickets(),
+                 loadMyTrademarkClaims(), loadMyReports() gibi VAR OLAN
+                 fonksiyonlar artık var olmayan bir elemente yazmaya
+                 çalışıyor, sessizce kırılıyordu. Görünmez bir defter
+                 (bookkeeping) elemanı olarak burada tutuluyorlar — hem eski
+                 fonksiyonlar çalışmaya devam ediyor hem de birleşik rozet
+                 (yukarıdaki) bunların toplamını gösteriyor. -->
+            <div style="display:none;">
+                <span class="pending-badge" id="user-ticket-tab-badge">0</span>
+                <span class="pending-badge" id="user-trademark-tab-badge">0</span>
+                <span class="pending-badge" id="user-reports-tab-badge">0</span>
+            </div>
             <!-- YENİ: kullanıcının tüm geçmiş işlemlerini (ilan, satın alma,
                  şikayet, destek talebi, marka itirazı) tek bir yerden,
                  konu başlıklarıyla ayrılmış şekilde görebildiği sekme. -->
@@ -1965,6 +1989,15 @@
             <button onclick="window.exportMySalesCsv(this)" style="width:100%;padding:9px;margin-top:10px;border-radius:10px;border:1.5px solid #10b981;background:rgba(16,185,129,0.1);color:#6ee7b7;font-size:0.75em;font-weight:800;cursor:pointer;">⬇️ <span data-i18n="exportMySalesCsvBtn"></span></button>
         </div>
         <div class="user-tab-panel" id="utab-tickets">
+            <!-- YENİ: "Yardım & Şikayetler" alt-navigasyonu (pill bar) —
+                 bu üç panelin (Destek/Marka Hakkı/Şikayetler) hepsinde AYNI
+                 şekilde tekrarlanıyor; her an sadece aktif panel görünür
+                 olduğu için sadece BİRİ ekranda görünür. -->
+            <div style="display:flex;gap:6px;margin-bottom:10px;">
+                <button class="help-pill-btn active" data-help-tab="utab-tickets" onclick="switchUserTab('utab-tickets')">🎫 <span data-i18n="myTickets"></span></button>
+                <button class="help-pill-btn" data-help-tab="utab-trademark" onclick="switchUserTab('utab-trademark')">🔖 <span data-i18n="myTrademarkClaimsShort"></span></button>
+                <button class="help-pill-btn" data-help-tab="utab-myreports" onclick="switchUserTab('utab-myreports')">🚩 <span data-i18n="myReportsTab"></span></button>
+            </div>
             <div style="background:#1e1b3a;border:2px solid #6366f1;border-radius:12px;padding:10px;">
                 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;padding-bottom:7px;border-bottom:1px solid #312e81;">
                     <span style="display:flex;align-items:center;gap:6px;font-size:0.72em;color:#a5b4fc;font-weight:800;text-transform:uppercase;">🎫 <span data-i18n="myTickets"></span></span>
@@ -2000,6 +2033,11 @@
         </div>
 
         <div class="user-tab-panel" id="utab-trademark">
+            <div style="display:flex;gap:6px;margin-bottom:10px;">
+                <button class="help-pill-btn" data-help-tab="utab-tickets" onclick="switchUserTab('utab-tickets')">🎫 <span data-i18n="myTickets"></span></button>
+                <button class="help-pill-btn active" data-help-tab="utab-trademark" onclick="switchUserTab('utab-trademark')">🔖 <span data-i18n="myTrademarkClaimsShort"></span></button>
+                <button class="help-pill-btn" data-help-tab="utab-myreports" onclick="switchUserTab('utab-myreports')">🚩 <span data-i18n="myReportsTab"></span></button>
+            </div>
             <div style="background:#1e1b3a;border:2px solid #ef4444;border-radius:12px;padding:10px;">
                 <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;padding-bottom:7px;border-bottom:1px solid #7f1d1d;">
                     <span style="display:flex;align-items:center;gap:6px;font-size:0.72em;color:#fca5a5;font-weight:800;text-transform:uppercase;">🔖 <span data-i18n="myTrademarkClaims"></span></span>
@@ -2034,6 +2072,11 @@
              şikayetlerinin durumunu (Gönderildi → İnceleniyor →
              Çözüldü/Kapatıldı) aşama aşama takip edebildiği panel. -->
         <div class="user-tab-panel" id="utab-myreports">
+            <div style="display:flex;gap:6px;margin-bottom:10px;">
+                <button class="help-pill-btn" data-help-tab="utab-tickets" onclick="switchUserTab('utab-tickets')">🎫 <span data-i18n="myTickets"></span></button>
+                <button class="help-pill-btn" data-help-tab="utab-trademark" onclick="switchUserTab('utab-trademark')">🔖 <span data-i18n="myTrademarkClaimsShort"></span></button>
+                <button class="help-pill-btn active" data-help-tab="utab-myreports" onclick="switchUserTab('utab-myreports')">🚩 <span data-i18n="myReportsTab"></span></button>
+            </div>
             <div style="background:#1e1b3a;border:2px solid #ef4444;border-radius:12px;padding:10px;">
                 <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;padding-bottom:7px;border-bottom:1px solid #7f1d1d;">
                     <span style="display:flex;align-items:center;gap:6px;font-size:0.72em;color:#fca5a5;font-weight:800;text-transform:uppercase;">🚩 <span data-i18n="myReportsTab"></span></span>
@@ -3522,6 +3565,8 @@ const i18n = {
     reportStatusModalNotePlaceholder:"İsterseniz kullanıcıya gönderilecek bir açıklama yazın (opsiyonel)...",
     reportStatusModalConfirmBtn:"Onayla ve Bildir",
     myReportsTab:"Şikayetlerim",
+    helpGroupTab:"Yardım & Şikayetler",
+    myTrademarkClaimsShort:"Marka Hakkı",
     myReportsNote:"Bildirdiğiniz ilan şikayetlerinin durumunu buradan takip edebilirsiniz.",
     myReportsEmpty:"Henüz bir ilan bildirmediniz. (Geçmiş ve çözülerek kapatılmış şikayetlerinize \"Geçmişim\" menüsündeki \"Şikayetler\" başlığından ulaşabilirsiniz.)",
     reportsArchivedNotice:(n)=>`${n} şikayet başvurunuz sonuçlandı ve buradan kaldırıldı — geçmiş başvurularınızı "Geçmişim" bölümünden takip edebilirsiniz.`,
@@ -3774,6 +3819,8 @@ const i18n = {
     tourStep3Title:"Bildirimler",
     tourStep3Desc:"Domain onayı, satış ve destek talebi güncellemeleri gibi bildirimleriniz burada birikir.",
     tourStep4Title:"Destek Talepleri",
+    tourStepHelpGroupTitle:"🆘 Yardım & Şikayetler",
+    tourStepHelpGroupDesc:"Bir sorununuz mu var? Destek talebi açabilir, marka hakkı itirazınızı takip edebilir veya bildirdiğiniz ilan şikayetlerinin durumunu görebilirsiniz — hepsi burada, üstteki sekmelerle ayrılmış.",
     tourStep4Desc:"Bir sorununuz mu var? Buradan destek talebi açıp ekibimizle doğrudan yazışabilirsiniz.",
     tourStepProfileSettingsTitle:"👤 Profil Ayarları",
     tourStepProfileSettingsDesc:"Buradan profilinize girebilirsiniz: giriş/son görülme tarihiniz, satın aldığınız domain sayısı, puanınız, başlangıç adımlarınız ve bildirim tercihleriniz tek ekranda toplanır.",
@@ -4392,6 +4439,8 @@ const i18n = {
     reportStatusModalNotePlaceholder:"Optionally add a note to send to the user...",
     reportStatusModalConfirmBtn:"Confirm & Notify",
     myReportsTab:"My Reports",
+    helpGroupTab:"Help & Reports",
+    myTrademarkClaimsShort:"Trademark",
     myReportsNote:"Track the status of the listing reports you've submitted here.",
     myReportsEmpty:"You haven't reported any listings yet. (You can find your past and resolved/closed reports under the \"Reports\" section in \"My History\".)",
     reportsArchivedNotice:(n)=>`${n} of your reports have been resolved and removed from here — you can still track past reports in "My History".`,
@@ -4644,6 +4693,8 @@ const i18n = {
     tourStep3Title:"Notifications",
     tourStep3Desc:"Updates about approvals, sales, and support tickets show up here.",
     tourStep4Title:"Support Tickets",
+    tourStepHelpGroupTitle:"🆘 Help & Reports",
+    tourStepHelpGroupDesc:"Got an issue? Open a support ticket, track your trademark claim, or check the status of listings you've reported — all here, split by tabs above.",
     tourStep4Desc:"Have an issue? Open a support ticket here and chat directly with our team.",
     tourStepProfileSettingsTitle:"👤 Profile Settings",
     tourStepProfileSettingsDesc:"Manage your profile here: your login/last-seen dates, purchased domain count, points, getting-started checklist, and notification preferences, all on one screen.",
@@ -5132,8 +5183,21 @@ window.switchAdminTab=function(tabId){
     if(tabId==='tab-messages'){ window.loadAdminConversations(); }
 };
 window.switchUserTab=function(tabId){
-    document.querySelectorAll('.user-tab-btn').forEach(b=>b.classList.toggle('active',b.dataset.utab===tabId));
+    // FIX (Yardım & Şikayetler birleştirmesi): "utab-tickets",
+    // "utab-trademark", "utab-myreports" artık ana sekme çubuğunda ayrı
+    // birer buton değil — tek bir "🆘 Yardım & Şikayetler" butonunun
+    // (data-utab="utab-help-group") ALTINDA, panel içindeki pill'lerle
+    // seçiliyor. Bu yüzden ana sekme çubuğundaki "aktif" vurgusu, bu üç
+    // panelden biri açıldığında GERÇEK id'ye değil, onları temsil eden
+    // birleşik butona uygulanmalı.
+    const HELP_GROUP_TABS=['utab-tickets','utab-trademark','utab-myreports'];
+    const isHelpChild=HELP_GROUP_TABS.includes(tabId);
+    document.querySelectorAll('.user-tab-btn').forEach(b=>b.classList.toggle('active', isHelpChild ? b.dataset.utab==='utab-help-group' : b.dataset.utab===tabId));
     document.querySelectorAll('.user-tab-panel').forEach(p=>p.classList.toggle('active',p.id===tabId));
+    // Panel içi pill'lerin (Destek/Marka Hakkı/Şikayetler seçimi) vurgusu.
+    if(isHelpChild){
+        document.querySelectorAll('.help-pill-btn').forEach(b=>b.classList.toggle('active', b.dataset.helpTab===tabId));
+    }
     if(tabId==='utab-tickets'){ loadMyTickets(); markMyTicketsSeen(); }
     if(tabId==='utab-messages'){ window.loadMyConversations(); }
     if(tabId==='utab-trademark'){ loadMyTrademarkClaims(); }
@@ -9752,6 +9816,39 @@ let firstDomainsSnapshotReceived=false;
 window.addEventListener("load",()=>{
     configReady.then(()=>applyConfigToDOM());setInterval(updateActiveStatus,15000);document.querySelector('.main-scroll').style.maxHeight='calc(100vh - 50px)';});
 
+// YENİ: "Yardım & Şikayetler" birleşik rozeti — Destek Talepleri, Marka
+// Hakkı ve Şikayetler rozetlerinin TOPLAMINI gösterir. Bu üç badge'i
+// güncelleyen tüm mevcut fonksiyonlara (loadMyTickets, loadMyTrademarkClaims,
+// loadMyReports, vb.) tek tek dokunmak yerine, bu üç elemanı bir
+// MutationObserver ile izleyip herhangi biri değiştiğinde toplamı yeniden
+// hesaplıyoruz — hem daha az riskli hem de gelecekte biri bu badge'lerin
+// güncellenme mantığını değiştirirse otomatik senkron kalır.
+function updateHelpGroupBadge(){
+    const ids=['user-ticket-tab-badge','user-trademark-tab-badge','user-reports-tab-badge'];
+    let total=0;
+    ids.forEach(id=>{
+        const el=document.getElementById(id);
+        if(el && el.style.display!=='none'){
+            const n=parseInt(el.textContent,10);
+            if(!isNaN(n)) total+=n;
+        }
+    });
+    const groupBadge=document.getElementById('user-help-group-tab-badge');
+    if(groupBadge){
+        if(total>0){ groupBadge.style.display='inline-block'; groupBadge.textContent=total>99?'99+':total; }
+        else groupBadge.style.display='none';
+    }
+}
+window.addEventListener("load",()=>{
+    ['user-ticket-tab-badge','user-trademark-tab-badge','user-reports-tab-badge'].forEach(id=>{
+        const el=document.getElementById(id);
+        if(el){
+            new MutationObserver(updateHelpGroupBadge).observe(el,{attributes:true,attributeFilter:['style'],childList:true,characterData:true,subtree:true});
+        }
+    });
+    updateHelpGroupBadge();
+});
+
 // ═══════════════════════════════════════════════════════════════════════
 //  LINK OPEN HELPER — Pi Browser / iframe uyumluluğu için
 //  target="_blank" bazen Pi Browser'da çalışmaz, bu yüzden
@@ -9903,10 +10000,8 @@ const TOUR_STEPS = [
     { selector: '[data-utab="utab-purchases"]', titleKey: 'tourStepPurchasesTitle', descKey: 'tourStepPurchasesDesc', placement: 'top', context: 'panel', tab: 'utab-purchases' },
     { selector: '[data-utab="utab-income"]', titleKey: 'tourStepIncomeTitle', descKey: 'tourStepIncomeDesc', placement: 'top', context: 'panel', tab: 'utab-income' },
     { selector: '[data-utab="utab-listings"]', titleKey: 'tourStepListingsTitle', descKey: 'tourStepListingsDesc', placement: 'top', context: 'panel', tab: 'utab-listings' },
-    { selector: '[data-utab="utab-trademark"]', titleKey: 'tourStepTrademarkTitle', descKey: 'tourStepTrademarkDesc', placement: 'top', context: 'panel', tab: 'utab-trademark' },
-    { selector: '[data-utab="utab-myreports"]', titleKey: 'tourStepMyReportsTitle', descKey: 'tourStepMyReportsDesc', placement: 'top', context: 'panel', tab: 'utab-myreports' },
+    { selector: '[data-utab="utab-help-group"]', titleKey: 'tourStepHelpGroupTitle', descKey: 'tourStepHelpGroupDesc', placement: 'top', context: 'panel', tab: 'utab-tickets' },
     { selector: '[data-utab="utab-history"]', titleKey: 'tourStepHistoryTitle', descKey: 'tourStepHistoryDesc', placement: 'top', context: 'panel', tab: 'utab-history' },
-    { selector: '[data-utab="utab-tickets"]', titleKey: 'tourStep4Title', descKey: 'tourStep4Desc', placement: 'top', context: 'panel', tab: 'utab-tickets' },
     { selector: '.side-menu-item[onclick*="openShareAppModal"]', titleKey: 'tourStepShareTitle', descKey: 'tourStepShareDesc', placement: 'left', context: 'menu' }
 ];
 let tourStepIndex = 0;
