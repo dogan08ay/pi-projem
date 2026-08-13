@@ -5494,14 +5494,36 @@ window.toggleFavorite=async function(domainName, evt){
 window.toggleCategoryFilterPanel=function(){
     const panel=document.getElementById('category-filter-panel');
     if(!panel) return;
-    panel.style.display=panel.style.display==='none'?'block':'none';
+    // FIX ("kategori menüsü açılırken yanıp sönüyor"): Öncesinde panel
+    // display:none'dan doğrudan display:block'a ANİ şekilde geçiyordu.
+    // Bazı mobil tarayıcılarda (özellikle Pi Browser gibi WebView tabanlı
+    // ortamlarda) bu tür ani geçişler, tarayıcının panelin arka
+    // plan/gölge gibi karmaşık stillerini İLK karede tam parlaklıkta
+    // boyaması yüzünden kısa bir "flaş" gibi algılanabiliyor. Çözüm:
+    // paneli önce görünmez (opacity:0) ama display:block yaparak
+    // yerleştirip, tarayıcının bunu BİR kare boyaması beklendikten sonra
+    // yumuşak bir geçişle (0.15s) tam görünür hale getirmek — ani "hepsi
+    // bir anda" boyamayı ortadan kaldırıyor.
+    const isHidden=panel.style.display==='none'||!panel.style.display;
+    if(isHidden){
+        panel.style.transition='opacity 0.15s ease';
+        panel.style.opacity='0';
+        panel.style.display='block';
+        requestAnimationFrame(()=>{
+            requestAnimationFrame(()=>{ panel.style.opacity='1'; });
+        });
+    }else{
+        panel.style.opacity='0';
+        setTimeout(()=>{ if(panel.style.opacity==='0') panel.style.display='none'; },150);
+    }
 };
 document.addEventListener('click',(e)=>{
     const panel=document.getElementById('category-filter-panel');
     const btn=document.getElementById('category-filter-btn');
     if(!panel||panel.style.display==='none') return;
     if(!panel.contains(e.target)&&e.target!==btn&&!btn?.contains(e.target)){
-        panel.style.display='none';
+        panel.style.opacity='0';
+        setTimeout(()=>{ if(panel.style.opacity==='0') panel.style.display='none'; },150);
     }
 });
 window.toggleAllCategoryFilters=function(checked){
