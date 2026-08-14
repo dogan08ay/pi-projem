@@ -1465,10 +1465,13 @@
         <h2 id="detail-modal-name" style="color:#f1f5f9;margin:8px 0 10px 0;font-size:1.1em;font-weight:900;"></h2>
         <div id="detail-modal-fields" style="display:flex;flex-direction:column;gap:8px;font-size:0.78em;color:#cbd5e1;line-height:1.4;margin-bottom:12px;background:#0f172a;padding:12px;border-radius:10px;"></div>
         <div id="detail-modal-action"></div>
-        <!-- YENİ: İlan şikayet etme — öncesinde şüpheli/sahte bir ilanı
-             bildirecek hiçbir yol yoktu. -->
-        <button onclick="window.openReportListingModal()" style="width:100%;display:flex;align-items:center;justify-content:center;gap:6px;margin-top:8px;padding:10px;border-radius:10px;border:1.5px solid #ef4444;background:rgba(239,68,68,0.12);color:#f87171;font-size:0.75em;font-weight:800;cursor:pointer;animation:report-btn-glow 2.2s ease-in-out infinite;transition:transform 0.15s,background 0.15s;" onmousedown="this.style.transform='scale(0.96)'" onmouseup="this.style.transform='scale(1)'" ontouchstart="this.style.transform='scale(0.96)'" ontouchend="this.style.transform='scale(1)'">🚩 <span data-i18n="reportListingLink"></span></button>
-        <button class="pi-btn" style="background:#475569;animation:none;padding:10px;margin:8px 0 0 0;width:100%;" onclick="document.getElementById('domain-detail-modal').style.display='none'" data-i18n="close"></button>
+        <!-- GÜNCELLEME: "İlan Bildir" ve "Kapat" ikisi de kısa metinli,
+             artık yan yana (iki sütun) — öncesinde alt alta iki tam
+             genişlik satır kaplıyorlardı. -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px;">
+            <button onclick="window.openReportListingModal()" style="display:flex;align-items:center;justify-content:center;gap:5px;padding:10px 6px;border-radius:10px;border:1.5px solid #ef4444;background:rgba(239,68,68,0.12);color:#f87171;font-size:0.72em;font-weight:800;cursor:pointer;animation:report-btn-glow 2.2s ease-in-out infinite;transition:transform 0.15s,background 0.15s;" onmousedown="this.style.transform='scale(0.96)'" onmouseup="this.style.transform='scale(1)'" ontouchstart="this.style.transform='scale(0.96)'" ontouchend="this.style.transform='scale(1)'">🚩 <span data-i18n="reportListingLink"></span></button>
+            <button class="pi-btn" style="background:#475569;animation:none;padding:10px 6px;margin:0;" onclick="document.getElementById('domain-detail-modal').style.display='none'" data-i18n="close"></button>
+        </div>
     </div>
 </div>
 
@@ -6158,41 +6161,68 @@ window.openDomainDetail=function(domainName){
     document.getElementById('detail-modal-fields').innerHTML=rows;
 
     const actionEl=document.getElementById('detail-modal-action');
-    let actionHtml='';
+    // GÜNCELLEME (kullanıcı geri bildirimi — "tıklanır buton listesi çok
+    // fazla göz yoruyor"): Öncesinde Favorilere Ekle / Teklif Ver / Mesaj
+    // Gönder / Sahiplik Doğrula gibi KISA metinli butonlar bile tam
+    // genişlikte, alt alta tek tek diziliyordu — bu da modalı gereksiz
+    // yere uzatıp dikey kaydırmayı artırıyordu. Artık bu "ikincil" butonlar
+    // bir CSS GRID içine alınıyor (auto-fit,minmax) — 2 buton varsa yan
+    // yana, TEK buton varsa (ör. sıradan bir kullanıcı sadece Favorilere
+    // Ekle görüyorsa) otomatik tam genişlik kaplıyor; yani admin'e görünen
+    // (ekstra Sahiplik Doğrula butonlu) ile normal kullanıcıya görünen
+    // düzen birbirini BOZMUYOR, grid kaç öğe varsa ona göre kendini ayarlıyor.
+    // "Satın Al" (birincil eylem) ve "Kapat" bilinçli olarak tam genişlikte
+    // bırakıldı — bunlar en önemli/son eylemler, öne çıkmaları gerekiyor.
+    let primaryHtml='';
+    let secondaryHtml='';
     if(isAuth){
         const isFav=userFavorites.has(domainName);
-        actionHtml+=`<button id="detail-fav-btn" onclick="window.toggleFavorite('${domainName}')" style="width:100%;padding:9px;margin-bottom:8px;border-radius:9px;border:1.5px solid #f59e0b;background:${isFav?'rgba(245,158,11,0.9)':'rgba(245,158,11,0.1)'};color:${isFav?'#1e1b4b':'#fbbf24'};font-weight:800;font-size:0.78em;cursor:pointer;">${isFav?'★ '+t('favoriteRemoveBtn'):'☆ '+t('favoriteAddBtn')}</button>`;
+        secondaryHtml+=`<button id="detail-fav-btn" onclick="window.toggleFavorite('${domainName}')" style="padding:9px 6px;border-radius:9px;border:1.5px solid #f59e0b;background:${isFav?'rgba(245,158,11,0.9)':'rgba(245,158,11,0.1)'};color:${isFav?'#1e1b4b':'#fbbf24'};font-weight:800;font-size:0.74em;cursor:pointer;">${isFav?'★ '+t('favoriteRemoveBtn'):'☆ '+t('favoriteAddBtn')}</button>`;
     }
     if(!data.sold&&isAuth){
         // İSTİSNA: admin kendi ilanını da test amaçlı satın alabilsin diye
         // bu kısıtlamadan muaf — backend'de de aynı istisna var.
         const isOwnListing=data.sellerUsername && data.sellerUsername===currentUser && currentUser!==APP_CONFIG.adminUsername;
         if(isOwnListing){
-            actionHtml+=`<div style="width:100%;padding:10px;font-size:0.9em;border-radius:9px;background:#334155;color:#94a3b8;text-align:center;font-weight:800;">👤 ${t('ownListingTag')}</div>`;
+            primaryHtml+=`<div style="width:100%;padding:10px;font-size:0.9em;border-radius:9px;background:#334155;color:#94a3b8;text-align:center;font-weight:800;">👤 ${t('ownListingTag')}</div>`;
         } else {
-            actionHtml+=`<button class="btn-buy" style="width:100%;padding:10px;font-size:0.9em;" onclick="document.getElementById('domain-detail-modal').style.display='none';window.openPreBuyModal('${domainName}',${data.price});">${t('buyNow')}</button>`;
+            primaryHtml+=`<button class="btn-buy" style="width:100%;padding:10px;font-size:0.9em;" onclick="document.getElementById('domain-detail-modal').style.display='none';window.openPreBuyModal('${domainName}',${data.price});">${t('buyNow')}</button>`;
         }
     }
     if(!data.sold && data.reservedFor && data.reservedUntil && data.reservedUntil>Date.now()){
         const isMine=isAuth && data.reservedFor===currentUser;
         const minutesLeft=Math.max(1,Math.ceil((data.reservedUntil-Date.now())/60000));
-        actionHtml+=`<div style="margin-top:8px;padding:7px 10px;border-radius:8px;font-size:0.68em;font-weight:800;text-align:center;${isMine?'background:rgba(16,185,129,0.15);border:1px solid #10b981;color:#6ee7b7;':'background:rgba(148,163,184,0.12);border:1px solid #64748b;color:#94a3b8;'}">${isMine?t('reservedForYouMsg')(minutesLeft):t('reservedForOtherMsg')(minutesLeft)}</div>`;
+        primaryHtml+=`<div style="margin-top:8px;padding:7px 10px;border-radius:8px;font-size:0.68em;font-weight:800;text-align:center;${isMine?'background:rgba(16,185,129,0.15);border:1px solid #10b981;color:#6ee7b7;':'background:rgba(148,163,184,0.12);border:1px solid #64748b;color:#94a3b8;'}">${isMine?t('reservedForYouMsg')(minutesLeft):t('reservedForOtherMsg')(minutesLeft)}</div>`;
     }
-    if(!data.sold&&isAuth){actionHtml+=`<button onclick="window.handleOfferButtonClick('${domainName}')" style="width:100%;padding:9px;margin-top:8px;border-radius:9px;border:1.5px solid #f59e0b;background:rgba(245,158,11,0.1);color:#fbbf24;font-weight:800;font-size:0.78em;cursor:pointer;">💬 ${t('makeOfferBtn')}</button>`;}
+    if(!data.sold&&isAuth){secondaryHtml+=`<button onclick="window.handleOfferButtonClick('${domainName}')" style="padding:9px 6px;border-radius:9px;border:1.5px solid #f59e0b;background:rgba(245,158,11,0.1);color:#fbbf24;font-weight:800;font-size:0.74em;cursor:pointer;">💬 ${t('makeOfferBtn')}</button>`;}
     // YENİ: Alıcı-satıcı doğrudan mesajlaşma — sadece satıcısı olan ve
     // kendi ilanımız olmayan domainlerde gösterilir (satış durumundan
     // bağımsız — devir sonrası sorular için de kullanılabilsin diye).
     if(isAuth && data.sellerUsername && data.sellerUsername!==currentUser){
-        actionHtml+=`<button onclick="window.openOrStartConversation('${domainName}','${data.sellerUsername}')" style="width:100%;padding:9px;margin-top:8px;border-radius:9px;border:1.5px solid #06b6d4;background:rgba(6,182,212,0.1);color:#67e8f9;font-weight:800;font-size:0.78em;cursor:pointer;">✉️ ${t('messageSellerBtn')}</button>`;
+        secondaryHtml+=`<button onclick="window.openOrStartConversation('${domainName}','${data.sellerUsername}')" style="padding:9px 6px;border-radius:9px;border:1.5px solid #06b6d4;background:rgba(6,182,212,0.1);color:#67e8f9;font-weight:800;font-size:0.74em;cursor:pointer;">✉️ ${t('messageSellerBtn')}</button>`;
     }
     // YENİ (admin-only): satıcının domain sahipliğini kanıtlayan belgeyi
     // (ownershipProof, sell_request onayı sırasında toplanmıştı) fiilen
     // inceleyip "Sahiplik Doğrulandı" rozetini açıp kapatabiliyor.
+    // GÜNCELLEME (kullanıcı isteğiyle): Zaten doğrulanmışsa buton artık
+    // PASİF (tıklanamaz, soluk) görünüyor — admin'in yanlışlıkla tekrar
+    // tıklayıp durumu karıştırması engelleniyor. Doğrulamayı geri almak
+    // gerekiyorsa, pasif butonun altındaki küçük/az göze çarpan metin
+    // bağlantısı kullanılabiliyor (fonksiyonellik tamamen kaybolmadı,
+    // sadece birincil eylem olmaktan çıkarıldı).
     if(isAuth&&currentUser===APP_CONFIG.adminUsername&&!window._viewAsUserMode){
         const isVerified=!!data.ownershipVerified;
-        actionHtml+=`<button onclick="window.toggleOwnershipVerified('${domainName}',${!isVerified})" style="width:100%;padding:9px;margin-top:8px;border-radius:9px;border:1.5px solid ${isVerified?'#64748b':'#3b82f6'};background:${isVerified?'rgba(100,116,139,0.12)':'rgba(59,130,246,0.12)'};color:${isVerified?'#94a3b8':'#93c5fd'};font-weight:800;font-size:0.78em;cursor:pointer;">${isVerified?'❌ '+t('ownershipUnverifyBtn'):'🛡️ '+t('ownershipVerifyBtn')}</button>`;
+        if(isVerified){
+            secondaryHtml+=`<div style="display:flex;flex-direction:column;gap:2px;">
+                <button disabled style="padding:9px 6px;border-radius:9px;border:1.5px solid #334155;background:rgba(51,65,85,0.4);color:#64748b;font-weight:800;font-size:0.74em;cursor:not-allowed;opacity:0.75;">✅ ${t('ownershipVerifiedBadge')}</button>
+                <span onclick="window.toggleOwnershipVerified('${domainName}',false)" style="font-size:0.6em;color:#64748b;text-align:center;text-decoration:underline;cursor:pointer;">${t('ownershipUnverifyBtn')}</span>
+            </div>`;
+        } else {
+            secondaryHtml+=`<button onclick="window.toggleOwnershipVerified('${domainName}',true)" style="padding:9px 6px;border-radius:9px;border:1.5px solid #3b82f6;background:rgba(59,130,246,0.12);color:#93c5fd;font-weight:800;font-size:0.74em;cursor:pointer;">🛡️ ${t('ownershipVerifyBtn')}</button>`;
+        }
     }
-    actionEl.innerHTML=actionHtml;
+    const secondaryGridHtml = secondaryHtml ? `<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px;margin-top:8px;">${secondaryHtml}</div>` : '';
+    actionEl.innerHTML = primaryHtml + secondaryGridHtml;
     document.getElementById('domain-detail-modal').style.display='flex';
 };
 
@@ -8322,6 +8352,8 @@ function renderUserPanel(){
         }
     }
 
+    // Satın alımlarım
+    let myHtml='';
     domains.forEach(d=>{
         const data=domainData[d.name];
         if(data?.sold&&data.buyer===currentUser){
@@ -10078,7 +10110,21 @@ onSnapshot(collection(db,"domains"),(snapshot)=>{
             // süre dolunca da fiyat otomatik eski haline dönmüyordu.
             reservedFor:docData.reservedFor||null,
             reservedUntil:docData.reservedUntil||null,
-            preNegotiationPrice:typeof docData.preNegotiationPrice==='number'?docData.preNegotiationPrice:null
+            preNegotiationPrice:typeof docData.preNegotiationPrice==='number'?docData.preNegotiationPrice:null,
+            // BUG DÜZELTMESİ (kök neden): Bu nesne HER Firestore snapshot'ında
+            // sıfırdan yeniden kuruluyor — aşağıdaki alanlar bu listede hiç
+            // yoktu, yani admin "Sahiplik Doğrula"ya bastığında yerel önbellek
+            // anlık olarak güncellense bile, bir SONRAKİ snapshot geldiğinde
+            // (ki bu çok sık olur — herhangi bir domain değiştiğinde TÜM
+            // domains yeniden işlenir) ownershipVerified sessizce SIFIRLANIYORDU.
+            // Admin modalı kapatıp tekrar açtığında bu yüzden rozet kayboluyordu.
+            // Aynı kök neden ihtilaf kanıt görselleri için de geçerliydi, o
+            // yüzden onlar da buraya eklendi.
+            ownershipVerified:docData.ownershipVerified===true,
+            ownershipVerifiedAt:docData.ownershipVerifiedAt||null,
+            ownershipVerifiedBy:docData.ownershipVerifiedBy||null,
+            buyerDisputeEvidence:Array.isArray(docData.buyerDisputeEvidence)?docData.buyerDisputeEvidence:[],
+            sellerDisputeEvidence:Array.isArray(docData.sellerDisputeEvidence)?docData.sellerDisputeEvidence:[]
         };
         if(!defaultDomain){
             domains.unshift({name,img:docData.img||'assets/default.jpeg',price:docData.price||0,type:docData.type||'genel',description:docData.description||''});
