@@ -408,6 +408,23 @@ function getAdminApp() {
 }
 function getDb()      { getAdminApp(); return getFirestore(); }
 function getBucket()  { getAdminApp(); return getStorage().bucket(); }
+
+// YENİ: İhtilaf kanıt görseli URL'lerini doğrulayan yardımcı fonksiyon.
+// Bunu confirm_transfer_buyer/seller action'larına GÜVENLİK amacıyla
+// ekliyoruz — client'tan gelen 'evidenceUrls' alanına KÖRÜ KÖRÜNE
+// güvenip Firestore'a yazmak yerine: (1) dizi olduğunu, (2) en fazla 3
+// öğe içerdiğini, (3) her öğenin GERÇEKTEN bizim Storage bucket'ımızdan
+// (upload_image action'ının ürettiği) bir adres olduğunu doğruluyoruz.
+// Bu son kontrol olmadan, kötü niyetli bir client keyfi bir dış URL
+// (ör. zararlı/yasadışı bir görsel adresi) gönderip bunu admin panelinde
+// GÖRÜNTÜLENECEK şekilde kaydedebilirdi.
+function sanitizeEvidenceUrls(urls, bucketName) {
+  if (!Array.isArray(urls)) return [];
+  const prefix = `https://storage.googleapis.com/${bucketName}/dispute-evidence/`;
+  return urls
+    .filter(u => typeof u === 'string' && u.startsWith(prefix) && u.length < 500)
+    .slice(0, 3);
+}
 function getRtdb()    { getAdminApp(); return getDatabase(); }
 
 // ─── Admin Token Cache ────────────────────────────────────────────────────
@@ -891,7 +908,7 @@ async function handlerImpl(req, res) {
     const realUsername = await getRealUsername(accessToken);
     if (!realUsername) return res.status(403).json({ error: "Geçersiz oturum" });
 
-    const { imageBase64, mimeType, fileName } = req.body;
+    const { imageBase64, mimeType, fileName, context } = req.body;
     if (!imageBase64 || !mimeType) return res.status(400).json({ error: "Görsel verisi eksik" });
 
     const allowed = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
@@ -901,7 +918,15 @@ async function handlerImpl(req, res) {
       const bucket = getBucket();
       const ext = mimeType.split('/')[1];
       const safeName = (fileName || 'domain').replace(/[^a-zA-Z0-9._-]/g, '_').substring(0, 50);
-      const filePath = `domain-images/${realUsername}/${Date.now()}_${safeName}.${ext}`;
+      // YENİ: 'context' parametresiyle görsel farklı bir klasöre
+      // kaydedilebiliyor. Şu an sadece 'dispute_evidence' özel olarak
+      // ele alınıyor (ihtilaf kanıt görselleri için ayrı klasör — admin
+      // panelinde/Storage konsolunda domain ilanı görselleriyle
+      // karışmasın diye). Tanınmayan/eksik context değeri, ESKİ
+      // davranışla (domain-images) birebir aynı kalır — geriye dönük
+      // uyumluluk bozulmadı.
+      const folder = context === 'dispute_evidence' ? 'dispute-evidence' : 'domain-images';
+      const filePath = `${folder}/${realUsername}/${Date.now()}_${safeName}.${ext}`;
       const file = bucket.file(filePath);
       const buffer = Buffer.from(imageBase64, 'base64');
 
@@ -3679,6 +3704,9 @@ async function handlerImpl(req, res) {
     if (!transferDomainName) return res.status(400).json({ error: "domainName zorunludur" });
     try {
       const db = getDb();
+      // YENİ: kanıt görselleri — sadece 'confirmed=false' (sorun bildirme)
+      // durumunda anlamlı, güvenlik doğrulaması sanitizeEvidenceUrls'te.
+      const evidenceUrls = confirmed ? [] : sanitizeEvidenceUrls(req.body.evidenceUrls, getBucket().name);
       const saleQuery = await db.collection('global_sales')
         .where('domain', '==', transferDomainName)
         .where('user', '==', realUsername)
@@ -3693,18 +3721,19 @@ async function handlerImpl(req, res) {
         buyerConfirmed: !!confirmed,
         buyerConfirmedAt: Date.now(),
         buyerConfirmNote: note || null,
+        buyerDisputeEvidence: evidenceUrls,
         buyerDisputeResolution: null
       }, { merge: true });
       if (sale.domain) {
         await db.collection('domains').doc(sale.domain).set({
-          buyerConfirmed: !!confirmed, buyerConfirmedAt: Date.now(), buyerDisputeResolution: null
+          buyerConfirmed: !!confirmed, buyerConfirmedAt: Date.now(), buyerDisputeEvidence: evidenceUrls, buyerDisputeResolution: null
         }, { merge: true });
       }
 
       await sendNotificationToAdmin({
         type: 'transfer_confirmation',
         title: confirmed ? '✅ Alıcı Devri Onayladı' : '⚠️ Alıcı Sorun Bildirdi',
-        body: `"${sale.domain}" için @${realUsername} (alıcı) ${confirmed ? 'domaini teslim aldığını onayladı.' : 'bir sorun bildirdi: ' + (note || 'detay belirtmedi')}`,
+        body: `"${sale.domain}" için @${realUsername} (alıcı) ${confirmed ? 'domaini teslim aldığını onayladı.' : 'bir sorun bildirdi: ' + (note || 'detay belirtmedi') + (evidenceUrls.length ? ` (${evidenceUrls.length} kanıt görseli eklendi)` : '')}`,
         domainName: sale.domain
       });
 
@@ -3721,6 +3750,7 @@ async function handlerImpl(req, res) {
     if (!transferDomainName) return res.status(400).json({ error: "domainName zorunludur" });
     try {
       const db = getDb();
+      const evidenceUrls = confirmed ? [] : sanitizeEvidenceUrls(req.body.evidenceUrls, getBucket().name);
       const saleQuery = await db.collection('global_sales')
         .where('domain', '==', transferDomainName)
         .where('sellerUsername', '==', realUsername)
@@ -3735,16 +3765,17 @@ async function handlerImpl(req, res) {
         sellerConfirmed: !!confirmed,
         sellerConfirmedAt: Date.now(),
         sellerConfirmNote: note || null,
+        sellerDisputeEvidence: evidenceUrls,
         sellerDisputeResolution: null
       }, { merge: true });
       await db.collection('domains').doc(transferDomainName).set({
-        sellerConfirmed: !!confirmed, sellerConfirmedAt: Date.now(), sellerDisputeResolution: null
+        sellerConfirmed: !!confirmed, sellerConfirmedAt: Date.now(), sellerDisputeEvidence: evidenceUrls, sellerDisputeResolution: null
       }, { merge: true });
 
       await sendNotificationToAdmin({
         type: 'transfer_confirmation',
         title: confirmed ? '✅ Satıcı Devri Onayladı' : '⚠️ Satıcı Sorun Bildirdi',
-        body: `"${sale.domain}" için @${realUsername} (satıcı) ${confirmed ? 'domaini devrettiğini onayladı.' : 'bir sorun bildirdi: ' + (note || 'detay belirtmedi')}`,
+        body: `"${sale.domain}" için @${realUsername} (satıcı) ${confirmed ? 'domaini devrettiğini onayladı.' : 'bir sorun bildirdi: ' + (note || 'detay belirtmedi') + (evidenceUrls.length ? ` (${evidenceUrls.length} kanıt görseli eklendi)` : '')}`,
         domainName: sale.domain
       });
 
@@ -3773,13 +3804,13 @@ async function handlerImpl(req, res) {
       if (!targetUsername) return res.status(400).json({ error: "Hedef kullanıcı bulunamadı" });
 
       const updateData = role === 'buyer'
-        ? { buyerConfirmed: null, buyerConfirmNote: null, buyerDisputeResolution: message, buyerDisputeResolvedAt: Date.now() }
-        : { sellerConfirmed: null, sellerConfirmNote: null, sellerDisputeResolution: message, sellerDisputeResolvedAt: Date.now() };
+        ? { buyerConfirmed: null, buyerConfirmNote: null, buyerDisputeEvidence: [], buyerDisputeResolution: message, buyerDisputeResolvedAt: Date.now() }
+        : { sellerConfirmed: null, sellerConfirmNote: null, sellerDisputeEvidence: [], sellerDisputeResolution: message, sellerDisputeResolvedAt: Date.now() };
       await saleRef.set(updateData, { merge: true });
       if (sale.domain) {
         const domainUpdate = role === 'buyer'
-          ? { buyerConfirmed: null, buyerDisputeResolution: message, buyerDisputeResolvedAt: Date.now() }
-          : { sellerConfirmed: null, sellerDisputeResolution: message, sellerDisputeResolvedAt: Date.now() };
+          ? { buyerConfirmed: null, buyerDisputeEvidence: [], buyerDisputeResolution: message, buyerDisputeResolvedAt: Date.now() }
+          : { sellerConfirmed: null, sellerDisputeEvidence: [], sellerDisputeResolution: message, sellerDisputeResolvedAt: Date.now() };
         await db.collection('domains').doc(sale.domain).set(domainUpdate, { merge: true });
       }
 
