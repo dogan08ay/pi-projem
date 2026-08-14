@@ -1752,6 +1752,39 @@
     </div>
 </div>
 
+<!-- ══════════════════════════════════════════════════════════════════
+     YENİ: "Sorun Bildir" modalı — kanıt (görsel) yükleme özelliği
+     Öncesinde bu akış tarayıcının çıplak prompt()'u ile sadece bir metin
+     notu alıyordu. Artık alıcı/satıcı, ihtilafı desteklemek için en fazla
+     3 görsel (ör. Pi Browser'daki sahiplik ekranının ekran görüntüsü)
+     ekleyebiliyor — admin'in ihtilafı çözerken sadece iki tarafın
+     kelimesine değil, görsel kanıta da bakabilmesi için.
+     ══════════════════════════════════════════════════════════════════ -->
+<div id="report-issue-modal" class="modal-overlay" style="display:none;">
+    <div class="modal-content" style="border-color:#ef4444;max-width:420px;">
+        <h3 style="color:#f87171;margin:0 0 4px 0;font-size:1.05em;">⚠️ <span data-i18n="reportIssueModalTitle"></span></h3>
+        <p id="report-issue-domain-label" style="color:#94a3b8;font-size:0.78em;margin:0 0 14px 0;"></p>
+
+        <label style="display:block;font-size:0.72em;font-weight:800;color:#cbd5e1;margin-bottom:6px;text-transform:uppercase;" data-i18n="reportIssueNoteLabel"></label>
+        <textarea id="report-issue-note" rows="3" maxlength="500" style="width:100%;box-sizing:border-box;background:#0f172a;border:1.5px solid #334155;border-radius:10px;padding:10px;color:#e2e8f0;font-size:0.85em;font-family:inherit;resize:vertical;margin-bottom:12px;" data-i18n-placeholder="reportIssueNotePlaceholder"></textarea>
+
+        <label style="display:block;font-size:0.72em;font-weight:800;color:#cbd5e1;margin-bottom:6px;text-transform:uppercase;" data-i18n="reportIssueAddEvidence"></label>
+        <p style="color:#64748b;font-size:0.68em;margin:0 0 8px 0;" data-i18n="reportIssueEvidenceHint"></p>
+
+        <div id="report-issue-thumbs" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px;"></div>
+
+        <label id="report-issue-upload-label" for="report-issue-file-input" style="display:flex;align-items:center;justify-content:center;gap:6px;border:1.5px dashed #475569;border-radius:10px;padding:10px;color:#94a3b8;font-size:0.75em;font-weight:700;cursor:pointer;margin-bottom:16px;">
+            📎 <span data-i18n="reportIssueAddEvidenceBtn"></span>
+        </label>
+        <input type="file" id="report-issue-file-input" accept="image/jpeg,image/png,image/webp,image/gif" style="display:none;" onchange="window.handleReportIssueImageSelect(event)">
+
+        <div style="display:flex;gap:10px;">
+            <button class="pi-btn" style="background:#475569;flex:1;animation:none;padding:10px;margin:0;" onclick="window.closeReportIssueModal()" data-i18n="cancel"></button>
+            <button class="pi-btn" id="report-issue-submit-btn" style="flex:1;animation:none;background:#ef4444;padding:10px;margin:0;" onclick="window.submitReportIssue()" data-i18n="reportIssueSubmitBtn"></button>
+        </div>
+    </div>
+</div>
+
 <div id="success-modal" class="modal-overlay" style="display:none;">
     <div class="modal-content" style="border-color:#10b981;text-align:center;">
         <div style="font-size:2.5em;margin-bottom:10px;">✅</div>
@@ -3306,6 +3339,17 @@ const i18n = {
     confirmSentBtn:"Evet, Devrettim",
     reportIssuePrompt:"Sorunu kısaca açıklayın (admin'in görmesi için zorunlu):",
     reportIssueEmptyWarning:"Sorun bildirmek için önce kısa bir açıklama yazmalısınız.",
+    reportIssueModalTitle:"Sorun Bildir",
+    reportIssueNoteLabel:"Ne oldu?",
+    reportIssueNotePlaceholder:"Sorunu kısaca açıklayın (admin'in görmesi için zorunlu)...",
+    reportIssueAddEvidence:"Kanıt Ekle (opsiyonel)",
+    reportIssueEvidenceHint:"En fazla 3 görsel, her biri en fazla 2MB. Örn: Pi Browser'daki sahiplik/transfer ekranının ekran görüntüsü.",
+    reportIssueAddEvidenceBtn:"Görsel Ekle",
+    reportIssueSubmitBtn:"Sorunu Gönder",
+    reportIssueUploading:"Gönderiliyor...",
+    reportIssueSuccess:"Sorun bildirildi, admin en kısa sürede inceleyecek.",
+    reportIssueMaxImagesWarning:(n)=>`En fazla ${n} görsel ekleyebilirsiniz.`,
+    disputeEvidenceLabel:"Kanıt Görselleri",
     confirmReceivedConfirmDialog:(n)=>`"${n}" domainini satıcıdan teslim aldığınızı onaylıyor musunuz? Bu bilgi admin'in ödemeyi satıcıya göndermesine yardımcı olacak.`,
     confirmSentConfirmDialog:(n)=>`"${n}" domainini alıcıya devrettiğinizi onaylıyor musunuz? Bu bilgi admin'in ödemenizi göndermesine yardımcı olacak.`,
     confirmTransferFail:"Onay gönderilemedi: ",
@@ -4182,6 +4226,17 @@ const i18n = {
     confirmSentBtn:"Yes, Transferred",
     reportIssuePrompt:"Briefly describe the issue (required so admin can review it):",
     reportIssueEmptyWarning:"Please write a short description before reporting an issue.",
+    reportIssueModalTitle:"Report an Issue",
+    reportIssueNoteLabel:"What happened?",
+    reportIssueNotePlaceholder:"Briefly describe the issue (required so admin can review it)...",
+    reportIssueAddEvidence:"Add Evidence (optional)",
+    reportIssueEvidenceHint:"Up to 3 images, max 2MB each. E.g. a screenshot of the ownership/transfer screen in Pi Browser.",
+    reportIssueAddEvidenceBtn:"Add Image",
+    reportIssueSubmitBtn:"Submit Issue",
+    reportIssueUploading:"Submitting...",
+    reportIssueSuccess:"Issue reported — admin will review it shortly.",
+    reportIssueMaxImagesWarning:(n)=>`You can add up to ${n} images.`,
+    disputeEvidenceLabel:"Evidence Images",
     confirmReceivedConfirmDialog:(n)=>`Confirm that you received "${n}" from the seller? This helps the admin release the payment to the seller.`,
     confirmSentConfirmDialog:(n)=>`Confirm that you transferred "${n}" to the buyer? This helps the admin release your payment.`,
     confirmTransferFail:"Could not send confirmation: ",
@@ -6016,8 +6071,15 @@ window.openDomainDetail=function(domainName){
                     <td style="padding:5px 8px;border-bottom:1px solid #1e293b;color:#94a3b8;white-space:nowrap;">${dateStr}</td>
                 </tr>`;
             }).join('');
+            // YENİ: Tablonun üstüne, fiyatın zaman içindeki gidişatını tek
+            // bakışta gösteren küçük bir SVG çizgi grafik (sparkline)
+            // ekleniyor. En az 2 geçmiş satış olmadan bir "trend"den söz
+            // edilemeyeceği için, tek satışlık domainlerde grafik
+            // gösterilmiyor (tabloyla aynı veri, ekstra fetch YOK).
+            const sparklineHtml = res.history.length>=2 ? buildPriceSparklineSvg(res.history) : '';
             el.style.display='flex'; el.style.flexDirection='column'; el.style.gap='4px';
             el.innerHTML=`<span style="color:#64748b;font-weight:700;font-size:0.85em;">📈 ${t('priceHistoryLabel')}:</span>
+                ${sparklineHtml}
                 <table style="width:100%;border-collapse:collapse;font-size:0.76em;background:#0f172a;border-radius:8px;overflow:hidden;">
                     <thead><tr>
                         <th style="text-align:left;padding:5px 8px;color:#64748b;font-weight:700;border-bottom:1.5px solid #334155;">${t('receiptFieldPriceCol')}</th>
@@ -6227,25 +6289,117 @@ window.handleWithdrawListing=async function(domainName){
 };
 
 // ── ESCROW: Alıcı/Satıcı devir onayı ────────────────────────────────────
+// ── ESCROW: Alıcı/Satıcı devir onayı ────────────────────────────────────
+// GÜNCELLEME (kullanıcı isteğiyle — kanıt/görsel yükleme): "confirmed=false"
+// (sorun bildirme) durumunda artık çıplak prompt() yerine, kanıt görseli
+// eklenebilen bir modal açılıyor. "confirmed=true" (onaylama) akışı
+// değişmedi.
 window.handleConfirmTransfer=async function(domainName,role,confirmed){
-    let note=null;
     if(!confirmed){
-        const raw=prompt(t('reportIssuePrompt'));
-        if(raw===null) return; // kullanıcı "İptal" ile çıktı — hiçbir şey gönderilmez
-        note=raw.trim();
-        if(!note){ showToast(t('reportIssueEmptyWarning')); return; } // boş metinle "Tamam" da göndermez
-    } else {
-        if(!confirm(role==='buyer'?t('confirmReceivedConfirmDialog')(domainName):t('confirmSentConfirmDialog')(domainName))) return;
+        window.openReportIssueModal(domainName,role);
+        return;
     }
+    if(!confirm(role==='buyer'?t('confirmReceivedConfirmDialog')(domainName):t('confirmSentConfirmDialog')(domainName))) return;
     try{
         const action = role==='buyer' ? 'confirm_transfer_buyer' : 'confirm_transfer_seller';
-        const r=await fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action,domainName,confirmed,note,accessToken:piAccessToken})});
+        const r=await fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action,domainName,confirmed,note:null,accessToken:piAccessToken})});
         const result=await r.json();
         if(!r.ok||!result.success){showToast(t('confirmTransferFail')+(result.error||''));return;}
         await loadUserProfile();
         debouncedRender();
     }catch(e){showToast(t('confirmTransferError'));}
 };
+
+// ── YENİ: "Sorun Bildir" modalı — durum + görsel kanıt yükleme ─────────
+let reportIssueState={domainName:null,role:null,images:[]}; // images: [{base64,mime,name,previewUrl}]
+const REPORT_ISSUE_MAX_IMAGES=3;
+const REPORT_ISSUE_MAX_SIZE=2*1024*1024; // 2MB — upload_image backend'i de aynı limiti uyguluyor
+
+window.openReportIssueModal=function(domainName,role){
+    reportIssueState={domainName,role,images:[]};
+    document.getElementById('report-issue-note').value='';
+    document.getElementById('report-issue-domain-label').textContent=domainName;
+    renderReportIssueThumbs();
+    document.getElementById('report-issue-file-input').value='';
+    document.getElementById('report-issue-modal').style.display='flex';
+};
+window.closeReportIssueModal=function(){
+    document.getElementById('report-issue-modal').style.display='none';
+};
+window.handleReportIssueImageSelect=function(event){
+    const file=event.target.files[0];
+    event.target.value=''; // aynı dosyayı art arda seçebilsin diye input'u sıfırla
+    if(!file) return;
+    if(reportIssueState.images.length>=REPORT_ISSUE_MAX_IMAGES){
+        showToast(t('reportIssueMaxImagesWarning')(REPORT_ISSUE_MAX_IMAGES));
+        return;
+    }
+    if(file.size>REPORT_ISSUE_MAX_SIZE){ showToast(t('imageUploadFailed')); return; }
+    const reader=new FileReader();
+    reader.onload=function(e){
+        const result=e.target.result;
+        reportIssueState.images.push({base64:result.split(',')[1],mime:file.type,name:file.name,previewUrl:result});
+        renderReportIssueThumbs();
+    };
+    reader.readAsDataURL(file);
+};
+window.removeReportIssueImage=function(idx){
+    reportIssueState.images.splice(idx,1);
+    renderReportIssueThumbs();
+};
+function renderReportIssueThumbs(){
+    const wrap=document.getElementById('report-issue-thumbs');
+    if(!wrap) return;
+    wrap.innerHTML=reportIssueState.images.map((img,idx)=>`
+        <div style="position:relative;width:64px;height:64px;">
+            <img src="${img.previewUrl}" style="width:64px;height:64px;object-fit:cover;border-radius:8px;border:1.5px solid #334155;">
+            <button onclick="window.removeReportIssueImage(${idx})" style="position:absolute;top:-6px;right:-6px;width:20px;height:20px;border-radius:50%;background:#ef4444;color:#fff;border:2px solid #0f172a;font-size:0.7em;font-weight:900;cursor:pointer;line-height:1;padding:0;">✕</button>
+        </div>
+    `).join('');
+    const uploadLabel=document.getElementById('report-issue-upload-label');
+    if(uploadLabel) uploadLabel.style.display = reportIssueState.images.length>=REPORT_ISSUE_MAX_IMAGES ? 'none' : 'flex';
+}
+window.submitReportIssue=async function(){
+    const noteInput=document.getElementById('report-issue-note');
+    const note=noteInput.value.trim();
+    if(!note){ showToast(t('reportIssueEmptyWarning')); noteInput.focus(); return; }
+
+    const submitBtn=document.getElementById('report-issue-submit-btn');
+    const originalLabel=submitBtn.textContent;
+    submitBtn.disabled=true;
+    submitBtn.textContent=t('reportIssueUploading');
+    try{
+        // Görselleri SIRAYLA yüklüyoruz (paralel değil) — upload_image action'ı
+        // zaten dakikada 5 istekle sınırlı (bkz. approve.js checkRateLimit),
+        // 3 görsel bu sınırın çok altında kalıyor ama yine de sıralı gönderim
+        // sunucuyu gereksiz yere aynı anda 3 kez meşgul etmiyor.
+        const evidenceUrls=[];
+        for(const img of reportIssueState.images){
+            const r=await fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},
+                body:JSON.stringify({action:'upload_image',imageBase64:img.base64,mimeType:img.mime,fileName:img.name,context:'dispute_evidence',accessToken:piAccessToken})});
+            const result=await r.json();
+            if(result.success&&result.url) evidenceUrls.push(result.url);
+            else{ showToast(t('imageUploadFailed')); submitBtn.disabled=false; submitBtn.textContent=originalLabel; return; }
+        }
+
+        const action = reportIssueState.role==='buyer' ? 'confirm_transfer_buyer' : 'confirm_transfer_seller';
+        const r=await fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},
+            body:JSON.stringify({action,domainName:reportIssueState.domainName,confirmed:false,note,evidenceUrls,accessToken:piAccessToken})});
+        const result=await r.json();
+        if(!r.ok||!result.success){showToast(t('confirmTransferFail')+(result.error||''));submitBtn.disabled=false;submitBtn.textContent=originalLabel;return;}
+
+        window.closeReportIssueModal();
+        showToast(t('reportIssueSuccess'));
+        await loadUserProfile();
+        debouncedRender();
+    }catch(e){
+        showToast(t('confirmTransferError'));
+    }finally{
+        submitBtn.disabled=false;
+        submitBtn.textContent=originalLabel;
+    }
+};
+
 
 // ── KULLANICI: Reddedilmiş ilan işlemleri ──────────────────────────────
 window.handleDeleteRejectedRequest=async function(requestId){
@@ -8088,6 +8242,64 @@ window.handleAllSalesRefreshClick=function(){
     loadAllSalesDetail();
 };
 
+// ── YENİ: Fiyat geçmişi için küçük bir SVG çizgi grafik (sparkline)
+// üretir. Ekstra bir kütüphane (chart.js vb.) gerektirmiyor — sadece
+// birkaç noktalı basit bir trend çizgisi için tam yeterli ve hafif.
+// Renk: en eski fiyata göre en yeni fiyat DÜŞTÜYSE yeşil (alıcı için iyi
+// haber), YÜKSELDİYSE kırmızı/turuncu.
+function buildPriceSparklineSvg(history){
+    // history en yeniden en eskiye sıralı geliyor (backend'de .sort ile) —
+    // grafik SOLDAN SAĞA kronolojik aksın diye ters çeviriyoruz.
+    const points=[...history].reverse().filter(h=>typeof h.price==='number'||!isNaN(Number(h.price)));
+    if(points.length<2) return '';
+
+    const W=280,H=54,PAD_X=8,PAD_Y=10;
+    const prices=points.map(p=>Number(p.price));
+    const min=Math.min(...prices),max=Math.max(...prices);
+    const range=(max-min)||1; // hepsi aynı fiyattaysa 0'a bölünmesin diye
+    const stepX=(W-PAD_X*2)/(points.length-1);
+    const coords=prices.map((p,i)=>{
+        const x=PAD_X+i*stepX;
+        const y=PAD_Y+(1-(p-min)/range)*(H-PAD_Y*2);
+        return {x,y,price:p};
+    });
+    const pathD=coords.map((c,i)=>`${i===0?'M':'L'}${c.x.toFixed(1)},${c.y.toFixed(1)}`).join(' ');
+    const trendUp = prices[prices.length-1] > prices[0];
+    const trendFlat = prices[prices.length-1] === prices[0];
+    const lineColor = trendFlat ? '#818cf8' : (trendUp ? '#f87171' : '#4ade80');
+    const fillId = 'sparkfill_'+Math.random().toString(36).slice(2,8);
+    const areaD = `${pathD} L${coords[coords.length-1].x.toFixed(1)},${H-PAD_Y} L${coords[0].x.toFixed(1)},${H-PAD_Y} Z`;
+    const dots = coords.map(c=>`<circle cx="${c.x.toFixed(1)}" cy="${c.y.toFixed(1)}" r="2.6" fill="${lineColor}"><title>${c.price} Pi</title></circle>`).join('');
+    const trendLabel = trendFlat ? '' : (trendUp ? '📈' : '📉');
+    return `<div style="background:#0f172a;border:1px solid #1e293b;border-radius:8px;padding:8px 6px 4px 6px;margin-bottom:2px;">
+        <svg viewBox="0 0 ${W} ${H}" style="width:100%;height:${H}px;display:block;">
+            <defs><linearGradient id="${fillId}" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="${lineColor}" stop-opacity="0.28"/>
+                <stop offset="100%" stop-color="${lineColor}" stop-opacity="0"/>
+            </linearGradient></defs>
+            <path d="${areaD}" fill="url(#${fillId})" stroke="none"/>
+            <path d="${pathD}" fill="none" stroke="${lineColor}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+            ${dots}
+        </svg>
+        <div style="display:flex;justify-content:space-between;font-size:0.62em;color:#64748b;margin-top:2px;">
+            <span>${prices[0]} Pi</span>
+            <span style="color:${lineColor};font-weight:800;">${trendLabel} ${prices[prices.length-1]} Pi</span>
+        </div>
+    </div>`;
+}
+
+// ── YENİ: İhtilaf kanıt görsellerini küçük resimler olarak gösteren
+// yardımcı fonksiyon — alıcı/satıcı kendi panelinde ve admin panelinde
+// aynı görünümü kullanıyor. Tıklanınca görsel yeni sekmede açılıyor
+// (mevcut projede zaten kullanılan window.open(img.src,'_blank') deseniyle
+// tutarlı, bkz. paylaşım/QR kodu akışı).
+function renderEvidenceThumbsHtml(urls){
+    if(!Array.isArray(urls)||!urls.length) return '';
+    return `<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px;">${urls.map(u=>
+        `<img src="${escapeHtml(u)}" onclick="window.open('${escapeHtml(u)}','_blank')" style="width:44px;height:44px;object-fit:cover;border-radius:6px;border:1px solid #475569;cursor:pointer;" alt="evidence">`
+    ).join('')}</div>`;
+}
+
 // USER PANEL RENDER
 function renderUserPanel(){
     if(!isAuth) return;
@@ -8110,8 +8322,6 @@ function renderUserPanel(){
         }
     }
 
-    // Satın alımlarım
-    let myHtml='';
     domains.forEach(d=>{
         const data=domainData[d.name];
         if(data?.sold&&data.buyer===currentUser){
@@ -8123,7 +8333,7 @@ function renderUserPanel(){
             let confirmHtml='';
             if(needsConfirm){
                 if(data.buyerConfirmed===true) confirmHtml=`<div style="margin-top:6px;font-size:0.65em;color:#6ee7b7;font-weight:700;">✅ ${t('transferConfirmedByYou')}</div>`;
-                else if(data.buyerConfirmed===false) confirmHtml=`<div style="margin-top:6px;font-size:0.65em;color:#f87171;font-weight:700;">⚠️ ${t('transferDisputedByYou')}</div>`;
+                else if(data.buyerConfirmed===false) confirmHtml=`<div style="margin-top:6px;font-size:0.65em;color:#f87171;font-weight:700;">⚠️ ${t('transferDisputedByYou')}</div>${renderEvidenceThumbsHtml(data.buyerDisputeEvidence)}`;
                 else {
                     const disputeMsg = data.buyerDisputeResolution ? `<div style="margin-bottom:6px;padding:6px 8px;background:rgba(99,102,241,0.12);border:1px solid #6366f1;border-radius:6px;font-size:0.62em;color:#c7d2fe;"><b>💬 ${t('adminResponseLabel')}:</b> "${escapeHtml(data.buyerDisputeResolution)}"</div>` : '';
                     const nudgeMsg = (data.buyerNudgeCount>0) ? `<div style="margin-bottom:5px;font-size:0.6em;color:#a5b4fc;">🔔 ${t('adminNudgedYou')(data.buyerNudgeCount)}</div>` : '';
@@ -8398,7 +8608,7 @@ function renderUserPanel(){
                 let confirmHtml='';
                 if(needsConfirm){
                     if(d.sellerConfirmed===true) confirmHtml=`<div style="margin-top:6px;font-size:0.65em;color:#6ee7b7;font-weight:700;">✅ ${t('transferConfirmedByYou')}</div>`;
-                    else if(d.sellerConfirmed===false) confirmHtml=`<div style="margin-top:6px;font-size:0.65em;color:#f87171;font-weight:700;">⚠️ ${t('transferDisputedByYou')}</div>`;
+                    else if(d.sellerConfirmed===false) confirmHtml=`<div style="margin-top:6px;font-size:0.65em;color:#f87171;font-weight:700;">⚠️ ${t('transferDisputedByYou')}</div>${renderEvidenceThumbsHtml(d.sellerDisputeEvidence)}`;
                     else {
                         const disputeMsg = d.sellerDisputeResolution ? `<div style="margin-bottom:6px;padding:6px 8px;background:rgba(99,102,241,0.12);border:1px solid #6366f1;border-radius:6px;font-size:0.62em;color:#c7d2fe;width:100%;box-sizing:border-box;"><b>💬 ${t('adminResponseLabel')}:</b> "${escapeHtml(d.sellerDisputeResolution)}"</div>` : '';
                         const nudgeMsg = (d.sellerNudgeCount>0) ? `<div style="margin-bottom:5px;font-size:0.6em;color:#a5b4fc;width:100%;">🔔 ${t('adminNudgedYou')(d.sellerNudgeCount)}</div>` : '';
@@ -11832,15 +12042,24 @@ function renderAdminPayouts(payouts) {
         // Devir onay durumu — admin, "Transfer Tamam Öde" ya da "İade Et"
         // kararını uygulama dışından gelen bilgiye değil, buradaki gerçek
         // alıcı/satıcı onayına bakarak verebilsin diye.
-        const confirmBox = (label, confirmed, note) => {
+        const confirmBox = (label, confirmed, note, evidence) => {
             let bg, border, color, text;
             if (confirmed === true) { bg='rgba(16,185,129,0.12)'; border='#10b981'; color='#6ee7b7'; text='✅ '+t('confirmedStatus'); }
             else if (confirmed === false) { bg='rgba(239,68,68,0.12)'; border='#ef4444'; color='#f87171'; text='⚠️ '+t('disputedStatus'); }
             else { bg='rgba(100,116,139,0.12)'; border='#475569'; color='#94a3b8'; text='⏳ '+t('waitingStatus'); }
+            // YENİ: alıcı/satıcı sorun bildirirken kanıt görseli eklediyse
+            // admin bunu notun hemen altında küçük resimler olarak görüyor.
+            const evidenceHtml = (confirmed===false && Array.isArray(evidence) && evidence.length)
+                ? `<div style="margin-top:4px;padding-top:4px;border-top:1px dashed ${border};">
+                     <div style="font-size:0.56em;color:#64748b;font-weight:700;text-transform:uppercase;margin-bottom:3px;">📎 ${t('disputeEvidenceLabel')}</div>
+                     ${renderEvidenceThumbsHtml(evidence)}
+                   </div>`
+                : '';
             return `<div style="flex:1;background:${bg};border:1.5px solid ${border};border-radius:8px;padding:6px 8px;">
                 <div style="font-size:0.6em;color:#64748b;font-weight:700;text-transform:uppercase;margin-bottom:2px;text-align:center;">${label}</div>
                 <div style="font-size:0.68em;color:${color};font-weight:800;text-align:center;">${text}</div>
                 ${confirmed===false&&note?`<div style="margin-top:4px;padding-top:4px;border-top:1px dashed ${border};font-size:0.62em;color:#fca5a5;font-style:italic;word-break:break-word;">"${escapeHtml(note)}"</div>`:''}
+                ${evidenceHtml}
             </div>`;
         };
         const bothConfirmed = p.buyerConfirmed === true && p.sellerConfirmed === true;
@@ -11851,8 +12070,8 @@ function renderAdminPayouts(payouts) {
             return '';
         };
         const confirmBoxesHtml = showConfirmations ? `<div style="display:flex;gap:6px;margin-bottom:6px;">
-            ${confirmBox(t('roleBuyer'), p.buyerConfirmed, p.buyerConfirmNote)}
-            ${confirmBox(t('roleSeller'), p.sellerConfirmed, p.sellerConfirmNote)}
+            ${confirmBox(t('roleBuyer'), p.buyerConfirmed, p.buyerConfirmNote, p.buyerDisputeEvidence)}
+            ${confirmBox(t('roleSeller'), p.sellerConfirmed, p.sellerConfirmNote, p.sellerDisputeEvidence)}
         </div>
         ${!bothConfirmed ? `<div style="display:flex;gap:6px;margin-bottom:8px;">
             ${actionBtn('buyer', p.buyerConfirmed)}
