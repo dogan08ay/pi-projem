@@ -249,6 +249,23 @@
         .pi-connect-btn{display:inline-flex;align-items:center;justify-content:center;}
         @keyframes spin-ring-plain{0%{transform:rotate(0deg);}100%{transform:rotate(360deg);}}
         .connect-spinner-colorful{display:inline-block;width:18px;height:18px;border-radius:50%;flex-shrink:0;background:conic-gradient(from 0deg,#fbbf24,#ef4444,#a855f7,#6366f1,#10b981,#fbbf24);animation:spin-ring-plain 0.8s linear infinite;-webkit-mask:radial-gradient(farthest-side,transparent calc(100% - 3px),#000 calc(100% - 3px));mask:radial-gradient(farthest-side,transparent calc(100% - 3px),#000 calc(100% - 3px));}
+        /* ── YENİ: "Pi ile Bağlan" yükleme göstergesi — kullanıcı isteğiyle
+           yenilendi. İki iç içe halka (dışta ve içte BAĞIMSIZ hızda/yönde
+           dönen renkli ışık yayları) + ortada nabız gibi büyüyüp küçülen
+           bir nokta + yanında soldan sağa kayan ışıklı bir çizgi. Eskiden
+           tek düz bir dönen halka + metin vardı. ────────────────────── */
+        .pi-loading-wrap{display:inline-flex;align-items:center;gap:9px;height:22px;}
+        .pi-loading-orb{position:relative;width:22px;height:22px;flex-shrink:0;}
+        .pi-loading-orb .ring-outer{position:absolute;inset:0;border-radius:50%;background:conic-gradient(from 0deg,#a855f7,#6366f1 35%,#10b981 60%,transparent 78%,transparent 100%);-webkit-mask:radial-gradient(farthest-side,transparent calc(100% - 2.5px),#000 calc(100% - 2.5px));mask:radial-gradient(farthest-side,transparent calc(100% - 2.5px),#000 calc(100% - 2.5px));animation:orb-spin-cw 1.15s linear infinite;}
+        .pi-loading-orb .ring-inner{position:absolute;inset:5px;border-radius:50%;background:conic-gradient(from 200deg,#38bdf8,#10b981 30%,transparent 55%,transparent 100%);-webkit-mask:radial-gradient(farthest-side,transparent calc(100% - 2px),#000 calc(100% - 2px));mask:radial-gradient(farthest-side,transparent calc(100% - 2px),#000 calc(100% - 2px));animation:orb-spin-ccw 0.8s linear infinite;}
+        .pi-loading-orb .core-dot{position:absolute;top:50%;left:50%;width:6px;height:6px;margin:-3px 0 0 -3px;border-radius:50%;background:#fff;box-shadow:0 0 7px 1.5px rgba(255,255,255,0.95);animation:core-pulse 1s ease-in-out infinite;}
+        @keyframes orb-spin-cw{to{transform:rotate(360deg);}}
+        @keyframes orb-spin-ccw{to{transform:rotate(-360deg);}}
+        @keyframes core-pulse{0%,100%{transform:scale(0.65);opacity:0.55;}50%{transform:scale(1.2);opacity:1;}}
+        .pi-loading-track{position:relative;flex:1 1 auto;min-width:44px;height:3px;border-radius:3px;background:rgba(255,255,255,0.22);overflow:hidden;}
+        .pi-loading-track .sweep{position:absolute;top:0;left:-45%;width:45%;height:100%;border-radius:3px;background:linear-gradient(90deg,transparent,#a855f7,#6366f1,#10b981,transparent);animation:sweep-move 1.25s ease-in-out infinite;}
+        @keyframes sweep-move{0%{left:-45%;}100%{left:100%;}}
+        .pi-loading-label{font-size:0.85em;white-space:nowrap;flex-shrink:0;}
         @keyframes icon-pulse-chart{0%,100%{filter:drop-shadow(0 0 4px rgba(74,222,128,0.5));transform:scale(1);}50%{filter:drop-shadow(0 0 10px rgba(74,222,128,0.9));transform:scale(1.12);}}
         @keyframes icon-pulse-green{0%,100%{filter:drop-shadow(0 0 4px rgba(52,211,153,0.5));transform:scale(1);}50%{filter:drop-shadow(0 0 10px rgba(52,211,153,0.9));transform:scale(1.12);}}
 @keyframes connected-pulse{0%,100%{box-shadow:0 0 8px rgba(16,185,129,0.3);}50%{box-shadow:0 0 16px rgba(16,185,129,0.6),0 0 4px rgba(52,211,153,0.4);}}
@@ -9347,7 +9364,12 @@ async function performPiConnect() {
             originalBtnText = connectBtn?.innerHTML;
 
             if (connectBtn) {
-                connectBtn.innerHTML = '<span style="display:inline-flex;align-items:center;justify-content:center;gap:8px;"><span class="connect-spinner-colorful"></span><span style="font-size:0.9em;">Bağlanıyor...</span></span>';
+                // YENİ: Çift halka (dışta/içte bağımsız yönde dönen ışık
+                // yayları) + nabız gibi atan merkez nokta + soldan sağa
+                // kayan ışıklı çizgi. Metin artık sabit Türkçe değil,
+                // mevcut 'webPushEnabling' i18n anahtarı (TR:"Bağlanıyor...",
+                // EN:"Connecting...") kullanılarak dile göre gösteriliyor.
+                connectBtn.innerHTML = '<span class="pi-loading-wrap"><span class="pi-loading-orb"><span class="ring-outer"></span><span class="ring-inner"></span><span class="core-dot"></span></span><span class="pi-loading-track"><span class="sweep"></span></span><span class="pi-loading-label">' + t('webPushEnabling') + '</span></span>';
                 connectBtn.disabled = true;
                 connectBtn.style.opacity = '0.7';
                 connectBtn.style.pointerEvents = 'none';
