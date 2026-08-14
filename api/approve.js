@@ -4,6 +4,7 @@ import { getStorage } from 'firebase-admin/storage';
 import { getDatabase } from 'firebase-admin/database';
 import webpush from 'web-push';
 import * as PiNetworkPkg from 'pi-backend';
+import crypto from 'crypto';
 // pi-backend gerçek bir native ESM paketi (package.json'ında "type":"module"
 // ve doğru "exports" haritası var) — yani `import PiNetwork from 'pi-backend'`
 // normal şartlarda doğrudan çalışmalı. Yine de Vercel'in fonksiyon
@@ -2728,7 +2729,17 @@ async function handlerImpl(req, res) {
       const botUsername = await getCachedBotUsername();
       if (!botUsername) return res.status(503).json({ error: "Bot bilgisi alınamadı, lütfen daha sonra tekrar deneyin" });
 
-      const code = Math.random().toString(36).substr(2, 8).toUpperCase();
+      // FIX (kök neden — "Telegram bağlantı kodu tahmin edilebilirdi"):
+      // Math.random() kriptografik olarak güvenli DEĞİL ve sadece 8 base36
+      // karakter üretiyordu. Bir saldırgan bota kendi hesabından
+      // "/start <tahmin>" mesajları göndererek kodu deneme-yanılma ile
+      // bulmaya çalışabilir, tutarsa kurbanın hesabına kendi Telegram'ını
+      // bağlayıp bildirim/onay akışlarını izleyebilirdi. crypto.randomBytes
+      // kullanılarak 10 hex karakterlik (40 bit, ~1 trilyon olasılık),
+      // tahmin edilemez bir kod üretiliyor. Deneme-yanılma saldırısına karşı
+      // ikinci savunma katmanı olarak telegram-webhook.js'e de chatId
+      // bazlı rate limit eklendi (bkz. o dosya).
+      const code = crypto.randomBytes(5).toString('hex').toUpperCase();
       await db.collection('telegram_link_codes').doc(code).set({
         username: realUsername, createdAt: Date.now()
       });
