@@ -269,6 +269,15 @@
            bkz. sweep-move keyframes'in 0%/100% değerleri ters çevrildi. */
         .pi-loading-textcol{display:flex;flex-direction:column;align-items:center;gap:4px;}
         .pi-loading-label{font-size:0.85em;white-space:nowrap;line-height:1;}
+        /* GÜNCELLEME (kullanıcı isteğiyle — "renkler kayboluyor"): .pi-btn'in
+           varsayılan parlak mavi gradyanı (#0052FF→#3b82f6) + pulse-blue
+           animasyonu, yükleme halkasındaki mor/indigo/turkuaz tonlarını
+           yutuyordu (mavi zemin üstünde mavi/indigo ışıklar zor seçiliyordu).
+           Yükleme durumundayken buton KOYU/NÖTR bir zemine geçiyor —
+           halkanın ve kayan çizginin renkleri artık net şekilde öne çıkıyor.
+           Ayrıca pulse-blue animasyonu durduruluyor (iki animasyon aynı
+           anda gözü daha da yoruyordu). */
+        .pi-btn.pi-btn-loading{background:linear-gradient(135deg,#0f172a 0%,#1e293b 100%);animation:none;box-shadow:inset 0 0 0 1.5px rgba(148,163,184,0.25);}
         .pi-loading-track{position:relative;width:64px;height:3px;border-radius:3px;background:rgba(255,255,255,0.22);overflow:hidden;}
         .pi-loading-track .sweep{position:absolute;top:0;left:100%;width:45%;height:100%;border-radius:3px;background:linear-gradient(90deg,transparent,#a855f7,#6366f1,#10b981,transparent);animation:sweep-move 1.25s ease-in-out infinite;}
         @keyframes sweep-move{0%{left:100%;}100%{left:-45%;}}
@@ -3470,6 +3479,15 @@ const i18n = {
     priceMaxPlaceholder:"Max Pi",
     ownershipVerifiedBadge:"Sahiplik Doğrulandı",
     ownershipVerifiedTooltip:"Admin, bu satıcının sunduğu sahiplik kanıtını inceleyip onayladı. Doğrulanma tarihi:",
+    // YENİ: Satıcı profili rozeti için AYRI bir metin — bu rozet TEK bir
+    // domaine değil, satıcının TÜM ilanlarına bakıp "en az biri
+    // doğrulanmış mı" diye soruyor (bkz. approve.js get_seller_rating).
+    // Öncesinde bu, domain-özel "Sahiplik Doğrulandı" metniyle AYNI
+    // etiketi kullanıyordu — bu da "bu domain'in doğrulamasını kaldırdım
+    // ama satıcı sayfasında hâlâ görünüyor" kafa karışıklığına yol
+    // açıyordu (aslında satıcının BAŞKA bir doğrulanmış ilanı olduğu
+    // için doğru davranıyordu, ama etiket bunu netleştirmiyordu).
+    sellerHasVerifiedListingBadge:"Doğrulanmış İlanı Var",
     highValueWarning:"Bu yüksek tutarlı bir işlem. Devam etmeden önce satıcının puanını ve profilini incelemenizi, mümkünse \"Sahiplik Doğrulandı\" rozetine sahip ilanları tercih etmenizi öneririz.",
     ownershipVerifyBtn:"Sahipliği Doğrula",
     ownershipUnverifyBtn:"Doğrulamayı Kaldır",
@@ -4356,6 +4374,7 @@ const i18n = {
     priceMinPlaceholder:"Min Pi",
     priceMaxPlaceholder:"Max Pi",
     ownershipVerifiedBadge:"Ownership Verified",
+    sellerHasVerifiedListingBadge:"Has a Verified Listing",
     ownershipVerifiedTooltip:"Admin reviewed and approved this seller's proof of ownership. Verified on:",
     highValueWarning:"This is a high-value transaction. We recommend checking the seller's rating and profile before proceeding, and preferring listings with the \"Ownership Verified\" badge when possible.",
     ownershipVerifyBtn:"Verify Ownership",
@@ -6279,7 +6298,7 @@ window.openSellerProfile=async function(username){
             const human=m<60?`${m} ${t('minutesUnit')}`:(m<1440?`${Math.round(m/60)} ${t('hoursUnit')}`:`${Math.round(m/1440)} ${t('daysUnit')}`);
             responseTimeText=`<span style="margin-left:8px;">⚡ ${t('avgResponseTimeLabel')(human)}</span>`;
         }
-        const verifiedText=res.hasVerifiedListing?`<span style="margin-left:8px;">🛡️ ${t('ownershipVerifiedBadge')}</span>`:'';
+        const verifiedText=res.hasVerifiedListing?`<span style="margin-left:8px;">🛡️ ${t('sellerHasVerifiedListingBadge')}</span>`:'';
         const trustScoreHtml=`<div style="background:${tl[3]};border:1.5px solid ${tl[4]};border-radius:12px;padding:12px;margin-bottom:12px;text-align:center;">
             <div style="font-size:1.7em;font-weight:900;color:${tl[2]};">${tl[0]} ${res.trustScore}<span style="font-size:0.5em;color:#64748b;">/100</span></div>
             <div style="font-size:0.75em;font-weight:800;color:${tl[2]};margin-top:2px;">${t('trustScoreLabel')} — ${tl[1]}</div>
@@ -9618,6 +9637,7 @@ async function performPiConnect() {
                 // mevcut 'webPushEnabling' i18n anahtarı (TR:"Bağlanıyor...",
                 // EN:"Connecting...") kullanılarak dile göre gösteriliyor.
                 connectBtn.innerHTML = '<span class="pi-loading-wrap"><span class="pi-loading-orb"><span class="ring-outer"></span><span class="ring-inner"></span><span class="core-dot"></span></span><span class="pi-loading-textcol"><span class="pi-loading-label">' + t('webPushEnabling') + '</span><span class="pi-loading-track"><span class="sweep"></span></span></span></span>';
+                connectBtn.classList.add('pi-btn-loading');
                 connectBtn.disabled = true;
                 connectBtn.style.opacity = '0.7';
                 connectBtn.style.pointerEvents = 'none';
@@ -9717,6 +9737,7 @@ async function performPiConnect() {
             // ── 6. BUTONU NORMALE DÖNDÜR (önemli: spinner'ı kaldır) ───
             if (connectBtn && originalBtnText) {
                 connectBtn.innerHTML = originalBtnText;
+                connectBtn.classList.remove('pi-btn-loading');
                 connectBtn.disabled = false;
                 connectBtn.style.opacity = '1';
                 connectBtn.style.pointerEvents = 'auto';
@@ -9809,6 +9830,7 @@ async function performPiConnect() {
             // Hata durumunda butonu mutlaka normale döndür
             if (connectBtn && originalBtnText) {
                 connectBtn.innerHTML = originalBtnText;
+                connectBtn.classList.remove('pi-btn-loading');
                 connectBtn.disabled = false;
                 connectBtn.style.opacity = '1';
                 connectBtn.style.pointerEvents = 'auto';
@@ -9819,6 +9841,7 @@ async function performPiConnect() {
             // Hata durumunda butonu mutlaka normale döndür
             if (connectBtn && originalBtnText) {
                 connectBtn.innerHTML = originalBtnText;
+                connectBtn.classList.remove('pi-btn-loading');
                 connectBtn.disabled = false;
                 connectBtn.style.opacity = '1';
                 connectBtn.style.pointerEvents = 'auto';
