@@ -247,8 +247,9 @@
         /* ── "Pi ile Bağlan" butonu: içerik (π simgesi / bağlanıyor animasyonu)
            her zaman butonun kendi çerçevesinde tam ortalı dursun diye ─────── */
         .pi-connect-btn{display:inline-flex;align-items:center;justify-content:center;}
-        @keyframes spin-ring-plain{0%{transform:rotate(0deg);}100%{transform:rotate(360deg);}}
-        .connect-spinner-colorful{display:inline-block;width:18px;height:18px;border-radius:50%;flex-shrink:0;background:conic-gradient(from 0deg,#fbbf24,#ef4444,#a855f7,#6366f1,#10b981,#fbbf24);animation:spin-ring-plain 0.8s linear infinite;-webkit-mask:radial-gradient(farthest-side,transparent calc(100% - 3px),#000 calc(100% - 3px));mask:radial-gradient(farthest-side,transparent calc(100% - 3px),#000 calc(100% - 3px));}
+        /* (spin-ring-plain ve connect-spinner-colorful — "Bağlanıyor"
+           panelinin çift-halka tasarıma geçmesiyle artık kullanılmıyordu,
+           check-up sırasında ölü kod olarak temizlendi.) */
         /* ── YENİ: "Pi ile Bağlan" yükleme göstergesi — kullanıcı isteğiyle
            yenilendi. İki iç içe halka (dışta ve içte BAĞIMSIZ hızda/yönde
            dönen renkli ışık yayları) + ortada nabız gibi büyüyüp küçülen
@@ -3351,7 +3352,8 @@ const i18n = {
     reportIssueBtn:"Sorun Var",
     confirmTransferSellerPrompt:"Domaini alıcıya devrettiniz mi?",
     confirmSentBtn:"Evet, Devrettim",
-    reportIssuePrompt:"Sorunu kısaca açıklayın (admin'in görmesi için zorunlu):",
+    // (reportIssuePrompt — eski çıplak prompt() metniydi, "Sorun Bildir"
+    // modalına geçilince artık kullanılmıyor, check-up sırasında temizlendi.)
     reportIssueEmptyWarning:"Sorun bildirmek için önce kısa bir açıklama yazmalısınız.",
     reportIssueModalTitle:"Sorun Bildir",
     reportIssueNoteLabel:"Ne oldu?",
@@ -3796,6 +3798,13 @@ const i18n = {
     changelogV2_0Item3:"🩺 Kapsamlı Sistem Kontrolü eklendi: veri tutarlılığı, canlı sunucu/veritabanı bağlantıları ve arka planda oluşan hatalar otomatik taranıp raporlanıyor",
     changelogV2_0Item4:"🛡️ Sunucu tarafına genel bir 'güvenlik ağı' eklendi — beklenmeyen hatalar artık sessizce kaybolmuyor, kayıt altına alınıp raporlanıyor",
     changelogV2_0Item5:"🔔 Devir onayı hatırlatmaları artık Alımlarım/Gelirim panellerinde ayrı rozetlerle takip ediliyor, kaçırılma riski ortadan kalktı",
+    // BUG DÜZELTMESİ (kök neden — check-up sırasında bulundu): Bu anahtar
+    // hiç tanımlanmamıştı. Diğer tüm changelog girdilerinin bir "v:" başlık
+    // anahtarı var (bkz. changelogV2_0, changelogV1_8) ama V1_9'un sadece
+    // Item1-5'i vardı, kendisi yoktu. t('changelogV1_9') bu yüzden
+    // fallback'e düşüp EKRANDA HAM OLARAK "changelogV1_9" YAZIYORDU
+    // (değişiklik geçmişi modalındaki bu sürümün başlığı olarak).
+    changelogV1_9:"v1.9 - Escrow Güven Güncellemesi",
     changelogV1_9Item1:"Escrow ödeme sürecine gerçek güven mekanizması eklendi: hem alıcı hem satıcı, domain devrini uygulama içinden onaylıyor",
     changelogV1_9Item2:"Admin artık ödeme onayı/iade kararını, alıcı ve satıcının onayını görmeden veremiyor — eksik onay net şekilde uyarılıyor",
     changelogV1_9Item3:"Onaylamayan tarafa admin panelinden tek tuşla hatırlatma bildirimi gönderilebiliyor",
@@ -4247,7 +4256,8 @@ const i18n = {
     reportIssueBtn:"Report Issue",
     confirmTransferSellerPrompt:"Did you transfer the domain to the buyer?",
     confirmSentBtn:"Yes, Transferred",
-    reportIssuePrompt:"Briefly describe the issue (required so admin can review it):",
+    // (reportIssuePrompt — old bare prompt() text, unused since the
+    // "Report Issue" modal replaced it; removed during check-up.)
     reportIssueEmptyWarning:"Please write a short description before reporting an issue.",
     reportIssueModalTitle:"Report an Issue",
     reportIssueNoteLabel:"What happened?",
@@ -4684,6 +4694,7 @@ const i18n = {
     changelogV2_0Item3:"🩺 Added a comprehensive System Check-up: data consistency, live server/database connectivity, and background errors are now automatically scanned and reported",
     changelogV2_0Item4:"🛡️ Added a server-side safety net — unexpected errors are no longer lost silently, they're logged and reported",
     changelogV2_0Item5:"🔔 Transfer confirmation reminders are now tracked with dedicated badges in the My Purchases/My Income panels, so they can no longer be missed",
+    changelogV1_9:"v1.9 - Escrow Trust Update",
     changelogV1_9Item1:"Added real trust mechanism to the escrow flow: both buyer and seller confirm the domain transfer directly in the app",
     changelogV1_9Item2:"Admin can no longer release or refund a payment without seeing buyer/seller confirmation — missing confirmations are clearly flagged",
     changelogV1_9Item3:"Admin can send a one-tap reminder notification to whichever party hasn't confirmed yet",
