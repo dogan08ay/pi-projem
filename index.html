@@ -264,7 +264,7 @@
         .pi-loading-orb{position:relative;width:22px;height:22px;flex-shrink:0;}
         .pi-loading-orb .ring-outer{position:absolute;inset:0;border-radius:50%;background:conic-gradient(from 0deg,#fbbf24,#f59e0b 40%,transparent 75%,transparent 100%);-webkit-mask:radial-gradient(farthest-side,transparent calc(100% - 2.5px),#000 calc(100% - 2.5px));mask:radial-gradient(farthest-side,transparent calc(100% - 2.5px),#000 calc(100% - 2.5px));animation:orb-spin-cw 1.15s linear infinite;}
         .pi-loading-orb .ring-inner{position:absolute;inset:5px;border-radius:50%;background:conic-gradient(from 180deg,#a855f7,#c084fc 40%,transparent 70%,transparent 100%);-webkit-mask:radial-gradient(farthest-side,transparent calc(100% - 2px),#000 calc(100% - 2px));mask:radial-gradient(farthest-side,transparent calc(100% - 2px),#000 calc(100% - 2px));animation:orb-spin-ccw 0.85s linear infinite;}
-        .pi-loading-orb .core-dot{position:absolute;top:50%;left:50%;width:6px;height:6px;margin:-3px 0 0 -3px;border-radius:50%;background:#3b82f6;box-shadow:0 0 8px 2px rgba(59,130,246,0.85);animation:core-pulse 1s ease-in-out infinite;}
+        .pi-loading-orb .core-dot{position:absolute;top:50%;left:50%;width:6px;height:6px;margin:-3px 0 0 -3px;border-radius:50%;background:#ffffff;box-shadow:0 0 8px 2px rgba(255,255,255,0.9);animation:core-pulse 1s ease-in-out infinite;}
         @keyframes orb-spin-cw{to{transform:rotate(360deg);}}
         @keyframes orb-spin-ccw{to{transform:rotate(-360deg);}}
         @keyframes core-pulse{0%,100%{transform:scale(0.65);opacity:0.55;}50%{transform:scale(1.2);opacity:1;}}
@@ -272,11 +272,14 @@
            bir satırda. Çizgi SOLDAN SAĞA akıyor (0%→100% konumu -45%'ten
            100%'e gidiyor). */
         .pi-loading-textcol{display:flex;flex-direction:column;align-items:center;gap:5px;}
-        .pi-loading-label{font-size:0.85em;white-space:nowrap;line-height:1;color:#fde68a;}
+        .pi-loading-label{font-size:0.86em;white-space:nowrap;line-height:1;color:#ffffff;font-weight:900;letter-spacing:0.2px;}
         /* GÜNCELLEME: Buton zemini artık koyu mor/eflatun gradyan (altın+mor
            halka renkleriyle uyumlu — "Pi Marka" paleti), önceki koyu
            lacivert zeminin yerine geçti. */
-        .pi-btn.pi-btn-loading{background:linear-gradient(135deg,#1a1033 0%,#2d1b4e 100%);border:1px solid rgba(251,191,36,0.35);animation:none;box-shadow:none;}
+        /* GÜNCELLEME (kullanıcı isteğiyle — mavi zemin + sarı çerçeve +
+           beyaz kalın yazı, ve panel sayfanın geri kalanından net şekilde
+           AYRIŞSIN diye belirgin bir sarı parlama/glow eklendi). */
+        .pi-btn.pi-btn-loading{background:linear-gradient(135deg,#1e40af 0%,#2563eb 100%);border:2px solid #facc15;animation:none;box-shadow:0 0 14px 2px rgba(250,204,21,0.45),0 0 0 1px rgba(250,204,21,0.2) inset;}
         .pi-loading-track{position:relative;width:64px;height:3px;border-radius:3px;background:rgba(251,191,36,0.15);overflow:hidden;}
         .pi-loading-track .sweep{position:absolute;top:0;left:-45%;width:45%;height:100%;border-radius:3px;background:linear-gradient(90deg,transparent,#fbbf24,#a855f7,transparent);animation:sweep-move 1.25s ease-in-out infinite;}
         @keyframes sweep-move{0%{left:-45%;}100%{left:100%;}}
@@ -8750,6 +8753,26 @@ function render(){
     // güvenceye alıyor.
     const gcb=document.getElementById('global-connect-bar');
     if(gcb) gcb.style.display = isAuth ? 'none' : 'block';
+    // GÜVENLİK KATMANI (yukarıdaki performPiConnect düzeltmesinin
+    // tamamlayıcısı): Başarılı girişte connectBtn artık normale
+    // DÖNDÜRÜLMÜYOR (bilerek — "flaş" bug'ını önlemek için, bkz. o
+    // fonksiyondaki not). Bu da şu riski doğurur: kullanıcı çıkış yapıp
+    // bağlantı kutusu TEKRAR görünür hale geldiğinde (isAuth=false),
+    // buton hâlâ eski "Bağlanıyor..." durumunda (disabled, pi-btn-loading
+    // class'lı, data-i18n'siz) donmuş kalabilir. Bar her GÖRÜNÜR
+    // olduğunda butonu burada sıfırlıyoruz — applyTranslations() az
+    // sonra zaten çağrılacağı için, data-i18n özniteliğini geri koymak
+    // yeterli, metni applyTranslations() kendisi dolduracak.
+    if(gcb && !isAuth){
+        const cb=gcb.querySelector('.pi-connect-btn');
+        if(cb && cb.classList.contains('pi-btn-loading')){
+            cb.classList.remove('pi-btn-loading');
+            cb.disabled=false;
+            cb.style.opacity='1';
+            cb.style.pointerEvents='auto';
+            cb.setAttribute('data-i18n','connectWithPi');
+        }
+    }
     firstRenderDone=true;
     const list=document.getElementById("domain-list");
     const lock=document.getElementById("premium-lock");
@@ -9745,20 +9768,26 @@ async function performPiConnect() {
             document.querySelector('.main-scroll').style.maxHeight = 'none';
             document.querySelector('.main-scroll').style.overflowY = 'auto';
 
-            // ── 6. BUTONU NORMALE DÖNDÜR (önemli: spinner'ı kaldır) ───
-            if (connectBtn && originalBtnText) {
-                connectBtn.innerHTML = originalBtnText;
-                connectBtn.classList.remove('pi-btn-loading');
-                connectBtn.setAttribute('data-i18n','connectWithPi'); // bkz. yukarıdaki KÖK NEDEN notu
-                connectBtn.disabled = false;
-                connectBtn.style.opacity = '1';
-                connectBtn.style.pointerEvents = 'auto';
-            }
+            // ── 6. BUG DÜZELTMESİ (kök neden — "Bağlanıyor" dedikten sonra
+            // anlık "Pi ile Bağlan" görünüp gidiyordu): Buton burada normal
+            // metnine geri döndürülüyordu, AMA hemen altındaki
+            // debouncedRender() 50ms GECİKMELİ çalışıyor (bkz. debounce
+            // tanımı). Bu 50ms'lik pencerede kullanıcı "Pi ile Bağlan"
+            // yazısını görüyordu, ANCAK bağlantı kutusu (#global-connect-bar)
+            // henüz gizlenmemişti — render() çalışıp isAuth=true olduğunu
+            // görene kadar. Çözüm: BAŞARI durumunda butonu hiç normale
+            // döndürmüyoruz (zaten birazdan tamamen gizlenecek, kimse
+            // görmeyecek) VE render()'ı GECİKMESİZ çağırıyoruz ki bağlantı
+            // kutusu mümkün olan en kısa sürede gizlensin.
+            // (Buton normale döndürme işlemi SADECE hata/iptal durumunda
+            // gerekli — o senaryolar aşağıdaki catch bloğunda hâlâ mevcut.)
 
-            // ── 7. ANİMASYONLU GÖSTERİM — TEK RAF, SIRALI ─────────────
+            // ── 7. ANİMASYONLU GÖSTERİM — GECİKMESİZ, SIRALI ─────────────
             // ÖNCE render() çağrılır ki içerik DOM'a girsin (ama panel'ler
-            // hâlâ display:none olduğu için görünmez)
-            debouncedRender();
+            // hâlâ display:none olduğu için görünmez). debouncedRender()
+            // yerine DOĞRUDAN render() çağrılıyor — 50ms'lik gecikme,
+            // yukarıda açıklanan görsel "flaş" bug'ının ana sebebiydi.
+            if (typeof render === 'function') render(); else debouncedRender();
 
             requestAnimationFrame(() => {
                 requestAnimationFrame(() => {
