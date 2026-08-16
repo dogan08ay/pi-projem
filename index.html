@@ -3384,6 +3384,21 @@ const i18n = {
     transferConfirmedByYou:"Devri onayladınız.",
     transferDisputedByYou:"Bir sorun bildirdiniz. Admin inceleyecek.",
     confirmTransferPrompt:"Domaini satıcıdan teslim aldınız mı?",
+    // YENİ: Domain devir rehberi metinleri — Pi'nin resmi devir arayüzünün
+    // TAM buton isimlerini bilmediğimiz için genel ama doğru adımlar +
+    // kritik güvenlik uyarıları veriyoruz (uydurma menü adı vermiyoruz).
+    transferGuideSellerTitle:"Domaini Nasıl Devredersiniz?",
+    transferGuideSellerStep1:"Pi Browser'ı açıp resmi \"Domains\" (Domainler) uygulamasına gidin.",
+    transferGuideSellerStep2:"Domain listenizden bu domaini bulup seçin.",
+    transferGuideSellerStep3:"Devir / sahiplik değiştirme seçeneğini bulun ve alıcının Pi kullanıcı adını GİRİN (yazım hatasını önlemek için elle yazmak yerine aşağıdakine dokunup kopyalayın):",
+    transferGuideSellerStep4:"Devri Pi Browser'da onaylayın. Devri GERÇEKTEN tamamladıktan SONRA aşağıdaki \"Devrettim\" butonuna basın.",
+    transferGuideWarningSeller:"Menü adları Pi Browser güncellemeleriyle değişebilir — güncel yolu Pi Browser içinde arayın. Kullanıcı adını ASLA elle yazmayın, yanlış kişiye devretme riskine karşı kopyala-yapıştır kullanın.",
+    transferGuideBuyerTitle:"Domaini Teslim Aldığınızı Nasıl Doğrularsınız?",
+    transferGuideBuyerStep1:"Pi Browser'ı açıp resmi \"Domains\" (Domainler) uygulamasına gidin.",
+    transferGuideBuyerStep2:"\"Domainlerim\" bölümüne bakıp bu domainin ARTIK sizin hesabınızda göründüğünü doğrulayın.",
+    transferGuideBuyerStep3:"Görünüyorsa aşağıdaki \"Aldım\" butonuna basın. Görünmüyorsa önce satıcıyla mesajlaşın, hâlâ gelmediyse \"Sorun Var\" ile bildirin.",
+    transferGuideWarningBuyer:"Domain KENDİ hesabınızda görünmeden ASLA \"Aldım\" demeyin — bu, ödemenin satıcıya serbest bırakılmasını tetikler ve geri alınamaz.",
+    usernameCopiedMsg:"Kullanıcı adı kopyalandı",
     confirmReceivedBtn:"Evet, Aldım",
     reportIssueBtn:"Sorun Var",
     confirmTransferSellerPrompt:"Domaini alıcıya devrettiniz mi?",
@@ -4010,6 +4025,8 @@ const i18n = {
     tourStepMyReportsDesc:"Şüpheli veya sahte bulup bildirdiğiniz ilan şikayetlerinin durumunu (Gönderildi → İnceleniyor → Sonuçlandı) buradan takip edebilirsiniz.",
     tourStepHistoryTitle:"🕓 Geçmişim",
     tourStepHistoryDesc:"Tüm ilan, satın alma, şikayet, destek talebi ve marka itirazı geçmişinizi tek bir yerde, konu başlıklarına ayrılmış şekilde görürsünüz. İlgili kayıt silinirse buradan da otomatik kalkar.",
+    tourStepMessagesTitle:"💬 Mesajlarım",
+    tourStepMessagesDesc:"Bir domain hakkında satıcıyla (veya size mesaj gönderen bir alıcı adayıyla) yaptığınız tüm yazışmalar burada listelenir — okunmamış mesajlarınız varsa kırmızı bir sayaçla uyarılırsınız.",
     tourStepShareTitle:"Uygulamayı Paylaş",
     tourStepShareDesc:"Linki veya QR kodu paylaşarak arkadaşlarınızı .pi domain pazarına davet edin — büyümemize yardımcı olun!",
     tourNext:"İleri",
@@ -4310,6 +4327,18 @@ const i18n = {
     transferConfirmedByYou:"You confirmed the transfer.",
     transferDisputedByYou:"You reported an issue. Admin will review it.",
     confirmTransferPrompt:"Did you receive the domain from the seller?",
+    transferGuideSellerTitle:"How to Transfer the Domain",
+    transferGuideSellerStep1:"Open Pi Browser and go to the official \"Domains\" app.",
+    transferGuideSellerStep2:"Find and select this domain in your domain list.",
+    transferGuideSellerStep3:"Find the transfer / change-ownership option and enter the buyer's Pi username (tap to copy instead of typing, to avoid typos):",
+    transferGuideSellerStep4:"Confirm the transfer in Pi Browser. Only AFTER you've actually completed it, tap \"Transferred\" below.",
+    transferGuideWarningSeller:"Menu names may change with Pi Browser updates — look for the current path inside Pi Browser. NEVER type the username by hand — copy-paste it to avoid transferring to the wrong person.",
+    transferGuideBuyerTitle:"How to Verify You Received the Domain",
+    transferGuideBuyerStep1:"Open Pi Browser and go to the official \"Domains\" app.",
+    transferGuideBuyerStep2:"Check \"My Domains\" and confirm this domain now appears in YOUR account.",
+    transferGuideBuyerStep3:"If it does, tap \"Received\" below. If not, message the seller first, and report an issue if it still hasn't arrived.",
+    transferGuideWarningBuyer:"NEVER tap \"Received\" until the domain actually appears in YOUR account — this releases the payment to the seller and cannot be undone.",
+    usernameCopiedMsg:"Username copied",
     confirmReceivedBtn:"Yes, Received",
     reportIssueBtn:"Report Issue",
     confirmTransferSellerPrompt:"Did you transfer the domain to the buyer?",
@@ -4921,6 +4950,8 @@ const i18n = {
     tourStepMyReportsDesc:"Track the status (Submitted → Under Review → Resolved) of the listing reports you've filed for suspicious or fake listings here.",
     tourStepHistoryTitle:"🕓 My History",
     tourStepHistoryDesc:"See your full listing, purchase, report, support ticket, and trademark claim history in one place, organized by topic. If the related record is deleted, it disappears from here automatically too.",
+    tourStepMessagesTitle:"💬 My Messages",
+    tourStepMessagesDesc:"All your conversations about a domain — with a seller, or a prospective buyer who messaged you — are listed here. A red counter warns you about unread messages.",
     tourStepShareTitle:"Share the App",
     tourStepShareDesc:"Share the link or QR code to invite friends to the .pi domain marketplace — help us grow!",
     tourNext:"Next",
@@ -8561,6 +8592,41 @@ function buildPriceSparklineSvg(history){
 // aynı görünümü kullanıyor. Tıklanınca görsel yeni sekmede açılıyor
 // (mevcut projede zaten kullanılan window.open(img.src,'_blank') deseniyle
 // tutarlı, bkz. paylaşım/QR kodu akışı).
+// ── YENİ: Domain devir REHBERİ — para escrow'da tutulurken, satıcı/alıcı
+// tarafına GERÇEK devrin (Pi'nin kendi resmi domain sisteminde) nasıl
+// yapılacağına dair rehber gösteriyor. ÖNEMLİ TASARIM KARARI: Pi'nin
+// domain devir arayüzünün TAM buton/menü isimlerini kesin olarak
+// bilmiyoruz (bu her zaman değişebilir ve üçüncü parti bir API yok) —
+// o yüzden burada KESİN buton adları UYDURULMUYOR, bunun yerine genel
+// ama doğru adımlar + KRİTİK güvenlik uyarıları (kullanıcı adını
+// kopyala-yapıştır, alıcı hesabında GÖRÜNMEDEN asla onaylama) veriliyor.
+// Yanlış/uydurma bir menü adı vermek, gerçek para kaybına yol açacak
+// kadar kritik bir hata olurdu.
+function buildTransferGuideHtml(role, otherUsername){
+    const safeOther = escapeHtml(otherUsername || '?');
+    if(role==='seller'){
+        return `<div style="margin-bottom:8px;background:rgba(59,130,246,0.08);border:1px solid rgba(59,130,246,0.3);border-radius:10px;padding:9px 10px;">
+            <div style="font-size:0.68em;font-weight:800;color:#93c5fd;margin-bottom:6px;">📘 ${t('transferGuideSellerTitle')}</div>
+            <ol style="margin:0 0 6px 0;padding-left:16px;font-size:0.64em;color:#cbd5e1;line-height:1.8;">
+                <li>${t('transferGuideSellerStep1')}</li>
+                <li>${t('transferGuideSellerStep2')}</li>
+                <li>${t('transferGuideSellerStep3')}<br><b style="color:#fbbf24;cursor:pointer;background:rgba(251,191,36,0.12);padding:2px 7px;border-radius:6px;display:inline-block;margin-top:3px;" onclick="navigator.clipboard.writeText('${safeOther}');showToast(t('usernameCopiedMsg'));">@${safeOther} 📋</b></li>
+                <li>${t('transferGuideSellerStep4')}</li>
+            </ol>
+            <div style="font-size:0.6em;color:#fca5a5;font-weight:700;line-height:1.5;">⚠️ ${t('transferGuideWarningSeller')}</div>
+        </div>`;
+    }
+    return `<div style="margin-bottom:8px;background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.3);border-radius:10px;padding:9px 10px;">
+        <div style="font-size:0.68em;font-weight:800;color:#6ee7b7;margin-bottom:6px;">📘 ${t('transferGuideBuyerTitle')}</div>
+        <ol style="margin:0 0 6px 0;padding-left:16px;font-size:0.64em;color:#cbd5e1;line-height:1.8;">
+            <li>${t('transferGuideBuyerStep1')}</li>
+            <li>${t('transferGuideBuyerStep2')}</li>
+            <li>${t('transferGuideBuyerStep3')}</li>
+        </ol>
+        <div style="font-size:0.6em;color:#fca5a5;font-weight:700;line-height:1.5;">⚠️ ${t('transferGuideWarningBuyer')}</div>
+    </div>`;
+}
+
 function renderEvidenceThumbsHtml(urls){
     if(!Array.isArray(urls)||!urls.length) return '';
     return `<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px;">${urls.map(u=>
@@ -8609,6 +8675,7 @@ function renderUserPanel(){
                     const nudgeMsg = (data.buyerNudgeCount>0) ? `<div style="margin-bottom:5px;font-size:0.6em;color:#a5b4fc;">🔔 ${t('adminNudgedYou')(data.buyerNudgeCount)}</div>` : '';
                     confirmHtml=`<div style="margin-top:8px;padding-top:8px;border-top:1px dashed #334155;">
                     ${disputeMsg}${nudgeMsg}
+                    ${buildTransferGuideHtml('buyer', data.sellerUsername)}
                     <div style="font-size:0.65em;color:#94a3b8;margin-bottom:5px;">${t('confirmTransferPrompt')}</div>
                     <div style="display:flex;gap:6px;">
                         <button onclick="handleConfirmTransfer('${d.name}','buyer',true)" style="flex:1;padding:7px;border:none;border-radius:6px;background:linear-gradient(135deg,#10b981,#34d399);color:#052e21;font-weight:800;font-size:0.65em;cursor:pointer;">✅ ${t('confirmReceivedBtn')}</button>
@@ -8884,6 +8951,7 @@ function renderUserPanel(){
                         const nudgeMsg = (d.sellerNudgeCount>0) ? `<div style="margin-bottom:5px;font-size:0.6em;color:#a5b4fc;width:100%;">🔔 ${t('adminNudgedYou')(d.sellerNudgeCount)}</div>` : '';
                         confirmHtml=`<div style="margin-top:8px;padding-top:8px;border-top:1px dashed #334155;width:100%;">
                         ${disputeMsg}${nudgeMsg}
+                        ${buildTransferGuideHtml('seller', d.buyer)}
                         <div style="font-size:0.65em;color:#94a3b8;margin-bottom:5px;">${t('confirmTransferSellerPrompt')}</div>
                         <div style="display:flex;gap:6px;">
                             <button onclick="handleConfirmTransfer('${d.name}','seller',true)" style="flex:1;padding:7px;border:none;border-radius:6px;background:linear-gradient(135deg,#10b981,#34d399);color:#052e21;font-weight:800;font-size:0.65em;cursor:pointer;">✅ ${t('confirmSentBtn')}</button>
@@ -10689,6 +10757,7 @@ const TOUR_STEPS = [
     { selector: '[data-utab="utab-listings"]', titleKey: 'tourStepListingsTitle', descKey: 'tourStepListingsDesc', placement: 'top', context: 'panel', tab: 'utab-listings' },
     { selector: '[data-utab="utab-help-group"]', titleKey: 'tourStepHelpGroupTitle', descKey: 'tourStepHelpGroupDesc', placement: 'top', context: 'panel', tab: 'utab-tickets' },
     { selector: '[data-utab="utab-history"]', titleKey: 'tourStepHistoryTitle', descKey: 'tourStepHistoryDesc', placement: 'top', context: 'panel', tab: 'utab-history' },
+    { selector: '[data-utab="utab-messages"]', titleKey: 'tourStepMessagesTitle', descKey: 'tourStepMessagesDesc', placement: 'top', context: 'panel', tab: 'utab-messages' },
     { selector: '.side-menu-item[onclick*="openShareAppModal"]', titleKey: 'tourStepShareTitle', descKey: 'tourStepShareDesc', placement: 'left', context: 'menu' }
 ];
 let tourStepIndex = 0;
@@ -10959,6 +11028,27 @@ function tourRepositionUntilReady(forStepIndex, maxFrames = 40) {
     })();
 }
 
+// BUG DÜZELTMESİ (kök neden — "kartın yarısı görünmüyor, bir şeyin altında
+// kalmış"): Sayfanın altında, .main-scroll içinde sticky (yapışkan) bir
+// footer-section var (iletişim/gizlilik linkleri, position:sticky;bottom:0;
+// z-index:50). tourGetVisibleRect() SADECE overflow:hidden ile KIRPILAN
+// alanı hesaba katıyordu — sticky/fixed bir elementin ÜSTÜNE GÖRSEL OLARAK
+// BİNDİĞİ alanı hesaba KATMIYORDU. Sonuç: "Kartlar Tıklanabilir" adımında
+// hedef domain kartı ekranda ortalanırken, kartın alt kısmı bu sticky
+// footer'ın ARKASINDA/ALTINDA kalıyor, kullanıcı kartın sadece üst yarısını
+// görüyordu. Bu fonksiyon, footer'ın o an gerçekten görünür olup olmadığını
+// ve yüksekliğini döndürüyor; tourReposition() bunu hem "görünür alan"
+// hesaplamasında hem de kaydırma hedefinde çıkarıyor.
+function tourGetOccludedBottomHeight() {
+    const footer = document.querySelector('.footer-section');
+    if (!footer) return 0;
+    const cs = getComputedStyle(footer);
+    if (cs.display === 'none' || cs.visibility === 'hidden') return 0;
+    const r = footer.getBoundingClientRect();
+    if (r.height < 1) return 0;
+    return r.height;
+}
+
 function tourReposition() {
     // true: konum başarıyla güncellendi. false: hedef o an ölçülemedi (henüz
     // render/animasyon bitmemiş olabilir) — çağıran taraf bunu tekrar deneyip
@@ -10971,16 +11061,33 @@ function tourReposition() {
     // aksi halde resize sırasında turu istemeden ileri attırıyordu.
     if (!target) return false;
     const rect = target.getBoundingClientRect();
+    const occludedBottom = tourGetOccludedBottomHeight();
+    const vh = window.innerHeight, vw = window.innerWidth;
+    const safeVh = vh - occludedBottom; // sticky footer'ın kapladığı alan hariç GERÇEKTEN görünen yükseklik
+
     // ÖNEMLİ: Ham boyut yerine, üst kapsayıcılardaki kırpmayı da hesaba katan
     // GERÇEK görünür alanı kontrol ediyoruz — aksi halde ör. yan menüde
     // taşıp kırpılan bir öğe "başarılı" sayılıp üzerine anlamsız/yanlış
     // konumda bir vurgu çizilebiliyordu.
-    const visRect = tourGetVisibleRect(target);
+    let visRect = tourGetVisibleRect(target);
+    // BUG DÜZELTMESİ: sticky footer'ın kapladığı alanı da GÖRÜNÜR ALANDAN düş
+    visRect = { ...visRect, bottom: Math.min(visRect.bottom, safeVh), height: Math.max(0, Math.min(visRect.bottom, safeVh) - visRect.top) };
     if (visRect.width < 10 || visRect.height < 10) return false;
-    const vh = window.innerHeight, vw = window.innerWidth;
 
-    if (rect.bottom < 0 || rect.top > vh) {
-        target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    if (rect.bottom < 0 || rect.top > safeVh || (visRect.height < rect.height * 0.85)) {
+        // BUG DÜZELTMESİ: native scrollIntoView({block:'center'}) TÜM viewport'a
+        // göre ortalıyor, sticky footer'ın kapladığı alanı bilmiyor — bu yüzden
+        // uzun kartlarda alt kısım footer'ın arkasında kalabiliyordu. Bunun
+        // yerine .main-scroll konteynerini MANUEL olarak, kartı SADECE GÜVENLİ
+        // (footer hariç) alanın ortasına gelecek şekilde kaydırıyoruz.
+        const scroller = document.querySelector('.main-scroll');
+        if (scroller) {
+            const targetCenterInSafeZone = safeVh / 2;
+            const delta = (rect.top + rect.height / 2) - targetCenterInSafeZone;
+            scroller.scrollBy({ top: delta, behavior: 'smooth' });
+        } else {
+            target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
         setTimeout(tourReposition, 300);
         return true;
     }
