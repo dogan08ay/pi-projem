@@ -5,6 +5,8 @@ import { getDatabase } from 'firebase-admin/database';
 import webpush from 'web-push';
 import * as PiNetworkPkg from 'pi-backend';
 import crypto from 'crypto';
+import dns from 'dns/promises';
+import net from 'net';
 // pi-backend gerçek bir native ESM paketi (package.json'ında "type":"module"
 // ve doğru "exports" haritası var) — yani `import PiNetwork from 'pi-backend'`
 // normal şartlarda doğrudan çalışmalı. Yine de Vercel'in fonksiyon
@@ -426,6 +428,134 @@ function sanitizeEvidenceUrls(urls, bucketName) {
     .slice(0, 3);
 }
 function getRtdb()    { getAdminApp(); return getDatabase(); }
+
+// ── YENİ: "Bağlı Uygulama Var mı" kontrolü için GÜVENLİ URL doğrulama +
+// fetch yardımcı fonksiyonu. ────────────────────────────────────────────
+// GÜVENLİK NOTU (SSRF — Sunucu Taraflı İstek Sahteciliği): Bu özellik,
+// kullanıcının girdiği bir URL'ye SUNUCUDAN istek atmayı gerektiriyor.
+// Bu, dikkatli yapılmazsa KLASİK bir SSRF açığıdır — kötü niyetli bir
+// kullanıcı "connectedAppUrl" alanına şunları verebilir:
+//   - http://169.254.169.254/... (AWS/GCP/Azure bulut metadata servisi —
+//     buradan API anahtarları/kimlik bilgileri sızdırılabilir)
+//   - http://localhost:xxxx veya http://127.0.0.1/... (sunucunun kendi
+//     iç servislerine erişim)
+//   - http://10.x.x.x, 172.16-31.x.x, 192.168.x.x (özel/dahili ağlar)
+// isSafeUrlForAppCheck() bunların HİÇBİRİNE isteğin gitmesine izin
+// vermiyor: (1) sadece http/https, (2) hostname DNS ile GERÇEKTEN
+// çözümlenip çıkan IP adresi kontrol ediliyor (sadece hostname string'ine
+// bakmak yetmez — "evil.com" güvenli görünüp DNS'te 127.0.0.1'e
+// çözümlenebilir, buna "DNS rebinding" denir), (3) redirect'ler MANUEL
+// takip edilip HER adımda aynı kontrol tekrar uygulanıyor (bir yönlendirme
+// zinciriyle korumayı atlatmak mümkün olmasın diye).
+function isPrivateOrReservedIp(ip) {
+  if (net.isIP(ip) === 4) {
+    const parts = ip.split('.').map(Number);
+    if (parts[0] === 10) return true;
+    if (parts[0] === 127) return true;
+    if (parts[0] === 0) return true;
+    if (parts[0] === 172 && parts[1] >= 16 && parts[1] <= 31) return true;
+    if (parts[0] === 192 && parts[1] === 168) return true;
+    if (parts[0] === 169 && parts[1] === 254) return true; // bulut metadata servisi
+    if (parts[0] >= 224) return true; // multicast/reserved
+    return false;
+  }
+  if (net.isIP(ip) === 6) {
+    const lower = ip.toLowerCase();
+    if (lower === '::1') return true; // loopback
+    if (lower.startsWith('fe80:')) return true; // link-local
+    if (lower.startsWith('fc') || lower.startsWith('fd')) return true; // unique local
+    if (lower.startsWith('::ffff:')) { // IPv4-mapped — içindeki IPv4'ü de kontrol et
+      const v4 = lower.split(':').pop();
+      if (net.isIP(v4) === 4) return isPrivateOrReservedIp(v4);
+    }
+    return false;
+  }
+  return true; // parse edilemeyen her şeyi güvensiz say
+}
+
+async function isSafeUrlForAppCheck(urlStr) {
+  let u;
+  try { u = new URL(urlStr); } catch { return { safe: false, reason: 'Geçersiz URL formatı' }; }
+  if (u.protocol !== 'http:' && u.protocol !== 'https:') return { safe: false, reason: 'Sadece http/https desteklenir' };
+  if (u.username || u.password) return { safe: false, reason: 'URL kimlik bilgisi içeremez' };
+  const hostname = u.hostname.replace(/^\[|\]$/g, ''); // IPv6 literal'ler URL.hostname'de köşeli parantezli döner (ör. "[::1]") — net.isIP bunu tanımaz, parantezleri temizliyoruz
+  if (hostname === 'localhost') return { safe: false, reason: 'localhost yasak' };
+  // Hostname zaten çıplak bir IP olarak yazılmışsa direkt kontrol et
+  if (net.isIP(hostname)) {
+    if (isPrivateOrReservedIp(hostname)) return { safe: false, reason: 'Özel/rezerve IP adresi yasak' };
+    return { safe: true };
+  }
+  // Değilse GERÇEKTEN DNS çözümlemesi yap (DNS rebinding koruması)
+  try {
+    const records = await dns.lookup(hostname, { all: true });
+    for (const rec of records) {
+      if (isPrivateOrReservedIp(rec.address)) return { safe: false, reason: 'Domain özel/rezerve bir IP\'ye çözümleniyor' };
+    }
+    return { safe: true };
+  } catch {
+    return { safe: false, reason: 'DNS çözümlenemedi' };
+  }
+}
+
+// En fazla 3 yönlendirmeyi MANUEL takip ederek (her adımda tekrar SSRF
+// kontrolü yaparak) güvenli bir şekilde URL'yi çeker. Yanıt gövdesi en
+// fazla 200KB okunur, 8 saniye zaman aşımı uygulanır.
+async function safeFetchForAppCheck(urlStr, maxRedirects = 3) {
+  let currentUrl = urlStr;
+  for (let hop = 0; hop <= maxRedirects; hop++) {
+    const safety = await isSafeUrlForAppCheck(currentUrl);
+    if (!safety.safe) return { ok: false, reason: safety.reason };
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 8000);
+    let res;
+    try {
+      res = await fetch(currentUrl, {
+        redirect: 'manual',
+        signal: controller.signal,
+        headers: { 'User-Agent': 'DofiayAppLinkChecker/1.0' }
+      });
+    } catch (e) {
+      clearTimeout(timeoutId);
+      return { ok: false, reason: 'İstek başarısız: ' + e.message };
+    }
+    clearTimeout(timeoutId);
+
+    if ([301, 302, 303, 307, 308].includes(res.status)) {
+      const location = res.headers.get('location');
+      if (!location) return { ok: false, reason: 'Yönlendirme hedefi belirtilmemiş' };
+      currentUrl = new URL(location, currentUrl).toString();
+      continue; // bir sonraki hop'ta tekrar güvenlik kontrolü yapılacak
+    }
+
+    // Gövdeyi en fazla 200KB okuyacak şekilde sınırlandır
+    const reader = res.body?.getReader();
+    let received = '';
+    if (reader) {
+      const decoder = new TextDecoder();
+      let totalBytes = 0;
+      while (totalBytes < 200 * 1024) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        totalBytes += value.length;
+        received += decoder.decode(value, { stream: true });
+      }
+      try { reader.cancel(); } catch {}
+    }
+    return { ok: true, status: res.status, body: received, finalUrl: currentUrl };
+  }
+  return { ok: false, reason: 'Çok fazla yönlendirme (olası döngü)' };
+}
+
+// Basit bir "parked/boş sayfa" tespiti — kesin değil ama makul bir filtre.
+function looksLikeParkedPage(bodyLower) {
+  const parkingSignals = [
+    'domain is for sale', 'buy this domain', 'this domain is parked',
+    'coming soon', 'under construction', 'godaddy.com/domains',
+    'this domain may be for sale', 'satılık domain', 'yapım aşamasında'
+  ];
+  return parkingSignals.some(sig => bodyLower.includes(sig));
+}
 
 // ─── Admin Token Cache ────────────────────────────────────────────────────
 const adminCache = new Map();
@@ -1212,6 +1342,108 @@ async function handlerImpl(req, res) {
       return res.status(200).json({ success: true, ownershipVerified: !!verified });
     } catch (e) {
       console.error("toggle_ownership_verified hatası:", e);
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  // ── YENİ: "Bağlı Uygulama Var mı" özelliği — 3 action ────────────────
+  // 1) set_connected_app_url: satıcı, domain'inin yönlendirdiği GERÇEK
+  //    URL'yi (ör. myapp.vercel.app) girer. Sadece kendi domain'i için,
+  //    ve sadece domain onaylanmış+satılmamışsa değiştirebilir (satış
+  //    sonrası devir karmaşasına yol açmasın diye).
+  if (action === 'set_connected_app_url') {
+    const { domainName, appUrl } = req.body;
+    const realUsername = await getRealUsername(accessToken);
+    if (!realUsername) return res.status(403).json({ error: "Geçersiz oturum" });
+    if (!domainName) return res.status(400).json({ error: "Geçersiz domain adı" });
+    // Boş string = "bağlantıyı kaldır" anlamına gelsin (satıcı vazgeçebilsin)
+    const trimmedUrl = typeof appUrl === 'string' ? appUrl.trim() : '';
+    if (trimmedUrl && trimmedUrl.length > 300) return res.status(400).json({ error: "URL çok uzun" });
+    if (trimmedUrl) {
+      const safety = await isSafeUrlForAppCheck(trimmedUrl);
+      if (!safety.safe) return res.status(400).json({ error: "Geçersiz veya izin verilmeyen URL: " + safety.reason });
+    }
+    try {
+      const db = getDb();
+      const domainRef = db.collection('domains').doc(domainName);
+      const domainSnap = await domainRef.get();
+      if (!domainSnap.exists) return res.status(404).json({ error: "Domain bulunamadı" });
+      const data = domainSnap.data();
+      if (data.sellerUsername !== realUsername) return res.status(403).json({ error: "Bu domain'in satıcısı siz değilsiniz" });
+      await domainRef.set({
+        connectedAppUrl: trimmedUrl || null,
+        // URL değiştiğinde eski otomatik-kontrol ve admin onayı SIFIRLANIR
+        // — yeni bir URL, eskisinin doğrulamasını miras alamaz.
+        appLinkAutoCheckedAt: null,
+        appLinkIsResponding: null,
+        hasActiveApp: false,
+        activeAppVerifiedAt: null,
+        activeAppVerifiedBy: null
+      }, { merge: true });
+      return res.status(200).json({ success: true });
+    } catch (e) {
+      console.error("set_connected_app_url hatası:", e);
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  // 2) check_app_link: connectedAppUrl'i GÜVENLİ şekilde (SSRF korumalı)
+  //    çeker, 200 dönüyor mu ve park sayfası gibi görünmüyor mu kontrol
+  //    eder. Herkes tetikleyebilir (salt-okunur bir kontrol, zararsız) ama
+  //    kötüye kullanılmasın diye rate-limit'e tabi.
+  if (action === 'check_app_link') {
+    const { domainName } = req.body;
+    const realUsername = await getRealUsername(accessToken);
+    if (!realUsername) return res.status(403).json({ error: "Geçersiz oturum" });
+    if (!domainName) return res.status(400).json({ error: "Geçersiz domain adı" });
+    const clientIp = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.socket?.remoteAddress || 'unknown';
+    if (!await checkRateLimit(clientIp, 'check_app_link', 10, 60000)) {
+      return res.status(429).json({ error: "Çok fazla istek, lütfen biraz bekleyin" });
+    }
+    try {
+      const db = getDb();
+      const domainRef = db.collection('domains').doc(domainName);
+      const domainSnap = await domainRef.get();
+      if (!domainSnap.exists) return res.status(404).json({ error: "Domain bulunamadı" });
+      const data = domainSnap.data();
+      if (!data.connectedAppUrl) return res.status(400).json({ error: "Bu domain için bağlı bir URL girilmemiş" });
+
+      const result = await safeFetchForAppCheck(data.connectedAppUrl);
+      let isResponding = false;
+      if (result.ok && result.status >= 200 && result.status < 300) {
+        const bodyLower = (result.body || '').toLowerCase();
+        isResponding = !looksLikeParkedPage(bodyLower) && result.body.length > 50;
+      }
+      await domainRef.set({
+        appLinkAutoCheckedAt: Date.now(),
+        appLinkIsResponding: isResponding
+      }, { merge: true });
+      return res.status(200).json({ success: true, isResponding, detail: result.ok ? `HTTP ${result.status}` : result.reason });
+    } catch (e) {
+      console.error("check_app_link hatası:", e);
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  // 3) toggle_active_app_verified: admin, linki bizzat inceleyip son
+  //    onayı veriyor (toggle_ownership_verified ile birebir aynı desen).
+  if (action === 'toggle_active_app_verified') {
+    const { domainName, verified } = req.body;
+    const isAdmin = await verifyAdmin(accessToken);
+    if (!isAdmin) return res.status(403).json({ error: "Yetki yok" });
+    if (!domainName) return res.status(400).json({ error: "Geçersiz domain adı" });
+    try {
+      const db = getDb();
+      const adminUsername = await getRealUsername(accessToken);
+      await db.collection('domains').doc(domainName).set({
+        hasActiveApp: !!verified,
+        activeAppVerifiedAt: verified ? Date.now() : null,
+        activeAppVerifiedBy: verified ? adminUsername : null
+      }, { merge: true });
+      await logAdminAction(adminUsername, 'toggle_active_app_verified', `${domainName}: ${verified ? 'aktif uygulama onaylandı' : 'onay kaldırıldı'}`);
+      return res.status(200).json({ success: true, hasActiveApp: !!verified });
+    } catch (e) {
+      console.error("toggle_active_app_verified hatası:", e);
       return res.status(500).json({ error: e.message });
     }
   }
