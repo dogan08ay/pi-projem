@@ -1386,6 +1386,14 @@
         </select>
         <label style="font-size:0.72em;color:#cbd5e1;font-weight:700;" data-i18n="descriptionLabel"></label>
         <textarea id="sell-domain-desc" class="sell-form-input" rows="2" style="resize:none;" data-i18n-placeholder="descriptionPlaceholder" oninput="this.classList.remove('field-error')"></textarea>
+        <!-- YENİ: "Bağlı Uygulama" — İLAN VERİRKEN sorulan OPSİYONEL alan.
+             Satıcı henüz hazır değilse boş bırakabilir, sonradan domain
+             detayındaki "Uygulama Bağla/Düzenle" butonuyla da girebilir
+             (bkz. openConnectAppModal) — o modal hâlâ duruyor, bu form
+             sadece ilk girişi kolaylaştırıyor. -->
+        <label style="font-size:0.72em;color:#cbd5e1;font-weight:700;display:flex;align-items:center;gap:5px;">🔌 <span data-i18n="connectedAppUrlLabel"></span> <span style="color:#64748b;font-weight:600;" data-i18n="optionalLabel"></span></label>
+        <div style="font-size:0.65em;color:#94a3b8;margin-bottom:5px;line-height:1.5;" data-i18n="connectedAppUrlHint"></div>
+        <input type="url" id="sell-domain-app-url" class="sell-form-input" placeholder="https://myapp.vercel.app">
         <label style="font-size:0.78em;color:#fca5a5;font-weight:800;display:flex;align-items:center;gap:5px;">🔐 <span data-i18n="ownershipProofLabel"></span> <span style="color:#ef4444;">*</span></label>
         <div style="font-size:0.65em;color:#94a3b8;margin-bottom:5px;line-height:1.5;" data-i18n="ownershipProofHint"></div>
         <textarea id="sell-domain-ownership-proof" class="sell-form-input" rows="3" style="resize:none;border-color:rgba(239,68,68,0.4);" data-i18n-placeholder="ownershipProofPlaceholder" oninput="this.classList.remove('field-error')"></textarea>
@@ -3136,6 +3144,10 @@ const i18n = {
     domainName:"Domain Adı",domainNamePlaceholder:"ornek.pi",priceLabel:"Fiyat (Pİ)",
     domainType:"Domain Türü",descriptionLabel:"Açıklama",
     descriptionPlaceholder:"Domain hakkında kısa açıklama...",
+    connectedAppUrlLabel:"Bağlı Uygulama",
+    connectedAppUrlHint:"Bu domain'i şimdiden bir Pi uygulamasına yönlendirdiyseniz gerçek URL'sini girin (ör. myapp.vercel.app). Hazır değilseniz boş bırakabilir, sonra domain sayfanızdan ekleyebilirsiniz.",
+    optionalLabel:"(opsiyonel)",
+    errInvalidAppUrl:"Geçerli bir URL girin (ör. https://myapp.vercel.app)",
     ownershipProofLabel:"Sahiplik Kanıtı (zorunlu)",
     ownershipProofHint:"Bu domainin gerçekten size ait olduğunu nasıl doğrularsınız? Örn: açık artırmayı kazandığınıza dair işlem/kayıt bilgisi, ekran görüntüsü linki, resmi kayıt sayfası linki. Admin, ilanınızı bu bilgiye göre inceleyip onaylayacak.",
     ownershipProofPlaceholder:"Örn: 12.06.2026 tarihinde Pi Domain açık artırmasını kazandım, işlem no: XXXX. Kanıt: [link]",
@@ -3520,7 +3532,6 @@ const i18n = {
     ownershipVerifyBtn:"Sahipliği Doğrula",
     ownershipUnverifyBtn:"Doğrulamayı Kaldır",
     // YENİ: "Bağlı Uygulama Var mı" özelliği metinleri
-    connectedAppLabel:"Bağlı Uygulama",
     appLinkVerifiedBadge:"Aktif Uygulama Doğrulandı",
     appLinkRespondingBadge:"Link Yanıt Veriyor (admin onayı bekliyor)",
     appLinkUncheckedBadge:"Henüz kontrol edilmedi",
@@ -4062,6 +4073,10 @@ const i18n = {
     domainName:"Domain Name",domainNamePlaceholder:"example.pi",priceLabel:"Price (PI)",
     domainType:"Domain Type",descriptionLabel:"Description",
     descriptionPlaceholder:"Short description about the domain...",
+    connectedAppUrlLabel:"Connected App",
+    connectedAppUrlHint:"If you've already pointed this domain to a Pi app, enter its real URL (e.g. myapp.vercel.app). You can leave this blank and add it later from your domain page.",
+    optionalLabel:"(optional)",
+    errInvalidAppUrl:"Please enter a valid URL (e.g. https://myapp.vercel.app)",
     ownershipProofLabel:"Proof of Ownership (required)",
     ownershipProofHint:"How can you prove this domain actually belongs to you? E.g. the auction transaction/record info, a screenshot link, or a link to the official registration page. Admin will review your listing based on this.",
     ownershipProofPlaceholder:"E.g.: I won the Pi Domain auction on 2026-06-12, transaction ID: XXXX. Proof: [link]",
@@ -4434,7 +4449,6 @@ const i18n = {
     highValueWarning:"This is a high-value transaction. We recommend checking the seller's rating and profile before proceeding, and preferring listings with the \"Ownership Verified\" badge when possible.",
     ownershipVerifyBtn:"Verify Ownership",
     ownershipUnverifyBtn:"Remove Verification",
-    connectedAppLabel:"Connected App",
     appLinkVerifiedBadge:"Active App Verified",
     appLinkRespondingBadge:"Link is responding (pending admin approval)",
     appLinkUncheckedBadge:"Not checked yet",
@@ -5804,6 +5818,7 @@ window.handleSubmitSellRequest=async function(){
     const priceInput=document.getElementById('sell-domain-price');
     const descInput=document.getElementById('sell-domain-desc');
     const ownershipProofInput=document.getElementById('sell-domain-ownership-proof');
+    const appUrlInput=document.getElementById('sell-domain-app-url');
     const uploadArea=document.querySelector('#sell-domain-modal .img-upload-area');
 
     const name=nameInput.value.trim();
@@ -5811,6 +5826,7 @@ window.handleSubmitSellRequest=async function(){
     const type=document.getElementById('sell-domain-type').value;
     const desc=descInput.value.trim();
     const ownershipProof=ownershipProofInput.value.trim();
+    const connectedAppUrl=appUrlInput.value.trim(); // OPSİYONEL — boş bırakılabilir
     const sellerNote=document.getElementById('sell-domain-note').value.trim(); // Cüzdan adresi ARTIK kullanılmıyor — bu alan sadece isteğe bağlı bir not.
 
     const hasExistingImage = !!(window._editingRejectedRequestId && window._editingRejectedRequestOldImg);
@@ -5822,6 +5838,10 @@ window.handleSubmitSellRequest=async function(){
     if(!desc){ sellFormFail(descInput, t('errDescriptionRequired')); return; }
     if(!ownershipProof){ sellFormFail(ownershipProofInput, t('ownershipProofRequired')); return; }
     if(!selectedImageBase64 && !hasExistingImage){ sellFormFail(uploadArea, t('errImageRequired')); return; }
+    if(connectedAppUrl){
+        try{ new URL(connectedAppUrl); }
+        catch(e){ sellFormFail(appUrlInput, t('errInvalidAppUrl')); return; }
+    }
 
     let imgUrl='assets/default.jpeg';
     if(selectedImageBase64){
@@ -5851,6 +5871,7 @@ window.handleSubmitSellRequest=async function(){
             sellerNote: sellerNote,
             ownershipProof: ownershipProof,
             description: desc,
+            connectedAppUrl: connectedAppUrl || null,
             accessToken: piAccessToken
         };
         if(isEditMode){
@@ -6255,17 +6276,29 @@ window.openDomainDetail=function(domainName){
     // alınıp satılması yerine gerçek kullanıma bağlanması teşvik ediliyor
     // (bkz. Pi'nin .pi domain yenileme kuralları — "aktif kullanım kanıtı").
     if(data.connectedAppUrl){
-        let appStatusHtml;
+        let statusColor, statusIcon, statusText;
         if(data.hasActiveApp){
-            appStatusHtml=`<span style="color:#6ee7b7;font-weight:900;">✅ ${t('appLinkVerifiedBadge')}</span>`;
+            statusColor='#6ee7b7'; statusIcon='✅'; statusText=t('appLinkVerifiedBadge');
         } else if(data.appLinkIsResponding){
-            appStatusHtml=`<span style="color:#93c5fd;font-weight:800;">🔗 ${t('appLinkRespondingBadge')}</span>`;
+            statusColor='#93c5fd'; statusIcon='🔗'; statusText=t('appLinkRespondingBadge');
         } else {
-            appStatusHtml=`<span style="color:#64748b;font-weight:700;">${t('appLinkUncheckedBadge')}</span>`;
+            statusColor='#94a3b8'; statusIcon='⏳'; statusText=t('appLinkUncheckedBadge');
         }
         const safeUrl=escapeHtml(data.connectedAppUrl);
-        rows+=`<div style="display:flex;gap:6px;align-items:baseline;flex-wrap:wrap;"><span style="color:#64748b;flex-shrink:0;font-weight:700;min-width:100px;">🔌 ${t('connectedAppLabel')}:</span><span>${appStatusHtml}</span></div>`;
-        rows+=`<div style="margin:2px 0 0 0;"><a href="${safeUrl}" target="_blank" rel="noopener noreferrer" style="color:#a5b4fc;font-size:0.72em;word-break:break-all;text-decoration:underline;text-decoration-style:dotted;">${safeUrl}</a></div>`;
+        // GÜNCELLEME (kullanıcı geri bildirimi — "link çok küçük, arka planda
+        // kayboluyor"): Öncesinde 0.72em, noktalı-altçizgili, soluk renkli
+        // düz bir metin linkiydi — diğer satırların arasında kayboluyordu.
+        // Artık kendi çerçeveli/arka planlı "kart" bileşeni: durum rengine
+        // göre boyanan belirgin bir kutu, büyük tıklama alanı, ok ikonu ile
+        // net bir "buraya tıkla" çağrısı.
+        rows+=`<a href="${safeUrl}" target="_blank" rel="noopener noreferrer" style="display:flex;align-items:center;gap:8px;text-decoration:none;background:rgba(168,85,247,0.1);border:1.5px solid rgba(168,85,247,0.4);border-radius:12px;padding:9px 11px;margin:2px 0;">
+            <span style="font-size:1.3em;flex-shrink:0;">🔌</span>
+            <span style="flex:1;min-width:0;">
+                <span style="display:block;font-size:0.68em;font-weight:800;color:${statusColor};">${statusIcon} ${statusText}</span>
+                <span style="display:block;font-size:0.74em;color:#d8b4fe;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${safeUrl}</span>
+            </span>
+            <span style="color:#a855f7;font-size:1.1em;font-weight:900;flex-shrink:0;">›</span>
+        </a>`;
     }
     rows+=`<div style="display:flex;gap:6px;align-items:flex-start;"><span style="color:#64748b;flex-shrink:0;font-weight:700;min-width:100px;">📝 ${t('detailFieldDesc')}:</span><span style="color:#94a3b8;word-break:break-word;flex:1;">${(data.description||domain.description)?escapeHtml(data.description||domain.description):t('descriptionEmpty')}</span></div>`;
 
@@ -6663,6 +6696,7 @@ window.openEditRejectedRequest=function(requestId){
     document.getElementById('sell-domain-desc').value=req.description||'';
     document.getElementById('sell-domain-note').value=req.sellerNote||'';
     document.getElementById('sell-domain-ownership-proof').value=req.ownershipProof||'';
+    document.getElementById('sell-domain-app-url').value=req.connectedAppUrl||'';
     // Görsel önizlemesi
     selectedImageBase64=null;selectedImageMime=null;selectedImageName=null;
     const preview=document.getElementById('sell-img-preview');
@@ -6689,7 +6723,7 @@ window.openEditRejectedRequest=function(requestId){
 window.closeSellDomainModal=function(){
     document.getElementById('sell-domain-modal').style.display='none';
     // Alanları temizle
-    ['sell-domain-name','sell-domain-price','sell-domain-desc','sell-domain-note','sell-domain-ownership-proof'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+    ['sell-domain-name','sell-domain-price','sell-domain-desc','sell-domain-note','sell-domain-ownership-proof','sell-domain-app-url'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
     document.getElementById('sell-domain-name').readOnly=false;
     document.getElementById('sell-domain-name').style.background='';
     document.getElementById('sell-domain-name').style.color='';
