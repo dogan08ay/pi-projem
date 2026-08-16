@@ -2428,7 +2428,7 @@ async function handlerImpl(req, res) {
     if (!await checkRateLimit(clientIp, 'submit_sell_request', 3, 60000))
       return res.status(429).json({ error: "Çok fazla istek. 1 dakika bekleyin." });
 
-    const { domainName: reqDomainName, price: reqPrice, domainType, imgPath: reqImgPath, sellerNote, ownershipProof, description, editMode, oldRequestId } = req.body;
+    const { domainName: reqDomainName, price: reqPrice, domainType, imgPath: reqImgPath, sellerNote, ownershipProof, description, connectedAppUrl, editMode, oldRequestId } = req.body;
     const realUsername = await getRealUsername(accessToken);
     if (!realUsername) return res.status(403).json({ error: "Geçerli Pi oturumu bulunamadı" });
 
@@ -2440,6 +2440,16 @@ async function handlerImpl(req, res) {
     // başkasının adına satışa çıkarmayı zorlaştırmak için minimum bir engel.
     if (!ownershipProof || !ownershipProof.trim())
       return res.status(400).json({ error: "Sahiplik kanıtı zorunludur. Bu domainin size ait olduğunu doğrulayacak bilgiyi girmelisiniz." });
+    // YENİ: "Bağlı Uygulama" — OPSİYONEL, ama girildiyse aynı SSRF-güvenli
+    // doğrulamadan geçirilir (set_connected_app_url action'ıyla aynı
+    // fonksiyon kullanılıyor — iki farklı giriş noktası aynı korumayı
+    // paylaşsın diye).
+    const trimmedAppUrl = typeof connectedAppUrl === 'string' ? connectedAppUrl.trim() : '';
+    if (trimmedAppUrl) {
+      if (trimmedAppUrl.length > 300) return res.status(400).json({ error: "Uygulama URL'i çok uzun" });
+      const safety = await isSafeUrlForAppCheck(trimmedAppUrl);
+      if (!safety.safe) return res.status(400).json({ error: "Geçersiz veya izin verilmeyen uygulama URL'i: " + safety.reason });
+    }
 
     try {
       const db = getDb();
@@ -2487,6 +2497,7 @@ async function handlerImpl(req, res) {
         sellerNote: sellerNote || null,
         ownershipProof: ownershipProof.trim(),
         description: description || '',
+        connectedAppUrl: trimmedAppUrl || null,
         submittedBy: realUsername,
         status: 'pending',
         deleted: false,
@@ -2604,6 +2615,7 @@ async function handlerImpl(req, res) {
         sellerUsername: reqData.submittedBy,
         sellerNote: reqData.sellerNote,
         ownershipProof: reqData.ownershipProof || null,
+        connectedAppUrl: reqData.connectedAppUrl || null,
         txid: null, buyer: null, at: null,
         deleted: false, deletedAt: null,
         createdAt: Date.now()
