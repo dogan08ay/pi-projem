@@ -1800,6 +1800,30 @@
     </div>
 </div>
 
+<!-- YENİ: "Bağlı Uygulama" modalı — satıcı, domain'inin yönlendirdiği
+     gerçek URL'yi girip anında "yanıt veriyor mu" kontrolü yapabiliyor. -->
+<div id="connect-app-modal" class="modal-overlay" style="display:none;">
+    <div class="modal-content" style="border-color:#a855f7;max-width:420px;">
+        <h3 style="color:#d8b4fe;margin:0 0 4px 0;font-size:1.05em;">🔌 <span data-i18n="connectAppModalTitle"></span></h3>
+        <p id="connect-app-domain-label" style="color:#94a3b8;font-size:0.78em;margin:0 0 10px 0;"></p>
+        <p style="color:#64748b;font-size:0.68em;margin:0 0 10px 0;" data-i18n="connectAppHint"></p>
+
+        <label style="display:block;font-size:0.72em;font-weight:800;color:#cbd5e1;margin-bottom:6px;text-transform:uppercase;" data-i18n="connectAppUrlLabel"></label>
+        <input type="url" id="connect-app-url-input" placeholder="https://myapp.vercel.app" style="width:100%;box-sizing:border-box;background:#0f172a;border:1.5px solid #334155;border-radius:10px;padding:10px;color:#e2e8f0;font-size:0.85em;font-family:inherit;margin-bottom:10px;">
+
+        <div id="connect-app-result" style="font-size:0.78em;font-weight:700;margin-bottom:10px;min-height:16px;"></div>
+
+        <div style="display:flex;gap:10px;margin-bottom:10px;">
+            <button class="pi-btn" id="connect-app-check-btn" style="background:#0369a1;flex:1;animation:none;padding:9px;margin:0;font-size:0.8em;" onclick="window.checkConnectedAppLink()" data-i18n="checkLinkBtn"></button>
+        </div>
+
+        <div style="display:flex;gap:10px;">
+            <button class="pi-btn" style="background:#475569;flex:1;animation:none;padding:10px;margin:0;" onclick="window.closeConnectAppModal()" data-i18n="cancel"></button>
+            <button class="pi-btn" id="connect-app-save-btn" style="flex:1;animation:none;background:#a855f7;padding:10px;margin:0;" onclick="window.saveConnectedAppUrl()" data-i18n="saveBtn"></button>
+        </div>
+    </div>
+</div>
+
 <div id="success-modal" class="modal-overlay" style="display:none;">
     <div class="modal-content" style="border-color:#10b981;text-align:center;">
         <div style="font-size:2.5em;margin-bottom:10px;">✅</div>
@@ -3495,6 +3519,25 @@ const i18n = {
     highValueWarning:"Bu yüksek tutarlı bir işlem. Devam etmeden önce satıcının puanını ve profilini incelemenizi, mümkünse \"Sahiplik Doğrulandı\" rozetine sahip ilanları tercih etmenizi öneririz.",
     ownershipVerifyBtn:"Sahipliği Doğrula",
     ownershipUnverifyBtn:"Doğrulamayı Kaldır",
+    // YENİ: "Bağlı Uygulama Var mı" özelliği metinleri
+    connectedAppLabel:"Bağlı Uygulama",
+    appLinkVerifiedBadge:"Aktif Uygulama Doğrulandı",
+    appLinkRespondingBadge:"Link Yanıt Veriyor (admin onayı bekliyor)",
+    appLinkUncheckedBadge:"Henüz kontrol edilmedi",
+    appLinkVerifyBtn:"Aktif Uygulamayı Onayla",
+    appLinkVerifiedMsg:"Aktif uygulama onaylandı.",
+    appLinkUnverifiedMsg:"Onay kaldırıldı.",
+    appLinkNotRespondingMsg:"Link yanıt vermiyor veya boş/park sayfası gibi görünüyor",
+    editConnectedAppBtn:"Uygulama Linkini Düzenle",
+    addConnectedAppBtn:"Uygulama Bağla",
+    connectAppModalTitle:"Bağlı Uygulama",
+    connectAppHint:"Bu domain'in yönlendirdiği GERÇEK URL'yi girin (ör. myapp.vercel.app). Admin bunu inceleyip 'Aktif Uygulama' rozeti verebilir — bu, domaininizin sadece spekülatif değil, gerçek bir kullanımı olduğunu gösterir.",
+    connectAppUrlLabel:"Uygulama URL'i",
+    connectedAppSavedMsg:"Kaydedildi.",
+    checkLinkBtn:"Linki Kontrol Et",
+    saveBtn:"Kaydet",
+    savingLabel:"Kaydediliyor...",
+    checkingLabel:"Kontrol ediliyor...",
     ownershipVerifiedMsg:"Sahiplik doğrulandı olarak işaretlendi.",
     ownershipUnverifiedMsg:"Sahiplik doğrulaması kaldırıldı.",
     priceHistoryLabel:"Geçmiş Satış Fiyatları",
@@ -4391,6 +4434,24 @@ const i18n = {
     highValueWarning:"This is a high-value transaction. We recommend checking the seller's rating and profile before proceeding, and preferring listings with the \"Ownership Verified\" badge when possible.",
     ownershipVerifyBtn:"Verify Ownership",
     ownershipUnverifyBtn:"Remove Verification",
+    connectedAppLabel:"Connected App",
+    appLinkVerifiedBadge:"Active App Verified",
+    appLinkRespondingBadge:"Link is responding (pending admin approval)",
+    appLinkUncheckedBadge:"Not checked yet",
+    appLinkVerifyBtn:"Verify Active App",
+    appLinkVerifiedMsg:"Active app verified.",
+    appLinkUnverifiedMsg:"Verification removed.",
+    appLinkNotRespondingMsg:"Link isn't responding or looks like an empty/parked page",
+    editConnectedAppBtn:"Edit App Link",
+    addConnectedAppBtn:"Connect App",
+    connectAppModalTitle:"Connected App",
+    connectAppHint:"Enter the REAL URL this domain points to (e.g. myapp.vercel.app). Admin can review it and grant an 'Active App' badge — showing your domain has genuine use, not just speculation.",
+    connectAppUrlLabel:"App URL",
+    connectedAppSavedMsg:"Saved.",
+    checkLinkBtn:"Check Link",
+    saveBtn:"Save",
+    savingLabel:"Saving...",
+    checkingLabel:"Checking...",
     ownershipVerifiedMsg:"Marked as ownership verified.",
     ownershipUnverifiedMsg:"Ownership verification removed.",
     priceHistoryLabel:"Past Sale Prices",
@@ -6188,6 +6249,24 @@ window.openDomainDetail=function(domainName){
         if(dateStr) rows+=row('📅',t('saleDateLabel'),dateStr);
         rows+=row('🧾',t('detailFieldTxid'),data.txid||'—');
     }
+    // YENİ: "Bağlı Uygulama Var mı" bilgisi — satıcının domain'ini gerçek
+    // bir Pi uygulamasına bağlayıp bağlamadığını gösteriyor. Bu, Pi
+    // Network'ün kendi politikasıyla uyumlu: domainlerin sadece spekülatif
+    // alınıp satılması yerine gerçek kullanıma bağlanması teşvik ediliyor
+    // (bkz. Pi'nin .pi domain yenileme kuralları — "aktif kullanım kanıtı").
+    if(data.connectedAppUrl){
+        let appStatusHtml;
+        if(data.hasActiveApp){
+            appStatusHtml=`<span style="color:#6ee7b7;font-weight:900;">✅ ${t('appLinkVerifiedBadge')}</span>`;
+        } else if(data.appLinkIsResponding){
+            appStatusHtml=`<span style="color:#93c5fd;font-weight:800;">🔗 ${t('appLinkRespondingBadge')}</span>`;
+        } else {
+            appStatusHtml=`<span style="color:#64748b;font-weight:700;">${t('appLinkUncheckedBadge')}</span>`;
+        }
+        const safeUrl=escapeHtml(data.connectedAppUrl);
+        rows+=`<div style="display:flex;gap:6px;align-items:baseline;flex-wrap:wrap;"><span style="color:#64748b;flex-shrink:0;font-weight:700;min-width:100px;">🔌 ${t('connectedAppLabel')}:</span><span>${appStatusHtml}</span></div>`;
+        rows+=`<div style="margin:2px 0 0 0;"><a href="${safeUrl}" target="_blank" rel="noopener noreferrer" style="color:#a5b4fc;font-size:0.72em;word-break:break-all;text-decoration:underline;text-decoration-style:dotted;">${safeUrl}</a></div>`;
+    }
     rows+=`<div style="display:flex;gap:6px;align-items:flex-start;"><span style="color:#64748b;flex-shrink:0;font-weight:700;min-width:100px;">📝 ${t('detailFieldDesc')}:</span><span style="color:#94a3b8;word-break:break-word;flex:1;">${(data.description||domain.description)?escapeHtml(data.description||domain.description):t('descriptionEmpty')}</span></div>`;
 
     document.getElementById('detail-modal-fields').innerHTML=rows;
@@ -6252,6 +6331,25 @@ window.openDomainDetail=function(domainName){
         } else {
             secondaryHtml+=`<button onclick="window.toggleOwnershipVerified('${domainName}',true)" style="padding:9px 6px;border-radius:9px;border:1.5px solid #3b82f6;background:rgba(59,130,246,0.12);color:#93c5fd;font-weight:800;font-size:0.74em;cursor:pointer;">🛡️ ${t('ownershipVerifyBtn')}</button>`;
         }
+        // YENİ: Admin, satıcının girdiği bağlı uygulama linkini inceleyip
+        // "Aktif Uygulama Var" onayını verebiliyor/kaldırabiliyor — aynı
+        // desen (doğrulanmışsa buton pasif + küçük geri-al linki).
+        if(data.connectedAppUrl){
+            const appVerified=!!data.hasActiveApp;
+            if(appVerified){
+                secondaryHtml+=`<div style="display:flex;flex-direction:column;gap:2px;">
+                    <button disabled style="padding:9px 6px;border-radius:9px;border:1.5px solid #334155;background:rgba(51,65,85,0.4);color:#64748b;font-weight:800;font-size:0.74em;cursor:not-allowed;opacity:0.75;">✅ ${t('appLinkVerifiedBadge')}</button>
+                    <span onclick="window.toggleActiveAppVerified('${domainName}',false)" style="font-size:0.6em;color:#64748b;text-align:center;text-decoration:underline;cursor:pointer;">${t('ownershipUnverifyBtn')}</span>
+                </div>`;
+            } else {
+                secondaryHtml+=`<button onclick="window.toggleActiveAppVerified('${domainName}',true)" style="padding:9px 6px;border-radius:9px;border:1.5px solid #3b82f6;background:rgba(59,130,246,0.12);color:#93c5fd;font-weight:800;font-size:0.74em;cursor:pointer;">🔌 ${t('appLinkVerifyBtn')}</button>`;
+            }
+        }
+    }
+    // YENİ: Satıcı, kendi domain'ine bağlı uygulama URL'sini bu ekrandan
+    // ekleyip düzenleyebiliyor (satılmamış domainlerde).
+    if(isAuth && data.sellerUsername===currentUser && !data.sold){
+        secondaryHtml+=`<button onclick="window.openConnectAppModal('${domainName}')" style="padding:9px 6px;border-radius:9px;border:1.5px solid #a855f7;background:rgba(168,85,247,0.12);color:#d8b4fe;font-weight:800;font-size:0.74em;cursor:pointer;">🔌 ${data.connectedAppUrl?t('editConnectedAppBtn'):t('addConnectedAppBtn')}</button>`;
     }
     const secondaryGridHtml = secondaryHtml ? `<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px;margin-top:8px;">${secondaryHtml}</div>` : '';
     actionEl.innerHTML = primaryHtml + secondaryGridHtml;
@@ -6274,6 +6372,80 @@ window.toggleOwnershipVerified=async function(domainName,verified){
         window.openDomainDetail(domainName);
     }catch(e){showToast(t('genericError'));}
 };
+
+// YENİ: "Aktif Uygulama Var mı" admin onayı — toggleOwnershipVerified ile
+// birebir aynı desen (aynı yerel-önbellek anında güncelleme düzeltmesi
+// dahil, o hatayı burada baştan tekrar etmemek için).
+window.toggleActiveAppVerified=async function(domainName,verified){
+    try{
+        const r=await fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'toggle_active_app_verified',domainName,verified,accessToken:piAccessToken})});
+        const result=await r.json();
+        if(!r.ok||!result.success){showToast(result.error||t('genericError'));return;}
+        if(domainData[domainName]) domainData[domainName].hasActiveApp=verified;
+        showToast(verified?t('appLinkVerifiedMsg'):t('appLinkUnverifiedMsg'));
+        window.openDomainDetail(domainName);
+    }catch(e){showToast(t('genericError'));}
+};
+
+// YENİ: Satıcının kendi domain'ine bağlı uygulama URL'sini girip test
+// edebildiği küçük modal. "Kontrol Et" butonu, backend'deki SSRF-korumalı
+// check_app_link action'ını tetikleyip anında yanıt (yanıt veriyor mu)
+// gösteriyor — admin onayı ayrı bir adım (bkz. toggleActiveAppVerified).
+window.openConnectAppModal=function(domainName){
+    const current=domainData[domainName]?.connectedAppUrl||'';
+    const modal=document.getElementById('connect-app-modal');
+    document.getElementById('connect-app-domain-label').textContent=domainName;
+    document.getElementById('connect-app-url-input').value=current;
+    document.getElementById('connect-app-result').innerHTML='';
+    modal.dataset.domainName=domainName;
+    modal.style.display='flex';
+};
+window.closeConnectAppModal=function(){
+    document.getElementById('connect-app-modal').style.display='none';
+};
+window.saveConnectedAppUrl=async function(){
+    const modal=document.getElementById('connect-app-modal');
+    const domainName=modal.dataset.domainName;
+    const url=document.getElementById('connect-app-url-input').value.trim();
+    const btn=document.getElementById('connect-app-save-btn');
+    const original=btn.textContent;
+    btn.disabled=true; btn.textContent=t('savingLabel');
+    try{
+        const r=await fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'set_connected_app_url',domainName,appUrl:url,accessToken:piAccessToken})});
+        const result=await r.json();
+        if(!r.ok||!result.success){showToast(result.error||t('genericError'));return;}
+        if(domainData[domainName]){
+            domainData[domainName].connectedAppUrl=url||null;
+            domainData[domainName].appLinkIsResponding=false;
+            domainData[domainName].hasActiveApp=false;
+        }
+        showToast(t('connectedAppSavedMsg'));
+        window.closeConnectAppModal();
+        window.openDomainDetail(domainName);
+    }catch(e){ showToast(t('genericError')); }
+    finally{ btn.disabled=false; btn.textContent=original; }
+};
+window.checkConnectedAppLink=async function(){
+    const modal=document.getElementById('connect-app-modal');
+    const domainName=modal.dataset.domainName;
+    const resultEl=document.getElementById('connect-app-result');
+    const btn=document.getElementById('connect-app-check-btn');
+    const original=btn.textContent;
+    btn.disabled=true; btn.textContent=t('checkingLabel');
+    resultEl.innerHTML='';
+    try{
+        const r=await fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'check_app_link',domainName,accessToken:piAccessToken})});
+        const result=await r.json();
+        if(!r.ok||!result.success){resultEl.innerHTML=`<span style="color:#f87171;">❌ ${escapeHtml(result.error||t('genericError'))}</span>`;return;}
+        if(domainData[domainName]) domainData[domainName].appLinkIsResponding=result.isResponding;
+        resultEl.innerHTML = result.isResponding
+            ? `<span style="color:#6ee7b7;">✅ ${t('appLinkRespondingBadge')}</span>`
+            : `<span style="color:#f87171;">⚠️ ${t('appLinkNotRespondingMsg')} (${escapeHtml(result.detail||'')})</span>`;
+    }catch(e){
+        resultEl.innerHTML=`<span style="color:#f87171;">❌ ${t('genericError')}</span>`;
+    }finally{ btn.disabled=false; btn.textContent=original; }
+};
+
 
 // YENİ: Satıcı profili — kullanıcı adına tıklayınca puan/rozet/aktif ilan
 // sayısı/üyelik tarihini gösteren bir mini profil kartı.
@@ -10201,7 +10373,16 @@ onSnapshot(collection(db,"domains"),(snapshot)=>{
             ownershipVerifiedAt:docData.ownershipVerifiedAt||null,
             ownershipVerifiedBy:docData.ownershipVerifiedBy||null,
             buyerDisputeEvidence:Array.isArray(docData.buyerDisputeEvidence)?docData.buyerDisputeEvidence:[],
-            sellerDisputeEvidence:Array.isArray(docData.sellerDisputeEvidence)?docData.sellerDisputeEvidence:[]
+            sellerDisputeEvidence:Array.isArray(docData.sellerDisputeEvidence)?docData.sellerDisputeEvidence:[],
+            // YENİ: "Bağlı Uygulama Var mı" alanları — geçen turdaki
+            // ownershipVerified hatasından ders alarak bu listeye BAŞTAN
+            // ekleniyor (aksi halde her yeni snapshot'ta sessizce silinirdi).
+            connectedAppUrl:docData.connectedAppUrl||null,
+            appLinkAutoCheckedAt:docData.appLinkAutoCheckedAt||null,
+            appLinkIsResponding:docData.appLinkIsResponding===true,
+            hasActiveApp:docData.hasActiveApp===true,
+            activeAppVerifiedAt:docData.activeAppVerifiedAt||null,
+            activeAppVerifiedBy:docData.activeAppVerifiedBy||null
         };
         if(!defaultDomain){
             domains.unshift({name,img:docData.img||'assets/default.jpeg',price:docData.price||0,type:docData.type||'genel',description:docData.description||''});
