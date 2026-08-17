@@ -11015,7 +11015,7 @@ function tourSkipUnavailableStep() {
 // Birkaç denemeden sonra hâlâ konumlandırılamıyorsa (ör. hedef kalıcı olarak
 // kırpılmışsa), donuk kalmak yerine bu adımı da "gösterilemiyor" kabul edip
 // aynı yönde bir sonraki geçerli adıma atlar.
-function tourRepositionUntilReady(forStepIndex, maxFrames = 40) {
+function tourRepositionUntilReady(forStepIndex, maxFrames = 90) {
     let frame = 0;
     (function tick() {
         if (!tourEls || tourStepIndex !== forStepIndex) return; // bu arada adım değişti/tur kapandı
@@ -11049,6 +11049,10 @@ function tourGetOccludedBottomHeight() {
     return r.height;
 }
 
+// Kaydırma denemelerini hız sınırlayan (throttle) zaman damgası — bkz.
+// tourReposition() içindeki kullanım.
+let tourLastScrollAttemptAt = 0;
+
 function tourReposition() {
     // true: konum başarıyla güncellendi. false: hedef o an ölçülemedi (henüz
     // render/animasyon bitmemiş olabilir) — çağıran taraf bunu tekrar deneyip
@@ -11074,22 +11078,43 @@ function tourReposition() {
     visRect = { ...visRect, bottom: Math.min(visRect.bottom, safeVh), height: Math.max(0, Math.min(visRect.bottom, safeVh) - visRect.top) };
     if (visRect.width < 10 || visRect.height < 10) return false;
 
-    if (rect.bottom < 0 || rect.top > safeVh || (visRect.height < rect.height * 0.85)) {
-        // BUG DÜZELTMESİ: native scrollIntoView({block:'center'}) TÜM viewport'a
-        // göre ortalıyor, sticky footer'ın kapladığı alanı bilmiyor — bu yüzden
-        // uzun kartlarda alt kısım footer'ın arkasında kalabiliyordu. Bunun
-        // yerine .main-scroll konteynerini MANUEL olarak, kartı SADECE GÜVENLİ
-        // (footer hariç) alanın ortasına gelecek şekilde kaydırıyoruz.
-        const scroller = document.querySelector('.main-scroll');
-        if (scroller) {
-            const targetCenterInSafeZone = safeVh / 2;
-            const delta = (rect.top + rect.height / 2) - targetCenterInSafeZone;
-            scroller.scrollBy({ top: delta, behavior: 'smooth' });
-        } else {
-            target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    // BUG DÜZELTMESİ (kök neden — "tur 3. adımdan başlıyor, Geri kapatıyor"):
+    // "%85 görünür olsun" şartı, kendisi safeVh'den UZUN olan hedeflerde
+    // (ör. 1. adımın hedefi #domain-list — onlarca kart içeren TÜM liste,
+    // ekran boyundan çok daha uzun) ASLA sağlanamıyordu. Bu da aşağıdaki
+    // kaydırma dalını sonsuz döngüye sokuyordu. Element safeVh'ye SIĞABİLECEK
+    // boyuttaysa (ör. tek bir domain kartı — asıl düzeltmek istediğimiz
+    // durum) %85 şartı uygulanıyor; sığmayacak kadar büyükse (#domain-list
+    // gibi) orijinal basit "ekranda herhangi bir kısmı görünüyor mu" testine
+    // dönülüyor.
+    const fitsInSafeZone = rect.height <= safeVh;
+    const needsScroll = fitsInSafeZone
+        ? (rect.bottom < 0 || rect.top > safeVh || visRect.height < rect.height * 0.85)
+        : (rect.bottom < 0 || rect.top > safeVh);
+
+    if (needsScroll) {
+        // BUG DÜZELTMESİ (2. kök neden — "tur artık 2. adımdan başlıyor"):
+        // tick() bu fonksiyonu ~her animasyon karesinde (saniyede ~60 kez)
+        // tekrar çağırıyor. scrollBy'ı HER karede yeniden tetiklemek, henüz
+        // TAMAMLANMAMIŞ bir "smooth" kaydırma animasyonunu sürekli yeniden
+        // başlatıyordu — pozisyon hiçbir zaman kararlı hale gelmiyor, bu da
+        // tourRepositionUntilReady'nin 40 karelik deneme sınırına takılıp
+        // "gösterilemiyor" kabul ederek adımı atlamasına yol açıyordu. Artık
+        // yeni bir kaydırma komutu en fazla 350ms'de bir gönderiliyor —
+        // önceki animasyonun tamamlanmasına fırsat tanınıyor.
+        const now = Date.now();
+        if (now - tourLastScrollAttemptAt > 350) {
+            tourLastScrollAttemptAt = now;
+            const scroller = document.querySelector('.main-scroll');
+            if (scroller) {
+                const targetCenterInSafeZone = safeVh / 2;
+                const delta = (rect.top + rect.height / 2) - targetCenterInSafeZone;
+                scroller.scrollBy({ top: delta, behavior: 'smooth' });
+            } else {
+                target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
         }
-        setTimeout(tourReposition, 300);
-        return true;
+        return false;
     }
 
     const pad = 6;
