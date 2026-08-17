@@ -11049,10 +11049,6 @@ function tourGetOccludedBottomHeight() {
     return r.height;
 }
 
-// Kaydırma denemelerini hız sınırlayan (throttle) zaman damgası — bkz.
-// tourReposition() içindeki kullanım.
-let tourLastScrollAttemptAt = 0;
-
 function tourReposition() {
     // true: konum başarıyla güncellendi. false: hedef o an ölçülemedi (henüz
     // render/animasyon bitmemiş olabilir) — çağıran taraf bunu tekrar deneyip
@@ -11065,66 +11061,41 @@ function tourReposition() {
     // aksi halde resize sırasında turu istemeden ileri attırıyordu.
     if (!target) return false;
     const rect = target.getBoundingClientRect();
-    const occludedBottom = tourGetOccludedBottomHeight();
-    const vh = window.innerHeight, vw = window.innerWidth;
-    const safeVh = vh - occludedBottom; // sticky footer'ın kapladığı alan hariç GERÇEKTEN görünen yükseklik
-
     // ÖNEMLİ: Ham boyut yerine, üst kapsayıcılardaki kırpmayı da hesaba katan
     // GERÇEK görünür alanı kontrol ediyoruz — aksi halde ör. yan menüde
     // taşıp kırpılan bir öğe "başarılı" sayılıp üzerine anlamsız/yanlış
     // konumda bir vurgu çizilebiliyordu.
-    let visRect = tourGetVisibleRect(target);
-    // BUG DÜZELTMESİ: sticky footer'ın kapladığı alanı da GÖRÜNÜR ALANDAN düş
-    visRect = { ...visRect, bottom: Math.min(visRect.bottom, safeVh), height: Math.max(0, Math.min(visRect.bottom, safeVh) - visRect.top) };
+    const visRect = tourGetVisibleRect(target);
     if (visRect.width < 10 || visRect.height < 10) return false;
+    const vh = window.innerHeight, vw = window.innerWidth;
 
-    // BUG DÜZELTMESİ (kök neden — "tur 3. adımdan başlıyor, Geri kapatıyor"):
-    // "%85 görünür olsun" şartı, kendisi safeVh'den UZUN olan hedeflerde
-    // (ör. 1. adımın hedefi #domain-list — onlarca kart içeren TÜM liste,
-    // ekran boyundan çok daha uzun) ASLA sağlanamıyordu. Bu da aşağıdaki
-    // kaydırma dalını sonsuz döngüye sokuyordu. Element safeVh'ye SIĞABİLECEK
-    // boyuttaysa (ör. tek bir domain kartı — asıl düzeltmek istediğimiz
-    // durum) %85 şartı uygulanıyor; sığmayacak kadar büyükse (#domain-list
-    // gibi) orijinal basit "ekranda herhangi bir kısmı görünüyor mu" testine
-    // dönülüyor.
-    const fitsInSafeZone = rect.height <= safeVh;
-    const needsScroll = fitsInSafeZone
-        ? (rect.bottom < 0 || rect.top > safeVh || visRect.height < rect.height * 0.85)
-        : (rect.bottom < 0 || rect.top > safeVh);
-
-    if (needsScroll) {
-        // BUG DÜZELTMESİ (2. kök neden — "tur artık 2. adımdan başlıyor"):
-        // tick() bu fonksiyonu ~her animasyon karesinde (saniyede ~60 kez)
-        // tekrar çağırıyor. scrollBy'ı HER karede yeniden tetiklemek, henüz
-        // TAMAMLANMAMIŞ bir "smooth" kaydırma animasyonunu sürekli yeniden
-        // başlatıyordu — pozisyon hiçbir zaman kararlı hale gelmiyor, bu da
-        // tourRepositionUntilReady'nin 40 karelik deneme sınırına takılıp
-        // "gösterilemiyor" kabul ederek adımı atlamasına yol açıyordu. Artık
-        // yeni bir kaydırma komutu en fazla 350ms'de bir gönderiliyor —
-        // önceki animasyonun tamamlanmasına fırsat tanınıyor.
-        const now = Date.now();
-        if (now - tourLastScrollAttemptAt > 350) {
-            tourLastScrollAttemptAt = now;
-            const scroller = document.querySelector('.main-scroll');
-            if (scroller) {
-                const targetCenterInSafeZone = safeVh / 2;
-                const delta = (rect.top + rect.height / 2) - targetCenterInSafeZone;
-                scroller.scrollBy({ top: delta, behavior: 'smooth' });
-            } else {
-                target.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            }
-        }
-        return false;
+    // NOT (iki turdur bozulan bug'lar sonrası bilinçli karar): Kaydırma
+    // TETİKLEME ve YENİDEN DENEME mantığı burada BİLEREK orijinal, sade ve
+    // kanıtlanmış haliyle bırakıldı (ham `vh`, tek setTimeout tabanlı yeniden
+    // deneme). Footer örtüşme düzeltmesini bu akışın İÇİNE gömmeye çalışmak
+    // iki kez üst üste turun tamamen bozulmasına yol açtı (adımlar
+    // atlanıyor, "Geri" turu kapatıyor). Footer'ın kapladığı alan artık SADECE
+    // aşağıda VURGU KUTUSUNUN çizimini sınırlamak için kullanılıyor — kaydırma
+    // kararını veya deneme sayısını ETKİLEMİYOR. Bu, riski en aza indiriyor:
+    // en kötü ihtimalle vurgu kutusu footer'a çok yakın konumlanır, ama
+    // turun ileri/geri/başlatma güvenilirliği ASLA bozulmaz.
+    if (rect.bottom < 0 || rect.top > vh) {
+        target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        setTimeout(tourReposition, 300);
+        return true;
     }
 
+    const occludedBottom = tourGetOccludedBottomHeight();
+    const safeVh = vh - occludedBottom;
     const pad = 6;
     // Çok uzun elementlerde (ör. domain listesi) ya da bir üst kapsayıcı
     // tarafından kısmen kırpılan elementlerde (ör. yan menü öğeleri), vurguyu
     // GERÇEKTEN GÖRÜNEN alanla sınırlıyoruz — ham (kırpılmamış) dikdörtgene göre
     // çizmek, vurgunun menünün dışına taşıp yanlış/tutarsız görünmesine yol
-    // açıyordu.
+    // açıyordu. YENİ: alt sınır artık `vh` değil `safeVh` — sticky footer'ın
+    // kapladığı alan da düşülüyor, kart bu alana taşmıyor.
     const visTop = Math.max(visRect.top, 0);
-    const visBottom = Math.min(visRect.bottom, vh);
+    const visBottom = Math.min(visRect.bottom, safeVh);
     const clampedHeight = Math.min(visRect.height, Math.max(120, visBottom - visTop));
 
     Object.assign(tourEls.highlight.style, {
