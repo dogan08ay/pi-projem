@@ -1,0 +1,31 @@
+name: Testler
+
+# Her push ve her pull request'te otomatik çalışır. Amaç: approve.js
+# içindeki kritik hesaplama/doğrulama fonksiyonlarında (komisyon hesabı,
+# domain adı doğrulama vb.) bir değişiklik yanlışlıkla eski davranışı
+# bozarsa, bunu Vercel'e deploy olmadan ÖNCE, GitHub'da kırmızı bir ❌
+# olarak görüp fark edebilelim.
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Kodu çek
+        uses: actions/checkout@v4
+
+      - name: Node.js kur
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Bağımlılıkları kur
+        run: npm ci
+
+      - name: Testleri çalıştır
+        run: npm test

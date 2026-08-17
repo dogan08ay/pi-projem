@@ -2960,6 +2960,7 @@ function applyConfigToDOM() {
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
 import { getFirestore, doc, onSnapshot, setDoc, getDoc, collection, getDocs, deleteDoc, query, where } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
+import { initializeAppCheck, ReCaptchaV3Provider, getToken as getAppCheckToken } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app-check.js";
 
 const firebaseConfig = {
     apiKey: "AIzaSyC9r244vRVGbYOcLHyS6EHxKyiygajW7_A",
@@ -2972,6 +2973,64 @@ const firebaseConfig = {
 };
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
+
+// ══════════════════════════════════════════════════════════════════════
+//  Firebase App Check — captcha yerine "görünmez" bot/kötüye kullanım
+//  koruması. Kullanıcı hiçbir şey tıklamaz; arka planda reCAPTCHA v3
+//  isteğin gerçek bir tarayıcıdan geldiğini doğrular.
+//
+//  KURULUM (bir kerelik, Firebase Console'dan):
+//   1) https://console.firebase.google.com → projeniz (web3-domain-gateway)
+//      → sol menü "App Check" → "Apps" → bu web uygulamasını seçin
+//      → "reCAPTCHA v3" sağlayıcısını kaydedin.
+//   2) Orada size verilen "site key"i aşağıdaki APP_CHECK_SITE_KEY
+//      sabitine yapıştırın.
+//   3) Bu değer placeholder'da kaldığı sürece (aşağıdaki if bloğu hiç
+//      çalışmaz) App Check TAMAMEN DEVRE DIŞI kalır — mevcut davranış
+//      birebir korunur, hiçbir şey kırılmaz. Sadece siz gerçek anahtarı
+//      girdiğinizde devreye girer.
+//   4) Anahtarı girdikten sonra bile sunucu tarafı varsayılan olarak
+//      "izleme modunda"dır (approve.js → APP_CHECK_ENFORCE). Birkaç gün
+//      Vercel loglarında/Telegram'da sorun görünmezse Vercel ortam
+//      değişkenlerinden APP_CHECK_ENFORCE=true yaparak asıl korumayı
+//      açarsınız.
+// ══════════════════════════════════════════════════════════════════════
+const APP_CHECK_SITE_KEY = 'BURAYA_RECAPTCHA_V3_SITE_KEYINIZI_YAZIN';
+let appCheckInstance = null;
+if (APP_CHECK_SITE_KEY && !APP_CHECK_SITE_KEY.startsWith('BURAYA_')) {
+    try {
+        appCheckInstance = initializeAppCheck(app, {
+            provider: new ReCaptchaV3Provider(APP_CHECK_SITE_KEY),
+            isTokenAutoRefreshEnabled: true
+        });
+    } catch (e) {
+        console.error('[AppCheck] başlatılamadı, uygulama App Check olmadan normal çalışmaya devam ediyor:', e);
+    }
+}
+
+// window.fetch'i BİR KEZ sarmalayıp SADECE /api/approve isteklerine (App
+// Check kurulmuşsa) token ekliyoruz. Kod içinde onlarca ayrı yerde
+// `fetch('/api/approve', ...)` çağrısı var; her birini tek tek değiştirmek
+// yerine (yüksek risk, biri kolayca unutulabilir) tek noktadan çözüyoruz.
+// appCheckInstance null ise (anahtar girilmediyse) bu sarmalama sessizce
+// hiçbir şey yapmaz, orijinal fetch davranışı birebir korunur.
+const _originalFetch = window.fetch.bind(window);
+window.fetch = async function (input, init) {
+    const url = typeof input === 'string' ? input : (input && input.url) || '';
+    if (appCheckInstance && url.includes('/api/approve')) {
+        try {
+            const tokenResult = await getAppCheckToken(appCheckInstance, false);
+            init = init || {};
+            init.headers = { ...(init.headers || {}), 'X-Firebase-AppCheck': tokenResult.token };
+        } catch (e) {
+            // Token alınamazsa isteği YİNE DE gönderiyoruz — kullanıcıyı
+            // App Check yüzünden kilitlemek istemiyoruz (sunucu zaten
+            // "soft" modda, token eksikse sadece izliyor, reddetmiyor).
+            console.warn('[AppCheck] token alınamadı, istek token olmadan gönderiliyor:', e.message);
+        }
+    }
+    return _originalFetch(input, init);
+};
 
 // FIX 1: Pi SDK hazır olana kadar bekle — "giriş hatası" bug'ı
 // FIX 2 (kök neden — Pi Browser dışında "Bağlan" butonu hiçbir şey
@@ -8024,8 +8083,8 @@ window.runSystemCheckup=async function(){
             resultsEl.innerHTML=connHtml+result.issues.map(iss=>{
                 const sv=sevMap[iss.severity]||sevMap.info;
                 return `<div style="background:${sv.bg};border:1px solid ${sv.border};border-radius:10px;padding:10px;white-space:pre-wrap;">
-                    <div style="color:${sv.color};font-weight:800;font-size:0.75em;margin-bottom:4px;">${sv.icon} ${iss.title}</div>
-                    <div style="color:#94a3b8;font-size:0.68em;line-height:1.5;word-break:break-word;">${iss.detail||''}</div>
+                    <div style="color:${sv.color};font-weight:800;font-size:0.75em;margin-bottom:4px;">${sv.icon} ${escapeHtml(iss.title||'')}</div>
+                    <div style="color:#94a3b8;font-size:0.68em;line-height:1.5;word-break:break-word;">${escapeHtml(iss.detail||'')}</div>
                 </div>`;
             }).join('');
         }
