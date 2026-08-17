@@ -37,6 +37,18 @@ const PiNetwork = resolvePiNetworkCtor();
 // ─── Admin Config ───────────────────────────────────────────────────────
 const ADMIN_USERNAME = process.env.ADMIN_USERNAME || 'doganay0808';
 const PLATFORM_COMMISSION_RATE = 0.05; // %5 komisyon
+
+// ─── Satıcı Ödeme (Payout) Tutarı Hesaplama ─────────────────────────────
+// Bu formül (fiyat - komisyon) daha önce dosya içinde 7 farklı yerde
+// aynı şekilde kopyalanmıştı. Tek bir fonksiyonda topluyoruz ki: (1) biri
+// formülü bir yerde değiştirip diğerlerini unutmasın, (2) otomatik testle
+// (bkz. approve.test.js) doğrulanabilsin. Yuvarlama davranışı (1e7'ye göre,
+// yani 7 ondalık basamağa) ÖNCEKİ HALİYLE BİREBİR AYNI bırakıldı.
+export function calculatePayoutAmount(price, commissionRate = PLATFORM_COMMISSION_RATE) {
+  const numericPrice = Number(price) || 0;
+  const rate = typeof commissionRate === 'number' ? commissionRate : PLATFORM_COMMISSION_RATE;
+  return Math.round(numericPrice * (1 - rate) * 1e7) / 1e7;
+}
 // YENİ: Web Push (tarayıcı bildirimleri) — VAPID anahtar çifti Vercel'de
 // ortam değişkeni olarak (VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY, VAPID_SUBJECT)
 // tanımlanmalı. Anahtarlar tanımlı değilse web push sessizce devre dışı
@@ -561,7 +573,42 @@ function looksLikeParkedPage(bodyLower) {
 const adminCache = new Map();
 const ADMIN_CACHE_TTL = 5 * 60 * 1000;
 
-async function verifyAdmin(accessToken) {
+// ── Admin Güvenlik İzleme (tek-admin modeli için ekstra katman) ─────────
+// Tek admin hesabı olduğu için "kim admin olabilir" listesini
+// genişletmiyoruz; bunun yerine bu hesabın kötüye kullanımını/ele
+// geçirilmesini daha hızlı fark edebilmek için iki şey yapıyoruz:
+//   1) Admin hesabı DIŞINDA biri (ama Pi ile kimliği doğrulanmış gerçek
+//      bir kullanıcı) bir admin action'ına erişmeye çalışırsa, bunu
+//      "unknown" gürültüsünden ayırıp admin'e anında Telegram'dan haber
+//      veriyoruz (spam olmasın diye kullanıcı+IP başına saatte 1 uyarı).
+//   2) Admin hesabı gerçekten doğrulanıp giriş yaptığında, bu IP daha
+//      önce hiç görülmediyse ("yeni cihaz/yeni ağ" gibi) admin'e ayrıca
+//      bilgilendirme gönderiyoruz. Bu bir engelleme DEĞİL, sadece erken
+//      uyarı — admin "bu ben değilim" derse token'ı Pi tarafında iptal
+//      edip incelemeye başlayabilir.
+const adminSecurityAlertMemory = new Map(); // key -> son uyarı zamanı (in-memory, best-effort)
+function shouldSendAdminSecurityAlert(key, cooldownMs = 60 * 60 * 1000) {
+  const now = Date.now();
+  const last = adminSecurityAlertMemory.get(key) || 0;
+  if (now - last < cooldownMs) return false;
+  adminSecurityAlertMemory.set(key, now);
+  return true;
+}
+function getIpFromReq(req) {
+  if (!req) return 'unknown';
+  return req.headers?.['x-forwarded-for']?.split(',')[0]?.trim() || req.socket?.remoteAddress || 'unknown';
+}
+async function recordAdminKnownIp(db, ip) {
+  // IP'yi doküman ID'si olarak kullanabilmek için Firestore'un yasakladığı
+  // '/' karakterini temizliyoruz (IPv6 adreslerinde olabilir).
+  const safeId = String(ip).replace(/\//g, '_').slice(0, 200) || 'unknown';
+  const ref = db.collection('admin_known_ips').doc(safeId);
+  const snap = await ref.get();
+  const isNew = !snap.exists;
+  await ref.set({ ip, lastSeenAt: Date.now(), seenCount: FieldValue.increment(1) }, { merge: true });
+  return isNew;
+}
+async function verifyAdmin(accessToken, req) {
   if (!accessToken) return false;
   const cached = adminCache.get(accessToken);
   if (cached && Date.now() - cached.ts < ADMIN_CACHE_TTL) return cached.valid;
@@ -573,6 +620,41 @@ async function verifyAdmin(accessToken) {
     const userDto = await response.json();
     const valid = userDto.username === ADMIN_USERNAME;
     adminCache.set(accessToken, { valid, ts: Date.now() });
+
+    // Bu iki güvenlik bildirimi hiçbir şekilde admin akışını YAVAŞLATMASIN
+    // veya HATA VERDİRMESİN diye ana sonucu beklemeden (fire-and-forget)
+    // ve try/catch ile sarmalanmış şekilde tetikleniyor.
+    if (valid) {
+      (async () => {
+        try {
+          const ip = getIpFromReq(req);
+          if (ip === 'unknown') return;
+          const db = getDb();
+          const isNewIp = await recordAdminKnownIp(db, ip);
+          if (isNewIp && shouldSendAdminSecurityAlert(`known_ip_alert:${ip}`)) {
+            await sendTG(TG_CHAT_ID, `🛡️ *Yeni IP'den Admin Girişi*\n\nHesap: @${ADMIN_USERNAME}\nIP: \`${ip}\`\n\nBu siz değilseniz, Pi Developer Portal üzerinden erişim token'larınızı gözden geçirin.`);
+          }
+        } catch (e) {
+          console.error('[AdminSecurity] known-IP kontrolü başarısız:', e.message);
+        }
+      })();
+    } else if (userDto && userDto.username) {
+      // Gerçek bir Pi kullanıcısı (ama admin değil) bir admin action'ına
+      // erişmeye çalıştı — bu, bot/tarayıcı taraması gürültüsünden farklı,
+      // gerçekten dikkat edilmesi gereken bir sinyal.
+      (async () => {
+        try {
+          const ip = getIpFromReq(req);
+          const alertKey = `unauthorized_admin_attempt:${userDto.username}:${ip}`;
+          if (shouldSendAdminSecurityAlert(alertKey)) {
+            await sendTG(TG_CHAT_ID, `⚠️ *Yetkisiz Admin Erişim Denemesi*\n\nKullanıcı: @${userDto.username}\nIP: \`${ip}\`\n\nBu kullanıcı bir admin action'ına erişmeye çalıştı ama admin değil. Tekrarlanırsa hesabını incelemeyi düşünün.`);
+          }
+        } catch (e) {
+          console.error('[AdminSecurity] yetkisiz erişim uyarısı başarısız:', e.message);
+        }
+      })();
+    }
+
     return valid;
   } catch (e) {
     console.error("Pi /v2/me admin doğrulama hatası:", e);
@@ -830,6 +912,14 @@ async function logSystemError(action, err, extra) {
     await db.collection('system_errors').add({
       action: action || 'unknown',
       message: String(err && err.message || err || 'Bilinmeyen hata').slice(0, 500),
+      // YENİ: stack trace de kaydediliyor. Öncesinde sadece err.message
+      // tutulduğu için "hata nerede oluştu, hangi çağrı zincirinden geldi"
+      // bilgisi kayboluyordu — nadir/tekrar üretilmesi zor hatalarda bu,
+      // admin panelindeki mesajın tek başına yetersiz kalmasına yol
+      // açıyordu. 800 karakterle sınırlıyoruz (Firestore doküman boyutu ve
+      // panel okunabilirliği için yeterli, genelde ilk birkaç satır asıl
+      // hatanın kaynağını gösterir).
+      stack: (err && err.stack) ? String(err.stack).slice(0, 800) : null,
       extra: extra ? String(extra).slice(0, 300) : null,
       ts: Date.now()
     });
@@ -877,7 +967,7 @@ function setCors(req, res) {
 // (stored XSS) markete sokabilirdi. Gerçek bir domain adı zaten sadece
 // harf/rakam/tire/nokta içerir, bu yüzden bu kısıtlama meşru kullanımı
 // etkilemez.
-function isValidDomainName(name) {
+export function isValidDomainName(name) {
   if (typeof name !== 'string') return false;
   if (name.length < 3 || name.length > 253) return false;
   return /^[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)+$/.test(name);
@@ -1020,6 +1110,50 @@ export default async function handler(req, res) {
   }
 }
 
+// ══════════════════════════════════════════════════════════════════════
+//  Firebase App Check — Captcha yerine "görünmez" bot/kötüye kullanım
+//  koruması (bkz. index.html'deki initializeAppCheck çağrısı).
+//
+//  KADEMELİ DEVREYE ALMA: canlı bir uygulamada, istemci tarafı App Check
+//  kurulumu henüz tamamlanmadan sunucu tarafını "zorunlu" yapmak TÜM
+//  isteklerin reddedilmesine (uygulamanın tamamen kırılmasına) yol açar.
+//  Bu yüzden varsayılan davranış "soft" (izleme) modudur: token
+//  doğrulanamasa bile isteği ENGELLEMEZ, sadece system_errors'a ve (ilk
+//  birkaç kez) Telegram'a "şu kadar istek App Check token'sız geldi"
+//  diye not düşer. İstemci tarafı gerçekten devreye girip token'lar
+//  düzgün akmaya başladıktan SONRA, Vercel ortam değişkenlerinden
+//  APP_CHECK_ENFORCE=true yapılarak asıl engelleme açılır.
+// ══════════════════════════════════════════════════════════════════════
+const APP_CHECK_ENFORCE = process.env.APP_CHECK_ENFORCE === 'true';
+let _appCheckSoftLogCount = 0;
+async function verifyAppCheckSoft(req, action) {
+  const token = req.headers['x-firebase-appcheck'];
+  if (!token) {
+    // İzleme modunda sessizce geç (istemci henüz kurulmamış olabilir);
+    // zorunlu moddaysa token yokluğu doğrudan reddedilir.
+    if (APP_CHECK_ENFORCE) return { ok: false, reason: 'missing_token' };
+    return { ok: true, soft: true };
+  }
+  try {
+    const { getAppCheck } = await import('firebase-admin/app-check');
+    getAdminApp(); // admin app başlatılmadıysa burada başlatılır (getAppCheck bunu gerektirir)
+    await getAppCheck().verifyToken(token);
+    return { ok: true };
+  } catch (e) {
+    if (!APP_CHECK_ENFORCE) {
+      _appCheckSoftLogCount++;
+      // Aşırı log/Telegram trafiği olmasın diye sadece ilk birkaç
+      // başarısız denemeyi bildiriyoruz — amaç "kurulum düzgün mü"
+      // sorusuna cevap vermek, her isteği raporlamak değil.
+      if (_appCheckSoftLogCount <= 20) {
+        console.warn(`[AppCheck-Soft] Geçersiz/eksik token (action:${action}):`, e.message);
+      }
+      return { ok: true, soft: true };
+    }
+    return { ok: false, reason: e.message };
+  }
+}
+
 async function handlerImpl(req, res) {
   setCors(req, res);
   if (req.method === 'OPTIONS') return res.status(200).end();
@@ -1029,6 +1163,17 @@ async function handlerImpl(req, res) {
   const { action, accessToken } = req.body;
 
   if (!action) return res.status(400).json({ error: "action zorunludur" });
+
+  // App Check kontrolü — bkz. yukarıdaki fonksiyon yorumu. Sadece
+  // APP_CHECK_ENFORCE=true olduğunda gerçekten engelliyor; aksi halde
+  // yalnızca izliyor. get_admin_audit_log gibi salt-okunur/zararsız
+  // action'ları rahatsız etmemek için burada TÜM action'lara uygulanıyor
+  // ama "soft" modda hiçbirini engellemiyor, riski yok.
+  const appCheckResult = await verifyAppCheckSoft(req, action);
+  if (!appCheckResult.ok) {
+    console.warn(`[AppCheck] Reddedildi (action:${action}, ip:${clientIp}): ${appCheckResult.reason}`);
+    return res.status(403).json({ error: "Güvenlik doğrulaması başarısız. Sayfayı yenileyip tekrar deneyin." });
+  }
 
   // ── Görsel Yükleme ─────────────────────────────────────────────────────
   if (action === 'upload_image') {
@@ -1237,7 +1382,7 @@ async function handlerImpl(req, res) {
   // ── Relist ────────────────────────────────────────────────────────────
   if (action === 'relist') {
     const { domainName } = req.body;
-    const isAdmin = await verifyAdmin(accessToken);
+    const isAdmin = await verifyAdmin(accessToken, req);
     if (!isAdmin) return res.status(403).json({ error: "Yetki yok" });
     if (!domainName) return res.status(400).json({ error: "Geçersiz domain adı" });
 
@@ -1303,7 +1448,7 @@ async function handlerImpl(req, res) {
   // olmasın herhangi bir domain gizlenebilir/tekrar gösterilebilir.
   if (action === 'toggle_hide_domain') {
     const { domainName, hide } = req.body;
-    const isAdmin = await verifyAdmin(accessToken);
+    const isAdmin = await verifyAdmin(accessToken, req);
     if (!isAdmin) return res.status(403).json({ error: "Yetki yok" });
     if (!domainName) return res.status(400).json({ error: "Geçersiz domain adı" });
     try {
@@ -1327,7 +1472,7 @@ async function handlerImpl(req, res) {
   // ══════════════════════════════════════════════════════════════════════
   if (action === 'toggle_ownership_verified') {
     const { domainName, verified } = req.body;
-    const isAdmin = await verifyAdmin(accessToken);
+    const isAdmin = await verifyAdmin(accessToken, req);
     if (!isAdmin) return res.status(403).json({ error: "Yetki yok" });
     if (!domainName) return res.status(400).json({ error: "Geçersiz domain adı" });
     try {
@@ -1429,7 +1574,7 @@ async function handlerImpl(req, res) {
   //    onayı veriyor (toggle_ownership_verified ile birebir aynı desen).
   if (action === 'toggle_active_app_verified') {
     const { domainName, verified } = req.body;
-    const isAdmin = await verifyAdmin(accessToken);
+    const isAdmin = await verifyAdmin(accessToken, req);
     if (!isAdmin) return res.status(403).json({ error: "Yetki yok" });
     if (!domainName) return res.status(400).json({ error: "Geçersiz domain adı" });
     try {
@@ -1451,7 +1596,7 @@ async function handlerImpl(req, res) {
   // ── Fiyat Güncelle ────────────────────────────────────────────────────
   if (action === 'update_price') {
     const { domainName: dName, newPrice } = req.body;
-    const isAdmin = await verifyAdmin(accessToken);
+    const isAdmin = await verifyAdmin(accessToken, req);
     if (!isAdmin) return res.status(403).json({ error: "Yetki yok" });
     const priceNum = Number(newPrice);
     if (!dName || !priceNum || priceNum <= 0) return res.status(400).json({ error: "Geçersiz parametre" });
@@ -1482,7 +1627,7 @@ async function handlerImpl(req, res) {
   // ── Domain Ekle ───────────────────────────────────────────────────────
   if (action === 'add_domain') {
     const { domainName: newName, newPrice: newP, imgPath, domainType, description } = req.body;
-    const isAdmin = await verifyAdmin(accessToken);
+    const isAdmin = await verifyAdmin(accessToken, req);
     if (!isAdmin) return res.status(403).json({ error: "Yetki yok" });
     const priceNum = Number(newP);
     if (!newName || !priceNum || priceNum <= 0) return res.status(400).json({ error: "Geçersiz parametre" });
@@ -1533,7 +1678,7 @@ async function handlerImpl(req, res) {
   // ══════════════════════════════════════════════════════════════════════
   if (action === 'bulk_add_domains') {
     const { rows } = req.body;
-    const isAdmin = await verifyAdmin(accessToken);
+    const isAdmin = await verifyAdmin(accessToken, req);
     if (!isAdmin) return res.status(403).json({ error: "Yetki yok" });
     if (!Array.isArray(rows) || !rows.length) return res.status(400).json({ error: "Geçersiz veya boş liste" });
     // Tek seferde makul bir üst sınır — Firestore batch limiti (500) ve
@@ -1603,7 +1748,7 @@ async function handlerImpl(req, res) {
   // YAZAR. Ne kadar çok kez çalıştırılırsa çalıştırılsın hep doğru sonucu
   // verir (idempotent).
   if (action === 'recompute_all_ratings') {
-    const isAdmin = await verifyAdmin(accessToken);
+    const isAdmin = await verifyAdmin(accessToken, req);
     if (!isAdmin) return res.status(403).json({ error: "Yetki yok" });
     try {
       const db = getDb();
@@ -1673,7 +1818,7 @@ async function handlerImpl(req, res) {
   // ediliyordu. Bu action, deleted===true olan ve hâlâ puan taşıyan her
   // domain için puanı geri alır ve alanı temizler. İdempotenttir.
   if (action === 'backfill_reverse_deleted_ratings') {
-    const isAdmin = await verifyAdmin(accessToken);
+    const isAdmin = await verifyAdmin(accessToken, req);
     if (!isAdmin) return res.status(403).json({ error: "Yetki yok" });
     try {
       const db = getDb();
@@ -1711,7 +1856,7 @@ async function handlerImpl(req, res) {
   }
 
   if (action === 'backfill_seller_username') {
-    const isAdmin = await verifyAdmin(accessToken);
+    const isAdmin = await verifyAdmin(accessToken, req);
     if (!isAdmin) return res.status(403).json({ error: "Yetki yok" });
     try {
       const db = getDb();
@@ -1757,7 +1902,7 @@ async function handlerImpl(req, res) {
             const update = { sellerUsername: seller };
             if (!sd.payoutStatus || sd.payoutStatus === 'no_seller') update.payoutStatus = 'pending';
             if (!sd.commissionRate) update.commissionRate = PLATFORM_COMMISSION_RATE;
-            if (!sd.payoutAmount) update.payoutAmount = Math.round((sd.price || 0) * (1 - PLATFORM_COMMISSION_RATE) * 1e7) / 1e7;
+            if (!sd.payoutAmount) update.payoutAmount = calculatePayoutAmount(sd.price || 0);
             batch2.set(s.ref, update, { merge: true });
             salesUpdated++;
             salesUpdatedNames.push(sd.domain);
@@ -1826,7 +1971,7 @@ async function handlerImpl(req, res) {
   // ── Domain Sil (SOFT DELETE) ──────────────────────────────────────────
   if (action === 'delete_domain') {
     const { domainName: delName } = req.body;
-    const isAdmin = await verifyAdmin(accessToken);
+    const isAdmin = await verifyAdmin(accessToken, req);
     if (!isAdmin) return res.status(403).json({ error: "Yetki yok" });
     if (!delName) return res.status(400).json({ error: "Geçersiz domain adı" });
     try {
@@ -1903,7 +2048,7 @@ async function handlerImpl(req, res) {
   // ── Domain Geri Getir ─────────────────────────────────────────────────
   if (action === 'restore_domain') {
     const { domainName: restoreName } = req.body;
-    const isAdmin = await verifyAdmin(accessToken);
+    const isAdmin = await verifyAdmin(accessToken, req);
     if (!isAdmin) return res.status(403).json({ error: "Yetki yok" });
     if (!restoreName) return res.status(400).json({ error: "Geçersiz domain adı" });
     try {
@@ -1929,7 +2074,7 @@ async function handlerImpl(req, res) {
   // ── Domain Kalıcı Sil ──────────────────────────────────────────────────
   if (action === 'permanent_delete_domain') {
     const { domainName: permDelName } = req.body;
-    const isAdmin = await verifyAdmin(accessToken);
+    const isAdmin = await verifyAdmin(accessToken, req);
     if (!isAdmin) return res.status(403).json({ error: "Yetki yok" });
     if (!permDelName) return res.status(400).json({ error: "Geçersiz domain adı" });
     try {
@@ -2006,7 +2151,7 @@ async function handlerImpl(req, res) {
   // (active_users koleksiyonunda lastSeen güncel) olan kullanıcıları
   // canlı olarak çeker. Var olan giriş bildirimi akışına dokunmuyor.
   if (action === 'get_active_users') {
-    const isAdmin = await verifyAdmin(accessToken);
+    const isAdmin = await verifyAdmin(accessToken, req);
     if (!isAdmin) return res.status(403).json({ error: "Yetki yok" });
     try {
       const db = getDb();
@@ -2025,7 +2170,7 @@ async function handlerImpl(req, res) {
   }
 
   if (action === 'get_admin_audit_log') {
-    const isAdmin = await verifyAdmin(accessToken);
+    const isAdmin = await verifyAdmin(accessToken, req);
     if (!isAdmin) return res.status(403).json({ error: "Yetki yok" });
     try {
       const db = getDb();
@@ -2039,7 +2184,7 @@ async function handlerImpl(req, res) {
   }
 
   if (action === 'run_system_checkup') {
-    const isAdmin = await verifyAdmin(accessToken);
+    const isAdmin = await verifyAdmin(accessToken, req);
     if (!isAdmin) return res.status(403).json({ error: "Yetki yok" });
     try {
       const db = getDb();
@@ -2306,7 +2451,7 @@ async function handlerImpl(req, res) {
   // Firestore'da öylece kalıyor, ne admin panelinde ne "Şikayetlerim"
   // panelinde anlamlı bir karşılığı olmayan yetim veri olarak duruyordu.
   if (action === 'cleanup_orphaned_offers') {
-    const isAdmin = await verifyAdmin(accessToken);
+    const isAdmin = await verifyAdmin(accessToken, req);
     if (!isAdmin) return res.status(403).json({ error: "Yetki yok" });
     try {
       const db = getDb();
@@ -2364,7 +2509,7 @@ async function handlerImpl(req, res) {
   // ── Platform İstatistiklerini Sıfırla ─────────────────────────────────
   if (action === 'reset_platform_stats') {
     const { confirmReset } = req.body;
-    const isAdmin = await verifyAdmin(accessToken);
+    const isAdmin = await verifyAdmin(accessToken, req);
     if (!isAdmin) return res.status(403).json({ error: "Yetki yok" });
     if (confirmReset !== true) {
       return res.status(400).json({ error: "Bu kalıcı bir işlemdir. confirmReset:true parametresi olmadan çalıştırılamaz." });
@@ -2529,7 +2674,7 @@ async function handlerImpl(req, res) {
   // her seçilen istek için tekrarlıyor, sadece tek bir istekte topluca.
   if (action === 'bulk_approve_sell_requests') {
     const { requestIds } = req.body;
-    const isAdmin = await verifyAdmin(accessToken);
+    const isAdmin = await verifyAdmin(accessToken, req);
     if (!isAdmin) return res.status(403).json({ error: "Yetki yok" });
     if (!Array.isArray(requestIds) || requestIds.length === 0)
       return res.status(400).json({ error: "En az bir istek seçilmelidir" });
@@ -2587,7 +2732,7 @@ async function handlerImpl(req, res) {
 
   if (action === 'approve_sell_request') {
     const { requestId } = req.body;
-    const isAdmin = await verifyAdmin(accessToken);
+    const isAdmin = await verifyAdmin(accessToken, req);
     if (!isAdmin) return res.status(403).json({ error: "Yetki yok" });
     if (!requestId) return res.status(400).json({ error: "Geçersiz istek ID" });
     try {
@@ -2644,7 +2789,7 @@ async function handlerImpl(req, res) {
   // ── Satış Önerisini Reddet ────────────────────────────────────────────
   if (action === 'reject_sell_request') {
     const { requestId, rejectReason } = req.body;
-    const isAdmin = await verifyAdmin(accessToken);
+    const isAdmin = await verifyAdmin(accessToken, req);
     if (!isAdmin) return res.status(403).json({ error: "Yetki yok" });
     if (!requestId) return res.status(400).json({ error: "Geçersiz istek ID" });
     try {
@@ -2877,7 +3022,7 @@ async function handlerImpl(req, res) {
 
   // ── Admin: Tüm Ticket'ları Getir ──────────────────────────────────────
   if (action === 'get_all_tickets') {
-    const isAdmin = await verifyAdmin(accessToken);
+    const isAdmin = await verifyAdmin(accessToken, req);
     if (!isAdmin) return res.status(403).json({ error: "Yetki yok" });
     try {
       const db = getDb();
@@ -2905,7 +3050,7 @@ async function handlerImpl(req, res) {
 
   // ── Admin: Ticket Bildirimlerini Görüldü Olarak İşaretle ───────────────
   if (action === 'mark_tickets_seen') {
-    const isAdmin = await verifyAdmin(accessToken);
+    const isAdmin = await verifyAdmin(accessToken, req);
     if (!isAdmin) return res.status(403).json({ error: "Yetki yok" });
     try {
       const db = getDb();
@@ -3156,7 +3301,7 @@ async function handlerImpl(req, res) {
 
   // ── Admin: Bir Kullanıcının Tüm Aktivitesini Görüntüle ──────────────────
   if (action === 'admin_get_user_details') {
-    const isAdmin = await verifyAdmin(accessToken);
+    const isAdmin = await verifyAdmin(accessToken, req);
     if (!isAdmin) return res.status(403).json({ error: "Yetki yok" });
     const { username: targetUsername } = req.body;
     if (!targetUsername) return res.status(400).json({ error: "Kullanıcı adı gerekli" });
@@ -3196,7 +3341,7 @@ async function handlerImpl(req, res) {
 
   // ── Admin: Kullanıcıya Doğrudan E-posta Gönder ──────────────────────────
   if (action === 'admin_send_email_to_user') {
-    const isAdmin = await verifyAdmin(accessToken);
+    const isAdmin = await verifyAdmin(accessToken, req);
     if (!isAdmin) return res.status(403).json({ error: "Yetki yok" });
     const { username: targetUsername, subject, message } = req.body;
     if (!targetUsername || !subject || !message) {
@@ -3227,7 +3372,7 @@ async function handlerImpl(req, res) {
   // ══════════════════════════════════════════════════════════════════════
   if (action === 'set_maintenance_mode') {
     const { enabled } = req.body;
-    const isAdmin = await verifyAdmin(accessToken);
+    const isAdmin = await verifyAdmin(accessToken, req);
     if (!isAdmin) return res.status(403).json({ error: "Yetki yok" });
     try {
       const db = getDb();
@@ -3307,7 +3452,7 @@ async function handlerImpl(req, res) {
 
   // ── ADMIN: Bildirilen İlanları Listele/Yönet ────────────────────────────
   if (action === 'get_listing_reports') {
-    const isAdmin = await verifyAdmin(accessToken);
+    const isAdmin = await verifyAdmin(accessToken, req);
     if (!isAdmin) return res.status(403).json({ error: "Yetki yok" });
     try {
       const db = getDb();
@@ -3342,7 +3487,7 @@ async function handlerImpl(req, res) {
 
   // ── Admin: Şikayet Bildirimlerini Görüldü Olarak İşaretle ──────────────
   if (action === 'mark_reports_seen') {
-    const isAdmin = await verifyAdmin(accessToken);
+    const isAdmin = await verifyAdmin(accessToken, req);
     if (!isAdmin) return res.status(403).json({ error: "Yetki yok" });
     try {
       const db = getDb();
@@ -3365,7 +3510,7 @@ async function handlerImpl(req, res) {
   //  panelindeki aşama takibi bunu kullanıyor).
   // ══════════════════════════════════════════════════════════════════════
   if (action === 'update_report_status') {
-    const isAdmin = await verifyAdmin(accessToken);
+    const isAdmin = await verifyAdmin(accessToken, req);
     if (!isAdmin) return res.status(403).json({ error: "Yetki yok" });
     const { reportId, newStatus, note } = req.body;
     const validStatuses = ['reviewing', 'resolved', 'closed'];
@@ -3651,7 +3796,7 @@ async function handlerImpl(req, res) {
 
   // ── Admin: Marka Hakkı Taleplerini Listele ─────────────────────────────
   if (action === 'get_trademark_claims') {
-    const isAdmin = await verifyAdmin(accessToken);
+    const isAdmin = await verifyAdmin(accessToken, req);
     if (!isAdmin) return res.status(403).json({ error: "Yetki yok" });
     try {
       const db = getDb();
@@ -3671,7 +3816,7 @@ async function handlerImpl(req, res) {
   // artık Firestore'dan doğrudan okunmuyor; bu action üzerinden, admin
   // doğrulamasından geçerek çekiliyor.
   if (action === 'get_pending_sell_requests') {
-    const isAdmin = await verifyAdmin(accessToken);
+    const isAdmin = await verifyAdmin(accessToken, req);
     if (!isAdmin) return res.status(403).json({ error: "Yetki yok" });
     try {
       const db = getDb();
@@ -3689,7 +3834,7 @@ async function handlerImpl(req, res) {
   // ── Admin: Marka Hakkı Talebi Durumunu Güncelle ────────────────────────
   if (action === 'update_trademark_claim_status') {
     const { claimId, status } = req.body;
-    const isAdmin = await verifyAdmin(accessToken);
+    const isAdmin = await verifyAdmin(accessToken, req);
     if (!isAdmin) return res.status(403).json({ error: "Yetki yok" });
     const validStatuses = ['new', 'reviewing', 'resolved', 'rejected', 'withdrawn'];
     if (!claimId || !validStatuses.includes(status)) return res.status(400).json({ error: "Geçersiz parametre" });
@@ -3729,7 +3874,7 @@ async function handlerImpl(req, res) {
   // ══════════════════════════════════════════════════════════════════════
   if (action === 'approve_trademark_claim') {
     const { claimId } = req.body;
-    const isAdmin = await verifyAdmin(accessToken);
+    const isAdmin = await verifyAdmin(accessToken, req);
     if (!isAdmin) return res.status(403).json({ error: "Yetki yok" });
     if (!claimId) return res.status(400).json({ error: "claimId zorunludur" });
     try {
@@ -3797,7 +3942,7 @@ async function handlerImpl(req, res) {
   // aktif/çözülmüş bir talebin kaza sonucu silinmesini engeller.
   if (action === 'delete_trademark_claim') {
     const { claimId } = req.body;
-    const isAdmin = await verifyAdmin(accessToken);
+    const isAdmin = await verifyAdmin(accessToken, req);
     if (!isAdmin) return res.status(403).json({ error: "Yetki yok" });
     if (!claimId) return res.status(400).json({ error: "claimId zorunludur" });
     try {
@@ -3885,7 +4030,7 @@ async function handlerImpl(req, res) {
   //  ADMIN: ESCROW — Bekleyen Satıcı Ödemelerini Listele
   // ══════════════════════════════════════════════════════════════════════
   if (action === 'get_pending_payouts') {
-    const isAdmin = await verifyAdmin(accessToken);
+    const isAdmin = await verifyAdmin(accessToken, req);
     if (!isAdmin) return res.status(403).json({ error: "Yetki yok" });
     try {
       const db = getDb();
@@ -4035,7 +4180,7 @@ async function handlerImpl(req, res) {
   // tarafın onay durumunu sıfırlayıp tekrar onaylayabilmesini sağlar.
   if (action === 'resolve_dispute') {
     const { saleId, role, message } = req.body; // role: 'buyer' | 'seller'
-    const isAdmin = await verifyAdmin(accessToken);
+    const isAdmin = await verifyAdmin(accessToken, req);
     if (!isAdmin) return res.status(403).json({ error: "Yetki yok" });
     if (!saleId || !role || !message) return res.status(400).json({ error: "Geçersiz parametre" });
     try {
@@ -4076,7 +4221,7 @@ async function handlerImpl(req, res) {
 
   if (action === 'nudge_confirmation') {
     const { saleId, role } = req.body; // role: 'buyer' | 'seller'
-    const isAdmin = await verifyAdmin(accessToken);
+    const isAdmin = await verifyAdmin(accessToken, req);
     if (!isAdmin) return res.status(403).json({ error: "Yetki yok" });
     if (!saleId || !role) return res.status(400).json({ error: "Geçersiz parametre" });
     try {
@@ -4115,7 +4260,7 @@ async function handlerImpl(req, res) {
 
   if (action === 'release_seller_payment') {
     const { saleId } = req.body;
-    const isAdmin = await verifyAdmin(accessToken);
+    const isAdmin = await verifyAdmin(accessToken, req);
     if (!isAdmin) return res.status(403).json({ error: "Yetki yok" });
     if (!saleId) return res.status(400).json({ error: "saleId zorunludur" });
 
@@ -4164,7 +4309,7 @@ async function handlerImpl(req, res) {
       // hiç komisyon almazdı. Artık gönderilecek tutar HER ZAMAN satış
       // fiyatı ve komisyon oranından TAZE hesaplanıyor; kayıtlı
       // payoutAmount alanına asla güvenilmiyor.
-      const payoutAmount = Math.round(sale.price * (1 - (sale.commissionRate || PLATFORM_COMMISSION_RATE)) * 1e7) / 1e7;
+      const payoutAmount = calculatePayoutAmount(sale.price, sale.commissionRate || PLATFORM_COMMISSION_RATE);
 
       // ══════════════════════════════════════════════════════════════════
       //  KURTARMA (RESCUE/RECOVERY) MEKANİZMASI
@@ -4296,7 +4441,7 @@ async function handlerImpl(req, res) {
   // ══════════════════════════════════════════════════════════════════════
   if (action === 'refund_buyer_payment') {
     const { saleId } = req.body;
-    const isAdmin = await verifyAdmin(accessToken);
+    const isAdmin = await verifyAdmin(accessToken, req);
     if (!isAdmin) return res.status(403).json({ error: "Yetki yok" });
     if (!saleId) return res.status(400).json({ error: "saleId zorunludur" });
 
@@ -4408,7 +4553,7 @@ async function handlerImpl(req, res) {
   // ── Admin: Ticket Durumunu Güncelle ────────────────────────────────────
   if (action === 'update_ticket_status') {
     const { ticketId, status } = req.body;
-    const isAdmin = await verifyAdmin(accessToken);
+    const isAdmin = await verifyAdmin(accessToken, req);
     if (!isAdmin) return res.status(403).json({ error: "Yetki yok" });
     const validStatuses = ['new', 'reviewing', 'answered', 'resolved', 'closed'];
     if (!ticketId || !validStatuses.includes(status)) return res.status(400).json({ error: "Geçersiz parametre" });
@@ -4440,7 +4585,7 @@ async function handlerImpl(req, res) {
   // ── Admin: Ticket'a Yanıt Yaz ──────────────────────────────────────────
   if (action === 'admin_reply_ticket') {
     const { ticketId, text } = req.body;
-    const isAdmin = await verifyAdmin(accessToken);
+    const isAdmin = await verifyAdmin(accessToken, req);
     if (!isAdmin) return res.status(403).json({ error: "Yetki yok" });
     if (!ticketId || !text) return res.status(400).json({ error: "ticketId ve mesaj zorunludur" });
     try {
@@ -4474,7 +4619,7 @@ async function handlerImpl(req, res) {
   // ── Admin: Ticket'ı Üzerine Al / Bırak ─────────────────────────────────
   if (action === 'assign_ticket') {
     const { ticketId, assign } = req.body;
-    const isAdmin = await verifyAdmin(accessToken);
+    const isAdmin = await verifyAdmin(accessToken, req);
     if (!isAdmin) return res.status(403).json({ error: "Yetki yok" });
     if (!ticketId) return res.status(400).json({ error: "ticketId zorunludur" });
     try {
@@ -4496,7 +4641,7 @@ async function handlerImpl(req, res) {
     const { ticketId } = req.body;
     if (!ticketId) return res.status(400).json({ error: "ticketId zorunludur" });
 
-    const isAdmin = await verifyAdmin(accessToken);
+    const isAdmin = await verifyAdmin(accessToken, req);
     const realUsername = await getRealUsername(accessToken);
     if (!realUsername) return res.status(403).json({ error: "Geçersiz oturum" });
 
@@ -4977,7 +5122,7 @@ async function handlerImpl(req, res) {
       const offerSnap = await offerRef.get();
       if (!offerSnap.exists) return res.status(404).json({ error: "Teklif bulunamadı" });
       const offer = offerSnap.data();
-      const isAdmin = await verifyAdmin(accessToken);
+      const isAdmin = await verifyAdmin(accessToken, req);
       if (offer.sellerUsername !== realUsername && !isAdmin)
         return res.status(403).json({ error: "Bu teklife yanıt verme yetkiniz yok" });
       if (offer.status !== 'pending') return res.status(400).json({ error: "Bu teklif zaten yanıtlanmış" });
@@ -5079,7 +5224,7 @@ async function handlerImpl(req, res) {
       const offerSnap = await offerRef.get();
       if (!offerSnap.exists) return res.status(404).json({ error: "Teklif bulunamadı" });
       const offer = offerSnap.data();
-      const isAdmin = await verifyAdmin(accessToken);
+      const isAdmin = await verifyAdmin(accessToken, req);
       if (offer.sellerUsername !== realUsername && !isAdmin)
         return res.status(403).json({ error: "Bu teklife yanıt verme yetkiniz yok" });
       if (offer.status !== 'pending') return res.status(400).json({ error: "Bu teklif zaten yanıtlanmış" });
@@ -5182,7 +5327,7 @@ async function handlerImpl(req, res) {
 
   // ── Tüm Teklif Trafiğini Getir (SADECE admin) ───────────────────────────
   if (action === 'get_all_offers') {
-    const isAdmin = await verifyAdmin(accessToken);
+    const isAdmin = await verifyAdmin(accessToken, req);
     if (!isAdmin) return res.status(403).json({ error: "Yetki yok" });
     try {
       const db = getDb();
@@ -5203,7 +5348,7 @@ async function handlerImpl(req, res) {
   // gösteren küçük bir bildirim rozeti için — get_all_offers gibi 500
   // kaydın tamamını çekmek yerine sadece 'pending' sayısını döner.
   if (action === 'get_pending_offers_count') {
-    const isAdmin = await verifyAdmin(accessToken);
+    const isAdmin = await verifyAdmin(accessToken, req);
     if (!isAdmin) return res.status(403).json({ error: "Yetki yok" });
     try {
       const db = getDb();
@@ -5291,7 +5436,7 @@ async function handlerImpl(req, res) {
 
   // ── Admin: Bekleyen Silme Taleplerini Getir ─────────────────────────────
   if (action === 'get_deletion_requests') {
-    const isAdmin = await verifyAdmin(accessToken);
+    const isAdmin = await verifyAdmin(accessToken, req);
     if (!isAdmin) return res.status(403).json({ error: "Yetki yok" });
     try {
       const db = getDb();
@@ -5308,7 +5453,7 @@ async function handlerImpl(req, res) {
   // ── Admin: Silme Talebini Sonuçlandır ────────────────────────────────────
   if (action === 'resolve_deletion_request') {
     const { requestId, note } = req.body;
-    const isAdmin = await verifyAdmin(accessToken);
+    const isAdmin = await verifyAdmin(accessToken, req);
     if (!isAdmin) return res.status(403).json({ error: "Yetki yok" });
     if (!requestId) return res.status(400).json({ error: "Geçersiz talep" });
     try {
@@ -5562,7 +5707,7 @@ async function handlerImpl(req, res) {
   //  bkz. dosya başındaki getNetworkMode/getPiApiKeyForMode/getWalletSeedForMode
   // ══════════════════════════════════════════════════════════════════════
   if (action === 'get_network_mode') {
-    const isAdmin = await verifyAdmin(accessToken);
+    const isAdmin = await verifyAdmin(accessToken, req);
     if (!isAdmin) return res.status(403).json({ error: "Yetki yok" });
     try {
       const db = getDb();
@@ -5583,7 +5728,7 @@ async function handlerImpl(req, res) {
 
   if (action === 'set_network_mode') {
     const { mode: newMode } = req.body;
-    const isAdmin = await verifyAdmin(accessToken);
+    const isAdmin = await verifyAdmin(accessToken, req);
     if (!isAdmin) return res.status(403).json({ error: "Yetki yok" });
     if (newMode !== 'testnet' && newMode !== 'mainnet')
       return res.status(400).json({ error: "Geçersiz mod (testnet veya mainnet olmalı)" });
@@ -5611,7 +5756,7 @@ async function handlerImpl(req, res) {
   }
 
   if (action === 'get_all_conversations') {
-    const isAdmin = await verifyAdmin(accessToken);
+    const isAdmin = await verifyAdmin(accessToken, req);
     if (!isAdmin) return res.status(403).json({ error: "Yetki yok" });
     try {
       const db = getDb();
@@ -5636,7 +5781,7 @@ async function handlerImpl(req, res) {
 
   // ── Admin: Kullanıcı Mesajları Bildirimini Görüldü Olarak İşaretle ─────
   if (action === 'mark_admin_messages_seen') {
-    const isAdmin = await verifyAdmin(accessToken);
+    const isAdmin = await verifyAdmin(accessToken, req);
     if (!isAdmin) return res.status(403).json({ error: "Yetki yok" });
     try {
       const db = getDb();
@@ -5872,7 +6017,7 @@ async function handlerImpl(req, res) {
         // halde her zaman fiyattan taze %95 hesaplanıyor.
         const netAmount = (data.payoutStatus === 'released' && data.payoutAmount != null)
           ? Number(data.payoutAmount)
-          : Math.round(Number(data.price || 0) * (1 - (data.commissionRate || PLATFORM_COMMISSION_RATE)) * 1e7) / 1e7;
+          : calculatePayoutAmount(data.price || 0, data.commissionRate || PLATFORM_COMMISSION_RATE);
         totalEarned += netAmount;
         soldDomains.push({ name: d.id, ...data });
       });
@@ -5906,7 +6051,7 @@ async function handlerImpl(req, res) {
   // ── Admin: Toplam Kazanç / Cüzdan Özeti ────────────────────────────────
   // ── Satış Trendi (Son 30 Gün) ──────────────────────────────────────────
   if (action === 'get_sales_trend') {
-    const isAdmin = await verifyAdmin(accessToken);
+    const isAdmin = await verifyAdmin(accessToken, req);
     if (!isAdmin) return res.status(403).json({ error: "Yetki yok" });
     try {
       const db = getDb();
@@ -5957,7 +6102,7 @@ async function handlerImpl(req, res) {
         // (komisyonsuz) görünmesin diye.
         const netEarning = (data.payoutStatus === 'released' && data.payoutAmount != null)
           ? Number(data.payoutAmount)
-          : Math.round(grossPrice * (1 - (data.commissionRate || PLATFORM_COMMISSION_RATE)) * 1e7) / 1e7;
+          : calculatePayoutAmount(grossPrice, data.commissionRate || PLATFORM_COMMISSION_RATE);
         rows.push({
           domain: d.id,
           price: grossPrice,
@@ -5976,7 +6121,7 @@ async function handlerImpl(req, res) {
   }
 
   if (action === 'export_sales_data') {
-    const isAdmin = await verifyAdmin(accessToken);
+    const isAdmin = await verifyAdmin(accessToken, req);
     if (!isAdmin) return res.status(403).json({ error: "Yetki yok" });
     try {
       const db = getDb();
@@ -6005,7 +6150,7 @@ async function handlerImpl(req, res) {
   }
 
   if (action === 'get_admin_earnings') {
-    const isAdmin = await verifyAdmin(accessToken);
+    const isAdmin = await verifyAdmin(accessToken, req);
     if (!isAdmin) return res.status(403).json({ error: "Yetki yok" });
     try {
       const db = getDb();
@@ -6077,7 +6222,7 @@ async function handlerImpl(req, res) {
           // bile rakamın kendisi satıcıların gerçekte eline geçecek NET
           // tutar değildi. Artık her domain için ayrı ayrı %5 (veya o
           // domaine özel commissionRate) düşülüp toplanıyor.
-          userOwnedVolumeNet += Math.round(price * (1 - (data.commissionRate || PLATFORM_COMMISSION_RATE)) * 1e7) / 1e7;
+          userOwnedVolumeNet += calculatePayoutAmount(price, data.commissionRate || PLATFORM_COMMISSION_RATE);
           if (data.sellerUsername === ADMIN_USERNAME) {
             // Admin'in kendi domaini: escrow/serbest bırakma adımı yok,
             // satış anında kesinleşmiş sayılır.
@@ -6085,7 +6230,7 @@ async function handlerImpl(req, res) {
           } else if (data.payoutStatus === 'released') {
             // %5 komisyon SADECE ödeme satıcıya gerçekten serbest
             // bırakılmışsa (payoutStatus:'released') kazanılmış sayılır.
-            const releasedPayout = Number(data.payoutAmount || Math.round(price * (1 - PLATFORM_COMMISSION_RATE) * 1e7) / 1e7);
+            const releasedPayout = Number(data.payoutAmount || calculatePayoutAmount(price));
             platformEarnings += (price - releasedPayout);
           }
         } else {
@@ -6124,7 +6269,7 @@ async function handlerImpl(req, res) {
   // ── Onaya Gelen Domain Detayı (Admin) ──────────────────────────────────
   if (action === 'get_sell_request_detail') {
     const { requestId } = req.body;
-    const isAdmin = await verifyAdmin(accessToken);
+    const isAdmin = await verifyAdmin(accessToken, req);
     if (!isAdmin) return res.status(403).json({ error: "Yetki yok" });
     if (!requestId) return res.status(400).json({ error: "Geçersiz istek ID" });
     try {
@@ -6487,7 +6632,7 @@ async function handlerImpl(req, res) {
             // komisyon düşülmüş tutar satıcının Pi hesabına A2U ile gönderilir.
             payoutStatus: sellerUsername ? 'pending' : 'no_seller',
             commissionRate: PLATFORM_COMMISSION_RATE,
-            payoutAmount: sellerUsername ? Math.round(realPrice * (1 - PLATFORM_COMMISSION_RATE) * 1e7) / 1e7 : null
+            payoutAmount: sellerUsername ? calculatePayoutAmount(realPrice) : null
           });
 
           const today = new Date().toISOString().split('T')[0];
