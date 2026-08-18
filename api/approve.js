@@ -6282,6 +6282,89 @@ async function handlerImpl(req, res) {
     }
   }
 
+  // ── Ödeme Mutabakatı Raporu (Admin) ──────────────────────────────────
+  // YENİ (önceden arayüzde butonu/metni vardı ama bu action hiç
+  // uygulanmamıştı — istek her zaman aşağıdaki genel Pi ödeme akışına
+  // düşüp "paymentId zorunludur" hatası veriyordu).
+  //
+  // Ne yapıyor: Pi Platform'un KENDİ resmi "incomplete_server_payments"
+  // uç noktasını (pi-backend SDK'sındaki getIncompleteServerPayments())
+  // çağırıyor. Bu, Pi'nin sunucularının "uygulama tarafından oluşturuldu
+  // ama tamamlanmadı" olarak işaretlediği ödemelerin GERÇEK listesidir —
+  // yani platformumuzun kendi tahmini/araması değil, doğrudan Pi'nin
+  // kayıtları. Bunlar özellikle satıcı ödemeleri (seller_payout) ve
+  // alıcı iadeleri (buyer_refund) için oluşturuluyor (bkz. adminReleasePayout
+  // ve iade akışındaki pi.createPayment çağrıları, metadata:{saleId,
+  // domainName,type} ile işaretleniyor).
+  //
+  // Her kayıt için Firestore'daki ilgili domain/satış kaydına bakıp
+  // "bu ödeme bizim tarafımızda ne durumda görünüyor" bilgisini
+  // (domainStatus) ekliyoruz — admin böylece "Pi'de bekliyor ama bizim
+  // sistemde payoutStatus hâlâ 'processing'" gibi bir tutarsızlığı
+  // hemen görebiliyor. HİÇBİR otomatik tamamlama/iptal YAPILMIYOR —
+  // sadece bilgi amaçlı, admin elle karar verip ilerliyor (bkz. arayüz
+  // metni: "Otomatik bir işlem yapılmaz").
+  if (action === 'reconcile_incomplete_payments') {
+    const isAdmin = await verifyAdmin(accessToken, req);
+    if (!isAdmin) return res.status(403).json({ error: "Yetki yok" });
+    try {
+      const db = getDb();
+      const pi = await getPiClient(db);
+      if (!pi) {
+        return res.status(500).json({ error: "Sunucuda escrow ödeme istemcisi yapılandırılmamış (PI_WALLET_PRIVATE_SEED / pi-backend paketi eksik)." });
+      }
+
+      const incomplete = await pi.getIncompleteServerPayments();
+
+      const payments = await Promise.all((incomplete || []).map(async (p) => {
+        const meta = p.metadata || {};
+        const domainName = meta.domainName || null;
+        let domainStatus = 'Bilinmiyor (eşleşen domain kaydı yok)';
+        let possibleUsername = null;
+
+        if (domainName) {
+          try {
+            const domainSnap = await db.collection('domains').doc(domainName).get();
+            if (domainSnap.exists) {
+              const dd = domainSnap.data();
+              if (meta.type === 'seller_payout') {
+                possibleUsername = dd.sellerUsername || null;
+                domainStatus = `payoutStatus: ${dd.payoutStatus || 'yok'}`;
+              } else if (meta.type === 'buyer_refund') {
+                possibleUsername = dd.buyer || null;
+                domainStatus = `refundStatus: ${dd.refundStatus || 'yok'}`;
+              } else {
+                possibleUsername = dd.buyer || dd.sellerUsername || null;
+                domainStatus = dd.sold ? 'satılmış' : 'satılmamış';
+              }
+            } else {
+              domainStatus = 'Domain kaydı bulunamadı (silinmiş olabilir)';
+            }
+          } catch (e) {
+            domainStatus = 'Domain kaydı okunurken hata oluştu';
+          }
+        }
+
+        return {
+          paymentId: p.identifier,
+          amount: p.amount,
+          txid: p.transaction && p.transaction.txid ? p.transaction.txid : null,
+          domainName: domainName || (meta.saleId ? `(saleId: ${meta.saleId})` : null),
+          possibleUsername,
+          domainStatus,
+          type: meta.type || null,
+          status: p.status || null
+        };
+      }));
+
+      return res.status(200).json({ success: true, count: payments.length, payments });
+    } catch (e) {
+      console.error('[Reconcile] hata:', e.message);
+      await logSystemError('reconcile_incomplete_payments', e);
+      return res.status(500).json({ error: "Mutabakat raporu alınamadı: " + e.message });
+    }
+  }
+
   // ══════════════════════════════════════════════════════════════════════
   //  Pi Ödeme Akışı (approve / complete / cancel)
   // ══════════════════════════════════════════════════════════════════════
