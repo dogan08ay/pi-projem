@@ -2424,11 +2424,120 @@ async function handlerImpl(req, res) {
           `Action bazında: ${summary}\n\nEn son 5 kayıt:\n${lastFew}`);
       }
 
+      // ── YENİ: Firebase Storage bağlantı testi ──────────────────────────
+      // Firestore/RTDB için zaten yazma/okuma testi vardı, Storage için
+      // yoktu — domain görselleri ve destek talebi ekleri buraya
+      // yükleniyor, bağlantısı kopuksa kullanıcılar sessizce "resim
+      // yüklenemedi" hatası alır ama admin bunu fark etmeyebilir.
+      try {
+        const bucket = getBucket();
+        const testFile = bucket.file('_checkup_ping.txt');
+        await testFile.save(String(now), { contentType: 'text/plain' });
+        const [contents] = await testFile.download();
+        if (contents.toString() !== String(now)) throw new Error('Yazılan içerik okunanla eşleşmiyor');
+        await testFile.delete().catch(() => {}); // silme başarısız olsa bile test sonucunu etkilemesin
+        connResults.push('✅ Firebase Storage (yazma/okuma)');
+      } catch (e) {
+        addIssue('error', 'Firebase Storage bağlantısı başarısız', String(e.message || e) + ' — domain görseli/ekran görüntüsü/destek eki yüklemeleri etkileniyor olabilir.');
+      }
+
+      // ── YENİ: Canlı site erişilebilirlik testi ─────────────────────────
+      // Backend'in (Vercel Function) çalışıyor olması, sitenin gerçekten
+      // ziyaretçilere ULAŞTIĞI anlamına gelmez (ör. DNS/CDN/domain süresi
+      // dolması gibi backend'in hiç haberdar olmadığı sorunlar olabilir).
+      const SITE_BASE_URL = process.env.SITE_URL || 'https://dofiay.com';
+      for (const path of ['/', '/robots.txt', '/sitemap.xml']) {
+        try {
+          const siteResp = await fetch(SITE_BASE_URL + path, { method: 'GET' });
+          if (siteResp.ok) connResults.push(`✅ Site erişilebilir: ${path} (HTTP ${siteResp.status})`);
+          else addIssue('warning', `Site sayfası beklenmeyen durum kodu döndü: ${path}`, `HTTP ${siteResp.status} — ${SITE_BASE_URL}${path}`);
+        } catch (e) {
+          addIssue('error', `Site sayfasına ulaşılamadı: ${path}`, String(e.message || e) + ` — ${SITE_BASE_URL}${path} adresini tarayıcıdan elle açıp kontrol edin (DNS/domain süresi/CDN sorunu olabilir).`);
+        }
+      }
+
+      // ── YENİ: App Check (bot/kötüye kullanım koruması) durumu ─────────
+      // Faz 7'de eklenen özelliğin şu an hangi modda olduğunu (izleme mi,
+      // zorunlu mu) ve izleme modundaysa kaç isteğin token'sız/geçersiz
+      // token'la geldiğini gösteriyor — admin'in "artık zorunlu moda
+      // geçebilir miyim" kararını vermesine yardımcı olur.
+      if (APP_CHECK_ENFORCE) {
+        connResults.push('✅ App Check ZORUNLU modda (geçersiz istekler reddediliyor)');
+      } else {
+        addIssue('info', 'App Check hâlâ İZLEME modunda (zorunlu değil)',
+          `Şu ana kadar bu sunucu örneğinde ${_appCheckSoftLogCount} istek token'sız/geçersiz token'la geldi (bu sayaç sunucu yeniden başladığında sıfırlanır, kalıcı bir istatistik değildir). index.html'deki APP_CHECK_SITE_KEY gerçek bir anahtarla değiştirildiyse ve bir süredir sorunsuz çalışıyorsa, Vercel'de APP_CHECK_ENFORCE=true ekleyerek zorunlu moda geçebilirsiniz.`);
+      }
+
+      // ── YENİ: Admin güvenlik özeti (Faz 4) ─────────────────────────────
+      try {
+        const knownIpsSnap = await db.collection('admin_known_ips').select().get();
+        connResults.push(`ℹ️ Admin hesabı şu ana kadar ${knownIpsSnap.size} farklı IP'den giriş yaptı (bkz. admin_known_ips)`);
+      } catch (e) { /* koleksiyon henüz oluşmadıysa sessizce geç */ }
+
+      // ── YENİ: rate_limits koleksiyonu büyüklüğü ────────────────────────
+      // Her istek bir doküman yazıyor; Firestore konsolunda "expiresAt"
+      // alanı üzerinde bir TTL politikası tanımlanmadıysa bu koleksiyon
+      // süresiz büyür (hem maliyet hem performans sorunu). count() sorgusu
+      // (Aggregation Query) tüm dokümanları indirmeden sadece sayıyı verir.
+      try {
+        const rateLimitCountSnap = await db.collection('rate_limits').count().get();
+        const rateLimitCount = rateLimitCountSnap.data().count;
+        connResults.push(`ℹ️ rate_limits koleksiyonunda ${rateLimitCount} kayıt var`);
+        if (rateLimitCount > 5000) {
+          addIssue('warning', `rate_limits koleksiyonu büyümüş (${rateLimitCount} kayıt)`,
+            `Firestore Console → Firestore → TTL sekmesinden "rate_limits" koleksiyonu için "expiresAt" alanı üzerinde bir TTL politikası tanımlamadıysanız, eski kayıtlar hiç silinmiyor demektir. Bu hem depolama maliyetini hem de sorgu performansını olumsuz etkiler.`);
+        }
+      } catch (e) { /* koleksiyon/aggregation desteklenmiyorsa sessizce geç */ }
+
+      // ── YENİ: Aktif domain ilanlarında veri kalitesi taraması ─────────
+      // Fiyatı, tipi veya görseli eksik/bozuk bir ilan, alıcıya "kırık"
+      // bir kart olarak görünür (fiyat NaN, resim yok vb.) — bunu satış
+      // anına kadar fark etmemek kayba yol açabilir.
+      const brokenListings = [];
+      domainsSnap.forEach(d => {
+        const dd = d.data();
+        if (dd.deleted === true || dd.sold === true) return; // sadece aktif ilanlar
+        const problems = [];
+        if (typeof dd.price !== 'number' || !(dd.price > 0)) problems.push('geçersiz/eksik fiyat');
+        if (!dd.domainType) problems.push('domain tipi yok');
+        if (!dd.imgPath) problems.push('görsel yok');
+        if (problems.length > 0) brokenListings.push(`${d.id} (${problems.join(', ')})`);
+      });
+      if (brokenListings.length > 0) {
+        addIssue('warning', `${brokenListings.length} aktif ilanda veri kalitesi sorunu var`,
+          `Bu ilanlar alıcıya eksik/bozuk görünüyor olabilir: ${brokenListings.slice(0, 15).join('; ')}${brokenListings.length > 15 ? ` ... ve ${brokenListings.length - 15} tane daha` : ''}`);
+      }
+
+      // ── YENİ: Opsiyonel ama önemli ortam değişkenleri ──────────────────
+      // Bunlar eksik olsa da uygulama ÇALIŞMAYA devam eder (zorunlu env
+      // listesinden farklı), ama bazı özellikler sessizce devre dışı kalır.
+      const optionalEnvVars = [
+        { key: 'VAPID_PUBLIC_KEY', label: 'Web Push genel anahtarı — eksikse tarayıcı bildirimleri çalışmaz' },
+        { key: 'VAPID_PRIVATE_KEY', label: 'Web Push özel anahtarı — eksikse tarayıcı bildirimleri çalışmaz' },
+        { key: 'ADMIN_USERNAME', label: `eksikse kod içindeki varsayılan ("${ADMIN_USERNAME}") kullanılıyor` },
+        { key: 'APP_CHECK_ENFORCE', label: 'eksikse App Check izleme modunda kalır (yukarıya bakın)' }
+      ];
+      const missingOptionalEnv = optionalEnvVars.filter(v => !process.env[v.key]);
+      if (missingOptionalEnv.length > 0) {
+        addIssue('info', `${missingOptionalEnv.length} opsiyonel ortam değişkeni tanımlı değil`,
+          missingOptionalEnv.map(v => `${v.key} (${v.label})`).join('; '));
+      }
+
+      // ── YENİ: Deployment/çalışma zamanı bilgisi (bilgi amaçlı) ─────────
+      // "Hangi kod şu an canlıda çalışıyor" sorusuna hızlı bir cevap —
+      // özellikle bir değişikliği deploy ettikten sonra "gerçekten yeni
+      // sürüm mü çalışıyor" diye kontrol etmek için kullanışlı.
+      const deployInfo = [];
+      if (process.env.VERCEL_GIT_COMMIT_SHA) deployInfo.push(`commit: ${process.env.VERCEL_GIT_COMMIT_SHA.slice(0, 7)}`);
+      if (process.env.VERCEL_ENV) deployInfo.push(`ortam: ${process.env.VERCEL_ENV}`);
+      deployInfo.push(`Node.js: ${process.version}`);
+      connResults.push(`ℹ️ Çalışma zamanı — ${deployInfo.join(' · ')}`);
+
       return res.status(200).json({
         success: true,
         issues,
         connResults,
-        summary: { domainsScanned: domainsSnap.size, soldCount, salesScanned: salesSnap.size, sellRequestsScanned: sellReqSnap.size, trademarkClaimsScanned: tmSnap.size, backgroundErrors: recentErrors.length, offersScanned: offersSnap.size, orphanedOffers: orphanedOfferCount, negativeDailyStats: negativeDailyStats.length }
+        summary: { domainsScanned: domainsSnap.size, soldCount, salesScanned: salesSnap.size, sellRequestsScanned: sellReqSnap.size, trademarkClaimsScanned: tmSnap.size, backgroundErrors: recentErrors.length, offersScanned: offersSnap.size, orphanedOffers: orphanedOfferCount, negativeDailyStats: negativeDailyStats.length, brokenListings: brokenListings.length }
       });
     } catch (e) {
       console.error("run_system_checkup hatası:", e);
