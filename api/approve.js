@@ -6314,7 +6314,21 @@ async function handlerImpl(req, res) {
         return res.status(500).json({ error: "Sunucuda escrow ödeme istemcisi yapılandırılmamış (PI_WALLET_PRIVATE_SEED / pi-backend paketi eksik)." });
       }
 
-      const incomplete = await pi.getIncompleteServerPayments();
+      const incompleteRaw = await pi.getIncompleteServerPayments();
+      // NOT: pi-backend paketinin TypeScript tip tanımı (index.d.ts)
+      // Promise<Array<PaymentDTO>> dönüyormuş gibi gösteriyor, ama gerçek
+      // implementasyonu (dist/index.js) Pi API'sinin ham JSON gövdesini
+      // ({ incomplete_server_payments: [...] }) olduğu gibi döndürüyor —
+      // yani bir dizi değil, diziyi İÇİNDE barındıran bir nesne. Paketin
+      // tip tanımıyla gerçek davranışı arasındaki bu tutarsızlık az önce
+      // "(incomplete || []).map is not a function" hatasına yol açtı.
+      // Her iki ihtimale de (ileride paket güncellenip gerçekten dizi
+      // dönmeye başlarsa dahi) karşı dayanıklı olsun diye kontrol ediyoruz.
+      const incomplete = Array.isArray(incompleteRaw)
+        ? incompleteRaw
+        : (incompleteRaw && Array.isArray(incompleteRaw.incomplete_server_payments))
+          ? incompleteRaw.incomplete_server_payments
+          : [];
 
       const payments = await Promise.all((incomplete || []).map(async (p) => {
         const meta = p.metadata || {};
