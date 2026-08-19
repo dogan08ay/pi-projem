@@ -8054,36 +8054,57 @@ function renderAuditLogTimeline(){
     // Zaten backend ts-desc sıralı geliyor; sadece gün başlıklarına göre
     // ard arda gelen kayıtları grupluyoruz (ekstra sort GEREKMİYOR, mevcut
     // sırayı bozmamak için sort ATLANIYOR).
+    //
+    // FIX (kök neden — "tarihler var ama altında veri yok"): .map() içinde
+    // TEK BİR kaydın (ör. admin/action alanı eksik eski bir kayıt, ya da
+    // Pi Browser'ın kısıtlı WebView'inde toLocaleDateString gibi bir
+    // çağrının o kayıt için beklenmedik davranması) fırlattığı bir hata,
+    // JavaScript'in doğası gereği TÜM .map() işlemini sessizce yarıda
+    // kesip listenin tamamen boş görünmesine yol açabiliyordu — tek bozuk
+    // kayıt yüzünden bütün liste kayboluyordu. Şimdi her kaydı ayrı try/
+    // catch içinde işliyoruz: biri bozuksa sadece o kayıt atlanır
+    // (konsola not düşülür), geri kalan TÜM kayıtlar normal görünmeye
+    // devam eder.
     let currentDayLabel = null;
-    const html = _auditLogEntries.map((e, idx) => {
-        const cat = auditCategoryFor(e.action);
-        const dLabel = dayLabelFor(e.ts, locale);
-        const isNewDay = dLabel !== currentDayLabel;
-        currentDayLabel = dLabel;
-        const isEntryOpen = _auditLogOpenEntryId === e.id;
-        const timeOnly = new Date(e.ts).toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' });
-        const fullTime = new Date(e.ts).toLocaleString(locale);
-        const dayHeader = isNewDay ? `<div style="color:#818cf8;font-size:0.7em;font-weight:900;margin:${idx===0?'0':'12px'} 0 4px 2px;">${dLabel}</div>` : '';
-        return `${dayHeader}<div style="background:#0f172a;border:1px solid #1e293b;border-radius:8px;margin-bottom:4px;overflow:hidden;">
-            <div onclick="window.toggleAuditEntry('${e.id}')" style="display:flex;justify-content:space-between;align-items:center;gap:8px;padding:8px 10px;cursor:pointer;">
-                <div style="display:flex;align-items:center;gap:7px;min-width:0;flex:1;">
-                    <span style="font-size:0.85em;flex-shrink:0;">${cat.icon}</span>
-                    <div style="min-width:0;">
-                        <div style="color:#cbd5e1;font-size:0.7em;font-weight:800;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(e.action)}</div>
-                        <div style="color:#64748b;font-size:0.62em;">👤 @${escapeHtml(e.admin)} · ${timeOnly}</div>
+    let skippedCount = 0;
+    const parts = [];
+    _auditLogEntries.forEach((e, idx) => {
+        try {
+            const cat = auditCategoryFor(e.action);
+            const dLabel = dayLabelFor(e.ts, locale);
+            const isNewDay = dLabel !== currentDayLabel;
+            currentDayLabel = dLabel;
+            const isEntryOpen = _auditLogOpenEntryId === e.id;
+            const timeOnly = new Date(e.ts).toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' });
+            const fullTime = new Date(e.ts).toLocaleString(locale);
+            const dayHeader = isNewDay ? `<div style="color:#818cf8;font-size:0.7em;font-weight:900;margin:${idx===0?'0':'12px'} 0 4px 2px;">${dLabel}</div>` : '';
+            parts.push(`${dayHeader}<div style="background:#0f172a;border:1px solid #1e293b;border-radius:8px;margin-bottom:4px;overflow:hidden;">
+                <div onclick="window.toggleAuditEntry('${e.id}')" style="display:flex;justify-content:space-between;align-items:center;gap:8px;padding:8px 10px;cursor:pointer;">
+                    <div style="display:flex;align-items:center;gap:7px;min-width:0;flex:1;">
+                        <span style="font-size:0.85em;flex-shrink:0;">${cat.icon}</span>
+                        <div style="min-width:0;">
+                            <div style="color:#cbd5e1;font-size:0.7em;font-weight:800;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(e.action)}</div>
+                            <div style="color:#64748b;font-size:0.62em;">👤 @${escapeHtml(e.admin)} · ${timeOnly}</div>
+                        </div>
                     </div>
+                    <span style="color:#64748b;font-size:0.7em;flex-shrink:0;transform:${isEntryOpen?'rotate(90deg)':'rotate(0deg)'};transition:transform 0.15s;">▶</span>
                 </div>
-                <span style="color:#64748b;font-size:0.7em;flex-shrink:0;transform:${isEntryOpen?'rotate(90deg)':'rotate(0deg)'};transition:transform 0.15s;">▶</span>
-            </div>
-            ${isEntryOpen?`<div style="background:#020617;border-radius:8px;padding:9px 10px;margin:0 8px 8px 8px;font-size:0.7em;color:#94a3b8;line-height:1.6;">
-                <div><b style="color:#cbd5e1;">${t('auditFieldAdmin')}:</b> @${escapeHtml(e.admin)}</div>
-                <div><b style="color:#cbd5e1;">${t('auditFieldTime')}:</b> ${fullTime}</div>
-                <div><b style="color:#cbd5e1;">${t('auditFieldAction')}:</b> ${escapeHtml(e.action)}</div>
-                ${e.details?`<div style="margin-top:4px;word-break:break-word;"><b style="color:#cbd5e1;">${t('auditFieldDetails')}:</b> ${escapeHtml(e.details)}</div>`:''}
-            </div>`:''}
-        </div>`;
-    }).join('');
-    resultsEl.innerHTML = html;
+                ${isEntryOpen?`<div style="background:#020617;border-radius:8px;padding:9px 10px;margin:0 8px 8px 8px;font-size:0.7em;color:#94a3b8;line-height:1.6;">
+                    <div><b style="color:#cbd5e1;">${t('auditFieldAdmin')}:</b> @${escapeHtml(e.admin)}</div>
+                    <div><b style="color:#cbd5e1;">${t('auditFieldTime')}:</b> ${fullTime}</div>
+                    <div><b style="color:#cbd5e1;">${t('auditFieldAction')}:</b> ${escapeHtml(e.action)}</div>
+                    ${e.details?`<div style="margin-top:4px;word-break:break-word;"><b style="color:#cbd5e1;">${t('auditFieldDetails')}:</b> ${escapeHtml(e.details)}</div>`:''}
+                </div>`:''}
+            </div>`);
+        } catch (err) {
+            skippedCount++;
+            console.error('[AuditTimeline] Bir kayıt işlenemedi, atlanıyor:', e && e.id, err);
+        }
+    });
+    if (skippedCount > 0) {
+        parts.push(`<div style="color:#fbbf24;font-size:0.65em;text-align:center;padding:8px;">⚠️ ${skippedCount} kayıt bozuk veri nedeniyle gösterilemedi (konsola bakın).</div>`);
+    }
+    resultsEl.innerHTML = parts.length ? parts.join('') : `<div style="color:#f87171;font-size:0.75em;text-align:center;padding:20px;">Hiçbir kayıt işlenemedi — kayıt formatında bir sorun olabilir.</div>`;
 }
 
 window.runSystemCheckup=async function(){
