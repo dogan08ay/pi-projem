@@ -1,0 +1,6900 @@
+import { initializeApp, getApps, cert } from 'firebase-admin/app';
+import { getFirestore, FieldValue, Timestamp } from 'firebase-admin/firestore';
+import { getStorage } from 'firebase-admin/storage';
+import { getDatabase } from 'firebase-admin/database';
+import webpush from 'web-push';
+import * as PiNetworkPkg from 'pi-backend';
+import crypto from 'crypto';
+import dns from 'dns/promises';
+import net from 'net';
+// pi-backend gerçek bir native ESM paketi (package.json'ında "type":"module"
+// ve doğru "exports" haritası var) — yani `import PiNetwork from 'pi-backend'`
+// normal şartlarda doğrudan çalışmalı. Yine de Vercel'in fonksiyon
+// derleyicisi (esbuild/ncc) ESM<->CJS arasında paketleme yaparken export
+// şeklini bozabiliyor; bu yüzden burada TÜM olası şekilleri sırayla deniyor
+// ve hangisinin işe yaradığını/yaramadığını sunucu loglarına (Vercel →
+// Functions → Logs) yazdırıyoruz. Bir sonraki hata olursa loglardan tam
+// olarak hangi export şeklinin geldiğini görüp kesin teşhis koyabiliriz.
+function resolvePiNetworkCtor() {
+  const candidates = {
+    'PiNetworkPkg.default': PiNetworkPkg && PiNetworkPkg.default,
+    'PiNetworkPkg.PiNetwork': PiNetworkPkg && PiNetworkPkg.PiNetwork,
+    'PiNetworkPkg (kendisi)': PiNetworkPkg,
+    'PiNetworkPkg.default.default': PiNetworkPkg && PiNetworkPkg.default && PiNetworkPkg.default.default,
+  };
+  for (const [label, candidate] of Object.entries(candidates)) {
+    if (typeof candidate === 'function') {
+      console.log(`[PI-BACKEND] Constructor bulundu: ${label}`);
+      return candidate;
+    }
+  }
+  console.error('[PI-BACKEND HATA] Hiçbir export şeklinde constructor bulunamadı. PiNetworkPkg içeriği:',
+    Object.keys(PiNetworkPkg || {}), 'tip:', typeof PiNetworkPkg);
+  return null;
+}
+const PiNetwork = resolvePiNetworkCtor();
+
+// ─── Admin Config ───────────────────────────────────────────────────────
+const ADMIN_USERNAME = process.env.ADMIN_USERNAME || 'doganay0808';
+const PLATFORM_COMMISSION_RATE = 0.05; // %5 komisyon
+
+// ─── Satıcı Ödeme (Payout) Tutarı Hesaplama ─────────────────────────────
+// Bu formül (fiyat - komisyon) daha önce dosya içinde 7 farklı yerde
+// aynı şekilde kopyalanmıştı. Tek bir fonksiyonda topluyoruz ki: (1) biri
+// formülü bir yerde değiştirip diğerlerini unutmasın, (2) otomatik testle
+// (bkz. approve.test.js) doğrulanabilsin. Yuvarlama davranışı (1e7'ye göre,
+// yani 7 ondalık basamağa) ÖNCEKİ HALİYLE BİREBİR AYNI bırakıldı.
+export function calculatePayoutAmount(price, commissionRate = PLATFORM_COMMISSION_RATE) {
+  const numericPrice = Number(price) || 0;
+  const rate = typeof commissionRate === 'number' ? commissionRate : PLATFORM_COMMISSION_RATE;
+  return Math.round(numericPrice * (1 - rate) * 1e7) / 1e7;
+}
+// YENİ: Web Push (tarayıcı bildirimleri) — VAPID anahtar çifti Vercel'de
+// ortam değişkeni olarak (VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY, VAPID_SUBJECT)
+// tanımlanmalı. Anahtarlar tanımlı değilse web push sessizce devre dışı
+// kalır (uygulamanın geri kalanı normal çalışmaya devam eder) — bu yüzden
+// burada throw etmiyoruz, sadece bir bayrak tutuyoruz.
+const VAPID_PUBLIC_KEY = process.env.VAPID_PUBLIC_KEY;
+const VAPID_PRIVATE_KEY = process.env.VAPID_PRIVATE_KEY;
+const VAPID_SUBJECT = process.env.VAPID_SUBJECT || 'mailto:[email protected]';
+const WEB_PUSH_ENABLED = !!(VAPID_PUBLIC_KEY && VAPID_PRIVATE_KEY);
+if (WEB_PUSH_ENABLED) {
+  webpush.setVapidDetails(VAPID_SUBJECT, VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY);
+} else {
+  console.warn('[WebPush] VAPID_PUBLIC_KEY/VAPID_PRIVATE_KEY tanımlı değil — tarayıcı bildirimleri devre dışı.');
+}
+
+// ══════════════════════════════════════════════════════════════════════
+//  AĞ MODU (Testnet / Mainnet) — Admin Panelinden Yönetilir ─────────────
+//  TEK doğruluk kaynağı: Firestore'daki config/platform_settings.piSandboxMode.
+//  Hem /api/config.js (istemcinin Pi.init sandbox bayrağı için) hem burası
+//  (sunucunun hangi API anahtarı/cüzdanı kullanacağı için) AYNI bu alanı
+//  okur — böylece istemci ve sunucu asla birbirinden farklı ağa
+//  bağlanamaz (biri Testnet'te kalıp diğeri Mainnet'e geçmiş gibi bir
+//  tutarsızlık durumu oluşamaz).
+//
+//  Her iki ağ için AYRI kimlik bilgileri gerekir (Pi Developer Portal'da
+//  Testnet ve Mainnet ayrı uygulamalar olarak kayıtlıdır, her birinin
+//  kendi Server API Key'i ve kendi uygulama cüzdanı vardır):
+//    APP_SECRET_TESTNET / APP_SECRET_MAINNET
+//    PI_WALLET_PRIVATE_SEED_TESTNET / PI_WALLET_PRIVATE_SEED_MAINNET
+//  Geriye dönük uyumluluk için eski tekil APP_SECRET / PI_WALLET_PRIVATE_SEED
+//  değişkenleri, *_TESTNET karşılığı hiç tanımlanmamışsa yedek olarak
+//  kullanılır (böylece bu değişiklik mevcut kurulumu BOZMAZ).
+// ══════════════════════════════════════════════════════════════════════
+let _networkModeCache = null; // { mode, at }
+const NETWORK_MODE_CACHE_MS = 30000; // 30sn — admin panelden değişiklik en geç bu sürede tüm sunucu instance'larına yansır
+async function getNetworkMode(db) {
+  const now = Date.now();
+  if (_networkModeCache && (now - _networkModeCache.at) < NETWORK_MODE_CACHE_MS) {
+    return _networkModeCache.mode;
+  }
+  let mode = 'testnet'; // GÜVENLİ VARSAYILAN — Firestore okunamazsa asla yanlışlıkla Mainnet'e düşülmez
+  try {
+    const snap = await db.collection('config').doc('platform_settings').get();
+    if (snap.exists && snap.data().piSandboxMode === false) mode = 'mainnet';
+  } catch (e) {
+    console.error('[getNetworkMode] Firestore okunamadı, güvenli varsayılan (testnet) kullanılıyor:', e.message);
+  }
+  _networkModeCache = { mode, at: now };
+  return mode;
+}
+function getPiApiKeyForMode(mode) {
+  if (mode === 'mainnet') return process.env.APP_SECRET_MAINNET || null;
+  return process.env.APP_SECRET_TESTNET || process.env.APP_SECRET || null;
+}
+function getWalletSeedForMode(mode) {
+  if (mode === 'mainnet') return process.env.PI_WALLET_PRIVATE_SEED_MAINNET || null;
+  return process.env.PI_WALLET_PRIVATE_SEED_TESTNET || process.env.PI_WALLET_PRIVATE_SEED || null;
+}
+
+// YENİ: "Güvenilir Satıcı" rozeti eşikleri — tek bir yerden yönetiliyor.
+const TRUSTED_SELLER_MIN_RATINGS = 5;
+const TRUSTED_SELLER_MIN_AVG = 4.5;
+// YENİ: Kademeli satıcı rozeti eşikleri (tamamlanmış satış adedine göre).
+const SELLER_TIER_BRONZE = 5;
+const SELLER_TIER_SILVER = 15;
+const SELLER_TIER_GOLD = 30;
+// YENİ: Referral (davet) ödül miktarları.
+const REFERRAL_BONUS_REFERRER = 30; // davet eden kişiye
+const REFERRAL_BONUS_REFERRED = 15; // davet edilen (yeni) kişiye "hoş geldin" bonusu
+// İkili bir teklif pazarlığında (kabul veya karşı-teklif kabulü) anlaşma
+// sağlandığında, anlaşan alıcıya bu süre boyunca domaini SADECE kendisinin
+// satın alabileceği bir öncelik penceresi tanınır. Süre dolunca domain
+// herkese açılır (ilk gelen alır).
+const OFFER_RESERVATION_MS = 15 * 60 * 1000; // 15 dakika
+
+// ── Süresi Dolmuş Rezervasyonu Eski Fiyata Döndür ───────────────────────
+// Anlaşan alıcı, öncelik penceresi (OFFER_RESERVATION_MS) içinde domaini
+// satın almazsa, anlaşılan indirimli fiyat KALICI olarak kalmamalı — aksi
+// halde biri sadece pazarlık yapıp hiç almadan fiyatı düşürebilir. Bu
+// fonksiyon, süresi dolmuş bir rezervasyon bulursa fiyatı pazarlık
+// ÖNCESİNDEKİ değerine döndürür ve rezervasyon alanlarını temizler.
+// Uygulamada zamanlanmış görev (cron) olmadığı için bu, domainle ilgili
+// herhangi bir etkileşim (görüntüleme, teklif, satın alma denemesi) anında
+// TETİKLENEREK çalışır — "tembel" (lazy) bir temizlik mekanizmasıdır.
+// Idempotent'tir: zaten süresi dolmamışsa veya rezervasyon yoksa hiçbir şey
+// yapmaz, güvenle tekrar tekrar çağrılabilir.
+async function revertExpiredReservation(db, domainName) {
+  try {
+    const domainRef = db.collection('domains').doc(domainName);
+    const snap = await domainRef.get();
+    if (!snap.exists) return null;
+    const data = snap.data();
+    if (data.sold === true) return null;
+    if (!data.reservedFor || !data.reservedUntil) return null;
+    if (data.reservedUntil > Date.now()) return null; // hâlâ geçerli, dokunma
+
+    const revertPrice = typeof data.preNegotiationPrice === 'number' ? data.preNegotiationPrice : null;
+    const update = { reservedFor: FieldValue.delete(), reservedUntil: FieldValue.delete(), preNegotiationPrice: FieldValue.delete() };
+    if (revertPrice !== null) update.price = revertPrice;
+    await domainRef.set(update, { merge: true });
+    console.log(`[Rezervasyon süresi doldu] ${domainName} eski fiyata döndürüldü: ${revertPrice}`);
+    return revertPrice;
+  } catch (e) {
+    console.error(`revertExpiredReservation hatası (${domainName}):`, e);
+    return null;
+  }
+}
+
+// YENİ: Bir domain silindiğinde (soft-delete VEYA kalıcı silme), o domaine
+// verilmiş/gelmiş TÜM teklif geçmişini de siler. Aksi halde domain artık
+// mevcut olmadığı/görünmediği halde "offers" koleksiyonundaki eski kayıtlar
+// kalıcı olarak öylece durur; alıcı "Tekliflerim" ve satıcı "Gelen
+// Teklifler" listelerinde artık var olmayan bir domaine ait teklifler
+// görünmeye devam eder. Firestore batch limiti (500) aşılabileceğinden
+// 400'lük parçalar halinde siliniyor.
+async function deleteOffersForDomain(db, domainName) {
+  try {
+    const snap = await db.collection('offers').where('domainName', '==', domainName).get();
+    if (snap.empty) return 0;
+    const docs = snap.docs;
+    for (let i = 0; i < docs.length; i += 400) {
+      const batch = db.batch();
+      docs.slice(i, i + 400).forEach(d => batch.delete(d.ref));
+      await batch.commit();
+    }
+    console.log(`[Teklif geçmişi silindi] ${domainName} için ${docs.length} teklif kaydı silindi`);
+    return docs.length;
+  } catch (e) {
+    console.error(`deleteOffersForDomain hatası (${domainName}):`, e);
+    return 0;
+  }
+}
+
+// YENİ: bir domain kalıcı olarak silindiğinde, o domain hakkındaki ilan
+// şikayetlerinin de silinmesi için — aksi halde şikayet artık var olmayan
+// bir domain'e işaret ederek hem admin panelinde hem "Şikayetlerim"
+// panelinde anlamsız/yetim bir kayıt olarak kalıyordu.
+async function deleteListingReportsForDomain(db, domainName) {
+  try {
+    const snap = await db.collection('listing_reports').where('domainName', '==', domainName).get();
+    if (snap.empty) return 0;
+    const docs = snap.docs;
+    for (let i = 0; i < docs.length; i += 400) {
+      const batch = db.batch();
+      docs.slice(i, i + 400).forEach(d => batch.delete(d.ref));
+      await batch.commit();
+    }
+    console.log(`[Şikayet kayıtları silindi] ${domainName} için ${docs.length} şikayet kaydı silindi`);
+    return docs.length;
+  } catch (e) {
+    console.error(`deleteListingReportsForDomain hatası (${domainName}):`, e);
+    return 0;
+  }
+}
+
+// YENİ: Bir domaini favorileyen kullanıcılara, o domainin fiyatı değiştiğinde
+// veya satıldığında bildirim gönderir. Öncesinde favoriler tamamen pasif bir
+// listeydi — kullanıcı favorilediği bir domain satılsa/ucuzlasa bile
+// bundan hiç haberdar olmuyordu, uygulamayı açıp kontrol etmesi gerekiyordu.
+async function notifyFavoriters(db, domainName, { excludeUsername, type, title, body } = {}) {
+  try {
+    // BUG DÜZELTMESİ: favoriler 'toggle_favorite' action'ında
+    // 'user_profiles' koleksiyonuna yazılıyor (bkz. aşağıdaki toggle_favorite
+    // action'ı), ama bu sorgu yanlışlıkla 'users' koleksiyonunu tarıyordu —
+    // hiçbir hata vermeden her zaman boş sonuç döndüğü için, favori
+    // bildirimleri (fiyat düştü/satıldı/tekrar satışa çıktı) sessizce hiç
+    // kimseye gitmiyordu.
+    const snap = await db.collection('user_profiles').where('favorites', 'array-contains', domainName).get();
+    if (snap.empty) return;
+    for (const doc of snap.docs) {
+      const username = doc.id;
+      if (excludeUsername && username === excludeUsername) continue;
+      await sendNotification(username, { type, role: 'buyer', title, body, domainName });
+    }
+  } catch (e) {
+    console.error(`notifyFavoriters hatası (${domainName}):`, e);
+  }
+}
+
+// YENİ: Kayıtlı Arama Bildirimleri ────────────────────────────────────
+// Bir kullanıcı 'save_search' ile bir kategori/anahtar kelime/azami fiyat
+// kombinasyonu kaydettiyse, o kritere uyan YENİ bir domain markete
+// eklendiğinde (add_domain VEYA approve_sell_request) kendisine bildirim
+// gönderilir. Dosya başındaki notta belirtildiği gibi bu projede cron
+// (zamanlanmış görev) yok — bu yüzden kontrol, notifyFavoriters ile aynı
+// felsefeyle, domainin gerçekten yayına girdiği ANDA tetiklenen olay-
+// güdümlü (event-driven) bir kontrol olarak çalışıyor; ayrı bir
+// zamanlanmış tarama gerektirmiyor. 'saved_searches' koleksiyonu şu an
+// küçük ölçekli olduğu için (kullanıcı başına en fazla 10, bkz.
+// 'save_search' action'ı) tam koleksiyon taraması burada kabul edilebilir
+// bir maliyet — recompute_all_ratings ve reconcile gibi diğer admin
+// işlemleri de aynı şekilde tam tarama yapıyor.
+async function notifySavedSearches(db, domainName, domainData) {
+  try {
+    const snap = await db.collection('saved_searches').get();
+    if (snap.empty) return;
+    const notifiedUsernames = new Set(); // aynı kullanıcının birden fazla eşleşen araması olsa bile TEK bildirim
+    const nameLower = domainName.toLowerCase();
+    const descLower = (domainData.description || '').toLowerCase();
+    for (const doc of snap.docs) {
+      const s = doc.data();
+      if (!s.username || s.username === domainData.sellerUsername) continue; // kendi ilanı için bildirim gönderme
+      if (notifiedUsernames.has(s.username)) continue;
+      if (s.domainType && s.domainType !== (domainData.type || 'genel')) continue;
+      if (typeof s.maxPrice === 'number' && Number(domainData.price) > s.maxPrice) continue;
+      if (s.keyword) {
+        const kw = String(s.keyword).toLowerCase();
+        if (!nameLower.includes(kw) && !descLower.includes(kw)) continue;
+      }
+      notifiedUsernames.add(s.username);
+      await sendNotification(s.username, {
+        type: 'saved_search_match',
+        title: '🔎 Kayıtlı Aramanıza Uygun Yeni Domain!',
+        body: `"${domainName}" domaini kayıtlı arama kriterlerinize uyuyor (${domainData.price} Pi).`,
+        domainName
+      });
+    }
+  } catch (e) {
+    console.error(`notifySavedSearches hatası (${domainName}):`, e);
+  }
+}
+
+// YENİ: Bir kullanıcı ilk anlamlı işlemini (ilk satın alma) tamamladığında,
+// eğer birisi tarafından davet edilmişse hem davet edeni hem kendisini
+// ödüllendirir. "referralBonusGiven" bayrağı ile bunun SADECE BİR KEZ
+// verilmesi garanti ediliyor — kullanıcı defalarca alım yapsa bile ödül
+// tekrar tekrar verilmiyor.
+async function awardReferralBonusIfEligible(db, username) {
+  try {
+    const profileRef = db.collection('user_profiles').doc(username);
+    const profileSnap = await profileRef.get();
+    if (!profileSnap.exists) return;
+    const data = profileSnap.data();
+    if (!data.referredBy || data.referralBonusGiven) return;
+    await profileRef.set({ referralBonusGiven: true }, { merge: true });
+    await updateUserPoints(data.referredBy, REFERRAL_BONUS_REFERRER, `referral_bonus_for_${username}`);
+    await updateUserPoints(username, REFERRAL_BONUS_REFERRED, 'referral_welcome_bonus');
+    await sendNotification(data.referredBy, {
+      type: 'referral_bonus',
+      title: '🎉 Referans Ödülünüz Var!',
+      body: `Davet ettiğiniz @${username} ilk alışverişini tamamladı — ${REFERRAL_BONUS_REFERRER} bonus puan kazandınız!`
+    });
+    console.log(`[Referral Ödülü] @${data.referredBy} +${REFERRAL_BONUS_REFERRER}, @${username} +${REFERRAL_BONUS_REFERRED}`);
+  } catch (e) {
+    console.error(`awardReferralBonusIfEligible hatası (${username}):`, e);
+  }
+}
+
+
+
+// NOT: Bunun çalışması için ortam değişkenlerine PI_WALLET_PRIVATE_SEED
+// eklenmesi ve `npm install pi-backend` ile paketin projeye kurulması
+// gerekir. PI_WALLET_PRIVATE_SEED, uygulamanızın kendi Pi cüzdanının
+// "S..." ile başlayan private seed'idir (Developer Portal / cüzdan
+// kurulumunuzdan alınır) — ASLA istemciye/tarayıcıya gönderilmemelidir.
+let piClient = null;
+let _piClientMode = null;
+async function getPiClient(db) {
+  // FIX (Mainnet hazırlığı): artık hangi ağdaysak (bkz. getNetworkMode)
+  // ona uygun anahtar/cüzdanla client kuruluyor. Önbellek (piClient),
+  // mod DEĞİŞTİĞİNDE de yeniden oluşturuluyor — aksi halde admin panelden
+  // Mainnet'e geçilse bile bu sunucu instance'ı eski (testnet) client'ı
+  // kullanmaya devam ederdi.
+  const mode = await getNetworkMode(db);
+  if (piClient && _piClientMode === mode) return piClient;
+  const apiKey = getPiApiKeyForMode(mode);
+  const walletSeed = getWalletSeedForMode(mode);
+  if (!apiKey || !walletSeed) return null;
+  if (typeof PiNetwork !== 'function') {
+    // Buraya düşüyorsak sorun 'new' çağrısında değil, pi-backend paketinin
+    // import edilme/derlenme şeklinde demektir. Vercel Function Logs'ta
+    // yukarıdaki "[PI-BACKEND HATA]" satırı hangi export şeklinin geldiğini
+    // gösterir.
+    throw new Error("pi-backend paketi doğru şekilde yüklenemedi (constructor bulunamadı) — Vercel Function Logs'a bakın.");
+  }
+  piClient = new PiNetwork(apiKey, walletSeed);
+  _piClientMode = mode;
+  return piClient;
+}
+
+// pi-backend (axios tabanlı) bir API hatası aldığında e.message sadece
+// "Request failed with status code 401" gibi genel bir metin veriyor —
+// gerçek sebep (örn. "invalid API key" veya "A2U not enabled") e.response.data
+// içinde saklı kalıyor ve loglanmazsa hiç görünmüyor. Bu fonksiyon o veriyi
+// çıkarıp okunabilir hale getiriyor ve Vercel Function Logs'a yazdırıyor.
+function describePiApiError(e) {
+  const status = e?.response?.status;
+  const data = e?.response?.data;
+  let detail = '';
+  if (data) {
+    detail = typeof data === 'string' ? data : JSON.stringify(data);
+  }
+  const full = status
+    ? `HTTP ${status}${detail ? ' — ' + detail : ''} (${e.message})`
+    : e?.message || String(e);
+  console.error('[PI-API HATA DETAYI]', full);
+  return full;
+}
+
+// ── GÜVENLİK: Ödenen Tutarın Gerçekten Doğrulanması ────────────────────────
+// ÖNCEKİ HAL: 'complete' adımı, domainin Firestore'daki fiyatını (server
+// tarafında GÜVENİLİR) kullanarak "sold:true, price:realPrice" yazıyordu,
+// ama Pi'nin GERÇEKTE ne kadar ödeme aldığı hiçbir zaman kontrol edilmiyordu.
+// Ödeme tutarı istemci tarafında (Pi.createPayment({amount,...})) belirlendiği
+// için, DevTools/proxy ile değiştirilebilir bir değerdi — biri teorik olarak
+// 50 π'lik bir domain için 0.01 π'lik bir ödeme yaratıp yine de domaini
+// "50 π'ye satıldı" olarak aldırabilirdi; cüzdana gerçekte sadece 0.01 π
+// düşerdi. Bu fonksiyon, complete'ten HEMEN önce Pi'nin kendi kaydındaki
+// ödeme detayını (GET /v2/payments/{paymentId}) çekip gerçek `amount` alanını
+// döndürür — artık hiçbir yere client'ın beyanına güvenilmiyor, sadece Pi'nin
+// kendi sunucusunun söylediğine güveniliyor.
+async function fetchPiPaymentDetails(paymentId, db) {
+  const mode = await getNetworkMode(db);
+  const PI_API_KEY = getPiApiKeyForMode(mode);
+  try {
+    const response = await fetch(`https://api.minepi.com/v2/payments/${paymentId}`, {
+      headers: { 'Authorization': `Key ${PI_API_KEY}` }
+    });
+    if (!response.ok) {
+      console.error(`[Ödeme Doğrulama] Pi'den ödeme detayı alınamadı (HTTP ${response.status}), paymentId:${paymentId}`);
+      return null;
+    }
+    return await response.json();
+  } catch (e) {
+    console.error(`[Ödeme Doğrulama] Pi'den ödeme detayı çekilirken hata, paymentId:${paymentId}:`, e.message || e);
+    return null;
+  }
+}
+
+// Gerçekte ödenen tutarın, beklenen fiyata (küçük bir kayan-nokta toleransıyla)
+// eşit ya da fazla olduğunu doğrular. true/false değil, ayrıntılı bir sonuç
+// nesnesi döner ki hem loglama hem admin bildirimi bundan yararlanabilsin.
+function verifyPaidAmount(paymentDetails, expectedPrice) {
+  const paidAmount = Number(paymentDetails?.amount);
+  if (!Number.isFinite(paidAmount)) {
+    return { ok: false, reason: 'amount_missing', paidAmount: null };
+  }
+  const TOLERANCE = 0.0000001; // Pi'nin kendi ondalık hassasiyetine göre küçük bir pay
+  if (paidAmount + TOLERANCE < expectedPrice) {
+    return { ok: false, reason: 'amount_mismatch', paidAmount };
+  }
+  return { ok: true, paidAmount };
+}
+
+// ─── Firebase Admin Başlatma ───────────────────────────────────────────────
+function getAdminApp() {
+  if (getApps().length > 0) return getApps()[0];
+
+  const dbUrl = process.env.FIREBASE_DATABASE_URL;
+  if (!dbUrl) {
+    console.error("[FIREBASE INIT UYARI] FIREBASE_DATABASE_URL ortam değişkeni BOŞ/tanımsız. RTDB (bildirimler) çalışmayacak.");
+  } else if (!/^https:\/\/.+\.firebaseio\.com\/?$/.test(dbUrl) && !/^https:\/\/.+\.(firebasedatabase\.app)\/?$/.test(dbUrl)) {
+    console.error(`[FIREBASE INIT UYARI] FIREBASE_DATABASE_URL formatı beklenmedik görünüyor: "${dbUrl}". Beklenen format: https://<proje-id>-default-rtdb.firebaseio.com (sonunda / OLMAMALI, başında https:// OLMALI, tırnak içermemeli).`);
+  } else {
+    console.log(`[FIREBASE INIT] databaseURL doğrulandı: ${dbUrl}`);
+  }
+
+  let serviceAccount;
+  try {
+    serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
+  } catch (e) {
+    console.error("[FIREBASE INIT UYARI] FIREBASE_SERVICE_ACCOUNT geçerli bir JSON değil:", e.message);
+    throw e;
+  }
+
+  return initializeApp({
+    credential: cert(serviceAccount),
+    storageBucket: process.env.FIREBASE_STORAGE_BUCKET,
+    databaseURL: dbUrl,
+  });
+}
+function getDb()      { getAdminApp(); return getFirestore(); }
+function getBucket()  { getAdminApp(); return getStorage().bucket(); }
+
+// YENİ: İhtilaf kanıt görseli URL'lerini doğrulayan yardımcı fonksiyon.
+// Bunu confirm_transfer_buyer/seller action'larına GÜVENLİK amacıyla
+// ekliyoruz — client'tan gelen 'evidenceUrls' alanına KÖRÜ KÖRÜNE
+// güvenip Firestore'a yazmak yerine: (1) dizi olduğunu, (2) en fazla 3
+// öğe içerdiğini, (3) her öğenin GERÇEKTEN bizim Storage bucket'ımızdan
+// (upload_image action'ının ürettiği) bir adres olduğunu doğruluyoruz.
+// Bu son kontrol olmadan, kötü niyetli bir client keyfi bir dış URL
+// (ör. zararlı/yasadışı bir görsel adresi) gönderip bunu admin panelinde
+// GÖRÜNTÜLENECEK şekilde kaydedebilirdi.
+function sanitizeEvidenceUrls(urls, bucketName) {
+  if (!Array.isArray(urls)) return [];
+  const prefix = `https://storage.googleapis.com/${bucketName}/dispute-evidence/`;
+  return urls
+    .filter(u => typeof u === 'string' && u.startsWith(prefix) && u.length < 500)
+    .slice(0, 3);
+}
+function getRtdb()    { getAdminApp(); return getDatabase(); }
+
+// ── YENİ: "Bağlı Uygulama Var mı" kontrolü için GÜVENLİ URL doğrulama +
+// fetch yardımcı fonksiyonu. ────────────────────────────────────────────
+// GÜVENLİK NOTU (SSRF — Sunucu Taraflı İstek Sahteciliği): Bu özellik,
+// kullanıcının girdiği bir URL'ye SUNUCUDAN istek atmayı gerektiriyor.
+// Bu, dikkatli yapılmazsa KLASİK bir SSRF açığıdır — kötü niyetli bir
+// kullanıcı "connectedAppUrl" alanına şunları verebilir:
+//   - http://169.254.169.254/... (AWS/GCP/Azure bulut metadata servisi —
+//     buradan API anahtarları/kimlik bilgileri sızdırılabilir)
+//   - http://localhost:xxxx veya http://127.0.0.1/... (sunucunun kendi
+//     iç servislerine erişim)
+//   - http://10.x.x.x, 172.16-31.x.x, 192.168.x.x (özel/dahili ağlar)
+// isSafeUrlForAppCheck() bunların HİÇBİRİNE isteğin gitmesine izin
+// vermiyor: (1) sadece http/https, (2) hostname DNS ile GERÇEKTEN
+// çözümlenip çıkan IP adresi kontrol ediliyor (sadece hostname string'ine
+// bakmak yetmez — "evil.com" güvenli görünüp DNS'te 127.0.0.1'e
+// çözümlenebilir, buna "DNS rebinding" denir), (3) redirect'ler MANUEL
+// takip edilip HER adımda aynı kontrol tekrar uygulanıyor (bir yönlendirme
+// zinciriyle korumayı atlatmak mümkün olmasın diye).
+function isPrivateOrReservedIp(ip) {
+  if (net.isIP(ip) === 4) {
+    const parts = ip.split('.').map(Number);
+    if (parts[0] === 10) return true;
+    if (parts[0] === 127) return true;
+    if (parts[0] === 0) return true;
+    if (parts[0] === 172 && parts[1] >= 16 && parts[1] <= 31) return true;
+    if (parts[0] === 192 && parts[1] === 168) return true;
+    if (parts[0] === 169 && parts[1] === 254) return true; // bulut metadata servisi
+    if (parts[0] >= 224) return true; // multicast/reserved
+    return false;
+  }
+  if (net.isIP(ip) === 6) {
+    const lower = ip.toLowerCase();
+    if (lower === '::1') return true; // loopback
+    if (lower.startsWith('fe80:')) return true; // link-local
+    if (lower.startsWith('fc') || lower.startsWith('fd')) return true; // unique local
+    if (lower.startsWith('::ffff:')) { // IPv4-mapped — içindeki IPv4'ü de kontrol et
+      const v4 = lower.split(':').pop();
+      if (net.isIP(v4) === 4) return isPrivateOrReservedIp(v4);
+    }
+    return false;
+  }
+  return true; // parse edilemeyen her şeyi güvensiz say
+}
+
+async function isSafeUrlForAppCheck(urlStr) {
+  let u;
+  try { u = new URL(urlStr); } catch { return { safe: false, reason: 'Geçersiz URL formatı' }; }
+  if (u.protocol !== 'http:' && u.protocol !== 'https:') return { safe: false, reason: 'Sadece http/https desteklenir' };
+  if (u.username || u.password) return { safe: false, reason: 'URL kimlik bilgisi içeremez' };
+  const hostname = u.hostname.replace(/^\[|\]$/g, ''); // IPv6 literal'ler URL.hostname'de köşeli parantezli döner (ör. "[::1]") — net.isIP bunu tanımaz, parantezleri temizliyoruz
+  if (hostname === 'localhost') return { safe: false, reason: 'localhost yasak' };
+  // Hostname zaten çıplak bir IP olarak yazılmışsa direkt kontrol et
+  if (net.isIP(hostname)) {
+    if (isPrivateOrReservedIp(hostname)) return { safe: false, reason: 'Özel/rezerve IP adresi yasak' };
+    return { safe: true };
+  }
+  // Değilse GERÇEKTEN DNS çözümlemesi yap (DNS rebinding koruması)
+  try {
+    const records = await dns.lookup(hostname, { all: true });
+    for (const rec of records) {
+      if (isPrivateOrReservedIp(rec.address)) return { safe: false, reason: 'Domain özel/rezerve bir IP\'ye çözümleniyor' };
+    }
+    return { safe: true };
+  } catch {
+    return { safe: false, reason: 'DNS çözümlenemedi' };
+  }
+}
+
+// En fazla 3 yönlendirmeyi MANUEL takip ederek (her adımda tekrar SSRF
+// kontrolü yaparak) güvenli bir şekilde URL'yi çeker. Yanıt gövdesi en
+// fazla 200KB okunur, 8 saniye zaman aşımı uygulanır.
+async function safeFetchForAppCheck(urlStr, maxRedirects = 3) {
+  let currentUrl = urlStr;
+  for (let hop = 0; hop <= maxRedirects; hop++) {
+    const safety = await isSafeUrlForAppCheck(currentUrl);
+    if (!safety.safe) return { ok: false, reason: safety.reason };
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 8000);
+    let res;
+    try {
+      res = await fetch(currentUrl, {
+        redirect: 'manual',
+        signal: controller.signal,
+        headers: { 'User-Agent': 'DofiayAppLinkChecker/1.0' }
+      });
+    } catch (e) {
+      clearTimeout(timeoutId);
+      return { ok: false, reason: 'İstek başarısız: ' + e.message };
+    }
+    clearTimeout(timeoutId);
+
+    if ([301, 302, 303, 307, 308].includes(res.status)) {
+      const location = res.headers.get('location');
+      if (!location) return { ok: false, reason: 'Yönlendirme hedefi belirtilmemiş' };
+      currentUrl = new URL(location, currentUrl).toString();
+      continue; // bir sonraki hop'ta tekrar güvenlik kontrolü yapılacak
+    }
+
+    // Gövdeyi en fazla 200KB okuyacak şekilde sınırlandır
+    const reader = res.body?.getReader();
+    let received = '';
+    if (reader) {
+      const decoder = new TextDecoder();
+      let totalBytes = 0;
+      while (totalBytes < 200 * 1024) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        totalBytes += value.length;
+        received += decoder.decode(value, { stream: true });
+      }
+      try { reader.cancel(); } catch {}
+    }
+    return { ok: true, status: res.status, body: received, finalUrl: currentUrl };
+  }
+  return { ok: false, reason: 'Çok fazla yönlendirme (olası döngü)' };
+}
+
+// Basit bir "parked/boş sayfa" tespiti — kesin değil ama makul bir filtre.
+function looksLikeParkedPage(bodyLower) {
+  const parkingSignals = [
+    'domain is for sale', 'buy this domain', 'this domain is parked',
+    'coming soon', 'under construction', 'godaddy.com/domains',
+    'this domain may be for sale', 'satılık domain', 'yapım aşamasında'
+  ];
+  return parkingSignals.some(sig => bodyLower.includes(sig));
+}
+
+// ─── Admin Token Cache ────────────────────────────────────────────────────
+const adminCache = new Map();
+const ADMIN_CACHE_TTL = 5 * 60 * 1000;
+
+// ── Admin Güvenlik İzleme (tek-admin modeli için ekstra katman) ─────────
+// Tek admin hesabı olduğu için "kim admin olabilir" listesini
+// genişletmiyoruz; bunun yerine bu hesabın kötüye kullanımını/ele
+// geçirilmesini daha hızlı fark edebilmek için iki şey yapıyoruz:
+//   1) Admin hesabı DIŞINDA biri (ama Pi ile kimliği doğrulanmış gerçek
+//      bir kullanıcı) bir admin action'ına erişmeye çalışırsa, bunu
+//      "unknown" gürültüsünden ayırıp admin'e anında Telegram'dan haber
+//      veriyoruz (spam olmasın diye kullanıcı+IP başına saatte 1 uyarı).
+//   2) Admin hesabı gerçekten doğrulanıp giriş yaptığında, bu IP daha
+//      önce hiç görülmediyse ("yeni cihaz/yeni ağ" gibi) admin'e ayrıca
+//      bilgilendirme gönderiyoruz. Bu bir engelleme DEĞİL, sadece erken
+//      uyarı — admin "bu ben değilim" derse token'ı Pi tarafında iptal
+//      edip incelemeye başlayabilir.
+const adminSecurityAlertMemory = new Map(); // key -> son uyarı zamanı (in-memory, best-effort)
+function shouldSendAdminSecurityAlert(key, cooldownMs = 60 * 60 * 1000) {
+  const now = Date.now();
+  const last = adminSecurityAlertMemory.get(key) || 0;
+  if (now - last < cooldownMs) return false;
+  adminSecurityAlertMemory.set(key, now);
+  return true;
+}
+function getIpFromReq(req) {
+  if (!req) return 'unknown';
+  return req.headers?.['x-forwarded-for']?.split(',')[0]?.trim() || req.socket?.remoteAddress || 'unknown';
+}
+async function recordAdminKnownIp(db, ip) {
+  // IP'yi doküman ID'si olarak kullanabilmek için Firestore'un yasakladığı
+  // '/' karakterini temizliyoruz (IPv6 adreslerinde olabilir).
+  const safeId = String(ip).replace(/\//g, '_').slice(0, 200) || 'unknown';
+  const ref = db.collection('admin_known_ips').doc(safeId);
+  const snap = await ref.get();
+  const isNew = !snap.exists;
+  await ref.set({ ip, lastSeenAt: Date.now(), seenCount: FieldValue.increment(1) }, { merge: true });
+  return isNew;
+}
+async function verifyAdmin(accessToken, req) {
+  if (!accessToken) return false;
+  const cached = adminCache.get(accessToken);
+  if (cached && Date.now() - cached.ts < ADMIN_CACHE_TTL) return cached.valid;
+  try {
+    const response = await fetch('https://api.minepi.com/v2/me', {
+      headers: { 'Authorization': `Bearer ${accessToken}` }
+    });
+    if (!response.ok) { adminCache.set(accessToken, { valid: false, ts: Date.now() }); return false; }
+    const userDto = await response.json();
+    const valid = userDto.username === ADMIN_USERNAME;
+    adminCache.set(accessToken, { valid, ts: Date.now() });
+
+    // Bu iki güvenlik bildirimi hiçbir şekilde admin akışını YAVAŞLATMASIN
+    // veya HATA VERDİRMESİN diye ana sonucu beklemeden (fire-and-forget)
+    // ve try/catch ile sarmalanmış şekilde tetikleniyor.
+    if (valid) {
+      (async () => {
+        try {
+          const ip = getIpFromReq(req);
+          if (ip === 'unknown') return;
+          const db = getDb();
+          const isNewIp = await recordAdminKnownIp(db, ip);
+          if (isNewIp && shouldSendAdminSecurityAlert(`known_ip_alert:${ip}`)) {
+            await sendTG(TG_CHAT_ID, `🛡️ *Yeni IP'den Admin Girişi*\n\nHesap: @${ADMIN_USERNAME}\nIP: \`${ip}\`\n\nBu siz değilseniz, Pi Developer Portal üzerinden erişim token'larınızı gözden geçirin.`);
+          }
+        } catch (e) {
+          console.error('[AdminSecurity] known-IP kontrolü başarısız:', e.message);
+        }
+      })();
+    } else if (userDto && userDto.username) {
+      // Gerçek bir Pi kullanıcısı (ama admin değil) bir admin action'ına
+      // erişmeye çalıştı — bu, bot/tarayıcı taraması gürültüsünden farklı,
+      // gerçekten dikkat edilmesi gereken bir sinyal.
+      (async () => {
+        try {
+          const ip = getIpFromReq(req);
+          const alertKey = `unauthorized_admin_attempt:${userDto.username}:${ip}`;
+          if (shouldSendAdminSecurityAlert(alertKey)) {
+            await sendTG(TG_CHAT_ID, `⚠️ *Yetkisiz Admin Erişim Denemesi*\n\nKullanıcı: @${userDto.username}\nIP: \`${ip}\`\n\nBu kullanıcı bir admin action'ına erişmeye çalıştı ama admin değil. Tekrarlanırsa hesabını incelemeyi düşünün.`);
+          }
+        } catch (e) {
+          console.error('[AdminSecurity] yetkisiz erişim uyarısı başarısız:', e.message);
+        }
+      })();
+    }
+
+    return valid;
+  } catch (e) {
+    console.error("Pi /v2/me admin doğrulama hatası:", e);
+    return false;
+  }
+}
+
+// Kullanıcı token cache
+const userCache = new Map();
+const USER_CACHE_TTL = 5 * 60 * 1000;
+
+async function getRealUsername(accessToken) {
+  if (!accessToken) return null;
+  const cached = userCache.get(accessToken);
+  if (cached && Date.now() - cached.ts < USER_CACHE_TTL) return cached.username;
+  try {
+    const response = await fetch('https://api.minepi.com/v2/me', {
+      headers: { 'Authorization': `Bearer ${accessToken}` }
+    });
+    if (!response.ok) return null;
+    const userDto = await response.json();
+    const username = userDto.username || null;
+    userCache.set(accessToken, { username, ts: Date.now() });
+    return username;
+  } catch (e) {
+    console.error("Pi /v2/me kullanıcı doğrulama hatası:", e);
+    return null;
+  }
+}
+
+// ─── Rate Limiter (IP bazlı, Firestore-tabanlı — serverless instance'lar
+// arası tutarlı çalışır) ───────────────────────────────────────────────────
+// ÖNCEKİ HAL: rateLimitMap in-memory (Map) tutuluyordu. Vercel gibi
+// serverless ortamlarda her istek farklı bir fonksiyon instance'ına
+// gidebildiğinden, bellekteki sayaç güvenilir değildi — bir saldırgan
+// farklı instance'lara denk gelerek limiti fiilen bypass edebilirdi.
+// YENİ HAL: sayaç Firestore'da (rate_limits koleksiyonu) bir transaction
+// içinde tutuluyor, böylece hangi instance'a düşerse düşsün aynı sayaç
+// görülüyor. Firestore'a erişilemezse (geçici hata vb.) eski in-memory
+// mantığa düşülüyor — böylece Firestore kesintisi tüm uygulamayı
+// kilitlemiyor, sadece o an için eski (instance-bazlı) korumaya döner.
+const rateLimitMemoryMap = new Map();
+function checkRateLimitMemoryFallback(ip, action, maxReq, windowMs) {
+  const key = `${ip}:${action}`;
+  const now = Date.now();
+  const entry = rateLimitMemoryMap.get(key) || { count: 0, start: now };
+  if (now - entry.start > windowMs) { entry.count = 1; entry.start = now; }
+  else entry.count++;
+  rateLimitMemoryMap.set(key, entry);
+  return entry.count <= maxReq;
+}
+async function checkRateLimit(ip, action, maxReq = 10, windowMs = 60000) {
+  const now = Date.now();
+  const docId = `${ip}_${action}`.replace(/[\/\s]/g, '_').substring(0, 300) || `unknown_${action}`;
+  // expiresAt: rate_limits koleksiyonu sürekli yeni doküman biriktirir.
+  // Firestore'un TTL (Time-to-live) politikası SADECE Timestamp tipindeki
+  // bir alana bakarak otomatik silme yapabilir (sayı/epoch ms işe yaramaz),
+  // bu yüzden pencere süresi dolduğunda dokümanın "artık geçersiz" olacağı
+  // anı ayrıca Timestamp olarak yazıyoruz. Konsoldan bu alan üzerinde bir
+  // TTL politikası tanımlanınca Firestore eski kayıtları kendisi temizler.
+  const expiresAt = Timestamp.fromMillis(now + windowMs);
+  try {
+    const db = getDb();
+    const ref = db.collection('rate_limits').doc(docId);
+    return await db.runTransaction(async (tx) => {
+      const snap = await tx.get(ref);
+      const data = snap.exists ? snap.data() : null;
+      if (!data || now - data.start > windowMs) {
+        tx.set(ref, { count: 1, start: now, expiresAt });
+        return true;
+      }
+      if (data.count >= maxReq) return false;
+      tx.set(ref, { count: data.count + 1, start: data.start, expiresAt }, { merge: true });
+      return true;
+    });
+  } catch (e) {
+    console.error(`[RateLimit] Firestore hatası (${action}), in-memory yedeğe düşülüyor:`, e.message);
+    return checkRateLimitMemoryFallback(ip, action, maxReq, windowMs);
+  }
+}
+
+// ─── Bildirim Yardımcıları (Firebase Realtime Database) ───────────────────
+async function sendNotification(targetUsername, notification) {
+  if (!targetUsername) return;
+  try {
+    const rtdb = getRtdb();
+    if (!rtdb) {
+      console.error(`[Bildirim] RTDB başlatılamadı, bildirim gönderilemedi: @${targetUsername}`);
+      return;
+    }
+    const ref = rtdb.ref(`notifications/${targetUsername}`);
+    await ref.push({
+      ...notification,
+      read: false,
+      ts: Date.now()
+    });
+  } catch (e) {
+    console.error(`Bildirim gönderilemedi (hedef: @${targetUsername}, tip: ${notification?.type||'?'}):`, e.message || e);
+  }
+
+  // YENİ: Kullanıcı Telegram ve/veya e-posta bağladıysa, AYNI bildirimi
+  // oraya da iletiyoruz — böylece uygulamayı açmadan da haberi oluyor.
+  // Uygulama-içi bildirim yukarıda zaten YAZILDI; burası başarısız olsa
+  // bile (Telegram/e-posta API'si geçici çökse bile) kullanıcı en azından
+  // uygulama içindeki bildirimi görür — bu yüzden ayrı bir try/catch'te,
+  // sessizce loglayıp devam ediyoruz; ana bildirim akışını asla bozmuyor.
+  try {
+    const db = getDb();
+    const profSnap = await db.collection('user_profiles').doc(targetUsername).get();
+    if (profSnap.exists) {
+      const prof = profSnap.data();
+      const text = `${notification.title ? notification.title + '\n\n' : ''}${notification.body || ''}`;
+      if (prof.telegramChatId) {
+        await sendTG(prof.telegramChatId, text);
+      }
+      if (prof.email && prof.emailVerified) {
+        await sendEmail(
+          prof.email,
+          notification.title || 'Yeni Bildirim',
+          `<p style="font-family:sans-serif;font-size:15px;color:#111;">${(notification.body || '').replace(/\n/g, '<br>')}</p>`
+        );
+      }
+      // YENİ: Tarayıcı push bildirimi (varsa kayıtlı abonelikler).
+      await sendWebPush(db, targetUsername, prof, notification);
+    }
+  } catch (e) {
+    console.error(`[Dış Bildirim] @${targetUsername} için Telegram/e-posta gönderilemedi:`, e.message || e);
+  }
+}
+
+// YENİ: Web Push (tarayıcı bildirimi) gönderici. Bir kullanıcının kayıtlı
+// TÜM cihaz aboneliklerine (pushSubscriptions dizisi, bkz. save_push_subscription)
+// aynı bildirimi gönderir. Bir abonelik artık geçersizse (kullanıcı
+// bildirim iznini kaldırmış, tarayıcıyı kaldırmış vb.) push servisi 404/410
+// döner — bu durumda o aboneliği veritabanından sessizce siliyoruz, aksi
+// halde her bildiride aynı hatayı almaya devam ederiz.
+async function sendWebPush(db, targetUsername, prof, notification) {
+  if (!WEB_PUSH_ENABLED) return;
+  const subs = Array.isArray(prof.pushSubscriptions) ? prof.pushSubscriptions : [];
+  if (!subs.length) return;
+  const payload = JSON.stringify({
+    title: notification.title || 'Yeni Bildirim',
+    body: notification.body || '',
+    url: notification.domainName ? `/?domain=${encodeURIComponent(notification.domainName)}` : '/'
+  });
+  const stillValid = [];
+  let changed = false;
+  for (const sub of subs) {
+    try {
+      await webpush.sendNotification(sub, payload);
+      stillValid.push(sub);
+    } catch (e) {
+      if (e.statusCode === 404 || e.statusCode === 410) {
+        changed = true; // süresi dolmuş/iptal edilmiş abonelik — listeden düşür
+      } else {
+        console.error(`[WebPush] @${targetUsername} gönderim hatası:`, e.statusCode || e.message);
+        stillValid.push(sub); // geçici bir hata olabilir, aboneliği hemen silme
+      }
+    }
+  }
+  if (changed) {
+    try { await db.collection('user_profiles').doc(targetUsername).set({ pushSubscriptions: stillValid }, { merge: true }); }
+    catch (e) { /* önemsiz — bir sonraki bildiride tekrar denenir */ }
+  }
+}
+
+async function sendNotificationToAdmin(notification) {
+  await sendNotification(ADMIN_USERNAME, notification);
+}
+
+// ─── Telegram Yardımcısı ──────────────────────────────────────────────────
+const TG_BOT_TOKEN = process.env.TG_BOT_TOKEN;
+const TG_CHAT_ID   = process.env.TG_CHAT_ID;
+const TG_GROUP_ID  = process.env.TG_GROUP_ID;
+
+async function sendTG(chatId, text) {
+  if (!TG_BOT_TOKEN || !chatId) return;
+  try {
+    await fetch(`https://api.telegram.org/bot${TG_BOT_TOKEN}/sendMessage`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ chat_id: chatId, text, parse_mode: 'Markdown' })
+    });
+  } catch (e) { console.error("TG Error:", e); }
+}
+
+// Bot kullanıcı adı (ör. "DomainMarketBot") sık değişmeyeceği için, her
+// bağlama isteğinde Telegram'a sormak yerine bir kere çekip bellekte
+// (fonksiyonun sıcak/warm çağrıları arasında) tutuyoruz.
+let cachedBotUsername = null;
+async function getCachedBotUsername() {
+  if (cachedBotUsername) return cachedBotUsername;
+  if (!TG_BOT_TOKEN) return null;
+  try {
+    const resp = await fetch(`https://api.telegram.org/bot${TG_BOT_TOKEN}/getMe`);
+    const data = await resp.json();
+    if (data?.result?.username) {
+      cachedBotUsername = data.result.username;
+      return cachedBotUsername;
+    }
+    console.error('[Telegram] getMe beklenmeyen yanıt döndürdü:', JSON.stringify(data));
+  } catch (e) {
+    console.error('[Telegram] Bot kullanıcı adı alınamadı:', e.message || e);
+  }
+  return null;
+}
+
+// ─── E-posta Yardımcısı (Resend API) ──────────────────────────────────────
+// NOT: Resend kullanılıyor çünkü SMTP/nodemailer kurmaya göre serverless
+// ortamda çok daha basit (tek bir fetch isteği) ve ücretsiz katmanı bu
+// ölçekteki bir uygulama için yeterli. Ortam değişkenlerine RESEND_API_KEY
+// ekleyin. MAIL_FROM da eklenmeli — resend.com'da dofiay.com domaini
+// doğrulanınca gönderen adres olarak info@dofiay.com kullanılabilir hale
+// gelir (domain doğrulanmadan bu adresten gönderim Resend tarafından
+// reddedilir, o yüzden aşağıdaki varsayılan sadece bir referans/hatırlatma).
+const RESEND_API_KEY = process.env.RESEND_API_KEY;
+const MAIL_FROM = process.env.MAIL_FROM || 'info@dofiay.com';
+
+async function sendEmail(to, subject, htmlBody) {
+  if (!RESEND_API_KEY || !to) return;
+  try {
+    const resp = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${RESEND_API_KEY}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ from: MAIL_FROM, to: [to], subject, html: wrapEmailHtml(htmlBody) })
+    });
+    if (!resp.ok) {
+      const errText = await resp.text().catch(() => '');
+      console.error(`[E-posta] Gönderilemedi (HTTP ${resp.status}) → ${to}: ${errText}`);
+    }
+  } catch (e) {
+    console.error(`[E-posta] Gönderim hatası → ${to}:`, e.message || e);
+  }
+}
+
+// Her giden e-postanın altına aynı, sabit marka/footer'ı ekler — böylece
+// alıcı hangi akıştan (doğrulama, bildirim, admin mesajı) geldiğine
+// bakmaksızın e-postayı hep aynı, tanıdık kaynaktan gelmiş gibi görür.
+function wrapEmailHtml(innerHtml) {
+  return `<div style="max-width:480px;margin:0 auto;font-family:sans-serif;">
+    ${innerHtml}
+    <hr style="border:none;border-top:1px solid #e5e7eb;margin:24px 0 12px 0;">
+    <p style="color:#9ca3af;font-size:11px;">Bu e-posta Web3 Domain Gateway (dofiay.com) tarafından gönderildi. Bildirim tercihlerinizi uygulamadaki "Panelim" ekranından yönetebilirsiniz.</p>
+  </div>`;
+}
+
+// ─── Sistem Hata Günlüğü ────────────────────────────────────────────────────
+// "🩺 Sistem Kontrolü" raporunun "arka planda hata" bölümünü besler. Bir
+// action çalışırken beklenmeyen bir hatayla karşılaşıldığında buraya kısa bir
+// kayıt düşülür (Firestore: system_errors). Bu fonksiyonun kendisi ASLA hata
+// fırlatmaz — loglama başarısız olsa bile asıl isteği etkilemesin diye.
+async function logSystemError(action, err, extra) {
+  try {
+    const db = getDb();
+    await db.collection('system_errors').add({
+      action: action || 'unknown',
+      message: String(err && err.message || err || 'Bilinmeyen hata').slice(0, 500),
+      // YENİ: stack trace de kaydediliyor. Öncesinde sadece err.message
+      // tutulduğu için "hata nerede oluştu, hangi çağrı zincirinden geldi"
+      // bilgisi kayboluyordu — nadir/tekrar üretilmesi zor hatalarda bu,
+      // admin panelindeki mesajın tek başına yetersiz kalmasına yol
+      // açıyordu. 800 karakterle sınırlıyoruz (Firestore doküman boyutu ve
+      // panel okunabilirliği için yeterli, genelde ilk birkaç satır asıl
+      // hatanın kaynağını gösterir).
+      stack: (err && err.stack) ? String(err.stack).slice(0, 800) : null,
+      extra: extra ? String(extra).slice(0, 300) : null,
+      ts: Date.now()
+    });
+  } catch (_) { /* günlükleme hatası sessizce yutulur */ }
+}
+
+// ─── Admin İşlem Günlüğü (Audit Log) ────────────────────────────────────────
+// "Kim, ne zaman, hangi işlemi yaptı" kaydı. Özellikle finansal/geri
+// alınamaz işlemler (ödeme serbest bırakma, iade, ilan reddi, domain silme,
+// bakım modu vb.) için — ileride bir anlaşmazlık çıkarsa elde iz olsun diye.
+// Asla hata fırlatmaz, asıl işlemi engellemez.
+async function logAdminAction(adminUsername, action, details) {
+  try {
+    const db = getDb();
+    await db.collection('admin_audit_log').add({
+      admin: adminUsername || 'unknown',
+      action,
+      details: details ? String(details).slice(0, 400) : null,
+      ts: Date.now()
+    });
+  } catch (_) { /* günlükleme hatası sessizce yutulur */ }
+}
+
+// ─── CORS ─────────────────────────────────────────────────────────────────
+function setCors(req, res) {
+  const allowedOrigins = (process.env.ALLOWED_ORIGIN || '')
+    .split(',').map(o => o.trim()).filter(Boolean);
+  const requestOrigin = req.headers.origin;
+  if (allowedOrigins.length === 0) {
+    if (requestOrigin) res.setHeader('Access-Control-Allow-Origin', requestOrigin);
+  } else if (requestOrigin && allowedOrigins.includes(requestOrigin)) {
+    res.setHeader('Access-Control-Allow-Origin', requestOrigin);
+  }
+  res.setHeader('Vary', 'Origin');
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+}
+
+// ─── Domain Adı Format Doğrulaması ──────────────────────────────────────
+// Domain adı hem Firestore doküman ID'si hem de frontend'de birçok yerde
+// (kart başlığı, onclick handler parametresi) HTML-escape edilmeden
+// render ediliyor. Bu fonksiyon olmadan bir kullanıcı submit_sell_request
+// ile domainName alanına HTML/script içeren bir değer gönderip, admin
+// onayladığında bunu markette herkesin tarayıcısında çalışacak şekilde
+// (stored XSS) markete sokabilirdi. Gerçek bir domain adı zaten sadece
+// harf/rakam/tire/nokta içerir, bu yüzden bu kısıtlama meşru kullanımı
+// etkilemez.
+export function isValidDomainName(name) {
+  if (typeof name !== 'string') return false;
+  if (name.length < 3 || name.length > 253) return false;
+  return /^[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)+$/.test(name);
+}
+
+// ─── Puan Güncelleme (Handler DIŞINDA - Negatif Puan Koruması) ───────────
+async function updateUserPoints(username, points, reason) {
+  try {
+    const db = getDb();
+    const ref = db.collection('user_profiles').doc(username);
+    const snap = await ref.get();
+    const currentPoints = snap.exists ? (snap.data().points || 0) : 0;
+    const newPoints = Math.max(0, currentPoints + points);
+
+    await ref.set({
+      points: newPoints,
+      updatedAt: Date.now()
+    }, { merge: true });
+
+    let badge = null;
+    if (newPoints >= 500) badge = 'diamond';
+    else if (newPoints >= 200) badge = 'gold';
+    else if (newPoints >= 50)  badge = 'silver';
+    else if (newPoints >= 10)  badge = 'bronze';
+    await ref.set({ badge }, { merge: true });
+
+    console.log(`[Puan] @${username}: ${currentPoints} → ${newPoints} (${reason})`);
+  } catch (e) {
+    console.error("Puan güncelleme hatası:", e);
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+//  Satış kaydını ve puanları geri alma yardımcı fonksiyonu
+//  Bu fonksiyon, bir domain satışı iptal edildiğinde (relist, delete vb.)
+//  alıcının global_sales kaydını siler ve puanlarını geri alır.
+// ══════════════════════════════════════════════════════════════════════════
+async function reverseSaleAndPoints(db, domainName, buyerUsername, soldPrice, soldAt) {
+  if (!buyerUsername || !soldPrice) {
+    console.log(`[reverseSale] Atlandı: buyer=${buyerUsername}, price=${soldPrice}`);
+    return;
+  }
+
+  try {
+    // 1. global_sales'ten satış kaydını bul ve sil
+    const salesQuery = await db.collection('global_sales')
+      .where('user', '==', buyerUsername)
+      .where('domain', '==', domainName)
+      .get();
+
+    let deletedCount = 0;
+    const batch = db.batch();
+
+    salesQuery.forEach(doc => {
+      batch.delete(doc.ref);
+      deletedCount++;
+    });
+
+    if (deletedCount > 0) {
+      await batch.commit();
+      console.log(`[reverseSale] ${deletedCount} adet global_sales kaydı silindi: ${domainName} → @${buyerUsername}`);
+    }
+
+    // 2. Kullanıcı puanlarını geri al
+    await updateUserPoints(buyerUsername, -soldPrice, `sale_reversed_${domainName}`);
+
+    // 3. daily_stats'ten de düş
+    // FIX: Eskiden burada doğrudan FieldValue.increment(-1) /
+    // increment(-soldPrice) kullanılıyordu. Bu, o günün sayacı zaten 0 ise
+    // (ör. domainin ORİJİNAL satışı hiç daily_stats'e yazılmamışsa — elle
+    // eklenmiş eski/test verisi, ya da sayaç daha önce başka bir işlemle
+    // zaten düşülmüşse) günlük istatistiği EKSİYE düşürüyordu. Artık bir
+    // transaction içinde önce mevcut değeri okuyup, çıkarma işlemini
+    // 0'ın altına inmeyecek şekilde (Math.max(0, ...)) uyguluyoruz. Eğer
+    // gerçekten bir tutarsızlık varsa (0'ın altına düşecek kadar büyük bir
+    // düşüş isteniyorsa) bunu sessizce yutmuyoruz, Sistem Kontrolü'ne
+    // "arka plan hatası" olarak düşüyoruz ki admin kaynağını araştırabilsin.
+    if (soldAt) {
+      const soldDate = new Date(soldAt).toISOString().split('T')[0];
+      try {
+        const statsRef = db.collection('daily_stats').doc(soldDate);
+        await db.runTransaction(async (tx) => {
+          const snap = await tx.get(statsRef);
+          const cur = snap.exists ? snap.data() : {};
+          const curCount = Number(cur.count || 0);
+          const curVolume = Number(cur.volume || 0);
+          const newCount = curCount - 1;
+          const newVolume = curVolume - soldPrice;
+          if (newCount < 0 || newVolume < 0) {
+            logSystemError(
+              'reverseSaleAndPoints:daily_stats_underflow',
+              `daily_stats/${soldDate} için düşüş, mevcut değerin altına inmeye çalıştı (count:${curCount}->${newCount}, volume:${curVolume}->${newVolume})`,
+              `domain=${domainName} buyer=${buyerUsername} soldPrice=${soldPrice}`
+            );
+          }
+          tx.set(statsRef, {
+            count: Math.max(0, newCount),
+            volume: Math.max(0, Math.round(newVolume * 1e7) / 1e7)
+          }, { merge: true });
+        });
+        console.log(`[reverseSale] daily_stats güncellendi: ${soldDate}, -${soldPrice} Pi`);
+      } catch (statErr) {
+        console.error("[reverseSale] daily_stats güncelleme hatası:", statErr);
+      }
+    }
+
+    // 4. Alıcıya bildirim gönder
+    await sendNotification(buyerUsername, {
+      type: 'purchase_reversed',
+      title: 'ℹ️ Satın Alma İptal Edildi',
+      body: `"${domainName}" domaini yönetici tarafından tekrar satışa çıkarıldı veya silindi. ${soldPrice} Pi harcamanız geri alındı.`,
+      domainName,
+      reversedAmount: soldPrice
+    });
+
+  } catch (e) {
+    console.error(`[reverseSale] Hata: ${domainName} → @${buyerUsername}`, e);
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+//  ANA HANDLER
+// ══════════════════════════════════════════════════════════════════════════
+export default async function handler(req, res) {
+  // FIX: Sistem Kontrolü'nün "arka planda hata" taramasını beslemek için
+  // tüm handler'ı bir güvenlik ağıyla sarmaladık. Mevcut ~50 action bloğunun
+  // kendi try/catch'lerine DOKUNMADIK — bu sadece onların dışında, hiçbir
+  // action'ın yakalayamadığı gerçekten beklenmeyen hataları yakalayıp
+  // (a) isteğin sessizce takılıp kalmasını önler, (b) system_errors'a kaydeder.
+  try {
+    const handled = await handlerImpl(req, res);
+    if (handled === undefined && !res.headersSent) {
+      // Hiçbir action bloğu eşleşmedi — istek sessizce takılı kalmasın
+      return res.status(400).json({ error: "Bilinmeyen action: " + (req.body && req.body.action) });
+    }
+  } catch (e) {
+    console.error("Beklenmeyen sunucu hatası:", e);
+    await logSystemError((req.body && req.body.action) || 'unknown', e, 'unhandled-top-level');
+    if (!res.headersSent) return res.status(500).json({ error: "Beklenmeyen bir sunucu hatası oluştu." });
+  }
+}
+
+// NOT: Firebase App Check burada denenmişti, ama uygulama sadece Pi
+// Browser (uygulama-içi WebView) üzerinde çalıştığı için reCAPTCHA
+// doğrulaması güvenilir şekilde çalışmadı ("throttled due to 400 error")
+// — bu yüzden App Check tamamen kaldırıldı (bkz. index.html'deki aynı
+// notla eşleşen açıklama). Güvenlik; Pi Network accessToken doğrulaması,
+// rate limiting ve admin'e anlık Telegram uyarılarıyla sağlanıyor.
+
+async function handlerImpl(req, res) {
+  setCors(req, res);
+  if (req.method === 'OPTIONS') return res.status(200).end();
+  if (req.method !== 'POST') return res.status(405).json({ error: "Sadece POST kabul edilir" });
+
+  const clientIp = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.socket?.remoteAddress || 'unknown';
+  const { action, accessToken } = req.body;
+
+  if (!action) return res.status(400).json({ error: "action zorunludur" });
+
+  // ── Görsel Yükleme ─────────────────────────────────────────────────────
+  if (action === 'upload_image') {
+    if (!await checkRateLimit(clientIp, 'upload_image', 5, 60000))
+      return res.status(429).json({ error: "Çok fazla istek. Lütfen bekleyin." });
+
+    const realUsername = await getRealUsername(accessToken);
+    if (!realUsername) return res.status(403).json({ error: "Geçersiz oturum" });
+
+    const { imageBase64, mimeType, fileName, context } = req.body;
+    if (!imageBase64 || !mimeType) return res.status(400).json({ error: "Görsel verisi eksik" });
+
+    const allowed = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+    if (!allowed.includes(mimeType)) return res.status(400).json({ error: "Desteklenmeyen görsel formatı" });
+
+    try {
+      const bucket = getBucket();
+      const ext = mimeType.split('/')[1];
+      const safeName = (fileName || 'domain').replace(/[^a-zA-Z0-9._-]/g, '_').substring(0, 50);
+      // YENİ: 'context' parametresiyle görsel farklı bir klasöre
+      // kaydedilebiliyor. Şu an sadece 'dispute_evidence' özel olarak
+      // ele alınıyor (ihtilaf kanıt görselleri için ayrı klasör — admin
+      // panelinde/Storage konsolunda domain ilanı görselleriyle
+      // karışmasın diye). Tanınmayan/eksik context değeri, ESKİ
+      // davranışla (domain-images) birebir aynı kalır — geriye dönük
+      // uyumluluk bozulmadı.
+      const folder = context === 'dispute_evidence' ? 'dispute-evidence' : 'domain-images';
+      const filePath = `${folder}/${realUsername}/${Date.now()}_${safeName}.${ext}`;
+      const file = bucket.file(filePath);
+      const buffer = Buffer.from(imageBase64, 'base64');
+
+      if (buffer.length > 2 * 1024 * 1024)
+        return res.status(400).json({ error: "Görsel 2MB'dan büyük olamaz" });
+
+      await file.save(buffer, {
+        metadata: { contentType: mimeType },
+        public: true
+      });
+      const publicUrl = `https://storage.googleapis.com/${bucket.name}/${filePath}`;
+      return res.status(200).json({ success: true, url: publicUrl });
+    } catch (e) {
+      console.error("Görsel yükleme hatası:", e);
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  // ── Bildirimleri Getir ───────────────────────────────────────────────────
+  if (action === 'get_notifications') {
+    const realUsername = await getRealUsername(accessToken);
+    if (!realUsername) return res.status(403).json({ error: "Geçersiz oturum" });
+    try {
+      const rtdb = getRtdb();
+      const snap = await rtdb.ref(`notifications/${realUsername}`).once('value');
+      const data = snap.val() || {};
+      const notifications = Object.entries(data)
+        .map(([id, v]) => ({ id, ...v }))
+        .sort((a, b) => (b.ts || 0) - (a.ts || 0))
+        .slice(0, 100);
+      return res.status(200).json({ success: true, notifications });
+    } catch (e) {
+      console.error("Bildirim getirme hatası:", e);
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  // ── Bildirimleri Okundu Yap ────────────────────────────────────────────
+  if (action === 'mark_notifications_read') {
+    const realUsername = await getRealUsername(accessToken);
+    if (!realUsername) return res.status(403).json({ error: "Geçersiz oturum" });
+    try {
+      const rtdb = getRtdb();
+      const ref = rtdb.ref(`notifications/${realUsername}`);
+      const snap = await ref.once('value');
+      const updates = {};
+      snap.forEach(child => { if (!child.val().read) updates[`${child.key}/read`] = true; });
+      if (Object.keys(updates).length > 0) await ref.update(updates);
+      return res.status(200).json({ success: true });
+    } catch (e) {
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  // ── Belirli Role Ait Devir-Onayı Bildirimlerini Okundu Yap ─────────────
+  // "Alımlarım" / "Gelirim" sekmelerindeki küçük rozet için: sadece o
+  // sekmeyle ilgili (role'e göre) hatırlatma/anlaşmazlık-yanıtı bildirimleri
+  // okundu yapılır, genel bildirim zili (🔔) etkilenmez.
+  if (action === 'mark_role_notifications_read') {
+    const { role, types } = req.body; // 'buyer' | 'seller', types: opsiyonel özel bildirim tipi listesi
+    const realUsername = await getRealUsername(accessToken);
+    if (!realUsername) return res.status(403).json({ error: "Geçersiz oturum" });
+    if (role !== 'buyer' && role !== 'seller') return res.status(400).json({ error: "Geçersiz role" });
+    try {
+      const rtdb = getRtdb();
+      const ref = rtdb.ref(`notifications/${realUsername}`);
+      const snap = await ref.once('value');
+      const updates = {};
+      // Varsayılan tipler geriye dönük uyumluluk için korunuyor; frontend
+      // artık sekmeye göre (Alımlarım/Gelirim/İlanlarım) farklı tip listeleri
+      // gönderebiliyor — her sekmenin kendi rozetini bağımsız temizleyebilmesi için.
+      const relevantTypes = Array.isArray(types) && types.length ? types : ['transfer_confirmation_reminder', 'dispute_response'];
+      snap.forEach(child => {
+        const v = child.val();
+        if (!v.read && relevantTypes.includes(v.type) && v.role === role) updates[`${child.key}/read`] = true;
+      });
+      if (Object.keys(updates).length > 0) await ref.update(updates);
+      return res.status(200).json({ success: true });
+    } catch (e) {
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  // ── Belirli TİPTEKİ Bildirimleri Okundu Yap (role şartı olmadan) ───────
+  // "Kayıtlı Aramalarım" rozeti için: sadece 'saved_search_match' tipindeki
+  // bildirimler okundu yapılır, genel bildirim zili (🔔) etkilenmez.
+  // mark_role_notifications_read'e çok benzer ama role zorunlu değil.
+  if (action === 'mark_type_notifications_read') {
+    const { types } = req.body;
+    const realUsername = await getRealUsername(accessToken);
+    if (!realUsername) return res.status(403).json({ error: "Geçersiz oturum" });
+    if (!Array.isArray(types) || !types.length) return res.status(400).json({ error: "Geçersiz tip listesi" });
+    try {
+      const rtdb = getRtdb();
+      const ref = rtdb.ref(`notifications/${realUsername}`);
+      const snap = await ref.once('value');
+      const updates = {};
+      snap.forEach(child => {
+        const v = child.val();
+        if (!v.read && types.includes(v.type)) updates[`${child.key}/read`] = true;
+      });
+      if (Object.keys(updates).length > 0) await ref.update(updates);
+      return res.status(200).json({ success: true });
+    } catch (e) {
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  // ── Bildirim Sil ──────────────────────────────────────────────────────
+  if (action === 'delete_notification') {
+    const { notifId } = req.body;
+    const realUsername = await getRealUsername(accessToken);
+    if (!realUsername) return res.status(403).json({ error: "Geçersiz oturum" });
+    try {
+      const rtdb = getRtdb();
+      await rtdb.ref(`notifications/${realUsername}/${notifId}`).remove();
+      return res.status(200).json({ success: true });
+    } catch (e) {
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  // ── Tüm Bildirimleri Temizle ─────────────────────────────────────────────
+  if (action === 'clear_all_notifications') {
+    const realUsername = await getRealUsername(accessToken);
+    if (!realUsername) return res.status(403).json({ error: "Geçersiz oturum" });
+    try {
+      const rtdb = getRtdb();
+      await rtdb.ref(`notifications/${realUsername}`).remove();
+      return res.status(200).json({ success: true });
+    } catch (e) {
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  // ── Giriş Bildirimi ────────────────────────────────────────────────────
+  if (action === 'log_login') {
+    const realUsername = await getRealUsername(accessToken);
+    if (!realUsername) return res.status(403).json({ error: "Geçersiz oturum" });
+    try {
+      const db = getDb();
+      const today = new Date().toISOString().split('T')[0];
+      const userDocRef = db.collection('daily_users').doc(today);
+      const userSnap = await userDocRef.get();
+      const users = userSnap.exists ? (userSnap.data().users || {}) : {};
+      const isFirstLoginToday = !users[realUsername];
+
+      users[realUsername] = Date.now();
+      await userDocRef.set({ users }, { merge: true });
+
+      const allDaily = await db.collection('daily_users').get();
+      let earliest = Date.now();
+      let isBrandNewUser = true;
+      allDaily.forEach(d => {
+        const u = d.data().users || {};
+        if (u[realUsername]) {
+          isBrandNewUser = false;
+          if (u[realUsername] < earliest) earliest = u[realUsername];
+        }
+      });
+
+      if (realUsername !== ADMIN_USERNAME) {
+        await sendNotificationToAdmin({
+          type: isBrandNewUser ? 'new_user_login' : 'user_login',
+          title: isBrandNewUser ? '🆕 Yeni Kullanıcı Katıldı' : '👤 Kullanıcı Girişi',
+          body: `@${realUsername} ${isBrandNewUser ? 'ilk kez giriş yaptı.' : 'giriş yaptı.'}`,
+          username: realUsername
+        });
+      }
+
+      return res.status(200).json({ success: true, firstSeen: earliest, isFirstLoginToday });
+    } catch (e) {
+      console.error("Login log hatası:", e);
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  // ── Relist ────────────────────────────────────────────────────────────
+  if (action === 'relist') {
+    const { domainName } = req.body;
+    const isAdmin = await verifyAdmin(accessToken, req);
+    if (!isAdmin) return res.status(403).json({ error: "Yetki yok" });
+    if (!domainName) return res.status(400).json({ error: "Geçersiz domain adı" });
+
+    try {
+      const db = getDb();
+      const domainRef = db.collection('domains').doc(domainName);
+      const domainSnap = await domainRef.get();
+      if (!domainSnap.exists || domainSnap.data().sold !== true)
+        return res.status(400).json({ error: "Bu domain zaten satılık durumda" });
+
+      const soldData = domainSnap.data();
+
+      // Ödemesi satıcıya zaten gönderilmiş (gerçek Pi el değiştirmiş) bir
+      // satışı asla tekrar satılığa çıkarmıyoruz — aksi halde aynı domain
+      // ikinci bir alıcıya satılabilir ve ilk alıcı gerçek bir Pi iadesi
+      // almadan ortada kalır. Bu domainler zaten otomatik olarak pasife
+      // alınıp gizlenmiş durumda (bkz. release_seller_payment).
+      if (soldData.payoutStatus === 'released') {
+        return res.status(400).json({ error: "Bu domainin ödemesi satıcıya zaten gönderildi, tekrar satışa çıkarılamaz. Domain otomatik olarak pasife alındı. Gerçek bir iptal gerekiyorsa önce alıcıya gerçek bir Pi iadesi yapılmalı (bu, mevcut sistemde otomatikleştirilmemiştir, elle değerlendirilmelidir)." });
+      }
+
+      const soldPrice = Number(soldData.price || 0);
+      const soldAt = soldData.at;
+      const prevBuyer = soldData.buyer;
+
+      if (prevBuyer && soldPrice > 0) {
+        await reverseSaleAndPoints(db, domainName, prevBuyer, soldPrice, soldAt);
+      }
+
+      await domainRef.set({ sold: false, txid: null, buyer: null, at: null }, { merge: true });
+
+      if (prevBuyer) {
+        await sendNotification(prevBuyer, {
+          type: 'domain_relisted',
+          title: 'Domain Tekrar Satışa Çıkarıldı',
+          body: `"${domainName}" domaini admin tarafından tekrar satışa çıkarıldı.`,
+          domainName
+        });
+      }
+
+      // YENİ: Bu domaini favorileyen diğer kullanıcılara (önceki alıcı
+      // hariç, o zaten kendi bildirimini yukarıda aldı) domainin tekrar
+      // satışa çıktığını bildir — notifyFavoriters, fiyat değişikliğinde
+      // kullanılan aynı mekanizma.
+      await notifyFavoriters(db, domainName, {
+        excludeUsername: prevBuyer,
+        type: 'favorite_relisted',
+        title: '🔄 Favori Domaininiz Tekrar Satışta',
+        body: `Favorilediğiniz "${domainName}" domaini tekrar satışa çıktı.`
+      });
+
+      console.log(`Domain tekrar satılık yapıldı: ${domainName}`);
+      return res.status(200).json({ success: true });
+    } catch (e) {
+      console.error("Relist hatası:", e);
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  // ── Admin: Domain Gizle/Göster ─────────────────────────────────────────
+  // Gizli domainler, herkese açık listelemede admin dışındaki kimseye
+  // gösterilmez (frontend tarafında filtrelenir). Satılmış olsun ya da
+  // olmasın herhangi bir domain gizlenebilir/tekrar gösterilebilir.
+  if (action === 'toggle_hide_domain') {
+    const { domainName, hide } = req.body;
+    const isAdmin = await verifyAdmin(accessToken, req);
+    if (!isAdmin) return res.status(403).json({ error: "Yetki yok" });
+    if (!domainName) return res.status(400).json({ error: "Geçersiz domain adı" });
+    try {
+      const db = getDb();
+      await db.collection('domains').doc(domainName).set({ hidden: !!hide }, { merge: true });
+      return res.status(200).json({ success: true, hidden: !!hide });
+    } catch (e) {
+      console.error("toggle_hide_domain hatası:", e);
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  // ══════════════════════════════════════════════════════════════════════
+  //  ADMIN: "Sahiplik Doğrulandı" Rozeti
+  //  Domain eklerken sell_requests'e bir 'ownershipProof' metni zaten
+  //  toplanıyordu, ama bunu admin'in incelediğini/onayladığını gösteren
+  //  ayrı bir görsel işaret yoktu — alıcı, satıcının domaine gerçekten
+  //  sahip olduğunu kanıtladığını hiçbir şekilde göremiyordu. Bu action
+  //  sadece o kanıtın admin tarafından fiilen incelenip onaylandığını
+  //  işaretliyor; domainin kendisini değiştirmiyor.
+  // ══════════════════════════════════════════════════════════════════════
+  if (action === 'toggle_ownership_verified') {
+    const { domainName, verified } = req.body;
+    const isAdmin = await verifyAdmin(accessToken, req);
+    if (!isAdmin) return res.status(403).json({ error: "Yetki yok" });
+    if (!domainName) return res.status(400).json({ error: "Geçersiz domain adı" });
+    try {
+      const db = getDb();
+      const adminUsername = await getRealUsername(accessToken);
+      await db.collection('domains').doc(domainName).set({
+        ownershipVerified: !!verified,
+        ownershipVerifiedAt: verified ? Date.now() : null,
+        ownershipVerifiedBy: verified ? adminUsername : null
+      }, { merge: true });
+      await logAdminAction(adminUsername, 'toggle_ownership_verified', `${domainName}: ${verified ? 'doğrulandı' : 'doğrulama kaldırıldı'}`);
+      return res.status(200).json({ success: true, ownershipVerified: !!verified });
+    } catch (e) {
+      console.error("toggle_ownership_verified hatası:", e);
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  // ── YENİ: "Bağlı Uygulama Var mı" özelliği — 3 action ────────────────
+  // 1) set_connected_app_url: satıcı, domain'inin yönlendirdiği GERÇEK
+  //    URL'yi (ör. myapp.vercel.app) girer. Sadece kendi domain'i için,
+  //    ve sadece domain onaylanmış+satılmamışsa değiştirebilir (satış
+  //    sonrası devir karmaşasına yol açmasın diye).
+  if (action === 'set_connected_app_url') {
+    const { domainName, appUrl } = req.body;
+    const realUsername = await getRealUsername(accessToken);
+    if (!realUsername) return res.status(403).json({ error: "Geçersiz oturum" });
+    if (!domainName) return res.status(400).json({ error: "Geçersiz domain adı" });
+    // Boş string = "bağlantıyı kaldır" anlamına gelsin (satıcı vazgeçebilsin)
+    const trimmedUrl = typeof appUrl === 'string' ? appUrl.trim() : '';
+    if (trimmedUrl && trimmedUrl.length > 300) return res.status(400).json({ error: "URL çok uzun" });
+    if (trimmedUrl) {
+      const safety = await isSafeUrlForAppCheck(trimmedUrl);
+      if (!safety.safe) return res.status(400).json({ error: "Geçersiz veya izin verilmeyen URL: " + safety.reason });
+    }
+    try {
+      const db = getDb();
+      const domainRef = db.collection('domains').doc(domainName);
+      const domainSnap = await domainRef.get();
+      if (!domainSnap.exists) return res.status(404).json({ error: "Domain bulunamadı" });
+      const data = domainSnap.data();
+      if (data.sellerUsername !== realUsername) return res.status(403).json({ error: "Bu domain'in satıcısı siz değilsiniz" });
+      await domainRef.set({
+        connectedAppUrl: trimmedUrl || null,
+        // URL değiştiğinde eski otomatik-kontrol ve admin onayı SIFIRLANIR
+        // — yeni bir URL, eskisinin doğrulamasını miras alamaz.
+        appLinkAutoCheckedAt: null,
+        appLinkIsResponding: null,
+        hasActiveApp: false,
+        activeAppVerifiedAt: null,
+        activeAppVerifiedBy: null
+      }, { merge: true });
+      return res.status(200).json({ success: true });
+    } catch (e) {
+      console.error("set_connected_app_url hatası:", e);
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  // 2) check_app_link: connectedAppUrl'i GÜVENLİ şekilde (SSRF korumalı)
+  //    çeker, 200 dönüyor mu ve park sayfası gibi görünmüyor mu kontrol
+  //    eder. Herkes tetikleyebilir (salt-okunur bir kontrol, zararsız) ama
+  //    kötüye kullanılmasın diye rate-limit'e tabi.
+  if (action === 'check_app_link') {
+    const { domainName } = req.body;
+    const realUsername = await getRealUsername(accessToken);
+    if (!realUsername) return res.status(403).json({ error: "Geçersiz oturum" });
+    if (!domainName) return res.status(400).json({ error: "Geçersiz domain adı" });
+    const clientIp = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.socket?.remoteAddress || 'unknown';
+    if (!await checkRateLimit(clientIp, 'check_app_link', 10, 60000)) {
+      return res.status(429).json({ error: "Çok fazla istek, lütfen biraz bekleyin" });
+    }
+    try {
+      const db = getDb();
+      const domainRef = db.collection('domains').doc(domainName);
+      const domainSnap = await domainRef.get();
+      if (!domainSnap.exists) return res.status(404).json({ error: "Domain bulunamadı" });
+      const data = domainSnap.data();
+      if (!data.connectedAppUrl) return res.status(400).json({ error: "Bu domain için bağlı bir URL girilmemiş" });
+
+      const result = await safeFetchForAppCheck(data.connectedAppUrl);
+      let isResponding = false;
+      if (result.ok && result.status >= 200 && result.status < 300) {
+        const bodyLower = (result.body || '').toLowerCase();
+        isResponding = !looksLikeParkedPage(bodyLower) && result.body.length > 50;
+      }
+      await domainRef.set({
+        appLinkAutoCheckedAt: Date.now(),
+        appLinkIsResponding: isResponding
+      }, { merge: true });
+      return res.status(200).json({ success: true, isResponding, detail: result.ok ? `HTTP ${result.status}` : result.reason });
+    } catch (e) {
+      console.error("check_app_link hatası:", e);
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  // 3) toggle_active_app_verified: admin, linki bizzat inceleyip son
+  //    onayı veriyor (toggle_ownership_verified ile birebir aynı desen).
+  if (action === 'toggle_active_app_verified') {
+    const { domainName, verified } = req.body;
+    const isAdmin = await verifyAdmin(accessToken, req);
+    if (!isAdmin) return res.status(403).json({ error: "Yetki yok" });
+    if (!domainName) return res.status(400).json({ error: "Geçersiz domain adı" });
+    try {
+      const db = getDb();
+      const adminUsername = await getRealUsername(accessToken);
+      await db.collection('domains').doc(domainName).set({
+        hasActiveApp: !!verified,
+        activeAppVerifiedAt: verified ? Date.now() : null,
+        activeAppVerifiedBy: verified ? adminUsername : null
+      }, { merge: true });
+      await logAdminAction(adminUsername, 'toggle_active_app_verified', `${domainName}: ${verified ? 'aktif uygulama onaylandı' : 'onay kaldırıldı'}`);
+      return res.status(200).json({ success: true, hasActiveApp: !!verified });
+    } catch (e) {
+      console.error("toggle_active_app_verified hatası:", e);
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  // ── Fiyat Güncelle ────────────────────────────────────────────────────
+  if (action === 'update_price') {
+    const { domainName: dName, newPrice } = req.body;
+    const isAdmin = await verifyAdmin(accessToken, req);
+    if (!isAdmin) return res.status(403).json({ error: "Yetki yok" });
+    const priceNum = Number(newPrice);
+    if (!dName || !priceNum || priceNum <= 0) return res.status(400).json({ error: "Geçersiz parametre" });
+    try {
+      const db = getDb();
+      const domainRef = db.collection('domains').doc(dName);
+      const domainSnap = await domainRef.get();
+      if (!domainSnap.exists) return res.status(404).json({ error: "Domain bulunamadı" });
+      if (domainSnap.data().sold === true) return res.status(400).json({ error: "Satılmış domain fiyatı değiştirilemez" });
+      const oldPrice = Number(domainSnap.data().price || 0);
+      await domainRef.set({ price: priceNum }, { merge: true });
+      // YENİ: Favorileyen kullanıcılara fiyat değişikliğini bildir —
+      // özellikle fiyat düştüyse bu, alıcı için değerli bir "fırsat" sinyali.
+      if (priceNum !== oldPrice) {
+        const direction = priceNum < oldPrice ? '📉 düştü' : '📈 arttı';
+        await notifyFavoriters(db, dName, {
+          type: 'favorite_price_changed',
+          title: `${priceNum < oldPrice ? '🎉' : 'ℹ️'} Favori Domaininizin Fiyatı ${priceNum < oldPrice ? 'Düştü' : 'Değişti'}`,
+          body: `Favorilediğiniz "${dName}" domaininin fiyatı ${oldPrice} Pi'den ${priceNum} Pi'ye ${direction}.`
+        });
+      }
+      return res.status(200).json({ success: true });
+    } catch (e) {
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  // ── Domain Ekle ───────────────────────────────────────────────────────
+  if (action === 'add_domain') {
+    const { domainName: newName, newPrice: newP, imgPath, domainType, description } = req.body;
+    const isAdmin = await verifyAdmin(accessToken, req);
+    if (!isAdmin) return res.status(403).json({ error: "Yetki yok" });
+    const priceNum = Number(newP);
+    if (!newName || !priceNum || priceNum <= 0) return res.status(400).json({ error: "Geçersiz parametre" });
+    if (!isValidDomainName(newName))
+      return res.status(400).json({ error: "Geçersiz domain adı formatı. Örnek: example.com" });
+    try {
+      const db = getDb();
+      const domainRef = db.collection('domains').doc(newName);
+      const existing = await domainRef.get();
+      if (existing.exists) {
+        return res.status(400).json({
+          error: existing.data().deleted === true
+            ? "Bu domain adı daha önce kullanılmış ve silinmiş. Yeniden eklemek için 'restore_domain' kullanın."
+            : "Bu domain zaten kayıtlı"
+        });
+      }
+      await domainRef.set({
+        sold: false, price: priceNum,
+        img: imgPath || 'assets/default.jpeg',
+        type: domainType || 'genel',
+        description: description || '',
+        txid: null, buyer: null, at: null,
+        deleted: false, deletedAt: null,
+        createdAt: Date.now(),
+        // FIX: Admin panelinden eklenen domainler artık "satıcısız sistem
+        // domaini" değil, satıcısı admin'in kendisi olan normal bir ilan
+        // olarak kaydediliyor. Böylece satış tamamlandığında bu domain de
+        // diğer tüm ilanlar gibi escrow/devir-onay akışına giriyor: alıcı
+        // "Aldım" diyor, admin "Panelim → Sattığım Domainler" üzerinden
+        // satıcı sıfatıyla "Devrettim" diyor, ve kayıt "Bekleyen Ödemeler"
+        // panelinde normal bir satıcı kaydı olarak görünüyor.
+        sellerUsername: ADMIN_USERNAME
+      });
+      // YENİ: Kayıtlı arama kriterlerine uyan kullanıcılara bildirim.
+      await notifySavedSearches(db, newName, { type: domainType || 'genel', price: priceNum, description: description || '', sellerUsername: ADMIN_USERNAME });
+      return res.status(200).json({ success: true });
+    } catch (e) {
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  // ══════════════════════════════════════════════════════════════════════
+  //  TOPLU DOMAIN İÇE AKTARMA (CSV) — add_domain'deki AYNI doğrulama/
+  //  oluşturma mantığı, birden çok satır için tek istekte. Her satır
+  //  bağımsız değerlendirilir — biri hatalıysa (geçersiz format, zaten
+  //  kayıtlı, vb.) diğerleri etkilenmez; sonunda hangi satırın başarılı/
+  //  başarısız olduğunu gösteren bir liste dönülür.
+  // ══════════════════════════════════════════════════════════════════════
+  if (action === 'bulk_add_domains') {
+    const { rows } = req.body;
+    const isAdmin = await verifyAdmin(accessToken, req);
+    if (!isAdmin) return res.status(403).json({ error: "Yetki yok" });
+    if (!Array.isArray(rows) || !rows.length) return res.status(400).json({ error: "Geçersiz veya boş liste" });
+    // Tek seferde makul bir üst sınır — Firestore batch limiti (500) ve
+    // fonksiyon zaman aşımı riskini önlemek için.
+    if (rows.length > 200) return res.status(400).json({ error: "Tek seferde en fazla 200 domain eklenebilir. Lütfen dosyayı bölün." });
+    try {
+      const db = getDb();
+      const results = [];
+      for (const row of rows) {
+        const newName = String(row.domainName || '').trim();
+        const priceNum = Number(row.price);
+        const domainType = row.type || 'genel';
+        const description = row.description || '';
+        if (!newName || !priceNum || priceNum <= 0) {
+          results.push({ domainName: newName || '(boş)', success: false, error: "Geçersiz isim veya fiyat" });
+          continue;
+        }
+        if (!isValidDomainName(newName)) {
+          results.push({ domainName: newName, success: false, error: "Geçersiz domain adı formatı" });
+          continue;
+        }
+        try {
+          const domainRef = db.collection('domains').doc(newName);
+          const existing = await domainRef.get();
+          if (existing.exists) {
+            results.push({ domainName: newName, success: false, error: "Zaten kayıtlı" });
+            continue;
+          }
+          await domainRef.set({
+            sold: false, price: priceNum,
+            img: 'assets/default.jpeg',
+            type: domainType, description,
+            txid: null, buyer: null, at: null,
+            deleted: false, deletedAt: null,
+            createdAt: Date.now(),
+            sellerUsername: ADMIN_USERNAME
+          });
+          await notifySavedSearches(db, newName, { type: domainType, price: priceNum, description, sellerUsername: ADMIN_USERNAME }).catch(() => {});
+          results.push({ domainName: newName, success: true });
+        } catch (e) {
+          results.push({ domainName: newName, success: false, error: e.message });
+        }
+      }
+      const successCount = results.filter(r => r.success).length;
+      await logAdminAction(await getRealUsername(accessToken), 'bulk_add_domains', `${successCount}/${rows.length} domain başarıyla eklendi`);
+      return res.status(200).json({ success: true, results, successCount, totalCount: rows.length });
+    } catch (e) {
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+
+  // add_domain fix'inden ÖNCE eklenmiş, henüz SATILMAMIŞ domainlerde
+  // sellerUsername alanı yok. Bu action, sadece sold!==true ve deleted!==true
+  // olan ve sellerUsername'i hâlâ boş olan domainlere ADMIN_USERNAME yazar.
+  // Zaten satılmış domainlere DOKUNMAZ (o satışlar tamamlanmış sayılır,
+  // geriye dönük escrow'a sokmak alıcı/satıcı için kafa karıştırıcı olur).
+  // İdempotenttir: kaç kez çalıştırılırsa çalıştırılsın, sadece eksik olan
+  // kayıtları günceller, zaten sellerUsername'i olanlara dokunmaz.
+  // ── Tüm Puanları Sıfırdan Yeniden Hesapla ───────────────────────────────
+  // Kalıcı silinen bir domain'in puanı (eski bir silmeden, bu düzeltmeden
+  // ÖNCE yapılmış olabilir) geriye dönük düzelmez — çünkü artırma/azaltma
+  // (increment) mantığı sadece BUNDAN SONRAKİ silmelerde çalışır. Bu action
+  // ise var olan TÜM domainleri tarayıp (silinmişler zaten Firestore'da hiç
+  // yok, otomatik olarak hesaba katılmıyor), her kullanıcının puanını
+  // SIFIRDAN toplayıp mevcut (muhtemelen şişmiş/eksik) değerin üzerine
+  // YAZAR. Ne kadar çok kez çalıştırılırsa çalıştırılsın hep doğru sonucu
+  // verir (idempotent).
+  if (action === 'recompute_all_ratings') {
+    const isAdmin = await verifyAdmin(accessToken, req);
+    if (!isAdmin) return res.status(403).json({ error: "Yetki yok" });
+    try {
+      const db = getDb();
+      const domainsSnap = await db.collection('domains').get();
+      const sellerTotals = {}; // sellerUsername -> {sum, count}
+      const buyerTotals = {};  // buyerUsername -> {sum, count}
+
+      domainsSnap.forEach(d => {
+        const data = d.data();
+        if (data.buyerRating && data.sellerUsername) {
+          const t = sellerTotals[data.sellerUsername] || { sum: 0, count: 0 };
+          t.sum += data.buyerRating.stars; t.count++;
+          sellerTotals[data.sellerUsername] = t;
+        }
+        if (data.sellerRatingOfBuyer && data.buyer) {
+          const t = buyerTotals[data.buyer] || { sum: 0, count: 0 };
+          t.sum += data.sellerRatingOfBuyer.stars; t.count++;
+          buyerTotals[data.buyer] = t;
+        }
+      });
+
+      // Önce, puanı olan TÜM profilleri sıfırla (ileride bir domain silinip
+      // artık hiç puanı kalmayan bir kullanıcı varsa, onun eski şişmiş
+      // değeri de 0'a dönsün diye).
+      const allProfilesSnap = await db.collection('user_profiles').get();
+      const batch = db.batch();
+      let updatedCount = 0;
+      allProfilesSnap.forEach(p => {
+        const pd = p.data();
+        const hasOldRatingData = pd.ratingSum !== undefined || pd.ratingCount !== undefined || pd.buyerRatingSum !== undefined || pd.buyerRatingCount !== undefined;
+        if (!hasOldRatingData) return;
+        const sellerT = sellerTotals[p.id] || { sum: 0, count: 0 };
+        const buyerT = buyerTotals[p.id] || { sum: 0, count: 0 };
+        batch.set(p.ref, {
+          ratingSum: sellerT.sum, ratingCount: sellerT.count,
+          buyerRatingSum: buyerT.sum, buyerRatingCount: buyerT.count
+        }, { merge: true });
+        updatedCount++;
+      });
+      // Henüz hiç user_profiles kaydı olmayan ama şimdi puanı çıkan kullanıcılar
+      Object.keys(sellerTotals).forEach(u => {
+        if (!allProfilesSnap.docs.some(p => p.id === u)) {
+          batch.set(db.collection('user_profiles').doc(u), { ratingSum: sellerTotals[u].sum, ratingCount: sellerTotals[u].count }, { merge: true });
+          updatedCount++;
+        }
+      });
+      Object.keys(buyerTotals).forEach(u => {
+        if (!allProfilesSnap.docs.some(p => p.id === u)) {
+          batch.set(db.collection('user_profiles').doc(u), { buyerRatingSum: buyerTotals[u].sum, buyerRatingCount: buyerTotals[u].count }, { merge: true });
+          updatedCount++;
+        }
+      });
+      await batch.commit();
+
+      await logAdminAction(await getRealUsername(accessToken), 'recompute_all_ratings', `${updatedCount} profil güncellendi`);
+      return res.status(200).json({ success: true, updatedCount, sellersAffected: Object.keys(sellerTotals).length, buyersAffected: Object.keys(buyerTotals).length });
+    } catch (e) {
+      console.error("recompute_all_ratings hatası:", e);
+      await logSystemError('recompute_all_ratings', e);
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  // ── Geriye Dönük Düzeltme: Zaten Silinmiş Domainlerdeki Puanları Geri Al ─
+  // Bu fix'ten ÖNCE silinmiş domainlerin buyerRating/sellerRatingOfBuyer
+  // alanları hâlâ duruyor ve ilgili kullanıcının toplam puanına dahil
+  // ediliyordu. Bu action, deleted===true olan ve hâlâ puan taşıyan her
+  // domain için puanı geri alır ve alanı temizler. İdempotenttir.
+  if (action === 'backfill_reverse_deleted_ratings') {
+    const isAdmin = await verifyAdmin(accessToken, req);
+    if (!isAdmin) return res.status(403).json({ error: "Yetki yok" });
+    try {
+      const db = getDb();
+      const snap = await db.collection('domains').where('deleted', '==', true).get();
+      let fixedCount = 0;
+      const fixedNames = [];
+      for (const d of snap.docs) {
+        const data = d.data();
+        const update = {};
+        if (data.buyerRating && data.sellerUsername) {
+          await db.collection('user_profiles').doc(data.sellerUsername).set({
+            ratingSum: FieldValue.increment(-data.buyerRating.stars),
+            ratingCount: FieldValue.increment(-1)
+          }, { merge: true });
+          update.buyerRating = null;
+        }
+        if (data.sellerRatingOfBuyer && data.buyer) {
+          await db.collection('user_profiles').doc(data.buyer).set({
+            buyerRatingSum: FieldValue.increment(-data.sellerRatingOfBuyer.stars),
+            buyerRatingCount: FieldValue.increment(-1)
+          }, { merge: true });
+          update.sellerRatingOfBuyer = null;
+        }
+        if (Object.keys(update).length > 0) {
+          await d.ref.set(update, { merge: true });
+          fixedCount++;
+          fixedNames.push(d.id);
+        }
+      }
+      return res.status(200).json({ success: true, fixedCount, fixedNames });
+    } catch (e) {
+      console.error("backfill_reverse_deleted_ratings hatası:", e);
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  if (action === 'backfill_seller_username') {
+    const isAdmin = await verifyAdmin(accessToken, req);
+    if (!isAdmin) return res.status(403).json({ error: "Yetki yok" });
+    try {
+      const db = getDb();
+      const allDomainsSnap = await db.collection('domains').get();
+      const batch = db.batch();
+      let updatedCount = 0;
+      const updatedNames = [];
+      allDomainsSnap.forEach(d => {
+        const data = d.data();
+        if (data.sold !== true && data.deleted !== true && !data.sellerUsername) {
+          batch.set(d.ref, { sellerUsername: ADMIN_USERNAME }, { merge: true });
+          updatedCount++;
+          updatedNames.push(d.id);
+        }
+      });
+      if (updatedCount > 0) await batch.commit();
+
+      // ── 2. Aşama: global_sales kayıtlarını domains ile eşitle ───────────
+      // "Panelim → Gelirim" listesi `domains` koleksiyonundan geliyor, ama
+      // "Devrettim" (confirm_transfer_seller) ve "Transfer Tamam Öde"
+      // (release_seller_payment) işlemleri `global_sales` koleksiyonundan
+      // okuyor. Firestore konsolundan elle `domains` içinde sellerUsername
+      // düzeltilmiş olsa bile, o satışın `global_sales` kaydı hâlâ eski
+      // (satıcısız) haliyle kalmışsa "Satış kaydı bulunamadı" hatası
+      // alınır. Bu adım, sold===true ve sellerUsername'i dolu olan her
+      // domain için, aynı isimdeki global_sales kaydında sellerUsername
+      // eksikse onu tamamlar — MEVCUT (zaten doğru) kayıtlara DOKUNMAZ,
+      // sadece eksik olanı doldurur.
+      const soldWithSeller = {};
+      allDomainsSnap.forEach(d => {
+        const data = d.data();
+        if (data.sold === true && data.sellerUsername) soldWithSeller[d.id] = data.sellerUsername;
+      });
+      let salesUpdated = 0;
+      const salesUpdatedNames = [];
+      if (Object.keys(soldWithSeller).length > 0) {
+        const salesSnap = await db.collection('global_sales').get();
+        const batch2 = db.batch();
+        salesSnap.forEach(s => {
+          const sd = s.data();
+          const seller = soldWithSeller[sd.domain];
+          if (seller && !sd.sellerUsername) {
+            const update = { sellerUsername: seller };
+            if (!sd.payoutStatus || sd.payoutStatus === 'no_seller') update.payoutStatus = 'pending';
+            if (!sd.commissionRate) update.commissionRate = PLATFORM_COMMISSION_RATE;
+            if (!sd.payoutAmount) update.payoutAmount = calculatePayoutAmount(sd.price || 0);
+            batch2.set(s.ref, update, { merge: true });
+            salesUpdated++;
+            salesUpdatedNames.push(sd.domain);
+          }
+        });
+        if (salesUpdated > 0) await batch2.commit();
+      }
+
+      return res.status(200).json({ success: true, updatedCount, updatedNames, salesUpdated, salesUpdatedNames });
+    } catch (e) {
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  // ── İlanı Geri Çek ────────────────────────────────────────────────────
+  if (action === 'withdraw_listing') {
+    const { domainName } = req.body;
+    const realUsername = await getRealUsername(accessToken);
+    if (!realUsername) return res.status(403).json({ error: "Geçersiz oturum" });
+    if (!domainName) return res.status(400).json({ error: "Geçersiz domain adı" });
+
+    try {
+      const db = getDb();
+      const domainRef = db.collection('domains').doc(domainName);
+      const domainSnap = await domainRef.get();
+
+      if (!domainSnap.exists) return res.status(404).json({ error: "Domain bulunamadı" });
+      const domainData = domainSnap.data();
+
+      if (domainData.sellerUsername !== realUsername) {
+        return res.status(403).json({ error: "Bu ilanı geri çekme yetkiniz yok" });
+      }
+
+      if (domainData.sold === true) {
+        return res.status(400).json({ error: "Satılmış domain geri çekilemez" });
+      }
+
+      await domainRef.set({
+        deleted: true,
+        deletedAt: Date.now(),
+        deletedBy: realUsername
+      }, { merge: true });
+
+      const reqSnap = await db.collection('sell_requests')
+        .where('domainName', '==', domainName)
+        .where('submittedBy', '==', realUsername)
+        .where('status', '==', 'approved')
+        .get();
+
+      if (!reqSnap.empty) {
+        const batch = db.batch();
+        reqSnap.forEach(doc => {
+          batch.update(doc.ref, { status: 'withdrawn', withdrawnAt: Date.now() });
+        });
+        await batch.commit();
+      }
+
+      await updateUserPoints(realUsername, -20, 'listing_withdrawn');
+
+      return res.status(200).json({ success: true });
+    } catch (e) {
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  // ── Domain Sil (SOFT DELETE) ──────────────────────────────────────────
+  if (action === 'delete_domain') {
+    const { domainName: delName } = req.body;
+    const isAdmin = await verifyAdmin(accessToken, req);
+    if (!isAdmin) return res.status(403).json({ error: "Yetki yok" });
+    if (!delName) return res.status(400).json({ error: "Geçersiz domain adı" });
+    try {
+      const db = getDb();
+      const domainRef = db.collection('domains').doc(delName);
+      const domainSnap = await domainRef.get();
+      if (!domainSnap.exists) return res.status(404).json({ error: "Domain bulunamadı" });
+
+      const domainDataForDelete = domainSnap.data();
+
+      // FIX (kök neden): Daha önce burada satılmış bir domain için ÖNCE
+      // reverseSaleAndPoints() çalışıyor (puanlar geri alınıyor, alıcıya
+      // "Pi'niz iade edildi" bildirimi gönderiliyor) SONRA aynı koşul tekrar
+      // kontrol edilip hata döndürülüyordu — yani hiçbir şey silinmediği
+      // halde puan/istatistik/bildirim tarafında geri dönüşü olmayan yan
+      // etkiler zaten gerçekleşmiş oluyordu.
+      //
+      // Satılmış ama ödemesi HENÜZ kesinleşmemiş (havuzda bekleyen/işlemde
+      // olan gerçek Pi var) bir domaine hâlâ dokunmuyoruz — admin önce
+      // "Tekrar Satılık Yap" ile düzgünce ele almalı.
+      //
+      // Ödemesi KESİNLEŞMİŞ (payoutStatus:'released', zaten otomatik pasife
+      // alınmış) bir domain ise artık SİLİNEBİLİR — çünkü zaten piyasadan
+      // kalıcı olarak çekilmiş durumda, silinmesi çifte-satış riski
+      // yaratmaz; bu sadece test/arşiv temizliğidir.
+      if (domainDataForDelete.sold === true && domainDataForDelete.payoutStatus !== 'released') {
+        return res.status(400).json({ error: "Satılmış domain önce 'Tekrar Satılık Yap' ile satıştan kaldırılmalı" });
+      }
+
+      if (domainDataForDelete.sellerUsername) {
+        await updateUserPoints(domainDataForDelete.sellerUsername, -20, 'domain_deleted_point_reversal');
+      }
+
+      // YENİ: Normal "Sil" (soft-delete) domaini listeden tamamen kaldırıp
+      // kullanıcı için "silinmiş" gibi davrandığından, buna bağlı yıldız
+      // puanları da burada geri alınmalı — sadece "Kalıcı Sil"i beklemek
+      // kullanıcı beklentisiyle uyuşmuyordu (domain zaten görünmez oluyor,
+      // ama puan hâlâ sayılıyordu).
+      if (domainDataForDelete.buyerRating && domainDataForDelete.sellerUsername) {
+        await db.collection('user_profiles').doc(domainDataForDelete.sellerUsername).set({
+          ratingSum: FieldValue.increment(-domainDataForDelete.buyerRating.stars),
+          ratingCount: FieldValue.increment(-1)
+        }, { merge: true });
+      }
+      if (domainDataForDelete.sellerRatingOfBuyer && domainDataForDelete.buyer) {
+        await db.collection('user_profiles').doc(domainDataForDelete.buyer).set({
+          buyerRatingSum: FieldValue.increment(-domainDataForDelete.sellerRatingOfBuyer.stars),
+          buyerRatingCount: FieldValue.increment(-1)
+        }, { merge: true });
+      }
+
+      const softDeleteUpdate = { deleted: true, deletedAt: Date.now() };
+      // Geri alınan puanlar domain kaydından da temizlenir — hem "Kalıcı
+      // Sil" ile daha sonra İKİNCİ kez geri alınmasını (çifte düşüş) önler,
+      // hem de bu domain restore edilirse eski (artık geçersiz) puanın
+      // tekrar görünmesini engeller.
+      if (domainDataForDelete.buyerRating) softDeleteUpdate.buyerRating = null;
+      if (domainDataForDelete.sellerRatingOfBuyer) softDeleteUpdate.sellerRatingOfBuyer = null;
+      await domainRef.set(softDeleteUpdate, { merge: true });
+
+      // YENİ: Domain silinince, ona verilmiş/gelmiş teklif geçmişi de silinsin
+      // — kullanıcı artık olmayan bir domain için "Tekliflerim" / "Gelen
+      // Teklifler" listesinde teklif görmemeli.
+      await deleteOffersForDomain(db, delName);
+
+      console.log(`Domain soft-delete edildi: ${delName}`);
+      await logAdminAction(await getRealUsername(accessToken), 'delete_domain', delName);
+      return res.status(200).json({ success: true });
+    } catch (e) {
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  // ── Domain Geri Getir ─────────────────────────────────────────────────
+  if (action === 'restore_domain') {
+    const { domainName: restoreName } = req.body;
+    const isAdmin = await verifyAdmin(accessToken, req);
+    if (!isAdmin) return res.status(403).json({ error: "Yetki yok" });
+    if (!restoreName) return res.status(400).json({ error: "Geçersiz domain adı" });
+    try {
+      const db = getDb();
+      const domainRef = db.collection('domains').doc(restoreName);
+      const snap = await domainRef.get();
+      if (!snap.exists) return res.status(404).json({ error: "Domain bulunamadı" });
+      if (snap.data().deleted !== true) return res.status(400).json({ error: "Bu domain silinmiş durumda değil" });
+
+      const restoreData = snap.data();
+      if (restoreData.sellerUsername && restoreData.sold !== true) {
+        await updateUserPoints(restoreData.sellerUsername, 20, 'domain_restored_point_reinstate');
+      }
+
+      await domainRef.set({ deleted: false, deletedAt: null }, { merge: true });
+      console.log(`Domain geri getirildi: ${restoreName}`);
+      return res.status(200).json({ success: true });
+    } catch (e) {
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  // ── Domain Kalıcı Sil ──────────────────────────────────────────────────
+  if (action === 'permanent_delete_domain') {
+    const { domainName: permDelName } = req.body;
+    const isAdmin = await verifyAdmin(accessToken, req);
+    if (!isAdmin) return res.status(403).json({ error: "Yetki yok" });
+    if (!permDelName) return res.status(400).json({ error: "Geçersiz domain adı" });
+    try {
+      const db = getDb();
+      const domainRef = db.collection('domains').doc(permDelName);
+      const snap = await domainRef.get();
+      if (!snap.exists) return res.status(404).json({ error: "Domain bulunamadı" });
+
+      const domainData = snap.data();
+
+      if (domainData.sold === true) {
+        const prevBuyer = domainData.buyer;
+        const soldPrice = Number(domainData.price || 0);
+        const soldAt = domainData.at;
+
+        if (prevBuyer && soldPrice > 0) {
+          await reverseSaleAndPoints(db, permDelName, prevBuyer, soldPrice, soldAt);
+        }
+
+        // YENİ: Bu satışa bağlı yıldız puanları da geri alınır — domain
+        // kalıcı silinince, o satıştan doğan itibar puanı da kaybolmalı,
+        // yoksa ortalama puan artık var olmayan bir işleme dayanarak
+        // şişirilmiş kalır.
+        if (domainData.buyerRating && domainData.sellerUsername) {
+          await db.collection('user_profiles').doc(domainData.sellerUsername).set({
+            ratingSum: FieldValue.increment(-domainData.buyerRating.stars),
+            ratingCount: FieldValue.increment(-1)
+          }, { merge: true });
+        }
+        if (domainData.sellerRatingOfBuyer && domainData.buyer) {
+          await db.collection('user_profiles').doc(domainData.buyer).set({
+            buyerRatingSum: FieldValue.increment(-domainData.sellerRatingOfBuyer.stars),
+            buyerRatingCount: FieldValue.increment(-1)
+          }, { merge: true });
+        }
+      }
+
+      if (snap.data().deleted !== true) return res.status(400).json({ error: "Sadece soft-delete edilmiş domainler kalıcı silinebilir" });
+
+      await domainRef.delete();
+
+      const reqSnap = await db.collection('sell_requests')
+        .where('domainName', '==', permDelName)
+        .get();
+      if (!reqSnap.empty) {
+        const batch = db.batch();
+        reqSnap.forEach(doc => batch.delete(doc.ref));
+        await batch.commit();
+      }
+
+      // YENİ: Kalıcı silmede de teklif geçmişi silinir (soft-delete anında
+      // zaten silinmiş olabilir ama domain hiç soft-delete edilmeden burada
+      // doğrudan çağrılan bir akış olursa diye burada da garanti altına
+      // alınıyor — deleteOffersForDomain zaten kayıt yoksa hiçbir şey yapmaz).
+      await deleteOffersForDomain(db, permDelName);
+      await deleteListingReportsForDomain(db, permDelName);
+
+      console.log(`Domain kalıcı silindi: ${permDelName}`);
+      return res.status(200).json({ success: true });
+    } catch (e) {
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  // ── Sistem Kontrolü (Check Up) ─────────────────────────────────────────
+  // Admin panelindeki "🩺 Sistem Kontrolü" butonunun arkası. Bilinen veri
+  // tutarlılığı sorunlarını tarar (satıcı/satış kaydı uyuşmazlıkları,
+  // takılı kalmış ödemeler, kopuk ilan kayıtları vb.) ve bir rapor
+  // (issues[]) döner. Hiçbir veriyi DEĞİŞTİRMEZ, sadece okur ve raporlar.
+  // ── Admin İşlem Günlüğünü Getir ────────────────────────────────────────
+  // ── Anlık Aktif Kullanıcılar (Admin) ───────────────────────────────────
+  // Mevcut "giriş bildirimleri" (log_login) ve günlük giriş kaydına EK
+  // olarak: admin panelinde açıldığı anda son 30 saniye içinde "aktif"
+  // (active_users koleksiyonunda lastSeen güncel) olan kullanıcıları
+  // canlı olarak çeker. Var olan giriş bildirimi akışına dokunmuyor.
+  if (action === 'get_active_users') {
+    const isAdmin = await verifyAdmin(accessToken, req);
+    if (!isAdmin) return res.status(403).json({ error: "Yetki yok" });
+    try {
+      const db = getDb();
+      const snap = await db.collection('active_users').get();
+      const now = Date.now();
+      const active = [];
+      snap.forEach(d => {
+        const lastSeen = d.data().lastSeen;
+        if (lastSeen && (now - lastSeen) < 30000) active.push({ username: d.id, lastSeen });
+      });
+      active.sort((a, b) => b.lastSeen - a.lastSeen);
+      return res.status(200).json({ success: true, active });
+    } catch (e) {
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  if (action === 'get_admin_audit_log') {
+    const isAdmin = await verifyAdmin(accessToken, req);
+    if (!isAdmin) return res.status(403).json({ error: "Yetki yok" });
+    try {
+      const db = getDb();
+      const snap = await db.collection('admin_audit_log').orderBy('ts', 'desc').limit(100).get();
+      const entries = [];
+      snap.forEach(d => entries.push({ id: d.id, ...d.data() }));
+      return res.status(200).json({ success: true, entries });
+    } catch (e) {
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  if (action === 'run_system_checkup') {
+    const isAdmin = await verifyAdmin(accessToken, req);
+    if (!isAdmin) return res.status(403).json({ error: "Yetki yok" });
+    try {
+      const db = getDb();
+      const issues = [];
+      const addIssue = (severity, title, detail) => issues.push({ severity, title, detail });
+
+      const [domainsSnap, salesSnap, sellReqSnap, tmSnap, statsSnap, offersSnap, dailyStatsSnap] = await Promise.all([
+        db.collection('domains').get(),
+        db.collection('global_sales').get(),
+        db.collection('sell_requests').get(),
+        db.collection('trademark_claims').get(),
+        db.collection('config').doc('platform_stats').get(),
+        db.collection('offers').get(),
+        db.collection('daily_stats').get()
+      ]);
+
+      // global_sales'i domain adına göre indeksle (bir domain birden çok kez satılmış olabilir, hepsini tut)
+      const salesByDomain = {};
+      salesSnap.forEach(s => {
+        const sd = s.data();
+        if (!sd.domain) return;
+        (salesByDomain[sd.domain] = salesByDomain[sd.domain] || []).push({ id: s.id, ...sd });
+      });
+
+      let soldCount = 0, stuckPayouts = [], missingSalesRecord = [], sellerMismatch = [], missingSaleFields = [];
+      domainsSnap.forEach(d => {
+        const data = d.data();
+        if (data.deleted === true) return;
+        if (data.sold !== true) return;
+        soldCount++;
+
+        if (!data.buyer || !data.txid || !data.at) {
+          missingSaleFields.push(d.id);
+        }
+
+        const matchingSales = salesByDomain[d.id] || [];
+        if (data.sellerUsername) {
+          if (matchingSales.length === 0) {
+            missingSalesRecord.push(d.id);
+          } else {
+            const anyMatch = matchingSales.some(s => s.sellerUsername === data.sellerUsername);
+            if (!anyMatch) sellerMismatch.push(d.id);
+          }
+        }
+
+        matchingSales.forEach(s => {
+          if (s.payoutStatus === 'processing' || s.payoutStatus === 'failed' || s.payoutStatus === 'refund_processing' || s.payoutStatus === 'refund_failed') {
+            stuckPayouts.push({ domain: d.id, status: s.payoutStatus });
+          }
+        });
+      });
+
+      if (missingSalesRecord.length > 0) {
+        addIssue('error', `${missingSalesRecord.length} satılmış domain'in satış kaydı (global_sales) hiç yok`,
+          `Bu domainler "sold:true" ve satıcı bilgisi var, ama global_sales koleksiyonunda hiç kaydı yok — muhtemelen escrow sistemi kurulmadan önce satılmışlar. "Devrettim" onayı çalışmaz, "🔧 Eski domainlerdeki satıcı bilgisini düzelt" butonu bunları da düzeltemez (çünkü düzeltilecek bir kayıt yok). Etkilenenler: ${missingSalesRecord.join(', ')}`);
+      }
+      if (sellerMismatch.length > 0) {
+        addIssue('warning', `${sellerMismatch.length} domain'de satıcı bilgisi domains/global_sales arasında uyuşmuyor`,
+          `"🔧 Eski domainlerdeki satıcı bilgisini düzelt" butonuna basarak düzeltebilirsiniz. Etkilenenler: ${sellerMismatch.join(', ')}`);
+      }
+      if (stuckPayouts.length > 0) {
+        addIssue('warning', `${stuckPayouts.length} ödeme "işleniyor/başarısız" durumunda takılı kalmış`,
+          stuckPayouts.map(s => `${s.domain} (${s.status})`).join(', ') + ' — Bekleyen Ödemeler panelinden kontrol edip tekrar deneyin.');
+      }
+      if (missingSaleFields.length > 0) {
+        addIssue('info', `${missingSaleFields.length} satılmış domain'de alıcı/işlem no/tarih bilgisi eksik`,
+          `Etkilenenler: ${missingSaleFields.join(', ')}`);
+      }
+
+      // sell_requests: onaylanmış ama karşılığında domain oluşmamış
+      const staleRequests = [];
+      const now = Date.now();
+      sellReqSnap.forEach(r => {
+        const rd = r.data();
+        if (rd.status === 'pending' && rd.submittedAt && (now - rd.submittedAt) > 30 * 24 * 3600 * 1000) {
+          staleRequests.push(r.id);
+        }
+      });
+      if (staleRequests.length > 0) {
+        addIssue('info', `${staleRequests.length} satış talebi 30 günden uzun süredir bekliyor`, `İncelemeniz gerekebilir: ${staleRequests.join(', ')}`);
+      }
+
+      // ── YENİ: Yetim teklif kayıtları (offers) ──────────────────────────
+      // Bir domain silindiğinde (soft-delete veya kalıcı silme) artık ona
+      // ait teklif geçmişi de siliniyor (bkz. deleteOffersForDomain), AMA bu
+      // sadece bu düzeltmeden SONRA silinen domainler için geçerli. Daha
+      // önce silinmiş domainlerin "offers" kayıtları hâlâ Firestore'da
+      // duruyor olabilir. Burada bunları tespit edip admin'e "🧹 Yetim
+      // Verileri Temizle" butonunu kullanması için bildiriyoruz.
+      const domainStatusMap = {};
+      domainsSnap.forEach(d => { domainStatusMap[d.id] = d.data().deleted === true; });
+      const orphanedOffersByDomain = {};
+      offersSnap.forEach(o => {
+        const dn = o.data().domainName;
+        if (!dn) return;
+        const isOrphan = !(dn in domainStatusMap) || domainStatusMap[dn] === true;
+        if (isOrphan) orphanedOffersByDomain[dn] = (orphanedOffersByDomain[dn] || 0) + 1;
+      });
+      const orphanedOfferDomains = Object.keys(orphanedOffersByDomain);
+      const orphanedOfferCount = orphanedOfferDomains.reduce((sum, dn) => sum + orphanedOffersByDomain[dn], 0);
+      if (orphanedOfferCount > 0) {
+        addIssue('warning', `${orphanedOfferCount} teklif kaydı artık var olmayan/silinmiş domainlere ait (${orphanedOfferDomains.length} domain)`,
+          `Etkilenen domainler: ${orphanedOfferDomains.join(', ')} — Admin panelindeki "🧹 Yetim Verileri Temizle" butonuyla kalıcı olarak silebilirsiniz.`);
+      }
+
+      // ── YENİ: Eksiye düşmüş günlük istatistik (daily_stats) kayıtları ──
+      // relist / kalıcı silme sırasında çalışan reverseSaleAndPoints,
+      // eskiden bir günün sayacını doğrudan increment(-1) ile düşürüyordu.
+      // Eğer o günün orijinal satışı hiç sayılmamışsa (elle eklenmiş eski
+      // veri, ya da sayaç daha önce başka bir işlemle zaten düşülmüşse) bu,
+      // günlük satış sayısını/hacmini EKSİYE düşürüyordu (bkz. "Satış
+      // İstatistikleri" sekmesinde negatif görünen günler). Artık yeni
+      // düşüşler 0'ın altına inmiyor (transaction ile korunuyor), ama
+      // GEÇMİŞTE oluşmuş eksi kayıtlar Firestore'da hâlâ durabilir. Burada
+      // bunları tespit edip admin'e bildiriyoruz.
+      const negativeDailyStats = [];
+      dailyStatsSnap.forEach(d => {
+        const dd = d.data();
+        if ((dd.count || 0) < 0 || (dd.volume || 0) < 0) negativeDailyStats.push(d.id);
+      });
+      if (negativeDailyStats.length > 0) {
+        addIssue('warning', `${negativeDailyStats.length} günün satış istatistiği (daily_stats) eksi değerde`,
+          `Etkilenen tarihler: ${negativeDailyStats.join(', ')} — Ekranda artık 0 olarak gösteriliyor, ama Firestore'daki gerçek değer hâlâ eksi. Firestore konsolundan ilgili "daily_stats/{tarih}" dokümanının count/volume alanlarını elle 0'a (veya doğru değere) düzeltmeniz gerekiyor.`);
+      }
+
+
+      const staleClaims = [];
+      tmSnap.forEach(c => {
+        const cd = c.data();
+        if ((cd.status === 'new' || cd.status === 'reviewing') && cd.createdAt && (now - cd.createdAt) > 14 * 24 * 3600 * 1000) {
+          staleClaims.push(c.id);
+        }
+      });
+      if (staleClaims.length > 0) {
+        addIssue('info', `${staleClaims.length} marka hakkı talebi 14 günden uzun süredir yanıt bekliyor`, `Talep ID'leri: ${staleClaims.join(', ')}`);
+      }
+
+      // platform_stats
+      if (!statsSnap.exists) {
+        addIssue('info', 'Kazanç istatistik kaydı (config/platform_stats) henüz oluşmamış', 'Kazanç sekmesi ilk açıldığında otomatik oluşturulur, bu normaldir.');
+      } else if (statsSnap.data().statsVersion !== 3) {
+        addIssue('warning', 'Kazanç istatistikleri eski formatta (statsVersion≠3)', 'Kazanç sekmesini bir kez açtığınızda otomatik güncellenir.');
+      }
+
+      // Bakım modu açık mı — unutulmuş olabilir
+      const maintSnap = await db.collection('config').doc('app_status').get();
+      if (maintSnap.exists && maintSnap.data().maintenanceMode === true) {
+        addIssue('warning', 'Bakım modu şu anda AÇIK', 'Uygulama şu an ziyaretçilere kapalı. Kasıtlı değilse "🚀 Yayına Al" ile açın.');
+      }
+
+      // ── YENİ: Ortam değişkenleri kontrolü ─────────────────────────────
+      // Eksik bir ortam değişkeni genelde "her şey çalışıyor gibi görünür,
+      // ta ki o özelliğe ihtiyaç duyulana kadar" şeklinde sinsi sorunlara
+      // yol açar (örn. ödeme sırasında aniden "escrow istemcisi yok" hatası).
+      const requiredEnvVars = [
+        { key: 'APP_SECRET', label: 'Pi API Key (escrow ödemeleri için gerekli)' },
+        { key: 'PI_WALLET_PRIVATE_SEED', label: 'Escrow cüzdan seed (satıcıya ödeme göndermek için gerekli)' },
+        { key: 'FIREBASE_SERVICE_ACCOUNT', label: 'Firebase servis hesabı (JSON) — Firestore/Realtime DB erişimi için gerekli' },
+        { key: 'FIREBASE_DATABASE_URL', label: 'Firebase Realtime Database URL (bildirimler için gerekli)' },
+        { key: 'FIREBASE_STORAGE_BUCKET', label: 'Firebase Storage bucket (domain görselleri için gerekli)' },
+        { key: 'TG_BOT_TOKEN', label: 'Telegram bot token (bildirimler için)' },
+        { key: 'TG_CHAT_ID', label: 'Telegram admin sohbet ID' },
+        { key: 'ALLOWED_ORIGIN', label: 'CORS izinli origin listesi' }
+      ];
+      const missingEnv = requiredEnvVars.filter(v => !process.env[v.key]);
+      if (missingEnv.length > 0) {
+        addIssue('error', `${missingEnv.length} ortam değişkeni Vercel'de tanımlı değil`,
+          missingEnv.map(v => `${v.key} (${v.label})`).join('; '));
+      }
+      if (!process.env.TG_GROUP_ID) {
+        addIssue('info', 'TG_GROUP_ID tanımlı değil', 'Satış duyuruları herkese açık Telegram grubuna gönderilemiyor olabilir (admin bildirimleri bundan etkilenmez).');
+      }
+
+      // ── YENİ: Canlı bağlantı testleri ──────────────────────────────────
+      const connResults = [];
+      // Firestore yazma testi (zararsız, tek bir dokümana zaman damgası yazıp okuyoruz)
+      try {
+        const pingRef = db.collection('config').doc('checkup_ping');
+        const pingVal = Date.now();
+        await pingRef.set({ lastCheckupAt: pingVal }, { merge: true });
+        const pingSnap = await pingRef.get();
+        if (pingSnap.data()?.lastCheckupAt !== pingVal) throw new Error('Yazılan değer okunamadı');
+        connResults.push('✅ Firestore (okuma/yazma)');
+      } catch (e) {
+        addIssue('error', 'Firestore\'a yazma/okuma başarısız', String(e.message || e));
+      }
+      // Realtime Database testi
+      try {
+        const rtdb = getRtdb();
+        const ref = rtdb.ref('_checkup_ping');
+        await ref.set(Date.now());
+        connResults.push('✅ Realtime Database');
+      } catch (e) {
+        addIssue('error', 'Realtime Database bağlantısı başarısız', String(e.message || e) + ' — bildirimler (🔔) bundan etkileniyor olabilir.');
+      }
+      // Pi Platform API erişilebilirlik testi (401 dönmesi dahi "erişilebilir" demektir — sadece ağ/DNS/sunucu tarafını doğruluyoruz)
+      try {
+        const piResp = await fetch('https://api.minepi.com/v2/me', { headers: { Authorization: 'Key invalid-checkup-probe' } });
+        if (piResp.status >= 200 && piResp.status < 600) connResults.push(`✅ Pi Platform API (HTTP ${piResp.status})`);
+      } catch (e) {
+        addIssue('error', 'Pi Platform API\'sine (api.minepi.com) ulaşılamıyor', String(e.message || e) + ' — ödemeler ve giriş doğrulaması etkilenebilir.');
+      }
+      // Telegram bot token doğrulama
+      if (TG_BOT_TOKEN) {
+        try {
+          const tgResp = await fetch(`https://api.telegram.org/bot${TG_BOT_TOKEN}/getMe`);
+          const tgData = await tgResp.json();
+          if (tgData.ok) connResults.push(`✅ Telegram Bot (@${tgData.result.username})`);
+          else addIssue('warning', 'Telegram bot token geçersiz görünüyor', JSON.stringify(tgData));
+        } catch (e) {
+          addIssue('warning', 'Telegram API\'sine ulaşılamadı', String(e.message || e));
+        }
+      }
+
+      // ── YENİ: Kayıtlı arka plan hataları (system_errors) ───────────────
+      // logSystemError() tarafından yazılan, herhangi bir action'ın kendi
+      // catch bloğunda ya da global güvenlik ağında yakalanan gerçek
+      // çalışma zamanı hataları. Son 7 gün, en fazla 20 kayıt.
+      let recentErrors = [];
+      try {
+        const sevenDaysAgo = now - 7 * 24 * 3600 * 1000;
+        const errSnap = await db.collection('system_errors')
+          .where('ts', '>=', sevenDaysAgo)
+          .orderBy('ts', 'desc')
+          .limit(20)
+          .get();
+        errSnap.forEach(e => recentErrors.push({ id: e.id, ...e.data() }));
+      } catch (e) {
+        // system_errors koleksiyonu/indexi henüz yoksa (ilk çalıştırma) sessizce geç
+      }
+      if (recentErrors.length > 0) {
+        const grouped = {};
+        recentErrors.forEach(e => { grouped[e.action] = (grouped[e.action] || 0) + 1; });
+        const summary = Object.entries(grouped).map(([a, c]) => `${a}: ${c}`).join(', ');
+        const lastFew = recentErrors.slice(0, 5).map(e => `[${new Date(e.ts).toLocaleString('tr-TR')}] ${e.action}: ${e.message}`).join('\n');
+        addIssue('warning', `Son 7 günde ${recentErrors.length} arka plan hatası kaydedildi`,
+          `Action bazında: ${summary}\n\nEn son 5 kayıt:\n${lastFew}`);
+      }
+
+      // ── YENİ: Firebase Storage bağlantı testi ──────────────────────────
+      // Firestore/RTDB için zaten yazma/okuma testi vardı, Storage için
+      // yoktu — domain görselleri ve destek talebi ekleri buraya
+      // yükleniyor, bağlantısı kopuksa kullanıcılar sessizce "resim
+      // yüklenemedi" hatası alır ama admin bunu fark etmeyebilir.
+      try {
+        const bucket = getBucket();
+        const testFile = bucket.file('_checkup_ping.txt');
+        await testFile.save(String(now), { contentType: 'text/plain' });
+        const [contents] = await testFile.download();
+        if (contents.toString() !== String(now)) throw new Error('Yazılan içerik okunanla eşleşmiyor');
+        await testFile.delete().catch(() => {}); // silme başarısız olsa bile test sonucunu etkilemesin
+        connResults.push('✅ Firebase Storage (yazma/okuma)');
+      } catch (e) {
+        addIssue('error', 'Firebase Storage bağlantısı başarısız', String(e.message || e) + ' — domain görseli/ekran görüntüsü/destek eki yüklemeleri etkileniyor olabilir.');
+      }
+
+      // ── YENİ: Canlı site erişilebilirlik testi ─────────────────────────
+      // Backend'in (Vercel Function) çalışıyor olması, sitenin gerçekten
+      // ziyaretçilere ULAŞTIĞI anlamına gelmez (ör. DNS/CDN/domain süresi
+      // dolması gibi backend'in hiç haberdar olmadığı sorunlar olabilir).
+      const SITE_BASE_URL = process.env.SITE_URL || 'https://dofiay.com';
+      for (const path of ['/', '/robots.txt', '/sitemap.xml']) {
+        try {
+          const siteResp = await fetch(SITE_BASE_URL + path, { method: 'GET' });
+          if (siteResp.ok) connResults.push(`✅ Site erişilebilir: ${path} (HTTP ${siteResp.status})`);
+          else addIssue('warning', `Site sayfası beklenmeyen durum kodu döndü: ${path}`, `HTTP ${siteResp.status} — ${SITE_BASE_URL}${path}`);
+        } catch (e) {
+          addIssue('error', `Site sayfasına ulaşılamadı: ${path}`, String(e.message || e) + ` — ${SITE_BASE_URL}${path} adresini tarayıcıdan elle açıp kontrol edin (DNS/domain süresi/CDN sorunu olabilir).`);
+        }
+      }
+
+      // ── YENİ: Admin güvenlik özeti (Faz 4) ─────────────────────────────
+      try {
+        const knownIpsSnap = await db.collection('admin_known_ips').select().get();
+        connResults.push(`ℹ️ Admin hesabı şu ana kadar ${knownIpsSnap.size} farklı IP'den giriş yaptı (bkz. admin_known_ips)`);
+      } catch (e) { /* koleksiyon henüz oluşmadıysa sessizce geç */ }
+
+      // ── YENİ: rate_limits koleksiyonu büyüklüğü ────────────────────────
+      // Her istek bir doküman yazıyor; Firestore konsolunda "expiresAt"
+      // alanı üzerinde bir TTL politikası tanımlanmadıysa bu koleksiyon
+      // süresiz büyür (hem maliyet hem performans sorunu). count() sorgusu
+      // (Aggregation Query) tüm dokümanları indirmeden sadece sayıyı verir.
+      try {
+        const rateLimitCountSnap = await db.collection('rate_limits').count().get();
+        const rateLimitCount = rateLimitCountSnap.data().count;
+        connResults.push(`ℹ️ rate_limits koleksiyonunda ${rateLimitCount} kayıt var`);
+        if (rateLimitCount > 5000) {
+          addIssue('warning', `rate_limits koleksiyonu büyümüş (${rateLimitCount} kayıt)`,
+            `Firestore Console → Firestore → TTL sekmesinden "rate_limits" koleksiyonu için "expiresAt" alanı üzerinde bir TTL politikası tanımlamadıysanız, eski kayıtlar hiç silinmiyor demektir. Bu hem depolama maliyetini hem de sorgu performansını olumsuz etkiler.`);
+        }
+      } catch (e) { /* koleksiyon/aggregation desteklenmiyorsa sessizce geç */ }
+
+      // ── YENİ: Aktif domain ilanlarında veri kalitesi taraması ─────────
+      // Fiyatı, tipi veya görseli eksik/bozuk bir ilan, alıcıya "kırık"
+      // bir kart olarak görünür (fiyat NaN, resim yok vb.) — bunu satış
+      // anına kadar fark etmemek kayba yol açabilir.
+      const brokenListings = [];
+      domainsSnap.forEach(d => {
+        const dd = d.data();
+        if (dd.deleted === true || dd.sold === true) return; // sadece aktif ilanlar
+        const problems = [];
+        if (typeof dd.price !== 'number' || !(dd.price > 0)) problems.push('geçersiz/eksik fiyat');
+        if (!dd.domainType) problems.push('domain tipi yok');
+        if (!dd.imgPath) problems.push('görsel yok');
+        if (problems.length > 0) brokenListings.push(`${d.id} (${problems.join(', ')})`);
+      });
+      if (brokenListings.length > 0) {
+        addIssue('warning', `${brokenListings.length} aktif ilanda veri kalitesi sorunu var`,
+          `Bu ilanlar alıcıya eksik/bozuk görünüyor olabilir: ${brokenListings.slice(0, 15).join('; ')}${brokenListings.length > 15 ? ` ... ve ${brokenListings.length - 15} tane daha` : ''}`);
+      }
+
+      // ── YENİ: Opsiyonel ama önemli ortam değişkenleri ──────────────────
+      // Bunlar eksik olsa da uygulama ÇALIŞMAYA devam eder (zorunlu env
+      // listesinden farklı), ama bazı özellikler sessizce devre dışı kalır.
+      const optionalEnvVars = [
+        { key: 'VAPID_PUBLIC_KEY', label: 'Web Push genel anahtarı — eksikse tarayıcı bildirimleri çalışmaz' },
+        { key: 'VAPID_PRIVATE_KEY', label: 'Web Push özel anahtarı — eksikse tarayıcı bildirimleri çalışmaz' },
+        { key: 'ADMIN_USERNAME', label: `eksikse kod içindeki varsayılan ("${ADMIN_USERNAME}") kullanılıyor` }
+      ];
+      const missingOptionalEnv = optionalEnvVars.filter(v => !process.env[v.key]);
+      if (missingOptionalEnv.length > 0) {
+        addIssue('info', `${missingOptionalEnv.length} opsiyonel ortam değişkeni tanımlı değil`,
+          missingOptionalEnv.map(v => `${v.key} (${v.label})`).join('; '));
+      }
+
+      // ── YENİ: Deployment/çalışma zamanı bilgisi (bilgi amaçlı) ─────────
+      // "Hangi kod şu an canlıda çalışıyor" sorusuna hızlı bir cevap —
+      // özellikle bir değişikliği deploy ettikten sonra "gerçekten yeni
+      // sürüm mü çalışıyor" diye kontrol etmek için kullanışlı.
+      const deployInfo = [];
+      if (process.env.VERCEL_GIT_COMMIT_SHA) deployInfo.push(`commit: ${process.env.VERCEL_GIT_COMMIT_SHA.slice(0, 7)}`);
+      if (process.env.VERCEL_ENV) deployInfo.push(`ortam: ${process.env.VERCEL_ENV}`);
+      deployInfo.push(`Node.js: ${process.version}`);
+      connResults.push(`ℹ️ Çalışma zamanı — ${deployInfo.join(' · ')}`);
+
+      return res.status(200).json({
+        success: true,
+        issues,
+        connResults,
+        summary: { domainsScanned: domainsSnap.size, soldCount, salesScanned: salesSnap.size, sellRequestsScanned: sellReqSnap.size, trademarkClaimsScanned: tmSnap.size, backgroundErrors: recentErrors.length, offersScanned: offersSnap.size, orphanedOffers: orphanedOfferCount, negativeDailyStats: negativeDailyStats.length, brokenListings: brokenListings.length }
+      });
+    } catch (e) {
+      console.error("run_system_checkup hatası:", e);
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  // ── Yetim Teklif Kayıtlarını Temizle ────────────────────────────────────
+  // Admin panelindeki "🧹 Yetim Verileri Temizle" butonunun arkası.
+  // deleteOffersForDomain() artık her domain silindiğinde (soft/kalıcı)
+  // otomatik çalışıyor, AMA bu düzeltmeden ÖNCE silinmiş domainlerin
+  // "offers" kayıtları hâlâ Firestore'da duruyor olabilir. Bu action, artık
+  // var olmayan VEYA "deleted:true" olan domainlere ait tüm teklif
+  // kayıtlarını tarar ve kalıcı olarak siler. Idempotent'tir — temiz bir
+  // veritabanında tekrar çalıştırıldığında hiçbir şey silmez.
+  // GÜNCELLEME: bu action artık sadece "offers" değil, aynı zamanda
+  // "listing_reports" (ilan şikayetleri) için de yetim kayıt taraması
+  // yapıyor. Öncesinde bir domain silindiğinde (özellikle bu düzeltmeden
+  // ÖNCE silinmiş eski domainler için) o domain hakkındaki şikayetler
+  // Firestore'da öylece kalıyor, ne admin panelinde ne "Şikayetlerim"
+  // panelinde anlamlı bir karşılığı olmayan yetim veri olarak duruyordu.
+  if (action === 'cleanup_orphaned_offers') {
+    const isAdmin = await verifyAdmin(accessToken, req);
+    if (!isAdmin) return res.status(403).json({ error: "Yetki yok" });
+    try {
+      const db = getDb();
+      const [domainsSnap, offersSnap, reportsSnap] = await Promise.all([
+        db.collection('domains').get(),
+        db.collection('offers').get(),
+        db.collection('listing_reports').get()
+      ]);
+
+      const domainStatusMap = {};
+      domainsSnap.forEach(d => { domainStatusMap[d.id] = d.data().deleted === true; });
+      const isOrphanDomain = (dn) => !dn || !(dn in domainStatusMap) || domainStatusMap[dn] === true;
+
+      const orphanDocs = [];
+      const affectedDomains = {};
+      offersSnap.forEach(o => {
+        const dn = o.data().domainName;
+        if (!dn) return;
+        if (isOrphanDomain(dn)) {
+          orphanDocs.push(o.ref);
+          affectedDomains[dn] = (affectedDomains[dn] || 0) + 1;
+        }
+      });
+      let orphanReportCount = 0;
+      reportsSnap.forEach(rp => {
+        const dn = rp.data().domainName;
+        if (!dn) return;
+        if (isOrphanDomain(dn)) {
+          orphanDocs.push(rp.ref);
+          affectedDomains[dn] = (affectedDomains[dn] || 0) + 1;
+          orphanReportCount++;
+        }
+      });
+
+      if (orphanDocs.length === 0) {
+        return res.status(200).json({ success: true, deletedCount: 0, affectedDomains: [] });
+      }
+
+      for (let i = 0; i < orphanDocs.length; i += 400) {
+        const batch = db.batch();
+        orphanDocs.slice(i, i + 400).forEach(ref => batch.delete(ref));
+        await batch.commit();
+      }
+
+      const affectedList = Object.entries(affectedDomains).map(([domainName, count]) => ({ domainName, count }));
+      await logAdminAction(await getRealUsername(accessToken), 'cleanup_orphaned_offers', `${orphanDocs.length} kayıt (${orphanReportCount} şikayet dahil) / ${affectedList.length} domain`);
+      console.log(`[Yetim veri temizliği] ${orphanDocs.length} kayıt silindi (${orphanReportCount} şikayet dahil, ${affectedList.length} domain)`);
+      return res.status(200).json({ success: true, deletedCount: orphanDocs.length, affectedDomains: affectedList });
+    } catch (e) {
+      console.error("cleanup_orphaned_offers hatası:", e);
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  // ── Platform İstatistiklerini Sıfırla ─────────────────────────────────
+  if (action === 'reset_platform_stats') {
+    const { confirmReset } = req.body;
+    const isAdmin = await verifyAdmin(accessToken, req);
+    if (!isAdmin) return res.status(403).json({ error: "Yetki yok" });
+    if (confirmReset !== true) {
+      return res.status(400).json({ error: "Bu kalıcı bir işlemdir. confirmReset:true parametresi olmadan çalıştırılamaz." });
+    }
+    try {
+      const db = getDb();
+
+      const salesSnap = await db.collection('global_sales').get();
+      let batch = db.batch();
+      let opCount = 0;
+      for (const doc of salesSnap.docs) {
+        batch.delete(doc.ref);
+        opCount++;
+        if (opCount >= 450) { await batch.commit(); batch = db.batch(); opCount = 0; }
+      }
+      if (opCount > 0) await batch.commit();
+
+      const statsSnap = await db.collection('daily_stats').get();
+      batch = db.batch();
+      opCount = 0;
+      for (const doc of statsSnap.docs) {
+        batch.delete(doc.ref);
+        opCount++;
+        if (opCount >= 450) { await batch.commit(); batch = db.batch(); opCount = 0; }
+      }
+      if (opCount > 0) await batch.commit();
+
+      const profilesSnap = await db.collection('user_profiles').get();
+      batch = db.batch();
+      opCount = 0;
+      for (const doc of profilesSnap.docs) {
+        batch.set(doc.ref, { points: 0, badge: null, resetAt: Date.now() }, { merge: true });
+        opCount++;
+        if (opCount >= 450) { await batch.commit(); batch = db.batch(); opCount = 0; }
+      }
+      if (opCount > 0) await batch.commit();
+
+      // Kalıcı gelir defterini de sıfırla — aksi halde Kazanç ekranı reset
+      // sonrası hâlâ eski (silinmiş) satışlardan gelen toplamları gösterir.
+      await db.collection('config').doc('platform_stats').set({
+        totalVolume: 0, userOwnedVolume: 0, platformEarnings: 0, adminOwnEarnings: 0, statsVersion: 3, resetAt: Date.now()
+      });
+
+      const resetTimestamp = Date.now();
+      await db.collection('system_config').doc('reset_epoch').set({
+        resetAt: resetTimestamp,
+        resetBy: ADMIN_USERNAME
+      });
+
+      console.log(`Platform istatistikleri sıfırlandı: ${new Date(resetTimestamp).toISOString()}`);
+      await logAdminAction(await getRealUsername(accessToken), 'reset_platform_stats', 'TÜM satış geçmişi ve puanlar sıfırlandı');
+      return res.status(200).json({ success: true, resetAt: resetTimestamp });
+    } catch (e) {
+      console.error("Platform sıfırlama hatası:", e);
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  // ── Satış Önerisi Gönder ──────────────────────────────────────────────
+  if (action === 'submit_sell_request') {
+    if (!await checkRateLimit(clientIp, 'submit_sell_request', 3, 60000))
+      return res.status(429).json({ error: "Çok fazla istek. 1 dakika bekleyin." });
+
+    const { domainName: reqDomainName, price: reqPrice, domainType, imgPath: reqImgPath, sellerNote, ownershipProof, description, connectedAppUrl, editMode, oldRequestId } = req.body;
+    const realUsername = await getRealUsername(accessToken);
+    if (!realUsername) return res.status(403).json({ error: "Geçerli Pi oturumu bulunamadı" });
+
+    const priceNum = Number(reqPrice);
+    if (!reqDomainName || !priceNum || priceNum <= 0) return res.status(400).json({ error: "Geçersiz parametre" });
+    if (!isValidDomainName(reqDomainName))
+      return res.status(400).json({ error: "Geçersiz domain adı formatı. Örnek: example.com" });
+    // Sahiplik kanıtı zorunlu — açık artırmayla kazanılmış bir domaini
+    // başkasının adına satışa çıkarmayı zorlaştırmak için minimum bir engel.
+    if (!ownershipProof || !ownershipProof.trim())
+      return res.status(400).json({ error: "Sahiplik kanıtı zorunludur. Bu domainin size ait olduğunu doğrulayacak bilgiyi girmelisiniz." });
+    // YENİ: "Bağlı Uygulama" — OPSİYONEL, ama girildiyse aynı SSRF-güvenli
+    // doğrulamadan geçirilir (set_connected_app_url action'ıyla aynı
+    // fonksiyon kullanılıyor — iki farklı giriş noktası aynı korumayı
+    // paylaşsın diye).
+    const trimmedAppUrl = typeof connectedAppUrl === 'string' ? connectedAppUrl.trim() : '';
+    if (trimmedAppUrl) {
+      if (trimmedAppUrl.length > 300) return res.status(400).json({ error: "Uygulama URL'i çok uzun" });
+      const safety = await isSafeUrlForAppCheck(trimmedAppUrl);
+      if (!safety.safe) return res.status(400).json({ error: "Geçersiz veya izin verilmeyen uygulama URL'i: " + safety.reason });
+    }
+
+    try {
+      const db = getDb();
+      const existingDomain = await db.collection('domains').doc(reqDomainName).get();
+      if (existingDomain.exists) {
+        return res.status(400).json({
+          error: existingDomain.data().deleted === true
+            ? "Bu domain adı daha önce kullanılmış ve silinmiş, tekrar kullanılamaz."
+            : "Bu domain zaten markette mevcut"
+        });
+      }
+
+      // ── Düzenle & Yeniden Gönder (editMode) ──────────────────────────
+      // Kullanıcı reddedilmiş bir ilanı düzenleyip yeniden gönderdiğinde,
+      // eski reddedilmiş kaydı sil. Böylece hem listede tekrar görünmez
+      // hem de yeni istek onaylandığında ortada "hayalet" reddedilmiş
+      // kayıt kalmaz.
+      let oldReqRef = null;
+      if (editMode && oldRequestId) {
+        oldReqRef = db.collection('sell_requests').doc(oldRequestId);
+        const oldReqSnap = await oldReqRef.get();
+        if (!oldReqSnap.exists) return res.status(404).json({ error: "Düzenlenecek ilan talebi bulunamadı" });
+        const oldReqData = oldReqSnap.data();
+        if (oldReqData.submittedBy !== realUsername) return res.status(403).json({ error: "Bu talebi düzenleme yetkiniz yok" });
+        if (oldReqData.status !== 'rejected') return res.status(400).json({ error: "Sadece reddedilmiş talepler düzenlenebilir" });
+      }
+
+      const existingReq = await db.collection('sell_requests')
+        .where('submittedBy', '==', realUsername)
+        .where('status', '==', 'pending')
+        .where('domainName', '==', reqDomainName)
+        .get();
+      if (!existingReq.empty) return res.status(400).json({ error: "Bu domain için zaten bekleyen bir öneriniz var" });
+
+      if (oldReqRef) {
+        await oldReqRef.delete();
+      }
+
+      const requestRef = db.collection('sell_requests').doc();
+      await requestRef.set({
+        domainName: reqDomainName,
+        price: priceNum,
+        domainType: domainType || 'genel',
+        img: reqImgPath || 'assets/default.jpeg',
+        sellerNote: sellerNote || null,
+        ownershipProof: ownershipProof.trim(),
+        description: description || '',
+        connectedAppUrl: trimmedAppUrl || null,
+        submittedBy: realUsername,
+        status: 'pending',
+        deleted: false,
+        submittedAt: Date.now()
+      });
+
+      await sendNotificationToAdmin({
+        type: 'new_sell_request',
+        title: 'Yeni Domain Önerisi',
+        body: `@${realUsername} tarafından "${reqDomainName}" domaini onay için gönderildi.`,
+        domainName: reqDomainName,
+        requestId: requestRef.id
+      });
+
+      await sendTG(TG_CHAT_ID, `📬 *YENİ DOMAIN ÖNERİSİ*\n\n👤 @${realUsername}\n🌐 ${reqDomainName}\n💰 ${priceNum} Pi\n📋 ${description || '—'}`);
+
+      return res.status(200).json({ success: true });
+    } catch (e) {
+      console.error("Satış önerisi hatası:", e);
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  // ── Satış Önerisini Onayla ────────────────────────────────────────────
+  // YENİ: Toplu onaylama. Öncesinde admin, bekleyen her ilanı tek tek
+  // (bir bir tıklayarak) onaylamak zorundaydı — ilan sayısı arttıkça bu
+  // yorucu bir tekrar işine dönüşüyordu. Bu action, tek tek onaylamayla
+  // AYNI mantığı (isim çakışması kontrolü, bildirim, puan, audit log)
+  // her seçilen istek için tekrarlıyor, sadece tek bir istekte topluca.
+  if (action === 'bulk_approve_sell_requests') {
+    const { requestIds } = req.body;
+    const isAdmin = await verifyAdmin(accessToken, req);
+    if (!isAdmin) return res.status(403).json({ error: "Yetki yok" });
+    if (!Array.isArray(requestIds) || requestIds.length === 0)
+      return res.status(400).json({ error: "En az bir istek seçilmelidir" });
+    if (requestIds.length > 50)
+      return res.status(400).json({ error: "Tek seferde en fazla 50 istek onaylanabilir" });
+
+    const db = getDb();
+    const adminUsername = await getRealUsername(accessToken);
+    const results = { approved: [], failed: [] };
+
+    for (const requestId of requestIds) {
+      try {
+        const requestRef = db.collection('sell_requests').doc(requestId);
+        const requestSnap = await requestRef.get();
+        if (!requestSnap.exists) { results.failed.push({ requestId, error: "Bulunamadı" }); continue; }
+        const reqData = requestSnap.data();
+        if (reqData.status !== 'pending') { results.failed.push({ requestId, domainName: reqData.domainName, error: "Zaten işlenmiş" }); continue; }
+
+        const domainRef = db.collection('domains').doc(reqData.domainName);
+        const existingDomain = await domainRef.get();
+        if (existingDomain.exists) {
+          results.failed.push({ requestId, domainName: reqData.domainName, error: existingDomain.data().deleted === true ? "Domain silinmiş durumda" : "Domain adı zaten mevcut" });
+          continue;
+        }
+
+        await domainRef.set({
+          sold: false, price: reqData.price,
+          img: reqData.img, type: reqData.domainType,
+          description: reqData.description || '',
+          sellerUsername: reqData.submittedBy,
+          sellerNote: reqData.sellerNote,
+          ownershipProof: reqData.ownershipProof || null,
+          txid: null, buyer: null, at: null,
+          deleted: false, deletedAt: null,
+          createdAt: Date.now()
+        });
+        await requestRef.set({ status: 'approved', resolvedAt: Date.now() }, { merge: true });
+
+        await sendNotification(reqData.submittedBy, {
+          type: 'sell_request_approved',
+          title: '✅ Domain Öneriniz Onaylandı!',
+          body: `"${reqData.domainName}" domaininiz markete eklendi. Satışa hazır!`,
+          domainName: reqData.domainName
+        });
+        await updateUserPoints(reqData.submittedBy, 20, 'domain_approved');
+        results.approved.push({ requestId, domainName: reqData.domainName });
+      } catch (e) {
+        results.failed.push({ requestId, error: e.message });
+      }
+    }
+
+    await logAdminAction(adminUsername, 'bulk_approve_sell_requests', `${results.approved.length} onaylandı, ${results.failed.length} başarısız`);
+    return res.status(200).json({ success: true, ...results });
+  }
+
+  if (action === 'approve_sell_request') {
+    const { requestId } = req.body;
+    const isAdmin = await verifyAdmin(accessToken, req);
+    if (!isAdmin) return res.status(403).json({ error: "Yetki yok" });
+    if (!requestId) return res.status(400).json({ error: "Geçersiz istek ID" });
+    try {
+      const db = getDb();
+      const requestRef = db.collection('sell_requests').doc(requestId);
+      const requestSnap = await requestRef.get();
+      if (!requestSnap.exists) return res.status(404).json({ error: "Öneri bulunamadı" });
+      const reqData = requestSnap.data();
+      if (reqData.status !== 'pending') return res.status(400).json({ error: "Bu öneri zaten işlenmiş" });
+
+      const domainRef = db.collection('domains').doc(reqData.domainName);
+      const existingDomain = await domainRef.get();
+      if (existingDomain.exists) {
+        return res.status(400).json({
+          error: existingDomain.data().deleted === true
+            ? "Bu domain adı silinmiş durumda, onaylanamaz. Önce restore_domain ile geri getirin."
+            : "Domain adı zaten mevcut"
+        });
+      }
+
+      await domainRef.set({
+        sold: false, price: reqData.price,
+        img: reqData.img, type: reqData.domainType,
+        description: reqData.description || '',
+        sellerUsername: reqData.submittedBy,
+        sellerNote: reqData.sellerNote,
+        ownershipProof: reqData.ownershipProof || null,
+        connectedAppUrl: reqData.connectedAppUrl || null,
+        txid: null, buyer: null, at: null,
+        deleted: false, deletedAt: null,
+        createdAt: Date.now()
+      });
+      await requestRef.set({ status: 'approved', resolvedAt: Date.now() }, { merge: true });
+
+      // YENİ: Kayıtlı arama kriterlerine uyan kullanıcılara bildirim.
+      await notifySavedSearches(db, reqData.domainName, { type: reqData.domainType, price: reqData.price, description: reqData.description || '', sellerUsername: reqData.submittedBy });
+
+      await sendNotification(reqData.submittedBy, {
+        type: 'sell_request_approved',
+        title: '✅ Domain Öneriniz Onaylandı!',
+        body: `"${reqData.domainName}" domaininiz markete eklendi. Satışa hazır!`,
+        domainName: reqData.domainName
+      });
+
+      await updateUserPoints(reqData.submittedBy, 20, 'domain_approved');
+      await logAdminAction(await getRealUsername(accessToken), 'approve_sell_request', `${reqData.domainName} (@${reqData.submittedBy})`);
+
+      return res.status(200).json({ success: true });
+    } catch (e) {
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  // ── Satış Önerisini Reddet ────────────────────────────────────────────
+  if (action === 'reject_sell_request') {
+    const { requestId, rejectReason } = req.body;
+    const isAdmin = await verifyAdmin(accessToken, req);
+    if (!isAdmin) return res.status(403).json({ error: "Yetki yok" });
+    if (!requestId) return res.status(400).json({ error: "Geçersiz istek ID" });
+    try {
+      const db = getDb();
+      const requestRef = db.collection('sell_requests').doc(requestId);
+      const requestSnap = await requestRef.get();
+      const reqData = requestSnap.data();
+      await requestRef.set({ status: 'rejected', resolvedAt: Date.now(), rejectReason: rejectReason || '' }, { merge: true });
+
+      if (reqData?.submittedBy) {
+        await sendNotification(reqData.submittedBy, {
+          type: 'sell_request_rejected',
+          title: '❌ Domain Öneriniz Reddedildi',
+          body: `"${reqData.domainName}" öneriniz reddedildi.${rejectReason ? ' Neden: ' + rejectReason : ''}`,
+          domainName: reqData.domainName
+        });
+      }
+
+      await logAdminAction(await getRealUsername(accessToken), 'reject_sell_request', `${reqData?.domainName || requestId}${rejectReason ? ' - ' + rejectReason : ''}`);
+
+      return res.status(200).json({ success: true });
+    } catch (e) {
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  // ── İlan Talebini Geri Çek (pending durumundaki sell_request) ─────────
+  if (action === 'withdraw_sell_request') {
+    const { requestId } = req.body;
+    const realUsername = await getRealUsername(accessToken);
+    if (!realUsername) return res.status(403).json({ error: "Geçersiz oturum" });
+    if (!requestId) return res.status(400).json({ error: "Geçersiz istek ID" });
+    try {
+      const db = getDb();
+      const requestRef = db.collection('sell_requests').doc(requestId);
+      const snap = await requestRef.get();
+      if (!snap.exists) return res.status(404).json({ error: "İlan talebi bulunamadı" });
+      const data = snap.data();
+      if (data.submittedBy !== realUsername) return res.status(403).json({ error: "Bu talebi geri çekme yetkiniz yok" });
+      if (data.status !== 'pending') return res.status(400).json({ error: "Sadece onay bekleyen talepler geri çekilebilir" });
+
+      await requestRef.set({ status: 'withdrawn', withdrawnAt: Date.now() }, { merge: true });
+      return res.status(200).json({ success: true });
+    } catch (e) {
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  // ── Reddedilmiş veya Geri Çekilmiş İlan Talebini Sil ───────────────────
+  if (action === 'delete_rejected_request') {
+    const { requestId } = req.body;
+    const realUsername = await getRealUsername(accessToken);
+    if (!realUsername) return res.status(403).json({ error: "Geçersiz oturum" });
+    if (!requestId) return res.status(400).json({ error: "Geçersiz istek ID" });
+    try {
+      const db = getDb();
+      const requestRef = db.collection('sell_requests').doc(requestId);
+      const snap = await requestRef.get();
+      if (!snap.exists) return res.status(404).json({ error: "İlan talebi bulunamadı" });
+      const data = snap.data();
+      if (data.submittedBy !== realUsername) return res.status(403).json({ error: "Bu talebi silme yetkiniz yok" });
+      // FIX: sadece 'rejected' değil, 'withdrawn' (kullanıcının kendi geri
+      // çektiği) talepler de artık silinebiliyor — daha önce bu durumda
+      // "İlanı Sil" butonu hiç görünmüyordu.
+      if (data.status !== 'rejected' && data.status !== 'withdrawn')
+        return res.status(400).json({ error: "Sadece reddedilmiş veya geri çekilmiş talepler silinebilir" });
+
+      await requestRef.delete();
+      return res.status(200).json({ success: true });
+    } catch (e) {
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  // ══════════════════════════════════════════════════════════════════════
+  //  TICKET / DESTEK SİSTEMİ — frontend ile birebir uyumlu action isimleri
+  //  Mesaj formatı: { from: 'username'|'admin', text: '...', timestamp: N }
+  // ══════════════════════════════════════════════════════════════════════
+
+  // ── Ticket Oluştur (Kullanıcı) ────────────────────────────────────────
+  if (action === 'create_ticket') {
+    if (!await checkRateLimit(clientIp, 'create_ticket', 5, 60000))
+      return res.status(429).json({ error: "Çok fazla istek. Lütfen bekleyin." });
+
+    const { subject, category, message, priority } = req.body;
+    const realUsername = await getRealUsername(accessToken);
+    if (!realUsername) return res.status(403).json({ error: "Geçersiz oturum" });
+    if (!subject || !message) return res.status(400).json({ error: "Konu ve mesaj zorunludur" });
+
+    try {
+      const db = getDb();
+      const ticketRef = db.collection('tickets').doc();
+      const now = Date.now();
+
+      await ticketRef.set({
+        subject,
+        category: category || 'general',
+        priority: priority || 'normal',
+        status: 'new',
+        createdBy: realUsername,
+        createdAt: now,
+        lastUpdate: now,
+        assignedTo: null,
+        messages: [{ from: realUsername, text: message, timestamp: now }]
+      });
+
+      await sendNotification(realUsername, {
+        type: 'ticket_created',
+        title: '📬 Talebiniz Alındı',
+        body: `"${subject}" konulu talebiniz oluşturuldu. En kısa sürede yanıtlanacaktır.`,
+        ticketId: ticketRef.id
+      });
+
+      await sendNotificationToAdmin({
+        type: 'new_ticket',
+        title: '🎫 Yeni Destek Talebi',
+        body: `@${realUsername} tarafından "${subject}" konulu yeni bir talep oluşturuldu.`,
+        ticketId: ticketRef.id
+      });
+
+      await sendTG(TG_CHAT_ID, `🎫 *YENİ DESTEK TALEBİ*\n\n👤 @${realUsername}\n📌 ${subject}\n🏷️ ${category || 'general'}`);
+
+      return res.status(200).json({ success: true, ticketId: ticketRef.id });
+    } catch (e) {
+      console.error("Ticket oluşturma hatası:", e);
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  // ── Kullanıcı: Kendi Ticket'larını Getir ──────────────────────────────
+  if (action === 'get_my_tickets') {
+    const realUsername = await getRealUsername(accessToken);
+    if (!realUsername) return res.status(403).json({ error: "Geçersiz oturum" });
+    try {
+      const db = getDb();
+      const snap = await db.collection('tickets').where('createdBy', '==', realUsername).get();
+      const tickets = [];
+      snap.forEach(doc => tickets.push({ id: doc.id, ...doc.data() }));
+      tickets.sort((a, b) => (b.lastUpdate || 0) - (a.lastUpdate || 0));
+
+      // Kullanıcının en son ne zaman kendi taleplerini görüntülediğini kontrol et.
+      // Bir talebe admin'den yanıt geldiyse ve kullanıcı henüz görmediyse
+      // "okunmamış" say (kendi gönderdiği mesajlar sayaca dahil edilmez).
+      const seenSnap = await db.collection('system_config').doc(`user_ticket_seen_${realUsername}`).get();
+      const seenAt = seenSnap.exists ? (seenSnap.data().seenAt || 0) : 0;
+      const unseenCount = tickets.filter(tk => {
+        if ((tk.lastUpdate || 0) <= seenAt) return false;
+        const lastMsg = tk.messages && tk.messages.length ? tk.messages[tk.messages.length - 1] : null;
+        return lastMsg && lastMsg.from === 'admin';
+      }).length;
+
+      return res.status(200).json({ success: true, tickets, unseenCount, seenAt });
+    } catch (e) {
+      console.error("get_my_tickets hatası:", e);
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  // ── Kullanıcı: Kendi Ticket Bildirimlerini Görüldü Olarak İşaretle ─────
+  if (action === 'mark_my_tickets_seen') {
+    const realUsername = await getRealUsername(accessToken);
+    if (!realUsername) return res.status(403).json({ error: "Geçersiz oturum" });
+    try {
+      const db = getDb();
+      const now = Date.now();
+      await db.collection('system_config').doc(`user_ticket_seen_${realUsername}`).set({ seenAt: now }, { merge: true });
+      return res.status(200).json({ success: true, seenAt: now });
+    } catch (e) {
+      console.error("mark_my_tickets_seen hatası:", e);
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  // ── Kullanıcı: Ticket'a Yanıt Gönder ──────────────────────────────────
+  if (action === 'reply_ticket') {
+    const { ticketId } = req.body;
+    const realUsername = await getRealUsername(accessToken);
+    if (!realUsername) return res.status(403).json({ error: "Geçersiz oturum" });
+    if (!ticketId || !req.body.text) return res.status(400).json({ error: "ticketId ve mesaj zorunludur" });
+    // GÜVENLİK EKLEMESİ: diğer serbest-metin alanları (teklif mesajı, yorum
+    // vb.) hep uzunluk sınırlıyken burada sınır yoktu — kullanıcı çok büyük
+    // bir metni tekrar tekrar gönderip hem admin'e bildirim spam'i
+    // yapabilir hem de ticket dokümanını (arrayUnion ile sürekli büyüyen
+    // messages dizisi) şişirip Firestore doküman boyut limitine
+    // yaklaştırabilirdi.
+    const text = String(req.body.text).trim().slice(0, 2000);
+    if (!await checkRateLimit(clientIp, 'reply_ticket', 15, 60000))
+      return res.status(429).json({ error: "Çok fazla mesaj gönderildi. Lütfen biraz bekleyip tekrar deneyin." });
+    try {
+      const db = getDb();
+      const ticketRef = db.collection('tickets').doc(ticketId);
+      const snap = await ticketRef.get();
+      if (!snap.exists) return res.status(404).json({ error: "Talep bulunamadı" });
+      const data = snap.data();
+      if (data.createdBy !== realUsername) return res.status(403).json({ error: "Bu talebe yanıt verme yetkiniz yok" });
+      if (data.status === 'closed') return res.status(400).json({ error: "Kapatılmış talebe yanıt verilemez" });
+
+      const now = Date.now();
+      // "Çözüldü" olarak işaretlenmiş bir talebe kullanıcı yanıt yazdığında (ör. teşekkür mesajı),
+      // bunu "yeni" duruma — yani sıfırdan başlıyormuş gibi — almak mantıksız: talep zaten
+      // çözülmüş durumda, kullanıcı sadece kapanış onayı/teşekkür niteliğinde yazmış oluyor.
+      // Bu yüzden akışın doğal son adımı olarak talebi doğrudan 'closed' durumuna alıyoruz.
+      // Gerçekten yeni bir sorun varsa kullanıcı yeni bir destek talebi açmalı.
+      // "Yanıtlandı" durumundaki normal karşılıklı yazışma akışında ise 'reviewing'e
+      // dönmeye devam ediyor (bu, olağan bir takip mesajı).
+      const wasResolved = data.status === 'resolved';
+      const newStatus = wasResolved ? 'closed' : (data.status === 'answered' ? 'reviewing' : data.status);
+
+      await ticketRef.update({
+        messages: FieldValue.arrayUnion({ from: realUsername, text, timestamp: now }),
+        lastUpdate: now,
+        status: newStatus
+      });
+
+      await sendNotificationToAdmin({
+        type: 'ticket_message',
+        title: wasResolved ? '✅ Talep Kapatıldı' : '💬 Yeni Mesaj',
+        body: wasResolved
+          ? `@${realUsername} çözüldü olarak işaretlenen "${data.subject}" talebine yanıt verdi, talep kapatıldı.`
+          : `@${realUsername} "${data.subject}" talebine yeni mesaj gönderdi.`,
+        ticketId
+      });
+
+      return res.status(200).json({ success: true });
+    } catch (e) {
+      console.error("reply_ticket hatası:", e);
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  // ── Admin: Tüm Ticket'ları Getir ──────────────────────────────────────
+  if (action === 'get_all_tickets') {
+    const isAdmin = await verifyAdmin(accessToken, req);
+    if (!isAdmin) return res.status(403).json({ error: "Yetki yok" });
+    try {
+      const db = getDb();
+      const snap = await db.collection('tickets').get();
+      const tickets = [];
+      snap.forEach(doc => {
+        const d = doc.data();
+        tickets.push({ id: doc.id, ...d, username: d.createdBy });
+      });
+      tickets.sort((a, b) => (b.lastUpdate || 0) - (a.lastUpdate || 0));
+
+      const seenSnap = await db.collection('system_config').doc('admin_ticket_seen').get();
+      const seenAt = seenSnap.exists ? (seenSnap.data().seenAt || 0) : 0;
+      // Kapatılmış talepler bildirim sayacına dahil edilmez; kullanıcıdan
+      // gelen yeni mesaj/talep sonrası lastUpdate, admin'in son görme
+      // zamanından yeniyse "okunmamış" sayılır.
+      const unseenCount = tickets.filter(tk => tk.status !== 'closed' && (tk.lastUpdate || 0) > seenAt).length;
+
+      return res.status(200).json({ success: true, tickets, unseenCount, seenAt });
+    } catch (e) {
+      console.error("get_all_tickets hatası:", e);
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  // ── Admin: Ticket Bildirimlerini Görüldü Olarak İşaretle ───────────────
+  if (action === 'mark_tickets_seen') {
+    const isAdmin = await verifyAdmin(accessToken, req);
+    if (!isAdmin) return res.status(403).json({ error: "Yetki yok" });
+    try {
+      const db = getDb();
+      const now = Date.now();
+      await db.collection('system_config').doc('admin_ticket_seen').set({ seenAt: now }, { merge: true });
+      return res.status(200).json({ success: true, seenAt: now });
+    } catch (e) {
+      console.error("mark_tickets_seen hatası:", e);
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  // ══════════════════════════════════════════════════════════════════════
+  //  Marka Hakkı / Telif Bildirimi (DMCA-benzeri Claim Formu)
+  //  Not: Bu, tescilli marka/domain sahiplerinin -Pi hesabı olmasa dahi-
+  //  başvurabileceği HERKESE AÇIK bir uçtur; bu yüzden accessToken/Pi
+  //  girişi ARANMAZ, sadece IP bazlı rate-limit ile kötüye kullanım
+  //  engellenir.
+  // ══════════════════════════════════════════════════════════════════════
+  // ══════════════════════════════════════════════════════════════════════
+  //  Pi Hesap UID Senkronizasyonu (Escrow / A2U Ödemesi İçin)
+  //  Kullanıcının yazdığı bir cüzdan adresi DEĞİL — Pi'nin resmi A2U akışı
+  //  ödemeyi doğrudan hesabın UID'si üzerinden kendi cüzdanına yönlendiriyor.
+  //  Bu yüzden her girişte sessizce senkronize ediyoruz.
+  // ══════════════════════════════════════════════════════════════════════
+  if (action === 'sync_user_uid') {
+    const { uid, referralCode } = req.body;
+    if (!uid) return res.status(400).json({ error: "uid zorunludur" });
+    const realUsername = await getRealUsername(accessToken);
+    if (!realUsername) return res.status(401).json({ error: "Geçersiz oturum" });
+    try {
+      const db = getDb();
+      await db.collection('users').doc(realUsername).set({ piUid: uid, piUidSyncedAt: Date.now() }, { merge: true });
+
+      // YENİ: Referral (davet) sistemi. Öncesinde sadece genel bir "linki
+      // paylaş" vardı, kimin kimi getirdiğini takip eden/ödüllendiren bir
+      // mekanizma yoktu. Burada, SADECE bu kullanıcının profili DAHA ÖNCE
+      // hiç oluşturulmamışsa (yani gerçekten ilk kez giriş yapıyorsa) ve
+      // geçerli bir referralCode (davet eden kişinin kullanıcı adı)
+      // gönderilmişse, "kim tarafından davet edildiği" kalıcı olarak
+      // kaydediliyor. Sonradan tekrar giriş yapıldığında (referralCode
+      // olsun ya da olmasın) bir şey değişmiyor — sadece İLK girişte kayıt
+      // altına alınıyor, birisi kendi linkini defalarca kullanıp puan
+      // biriktiremesin diye.
+      if (referralCode && referralCode !== realUsername) {
+        const profileRef = db.collection('user_profiles').doc(realUsername);
+        const profileSnap = await profileRef.get();
+        const alreadyHasReferrer = profileSnap.exists && profileSnap.data().referredBy;
+        if (!alreadyHasReferrer) {
+          const referrerSnap = await db.collection('user_profiles').doc(referralCode).get();
+          // Davet eden kişinin gerçekten var olup olmadığını (en azından bir
+          // profili olup olmadığını) kontrol ediyoruz — rastgele/uydurma bir
+          // kullanıcı adıyla kayıt oluşmasın.
+          const referrerExists = referrerSnap.exists || (await db.collection('domains').where('sellerUsername', '==', referralCode).limit(1).get()).size > 0;
+          if (referrerExists) {
+            await profileRef.set({ referredBy: referralCode, referredAt: Date.now() }, { merge: true });
+            await db.collection('user_profiles').doc(referralCode).set({
+              referralCount: FieldValue.increment(1)
+            }, { merge: true });
+            console.log(`[Referral] @${realUsername}, @${referralCode} tarafından davet edildi.`);
+          }
+        }
+      }
+
+      return res.status(200).json({ success: true });
+    } catch (e) {
+      console.error("sync_user_uid hatası:", e);
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  // ══════════════════════════════════════════════════════════════════════
+  //  BİLDİRİM TERCİHLERİ — Telegram Bağlama ve E-posta Bağlama
+  //  Amaç: sendNotification() zaten her önemli olayda (satış, teklif,
+  //  escrow hatırlatması vb.) çağrılıyor; kullanıcı burada Telegram/e-posta
+  //  bağlarsa, TEK bir değişiklikle (bkz. sendNotification üstündeki YENİ
+  //  blok) o bildirimler otomatik olarak oraya da gidiyor — uygulamayı
+  //  açmadan da haberdar oluyorlar.
+  // ══════════════════════════════════════════════════════════════════════
+
+  // ── Telegram Bağlama Başlat: tek kullanımlık kod üret, bot linkini dön ──
+  if (action === 'link_telegram_start') {
+    const realUsername = await getRealUsername(accessToken);
+    if (!realUsername) return res.status(401).json({ error: "Geçersiz oturum" });
+    if (!await checkRateLimit(clientIp, 'link_telegram_start', 5, 60000))
+      return res.status(429).json({ error: "Çok fazla istek. Lütfen bekleyin." });
+    if (!TG_BOT_TOKEN) return res.status(503).json({ error: "Telegram bildirimleri şu anda kullanılamıyor" });
+    try {
+      const db = getDb();
+      const botUsername = await getCachedBotUsername();
+      if (!botUsername) return res.status(503).json({ error: "Bot bilgisi alınamadı, lütfen daha sonra tekrar deneyin" });
+
+      // FIX (kök neden — "Telegram bağlantı kodu tahmin edilebilirdi"):
+      // Math.random() kriptografik olarak güvenli DEĞİL ve sadece 8 base36
+      // karakter üretiyordu. Bir saldırgan bota kendi hesabından
+      // "/start <tahmin>" mesajları göndererek kodu deneme-yanılma ile
+      // bulmaya çalışabilir, tutarsa kurbanın hesabına kendi Telegram'ını
+      // bağlayıp bildirim/onay akışlarını izleyebilirdi. crypto.randomBytes
+      // kullanılarak 10 hex karakterlik (40 bit, ~1 trilyon olasılık),
+      // tahmin edilemez bir kod üretiliyor. Deneme-yanılma saldırısına karşı
+      // ikinci savunma katmanı olarak telegram-webhook.js'e de chatId
+      // bazlı rate limit eklendi (bkz. o dosya).
+      const code = crypto.randomBytes(5).toString('hex').toUpperCase();
+      await db.collection('telegram_link_codes').doc(code).set({
+        username: realUsername, createdAt: Date.now()
+      });
+
+      return res.status(200).json({ success: true, botUrl: `https://t.me/${botUsername}?start=${code}` });
+    } catch (e) {
+      console.error("link_telegram_start hatası:", e);
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  // ── Bildirim Tercihleri Durumu (Telegram bağlı mı, e-posta var mı) ──────
+  if (action === 'get_notification_prefs') {
+    const realUsername = await getRealUsername(accessToken);
+    if (!realUsername) return res.status(401).json({ error: "Geçersiz oturum" });
+    try {
+      const db = getDb();
+      const snap = await db.collection('user_profiles').doc(realUsername).get();
+      const d = snap.exists ? snap.data() : {};
+      return res.status(200).json({
+        success: true,
+        telegramLinked: !!d.telegramChatId,
+        email: d.email || null,
+        emailVerified: !!d.emailVerified,
+        pushSubscriptionCount: Array.isArray(d.pushSubscriptions) ? d.pushSubscriptions.length : 0
+      });
+    } catch (e) {
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  // ── Telegram Bağlantısını Kaldır ────────────────────────────────────────
+  if (action === 'unlink_telegram') {
+    const realUsername = await getRealUsername(accessToken);
+    if (!realUsername) return res.status(401).json({ error: "Geçersiz oturum" });
+    try {
+      const db = getDb();
+      await db.collection('user_profiles').doc(realUsername).set({
+        telegramChatId: FieldValue.delete(), telegramLinkedAt: FieldValue.delete()
+      }, { merge: true });
+      return res.status(200).json({ success: true });
+    } catch (e) {
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  // ── E-posta Ekle: kaydet + 6 haneli doğrulama kodu gönder ──────────────
+  // NOT: E-posta, doğrulanana (emailVerified:true) kadar bildirim
+  // göndermede KULLANILMIYOR (bkz. sendNotification) — aksi halde biri
+  // başkasının e-postasını girip ona istenmeyen bildirim/spam gönderebilirdi.
+  if (action === 'set_profile_email') {
+    const { email } = req.body;
+    const realUsername = await getRealUsername(accessToken);
+    if (!realUsername) return res.status(401).json({ error: "Geçersiz oturum" });
+    if (!await checkRateLimit(clientIp, 'set_profile_email', 5, 60000))
+      return res.status(429).json({ error: "Çok fazla istek. Lütfen bekleyin." });
+    const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!email || typeof email !== 'string' || email.length > 254 || !EMAIL_RE.test(email.trim())) {
+      return res.status(400).json({ error: "Geçerli bir e-posta adresi girin" });
+    }
+    if (!RESEND_API_KEY) return res.status(503).json({ error: "E-posta bildirimleri şu anda kullanılamıyor" });
+    const cleanEmail = email.trim().toLowerCase();
+    try {
+      const db = getDb();
+      const code = Math.floor(100000 + Math.random() * 900000).toString();
+      await db.collection('user_profiles').doc(realUsername).set({
+        email: cleanEmail,
+        emailVerified: false,
+        emailVerifyCode: code,
+        emailVerifyCodeAt: Date.now()
+      }, { merge: true });
+
+      await sendEmail(cleanEmail, 'Doğrulama Kodunuz',
+        `<div style="font-family:sans-serif;">
+          <p>Merhaba,</p>
+          <p><b>Web3 Domain Gateway</b> hesabınıza (<b>@${realUsername}</b>) bu e-posta adresini bağlamak için doğrulama kodunuz:</p>
+          <h2 style="letter-spacing:6px;">${code}</h2>
+          <p style="color:#666;font-size:13px;">Bu kod 15 dakika geçerlidir. Bu isteği siz yapmadıysanız bu e-postayı görmezden gelebilirsiniz.</p>
+        </div>`
+      );
+
+      return res.status(200).json({ success: true });
+    } catch (e) {
+      console.error("set_profile_email hatası:", e);
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  // ── E-posta Doğrulama Kodu Onayı ────────────────────────────────────────
+  if (action === 'verify_profile_email') {
+    const { code } = req.body;
+    const realUsername = await getRealUsername(accessToken);
+    if (!realUsername) return res.status(401).json({ error: "Geçersiz oturum" });
+    if (!code) return res.status(400).json({ error: "Kod gerekli" });
+    try {
+      const db = getDb();
+      const ref = db.collection('user_profiles').doc(realUsername);
+      const snap = await ref.get();
+      if (!snap.exists || !snap.data().emailVerifyCode) {
+        return res.status(400).json({ error: "Önce bir e-posta adresi ekleyin" });
+      }
+      const d = snap.data();
+      if (!d.emailVerifyCodeAt || Date.now() - d.emailVerifyCodeAt > 15 * 60000) {
+        return res.status(400).json({ error: "Kodun süresi doldu, lütfen tekrar isteyin" });
+      }
+      if (String(code).trim() !== d.emailVerifyCode) {
+        return res.status(400).json({ error: "Kod hatalı" });
+      }
+      await ref.set({
+        emailVerified: true,
+        emailVerifyCode: FieldValue.delete(),
+        emailVerifyCodeAt: FieldValue.delete()
+      }, { merge: true });
+      return res.status(200).json({ success: true });
+    } catch (e) {
+      console.error("verify_profile_email hatası:", e);
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  // ── E-postayı Kaldır ─────────────────────────────────────────────────────
+  if (action === 'remove_profile_email') {
+    const realUsername = await getRealUsername(accessToken);
+    if (!realUsername) return res.status(401).json({ error: "Geçersiz oturum" });
+    try {
+      const db = getDb();
+      await db.collection('user_profiles').doc(realUsername).set({
+        email: FieldValue.delete(),
+        emailVerified: FieldValue.delete(),
+        emailVerifyCode: FieldValue.delete(),
+        emailVerifyCodeAt: FieldValue.delete()
+      }, { merge: true });
+      return res.status(200).json({ success: true });
+    } catch (e) {
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  // ══════════════════════════════════════════════════════════════════════
+  //  ADMIN: Kullanıcı Detayı Görüntüleme ve Doğrudan E-posta Gönderme
+  //  Amaç: bir kullanıcı e-posta bağladığında, admin'in onu destek amaçlı
+  //  bulup (satın alma/satış/ticket geçmişiyle birlikte) hem görebilmesi
+  //  hem de doğrudan e-posta atabilmesi.
+  // ══════════════════════════════════════════════════════════════════════
+
+  // ── Admin: Bir Kullanıcının Tüm Aktivitesini Görüntüle ──────────────────
+  if (action === 'admin_get_user_details') {
+    const isAdmin = await verifyAdmin(accessToken, req);
+    if (!isAdmin) return res.status(403).json({ error: "Yetki yok" });
+    const { username: targetUsername } = req.body;
+    if (!targetUsername) return res.status(400).json({ error: "Kullanıcı adı gerekli" });
+    try {
+      const db = getDb();
+      const [profileSnap, purchasesSnap, salesSnap, ticketsSnap] = await Promise.all([
+        db.collection('user_profiles').doc(targetUsername).get(),
+        db.collection('global_sales').where('user', '==', targetUsername).get(),
+        db.collection('global_sales').where('sellerUsername', '==', targetUsername).get(),
+        db.collection('tickets').where('createdBy', '==', targetUsername).get()
+      ]);
+
+      const profile = profileSnap.exists ? profileSnap.data() : null;
+      const purchases = []; purchasesSnap.forEach(d => purchases.push({ id: d.id, ...d.data() }));
+      const sales = []; salesSnap.forEach(d => sales.push({ id: d.id, ...d.data() }));
+      const tickets = []; ticketsSnap.forEach(d => tickets.push({ id: d.id, ...d.data() }));
+
+      return res.status(200).json({
+        success: true,
+        username: targetUsername,
+        profile: profile ? {
+          points: profile.points || 0,
+          badge: profile.badge || null,
+          email: profile.email || null,
+          emailVerified: !!profile.emailVerified,
+          telegramLinked: !!profile.telegramChatId,
+          ratingSum: profile.ratingSum || 0,
+          ratingCount: profile.ratingCount || 0
+        } : null,
+        purchases, sales, tickets
+      });
+    } catch (e) {
+      console.error("admin_get_user_details hatası:", e);
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  // ── Admin: Kullanıcıya Doğrudan E-posta Gönder ──────────────────────────
+  if (action === 'admin_send_email_to_user') {
+    const isAdmin = await verifyAdmin(accessToken, req);
+    if (!isAdmin) return res.status(403).json({ error: "Yetki yok" });
+    const { username: targetUsername, subject, message } = req.body;
+    if (!targetUsername || !subject || !message) {
+      return res.status(400).json({ error: "Kullanıcı adı, konu ve mesaj gerekli" });
+    }
+    if (!RESEND_API_KEY) return res.status(503).json({ error: "E-posta gönderimi şu anda kullanılamıyor" });
+    try {
+      const db = getDb();
+      const profileSnap = await db.collection('user_profiles').doc(targetUsername).get();
+      const profile = profileSnap.exists ? profileSnap.data() : null;
+      if (!profile || !profile.email || !profile.emailVerified) {
+        return res.status(400).json({ error: "Bu kullanıcının doğrulanmış bir e-posta adresi yok" });
+      }
+      await sendEmail(profile.email, subject,
+        `<div style="font-family:sans-serif;white-space:pre-wrap;">${String(message).replace(/</g, '&lt;')}</div>`
+      );
+      const adminUsername = await getRealUsername(accessToken);
+      await logAdminAction(adminUsername, 'admin_send_email_to_user', `@${targetUsername} (${profile.email}) — konu: "${subject}"`);
+      return res.status(200).json({ success: true });
+    } catch (e) {
+      console.error("admin_send_email_to_user hatası:", e);
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  // ══════════════════════════════════════════════════════════════════════
+  //  ADMIN: BAKIM MODU (Maintenance Mode)
+  // ══════════════════════════════════════════════════════════════════════
+  if (action === 'set_maintenance_mode') {
+    const { enabled } = req.body;
+    const isAdmin = await verifyAdmin(accessToken, req);
+    if (!isAdmin) return res.status(403).json({ error: "Yetki yok" });
+    try {
+      const db = getDb();
+      const realUsername = await getRealUsername(accessToken);
+      await db.collection('config').doc('app_status').set({
+        maintenanceMode: !!enabled,
+        updatedAt: Date.now(),
+        updatedBy: realUsername
+      }, { merge: true });
+      await logAdminAction(realUsername, 'set_maintenance_mode', enabled ? 'AÇILDI' : 'KAPATILDI');
+      return res.status(200).json({ success: true, maintenanceMode: !!enabled });
+    } catch (e) {
+      console.error("set_maintenance_mode hatası:", e);
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  // YENİ: İlan şikayet etme. Öncesinde şüpheli/sahte bir ilanı bildirecek
+  // hiçbir yol yoktu — kullanıcı böyle bir şeyle karşılaşırsa elle
+  // e-posta/Telegram'dan admin'e ulaşmak zorundaydı. submit_trademark_claim
+  // ile aynı desende (rate limit + admin bildirimi) yazıldı.
+  if (action === 'report_listing') {
+    if (!await checkRateLimit(clientIp, 'report_listing', 5, 3600000))
+      return res.status(429).json({ error: "Çok fazla bildirim gönderildi. Lütfen daha sonra tekrar deneyin." });
+
+    const realUsername = await getRealUsername(accessToken);
+    if (!realUsername) return res.status(403).json({ error: "Bildirim göndermek için giriş yapmalısınız." });
+
+    const { domainName: reportDomain, reason, comment } = req.body;
+    const validReasons = ['fake', 'inappropriate', 'price_manipulation', 'trademark', 'other'];
+    if (!reportDomain || !reason || !validReasons.includes(reason))
+      return res.status(400).json({ error: "Domain adı ve geçerli bir sebep zorunludur." });
+    if (String(comment || '').length > 1000)
+      return res.status(400).json({ error: "Yorum çok uzun." });
+
+    try {
+      const db = getDb();
+      const now = Date.now();
+
+      // Aynı kullanıcı aynı domaini birden fazla kez bildirmesin diye kontrol.
+      const existing = await db.collection('listing_reports')
+        .where('domainName', '==', reportDomain)
+        .where('reportedBy', '==', realUsername)
+        .where('status', '==', 'new')
+        .get();
+      if (!existing.empty) {
+        return res.status(400).json({ error: "Bu ilanı zaten bildirdiniz, inceleme sürüyor." });
+      }
+
+      const reportRef = db.collection('listing_reports').doc();
+      await reportRef.set({
+        domainName: String(reportDomain).trim(),
+        reason,
+        comment: String(comment || '').trim(),
+        reportedBy: realUsername,
+        status: 'new',
+        createdAt: now,
+        // YENİ: aşama geçmişi — kullanıcıya gösterilecek takip ekranı
+        // (Bildirim Gönderildi → İnceleniyor → Çözüldü/Kapatıldı) için.
+        statusHistory: [{ status: 'new', at: now, note: null, by: null }]
+      });
+
+      await sendNotificationToAdmin({
+        type: 'listing_reported',
+        title: '🚩 İlan Şikayeti',
+        body: `@${realUsername}, "${reportDomain}" ilanını "${reason}" sebebiyle bildirdi.`,
+        domainName: reportDomain, reportId: reportRef.id
+      });
+      await sendTG(TG_CHAT_ID, `🚩 *İlan Şikayeti*\nDomain: ${reportDomain}\nSebep: ${reason}\nBildiren: @${realUsername}${comment ? '\nYorum: ' + comment : ''}`);
+
+      return res.status(200).json({ success: true });
+    } catch (e) {
+      console.error("report_listing hatası:", e);
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  // ── ADMIN: Bildirilen İlanları Listele/Yönet ────────────────────────────
+  if (action === 'get_listing_reports') {
+    const isAdmin = await verifyAdmin(accessToken, req);
+    if (!isAdmin) return res.status(403).json({ error: "Yetki yok" });
+    try {
+      const db = getDb();
+      // FIX (kök neden — "admin 'çözüldü'ye kadar gidebiliyor, 'kapat'a hiç
+      // erişemiyordu"): Bu sorgu önceden SADECE 'new' ve 'reviewing'
+      // durumundaki şikayetleri getiriyordu. Bir şikayet 'resolved'
+      // (Çözüldü) yapılır yapılmaz bu listeden anında kayboluyordu — yani
+      // admin o rapora bir daha ASLA erişip "Kapat"a basamıyordu, kayıt
+      // sonsuza dek 'resolved' durumunda askıda kalıyordu. Artık 'resolved'
+      // durumundakiler de listede kalmaya devam ediyor (SADECE 'closed'
+      // olanlar kaldırılıyor — onlar gerçekten bitmiş sayılır).
+      const snap = await db.collection('listing_reports').where('status', 'in', ['new', 'reviewing', 'resolved']).get();
+      const reports = [];
+      snap.forEach(d => reports.push({ id: d.id, ...d.data() }));
+      reports.sort((a, b) => b.createdAt - a.createdAt);
+
+      // YENİ: "okunmamış" sayısı artık mark_tickets_seen ile AYNI desende —
+      // tek bir seenAt zaman damgasıyla karşılaştırılıyor. Böylece admin
+      // panelini açıp listeyi görüntülemek rozeti temizliyor (dismiss etmek
+      // ZORUNDA kalmadan), yeni gelen bir şikayet ise anında rozeti tekrar
+      // yükseltiyor.
+      const seenSnap = await db.collection('system_config').doc('admin_report_seen').get();
+      const seenAt = seenSnap.exists ? (seenSnap.data().seenAt || 0) : 0;
+      const unseenCount = reports.filter(r => (r.createdAt || 0) > seenAt).length;
+
+      return res.status(200).json({ success: true, reports, unseenCount, seenAt });
+    } catch (e) {
+      console.error("get_listing_reports hatası:", e);
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  // ── Admin: Şikayet Bildirimlerini Görüldü Olarak İşaretle ──────────────
+  if (action === 'mark_reports_seen') {
+    const isAdmin = await verifyAdmin(accessToken, req);
+    if (!isAdmin) return res.status(403).json({ error: "Yetki yok" });
+    try {
+      const db = getDb();
+      const now = Date.now();
+      await db.collection('system_config').doc('admin_report_seen').set({ seenAt: now }, { merge: true });
+      return res.status(200).json({ success: true, seenAt: now });
+    } catch (e) {
+      console.error("mark_reports_seen hatası:", e);
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  // ══════════════════════════════════════════════════════════════════════
+  //  Şikayet Durum Güncelleme (Admin) — "İncelemeye Al" / "Çözüldü" /
+  //  "Kapat". Öncesinde tek bir "dismiss" (kapat) seçeneği vardı ve
+  //  raporlayan kullanıcı bildirdiği şikayete ne olduğunu HİÇBİR ŞEKİLDE
+  //  göremiyordu. Artık her durum değişikliği, isteğe bağlı bir açıklama
+  //  notuyla birlikte raporlayan kullanıcıya bildirim olarak gidiyor VE
+  //  statusHistory dizisine ekleniyor (kullanıcının "Şikayetlerim"
+  //  panelindeki aşama takibi bunu kullanıyor).
+  // ══════════════════════════════════════════════════════════════════════
+  if (action === 'update_report_status') {
+    const isAdmin = await verifyAdmin(accessToken, req);
+    if (!isAdmin) return res.status(403).json({ error: "Yetki yok" });
+    const { reportId, newStatus, note } = req.body;
+    const validStatuses = ['reviewing', 'resolved', 'closed'];
+    if (!reportId || !validStatuses.includes(newStatus))
+      return res.status(400).json({ error: "reportId ve geçerli bir newStatus (reviewing/resolved/closed) zorunludur." });
+    const cleanNote = String(note || '').trim().slice(0, 500);
+    try {
+      const db = getDb();
+      const adminUsername = await getRealUsername(accessToken);
+      const reportRef = db.collection('listing_reports').doc(reportId);
+      const snap = await reportRef.get();
+      if (!snap.exists) return res.status(404).json({ error: "Şikayet bulunamadı." });
+      const rep = snap.data();
+      const now = Date.now();
+
+      await reportRef.set({
+        status: newStatus,
+        adminNote: cleanNote || null,
+        statusUpdatedAt: now,
+        statusUpdatedBy: adminUsername,
+        statusHistory: FieldValue.arrayUnion({ status: newStatus, at: now, note: cleanNote || null, by: adminUsername })
+      }, { merge: true });
+
+      const statusLabel = { reviewing: 'İnceleniyor', resolved: 'Çözüldü', closed: 'Kapatıldı' }[newStatus];
+      await sendNotification(rep.reportedBy, {
+        type: 'report_status_update',
+        title: `🚩 Şikayetiniz Güncellendi: ${statusLabel}`,
+        body: `"${rep.domainName}" için bildirdiğiniz şikayetin durumu "${statusLabel}" olarak güncellendi.${cleanNote ? ' Not: ' + cleanNote : ''}`,
+        domainName: rep.domainName, reportId, newStatus
+      });
+
+      await logAdminAction(adminUsername, 'update_report_status', `${reportId} (${rep.domainName}) → ${newStatus}${cleanNote ? ': ' + cleanNote : ''}`);
+      return res.status(200).json({ success: true });
+    } catch (e) {
+      console.error("update_report_status hatası:", e);
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  // ══════════════════════════════════════════════════════════════════════
+  //  Kullanıcı: Kendi Bildirdiği Şikayetleri Takip Et ("Şikayetlerim")
+  //  Öncesinde bir kullanıcı bir ilanı şikayet ettiğinde bu konuda hiçbir
+  //  geri bildirim alamıyordu — şikayeti kara kutuya düşüyordu. Artık
+  //  kendi şikayetlerinin aşamasını (statusHistory ile) buradan görebiliyor.
+  // ══════════════════════════════════════════════════════════════════════
+  if (action === 'get_my_reports') {
+    const realUsername = await getRealUsername(accessToken);
+    if (!realUsername) return res.status(403).json({ error: "Geçersiz oturum" });
+    try {
+      const db = getDb();
+      const snap = await db.collection('listing_reports').where('reportedBy', '==', realUsername).get();
+      const reports = [];
+      // BUG DÜZELTMESİ: eski sürümde şikayetler sadece 'new'/'dismissed'
+      // durumundaydı (henüz İncelemeye Al/Çözüldü aşamaları yoktu). Yeni
+      // durum sistemi new/reviewing/resolved/closed kullanıyor — 'dismissed'
+      // hiçbirine karşılık gelmediği için ekranda çevrilmemiş, İngilizce ham
+      // haliyle görünüyordu. Burada normalize ediyoruz (gösterim amaçlı,
+      // veritabanı kaydını değiştirmiyoruz) — 'dismissed' artık 'closed' ile
+      // aynı şekilde (Kapatıldı) gösteriliyor.
+      // YENİ: Kullanıcı bir kez "Çözüldü/Kapatıldı" durumundaki şikayetini
+      // görüntüledikten sonra (bkz. archive_resolved_reports), o kayıt
+      // burada artık DÖNMÜYOR — "Şikayetlerim" sekmesi kalabalıklaşmasın
+      // diye. Kayıt SİLİNMİYOR, sadece archivedByUser:true işaretleniyor;
+      // "Geçmişim" sekmesinde (get_my_activity_history, filtre YOK) hâlâ
+      // görünmeye devam ediyor.
+      snap.forEach(d => {
+        const data = d.data();
+        if (data.archivedByUser === true) return;
+        if (data.status === 'dismissed') data.status = 'closed';
+        reports.push({ id: d.id, ...data });
+      });
+      reports.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+      return res.status(200).json({ success: true, reports });
+    } catch (e) {
+      console.error("get_my_reports hatası:", e);
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  // YENİ: Kullanıcı "Şikayetlerim"i açıp Çözüldü/Kapatıldı durumundaki
+  // başvurularını gördükten sonra frontend bunu çağırır — o başvurular
+  // bir daha "Şikayetlerim"de görünmez (get_my_reports'taki filtreye
+  // bakın), ama "Geçmişim"den hâlâ takip edilebilir ve istenirse
+  // silinebilir (bkz. delete_my_report).
+  if (action === 'archive_resolved_reports') {
+    const realUsername = await getRealUsername(accessToken);
+    if (!realUsername) return res.status(403).json({ error: "Geçersiz oturum" });
+    try {
+      const db = getDb();
+      const snap = await db.collection('listing_reports')
+        .where('reportedBy', '==', realUsername)
+        .where('status', 'in', ['resolved', 'closed', 'dismissed'])
+        .get();
+      const batch = db.batch();
+      let archivedCount = 0;
+      snap.forEach(d => {
+        const data = d.data();
+        if (data.archivedByUser === true) return;
+        batch.set(d.ref, { archivedByUser: true, archivedAt: Date.now() }, { merge: true });
+        archivedCount++;
+      });
+      if (archivedCount > 0) await batch.commit();
+      return res.status(200).json({ success: true, archivedCount });
+    } catch (e) {
+      console.error("archive_resolved_reports hatası:", e);
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  // YENİ: Kullanıcı, "Geçmişim"deki (artık kapanmış) bir şikayet kaydını
+  // kalıcı olarak silebilir. Sadece SONUÇLANMIŞ (resolved/closed/dismissed)
+  // başvurular silinebilir — hâlâ incelenmekte olan bir şikayeti kullanıcı
+  // silip "kanıtı yok etmiş" gibi bir duruma düşülmesin diye.
+  if (action === 'delete_my_report') {
+    const { reportId } = req.body;
+    const realUsername = await getRealUsername(accessToken);
+    if (!realUsername) return res.status(403).json({ error: "Geçersiz oturum" });
+    if (!reportId) return res.status(400).json({ error: "Geçersiz ID" });
+    try {
+      const db = getDb();
+      const ref = db.collection('listing_reports').doc(reportId);
+      const snap = await ref.get();
+      if (!snap.exists) return res.status(404).json({ error: "Kayıt bulunamadı" });
+      const data = snap.data();
+      if (data.reportedBy !== realUsername) return res.status(403).json({ error: "Bu kaydı silme yetkiniz yok" });
+      if (!['resolved', 'closed', 'dismissed'].includes(data.status))
+        return res.status(400).json({ error: "Sadece sonuçlanmış (çözüldü/kapatıldı) başvurular silinebilir" });
+      await ref.delete();
+      return res.status(200).json({ success: true });
+    } catch (e) {
+      console.error("delete_my_report hatası:", e);
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  // ══════════════════════════════════════════════════════════════════════
+  //  Kullanıcı: Geçmiş İşlem Kayıtları ("Geçmişim")
+  //  Önceden kullanıcının ilan verme/satın alma/şikayet/destek talebi/marka
+  //  itirazı geçmişini tek bir yerden görebileceği bir ekran yoktu — her
+  //  biri farklı bir sekmede dağınık duruyordu. Bu action, YENİ bir yazma
+  //  (write) yolu / ayrı bir "activity_log" koleksiyonu OLUŞTURMUYOR —
+  //  bilerek böyle tasarlandı: zaten var olan koleksiyonları (sell_requests,
+  //  domains, listing_reports, tickets, trademark_claims) CANLI olarak
+  //  sorguluyor. Bunun iki büyük faydası var: (1) mevcut hiçbir action'a
+  //  dokunmaya, her yere yeni bir log-yazma satırı eklemeye gerek kalmadı
+  //  — yani hata riski çok düşük; (2) kullanıcı bir talebi geri çekip
+  //  sildiğinde ya da bir domain kalıcı silindiğinde, bu geçmiş görünümü
+  //  otomatik olarak güncel kalıyor (silinen kayıt zaten sorguda hiç
+  //  görünmüyor) — kullanıcının istediği "domain silinirse oradan da
+  //  temizlensin" davranışı ekstra kod yazılmadan kendiliğinden sağlanıyor.
+  // ══════════════════════════════════════════════════════════════════════
+  if (action === 'get_my_activity_history') {
+    const realUsername = await getRealUsername(accessToken);
+    if (!realUsername) return res.status(403).json({ error: "Geçersiz oturum" });
+    try {
+      const db = getDb();
+      const [sellReqSnap, purchasesSnap, listingsSnap, reportsSnap, ticketsSnap, claimsSnap] = await Promise.all([
+        db.collection('sell_requests').where('submittedBy', '==', realUsername).get(),
+        db.collection('domains').where('buyer', '==', realUsername).get(),
+        db.collection('domains').where('sellerUsername', '==', realUsername).get(),
+        db.collection('listing_reports').where('reportedBy', '==', realUsername).get(),
+        db.collection('tickets').where('createdBy', '==', realUsername).get(),
+        db.collection('trademark_claims').where('submittedByUsername', '==', realUsername).get()
+      ]);
+
+      const listings = [];
+      sellReqSnap.forEach(d => {
+        const x = d.data();
+        listings.push({ id: d.id, domainName: x.domainName, price: x.price, status: x.status, at: x.submittedAt || 0 });
+      });
+      // Onaylanmış eski satış talepleri (sell_requests) yanında, hâlâ
+      // yayında olan ilanların GÜNCEL fiyat/durumunu da göstermek için
+      // domains koleksiyonundan da ekliyoruz — aynı domain iki kaynakta da
+      // varsa (sell_request + domains), domains'teki güncel bilgi esas
+      // alınır (fiyat değişmiş olabilir).
+      listingsSnap.forEach(d => {
+        const x = d.data();
+        if (x.deleted === true) return; // silinmiş domain — kendiliğinden düşer
+        const existingIdx = listings.findIndex(l => l.domainName === d.id);
+        const entry = { id: d.id, domainName: d.id, price: x.price, status: x.sold ? 'sold' : 'active', at: x.createdAt || 0 };
+        if (existingIdx >= 0) listings[existingIdx] = entry; else listings.push(entry);
+      });
+
+      const purchases = [];
+      purchasesSnap.forEach(d => {
+        const x = d.data();
+        if (x.deleted === true || x.sold !== true) return;
+        purchases.push({ id: d.id, domainName: d.id, price: x.price, at: x.at || 0, sellerUsername: x.sellerUsername || null });
+      });
+
+      const reports = [];
+      reportsSnap.forEach(d => {
+        const x = d.data();
+        reports.push({ id: d.id, domainName: x.domainName, reason: x.reason, status: x.status === 'dismissed' ? 'closed' : x.status, at: x.createdAt || 0 });
+      });
+
+      const tickets = [];
+      ticketsSnap.forEach(d => {
+        const x = d.data();
+        tickets.push({ id: d.id, subject: x.subject, category: x.category, status: x.status, at: x.createdAt || x.lastUpdate || 0 });
+      });
+
+      const trademarkClaims = [];
+      claimsSnap.forEach(d => {
+        const x = d.data();
+        trademarkClaims.push({ id: d.id, domainName: x.domainName, companyName: x.companyName, status: x.status, at: x.createdAt || 0 });
+      });
+
+      listings.sort((a, b) => (b.at || 0) - (a.at || 0));
+      purchases.sort((a, b) => (b.at || 0) - (a.at || 0));
+      reports.sort((a, b) => (b.at || 0) - (a.at || 0));
+      tickets.sort((a, b) => (b.at || 0) - (a.at || 0));
+      trademarkClaims.sort((a, b) => (b.at || 0) - (a.at || 0));
+
+      return res.status(200).json({ success: true, listings, purchases, reports, tickets, trademarkClaims });
+    } catch (e) {
+      console.error("get_my_activity_history hatası:", e);
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+
+  if (action === 'submit_trademark_claim') {
+    if (!await checkRateLimit(clientIp, 'submit_trademark_claim', 3, 3600000))
+      return res.status(429).json({ error: "Çok fazla istek. Lütfen daha sonra tekrar deneyin." });
+
+    const { claimantName, companyName, domainName: claimDomain, trademarkInfo, description, contactEmail } = req.body;
+
+    if (!claimantName || !claimDomain || !description || !contactEmail)
+      return res.status(400).json({ error: "Zorunlu alanlar eksik: ad, domain adı, açıklama ve e-posta gereklidir." });
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(contactEmail))
+      return res.status(400).json({ error: "Geçerli bir e-posta adresi girin." });
+
+    if (String(claimantName).length > 200 || String(companyName || '').length > 200 ||
+        String(claimDomain).length > 100 || String(trademarkInfo || '').length > 500 ||
+        String(description).length > 3000 || String(contactEmail).length > 200) {
+      return res.status(400).json({ error: "Bir veya daha fazla alan çok uzun." });
+    }
+
+    try {
+      const db = getDb();
+      const now = Date.now();
+
+      // Başvuran o an Pi ile giriş yapmışsa (accessToken varsa), talebi kendi
+      // hesabına bağlıyoruz ki "Panelim" kısmından süreci takip edebilsin.
+      // Giriş yapmamış (Pi hesabı olmayan) marka sahipleri için bu alan boş
+      // kalır — sadece e-posta üzerinden bilgilendirilirler.
+      let submittedByUsername = null;
+      if (accessToken) {
+        submittedByUsername = await getRealUsername(accessToken);
+      }
+
+      const claimRef = db.collection('trademark_claims').doc();
+      await claimRef.set({
+        claimantName: String(claimantName).trim(),
+        companyName: String(companyName || '').trim(),
+        domainName: String(claimDomain).trim(),
+        trademarkInfo: String(trademarkInfo || '').trim(),
+        description: String(description).trim(),
+        contactEmail: String(contactEmail).trim(),
+        status: 'new',
+        createdAt: now,
+        ip: clientIp,
+        submittedByUsername: submittedByUsername || null
+      });
+
+      await sendNotificationToAdmin({
+        type: 'trademark_claim',
+        title: '🔖 Yeni Marka Hakkı Talebi',
+        body: `"${claimDomain}" domaini için ${claimantName} tarafından bir marka hakkı bildirimi yapıldı.`,
+        claimId: claimRef.id
+      });
+      await sendTG(TG_CHAT_ID, `🔖 *Yeni Marka Hakkı Talebi*\nDomain: ${claimDomain}\nBaşvuran: ${claimantName}\nE-posta: ${contactEmail}`);
+
+      return res.status(200).json({ success: true, claimId: claimRef.id });
+    } catch (e) {
+      console.error("submit_trademark_claim hatası:", e);
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  // ── Admin: Marka Hakkı Taleplerini Listele ─────────────────────────────
+  if (action === 'get_trademark_claims') {
+    const isAdmin = await verifyAdmin(accessToken, req);
+    if (!isAdmin) return res.status(403).json({ error: "Yetki yok" });
+    try {
+      const db = getDb();
+      const snap = await db.collection('trademark_claims').get();
+      const claims = [];
+      snap.forEach(doc => claims.push({ id: doc.id, ...doc.data() }));
+      claims.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+      return res.status(200).json({ success: true, claims });
+    } catch (e) {
+      console.error("get_trademark_claims hatası:", e);
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  // ── Admin: Bekleyen İlan Taleplerini Getir ─────────────────────────────
+  // GÜVENLİK: sell_requests koleksiyonu (satıcı adayının cüzdan adresi dahil)
+  // artık Firestore'dan doğrudan okunmuyor; bu action üzerinden, admin
+  // doğrulamasından geçerek çekiliyor.
+  if (action === 'get_pending_sell_requests') {
+    const isAdmin = await verifyAdmin(accessToken, req);
+    if (!isAdmin) return res.status(403).json({ error: "Yetki yok" });
+    try {
+      const db = getDb();
+      const snap = await db.collection('sell_requests').get();
+      const requests = [];
+      snap.forEach(doc => requests.push({ id: doc.id, ...doc.data() }));
+      requests.sort((a, b) => (b.submittedAt || 0) - (a.submittedAt || 0));
+      return res.status(200).json({ success: true, requests });
+    } catch (e) {
+      console.error("get_pending_sell_requests hatası:", e);
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  // ── Admin: Marka Hakkı Talebi Durumunu Güncelle ────────────────────────
+  if (action === 'update_trademark_claim_status') {
+    const { claimId, status } = req.body;
+    const isAdmin = await verifyAdmin(accessToken, req);
+    if (!isAdmin) return res.status(403).json({ error: "Yetki yok" });
+    const validStatuses = ['new', 'reviewing', 'resolved', 'rejected', 'withdrawn'];
+    if (!claimId || !validStatuses.includes(status)) return res.status(400).json({ error: "Geçersiz parametre" });
+    try {
+      const db = getDb();
+      const claimRef = db.collection('trademark_claims').doc(claimId);
+      await claimRef.set({ status, updatedAt: Date.now() }, { merge: true });
+
+      if (status === 'rejected') {
+        const claimSnap = await claimRef.get();
+        const claim = claimSnap.data();
+        if (claim && claim.submittedByUsername) {
+          await sendNotification(claim.submittedByUsername, {
+            type: 'trademark_claim_rejected',
+            title: '❌ Marka Hakkı Talebiniz Reddedildi',
+            body: `"${claim.domainName}" domaini hakkındaki marka hakkı talebiniz incelendi ve reddedildi.`,
+            domainName: claim.domainName
+          });
+        }
+      }
+
+      await logAdminAction(await getRealUsername(accessToken), 'update_trademark_claim_status', `claim:${claimId} → ${status}`);
+
+      return res.status(200).json({ success: true });
+    } catch (e) {
+      console.error("update_trademark_claim_status hatası:", e);
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  // ══════════════════════════════════════════════════════════════════════
+  //  ADMIN: Marka Hakkı Talebini "Haklı Bul" — Domaini Kaldır
+  //  Talep haklı bulunduğunda, sadece durumu güncellemekle kalmıyoruz —
+  //  itiraz edilen domaini gerçekten pazarlıktan kaldırıyoruz (satın
+  //  alınamaz/satılamaz hale getiriyoruz). Domain zaten satılmışsa,
+  //  kaldırmadan önce alıcı/satıcıya bilgi veriyoruz.
+  // ══════════════════════════════════════════════════════════════════════
+  if (action === 'approve_trademark_claim') {
+    const { claimId } = req.body;
+    const isAdmin = await verifyAdmin(accessToken, req);
+    if (!isAdmin) return res.status(403).json({ error: "Yetki yok" });
+    if (!claimId) return res.status(400).json({ error: "claimId zorunludur" });
+    try {
+      const db = getDb();
+      const claimRef = db.collection('trademark_claims').doc(claimId);
+      const claimSnap = await claimRef.get();
+      if (!claimSnap.exists) return res.status(404).json({ error: "Talep bulunamadı" });
+      const claim = claimSnap.data();
+
+      const domainName = String(claim.domainName || '').trim();
+      let domainRemoved = false;
+      let domainNotFoundNote = '';
+
+      if (domainName) {
+        const domainRef = db.collection('domains').doc(domainName);
+        const domainSnap = await domainRef.get();
+        if (domainSnap.exists) {
+          const domainData = domainSnap.data();
+          // Domain satılmışsa ilgili tarafları bilgilendir.
+          if (domainData.buyer) {
+            await sendNotification(domainData.buyer, {
+              type: 'domain_removed_trademark',
+              title: '⚠️ Domain Marka Hakkı İhlali Nedeniyle Kaldırıldı',
+              body: `"${domainName}" domaini, geçerli bir marka hakkı talebi nedeniyle platformdan kaldırıldı. Destek talebi açarak durumunuzu iletebilirsiniz.`,
+              domainName
+            });
+          }
+          if (domainData.sellerUsername) {
+            await sendNotification(domainData.sellerUsername, {
+              type: 'domain_removed_trademark',
+              title: '⚠️ İlanınız Marka Hakkı İhlali Nedeniyle Kaldırıldı',
+              body: `"${domainName}" isimli ilanınız, geçerli bulunan bir marka hakkı talebi nedeniyle platformdan kaldırıldı.`,
+              domainName
+            });
+          }
+          await domainRef.delete();
+          domainRemoved = true;
+        } else {
+          domainNotFoundNote = 'Domain zaten platformda mevcut değildi (muhtemelen daha önce kaldırılmış).';
+        }
+      }
+
+      await claimRef.set({ status: 'resolved', updatedAt: Date.now(), domainRemoved }, { merge: true });
+
+      if (claim.submittedByUsername) {
+        await sendNotification(claim.submittedByUsername, {
+          type: 'trademark_claim_resolved',
+          title: '✅ Marka Hakkı Talebiniz Haklı Bulundu',
+          body: `"${domainName}" domaini hakkındaki talebiniz incelendi ve haklı bulundu. Domain platformdan kaldırıldı.`,
+          domainName
+        });
+      }
+
+      await logAdminAction(await getRealUsername(accessToken), 'approve_trademark_claim', `${domainName} kaldırıldı (claim:${claimId})`);
+
+      return res.status(200).json({ success: true, domainRemoved, note: domainNotFoundNote });
+    } catch (e) {
+      console.error("approve_trademark_claim hatası:", e);
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  // ── Admin: Reddedilmiş Marka Hakkı Talebini Sil ────────────────────────
+  // Güvenlik için sadece 'rejected' durumundaki talepler silinebilir —
+  // aktif/çözülmüş bir talebin kaza sonucu silinmesini engeller.
+  if (action === 'delete_trademark_claim') {
+    const { claimId } = req.body;
+    const isAdmin = await verifyAdmin(accessToken, req);
+    if (!isAdmin) return res.status(403).json({ error: "Yetki yok" });
+    if (!claimId) return res.status(400).json({ error: "claimId zorunludur" });
+    try {
+      const db = getDb();
+      const claimRef = db.collection('trademark_claims').doc(claimId);
+      const snap = await claimRef.get();
+      if (!snap.exists) return res.status(404).json({ error: "Talep bulunamadı" });
+      if (snap.data().status !== 'rejected' && snap.data().status !== 'resolved')
+        return res.status(400).json({ error: "Sadece reddedilmiş veya çözülmüş talepler silinebilir." });
+      await claimRef.delete();
+      return res.status(200).json({ success: true });
+    } catch (e) {
+      console.error("delete_trademark_claim hatası:", e);
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  // ── Kullanıcı: Kendi Çözülmüş Marka Hakkı Talebini Sil ──────────────────
+  if (action === 'delete_my_trademark_claim') {
+    const { claimId } = req.body;
+    const realUsername = await getRealUsername(accessToken);
+    if (!realUsername) return res.status(403).json({ error: "Geçersiz oturum" });
+    if (!claimId) return res.status(400).json({ error: "claimId zorunludur" });
+    try {
+      const db = getDb();
+      const claimRef = db.collection('trademark_claims').doc(claimId);
+      const snap = await claimRef.get();
+      if (!snap.exists) return res.status(404).json({ error: "Talep bulunamadı" });
+      const claim = snap.data();
+      if (claim.submittedByUsername !== realUsername) return res.status(403).json({ error: "Bu talebi silme yetkiniz yok" });
+      if (claim.status !== 'resolved')
+        return res.status(400).json({ error: "Sadece çözülmüş talepler silinebilir." });
+      await claimRef.delete();
+      return res.status(200).json({ success: true });
+    } catch (e) {
+      console.error("delete_my_trademark_claim hatası:", e);
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  // ── Kullanıcı: Kendi Marka Hakkı Taleplerini Listele (Panelim) ─────────
+  if (action === 'get_my_trademark_claims') {
+    const realUsername = await getRealUsername(accessToken);
+    if (!realUsername) return res.status(401).json({ error: "Geçersiz oturum" });
+    try {
+      const db = getDb();
+      const snap = await db.collection('trademark_claims').where('submittedByUsername', '==', realUsername).get();
+      const claims = [];
+      snap.forEach(doc => claims.push({ id: doc.id, ...doc.data() }));
+      claims.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+      return res.status(200).json({ success: true, claims });
+    } catch (e) {
+      console.error("get_my_trademark_claims hatası:", e);
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  // ── Kullanıcı: Kendi Marka Hakkı Talebini Geri Çek ─────────────────────
+  // Sadece 'new' veya 'reviewing' durumundaki talepler geri çekilebilir;
+  // zaten sonuçlanmış (çözüldü/reddedildi) bir talep geri çekilemez.
+  if (action === 'withdraw_trademark_claim') {
+    const { claimId } = req.body;
+    const realUsername = await getRealUsername(accessToken);
+    if (!realUsername) return res.status(401).json({ error: "Geçersiz oturum" });
+    if (!claimId) return res.status(400).json({ error: "claimId zorunludur" });
+    try {
+      const db = getDb();
+      const claimRef = db.collection('trademark_claims').doc(claimId);
+      const snap = await claimRef.get();
+      if (!snap.exists) return res.status(404).json({ error: "Talep bulunamadı" });
+      const claim = snap.data();
+      if (claim.submittedByUsername !== realUsername)
+        return res.status(403).json({ error: "Bu talep size ait değil." });
+      if (claim.status !== 'new' && claim.status !== 'reviewing')
+        return res.status(400).json({ error: "Bu talep artık geri çekilemez (sonuçlanmış)." });
+      await claimRef.set({ status: 'withdrawn', updatedAt: Date.now() }, { merge: true });
+      return res.status(200).json({ success: true });
+    } catch (e) {
+      console.error("withdraw_trademark_claim hatası:", e);
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  // ══════════════════════════════════════════════════════════════════════
+  //  ADMIN: ESCROW — Bekleyen Satıcı Ödemelerini Listele
+  // ══════════════════════════════════════════════════════════════════════
+  if (action === 'get_pending_payouts') {
+    const isAdmin = await verifyAdmin(accessToken, req);
+    if (!isAdmin) return res.status(403).json({ error: "Yetki yok" });
+    try {
+      const db = getDb();
+      const snap = await db.collection('global_sales')
+        .where('payoutStatus', 'in', ['pending', 'no_seller', 'processing', 'released', 'failed', 'refund_processing', 'refunded', 'refund_failed'])
+        .get();
+      const now = Date.now();
+      // YENİ: Admin panele her gün bakmazsa, onay bekleyen bir escrow
+      // (payoutStatus:'pending') haftalarca sessizce takılı kalabiliyordu —
+      // önceden bunun ne kadar süredir beklediğini görmenin tek yolu
+      // elle tarihleri karşılaştırmaktı. Artık her kayda, ne kadar süredir
+      // beklediği (pendingHours) ve belirli bir eşiği (48 saat) aşıp
+      // aşmadığı (isStale) hesaplanıp ekleniyor; bekleyenler en üste, en
+      // uzun süre bekleyen en başa gelecek şekilde sıralanıyor — admin
+      // panele girer girmez en acil olanı ilk anda görüyor.
+      const STALE_THRESHOLD_HOURS = 48;
+      const payouts = [];
+      snap.forEach(doc => {
+        const d = doc.data();
+        const pendingHours = d.payoutStatus === 'pending' && typeof d.at === 'number'
+          ? Math.round((now - d.at) / 3600000 * 10) / 10
+          : null;
+        payouts.push({
+          id: doc.id, ...d,
+          pendingHours,
+          isStale: pendingHours !== null && pendingHours >= STALE_THRESHOLD_HOURS
+        });
+      });
+      payouts.sort((a, b) => {
+        // 1) Eski/takılı kalmış 'pending' kayıtlar en üstte (en uzun bekleyen en başta)
+        if (a.isStale !== b.isStale) return a.isStale ? -1 : 1;
+        if (a.isStale && b.isStale) return (b.pendingHours || 0) - (a.pendingHours || 0);
+        // 2) Geri kalanı eskisi gibi en yeniden en eskiye
+        return (b.at || 0) - (a.at || 0);
+      });
+      const staleCount = payouts.filter(p => p.isStale).length;
+      return res.status(200).json({ success: true, payouts, staleCount });
+    } catch (e) {
+      console.error("get_pending_payouts hatası:", e);
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  // ══════════════════════════════════════════════════════════════════════
+  //  ADMIN: ESCROW — Satıcıya Ödemeyi Serbest Bırak (A2U)
+  //  Admin, domainin satıcıdan alıcıya devrini teyit ettikten SONRA bu
+  //  aksiyonu tetikler. Komisyon düşülmüş tutar, satıcının en son giriş
+  //  yaptığı Pi hesabına (UID üzerinden) otomatik olarak gönderilir.
+  // ══════════════════════════════════════════════════════════════════════
+  // ══════════════════════════════════════════════════════════════════════
+  //  ESCROW GÜVEN MEKANİZMASI: Alıcı/Satıcı Devir Onayı
+  //  Admin'in "Transfer Tamam Öde" / "İade Et" kararını uygulama DIŞINDAN
+  //  gelen sözlü bilgiye göre değil, uygulama İÇİNDE hem alıcının hem
+  //  satıcının verdiği gerçek onaya göre verebilmesi için.
+  // ══════════════════════════════════════════════════════════════════════
+  if (action === 'confirm_transfer_buyer') {
+    const { domainName: transferDomainName, confirmed, note } = req.body;
+    const realUsername = await getRealUsername(accessToken);
+    if (!realUsername) return res.status(403).json({ error: "Geçersiz oturum" });
+    if (!transferDomainName) return res.status(400).json({ error: "domainName zorunludur" });
+    try {
+      const db = getDb();
+      // YENİ: kanıt görselleri — sadece 'confirmed=false' (sorun bildirme)
+      // durumunda anlamlı, güvenlik doğrulaması sanitizeEvidenceUrls'te.
+      const evidenceUrls = confirmed ? [] : sanitizeEvidenceUrls(req.body.evidenceUrls, getBucket().name);
+      const saleQuery = await db.collection('global_sales')
+        .where('domain', '==', transferDomainName)
+        .where('user', '==', realUsername)
+        .limit(1).get();
+      if (saleQuery.empty) return res.status(404).json({ error: "Satış kaydı bulunamadı" });
+      const saleRef = saleQuery.docs[0].ref;
+      const sale = saleQuery.docs[0].data();
+      if (sale.payoutStatus === 'released' || sale.payoutStatus === 'refunded')
+        return res.status(400).json({ error: "Bu işlem zaten sonuçlanmış, onay artık değiştirilemez" });
+
+      await saleRef.set({
+        buyerConfirmed: !!confirmed,
+        buyerConfirmedAt: Date.now(),
+        buyerConfirmNote: note || null,
+        buyerDisputeEvidence: evidenceUrls,
+        buyerDisputeResolution: null
+      }, { merge: true });
+      if (sale.domain) {
+        await db.collection('domains').doc(sale.domain).set({
+          buyerConfirmed: !!confirmed, buyerConfirmedAt: Date.now(), buyerDisputeEvidence: evidenceUrls, buyerDisputeResolution: null
+        }, { merge: true });
+      }
+
+      await sendNotificationToAdmin({
+        type: 'transfer_confirmation',
+        title: confirmed ? '✅ Alıcı Devri Onayladı' : '⚠️ Alıcı Sorun Bildirdi',
+        body: `"${sale.domain}" için @${realUsername} (alıcı) ${confirmed ? 'domaini teslim aldığını onayladı.' : 'bir sorun bildirdi: ' + (note || 'detay belirtmedi') + (evidenceUrls.length ? ` (${evidenceUrls.length} kanıt görseli eklendi)` : '')}`,
+        domainName: sale.domain
+      });
+
+      return res.status(200).json({ success: true });
+    } catch (e) {
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  if (action === 'confirm_transfer_seller') {
+    const { domainName: transferDomainName, confirmed, note } = req.body;
+    const realUsername = await getRealUsername(accessToken);
+    if (!realUsername) return res.status(403).json({ error: "Geçersiz oturum" });
+    if (!transferDomainName) return res.status(400).json({ error: "domainName zorunludur" });
+    try {
+      const db = getDb();
+      const evidenceUrls = confirmed ? [] : sanitizeEvidenceUrls(req.body.evidenceUrls, getBucket().name);
+      const saleQuery = await db.collection('global_sales')
+        .where('domain', '==', transferDomainName)
+        .where('sellerUsername', '==', realUsername)
+        .limit(1).get();
+      if (saleQuery.empty) return res.status(404).json({ error: "Satış kaydı bulunamadı" });
+      const saleRef = saleQuery.docs[0].ref;
+      const sale = saleQuery.docs[0].data();
+      if (sale.payoutStatus === 'released' || sale.payoutStatus === 'refunded')
+        return res.status(400).json({ error: "Bu işlem zaten sonuçlanmış, onay artık değiştirilemez" });
+
+      await saleRef.set({
+        sellerConfirmed: !!confirmed,
+        sellerConfirmedAt: Date.now(),
+        sellerConfirmNote: note || null,
+        sellerDisputeEvidence: evidenceUrls,
+        sellerDisputeResolution: null
+      }, { merge: true });
+      await db.collection('domains').doc(transferDomainName).set({
+        sellerConfirmed: !!confirmed, sellerConfirmedAt: Date.now(), sellerDisputeEvidence: evidenceUrls, sellerDisputeResolution: null
+      }, { merge: true });
+
+      await sendNotificationToAdmin({
+        type: 'transfer_confirmation',
+        title: confirmed ? '✅ Satıcı Devri Onayladı' : '⚠️ Satıcı Sorun Bildirdi',
+        body: `"${sale.domain}" için @${realUsername} (satıcı) ${confirmed ? 'domaini devrettiğini onayladı.' : 'bir sorun bildirdi: ' + (note || 'detay belirtmedi') + (evidenceUrls.length ? ` (${evidenceUrls.length} kanıt görseli eklendi)` : '')}`,
+        domainName: sale.domain
+      });
+
+      return res.status(200).json({ success: true });
+    } catch (e) {
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  // ── Admin: Devir Onayı İçin Hatırlatma Bildirimi Gönder ────────────────
+  // ── Admin: Anlaşmazlığı Yanıtla / Çöz ───────────────────────────────────
+  // Bir taraf "sorun var" dediğinde admin buradan cevap yazar; bu, ilgili
+  // tarafın onay durumunu sıfırlayıp tekrar onaylayabilmesini sağlar.
+  if (action === 'resolve_dispute') {
+    const { saleId, role, message } = req.body; // role: 'buyer' | 'seller'
+    const isAdmin = await verifyAdmin(accessToken, req);
+    if (!isAdmin) return res.status(403).json({ error: "Yetki yok" });
+    if (!saleId || !role || !message) return res.status(400).json({ error: "Geçersiz parametre" });
+    try {
+      const db = getDb();
+      const saleRef = db.collection('global_sales').doc(saleId);
+      const saleSnap = await saleRef.get();
+      if (!saleSnap.exists) return res.status(404).json({ error: "Satış kaydı bulunamadı" });
+      const sale = saleSnap.data();
+      const targetUsername = role === 'buyer' ? sale.user : sale.sellerUsername;
+      if (!targetUsername) return res.status(400).json({ error: "Hedef kullanıcı bulunamadı" });
+
+      const updateData = role === 'buyer'
+        ? { buyerConfirmed: null, buyerConfirmNote: null, buyerDisputeEvidence: [], buyerDisputeResolution: message, buyerDisputeResolvedAt: Date.now() }
+        : { sellerConfirmed: null, sellerConfirmNote: null, sellerDisputeEvidence: [], sellerDisputeResolution: message, sellerDisputeResolvedAt: Date.now() };
+      await saleRef.set(updateData, { merge: true });
+      if (sale.domain) {
+        const domainUpdate = role === 'buyer'
+          ? { buyerConfirmed: null, buyerDisputeEvidence: [], buyerDisputeResolution: message, buyerDisputeResolvedAt: Date.now() }
+          : { sellerConfirmed: null, sellerDisputeEvidence: [], sellerDisputeResolution: message, sellerDisputeResolvedAt: Date.now() };
+        await db.collection('domains').doc(sale.domain).set(domainUpdate, { merge: true });
+      }
+
+      await sendNotification(targetUsername, {
+        type: 'dispute_response',
+        title: '💬 Bildirdiğiniz Sorunla İlgili Yanıt',
+        body: `"${sale.domain}" ile ilgili bildirdiğiniz soruna admin şu yanıtı verdi: "${message}". Devam etmek için lütfen "Panelim" içinden tekrar onay verin.`,
+        domainName: sale.domain,
+        role
+      });
+
+      await logAdminAction(await getRealUsername(accessToken), 'resolve_dispute', `${sale.domain} (${role}): ${message}`);
+
+      return res.status(200).json({ success: true });
+    } catch (e) {
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  if (action === 'nudge_confirmation') {
+    const { saleId, role } = req.body; // role: 'buyer' | 'seller'
+    const isAdmin = await verifyAdmin(accessToken, req);
+    if (!isAdmin) return res.status(403).json({ error: "Yetki yok" });
+    if (!saleId || !role) return res.status(400).json({ error: "Geçersiz parametre" });
+    try {
+      const db = getDb();
+      const saleRef = db.collection('global_sales').doc(saleId);
+      const saleSnap = await saleRef.get();
+      if (!saleSnap.exists) return res.status(404).json({ error: "Satış kaydı bulunamadı" });
+      const sale = saleSnap.data();
+      const targetUsername = role === 'buyer' ? sale.user : sale.sellerUsername;
+      if (!targetUsername) return res.status(400).json({ error: "Hedef kullanıcı bulunamadı" });
+
+      // Hatırlatma sayısını takip et — kullanıcı kendi onay ekranında
+      // "admin size N kez hatırlattı" bilgisini görebilsin diye.
+      const countField = role === 'buyer' ? 'buyerNudgeCount' : 'sellerNudgeCount';
+      const newCount = (Number(sale[countField]) || 0) + 1;
+      await saleRef.set({ [countField]: newCount }, { merge: true });
+      if (sale.domain) {
+        await db.collection('domains').doc(sale.domain).set({ [countField]: newCount }, { merge: true });
+      }
+
+      await sendNotification(targetUsername, {
+        type: 'transfer_confirmation_reminder',
+        title: '🔔 Onayınız Bekleniyor',
+        body: role === 'buyer'
+          ? `"${sale.domain}" domainini satıcıdan teslim aldınız mı? Ödemenin işleme alınabilmesi için lütfen "Panelim" içinden onaylayın.`
+          : `"${sale.domain}" domainini alıcıya devrettiniz mi? Ödemenizin gönderilebilmesi için lütfen "Panelim" içinden onaylayın.`,
+        domainName: sale.domain,
+        role
+      });
+
+      return res.status(200).json({ success: true });
+    } catch (e) {
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  if (action === 'release_seller_payment') {
+    const { saleId } = req.body;
+    const isAdmin = await verifyAdmin(accessToken, req);
+    if (!isAdmin) return res.status(403).json({ error: "Yetki yok" });
+    if (!saleId) return res.status(400).json({ error: "saleId zorunludur" });
+
+    try {
+      const db = getDb();
+      const saleRef = db.collection('global_sales').doc(saleId);
+      const saleSnap = await saleRef.get();
+      if (!saleSnap.exists) return res.status(404).json({ error: "Satış kaydı bulunamadı" });
+      const sale = saleSnap.data();
+
+      if (sale.payoutStatus === 'released')
+        return res.status(400).json({ error: "Bu ödeme zaten satıcıya gönderilmiş." });
+      if (!sale.sellerUsername)
+        return res.status(400).json({ error: "Bu ilanın kayıtlı bir satıcısı yok, ödeme serbest bırakılamaz." });
+
+      const sellerDoc = await db.collection('users').doc(sale.sellerUsername).get();
+      const sellerUid = sellerDoc.exists ? sellerDoc.data().piUid : null;
+      if (!sellerUid) {
+        // Satıcıyı sessizce beklemek yerine, ödemesini alabilmesi için
+        // tekrar giriş yapması gerektiğini otomatik olarak bildiriyoruz.
+        await sendNotification(sale.sellerUsername, {
+          type: 'payout_needs_login',
+          title: '💰 Ödemenizi Almak İçin Giriş Yapın',
+          body: `"${sale.domain}" domaininiz satıldı ve ödemeniz hazır! Ödemenin Pi hesabınıza gönderilebilmesi için lütfen uygulamaya bir kez daha Pi ile giriş yapın.`,
+          domainName: sale.domain
+        });
+        return res.status(400).json({
+          error: `@${sale.sellerUsername} henüz Pi hesabını uygulamaya bağlamamış (giriş yapmamış). Kendisine giriş yapması gerektiğine dair bildirim gönderildi. Ödeme, satıcı giriş yapana kadar sistem cüzdanında bekleyecek.`
+        });
+      }
+
+      const pi = await getPiClient(db);
+      if (!pi) {
+        return res.status(500).json({
+          error: "Sunucuda escrow ödeme istemcisi yapılandırılmamış (PI_WALLET_PRIVATE_SEED / pi-backend paketi eksik). Lütfen ortam değişkenlerini kontrol edin."
+        });
+      }
+
+      // FIX (kök neden — "satıcıya komisyon kesilmeden tam tutar
+      // gönderiliyor" riski): Bu satır önceden `sale.payoutAmount ||
+      // hesapla` şeklindeydi — yani kayıtta HERHANGİ bir sayı varsa
+      // (yanlış/eski/bozuk olsa bile) ona güveniliyordu. Bazı eski
+      // kayıtlarda bu alan satış fiyatının TAMAMINA eşit yanlış
+      // yazılmış olabiliyordu (ör. komisyon mantığı eklenmeden önceki
+      // kayıtlar) — bu durumda satıcıya %100'ü gönderilir, platform
+      // hiç komisyon almazdı. Artık gönderilecek tutar HER ZAMAN satış
+      // fiyatı ve komisyon oranından TAZE hesaplanıyor; kayıtlı
+      // payoutAmount alanına asla güvenilmiyor.
+      const payoutAmount = calculatePayoutAmount(sale.price, sale.commissionRate || PLATFORM_COMMISSION_RATE);
+
+      // ══════════════════════════════════════════════════════════════════
+      //  KURTARMA (RESCUE/RECOVERY) MEKANİZMASI
+      //  Her adım BAŞARILI OLDUĞU AN Firestore'a yazılır. Bir sonraki adım
+      //  hata verirse (ağ kopması, sunucu zaman aşımı vb.), admin butona
+      //  tekrar bastığında işlem SIFIRDAN değil, KALDIĞI YERDEN devam eder:
+      //  - paymentId zaten varsa yeniden oluşturulmaz (çift ödeme riski yok)
+      //  - txid zaten varsa yeniden gönderilmez
+      //  Böylece Pi'ler asla "arada" kaybolmaz; en kötü ihtimalle 'failed'
+      //  durumunda beklemeye devam eder ve aynı butonla güvenle tekrar denenir.
+      // ══════════════════════════════════════════════════════════════════
+      let paymentId = sale.payoutPaymentId || null;
+      let txid = sale.payoutTxid || null;
+
+      try {
+        if (!paymentId) {
+          paymentId = await pi.createPayment({
+            amount: payoutAmount,
+            memo: `Domain satışı: ${sale.domain} (komisyon sonrası)`,
+            metadata: { saleId, domainName: sale.domain, type: 'seller_payout' },
+            uid: sellerUid
+          });
+          await saleRef.set({ payoutStatus: 'processing', payoutPaymentId: paymentId }, { merge: true });
+        }
+
+        if (!txid) {
+          txid = await pi.submitPayment(paymentId);
+          await saleRef.set({ payoutTxid: txid }, { merge: true });
+        }
+
+        await pi.completePayment(paymentId, txid);
+
+        await saleRef.set({
+          payoutStatus: 'released',
+          payoutAt: Date.now(),
+          payoutTxid: txid,
+          payoutPaymentId: paymentId,
+          payoutReleasedBy: await getRealUsername(accessToken)
+        }, { merge: true });
+
+        // ── KALICI GELİR DEFTERİ ──────────────────────────────────────
+        // %5 komisyon, tam olarak ödeme satıcıya serbest bırakıldığı bu anda
+        // "kazanılmış" sayılır ve kalıcı bir belgeye eklenir — domain daha
+        // sonra silinse bile bu rakam asla etkilenmez. (Admin'in kendi
+        // domaini ise geliri zaten satın alma anında tam tutarla
+        // kaydedilmişti, burada tekrar sayılmaz.)
+        if (sale.sellerUsername && sale.sellerUsername !== ADMIN_USERNAME) {
+          const commissionAmt = Math.round((sale.price - payoutAmount) * 1e7) / 1e7;
+          await db.collection('config').doc('platform_stats').set({
+            platformEarnings: FieldValue.increment(commissionAmt)
+          }, { merge: true });
+        }
+
+        // Domain kaydını da güncelle: liste ekranında artık "Onay Aşamasında"
+        // değil, kesin "SATILDI" olarak görünsün. Ödeme kesinleştiği için
+        // domain otomatik olarak PASİFE ALINIR (hidden) — gerçek Pi el
+        // değiştirdiğinden bu domain bir daha asla normal listede veya
+        // "Tekrar Satılık Yap" ile ikinci kez satışa çıkarılamaz; sadece
+        // admin'in "Pasife Alınmış" filtresinde görünür.
+        if (sale.domain) {
+          await db.collection('domains').doc(sale.domain).set({ payoutStatus: 'released', hidden: true }, { merge: true });
+        }
+
+        await sendNotification(sale.sellerUsername, {
+          type: 'payout_released',
+          title: '💸 Ödemeniz Gönderildi!',
+          body: `"${sale.domain}" domain satışınıza ait ${payoutAmount} Pi (komisyon düşülmüş), Pi hesabınıza gönderildi.`,
+          domainName: sale.domain, amount: payoutAmount
+        });
+        // YENİ: Satış tamamen sonuçlandığı (ödeme gerçekten gönderildiği)
+        // an, karşılıklı değerlendirme (puanlama) istemek için en doğru
+        // zaman — daha erken göndermek anlamsız (henüz devir/onay
+        // tamamlanmamış olabilir), daha geç göndermek unutulmaya sebep
+        // olur. Öncesinde hiçbir hatırlatma yoktu, kullanıcılar sadece
+        // kendiliğinden "Panelim"e girip değerlendirirse puan oluşuyordu
+        // — bu yüzden platformda neredeyse hiç değerlendirme birikmiyordu.
+        if (sale.user) {
+          await sendNotification(sale.user, {
+            type: 'rating_reminder',
+            role: 'buyer',
+            title: '⭐ Satıcıyı Değerlendirin',
+            body: `"${sale.domain}" alışverişiniz tamamlandı! Satıcı @${sale.sellerUsername}'i "Panelim → Alımlarım" içinden değerlendirmeyi unutmayın — bu, platformdaki diğer alıcılara yardımcı olur.`,
+            domainName: sale.domain
+          });
+        }
+        if (sale.sellerUsername && sale.user) {
+          await sendNotification(sale.sellerUsername, {
+            type: 'rating_reminder',
+            role: 'seller',
+            title: '⭐ Alıcıyı Değerlendirin',
+            body: `"${sale.domain}" satışınız tamamlandı! Alıcı @${sale.user}'i "Panelim → Gelirim" içinden değerlendirmeyi unutmayın.`,
+            domainName: sale.domain
+          });
+        }
+        await sendTG(TG_CHAT_ID, `💸 *ÖDEME SERBEST BIRAKILDI*\n\n🌐 ${sale.domain}\n👤 @${sale.sellerUsername}\n💰 ${payoutAmount} Pi\n🔑 txid: ${txid}`);
+        await logAdminAction(await getRealUsername(accessToken), 'release_seller_payment', `${sale.domain} → @${sale.sellerUsername}, ${payoutAmount} Pi`);
+
+        return res.status(200).json({ success: true, txid, payoutAmount });
+      } catch (stepError) {
+        const detail = describePiApiError(stepError);
+        // Hangi adımda kaldığını (paymentId/txid) kaydediyoruz ki bir sonraki
+        // deneme sıfırdan başlamasın — Pi'ler güvende, sadece işlem yarım kaldı.
+        await saleRef.set({
+          payoutStatus: 'failed',
+          payoutError: detail,
+          payoutFailedAt: Date.now(),
+          payoutPaymentId: paymentId || null,
+          payoutTxid: txid || null
+        }, { merge: true });
+        return res.status(500).json({
+          error: `Ödeme tamamlanamadı ama Pi'ler kaybolmadı, güvenli havuzda bekliyor: ${detail}. Aynı butona tekrar basarak kaldığı yerden devam ettirebilirsiniz.`
+        });
+      }
+    } catch (e) {
+      const detail = describePiApiError(e);
+      console.error("release_seller_payment hatası:", e);
+      try {
+        await getDb().collection('global_sales').doc(saleId).set({ payoutStatus: 'failed', payoutError: detail, payoutFailedAt: Date.now() }, { merge: true });
+      } catch (_) {}
+      return res.status(500).json({ error: "Ödeme gönderilemedi: " + detail });
+    }
+  }
+
+  // ══════════════════════════════════════════════════════════════════════
+  //  ADMIN: ESCROW — Ödemeyi Alıcıya İade Et
+  //  Domain devrinde bir sorun varsa (satıcı devretmiyor, anlaşmazlık vb.),
+  //  admin satıcıya ödeme göndermek yerine parayı doğrudan alıcıya iade
+  //  edebilir. Aynı adım-adım kurtarma mantığı burada da geçerli.
+  // ══════════════════════════════════════════════════════════════════════
+  if (action === 'refund_buyer_payment') {
+    const { saleId } = req.body;
+    const isAdmin = await verifyAdmin(accessToken, req);
+    if (!isAdmin) return res.status(403).json({ error: "Yetki yok" });
+    if (!saleId) return res.status(400).json({ error: "saleId zorunludur" });
+
+    try {
+      const db = getDb();
+      const saleRef = db.collection('global_sales').doc(saleId);
+      const saleSnap = await saleRef.get();
+      if (!saleSnap.exists) return res.status(404).json({ error: "Satış kaydı bulunamadı" });
+      const sale = saleSnap.data();
+
+      if (sale.payoutStatus === 'released')
+        return res.status(400).json({ error: "Bu ödeme zaten satıcıya gönderilmiş, artık iade edilemez." });
+      if (sale.payoutStatus === 'refunded')
+        return res.status(400).json({ error: "Bu ödeme zaten alıcıya iade edilmiş." });
+      if (!sale.user)
+        return res.status(400).json({ error: "Bu satışın kayıtlı bir alıcısı yok." });
+
+      const buyerDoc = await db.collection('users').doc(sale.user).get();
+      const buyerUid = buyerDoc.exists ? buyerDoc.data().piUid : null;
+      if (!buyerUid) {
+        await sendNotification(sale.user, {
+          type: 'refund_needs_login',
+          title: '💰 İadenizi Almak İçin Giriş Yapın',
+          body: `"${sale.domain}" domaini için ödemeniz iade edilecek! İadenin Pi hesabınıza gönderilebilmesi için lütfen uygulamaya bir kez daha Pi ile giriş yapın.`,
+          domainName: sale.domain
+        });
+        return res.status(400).json({
+          error: `@${sale.user} henüz Pi hesabını uygulamaya bağlamamış (giriş yapmamış). Kendisine giriş yapması gerektiğine dair bildirim gönderildi. İade, alıcı giriş yapana kadar sistem cüzdanında bekleyecek.`
+        });
+      }
+
+      const pi = await getPiClient(db);
+      if (!pi) {
+        return res.status(500).json({
+          error: "Sunucuda escrow ödeme istemcisi yapılandırılmamış (PI_WALLET_PRIVATE_SEED / pi-backend paketi eksik)."
+        });
+      }
+
+      const refundAmount = sale.price;
+      let paymentId = sale.refundPaymentId || null;
+      let txid = sale.refundTxid || null;
+
+      try {
+        if (!paymentId) {
+          paymentId = await pi.createPayment({
+            amount: refundAmount,
+            memo: `İade: ${sale.domain} (domain devri gerçekleşmedi)`,
+            metadata: { saleId, domainName: sale.domain, type: 'buyer_refund' },
+            uid: buyerUid
+          });
+          await saleRef.set({ payoutStatus: 'refund_processing', refundPaymentId: paymentId }, { merge: true });
+        }
+
+        if (!txid) {
+          txid = await pi.submitPayment(paymentId);
+          await saleRef.set({ refundTxid: txid }, { merge: true });
+        }
+
+        await pi.completePayment(paymentId, txid);
+
+        await saleRef.set({
+          payoutStatus: 'refunded',
+          refundAt: Date.now(),
+          refundTxid: txid,
+          refundPaymentId: paymentId,
+          refundIssuedBy: await getRealUsername(accessToken)
+        }, { merge: true });
+
+        // Domaini tekrar satışa aç (devir gerçekleşmediği için) ve alıcının
+        // puanlarını/istatistiklerini geri al — ama satış kaydını (audit
+        // izi için) SİLMİYORUZ, sadece 'refunded' olarak işaretliyoruz.
+        if (sale.domain) {
+          await db.collection('domains').doc(sale.domain).set({
+            sold: false, buyer: null, at: null, txid: null, payoutStatus: null
+          }, { merge: true });
+          try { await updateUserPoints(sale.user, -sale.price, `refund_${sale.domain}`); } catch (_) {}
+        }
+
+        await sendNotification(sale.user, {
+          type: 'refund_issued',
+          title: '💸 Ödemeniz İade Edildi',
+          body: `"${sale.domain}" domaini için ödediğiniz ${refundAmount} Pi, Pi hesabınıza iade edildi.`,
+          domainName: sale.domain, amount: refundAmount
+        });
+        await sendTG(TG_CHAT_ID, `↩️ *ÖDEME İADE EDİLDİ*\n\n🌐 ${sale.domain}\n👤 @${sale.user}\n💰 ${refundAmount} Pi\n🔑 txid: ${txid}`);
+        await logAdminAction(await getRealUsername(accessToken), 'refund_buyer', `${sale.domain} → @${sale.user}, ${refundAmount} Pi`);
+
+        return res.status(200).json({ success: true, txid, refundAmount });
+      } catch (stepError) {
+        const detail = describePiApiError(stepError);
+        await saleRef.set({
+          payoutStatus: 'refund_failed',
+          refundError: detail,
+          refundFailedAt: Date.now(),
+          refundPaymentId: paymentId || null,
+          refundTxid: txid || null
+        }, { merge: true });
+        return res.status(500).json({
+          error: `İade tamamlanamadı ama Pi'ler kaybolmadı, güvenli havuzda bekliyor: ${detail}. Aynı butona tekrar basarak kaldığı yerden devam ettirebilirsiniz.`
+        });
+      }
+    } catch (e) {
+      const detail = describePiApiError(e);
+      console.error("refund_buyer_payment hatası:", e);
+      return res.status(500).json({ error: "İade gönderilemedi: " + detail });
+    }
+  }
+
+  // ── Admin: Ticket Durumunu Güncelle ────────────────────────────────────
+  if (action === 'update_ticket_status') {
+    const { ticketId, status } = req.body;
+    const isAdmin = await verifyAdmin(accessToken, req);
+    if (!isAdmin) return res.status(403).json({ error: "Yetki yok" });
+    const validStatuses = ['new', 'reviewing', 'answered', 'resolved', 'closed'];
+    if (!ticketId || !validStatuses.includes(status)) return res.status(400).json({ error: "Geçersiz parametre" });
+    try {
+      const db = getDb();
+      const ticketRef = db.collection('tickets').doc(ticketId);
+      const snap = await ticketRef.get();
+      if (!snap.exists) return res.status(404).json({ error: "Talep bulunamadı" });
+      const data = snap.data();
+
+      await ticketRef.update({ status, lastUpdate: Date.now() });
+
+      const statusMsgs = {
+        reviewing: { title: '🔍 Talebiniz İnceleniyor', body: `"${data.subject}" konulu talebiniz incelenmeye başlandı.` },
+        answered: { title: '💬 Talebiniz Yanıtlandı', body: `"${data.subject}" konulu talebinize yanıt verildi.` },
+        resolved: { title: '✅ Talep Çözüldü', body: `"${data.subject}" konulu talebiniz çözüldü.` },
+        closed: { title: '📪 Talep Kapatıldı', body: `"${data.subject}" konulu talep kapatıldı.` }
+      };
+      const msg = statusMsgs[status];
+      if (msg) await sendNotification(data.createdBy, { type: 'ticket_status_update', ...msg, ticketId, status });
+
+      return res.status(200).json({ success: true });
+    } catch (e) {
+      console.error("update_ticket_status hatası:", e);
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  // ── Admin: Ticket'a Yanıt Yaz ──────────────────────────────────────────
+  if (action === 'admin_reply_ticket') {
+    const { ticketId, text } = req.body;
+    const isAdmin = await verifyAdmin(accessToken, req);
+    if (!isAdmin) return res.status(403).json({ error: "Yetki yok" });
+    if (!ticketId || !text) return res.status(400).json({ error: "ticketId ve mesaj zorunludur" });
+    try {
+      const db = getDb();
+      const ticketRef = db.collection('tickets').doc(ticketId);
+      const snap = await ticketRef.get();
+      if (!snap.exists) return res.status(404).json({ error: "Talep bulunamadı" });
+      const data = snap.data();
+
+      const now = Date.now();
+      await ticketRef.update({
+        messages: FieldValue.arrayUnion({ from: 'admin', text, timestamp: now }),
+        status: 'answered',
+        lastUpdate: now
+      });
+
+      await sendNotification(data.createdBy, {
+        type: 'ticket_admin_reply',
+        title: '💬 Yöneticiden Yanıt',
+        body: `"${data.subject}" talebinize yönetici yanıt verdi.`,
+        ticketId
+      });
+
+      return res.status(200).json({ success: true });
+    } catch (e) {
+      console.error("admin_reply_ticket hatası:", e);
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  // ── Admin: Ticket'ı Üzerine Al / Bırak ─────────────────────────────────
+  if (action === 'assign_ticket') {
+    const { ticketId, assign } = req.body;
+    const isAdmin = await verifyAdmin(accessToken, req);
+    if (!isAdmin) return res.status(403).json({ error: "Yetki yok" });
+    if (!ticketId) return res.status(400).json({ error: "ticketId zorunludur" });
+    try {
+      const db = getDb();
+      const ticketRef = db.collection('tickets').doc(ticketId);
+      const snap = await ticketRef.get();
+      if (!snap.exists) return res.status(404).json({ error: "Talep bulunamadı" });
+
+      await ticketRef.update({ assignedTo: assign ? ADMIN_USERNAME : null, lastUpdate: Date.now() });
+      return res.status(200).json({ success: true });
+    } catch (e) {
+      console.error("assign_ticket hatası:", e);
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  // ── Ticket Sil (Kullanıcı kendi talebini / Admin herhangi bir talebi) ──
+  if (action === 'delete_ticket') {
+    const { ticketId } = req.body;
+    if (!ticketId) return res.status(400).json({ error: "ticketId zorunludur" });
+
+    const isAdmin = await verifyAdmin(accessToken, req);
+    const realUsername = await getRealUsername(accessToken);
+    if (!realUsername) return res.status(403).json({ error: "Geçersiz oturum" });
+
+    try {
+      const db = getDb();
+      const ticketRef = db.collection('tickets').doc(ticketId);
+      const snap = await ticketRef.get();
+      if (!snap.exists) return res.status(404).json({ error: "Talep bulunamadı" });
+      const data = snap.data();
+
+      // Sadece talebin sahibi ya da admin silebilir
+      if (!isAdmin && data.createdBy !== realUsername) {
+        return res.status(403).json({ error: "Bu talebi silme yetkiniz yok" });
+      }
+
+      await ticketRef.delete();
+
+      // Admin başkasının talebini sildiyse kullanıcıya bilgi ver
+      if (isAdmin && data.createdBy && data.createdBy !== realUsername) {
+        await sendNotification(data.createdBy, {
+          type: 'ticket_deleted',
+          title: '🗑️ Destek Talebiniz Silindi',
+          body: `"${data.subject}" konulu talebiniz yönetici tarafından silindi.`
+        });
+      }
+
+      return res.status(200).json({ success: true });
+    } catch (e) {
+      console.error("delete_ticket hatası:", e);
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  // ── Kullanıcı Profili Getir ───────────────────────────────────────────
+  // ── Favori Ekle/Çıkar ──────────────────────────────────────────────────
+  // ── Satıcıyı Değerlendir (Puanlama) ────────────────────────────────────
+  // Sadece: satış gerçekten release edilmiş (payoutStatus:'released'),
+  // isteği yapan gerçekten o satışın alıcısı, ve daha önce bu satış için
+  // puan verilmemiş olmalı. Domain doc'a buyerRating yazılır (tekrar
+  // puanlamayı engeller) + satıcının user_profiles kaydında ratingSum/
+  // ratingCount artırılır (ortalama puan buradan hesaplanır).
+  // ── Alıcıyı Değerlendir (Satıcı → Alıcı Puanlaması) ────────────────────
+  // submit_seller_rating'in aynası: sadece satış release edilmişse, isteği
+  // yapan gerçekten o satışın satıcısıysa ve daha önce puanlanmamışsa.
+  // Alıcının puanı domain doc'a sellerRatingOfBuyer olarak yazılır (buyerRating
+  // ile karışmasın diye ayrı alan), buyer'ın user_profiles kaydında
+  // buyerRatingSum/buyerRatingCount artırılır (satıcı puanından tamamen ayrı).
+  if (action === 'submit_buyer_rating') {
+    const { domainName, stars, comment } = req.body;
+    const realUsername = await getRealUsername(accessToken);
+    if (!realUsername) return res.status(403).json({ error: "Geçersiz oturum" });
+    const starsNum = parseInt(stars, 10);
+    if (!domainName || !Number.isInteger(starsNum) || starsNum < 1 || starsNum > 5)
+      return res.status(400).json({ error: "Geçersiz puan" });
+    const commentText = comment ? String(comment).trim().slice(0, 300) : null;
+    try {
+      const db = getDb();
+      const domainRef = db.collection('domains').doc(domainName);
+      const domainSnap = await domainRef.get();
+      if (!domainSnap.exists) return res.status(404).json({ error: "Domain bulunamadı" });
+      const data = domainSnap.data();
+      if (data.sellerUsername !== realUsername) return res.status(403).json({ error: "Bu satışın satıcısı siz değilsiniz" });
+      if (data.payoutStatus !== 'released') return res.status(400).json({ error: "Ödeme henüz serbest bırakılmadı, satış tamamlanmadan değerlendirme yapılamaz" });
+      if (data.sellerRatingOfBuyer) return res.status(400).json({ error: "Bu satış için zaten bir değerlendirme yaptınız" });
+      if (!data.buyer) return res.status(400).json({ error: "Bu satışın kayıtlı bir alıcısı yok" });
+
+      const rating = { stars: starsNum, at: Date.now(), by: realUsername, comment: commentText };
+      await domainRef.set({ sellerRatingOfBuyer: rating }, { merge: true });
+      await db.collection('user_profiles').doc(data.buyer).set({
+        buyerRatingSum: FieldValue.increment(starsNum),
+        buyerRatingCount: FieldValue.increment(1)
+      }, { merge: true });
+
+      return res.status(200).json({ success: true });
+    } catch (e) {
+      console.error("submit_buyer_rating hatası:", e);
+      await logSystemError('submit_buyer_rating', e);
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  if (action === 'submit_seller_rating') {
+    const { domainName, stars, comment } = req.body;
+    const realUsername = await getRealUsername(accessToken);
+    if (!realUsername) return res.status(403).json({ error: "Geçersiz oturum" });
+    const starsNum = parseInt(stars, 10);
+    if (!domainName || !Number.isInteger(starsNum) || starsNum < 1 || starsNum > 5)
+      return res.status(400).json({ error: "Geçersiz puan" });
+    const commentText = comment ? String(comment).trim().slice(0, 300) : null;
+    try {
+      const db = getDb();
+      const domainRef = db.collection('domains').doc(domainName);
+      const domainSnap = await domainRef.get();
+      if (!domainSnap.exists) return res.status(404).json({ error: "Domain bulunamadı" });
+      const data = domainSnap.data();
+      if (data.buyer !== realUsername) return res.status(403).json({ error: "Bu satışın alıcısı siz değilsiniz" });
+      if (data.payoutStatus !== 'released') return res.status(400).json({ error: "Ödeme henüz serbest bırakılmadı, satış tamamlanmadan değerlendirme yapılamaz" });
+      if (data.buyerRating) return res.status(400).json({ error: "Bu satış için zaten bir değerlendirme yaptınız" });
+      if (!data.sellerUsername) return res.status(400).json({ error: "Bu satışın kayıtlı bir satıcısı yok" });
+
+      const rating = { stars: starsNum, at: Date.now(), by: realUsername, comment: commentText };
+      await domainRef.set({ buyerRating: rating }, { merge: true });
+      await db.collection('user_profiles').doc(data.sellerUsername).set({
+        ratingSum: FieldValue.increment(starsNum),
+        ratingCount: FieldValue.increment(1)
+      }, { merge: true });
+
+      return res.status(200).json({ success: true });
+    } catch (e) {
+      console.error("submit_seller_rating hatası:", e);
+      await logSystemError('submit_seller_rating', e);
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  // ── Satıcının Ortalama Puanını + Son Yorumlarını Getir (herkese açık) ──
+  // ── Sistem Durumu (Status Page) — herkese açık, basit sağlık göstergesi ──
+  if (action === 'get_system_status') {
+    try {
+      const db = getDb();
+      const snap = await db.collection('system').doc('status').get();
+      // Belge yoksa (henüz admin panelden bir kesinti/bakım bildirimi
+      // girilmediyse) varsayılan olarak "her şey normal çalışıyor" döner.
+      const d = snap.exists ? snap.data() : {};
+      return res.status(200).json({
+        success: true,
+        operational: d.operational !== false,
+        message: d.message || '',
+        updatedAt: d.updatedAt || null
+      });
+    } catch (e) {
+      // Durum servisinin kendisi başarısız olsa bile kullanıcıya hata
+      // göstermek yerine "normal" varsayımıyla düşsün (fail-open) — bir
+      // durum sayfası hatası paniğe yol açmamalı.
+      return res.status(200).json({ success: true, operational: true, message: '' });
+    }
+  }
+
+  if (action === 'get_seller_rating') {
+    const { sellerUsername } = req.body;
+    if (!sellerUsername) return res.status(400).json({ error: "Geçersiz kullanıcı adı" });
+    try {
+      const db = getDb();
+      const snap = await db.collection('user_profiles').doc(sellerUsername).get();
+      const d = snap.exists ? snap.data() : {};
+      const count = d.ratingCount || 0;
+      const avg = count > 0 ? Math.round((d.ratingSum / count) * 10) / 10 : null;
+      // YENİ: "Güvenilir Satıcı" rozeti — yeterince değerlendirme almış
+      // (5+) VE ortalaması yüksek (4.5+) satıcılar otomatik olarak
+      // öne çıkarılıyor. Eşik değerleri burada tek bir yerden yönetiliyor.
+      const isTrusted = count >= TRUSTED_SELLER_MIN_RATINGS && avg !== null && avg >= TRUSTED_SELLER_MIN_AVG;
+
+      // Yazılı yorumları toplamak için: bu satıcının sattığı domainleri
+      // tara, buyerRating.comment dolu olanları en yeniden eskiye sırala.
+      let recentReviews = [];
+      let salesCount = 0;
+      let activeListings = 0;
+      let joinedAt = null;
+      try {
+        const domSnap = await db.collection('domains').where('sellerUsername', '==', sellerUsername).limit(100).get();
+        const withComments = [];
+        domSnap.forEach(dd => {
+          const dData = dd.data();
+          if (dData.sold) salesCount++;
+          // YENİ: "Üyelik" (satıcı profili sayfası) için — kaç aktif ilanı
+          // var ve platforma katılalı ne kadar oldu. Ekstra bir Firestore
+          // okuması gerektirmiyor, zaten çekilen domSnap'ten hesaplanıyor.
+          if (!dData.sold && dData.deleted !== true && dData.hidden !== true) activeListings++;
+          if (dData.createdAt && (joinedAt === null || dData.createdAt < joinedAt)) joinedAt = dData.createdAt;
+          const br = dData.buyerRating;
+          if (br && br.comment) withComments.push({ stars: br.stars, comment: br.comment, at: br.at, domain: dd.id });
+        });
+        withComments.sort((a, b) => b.at - a.at);
+        recentReviews = withComments.slice(0, 5);
+      } catch (_) { /* yorum toplama başarısız olsa da ana puan verisi dönsün */ }
+      // DÜZELTME: joinedAt SADECE domains.createdAt alanına bakıyordu. Bu alan
+      // sonradan eklendiği için, bu güncellemeden ÖNCE listelenmiş (ve o
+      // tarihten beri hiç yeni domain eklememiş) satıcılarda createdAt hiç
+      // yoktu ve "Bilinmiyor" görünüyordu. sell_requests.submittedAt her
+      // zaman var olan, satıcının platforma ilk katıldığı gerçek anı temsil
+      // eden bir alan — bunu da hesaba katıp ikisinin en erkenini kullanıyoruz.
+      try {
+        const reqSnap = await db.collection('sell_requests').where('submittedBy', '==', sellerUsername).limit(100).get();
+        reqSnap.forEach(rd => {
+          const at = rd.data().submittedAt;
+          if (at && (joinedAt === null || at < joinedAt)) joinedAt = at;
+        });
+      } catch (_) { /* eski üyelik tarihi hesaplanamazsa sessizce geç */ }
+      // YENİ: tamamlanmış satış adedine göre kademeli satıcı rozeti.
+      let sellerTier = null;
+      if (salesCount >= SELLER_TIER_GOLD) sellerTier = 'gold';
+      else if (salesCount >= SELLER_TIER_SILVER) sellerTier = 'silver';
+      else if (salesCount >= SELLER_TIER_BRONZE) sellerTier = 'bronze';
+
+      // YENİ: Satıcının en az bir "Sahiplik Doğrulandı" işaretli ilanı var mı?
+      // (ownershipVerified domain bazlı bir alan — satıcı bazında özetliyoruz.)
+      let hasVerifiedListing = false;
+      try {
+        const domSnap2 = await db.collection('domains').where('sellerUsername', '==', sellerUsername).where('ownershipVerified', '==', true).limit(1).get();
+        hasVerifiedListing = !domSnap2.empty;
+      } catch (_) { /* bu sinyal olmadan da skor hesaplanabilir */ }
+
+      // YENİ: Ortalama mesaj yanıt süresi — mesajlaşma sistemi (conversations
+      // koleksiyonu) zaten var, buradan ek bir veri toplama olmadan
+      // hesaplanabiliyor. Her konuşmada, satıcı KONUŞMAYI BAŞLATMADIYSA
+      // (yani karşı taraf ilk mesajı attıysa), satıcının o konuşmadaki İLK
+      // yanıtına kadar geçen süre ölçülüyor, sonra tüm konuşmalardaki bu
+      // sürelerin ortalaması alınıyor.
+      let avgResponseMinutes = null;
+      try {
+        const convSnap = await db.collection('conversations').where('participants', 'array-contains', sellerUsername).limit(50).get();
+        const responseTimes = [];
+        convSnap.forEach(cd => {
+          const msgs = cd.data().messages || [];
+          if (msgs.length < 2 || msgs[0].from === sellerUsername) return;
+          const sellerReply = msgs.find(m => m.from === sellerUsername);
+          if (!sellerReply) return;
+          const diffMinutes = (sellerReply.timestamp - msgs[0].timestamp) / 60000;
+          // 30 günden uzun süren "yanıtları" ortalamaya katmıyoruz — muhtemelen
+          // satıcı o konuşmayı çoktan unutmuş, gerçek bir yanıt süresi sinyali
+          // değil, ortalamayı anlamsızca bozar.
+          if (diffMinutes >= 0 && diffMinutes < 43200) responseTimes.push(diffMinutes);
+        });
+        if (responseTimes.length > 0) {
+          avgResponseMinutes = Math.round(responseTimes.reduce((a, b) => a + b, 0) / responseTimes.length);
+        }
+      } catch (_) { /* yanıt süresi hesaplanamazsa trust score'da nötr puan verilir */ }
+
+      // ══════════════════════════════════════════════════════════════════
+      //  BİRLEŞİK GÜVEN SKORU (0-100) ────────────────────────────────────
+      //  Amaç: puan, doğrulama, satış geçmişi, yanıt hızı ve hesap yaşı gibi
+      //  DAĞINIK sinyalleri alıcının TEK bakışta anlayacağı bir sayıya
+      //  indirgemek. Her bileşen için makul bir üst sınır (ağırlık) var;
+      //  hiçbir veri yokken (ör. hiç değerlendirme almamış yeni bir satıcı)
+      //  o bileşen için CEZALANDIRICI 0 değil, NÖTR bir puan veriliyor —
+      //  aksi halde her yeni satıcı "güvenilmez" görünürdü, ki bu adil değil.
+      // ══════════════════════════════════════════════════════════════════
+      let trustScore = 0;
+      trustScore += count > 0 ? (avg / 5) * 40 : 20;              // Puan — 40
+      trustScore += Math.min(20, salesCount * 2);                  // Satış geçmişi — 20
+      if (hasVerifiedListing) trustScore += 15;                    // Sahiplik doğrulama — 15
+      if (avgResponseMinutes !== null) {                           // Yanıt hızı — 15
+        if (avgResponseMinutes <= 60) trustScore += 15;
+        else if (avgResponseMinutes <= 360) trustScore += 10;
+        else if (avgResponseMinutes <= 1440) trustScore += 5;
+      } else {
+        trustScore += 5;
+      }
+      if (joinedAt) trustScore += Math.min(10, (Date.now() - joinedAt) / 86400000 / 18); // Hesap yaşı — 10
+      trustScore = Math.round(Math.min(100, Math.max(0, trustScore)));
+
+      let trustLevel;
+      if (trustScore >= 80) trustLevel = 'expert';
+      else if (trustScore >= 60) trustLevel = 'trusted';
+      else if (trustScore >= 40) trustLevel = 'growing';
+      else trustLevel = 'new';
+
+      return res.status(200).json({ success: true, avg, count, recentReviews, isTrusted, salesCount, sellerTier, activeListings, joinedAt, hasVerifiedListing, avgResponseMinutes, trustScore, trustLevel });
+    } catch (e) {
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  // ══════════════════════════════════════════════════════════════════════
+  //  Domain Bazlı Fiyat Geçmişi (herkese açık, giriş gerektirmez)
+  //  Bir domain daha önce satılıp tekrar satışa çıkmış olabilir — alıcıya
+  //  "bu domain geçmişte kaça satıldı" bilgisini gösteriyoruz. global_sales
+  //  koleksiyonu zaten her tamamlanmış satışı domain adına göre tutuyor,
+  //  bu yüzden yeni bir veri yapısına gerek yok, sadece bu domaine ait
+  //  kayıtları filtreleyip döndürüyoruz.
+  // ══════════════════════════════════════════════════════════════════════
+  if (action === 'get_domain_price_history') {
+    const { domainName } = req.body;
+    if (!domainName) return res.status(400).json({ error: "Geçersiz domain adı" });
+    try {
+      const db = getDb();
+      const snap = await db.collection('global_sales').where('domain', '==', domainName).get();
+      const history = [];
+      snap.forEach(d => {
+        const x = d.data();
+        history.push({ price: x.price, at: x.at || 0 });
+      });
+      history.sort((a, b) => (b.at || 0) - (a.at || 0));
+      return res.status(200).json({ success: true, history: history.slice(0, 20) });
+    } catch (e) {
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  // ── Alıcının Ortalama Puanını Getir ─────────────────────────────────────
+  if (action === 'get_buyer_rating') {
+    const { buyerUsername } = req.body;
+    if (!buyerUsername) return res.status(400).json({ error: "Geçersiz kullanıcı adı" });
+    try {
+      const db = getDb();
+      const snap = await db.collection('user_profiles').doc(buyerUsername).get();
+      const d = snap.exists ? snap.data() : {};
+      const count = d.buyerRatingCount || 0;
+      const avg = count > 0 ? Math.round((d.buyerRatingSum / count) * 10) / 10 : null;
+      return res.status(200).json({ success: true, avg, count });
+    } catch (e) {
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  // ── Pazarlık / Teklif Sistemi ───────────────────────────────────────────
+  // Bir domain için sabit fiyat dışında, alıcı bir teklif sunabiliyor.
+  // Satıcı (ya da admin) kabul ederse domain fiyatı teklif tutarına
+  // güncellenir ve alıcı normal satın alma akışıyla tamamlayabilir.
+  if (action === 'submit_offer') {
+    const { domainName, offerPrice, message } = req.body;
+    const realUsername = await getRealUsername(accessToken);
+    if (!realUsername) return res.status(403).json({ error: "Geçersiz oturum" });
+    if (!await checkRateLimit(clientIp, 'submit_offer', 10, 60000))
+      return res.status(429).json({ error: "Çok fazla teklif gönderdiniz, lütfen biraz bekleyin." });
+    const priceNum = Number(offerPrice);
+    if (!domainName || !Number.isFinite(priceNum) || priceNum <= 0)
+      return res.status(400).json({ error: "Geçersiz teklif tutarı" });
+    try {
+      const db = getDb();
+      await revertExpiredReservation(db, domainName);
+      const domainSnap = await db.collection('domains').doc(domainName).get();
+      if (!domainSnap.exists) return res.status(404).json({ error: "Domain bulunamadı" });
+      const data = domainSnap.data();
+      if (data.sold === true) return res.status(400).json({ error: "Bu domain zaten satılmış" });
+      if (data.deleted === true || data.hidden === true) return res.status(400).json({ error: "Bu domain artık satışta değil" });
+      if (data.sellerUsername === realUsername) return res.status(400).json({ error: "Kendi domaininize teklif veremezsiniz" });
+
+      // FIX (kök neden — "2. tur teklifler yeni bir tablo olarak çıkıyor"):
+      // Öncesinde her "Teklif Ver" işlemi, o alıcı-domain arasında zaten
+      // devam eden bir müzakere (pending/countered) olsa bile HER ZAMAN
+      // yepyeni bir "offers" kaydı açıyordu. Böylece satıcı karşı teklif
+      // verip alıcı da yeni bir fiyatla tekrar teklif verince, ekranda iki
+      // ayrı, birbirinden habersiz teklif kaydı/tablosu oluşuyordu. Artık
+      // önce bu ikili arasında zaten AÇIK bir müzakere var mı diye
+      // bakıyoruz; varsa yeni kayıt açmak yerine AYNI kaydı güncelliyoruz
+      // — böylece tüm trafik (1. teklif, karşı teklif, 2. teklif, ...)
+      // TEK bir kayıt/tablo üzerinden ilerliyor ve iki taraf da anlık
+      // olarak aynı veriyi görüyor.
+      const existingSnap = await db.collection('offers')
+        .where('domainName', '==', domainName)
+        .where('buyerUsername', '==', realUsername)
+        .get();
+      let existingActiveDoc = null;
+      existingSnap.forEach(d => {
+        const s = d.data().status;
+        if (s === 'pending' || s === 'countered') existingActiveDoc = d;
+      });
+
+      if (existingActiveDoc) {
+        // Aynı müzakereyi sürdür: fiyat/mesaj güncellenir, karşı teklif
+        // bilgisi temizlenir (yeni tur satıcının yanıtını bekliyor),
+        // durum yeniden 'pending' olur. Geçmiş tur bilgisi kaybolmasın diye
+        // önceki teklif/karşı teklif fiyatları "history" dizisine ekleniyor.
+        const prevData = existingActiveDoc.data();
+        const history = Array.isArray(prevData.history) ? prevData.history.slice() : [];
+        history.push({
+          offerPrice: prevData.offerPrice,
+          counterPrice: prevData.counterPrice || null,
+          at: Date.now()
+        });
+        await existingActiveDoc.ref.set({
+          offerPrice: priceNum,
+          message: message ? String(message).trim().slice(0, 300) : null,
+          status: 'pending',
+          counterPrice: null,
+          counterMessage: null,
+          counteredAt: null,
+          history,
+          updatedAt: Date.now()
+        }, { merge: true });
+
+        const notifyTarget2 = data.sellerUsername || ADMIN_USERNAME;
+        await sendNotification(notifyTarget2, {
+          type: 'offer_received',
+          role: 'seller',
+          title: '💬 Yeni Teklif Aldınız',
+          body: `@${realUsername}, "${domainName}" için ${priceNum} Pi yeni teklif sundu (önceki teklifiniz: ${prevData.counterPrice || prevData.offerPrice} Pi).`,
+          domainName
+        });
+        if (notifyTarget2 === ADMIN_USERNAME) {
+          await sendTG(TG_CHAT_ID, `💬 *YENİ TEKLİF (devam eden müzakere)*\n\n🌐 ${domainName}\n👤 @${realUsername}\n💰 Yeni teklif: ${priceNum} Pi`);
+        }
+        return res.status(200).json({ success: true, offerId: existingActiveDoc.id });
+      }
+
+      const offerRef = db.collection('offers').doc();
+      await offerRef.set({
+        domainName,
+        buyerUsername: realUsername,
+        sellerUsername: data.sellerUsername || null,
+        originalPrice: data.price,
+        offerPrice: priceNum,
+        message: message ? String(message).trim().slice(0, 300) : null,
+        status: 'pending',
+        createdAt: Date.now()
+      });
+
+      const notifyTarget = data.sellerUsername || ADMIN_USERNAME;
+      await sendNotification(notifyTarget, {
+        type: 'offer_received',
+        role: 'seller',
+        title: '💬 Yeni Teklif Aldınız',
+        body: `@${realUsername}, "${domainName}" için ${priceNum} Pi teklif etti (liste fiyatı: ${data.price} Pi).`,
+        domainName
+      });
+      if (notifyTarget === ADMIN_USERNAME) {
+        await sendTG(TG_CHAT_ID, `💬 *YENİ TEKLİF*\n\n🌐 ${domainName}\n👤 @${realUsername}\n💰 Teklif: ${priceNum} Pi (liste: ${data.price} Pi)`);
+      }
+
+      return res.status(200).json({ success: true, offerId: offerRef.id });
+    } catch (e) {
+      console.error("submit_offer hatası:", e);
+      await logSystemError('submit_offer', e);
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  // ── Kendi Verdiğim Teklifleri Getir (alıcı) ─────────────────────────────
+  if (action === 'get_my_offers') {
+    const realUsername = await getRealUsername(accessToken);
+    if (!realUsername) return res.status(403).json({ error: "Geçersiz oturum" });
+    try {
+      const db = getDb();
+      const snap = await db.collection('offers').where('buyerUsername', '==', realUsername).get();
+      const offers = [];
+      snap.forEach(d => offers.push({ id: d.id, ...d.data() }));
+      offers.sort((a, b) => b.createdAt - a.createdAt);
+      return res.status(200).json({ success: true, offers });
+    } catch (e) {
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  // ── Domainlerime Gelen Teklifleri Getir (satıcı) ────────────────────────
+  if (action === 'get_received_offers') {
+    const realUsername = await getRealUsername(accessToken);
+    if (!realUsername) return res.status(403).json({ error: "Geçersiz oturum" });
+    try {
+      const db = getDb();
+      // YENİ: 'accepted' teklifler de artık listede kalıyor. Öncesinde bir
+      // teklif kabul edilir edilmez bu sorgudan tamamen düşüyordu — yani
+      // satıcı, "kabul ettim" dedikten sonra 15 dakikalık rezervasyon
+      // süresinde ne olduğunu (alıcı satın aldı mı, süre doldu mu) HİÇBİR
+      // ŞEKİLDE göremiyordu; teklif sanki hiç var olmamış gibi kayboluyordu.
+      // 'countered': satıcının kendi verdiği karşı teklifi de burada
+      // göstermeye devam ediyoruz ki alıcının yanıtını bekleyen teklif
+      // listeden kaybolmasın (aksi halde satıcı ne olduğunu takip edemez).
+      let offers = [];
+      try {
+        const snap = await db.collection('offers').where('sellerUsername', '==', realUsername).where('status', 'in', ['pending', 'countered', 'accepted']).get();
+        snap.forEach(d => offers.push({ id: d.id, ...d.data() }));
+      } catch (idxErr) {
+        // Firestore bu birleşik sorgu için composite index isteyebilir;
+        // index henüz oluşturulmamışsa uygulamanın çökmemesi için daha
+        // basit bir sorguya (sadece sellerUsername) düşüp filtreyi
+        // JS tarafında yapıyoruz.
+        console.error('[get_received_offers] composite index hatası, fallback kullanılıyor:', idxErr.message);
+        const snap = await db.collection('offers').where('sellerUsername', '==', realUsername).get();
+        snap.forEach(d => { const data = d.data(); if (data.status === 'pending' || data.status === 'countered' || data.status === 'accepted') offers.push({ id: d.id, ...data }); });
+      }
+      offers.sort((a, b) => b.createdAt - a.createdAt);
+      return res.status(200).json({ success: true, offers });
+    } catch (e) {
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  // ── Teklife Yanıt Ver (Kabul/Reddet) ────────────────────────────────────
+  if (action === 'respond_offer') {
+    const { offerId, accept } = req.body;
+    const realUsername = await getRealUsername(accessToken);
+    if (!realUsername) return res.status(403).json({ error: "Geçersiz oturum" });
+    if (!offerId) return res.status(400).json({ error: "Geçersiz teklif" });
+    try {
+      const db = getDb();
+      const offerRef = db.collection('offers').doc(offerId);
+      const offerSnap = await offerRef.get();
+      if (!offerSnap.exists) return res.status(404).json({ error: "Teklif bulunamadı" });
+      const offer = offerSnap.data();
+      const isAdmin = await verifyAdmin(accessToken, req);
+      if (offer.sellerUsername !== realUsername && !isAdmin)
+        return res.status(403).json({ error: "Bu teklife yanıt verme yetkiniz yok" });
+      if (offer.status !== 'pending') return res.status(400).json({ error: "Bu teklif zaten yanıtlanmış" });
+
+      if (accept) {
+        const domainRef = db.collection('domains').doc(offer.domainName);
+        const domainSnap = await domainRef.get();
+        if (!domainSnap.exists || domainSnap.data().sold === true)
+          return res.status(400).json({ error: "Domain artık müsait değil" });
+
+        const reservedUntil = Date.now() + OFFER_RESERVATION_MS;
+        const preNegotiationPrice = domainSnap.data().price;
+        await domainRef.set({ price: offer.offerPrice, reservedFor: offer.buyerUsername, reservedUntil, preNegotiationPrice }, { merge: true });
+        await offerRef.set({ status: 'accepted', respondedAt: Date.now() }, { merge: true });
+
+        // Aynı domain için bekleyen diğer teklifler artık geçersiz — fiyat değişti
+        // FIX: iki farklı alanda (domainName + status) eşitlik filtresi
+        // Firestore'da composite index gerektirir; index tanımlı değilse bu
+        // sorgu SESSİZCE değil, doğrudan hata fırlatarak tüm "kabul et"
+        // işlemini (domain zaten rezerve edilmiş olsa bile) 500 hatasına
+        // düşürüyordu. Artık sadece domainName'e göre çekilip durum filtresi
+        // JS tarafında uygulanıyor — hiçbir composite index'e ihtiyaç yok.
+        // FIX 2 (kök neden — "satıldı ama kabul/reddet butonları hâlâ
+        // duruyor"): eskiden sadece 'pending' teklifler geçersiz
+        // sayılıyordu. Eğer başka bir alıcının teklifi o an 'countered'
+        // (satıcının karşı teklif verdiği, henüz yanıt beklenen) durumdaysa,
+        // bu domain satıldıktan SONRA bile o kayıt sonsuza kadar "aktif"
+        // görünmeye devam ediyor, ekranda hâlâ kabul/reddet butonları
+        // çıkıyordu. Artık 'countered' teklifler de aynı şekilde geçersiz
+        // kılınıyor.
+        const otherPending = await db.collection('offers').where('domainName', '==', offer.domainName).get();
+        const batch = db.batch();
+        otherPending.forEach(d => { if (d.id !== offerId && (d.data().status === 'pending' || d.data().status === 'countered')) batch.set(d.ref, { status: 'expired', respondedAt: Date.now() }, { merge: true }); });
+        await batch.commit();
+
+        const minutes = Math.round(OFFER_RESERVATION_MS / 60000);
+        await sendNotification(offer.buyerUsername, {
+          type: 'offer_accepted',
+          role: 'buyer',
+          title: '✅ Teklifiniz Kabul Edildi!',
+          body: `"${offer.domainName}" için ${offer.offerPrice} Pi teklifiniz kabul edildi. Fiyat ${minutes} dakika boyunca ${offer.offerPrice} Pi olarak SİZİN için geçerli ve domain SADECE size rezerve edildi. Bu süre içinde satın almazsanız teklifiniz geçerliliğini kaybeder ve domain eski fiyatıyla tekrar herkese açılır.`,
+          domainName: offer.domainName
+        });
+      } else {
+        await offerRef.set({ status: 'rejected', respondedAt: Date.now() }, { merge: true });
+        await sendNotification(offer.buyerUsername, {
+          type: 'offer_rejected',
+          role: 'buyer',
+          title: '❌ Teklifiniz Reddedildi',
+          body: `"${offer.domainName}" için ${offer.offerPrice} Pi teklifiniz satıcı tarafından reddedildi.`,
+          domainName: offer.domainName
+        });
+      }
+
+      await logAdminAction(realUsername, 'respond_offer', `${offer.domainName}: @${offer.buyerUsername}'in ${offer.offerPrice} Pi teklifi ${accept ? 'kabul edildi' : 'reddedildi'}`);
+      return res.status(200).json({ success: true });
+    } catch (e) {
+      console.error("respond_offer hatası:", e);
+      await logSystemError('respond_offer', e);
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  // ── Kendi Teklifimi Geri Çek ────────────────────────────────────────────
+  if (action === 'withdraw_offer') {
+    const { offerId } = req.body;
+    const realUsername = await getRealUsername(accessToken);
+    if (!realUsername) return res.status(403).json({ error: "Geçersiz oturum" });
+    try {
+      const db = getDb();
+      const offerRef = db.collection('offers').doc(offerId);
+      const offerSnap = await offerRef.get();
+      if (!offerSnap.exists) return res.status(404).json({ error: "Teklif bulunamadı" });
+      const offer = offerSnap.data();
+      if (offer.buyerUsername !== realUsername) return res.status(403).json({ error: "Bu teklif size ait değil" });
+      if (offer.status !== 'pending') return res.status(400).json({ error: "Sadece bekleyen teklifler geri çekilebilir" });
+      await offerRef.set({ status: 'withdrawn', respondedAt: Date.now() }, { merge: true });
+      return res.status(200).json({ success: true });
+    } catch (e) {
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  // ── Karşı Teklif Ver (satıcı) ───────────────────────────────────────────
+  // Satıcı, gelen bir teklifi doğrudan kabul/reddetmek yerine farklı bir
+  // fiyat önerebilir. Teklif 'countered' durumuna geçer, orijinal teklif
+  // tutarı korunur (offerPrice) ama ayrıca counterPrice/counterMessage
+  // alanları eklenir. Alıcı bunu respond_counter_offer ile yanıtlar.
+  if (action === 'counter_offer') {
+    const { offerId, counterPrice, counterMessage } = req.body;
+    const realUsername = await getRealUsername(accessToken);
+    if (!realUsername) return res.status(403).json({ error: "Geçersiz oturum" });
+    const priceNum = Number(counterPrice);
+    if (!offerId || !Number.isFinite(priceNum) || priceNum <= 0)
+      return res.status(400).json({ error: "Geçersiz karşı teklif tutarı" });
+    try {
+      const db = getDb();
+      const offerRef = db.collection('offers').doc(offerId);
+      const offerSnap = await offerRef.get();
+      if (!offerSnap.exists) return res.status(404).json({ error: "Teklif bulunamadı" });
+      const offer = offerSnap.data();
+      const isAdmin = await verifyAdmin(accessToken, req);
+      if (offer.sellerUsername !== realUsername && !isAdmin)
+        return res.status(403).json({ error: "Bu teklife yanıt verme yetkiniz yok" });
+      if (offer.status !== 'pending') return res.status(400).json({ error: "Bu teklif zaten yanıtlanmış" });
+
+      await offerRef.set({
+        status: 'countered',
+        counterPrice: priceNum,
+        counterMessage: counterMessage ? String(counterMessage).trim().slice(0, 300) : null,
+        counteredAt: Date.now()
+      }, { merge: true });
+
+      await sendNotification(offer.buyerUsername, {
+        type: 'offer_countered',
+        role: 'buyer',
+        title: '🔄 Karşı Teklif Aldınız',
+        body: `"${offer.domainName}" için satıcı ${priceNum} Pi karşı teklif sundu (sizin teklifiniz: ${offer.offerPrice} Pi).`,
+        domainName: offer.domainName
+      });
+      await logAdminAction(realUsername, 'counter_offer', `${offer.domainName}: @${offer.buyerUsername}'in ${offer.offerPrice} Pi teklifine ${priceNum} Pi karşı teklif verildi`);
+      return res.status(200).json({ success: true });
+    } catch (e) {
+      console.error("counter_offer hatası:", e);
+      await logSystemError('counter_offer', e);
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  // ── Karşı Teklife Yanıt Ver (alıcı) ─────────────────────────────────────
+  if (action === 'respond_counter_offer') {
+    const { offerId, accept } = req.body;
+    const realUsername = await getRealUsername(accessToken);
+    if (!realUsername) return res.status(403).json({ error: "Geçersiz oturum" });
+    if (!offerId) return res.status(400).json({ error: "Geçersiz teklif" });
+    try {
+      const db = getDb();
+      const offerRef = db.collection('offers').doc(offerId);
+      const offerSnap = await offerRef.get();
+      if (!offerSnap.exists) return res.status(404).json({ error: "Teklif bulunamadı" });
+      const offer = offerSnap.data();
+      if (offer.buyerUsername !== realUsername) return res.status(403).json({ error: "Bu teklif size ait değil" });
+      if (offer.status !== 'countered') return res.status(400).json({ error: "Bu teklif için bekleyen bir karşı teklif yok" });
+
+      if (accept) {
+        const domainRef = db.collection('domains').doc(offer.domainName);
+        const domainSnap = await domainRef.get();
+        if (!domainSnap.exists || domainSnap.data().sold === true)
+          return res.status(400).json({ error: "Domain artık müsait değil" });
+
+        const reservedUntil = Date.now() + OFFER_RESERVATION_MS;
+        const preNegotiationPrice = domainSnap.data().price;
+        await domainRef.set({ price: offer.counterPrice, reservedFor: realUsername, reservedUntil, preNegotiationPrice }, { merge: true });
+        await offerRef.set({ status: 'accepted', respondedAt: Date.now() }, { merge: true });
+
+        // FIX: aynı composite-index riski burada da vardı, aynı şekilde
+        // güvenli hale getirildi (bkz. respond_offer'daki not). Ayrıca
+        // 'countered' durumundaki diğer teklifler de artık geçersiz
+        // sayılıyor (bkz. respond_offer'daki "kök neden" notu).
+        const otherPending = await db.collection('offers').where('domainName', '==', offer.domainName).get();
+        const batch = db.batch();
+        otherPending.forEach(d => { if (d.id !== offerId && (d.data().status === 'pending' || d.data().status === 'countered')) batch.set(d.ref, { status: 'expired', respondedAt: Date.now() }, { merge: true }); });
+        await batch.commit();
+
+        const minutes = Math.round(OFFER_RESERVATION_MS / 60000);
+        await sendNotification(offer.sellerUsername || ADMIN_USERNAME, {
+          type: 'counter_offer_accepted',
+          role: 'seller',
+          title: '✅ Karşı Teklifiniz Kabul Edildi!',
+          body: `"${offer.domainName}" için ${offer.counterPrice} Pi karşı teklifiniz @${realUsername} tarafından kabul edildi. Alıcıya ${minutes} dakikalık öncelikli satın alma süresi tanındı — bu süre içinde satın almazsa domain eski fiyatıyla tekrar herkese açılacak.`,
+          domainName: offer.domainName
+        });
+        // YENİ: Alıcıya da (kendi verdiği kabul işleminin) 15 dakikalık
+        // rezervasyon penceresini ve süresi dolarsa ne olacağını açıkça
+        // teyit eden bir bildirim gönderiliyor — önceden bu bilgi sadece
+        // satıcıya gidiyordu, alıcı ekranda görmeden bilmiyordu.
+        await sendNotification(realUsername, {
+          type: 'offer_accepted',
+          role: 'buyer',
+          title: '✅ Anlaşma Sağlandı!',
+          body: `"${offer.domainName}" için ${offer.counterPrice} Pi karşı teklifi kabul ettiniz. Fiyat ${minutes} dakika boyunca ${offer.counterPrice} Pi olarak SİZİN için geçerli ve domain SADECE size rezerve edildi. Bu süre içinde satın almazsanız teklifiniz geçerliliğini kaybeder ve domain eski fiyatıyla tekrar herkese açılır.`,
+          domainName: offer.domainName
+        });
+      } else {
+        await offerRef.set({ status: 'rejected', respondedAt: Date.now() }, { merge: true });
+        await sendNotification(offer.sellerUsername || ADMIN_USERNAME, {
+          type: 'counter_offer_rejected',
+          role: 'seller',
+          title: '❌ Karşı Teklifiniz Reddedildi',
+          body: `"${offer.domainName}" için ${offer.counterPrice} Pi karşı teklifiniz @${realUsername} tarafından reddedildi.`,
+          domainName: offer.domainName
+        });
+      }
+      await logAdminAction(realUsername, 'respond_counter_offer', `${offer.domainName}: ${offer.counterPrice} Pi karşı teklif ${accept ? 'kabul edildi' : 'reddedildi'}`);
+      return res.status(200).json({ success: true });
+    } catch (e) {
+      console.error("respond_counter_offer hatası:", e);
+      await logSystemError('respond_counter_offer', e);
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  // ── Tüm Teklif Trafiğini Getir (SADECE admin) ───────────────────────────
+  if (action === 'get_all_offers') {
+    const isAdmin = await verifyAdmin(accessToken, req);
+    if (!isAdmin) return res.status(403).json({ error: "Yetki yok" });
+    try {
+      const db = getDb();
+      // Platform büyüdükçe bu koleksiyon da büyüyecek; admin izleme paneli
+      // için en son 500 kayıt yeterli — daha fazlası pratikte okunamaz zaten.
+      const snap = await db.collection('offers').orderBy('createdAt', 'desc').limit(500).get();
+      const offers = [];
+      snap.forEach(d => offers.push({ id: d.id, ...d.data() }));
+      return res.status(200).json({ success: true, offers });
+    } catch (e) {
+      console.error("get_all_offers hatası:", e);
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  // ── Teklifler Sekmesi Rozeti İçin Hafif Sayaç ───────────────────────────
+  // Admin panelindeki "Teklifler" başlığında yeni/bekleyen teklif olduğunu
+  // gösteren küçük bir bildirim rozeti için — get_all_offers gibi 500
+  // kaydın tamamını çekmek yerine sadece 'pending' sayısını döner.
+  if (action === 'get_pending_offers_count') {
+    const isAdmin = await verifyAdmin(accessToken, req);
+    if (!isAdmin) return res.status(403).json({ error: "Yetki yok" });
+    try {
+      const db = getDb();
+      const snap = await db.collection('offers').where('status', '==', 'pending').get();
+      return res.status(200).json({ success: true, count: snap.size });
+    } catch (e) {
+      console.error("get_pending_offers_count hatası:", e);
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  // ── Süresi Dolmuş Rezervasyonu Anında Tetikle (herhangi bir ziyaretçi) ──
+  // "İlk kim domaine bakarsa o an kontrol edilsin" isteği için: frontend,
+  // bir domain kartında süresi geçmiş ama henüz temizlenmemiş bir rezervasyon
+  // fark ettiğinde bu action'ı çağırır. Giriş yapmamış ziyaretçiler de
+  // tetikleyebilsin diye kimlik doğrulaması istemiyoruz — zararsız, idempotent
+  // bir "kendi kendini düzeltme" işlemi olduğu için güvenli. Kötüye kullanımı
+  // önlemek için IP bazlı rate limit var.
+  if (action === 'check_expired_reservation') {
+    const { domainName } = req.body;
+    if (!domainName) return res.status(400).json({ error: "domainName zorunlu" });
+    if (!await checkRateLimit(clientIp, 'check_expired_reservation', 20, 60000))
+      return res.status(429).json({ error: "Çok fazla istek" });
+    try {
+      const db = getDb();
+      await revertExpiredReservation(db, domainName);
+      return res.status(200).json({ success: true });
+    } catch (e) {
+      console.error("check_expired_reservation hatası:", e);
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  // ── Hesap/Veri Silme Talebi (KVKK/GDPR) ─────────────────────────────────
+  // NOT: Burada otomatik/anlık veri silme YAPILMIYOR — kasıtlı bir tasarım
+  // tercihi. Çünkü tamamlanmış satışlar/ödemeler muhasebe ve olası
+  // anlaşmazlık kayıtları için saklanması gerekebilecek finansal kayıtlar;
+  // körü körüne otomatik silme bu kayıtları da yok ederek başka
+  // yükümlülükleri ihlal edebilir. Bunun yerine: talep kayıt altına alınır,
+  // admin'e bildirilir, admin inceleyip (gerekirse kişisel veriyi
+  // anonimleştirerek) manuel olarak sonuçlandırır.
+  if (action === 'request_account_deletion') {
+    const { reason } = req.body;
+    const realUsername = await getRealUsername(accessToken);
+    if (!realUsername) return res.status(403).json({ error: "Geçersiz oturum" });
+    try {
+      const db = getDb();
+      const existing = await db.collection('account_deletion_requests')
+        .where('username', '==', realUsername).where('status', '==', 'pending').get();
+      if (!existing.empty) return res.status(400).json({ error: "Zaten bekleyen bir talebiniz var." });
+
+      const reqRef = db.collection('account_deletion_requests').doc();
+      await reqRef.set({
+        username: realUsername,
+        reason: reason ? String(reason).trim().slice(0, 500) : null,
+        status: 'pending',
+        createdAt: Date.now()
+      });
+
+      await sendTG(TG_CHAT_ID, `🗑️ *HESAP SİLME TALEBİ*\n\n👤 @${realUsername}${reason ? `\n📝 ${reason}` : ''}\n\nAdmin panelinden inceleyip sonuçlandırın.`);
+
+      return res.status(200).json({ success: true });
+    } catch (e) {
+      console.error("request_account_deletion hatası:", e);
+      await logSystemError('request_account_deletion', e);
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  // ── Kendi Silme Talebimin Durumunu Gör ──────────────────────────────────
+  if (action === 'get_my_deletion_request') {
+    const realUsername = await getRealUsername(accessToken);
+    if (!realUsername) return res.status(403).json({ error: "Geçersiz oturum" });
+    try {
+      const db = getDb();
+      const snap = await db.collection('account_deletion_requests')
+        .where('username', '==', realUsername).orderBy('createdAt', 'desc').limit(1).get();
+      if (snap.empty) return res.status(200).json({ success: true, request: null });
+      const doc = snap.docs[0];
+      return res.status(200).json({ success: true, request: { id: doc.id, ...doc.data() } });
+    } catch (e) {
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  // ── Admin: Bekleyen Silme Taleplerini Getir ─────────────────────────────
+  if (action === 'get_deletion_requests') {
+    const isAdmin = await verifyAdmin(accessToken, req);
+    if (!isAdmin) return res.status(403).json({ error: "Yetki yok" });
+    try {
+      const db = getDb();
+      const snap = await db.collection('account_deletion_requests').where('status', '==', 'pending').get();
+      const requests = [];
+      snap.forEach(d => requests.push({ id: d.id, ...d.data() }));
+      requests.sort((a, b) => a.createdAt - b.createdAt);
+      return res.status(200).json({ success: true, requests });
+    } catch (e) {
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  // ── Admin: Silme Talebini Sonuçlandır ────────────────────────────────────
+  if (action === 'resolve_deletion_request') {
+    const { requestId, note } = req.body;
+    const isAdmin = await verifyAdmin(accessToken, req);
+    if (!isAdmin) return res.status(403).json({ error: "Yetki yok" });
+    if (!requestId) return res.status(400).json({ error: "Geçersiz talep" });
+    try {
+      const db = getDb();
+      const reqRef = db.collection('account_deletion_requests').doc(requestId);
+      await reqRef.set({
+        status: 'resolved',
+        resolvedAt: Date.now(),
+        resolvedBy: await getRealUsername(accessToken),
+        resolutionNote: note ? String(note).trim().slice(0, 500) : null
+      }, { merge: true });
+      await logAdminAction(await getRealUsername(accessToken), 'resolve_deletion_request', requestId);
+      return res.status(200).json({ success: true });
+    } catch (e) {
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  if (action === 'toggle_favorite') {
+    const { domainName, addFavorite } = req.body;
+    const realUsername = await getRealUsername(accessToken);
+    if (!realUsername) return res.status(403).json({ error: "Geçersiz oturum" });
+    if (!domainName) return res.status(400).json({ error: "Geçersiz domain adı" });
+    try {
+      const db = getDb();
+      const ref = db.collection('user_profiles').doc(realUsername);
+      // YENİ: satıcılara "kaç kişi favoriledi" bilgisini gösterebilmek için
+      // domain kaydında da bir favoriteCount sayacı tutuluyor. Aynı işlemin
+      // (ör. çift tıklama) sayacı yanlışlıkla iki kez artırmasını/azaltmasını
+      // önlemek için önce mevcut durumu okuyup GERÇEKTEN bir değişiklik
+      // olacaksa sayaç güncelleniyor.
+      const profSnap = await ref.get();
+      const currentFavs = profSnap.exists ? (profSnap.data().favorites || []) : [];
+      const alreadyFav = currentFavs.includes(domainName);
+      if (addFavorite && !alreadyFav) {
+        await ref.set({ favorites: FieldValue.arrayUnion(domainName) }, { merge: true });
+        await db.collection('domains').doc(domainName).set({ favoriteCount: FieldValue.increment(1) }, { merge: true }).catch(() => {});
+      } else if (!addFavorite && alreadyFav) {
+        await ref.set({ favorites: FieldValue.arrayRemove(domainName) }, { merge: true });
+        await db.collection('domains').doc(domainName).set({ favoriteCount: FieldValue.increment(-1) }, { merge: true }).catch(() => {});
+      }
+      return res.status(200).json({ success: true });
+    } catch (e) {
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  // YENİ: Domain detay ekranı görüntülenme sayacı — satıcıların ilanlarına
+  // ne kadar ilgi olduğunu görebilmesi için. Giriş yapmamış ziyaretçiler
+  // için de çalışır (herkese açık bir bilgi). Sayaç kritik olmadığı için
+  // herhangi bir hata sessizce yutulur — sayfanın geri kalanını asla
+  // bozmaz.
+  if (action === 'increment_domain_view') {
+    const { domainName } = req.body;
+    if (!domainName) return res.status(200).json({ success: false });
+    if (!await checkRateLimit(clientIp, 'increment_domain_view', 60, 60000))
+      return res.status(200).json({ success: true });
+    try {
+      const db = getDb();
+      await db.collection('domains').doc(domainName).set({ viewCount: FieldValue.increment(1) }, { merge: true });
+      return res.status(200).json({ success: true });
+    } catch (e) {
+      return res.status(200).json({ success: false });
+    }
+  }
+
+  // ══════════════════════════════════════════════════════════════════════
+  //  KAYITLI ARAMA (Saved Search) — kullanıcı bir kategori/anahtar kelime/
+  //  azami fiyat kombinasyonu kaydeder; bu kritere uyan YENİ bir domain
+  //  eklendiğinde bildirim alır (bkz. notifySavedSearches, add_domain ve
+  //  approve_sell_request içindeki çağrılar).
+  // ══════════════════════════════════════════════════════════════════════
+  if (action === 'save_search') {
+    const { domainType, keyword, maxPrice } = req.body;
+    const realUsername = await getRealUsername(accessToken);
+    if (!realUsername) return res.status(403).json({ error: "Geçersiz oturum" });
+    if (!await checkRateLimit(clientIp, 'save_search', 10, 60000))
+      return res.status(429).json({ error: "Çok fazla istek, lütfen bekleyin." });
+    const cleanKeyword = (keyword || '').toString().trim().slice(0, 60);
+    const cleanType = (domainType || '').toString().trim();
+    const cleanMaxPrice = (maxPrice !== undefined && maxPrice !== null && maxPrice !== '') ? Number(maxPrice) : null;
+    if (!cleanKeyword && !cleanType && (cleanMaxPrice === null || isNaN(cleanMaxPrice) || cleanMaxPrice <= 0))
+      return res.status(400).json({ error: "En az bir arama kriteri (kategori, anahtar kelime veya azami fiyat) girmelisiniz" });
+    try {
+      const db = getDb();
+      // FIX: Kötüye kullanımı/aşırı bildirim spam'ini önlemek için
+      // kullanıcı başına en fazla 10 kayıtlı arama.
+      const existingSnap = await db.collection('saved_searches').where('username', '==', realUsername).get();
+      if (existingSnap.size >= 10)
+        return res.status(400).json({ error: "En fazla 10 kayıtlı arama oluşturabilirsiniz. Yeni eklemek için önce birini silin." });
+      const docRef = await db.collection('saved_searches').add({
+        username: realUsername,
+        domainType: cleanType || null,
+        keyword: cleanKeyword || null,
+        maxPrice: (cleanMaxPrice !== null && !isNaN(cleanMaxPrice) && cleanMaxPrice > 0) ? cleanMaxPrice : null,
+        createdAt: Date.now()
+      });
+      return res.status(200).json({ success: true, id: docRef.id });
+    } catch (e) {
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  if (action === 'get_saved_searches') {
+    const realUsername = await getRealUsername(accessToken);
+    if (!realUsername) return res.status(403).json({ error: "Geçersiz oturum" });
+    try {
+      const db = getDb();
+      const snap = await db.collection('saved_searches').where('username', '==', realUsername).get();
+      const searches = snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+      return res.status(200).json({ success: true, searches });
+    } catch (e) {
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  if (action === 'delete_saved_search') {
+    const { searchId } = req.body;
+    const realUsername = await getRealUsername(accessToken);
+    if (!realUsername) return res.status(403).json({ error: "Geçersiz oturum" });
+    if (!searchId) return res.status(400).json({ error: "Geçersiz ID" });
+    try {
+      const db = getDb();
+      const ref = db.collection('saved_searches').doc(searchId);
+      const snap = await ref.get();
+      if (!snap.exists) return res.status(404).json({ error: "Kayıtlı arama bulunamadı" });
+      if (snap.data().username !== realUsername) return res.status(403).json({ error: "Bu aramayı silme yetkiniz yok" });
+      await ref.delete();
+      return res.status(200).json({ success: true });
+    } catch (e) {
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  // ══════════════════════════════════════════════════════════════════════
+  //  ALICI-SATICI MESAJLAŞMA (Direct Messaging) — bir domain ilanı
+  //  üzerinden iki kullanıcı doğrudan yazışabilir. 'tickets' sistemine çok
+  //  benzer bir desen kullanıyor: her konuşma TEK bir dokümanda,
+  //  'messages' dizisi arrayUnion ile büyüyor. Konu bazlı (domain'e özel)
+  //  olduğu için konuşma ID'si deterministik üretiliyor:
+  //  "domainAdi__kullanici1_kullanici2" (kullanıcı adları alfabetik
+  //  sıralı) — böylece aynı domain için aynı iki kullanıcı arasında ASLA
+  //  birden fazla konuşma dokümanı oluşmaz, tekrar mesajlaşmaya
+  //  başladıklarında hep aynı konuşma devam eder.
+  // ══════════════════════════════════════════════════════════════════════
+  if (action === 'send_message') {
+    const { domainName, conversationId: existingConvId, text: rawText } = req.body;
+    const realUsername = await getRealUsername(accessToken);
+    if (!realUsername) return res.status(403).json({ error: "Geçersiz oturum" });
+    if (!await checkRateLimit(clientIp, 'send_message', 20, 60000))
+      return res.status(429).json({ error: "Çok fazla mesaj gönderildi. Lütfen biraz bekleyip tekrar deneyin." });
+    const text = String(rawText || '').trim().slice(0, 1000);
+    if (!text) return res.status(400).json({ error: "Mesaj boş olamaz" });
+    try {
+      const db = getDb();
+      let conversationId = existingConvId;
+      let otherUsername = null;
+      let convDomainName = domainName;
+
+      if (conversationId) {
+        // Devam eden bir konuşmaya yanıt.
+        const convSnap = await db.collection('conversations').doc(conversationId).get();
+        if (!convSnap.exists) return res.status(404).json({ error: "Konuşma bulunamadı" });
+        const convData = convSnap.data();
+        if (!Array.isArray(convData.participants) || !convData.participants.includes(realUsername))
+          return res.status(403).json({ error: "Bu konuşmaya mesaj gönderme yetkiniz yok" });
+        otherUsername = convData.participants.find(u => u !== realUsername);
+        convDomainName = convData.domainName;
+      } else {
+        // Yeni bir konuşma — domain'in satıcısıyla başlatılır.
+        if (!domainName) return res.status(400).json({ error: "Geçersiz domain adı" });
+        const domainSnap = await db.collection('domains').doc(domainName).get();
+        if (!domainSnap.exists) return res.status(404).json({ error: "Domain bulunamadı" });
+        const sellerUsername = domainSnap.data().sellerUsername;
+        if (!sellerUsername) return res.status(400).json({ error: "Bu domainin bir satıcısı yok, mesaj gönderilemez" });
+        if (sellerUsername === realUsername) return res.status(400).json({ error: "Kendi ilanınıza mesaj gönderemezsiniz" });
+        otherUsername = sellerUsername;
+        const pair = [realUsername, sellerUsername].sort();
+        // FIX: domain adındaki '/' Firestore doküman ID'sini bozar; domain
+        // adları zaten isValidDomainName ile doğrulandığı için pratikte
+        // '/' içermez ama yine de güvenlik payı olarak temizleniyor.
+        const safeDomain = domainName.replace(/[\/\s]/g, '_');
+        conversationId = `${safeDomain}__${pair[0]}_${pair[1]}`;
+      }
+
+      const now = Date.now();
+      const convRef = db.collection('conversations').doc(conversationId);
+      const existing = await convRef.get();
+      if (!existing.exists) {
+        await convRef.set({
+          domainName: convDomainName,
+          participants: [realUsername, otherUsername].sort(),
+          messages: [{ from: realUsername, text, timestamp: now }],
+          lastMessageAt: now,
+          lastMessageBy: realUsername,
+          readBy: { [realUsername]: now }
+        });
+      } else {
+        await convRef.update({
+          messages: FieldValue.arrayUnion({ from: realUsername, text, timestamp: now }),
+          lastMessageAt: now,
+          lastMessageBy: realUsername,
+          [`readBy.${realUsername}`]: now
+        });
+      }
+
+      await sendNotification(otherUsername, {
+        type: 'new_message',
+        title: '💬 Yeni Mesaj',
+        body: `@${realUsername} size "${convDomainName}" hakkında mesaj gönderdi: "${text.length > 80 ? text.slice(0, 80) + '…' : text}"`,
+        domainName: convDomainName,
+        conversationId
+      });
+
+      return res.status(200).json({ success: true, conversationId });
+    } catch (e) {
+      console.error("send_message hatası:", e);
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  if (action === 'get_conversations') {
+    const realUsername = await getRealUsername(accessToken);
+    if (!realUsername) return res.status(403).json({ error: "Geçersiz oturum" });
+    try {
+      const db = getDb();
+      const snap = await db.collection('conversations').where('participants', 'array-contains', realUsername).get();
+      const conversations = [];
+      snap.forEach(doc => {
+        const data = doc.data();
+        const myReadAt = (data.readBy && data.readBy[realUsername]) || 0;
+        const unread = (data.lastMessageAt || 0) > myReadAt && data.lastMessageBy !== realUsername;
+        conversations.push({ id: doc.id, ...data, unread });
+      });
+      conversations.sort((a, b) => (b.lastMessageAt || 0) - (a.lastMessageAt || 0));
+      return res.status(200).json({ success: true, conversations });
+    } catch (e) {
+      console.error("get_conversations hatası:", e);
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  // YENİ (admin-only): Kullanıcılar arası TÜM doğrudan mesajlaşmaları
+  // görüntüleme — moderasyon/denetim amaçlı. Admin bir katılımcı olmadığı
+  // için 'participants array-contains' filtresi kullanılamaz, bu yüzden
+  // TÜM 'conversations' koleksiyonu çekiliyor (ölçek büyüdükçe burası
+  // sayfalama gerektirebilir, ama şimdilik get_admin_earnings'teki tam
+  // koleksiyon taraması ile aynı kabul edilebilir maliyet mantığı geçerli).
+  // ══════════════════════════════════════════════════════════════════════
+  //  AĞ MODU (Testnet/Mainnet) — Admin Panel Menüsü ────────────────────────
+  //  bkz. dosya başındaki getNetworkMode/getPiApiKeyForMode/getWalletSeedForMode
+  // ══════════════════════════════════════════════════════════════════════
+  if (action === 'get_network_mode') {
+    const isAdmin = await verifyAdmin(accessToken, req);
+    if (!isAdmin) return res.status(403).json({ error: "Yetki yok" });
+    try {
+      const db = getDb();
+      const mode = await getNetworkMode(db);
+      // Admin'in, Mainnet'e geçmeden ÖNCE gerekli anahtarların Vercel'de
+      // tanımlı olup olmadığını görebilmesi için (gizli değerleri asla
+      // döndürmeden, sadece "var/yok" bilgisiyle).
+      return res.status(200).json({
+        success: true,
+        mode,
+        mainnetKeysConfigured: !!(process.env.APP_SECRET_MAINNET && process.env.PI_WALLET_PRIVATE_SEED_MAINNET),
+        testnetKeysConfigured: !!(process.env.APP_SECRET_TESTNET || process.env.APP_SECRET)
+      });
+    } catch (e) {
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  if (action === 'set_network_mode') {
+    const { mode: newMode } = req.body;
+    const isAdmin = await verifyAdmin(accessToken, req);
+    if (!isAdmin) return res.status(403).json({ error: "Yetki yok" });
+    if (newMode !== 'testnet' && newMode !== 'mainnet')
+      return res.status(400).json({ error: "Geçersiz mod (testnet veya mainnet olmalı)" });
+    try {
+      const db = getDb();
+      // GÜVENLİK: Mainnet'e geçerken, o anahtarlar Vercel'de tanımlı
+      // DEĞİLSE geçişe İZİN VERİLMİYOR — aksi halde ödemeler sessizce
+      // kırılırdı (anahtar yok -> Pi API'ye istek atılamaz).
+      if (newMode === 'mainnet') {
+        if (!process.env.APP_SECRET_MAINNET || !process.env.PI_WALLET_PRIVATE_SEED_MAINNET) {
+          return res.status(400).json({ error: "Mainnet'e geçilemiyor: Vercel'de APP_SECRET_MAINNET ve/veya PI_WALLET_PRIVATE_SEED_MAINNET tanımlı değil. Önce bu değerleri ekleyip yeniden deploy edin." });
+        }
+      }
+      await db.collection('config').doc('platform_settings').set({
+        piSandboxMode: newMode !== 'mainnet',
+        networkModeChangedAt: Date.now(),
+        networkModeChangedBy: (await getRealUsername(accessToken)) || ADMIN_USERNAME
+      }, { merge: true });
+      _networkModeCache = { mode: newMode, at: Date.now() }; // bu instance'ta anında yansısın
+      piClient = null; _piClientMode = null; // bir sonraki kullanımda doğru anahtarla yeniden kurulsun
+      return res.status(200).json({ success: true, mode: newMode });
+    } catch (e) {
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  if (action === 'get_all_conversations') {
+    const isAdmin = await verifyAdmin(accessToken, req);
+    if (!isAdmin) return res.status(403).json({ error: "Yetki yok" });
+    try {
+      const db = getDb();
+      const snap = await db.collection('conversations').get();
+      const conversations = [];
+      snap.forEach(doc => conversations.push({ id: doc.id, ...doc.data() }));
+      conversations.sort((a, b) => (b.lastMessageAt || 0) - (a.lastMessageAt || 0));
+      // YENİ: get_listing_reports ile AYNI desen — tek bir seenAt zaman
+      // damgasıyla "okunmamış konuşma" sayısı hesaplanıyor. Admin bir
+      // konuşmanın KATILIMCISI olmadığı için (bkz. get_conversations'taki
+      // kullanıcıya özel readBy alanı) burada tüm platform için TEK bir
+      // "admin son ne zaman baktı" zaman damgası kullanılıyor.
+      const seenSnap = await db.collection('system_config').doc('admin_messages_seen').get();
+      const seenAt = seenSnap.exists ? (seenSnap.data().seenAt || 0) : 0;
+      const unseenCount = conversations.filter(c => (c.lastMessageAt || 0) > seenAt).length;
+      return res.status(200).json({ success: true, conversations, unseenCount, seenAt });
+    } catch (e) {
+      console.error("get_all_conversations hatası:", e);
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  // ── Admin: Kullanıcı Mesajları Bildirimini Görüldü Olarak İşaretle ─────
+  if (action === 'mark_admin_messages_seen') {
+    const isAdmin = await verifyAdmin(accessToken, req);
+    if (!isAdmin) return res.status(403).json({ error: "Yetki yok" });
+    try {
+      const db = getDb();
+      const now = Date.now();
+      await db.collection('system_config').doc('admin_messages_seen').set({ seenAt: now }, { merge: true });
+      return res.status(200).json({ success: true, seenAt: now });
+    } catch (e) {
+      console.error("mark_admin_messages_seen hatası:", e);
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  // ══════════════════════════════════════════════════════════════════════
+  //  Pi AD NETWORK — Reklam İzleyerek İlan Öne Çıkarma (backend doğrulama)
+  //  Kaynak: https://github.com/pi-apps/pi-platform-docs/blob/master/platform_API.md
+  //  ("Verify a rewarded ad status" — GET /ads_network/status/:adId).
+  //  KRİTİK: adId istemciden geldiği için asla doğrudan güvenilmiyor —
+  //  Pi'nin kendi sunucusuna sorup mediator_ack_status==='granted'
+  //  olduğunu TEYİT ETMEDEN ödül (öne çıkarma) verilmiyor. Aksi halde
+  //  SDK'yı atlatan biri sahte adId göndererek bedava öne çıkarma
+  //  kazanabilirdi.
+  // ══════════════════════════════════════════════════════════════════════
+  if (action === 'verify_rewarded_ad') {
+    const { adId, domainName } = req.body;
+    const realUsername = await getRealUsername(accessToken);
+    if (!realUsername) return res.status(403).json({ error: "Geçersiz oturum" });
+    if (!adId || !domainName) return res.status(400).json({ error: "Eksik bilgi" });
+    if (!await checkRateLimit(clientIp, 'verify_rewarded_ad', 10, 60000))
+      return res.status(429).json({ error: "Çok fazla istek, lütfen bekleyin." });
+    try {
+      const db = getDb();
+      const domainRef = db.collection('domains').doc(domainName);
+      const domainSnap = await domainRef.get();
+      if (!domainSnap.exists) return res.status(404).json({ error: "Domain bulunamadı" });
+      const domData = domainSnap.data();
+      if (domData.sellerUsername !== realUsername)
+        return res.status(403).json({ error: "Bu ilan size ait değil" });
+      if (domData.sold) return res.status(400).json({ error: "Satılmış bir ilanı öne çıkaramazsınız" });
+
+      const PI_API_KEY = getPiApiKeyForMode(await getNetworkMode(db));
+      if (!PI_API_KEY) return res.status(503).json({ error: "Reklam doğrulama şu anda kullanılamıyor" });
+      const verifyResp = await fetch(`https://api.minepi.com/v2/ads_network/status/${encodeURIComponent(adId)}`, {
+        headers: { 'Authorization': `Key ${PI_API_KEY}` }
+      });
+      if (!verifyResp.ok) return res.status(400).json({ error: "Reklam doğrulanamadı (Pi sunucusuna ulaşılamadı)" });
+      const adStatus = await verifyResp.json();
+      if (adStatus.mediator_ack_status !== 'granted')
+        return res.status(400).json({ error: "Reklam izleme Pi tarafından onaylanmadı, ödül verilemiyor" });
+
+      const BOOST_DURATION_MS = 24 * 60 * 60 * 1000;
+      const boostedUntil = Date.now() + BOOST_DURATION_MS;
+      await domainRef.set({ boostedUntil }, { merge: true });
+      return res.status(200).json({ success: true, boostedUntil });
+    } catch (e) {
+      console.error("verify_rewarded_ad hatası:", e);
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  if (action === 'mark_conversation_read') {
+    const { conversationId } = req.body;
+    const realUsername = await getRealUsername(accessToken);
+    if (!realUsername) return res.status(403).json({ error: "Geçersiz oturum" });
+    if (!conversationId) return res.status(400).json({ error: "Geçersiz ID" });
+    try {
+      const db = getDb();
+      const convRef = db.collection('conversations').doc(conversationId);
+      const snap = await convRef.get();
+      if (!snap.exists) return res.status(404).json({ error: "Konuşma bulunamadı" });
+      if (!Array.isArray(snap.data().participants) || !snap.data().participants.includes(realUsername))
+        return res.status(403).json({ error: "Yetkiniz yok" });
+      await convRef.update({ [`readBy.${realUsername}`]: Date.now() });
+      return res.status(200).json({ success: true });
+    } catch (e) {
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  // ══════════════════════════════════════════════════════════════════════
+  //  WEB PUSH (Tarayıcı Bildirimleri) — kullanıcı bir cihazda/tarayıcıda
+  //  bildirim iznini verince, tarayıcının verdiği "subscription" nesnesi
+  //  (endpoint + şifreleme anahtarları) burada saklanır. Bir kullanıcının
+  //  birden fazla cihazı/tarayıcısı olabileceği için 'user_profiles'
+  //  dokümanında bir DİZİ (pushSubscriptions) olarak tutuluyor; aynı
+  //  endpoint tekrar gelirse (ör. sayfa yenilenince tekrar subscribe
+  //  olunduğunda) eskisinin üzerine yazılır, çoğaltılmaz.
+  // ══════════════════════════════════════════════════════════════════════
+  if (action === 'save_push_subscription') {
+    const { subscription } = req.body;
+    const realUsername = await getRealUsername(accessToken);
+    if (!realUsername) return res.status(403).json({ error: "Geçersiz oturum" });
+    if (!subscription || !subscription.endpoint || !subscription.keys)
+      return res.status(400).json({ error: "Geçersiz abonelik verisi" });
+    try {
+      const db = getDb();
+      const ref = db.collection('user_profiles').doc(realUsername);
+      const snap = await ref.get();
+      const existing = (snap.exists && Array.isArray(snap.data().pushSubscriptions)) ? snap.data().pushSubscriptions : [];
+      // FIX: aynı endpoint zaten kayıtlıysa çoğaltma — üzerine yaz.
+      const filtered = existing.filter(s => s.endpoint !== subscription.endpoint);
+      // Kötüye kullanımı önlemek için kullanıcı başına makul bir cihaz sınırı.
+      filtered.push({ endpoint: subscription.endpoint, keys: subscription.keys, addedAt: Date.now() });
+      const trimmed = filtered.slice(-10);
+      await ref.set({ pushSubscriptions: trimmed }, { merge: true });
+      return res.status(200).json({ success: true });
+    } catch (e) {
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  if (action === 'remove_push_subscription') {
+    const { endpoint } = req.body;
+    const realUsername = await getRealUsername(accessToken);
+    if (!realUsername) return res.status(403).json({ error: "Geçersiz oturum" });
+    try {
+      const db = getDb();
+      const ref = db.collection('user_profiles').doc(realUsername);
+      const snap = await ref.get();
+      const existing = (snap.exists && Array.isArray(snap.data().pushSubscriptions)) ? snap.data().pushSubscriptions : [];
+      const filtered = endpoint ? existing.filter(s => s.endpoint !== endpoint) : [];
+      await ref.set({ pushSubscriptions: filtered }, { merge: true });
+      return res.status(200).json({ success: true });
+    } catch (e) {
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  // YENİ: Leaderboard — puan sistemi (updateUserPoints) zaten aylardır
+  // çalışıyordu ama bunu gösteren hiçbir ekran yoktu; changelog'da bile
+  // "leaderboard yakında geliyor" yazıyordu ama hiç yapılmamıştı. Veri
+  // zaten toplandığı için burada sadece sıralayıp döndürüyoruz.
+  if (action === 'get_leaderboard') {
+    try {
+      const db = getDb();
+      const snap = await db.collection('user_profiles')
+        .orderBy('points', 'desc')
+        .limit(50)
+        .get();
+      const list = [];
+      snap.forEach(d => {
+        const data = d.data();
+        if ((data.points || 0) <= 0) return; // hiç puanı olmayanları listede boşuna gösterme
+        list.push({ username: d.id, points: data.points || 0, badge: data.badge || null });
+      });
+      // Kendi sıramızı da (top 50'de olmasa bile) ayrıca hesaplayıp
+      // döndürüyoruz — kullanıcı listede kendini bulamazsa "kaçıncısın"
+      // bilgisi hâlâ görünsün diye.
+      let myRank = null, myPoints = null;
+      const realUsername = accessToken ? await getRealUsername(accessToken) : null;
+      if (realUsername) {
+        const myIndexInTop = list.findIndex(u => u.username === realUsername);
+        if (myIndexInTop >= 0) {
+          myRank = myIndexInTop + 1;
+          myPoints = list[myIndexInTop].points;
+        } else {
+          const myDoc = await db.collection('user_profiles').doc(realUsername).get();
+          myPoints = myDoc.exists ? (myDoc.data().points || 0) : 0;
+          if (myPoints > 0) {
+            const higherSnap = await db.collection('user_profiles').where('points', '>', myPoints).get();
+            myRank = higherSnap.size + 1;
+          }
+        }
+      }
+      return res.status(200).json({ success: true, list, myRank, myPoints, myUsername: realUsername });
+    } catch (e) {
+      console.error('get_leaderboard hatası:', e);
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  if (action === 'get_user_profile') {
+    // YENİ: Girişten hemen sonra çağrılan bu endpoint'e de rate limit
+    // eklendi — token deneme/kaba kuvvet saldırılarına karşı ek koruma.
+    if (!await checkRateLimit(clientIp, 'get_user_profile', 20, 60000))
+      return res.status(429).json({ error: "Çok fazla istek. Lütfen biraz bekleyin." });
+    const realUsername = await getRealUsername(accessToken);
+    if (!realUsername) return res.status(403).json({ error: "Geçersiz oturum" });
+    try {
+      const db = getDb();
+      const profileSnap = await db.collection('user_profiles').doc(realUsername).get();
+      const profileData = profileSnap.exists ? profileSnap.data() : { points: 0, badge: null };
+      if (!profileData.favorites) profileData.favorites = [];
+
+      const salesSnap = await db.collection('global_sales').where('user', '==', realUsername).get();
+      let totalSpent = 0;
+      const purchases = [];
+      salesSnap.forEach(d => {
+        const data = d.data();
+        purchases.push({ id: d.id, ...data });
+        totalSpent += Number(data.price || 0);
+      });
+
+      const sellReqSnap = await db.collection('sell_requests').where('submittedBy', '==', realUsername).get();
+      const sellRequests = [];
+      const allDomainNamesInRequests = new Set();
+      sellReqSnap.forEach(d => {
+        const data = d.data();
+        allDomainNamesInRequests.add(data.domainName);
+        sellRequests.push({ id: d.id, ...data });
+      });
+
+      let deletedDomainNames = new Set();
+      if (allDomainNamesInRequests.size > 0) {
+        const domainDocs = await Promise.all(
+          Array.from(allDomainNamesInRequests).map(name => db.collection('domains').doc(name).get())
+        );
+        domainDocs.forEach(snap => {
+          if (snap.exists && snap.data().deleted === true) deletedDomainNames.add(snap.id);
+        });
+      }
+      const visibleSellRequests = sellRequests.filter(r => !deletedDomainNames.has(r.domainName));
+
+      const domainsSnap = await db.collection('domains')
+        .where('sellerUsername', '==', realUsername)
+        .where('sold', '==', true)
+        .get();
+      let totalEarned = 0;
+      const soldDomains = [];
+      domainsSnap.forEach(d => {
+        const data = d.data();
+        if (data.deleted === true) return;
+        // FIX (kök neden): Burada eskiden ham satış bedeli (data.price)
+        // toplanıyordu. Ama satıştan %5 platform komisyonu kesiliyor,
+        // satıcıya (bu kullanıcıya) giden gerçek tutar data.payoutAmount
+        // (satış anında zaten hesaplanıp domain kaydına yazılıyor —
+        // bkz. PLATFORM_COMMISSION_RATE). "Toplam Gelir" alanı bu yüzden
+        // satıcının cüzdanına gerçekte GİRMEYECEK olan tutarı gösteriyordu.
+        // Artık net (komisyon düşülmüş) tutar toplanıyor.
+        // 2. FIX: data.payoutAmount, ödeme HENÜZ serbest bırakılmamışken
+        // bile bazı eski/hatalı kayıtlarda satış fiyatına eşit (yanlış)
+        // olabiliyordu. Artık SADECE ödeme gerçekten gönderilmişse
+        // (payoutStatus:'released') saklı değere güveniliyor; aksi
+        // halde her zaman fiyattan taze %95 hesaplanıyor.
+        const netAmount = (data.payoutStatus === 'released' && data.payoutAmount != null)
+          ? Number(data.payoutAmount)
+          : calculatePayoutAmount(data.price || 0, data.commissionRate || PLATFORM_COMMISSION_RATE);
+        totalEarned += netAmount;
+        soldDomains.push({ name: d.id, ...data });
+      });
+
+      const activeListingsSnap = await db.collection('domains')
+        .where('sellerUsername', '==', realUsername)
+        .where('sold', '==', false)
+        .get();
+      const activeListings = [];
+      activeListingsSnap.forEach(d => {
+        const data = d.data();
+        if (data.deleted === true) return;
+        activeListings.push({ name: d.id, ...data });
+      });
+
+      return res.status(200).json({
+        success: true,
+        profile: profileData,
+        purchases,
+        sellRequests: visibleSellRequests,
+        soldDomains,
+        activeListings,
+        totalSpent,
+        totalEarned
+      });
+    } catch (e) {
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  // ── Admin: Toplam Kazanç / Cüzdan Özeti ────────────────────────────────
+  // ── Satış Trendi (Son 30 Gün) ──────────────────────────────────────────
+  if (action === 'get_sales_trend') {
+    const isAdmin = await verifyAdmin(accessToken, req);
+    if (!isAdmin) return res.status(403).json({ error: "Yetki yok" });
+    try {
+      const db = getDb();
+      const now = Date.now();
+      const thirtyDaysAgo = now - 30 * 24 * 3600 * 1000;
+      const snap = await db.collection('domains').where('sold', '==', true).get();
+      // Firestore'da tarih alanına göre range filtresi + eşitlik filtresi
+      // aynı anda index gerektirebileceğinden, güvenli tarafta kalmak için
+      // client tarafta (burada, sunucu kodunda) filtreliyoruz.
+      const byDay = {};
+      for (let i = 0; i < 30; i++) {
+        const d = new Date(now - i * 24 * 3600 * 1000);
+        const key = d.toISOString().slice(0, 10);
+        byDay[key] = { date: key, count: 0, volume: 0 };
+      }
+      snap.forEach(d => {
+        const data = d.data();
+        if (data.deleted === true || !data.at || data.at < thirtyDaysAgo) return;
+        const key = new Date(data.at).toISOString().slice(0, 10);
+        if (byDay[key]) { byDay[key].count++; byDay[key].volume += Number(data.price || 0); }
+      });
+      const trend = Object.values(byDay).sort((a, b) => a.date.localeCompare(b.date));
+      return res.status(200).json({ success: true, trend });
+    } catch (e) {
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  // ── Satış Verisini Dışa Aktarım İçin Getir (CSV, admin'in tarayıcısında oluşturulur) ─
+  // YENİ: Normal bir kullanıcının (admin olmasına gerek yok) SADECE KENDİ
+  // satışlarını (muhasebe/vergi takibi için) CSV olarak dışa aktarabilmesi.
+  // Öncesinde bu özellik sadece admin panelinde vardı — sıradan bir satıcı
+  // kendi satış geçmişini dışa aktaramıyordu.
+  if (action === 'export_my_sales_data') {
+    const realUsername = await getRealUsername(accessToken);
+    if (!realUsername) return res.status(403).json({ error: "Geçersiz oturum" });
+    try {
+      const db = getDb();
+      const snap = await db.collection('domains').where('sold', '==', true).where('sellerUsername', '==', realUsername).get();
+      const rows = [];
+      snap.forEach(d => {
+        const data = d.data();
+        if (data.deleted === true) return;
+        const grossPrice = Number(data.price || 0);
+        // FIX: aynı "sadece ödeme gerçekten serbest bırakıldıysa saklı
+        // değere güven" mantığı burada da uygulanıyor (bkz. yukarıdaki
+        // aynı düzeltme) — CSV dışa aktarımında da satıcı payı yanlış
+        // (komisyonsuz) görünmesin diye.
+        const netEarning = (data.payoutStatus === 'released' && data.payoutAmount != null)
+          ? Number(data.payoutAmount)
+          : calculatePayoutAmount(grossPrice, data.commissionRate || PLATFORM_COMMISSION_RATE);
+        rows.push({
+          domain: d.id,
+          price: grossPrice,
+          netEarning,
+          buyer: data.buyer || '',
+          at: data.at ? new Date(data.at).toISOString() : '',
+          txid: data.txid || '',
+          payoutStatus: data.payoutStatus || ''
+        });
+      });
+      rows.sort((a, b) => (b.at || '').localeCompare(a.at || ''));
+      return res.status(200).json({ success: true, rows });
+    } catch (e) {
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  if (action === 'export_sales_data') {
+    const isAdmin = await verifyAdmin(accessToken, req);
+    if (!isAdmin) return res.status(403).json({ error: "Yetki yok" });
+    try {
+      const db = getDb();
+      const snap = await db.collection('domains').where('sold', '==', true).get();
+      const rows = [];
+      snap.forEach(d => {
+        const data = d.data();
+        if (data.deleted === true) return;
+        rows.push({
+          domain: d.id,
+          price: data.price || 0,
+          buyer: data.buyer || '',
+          sellerUsername: data.sellerUsername || '',
+          at: data.at ? new Date(data.at).toISOString() : '',
+          txid: data.txid || '',
+          payoutStatus: data.payoutStatus || '',
+          type: data.type || ''
+        });
+      });
+      rows.sort((a, b) => (b.at || '').localeCompare(a.at || ''));
+      await logAdminAction(await getRealUsername(accessToken), 'export_sales_data', `${rows.length} satır`);
+      return res.status(200).json({ success: true, rows });
+    } catch (e) {
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  if (action === 'get_admin_earnings') {
+    const isAdmin = await verifyAdmin(accessToken, req);
+    if (!isAdmin) return res.status(403).json({ error: "Yetki yok" });
+    try {
+      const db = getDb();
+
+      const allDomainsSnap = await db.collection('domains').get();
+
+      const salesByDomain = {};
+      const adminOwnSoldDomains = [];
+      const allSalesDetail = [];
+
+      // Bu döngü artık KÜMÜLATİF kazanç toplamlarını hesaplamıyor (o kalıcı
+      // deftere taşındı) — sadece hâlâ var olan/silinmemiş satışların anlık
+      // bir listesini (Satış İstatistikleri sekmesi için) oluşturuyor.
+      allDomainsSnap.forEach(d => {
+        const data = d.data();
+        const price = Number(data.price || 0);
+
+        if (data.deleted === true || data.sold !== true) return;
+
+        salesByDomain[d.id] = (salesByDomain[d.id] || 0) + price;
+
+        allSalesDetail.push({
+          name: d.id,
+          price: data.price,
+          buyer: data.buyer || null,
+          at: data.at || null,
+          sellerUsername: data.sellerUsername || null,
+          type: data.type || 'genel'
+        });
+
+        if (!data.sellerUsername || data.sellerUsername === ADMIN_USERNAME) {
+          adminOwnSoldDomains.push({
+            name: d.id,
+            price: data.price,
+            buyer: data.buyer || null
+          });
+        }
+      });
+
+      // ── KALICI GELİR DEFTERİ → ARTIK HER SEFERİNDE TAZE HESAPLANIYOR ────
+      // FIX (kök neden — "%5 komisyon 0.005 yerine 0.01 gösteriyor" gibi
+      // hatalar): Öncesinde bu sayılar SADECE İLK KEZ domain kayıtlarından
+      // hesaplanıyor, sonrasında Firestore'daki "platform_stats" belgesine
+      // kalıcı olarak yazılıp SONSUZA KADAR o önbelleğe güveniliyordu — her
+      // ödeme serbest bırakıldığında da üzerine ekleniyordu (increment).
+      // Sorun şu: eğer bu increment bir ödeme akışında (ör. bir ödemenin
+      // ağ hatası/uid hatası yüzünden retry edilmesi gibi bir kenar
+      // durumda) YANLIŞLIKLA iki kez tetiklenirse, önbellekteki sayı
+      // KALICI OLARAK bozuluyor ve bir daha KENDİLİĞİNDEN asla düzelmiyordu
+      // — elle veri düzeltmesi gerekiyordu.
+      // Artık önbelleğe hiç güvenilmiyor: bu action her çağrıldığında,
+      // TÜM domain kayıtları taranarak sıfırdan (ground truth'tan) yeniden
+      // hesaplanıyor. Bu, geçmişte oluşmuş her türlü çifte-sayım/senkron
+      // hatasını otomatik olarak, elle müdahale gerekmeden düzeltir —
+      // gösterilen rakam her zaman "domains" koleksiyonundaki gerçek
+      // payoutStatus/price/payoutAmount alanlarının doğrudan yansımasıdır.
+      // (platform_stats belgesine yine de referans/debug amaçlı yazılıyor,
+      // ama artık OKUMA tarafında asla güvenilmiyor.)
+      let totalVolume = 0, userOwnedVolume = 0, userOwnedVolumeNet = 0, adminOwnEarnings = 0, platformEarnings = 0;
+      allDomainsSnap.forEach(d => {
+        const data = d.data();
+        const price = Number(data.price || 0);
+        if (data.deleted === true || data.sold !== true) return;
+        totalVolume += price;
+        if (data.sellerUsername) {
+          userOwnedVolume += price;
+          // YENİ: "Satıcılara Ait Pay" kartı önceden BRÜT tutarı (komisyon
+          // düşülmemiş) gösteriyordu — etiketi "satıcılara ait pay" dese
+          // bile rakamın kendisi satıcıların gerçekte eline geçecek NET
+          // tutar değildi. Artık her domain için ayrı ayrı %5 (veya o
+          // domaine özel commissionRate) düşülüp toplanıyor.
+          userOwnedVolumeNet += calculatePayoutAmount(price, data.commissionRate || PLATFORM_COMMISSION_RATE);
+          if (data.sellerUsername === ADMIN_USERNAME) {
+            // Admin'in kendi domaini: escrow/serbest bırakma adımı yok,
+            // satış anında kesinleşmiş sayılır.
+            adminOwnEarnings += price;
+          } else if (data.payoutStatus === 'released') {
+            // %5 komisyon SADECE ödeme satıcıya gerçekten serbest
+            // bırakılmışsa (payoutStatus:'released') kazanılmış sayılır.
+            const releasedPayout = Number(data.payoutAmount || calculatePayoutAmount(price));
+            platformEarnings += (price - releasedPayout);
+          }
+        } else {
+          adminOwnEarnings += price;
+        }
+      });
+      totalVolume = Math.round(totalVolume * 1e7) / 1e7;
+      userOwnedVolume = Math.round(userOwnedVolume * 1e7) / 1e7;
+      userOwnedVolumeNet = Math.round(userOwnedVolumeNet * 1e7) / 1e7;
+      adminOwnEarnings = Math.round(adminOwnEarnings * 1e7) / 1e7;
+      platformEarnings = Math.round(platformEarnings * 1e7) / 1e7;
+      // Referans/debug amaçlı kaydediyoruz (okuma tarafı artık buna
+      // güvenmiyor, sadece Sistem Kontrolü gibi araçlar için bilgi amaçlı).
+      db.collection('config').doc('platform_stats').set({
+        totalVolume, userOwnedVolume, userOwnedVolumeNet, platformEarnings, adminOwnEarnings, statsVersion: 3, recalculatedAt: Date.now()
+      }).catch(e => console.error('[platform_stats] referans yazımı başarısız (önemsiz):', e.message));
+
+      allSalesDetail.sort((a, b) => (b.at || 0) - (a.at || 0));
+
+      return res.status(200).json({
+        success: true,
+        totalVolume,
+        userOwnedVolume,
+        userOwnedVolumeNet,
+        platformEarnings,
+        adminOwnEarnings,
+        adminOwnSoldDomains,
+        allSalesDetail,
+        salesByDomain
+      });
+    } catch (e) {
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  // ── Onaya Gelen Domain Detayı (Admin) ──────────────────────────────────
+  if (action === 'get_sell_request_detail') {
+    const { requestId } = req.body;
+    const isAdmin = await verifyAdmin(accessToken, req);
+    if (!isAdmin) return res.status(403).json({ error: "Yetki yok" });
+    if (!requestId) return res.status(400).json({ error: "Geçersiz istek ID" });
+    try {
+      const db = getDb();
+      const snap = await db.collection('sell_requests').doc(requestId).get();
+      if (!snap.exists) return res.status(404).json({ error: "Öneri bulunamadı" });
+      return res.status(200).json({ success: true, detail: { id: snap.id, ...snap.data() } });
+    } catch (e) {
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  // ── Ödeme Mutabakatı Raporu (Admin) ──────────────────────────────────
+  // YENİ (önceden arayüzde butonu/metni vardı ama bu action hiç
+  // uygulanmamıştı — istek her zaman aşağıdaki genel Pi ödeme akışına
+  // düşüp "paymentId zorunludur" hatası veriyordu).
+  //
+  // Ne yapıyor: Pi Platform'un KENDİ resmi "incomplete_server_payments"
+  // uç noktasını (pi-backend SDK'sındaki getIncompleteServerPayments())
+  // çağırıyor. Bu, Pi'nin sunucularının "uygulama tarafından oluşturuldu
+  // ama tamamlanmadı" olarak işaretlediği ödemelerin GERÇEK listesidir —
+  // yani platformumuzun kendi tahmini/araması değil, doğrudan Pi'nin
+  // kayıtları. Bunlar özellikle satıcı ödemeleri (seller_payout) ve
+  // alıcı iadeleri (buyer_refund) için oluşturuluyor (bkz. adminReleasePayout
+  // ve iade akışındaki pi.createPayment çağrıları, metadata:{saleId,
+  // domainName,type} ile işaretleniyor).
+  //
+  // Her kayıt için Firestore'daki ilgili domain/satış kaydına bakıp
+  // "bu ödeme bizim tarafımızda ne durumda görünüyor" bilgisini
+  // (domainStatus) ekliyoruz — admin böylece "Pi'de bekliyor ama bizim
+  // sistemde payoutStatus hâlâ 'processing'" gibi bir tutarsızlığı
+  // hemen görebiliyor. HİÇBİR otomatik tamamlama/iptal YAPILMIYOR —
+  // sadece bilgi amaçlı, admin elle karar verip ilerliyor (bkz. arayüz
+  // metni: "Otomatik bir işlem yapılmaz").
+  if (action === 'reconcile_incomplete_payments') {
+    const isAdmin = await verifyAdmin(accessToken, req);
+    if (!isAdmin) return res.status(403).json({ error: "Yetki yok" });
+    try {
+      const db = getDb();
+      const pi = await getPiClient(db);
+      if (!pi) {
+        return res.status(500).json({ error: "Sunucuda escrow ödeme istemcisi yapılandırılmamış (PI_WALLET_PRIVATE_SEED / pi-backend paketi eksik)." });
+      }
+
+      const incompleteRaw = await pi.getIncompleteServerPayments();
+      // NOT: pi-backend paketinin TypeScript tip tanımı (index.d.ts)
+      // Promise<Array<PaymentDTO>> dönüyormuş gibi gösteriyor, ama gerçek
+      // implementasyonu (dist/index.js) Pi API'sinin ham JSON gövdesini
+      // ({ incomplete_server_payments: [...] }) olduğu gibi döndürüyor —
+      // yani bir dizi değil, diziyi İÇİNDE barındıran bir nesne. Paketin
+      // tip tanımıyla gerçek davranışı arasındaki bu tutarsızlık az önce
+      // "(incomplete || []).map is not a function" hatasına yol açtı.
+      // Her iki ihtimale de (ileride paket güncellenip gerçekten dizi
+      // dönmeye başlarsa dahi) karşı dayanıklı olsun diye kontrol ediyoruz.
+      const incomplete = Array.isArray(incompleteRaw)
+        ? incompleteRaw
+        : (incompleteRaw && Array.isArray(incompleteRaw.incomplete_server_payments))
+          ? incompleteRaw.incomplete_server_payments
+          : [];
+
+      const payments = await Promise.all((incomplete || []).map(async (p) => {
+        const meta = p.metadata || {};
+        const domainName = meta.domainName || null;
+        let domainStatus = 'Bilinmiyor (eşleşen domain kaydı yok)';
+        let possibleUsername = null;
+
+        if (domainName) {
+          try {
+            const domainSnap = await db.collection('domains').doc(domainName).get();
+            if (domainSnap.exists) {
+              const dd = domainSnap.data();
+              if (meta.type === 'seller_payout') {
+                possibleUsername = dd.sellerUsername || null;
+                domainStatus = `payoutStatus: ${dd.payoutStatus || 'yok'}`;
+              } else if (meta.type === 'buyer_refund') {
+                possibleUsername = dd.buyer || null;
+                domainStatus = `refundStatus: ${dd.refundStatus || 'yok'}`;
+              } else {
+                possibleUsername = dd.buyer || dd.sellerUsername || null;
+                domainStatus = dd.sold ? 'satılmış' : 'satılmamış';
+              }
+            } else {
+              domainStatus = 'Domain kaydı bulunamadı (silinmiş olabilir)';
+            }
+          } catch (e) {
+            domainStatus = 'Domain kaydı okunurken hata oluştu';
+          }
+        }
+
+        return {
+          paymentId: p.identifier,
+          amount: p.amount,
+          txid: p.transaction && p.transaction.txid ? p.transaction.txid : null,
+          domainName: domainName || (meta.saleId ? `(saleId: ${meta.saleId})` : null),
+          possibleUsername,
+          domainStatus,
+          type: meta.type || null,
+          status: p.status || null
+        };
+      }));
+
+      return res.status(200).json({ success: true, count: payments.length, payments });
+    } catch (e) {
+      console.error('[Reconcile] hata:', e.message);
+      await logSystemError('reconcile_incomplete_payments', e);
+      return res.status(500).json({ error: "Mutabakat raporu alınamadı: " + e.message });
+    }
+  }
+
+  // ══════════════════════════════════════════════════════════════════════
+  //  Pi Ödeme Akışı (approve / complete / cancel)
+  // ══════════════════════════════════════════════════════════════════════
+  // GÜVENLİK DÜZELTMESİ: 'username' artık `let` — Pi API çağrısından hemen
+  // sonra, 'approve'/'complete' adımlarında bu değer accessToken ile
+  // doğrulanmış gerçek kullanıcı adıyla DEĞİŞTİRİLİYOR (aşağıya bakın).
+  // Önceden bu alan doğrudan client body'sinden (tarayıcıdaki JS
+  // değişkeninden) alınıyordu — DevTools/proxy ile kolayca değiştirilebilir
+  // bir değerdi ve alıcı, rezervasyon sahibi, "kendi ilanı" kontrolleri hep
+  // buna göre yapılıyordu. Artık sadece bilgilendirme/loglama amaçlı bir
+  // ilk değer olarak tutuluyor, güvenlik kararlarında KULLANILMIYOR.
+  let { paymentId, txid, username, domainName } = req.body;
+  const clientSuppliedUsername = username;
+
+  if (!paymentId) return res.status(400).json({ error: "paymentId zorunludur" });
+
+  const allowedActions = ['approve', 'complete', 'cancel'];
+  if (!allowedActions.includes(action)) return res.status(400).json({ error: "Geçersiz action" });
+
+  // YENİ: Ödeme akışı (satın alma) için rate limiting eklendi — daha önce
+  // hiç yoktu, bu da otomatikleştirilmiş kötüye kullanıma (bot ile ardı
+  // ardına sahte ödeme denemesi) açık bırakıyordu.
+  if (!await checkRateLimit(clientIp, 'payment_action', 20, 60000))
+    return res.status(429).json({ error: "Çok fazla ödeme isteği. Lütfen biraz bekleyip tekrar deneyin." });
+
+  if (action === 'cancel') {
+    if (domainName && !username) {
+      return res.status(400).json({ error: "cancel işlemi için username gerekli" });
+    }
+  }
+
+  // YENİ (yarış durumu sertleştirmesi — kısım 1/2): 'approve' adımında,
+  // kullanıcı Pi cüzdanından ödemeyi imzalamadan ÖNCE domain hâlâ müsait mi
+  // diye erkenden bakıyoruz. Bu, iki kişinin aynı domaine neredeyse aynı
+  // anda "Satın Al" bastığı durumda birinin daha en baştan (parasını hiç
+  // göndermeden) net bir hata almasını sağlar — yarış penceresini önemli
+  // ölçüde daraltır. (Asıl kesin koruma 'complete' adımındaki transaction'da;
+  // bu sadece erken/ucuz bir ön-kontrol, %100 garanti değil çünkü blockchain
+  // işlemi kullanıcı tarafında gerçekleşiyor.)
+  if (action === 'approve' && domainName) {
+    try {
+      const db = getDb();
+      await revertExpiredReservation(db, domainName);
+      const domainSnap = await db.collection('domains').doc(domainName).get();
+      if (domainSnap.exists) {
+        const dData = domainSnap.data();
+        if (dData.sold === true) {
+          return res.status(409).json({ error: "Bu domain az önce başka biri tarafından satın alındı." });
+        }
+        // YENİ: Bir domainin SATICISI, kendi ilanını satın alamaz. Bu özellikle
+        // teklif kabul edilip 15 dakikalık rezervasyon başladığında karışıklığa
+        // yol açıyordu: satıcı "anlaşma sağlandı, şimdi ne yapmalıyım" diye
+        // domain sayfasına gidip oradaki "Satın Al" butonuna basıyor (buton
+        // eskiden herkese, satıcıya bile açıktı — bkz. index.html düzeltmesi),
+        // Pi cüzdanı açılıp birkaç saniye "işliyor" göründükten SONRA burada
+        // reddediliyordu. Bu kontrolü en başa, gerçek Pi API çağrısından
+        // (dolayısıyla herhangi bir para hareketinden) ÖNCEYE koyuyoruz —
+        // hem net bir hata mesajı dönüyor hem de kullanıcı boşuna Pi
+        // cüzdanında onay vermiş olmuyor.
+        // İSTİSNA: sadece admin, kendi test/deneme amaçlı satın alımlarını
+        // yapabilsin diye bu kontrolden BİLEREK muaf tutuluyor — normal
+        // kullanıcılar için engel aynen geçerli.
+        const requesterUsername = await getRealUsername(accessToken);
+        if (dData.sellerUsername && requesterUsername && dData.sellerUsername === requesterUsername && requesterUsername !== ADMIN_USERNAME) {
+          return res.status(403).json({ error: "Bu domainin satıcısı sizsiniz — kendi ilanınızı satın alamazsınız.", ownListing: true });
+        }
+        // Anlaşılan teklif sonrası öncelik penceresi: bu süre boyunca domain
+        // SADECE anlaşan alıcıya satılabilir, başkası denerse engellenir.
+        if (dData.reservedFor && dData.reservedUntil && dData.reservedUntil > Date.now()) {
+          const buyerUsername = requesterUsername || await getRealUsername(accessToken);
+          if (buyerUsername !== dData.reservedFor) {
+            const minutesLeft = Math.ceil((dData.reservedUntil - Date.now()) / 60000);
+            return res.status(409).json({ error: `Bu domain şu anda anlaşma sağlanan bir alıcı için ayrılmış. ${minutesLeft} dakika sonra herkese açılacak.`, reserved: true, reservedUntil: dData.reservedUntil });
+          }
+        }
+      }
+    } catch (e) {
+      console.error("approve ön-kontrol hatası:", e);
+      // Kontrol başarısız olursa akışı durdurmuyoruz (Pi API zaten kendi
+      // içinde onaylayacak) — sadece erken uyarı bir bonus, engel değil.
+    }
+  }
+
+  const PI_API_KEY = getPiApiKeyForMode(await getNetworkMode(getDb()));
+  const body = action === 'complete' ? { txid } : {};
+  const url = `https://api.minepi.com/v2/payments/${paymentId}/${action}`;
+
+  try {
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: { 'Authorization': `Key ${PI_API_KEY}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+
+    let data;
+    try { data = await response.json(); } catch (e) { data = {}; }
+
+    if (!response.ok) {
+      console.error("Pi API hatası:", action, paymentId, data);
+      return res.status(response.status).json({ error: "Pi API hatası", details: data });
+    }
+
+    // GÜVENLİK DÜZELTMESİ: aşağıdaki tüm alıcı/rezervasyon/"kendi ilanı"
+    // kontrolleri ve Firestore yazımı artık body'den gelen (spoof
+    // edilebilir) username yerine, accessToken'dan doğrulanan gerçek
+    // kullanıcı adını kullanıyor. accessToken doğrulanamazsa işlem
+    // tamamlanmıyor — para Pi blockchain'inde zaten alınmış olsa bile,
+    // domain hiçbir zaman güvenilmeyen bir "buyer" değeriyle işaretlenmiyor;
+    // bunun yerine admin'e acil bildirim gidiyor ki elle çözülebilsin.
+    if (action === 'complete' && domainName) {
+      const verifiedUsername = await getRealUsername(accessToken);
+      if (!verifiedUsername) {
+        console.error(`[GÜVENLİK] complete adımı accessToken doğrulanamadan çağrıldı. paymentId:${paymentId} domainName:${domainName} body_username:${clientSuppliedUsername} txid:${txid}`);
+        await logSystemError('complete_unverified_identity', new Error('Payment completed on Pi but requester identity could not be verified via accessToken'), `paymentId:${paymentId} Domain:${domainName} Txid:${txid} body_username:${clientSuppliedUsername} — MANUEL İNCELEME GEREKİYOR`);
+        await sendTG(TG_CHAT_ID, `🚨 *ACİL — KİMLİK DOĞRULANAMADI / MANUEL İNCELEME GEREKİYOR*\n\nBir ödeme Pi tarafında tamamlandı (txid: ${txid}, domain: ${domainName}) ama isteği yapan kullanıcının kimliği accessToken ile doğrulanamadı. Bildirilen kullanıcı adı: @${clientSuppliedUsername || 'yok'}. Elle incelenip gerekirse iade edilmesi gerekiyor.`);
+        await sendNotificationToAdmin({
+          type: 'unverified_identity_refund_needed',
+          title: '🚨 Acil: Kimlik Doğrulanamadı (Elle İnceleme)',
+          body: `Ödeme Pi'de tamamlandı (txid: ${txid}, domain: ${domainName}) ama kimlik doğrulanamadı. Bildirilen kullanıcı: @${clientSuppliedUsername || 'yok'}.`,
+          domainName, buyer: clientSuppliedUsername || null, txid
+        });
+        return res.status(401).json({ error: "Kimliğiniz doğrulanamadı. Paranız alındıysa destek ekibine otomatik bildirim gitti, en kısa sürede sizinle iletişime geçilecek.", raceCondition: true });
+      }
+      // Client'ın gönderdiği username ile doğrulanan gerçek kullanıcı adı
+      // uyuşmuyorsa (ör. biri isteği elle değiştirmeye çalışmışsa), bunu
+      // logluyoruz ama işlemi DOĞRULANMIŞ kimlikle devam ettiriyoruz —
+      // spoof denemesi böylece hem engellenmiş hem kayıt altına alınmış olur.
+      if (clientSuppliedUsername && clientSuppliedUsername !== verifiedUsername) {
+        console.error(`[GÜVENLİK] username uyuşmazlığı — body:'${clientSuppliedUsername}' accessToken:'${verifiedUsername}' paymentId:${paymentId} domainName:${domainName}`);
+        await logSystemError('complete_username_mismatch', new Error('Client-supplied username did not match accessToken identity — possible spoof attempt'), `body_username:${clientSuppliedUsername} verified_username:${verifiedUsername} paymentId:${paymentId} Domain:${domainName} Txid:${txid}`);
+      }
+      username = verifiedUsername;
+    }
+
+    if (action === 'complete' && domainName && username) {
+      let purchaseCode = null;
+      let raceLost = false;
+      try {
+        const db = getDb();
+        const domainRef = db.collection('domains').doc(domainName);
+
+        // Transaction'a girmeden önce süresi dolmuş bir rezervasyon varsa
+        // geri alıyoruz — böylece aşağıdaki transaction, güncel/doğru
+        // reservedFor durumuna bakar.
+        await revertExpiredReservation(db, domainName);
+
+        // ── GÜVENLİK: Ödemenin GERÇEKTEN ne kadar olduğunu Pi'nin kendi
+        // kaydından doğruluyoruz. Ödeme tutarı istemci tarafında
+        // (Pi.createPayment) belirlendiği için client'ın beyanına
+        // GÜVENİLMİYOR — sadece Pi'nin sunucusunun söylediğine güveniliyor.
+        // Bu isteği transaction'ın DIŞINDA atıyoruz çünkü Firestore
+        // transaction'ları çakışma olursa otomatik tekrar denenebiliyor;
+        // içeride dış bir ağ isteği tutmak hem gereksiz tekrara hem de
+        // gereksiz yere uzayan bir kilide yol açardı.
+        const paymentDetails = await fetchPiPaymentDetails(paymentId, db);
+        if (!paymentDetails) {
+          console.error(`[GÜVENLİK] Ödeme detayı doğrulanamadan complete denendi. paymentId:${paymentId} domainName:${domainName} txid:${txid} @${username}`);
+          await logSystemError('complete_amount_unverifiable', new Error('Could not fetch payment details from Pi to verify amount'), `paymentId:${paymentId} Domain:${domainName} Txid:${txid} @${username}`);
+          return res.status(503).json({ error: "Ödemeniz şu anda doğrulanamadı, lütfen birkaç saniye sonra tekrar deneyin. Sorun devam ederse destek ekibiyle iletişime geçin." });
+        }
+
+        // YENİ (yarış durumu sertleştirmesi — ASIL KORUMA): Öncesinde burada
+        // "oku, kontrol et, sonra yaz" ayrı ayrı adımlardı — iki ödeme
+        // neredeyse aynı anda 'complete' olursa (ikisi de gerçek Pi
+        // blockchain'inde zaten tamamlanmıştı), ikisi de "sold !== true"
+        // görüp ikisi de yazabiliyordu; ikinci yazan birincinin kaydının
+        // ÜZERİNE yazıyordu — yani biri gerçekten Pi ödedi ama hiçbir kayıt
+        // kalmıyordu, admin de bundan haberdar olmuyordu. Artık okuma+yazma
+        // tek bir Firestore transaction içinde, atomik. Kaybeden taraf
+        // (parası zaten gitmiş) net bir hata alıyor VE admin'e aynı anda
+        // acil bir uyarı gidiyor ki elle iade sürecini başlatabilsin.
+        const txResult = await db.runTransaction(async (tx) => {
+          const domainSnap = await tx.get(domainRef);
+          const realPrice = domainSnap.exists ? domainSnap.data().price : null;
+          if (typeof realPrice !== 'number') return { ok: false, reason: 'invalid_domain' };
+          if (domainSnap.data().sold === true) {
+            // YENİ: Bu isteği yapan kullanıcı zaten bu domainin kayıtlı
+            // alıcısıysa (ya da aynı txid tekrar geldiyse), bu bir yarış
+            // durumu DEĞİL — ağ hatası/çift tıklama/yeniden deneme sonrası
+            // kendi başarılı alımını tekrar 'complete' etmeye çalışıyor
+            // demektir. Böyle bir durumda sessizce "zaten tamam" deyip
+            // idempotent şekilde başarı dönüyoruz; aksi halde (eski
+            // davranış) bu, gerçekte hiçbir sorun olmayan bir işlemi
+            // "ACİL MANUEL İADE GEREKİYOR" yanlış alarmına çeviriyor,
+            // admin'e boşuna acil Telegram mesajı gidiyor ve kullanıcıya
+            // — domaini zaten elindeyken — "iade edilecek" diye yanlış bir
+            // mesaj gösteriliyordu.
+            const dd = domainSnap.data();
+            if (dd.buyer === username || (txid && dd.txid === txid)) {
+              return { ok: true, alreadyCompleted: true, realPrice: dd.price, sellerUsername: dd.sellerUsername || null, previousBuyer: null, code: null };
+            }
+            return { ok: false, reason: 'already_sold' };
+          }
+          // YENİ: 'approve' aşamasındaki kontrolün aynısı burada da (savunma
+          // katmanı olarak) tekrarlanıyor — teorik olarak approve ile
+          // complete arasındaki dar zaman diliminde sellerUsername
+          // değişmiş olabilir ya da approve adımı bir şekilde atlanmış olabilir.
+          // İSTİSNA: admin için burada da aynı muafiyet geçerli (bkz. yukarı,
+          // 'approve' aşamasındaki aynı istisna).
+          if (domainSnap.data().sellerUsername && domainSnap.data().sellerUsername === username && username !== ADMIN_USERNAME) {
+            return { ok: false, reason: 'own_listing' };
+          }
+          // Rezervasyon kontrolü BURADA (transaction içinde) da tekrarlanıyor
+          // — approve aşamasındaki kontrol sadece erken/kaba bir engel,
+          // asıl atomik/kesin koruma bu transaction'da olmalı.
+          const dData = domainSnap.data();
+          if (dData.reservedFor && dData.reservedUntil && dData.reservedUntil > Date.now() && dData.reservedFor !== username) {
+            return { ok: false, reason: 'reserved', reservedUntil: dData.reservedUntil };
+          }
+
+          // ── GÜVENLİK: Gerçek ödenen tutar, domainin (transaction içinde
+          // az önce okunan, dolayısıyla güncel) fiyatını karşılıyor mu?
+          // Karşılamıyorsa domaini SATILMIŞ olarak işaretlemiyoruz —
+          // aksi halde biri örneğin 50 π'lik bir domain için 0.01 π'lik bir
+          // ödemeyle domaini alabilirdi.
+          const amountCheck = verifyPaidAmount(paymentDetails, realPrice);
+          if (!amountCheck.ok) {
+            return { ok: false, reason: 'amount_mismatch', paidAmount: amountCheck.paidAmount, realPrice };
+          }
+
+          const code = "WEB3-" + Math.random().toString(36).substr(2, 6).toUpperCase();
+          const sellerUsername = domainSnap.data().sellerUsername || null;
+          const previousBuyer = domainSnap.data().buyer || null;
+          const payoutStatusForDomain = sellerUsername ? 'pending' : 'no_seller';
+
+          tx.set(domainRef, {
+            sold: true, price: realPrice,
+            txid: txid || null, buyer: username, at: Date.now(),
+            sellerUsername: sellerUsername || null,
+            // Escrow onayı tamamlanana kadar liste ekranında "Onay Aşamasında"
+            // gösterilir; satıcısı yoksa (sistem domaini) zaten beklemeye
+            // gerek olmadığından direkt kesin "SATILDI" gösterilir.
+            payoutStatus: payoutStatusForDomain,
+            reservedFor: FieldValue.delete(), reservedUntil: FieldValue.delete()
+          }, { merge: true });
+
+          return { ok: true, realPrice, sellerUsername, previousBuyer, code };
+        });
+
+        if (!txResult.ok) {
+          if (txResult.reason === 'invalid_domain') return res.status(400).json({ error: "Geçersiz domain" });
+          if (txResult.reason === 'amount_mismatch') {
+            // ── GÜVENLİK: Ödeme Pi blockchain'inde tamamlanmış olabilir ama
+            // gönderilen tutar domainin fiyatını karşılamıyor. Bu ya bir
+            // manipülasyon denemesi ya da bir eşitleme sorunu (kur/rounding)
+            // olabilir — otomatik tamamlamıyoruz, admin'i acil uyarıp elle
+            // incelemesini istiyoruz. Domain SATILMIŞ işaretlenmedi.
+            console.error(`[GÜVENLİK] Tutar uyuşmazlığı — @${username} "${domainName}" için ${txResult.paidAmount} π ödedi ama fiyat ${txResult.realPrice} π. paymentId:${paymentId} txid:${txid}`);
+            await logSystemError('complete_amount_mismatch', new Error('Paid amount does not match domain price'), `Alıcı:@${username} Domain:${domainName} Ödenen:${txResult.paidAmount} Beklenen:${txResult.realPrice} paymentId:${paymentId} Txid:${txid} — MANUEL İNCELEME GEREKİYOR`);
+            await sendTG(TG_CHAT_ID, `🚨 *ACİL — TUTAR UYUŞMAZLIĞI / MANUEL İNCELEME GEREKİYOR*\n\n@${username} "${domainName}" için ödeme yaptı ama ödenen tutar (${txResult.paidAmount} π) domainin fiyatını (${txResult.realPrice} π) karşılamıyor.\npaymentId: ${paymentId}\ntxid: ${txid}\n\nDomain SATILMIŞ olarak işaretlenmedi. Lütfen elle inceleyip gerekirse iade/tahsilat sürecini başlatın.`);
+            await sendNotificationToAdmin({
+              type: 'amount_mismatch_review_needed',
+              title: '🚨 Acil: Tutar Uyuşmazlığı — Elle İnceleme',
+              body: `@${username}, "${domainName}" için ${txResult.paidAmount} π ödedi ama beklenen fiyat ${txResult.realPrice} π. Elle inceleme gerekiyor.`,
+              domainName, buyer: username, txid, paidAmount: txResult.paidAmount, expectedPrice: txResult.realPrice
+            });
+            return res.status(402).json({
+              error: "Ödemeniz, bu domainin güncel fiyatıyla eşleşmiyor. Bu işlem güvenlik nedeniyle tamamlanamadı ve destek ekibine otomatik olarak bildirildi; en kısa sürede sizinle iletişime geçilecek.",
+              amountMismatch: true
+            });
+          }
+          if (txResult.reason === 'reserved') {
+            // Domain, anlaşma sağlanan BAŞKA bir alıcı için rezerve edilmiş.
+            // 'approve' aşamasındaki ön-kontrol bunu genelde daha en baştan
+            // engeller (kullanıcı parasını hiç göndermez); bu dal sadece çok
+            // dar bir zaman penceresinde (approve ile complete arasında yeni
+            // bir rezervasyon oluşmuşsa) tetiklenir. Ödeme yine de zaten
+            // blockchain'de tamamlandığı için aynı acil-iade akışını izliyoruz.
+            raceLost = true;
+            console.error(`[REZERVASYON ÇAKIŞMASI] ${username}, ${domainName} için ödeme tamamladı ama domain başka bir alıcı için rezerveliymiş. txid:${txid}`);
+            await logSystemError('complete_reservation_conflict', new Error('Domain reserved for another buyer — payment completed but no domain assigned'), `Alıcı:@${username} Domain:${domainName} Txid:${txid} — MANUEL İADE GEREKİYOR`);
+            await sendTG(TG_CHAT_ID, `🚨 *ACİL — REZERVASYON ÇAKIŞMASI / MANUEL İADE GEREKİYOR*\n\n@${username} "${domainName}" için ödeme yaptı (txid: ${txid}) ama domain anlaşma sağlanan başka bir alıcı için rezerveliymiş. Bu kullanıcıya elle Pi iadesi yapılması gerekiyor.`);
+            await sendNotificationToAdmin({
+              type: 'reservation_conflict_refund_needed',
+              title: '🚨 Acil: Elle İade Gerekiyor (Rezervasyon)',
+              body: `@${username}, "${domainName}" için ödeme yaptı (txid: ${txid}) ama domain başka bir alıcı için rezerveliymiş. Manuel iade gerekiyor.`,
+              domainName, buyer: username, txid
+            });
+            return res.status(409).json({
+              error: "Bu domain, ödemeniz tamamlanırken anlaşma sağlanan başka bir alıcı için rezerve edilmiş. Paranız alındığı için otomatik olarak destek ekibine bildirildi, en kısa sürede sizinle iletişime geçip iadenizi yapacaklar.",
+              raceCondition: true
+            });
+          }
+          if (txResult.reason === 'own_listing') {
+            // Kendi domainini satın almaya çalıştı. 'approve' aşamasındaki
+            // ön-kontrol bunu normalde daha en baştan (Pi API'ye hiç
+            // gitmeden) engeller; bu dal sadece o kontrolün bir şekilde
+            // atlandığı çok dar bir kenar durumda tetiklenir. Ödeme yine de
+            // blockchain'de tamamlanmış olabileceğinden aynı acil-iade
+            // akışını izliyoruz.
+            raceLost = true;
+            console.error(`[KENDİ İLANINI SATIN ALMA] ${username}, kendi ilanı olan ${domainName} için ödeme tamamladı. txid:${txid}`);
+            await logSystemError('complete_own_listing_purchase', new Error('Seller attempted to buy their own domain — payment completed'), `Kullanıcı:@${username} Domain:${domainName} Txid:${txid} — MANUEL İADE GEREKİYOR`);
+            await sendTG(TG_CHAT_ID, `🚨 *ACİL — KENDİ İLANINI SATIN ALMA / MANUEL İADE GEREKİYOR*\n\n@${username}, kendi ilanı olan "${domainName}" için ödeme yaptı (txid: ${txid}). Bu kullanıcıya elle Pi iadesi yapılması gerekiyor.`);
+            await sendNotificationToAdmin({
+              type: 'own_listing_refund_needed',
+              title: '🚨 Acil: Elle İade Gerekiyor (Kendi İlanı)',
+              body: `@${username}, kendi ilanı olan "${domainName}" için ödeme yaptı (txid: ${txid}). Manuel iade gerekiyor.`,
+              domainName, buyer: username, txid
+            });
+            return res.status(403).json({
+              error: "Bu domainin satıcısı sizsiniz, kendi ilanınızı satın alamazsınız. Paranız alındığı için otomatik olarak destek ekibine bildirildi, en kısa sürede sizinle iletişime geçip iadenizi yapacaklar.",
+              ownListing: true
+            });
+          }
+          // 'already_sold': yarışı kaybetti. Ödeme Pi blockchain'inde zaten
+          // tamamlandı — bunu geri alamayız, ama admin'i ACİL uyarıp elle
+          // iade süreci başlatılmasını tetikliyoruz.
+          raceLost = true;
+          console.error(`[YARIŞ DURUMU] ${username}, ${domainName} için ödeme tamamladı ama domain az önce başka biri tarafından alınmış. txid:${txid}`);
+          await logSystemError('complete_race_condition', new Error('Domain already sold — payment completed but no domain assigned'), `Alıcı:@${username} Domain:${domainName} Txid:${txid} — MANUEL İADE GEREKİYOR`);
+          await sendTG(TG_CHAT_ID, `🚨 *ACİL — YARIŞ DURUMU / MANUEL İADE GEREKİYOR*\n\n@${username} "${domainName}" için ödeme yaptı (txid: ${txid}) ama domain aynı anda başka biri tarafından satın alınmış. Bu kullanıcıya elle Pi iadesi yapılması gerekiyor.`);
+          await sendNotificationToAdmin({
+            type: 'race_condition_refund_needed',
+            title: '🚨 Acil: Elle İade Gerekiyor',
+            body: `@${username}, "${domainName}" için ödeme yaptı (txid: ${txid}) ama domain aynı anda başka biri tarafından alındı. Manuel iade gerekiyor.`,
+            domainName, buyer: username, txid
+          });
+          return res.status(409).json({
+            error: "Bu domain, ödemeniz tamamlanırken çok kısa bir süre önce başka biri tarafından satın alınmış. Paranız alındığı için otomatik olarak destek ekibine bildirildi, en kısa sürede sizinle iletişime geçip iadenizi yapacaklar.",
+            raceCondition: true
+          });
+        }
+
+        // YENİ: Bu, kullanıcının kendi ÖNCEDEN başarılı olmuş alımını
+        // (ör. ağ hatası sonrası) tekrar 'complete' etmesi — puanlar,
+        // istatistikler ve bildirimler İLK tamamlanmada zaten işlendi.
+        // Burada TEKRAR çalıştırırsak puan/istatistik iki katına çıkar ve
+        // kullanıcıya/satıcıya/admin'e aynı bildirimler ikinci kez gider.
+        // Bu yüzden hiçbir yan etkiyi tekrarlamadan, doğrudan başarı
+        // yanıtı dönüyoruz (idempotent no-op).
+        if (txResult.alreadyCompleted) {
+          console.log(`[Idempotent Tekrar] @${username}, ${domainName} için complete'i tekrar çağırdı — zaten tamamlanmıştı, yan etkiler atlandı.`);
+          return res.status(200).json({ ...data, success: true, alreadyCompleted: true });
+        }
+
+        const { realPrice, sellerUsername, previousBuyer, code } = txResult;
+        purchaseCode = code;
+        {
+
+          await db.collection('global_sales').doc(txid || paymentId).set({
+            user: username, domain: domainName, price: realPrice, at: Date.now(),
+            sellerUsername: sellerUsername || null,
+            // ── Escrow takibi ──────────────────────────────────────────
+            // Ödeme şu an uygulamanın kendi Pi cüzdanında (havuzda) duruyor.
+            // Admin, satıcının domaini alıcıya devrettiğini teyit edip
+            // "Transfer Tamam" dediğinde payoutStatus 'released' olur ve
+            // komisyon düşülmüş tutar satıcının Pi hesabına A2U ile gönderilir.
+            payoutStatus: sellerUsername ? 'pending' : 'no_seller',
+            commissionRate: PLATFORM_COMMISSION_RATE,
+            payoutAmount: sellerUsername ? calculatePayoutAmount(realPrice) : null
+          });
+
+          const today = new Date().toISOString().split('T')[0];
+          await db.collection('daily_stats').doc(today).set({
+            count: FieldValue.increment(1),
+            volume: FieldValue.increment(realPrice)
+          }, { merge: true });
+
+          // ── KALICI GELİR DEFTERİ ────────────────────────────────────
+          // Bu rakamlar domain kaydına DEĞİL, ayrı ve kalıcı bir belgeye
+          // yazılıyor — domain daha sonra silinse bile (test temizliği ya
+          // da arşivleme) bu toplamlar ASLA etkilenmez.
+          // Üçüncü taraf bir satıcı varsa, %5 komisyon burada değil,
+          // ödeme gerçekten satıcıya serbest bırakıldığında (release_seller_
+          // payment) kayda geçiyor — çünkü o ana kadar komisyon henüz
+          // "kazanılmış" sayılmaz, Pi hâlâ havuzda bekliyor.
+          const statsIncrement = { totalVolume: FieldValue.increment(realPrice) };
+          if (sellerUsername) {
+            statsIncrement.userOwnedVolume = FieldValue.increment(realPrice);
+            if (sellerUsername === ADMIN_USERNAME) {
+              statsIncrement.adminOwnEarnings = FieldValue.increment(realPrice);
+            }
+          } else {
+            // Sistem domaini (satıcısız) — escrow/serbest bırakma adımı hiç
+            // yok, tutarın tamamı satış anında kesinleşmiş sayılır.
+            statsIncrement.adminOwnEarnings = FieldValue.increment(realPrice);
+          }
+          await db.collection('config').doc('platform_stats').set(statsIncrement, { merge: true });
+
+          await updateUserPoints(username, realPrice, 'purchase');
+          // YENİ: Referral ödülü — bu kişi birisi tarafından davet
+          // edildiyse ve bu onun ilk (ödül almadığı) satın almasıysa,
+          // davet eden + kendisi bonus puan kazanır.
+          await awardReferralBonusIfEligible(db, username);
+
+          await sendNotification(username, {
+            type: 'purchase_success',
+            title: '🎉 Satın Alma Başarılı!',
+            // YENİ: Eskiden "satıcıyla devri tamamladıktan sonra onayla"
+            // deniyordu ama Pi tarafında self-servis bir "domaini başka
+            // kullanıcıya devret" özelliği olduğu doğrulanamadı — bu
+            // ifade, var olmayan bir düğmeyi arayan kafası karışık
+            // kullanıcılara yol açabilirdi. Artık gerçek süreç (satıcıyla
+            // Destek Talepleri üzerinden, admin aracılığıyla koordinasyon)
+            // açıkça anlatılıyor.
+            body: `"${domainName}" domainini ${realPrice} Pi karşılığında satın aldınız! Domainin devir/teslim sürecini satıcıyla koordine etmek için "Panelim → Destek Talepleri" üzerinden bize ulaşın — devri aldığınızı onayladıktan sonra ödeme satıcıya serbest bırakılır.`,
+            domainName, txid
+          });
+
+          await sendNotificationToAdmin({
+            type: 'new_sale',
+            title: '💰 Yeni Satış!',
+            body: `@${username} tarafından "${domainName}" ${realPrice} Pi'ye satıldı.`,
+            domainName, buyer: username, price: realPrice
+          });
+
+          // YENİ: Bu domaini favorileyen (ama satın alan kişi olmayan)
+          // diğer kullanıcılara "kaçırdınız" bildirimi — favoriler artık
+          // tamamen pasif bir liste değil.
+          await notifyFavoriters(db, domainName, {
+            excludeUsername: username,
+            type: 'favorite_sold',
+            title: '😢 Favori Domaininiz Satıldı',
+            body: `Favorilediğiniz "${domainName}" domaini başka bir alıcı tarafından satın alındı.`
+          });
+
+          if (sellerUsername && sellerUsername !== username) {
+            await sendNotification(sellerUsername, {
+              type: 'your_domain_sold',
+              title: '🏆 Domaininiz Satıldı!',
+              // YENİ: Aynı netlik satıcı tarafında da — "devrettikten sonra
+              // onayla" yerine, devrin NASIL koordine edileceği açıkça
+              // belirtiliyor.
+              body: `"${domainName}" domaininiz @${username} tarafından ${realPrice} Pi'ye satın alındı! Devir/teslim sürecini koordine etmek için "Panelim → Destek Talepleri" üzerinden bize ulaşın. Alıcı devri aldığını onayladıktan sonra ödemeniz serbest bırakılır (%${Math.round(PLATFORM_COMMISSION_RATE * 100)} komisyon düşülerek).`,
+              domainName, buyer: username, price: realPrice
+            });
+          }
+
+          if (previousBuyer && previousBuyer !== username) {
+            await sendNotification(previousBuyer, {
+              type: 'domain_resold',
+              title: 'ℹ️ Domain Yeniden Satıldı',
+              body: `Daha önce sahip olduğunuz "${domainName}" domaini, tekrar satışa çıkarıldıktan sonra @${username} tarafından satın alındı.`,
+              domainName, buyer: username, price: realPrice
+            });
+          }
+
+          // FIX: Grup mesajı da artık gerçek duruma göre değişiyor — escrow
+          // devredeyse (sellerUsername varsa, yani neredeyse her satışta)
+          // "satın aldı" yanında ödemenin henüz onay aşamasında olduğu da
+          // açıkça belirtiliyor; admin mesajındaki mantıkla birebir aynı.
+          const groupMsg = sellerUsername
+            ? `🎉 *YENİ SATIŞ!*\n\n👤 @${username}, *${domainName}* domainini satın aldı!\n⏳ Ödeme şu anda escrow'da — satıcı ve alıcının devri onaylamasının ardından serbest bırakılacak.`
+            : `🎉 *YENİ SATIŞ!*\n\n👤 @${username}, *${domainName}* domainini satın aldı! 🚀`;
+          await sendTG(TG_GROUP_ID, groupMsg);
+          // FIX: Üçüncü taraf bir satıcı varsa ödeme henüz escrow'da bekliyor
+          // demektir (satıcıya serbest bırakılana kadar "tamamlandı" değil) —
+          // bu yüzden mesaj artık gerçek duruma göre değişiyor. Satıcısız
+          // (admin'e ait) domainlerde escrow adımı hiç olmadığı için "TAMAMLANDI"
+          // hâlâ doğru.
+          const adminMsg = sellerUsername
+            ? `🔒 *YENİ SATIŞ — ESCROW'DA ONAY BEKLİYOR*\n\n👤 @${username}\n🌐 ${domainName}\n💰 ${realPrice} Pi\n🏷️ Satıcı: @${sellerUsername}\n🔑 ${purchaseCode}\n\nÖdeme, alıcı ve satıcının devri onaylaması sonrası "Bekleyen Ödemeler" panelinden serbest bırakılacak.`
+            : `✅ *SATIŞ TAMAMLANDI*\n\n👤 @${username}\n🌐 ${domainName}\n💰 ${realPrice} Pi\n🔑 ${purchaseCode}`;
+          await sendTG(TG_CHAT_ID, adminMsg);
+        }
+      } catch (firestoreErr) {
+        console.error("Firestore yazma hatası:", firestoreErr);
+        await logSystemError('complete', firestoreErr, `Ödeme tamamlandı (txid:${txid}) ama Firestore yazılamadı. Domain:${domainName}`);
+        await sendTG(TG_CHAT_ID, `⚠️ *DİKKAT:* Ödeme tamamlandı (txid: ${txid}) ama Firestore'a yazılamadı. Domain: ${domainName}, @${username}`);
+      }
+      return res.status(200).json({ ...data, purchaseCode, success: true });
+    }
+
+    return res.status(200).json({ ...data, success: true });
+  } catch (e) {
+    console.error("Sunucu hatası:", e);
+    await logSystemError('complete', e);
+    return res.status(500).json({ error: e.message });
+  }
+}
