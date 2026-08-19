@@ -1530,6 +1530,16 @@
     <div class="modal-content" style="border-color:#64748b;text-align:left;max-height:82vh;overflow:hidden;display:flex;flex-direction:column;">
         <h2 style="color:#e2e8f0;margin:0 0 10px 0;font-size:1em;font-weight:900;display:flex;align-items:center;gap:6px;flex-shrink:0;">📋 <span data-i18n="adminAuditLogBtn"></span></h2>
         <div style="font-size:0.65em;color:#64748b;margin-bottom:10px;flex-shrink:0;">Son 100 kayıt, en yeni üstte. Kim, ne zaman, ne yaptı.</div>
+        <!-- YENİ: Kategoriye göre gruplu görünüm, gündelik takip için pratik
+             değil — bir işlemi görmek için doğru kategoriyi tahmin edip
+             açmak gerekiyordu. "Zaman Akışı" sekmesi tüm kategorileri
+             karıştırıp tarihe göre (Bugün/Dün/tarih) gruplanmış TEK bir
+             kronolojik liste sunuyor; mevcut kategori görünümüne hiç
+             dokunulmadı, sadece yanına bir alternatif eklendi. -->
+        <div style="display:flex;gap:6px;margin-bottom:10px;flex-shrink:0;">
+            <button id="audit-view-category-btn" onclick="window.setAuditLogViewMode('category')" style="flex:1;padding:7px 6px;border-radius:8px;border:1.5px solid #6366f1;background:rgba(99,102,241,0.15);color:#a5b4fc;font-size:0.68em;font-weight:800;cursor:pointer;">📁 Kategoriye Göre</button>
+            <button id="audit-view-timeline-btn" onclick="window.setAuditLogViewMode('timeline')" style="flex:1;padding:7px 6px;border-radius:8px;border:1.5px solid #334155;background:transparent;color:#94a3b8;font-size:0.68em;font-weight:800;cursor:pointer;">🕐 Zaman Akışı</button>
+        </div>
         <!-- FIX (kök neden — "başlık açılınca diğerleri görünmüyor, ekran
              kendi içinde kaymıyor"): Üstteki .modal-content'in TEMEL CSS
              sınıfı (bkz. .modal-content{...overflow-y:auto...}) zaten
@@ -7929,6 +7939,19 @@ function auditCategoryFor(actionName) {
 let _auditLogEntries = [];
 let _auditLogOpenCategory = null;
 let _auditLogOpenEntryId = null;
+let _auditLogViewMode = 'category'; // YENİ: 'category' (mevcut, varsayılan) | 'timeline' (yeni)
+window.setAuditLogViewMode = function(mode) {
+    _auditLogViewMode = mode;
+    _auditLogOpenCategory = null;
+    _auditLogOpenEntryId = null;
+    const catBtn = document.getElementById('audit-view-category-btn');
+    const tlBtn = document.getElementById('audit-view-timeline-btn');
+    const activeStyle = 'border:1.5px solid #6366f1;background:rgba(99,102,241,0.15);color:#a5b4fc;';
+    const inactiveStyle = 'border:1.5px solid #334155;background:transparent;color:#94a3b8;';
+    if (catBtn) catBtn.style.cssText = catBtn.style.cssText.replace(/border:.*?;background:.*?;color:.*?;/, '') + (mode === 'category' ? activeStyle : inactiveStyle);
+    if (tlBtn) tlBtn.style.cssText = tlBtn.style.cssText.replace(/border:.*?;background:.*?;color:.*?;/, '') + (mode === 'timeline' ? activeStyle : inactiveStyle);
+    if (mode === 'timeline') renderAuditLogTimeline(); else renderAuditLogGrouped();
+};
 window.openAuditLogModal=async function(){
     const resultsEl=document.getElementById('audit-log-results');
     resultsEl.innerHTML=`<div style="text-align:center;color:#64748b;font-size:0.75em;padding:20px;">${t('loadingLabel')}</div>`;
@@ -7940,7 +7963,7 @@ window.openAuditLogModal=async function(){
         _auditLogEntries=result.entries||[];
         _auditLogOpenCategory=null;
         _auditLogOpenEntryId=null;
-        renderAuditLogGrouped();
+        if (_auditLogViewMode === 'timeline') renderAuditLogTimeline(); else renderAuditLogGrouped();
     }catch(e){
         resultsEl.innerHTML=`<div style="color:#f87171;font-size:0.75em;text-align:center;">Bir hata oluştu.</div>`;
     }
@@ -7952,7 +7975,7 @@ window.toggleAuditCategory=function(catKey){
 };
 window.toggleAuditEntry=function(entryId){
     _auditLogOpenEntryId = (_auditLogOpenEntryId===entryId) ? null : entryId;
-    renderAuditLogGrouped();
+    if (_auditLogViewMode === 'timeline') renderAuditLogTimeline(); else renderAuditLogGrouped();
 };
 function renderAuditLogGrouped(){
     const resultsEl=document.getElementById('audit-log-results');
@@ -8002,6 +8025,65 @@ function renderAuditLogGrouped(){
             ${isOpen?`<div style="padding:0 8px;">${rows}</div>`:''}
         </div>`;
     }).join('');
+}
+
+// ── YENİ: Zaman Akışı görünümü ──────────────────────────────────────────
+// Kategoriye göre gruplu görünüm gündelik takip için elverişsizdi: bir
+// işlemi bulmak için önce doğru kategoriyi tahmin edip açmak gerekiyordu.
+// Bu fonksiyon TÜM kayıtları (kategori ayrımı yapmadan) zaten backend'den
+// gelen ts-desc sırayla, GÜNE göre gruplayıp ("Bugün", "Dün", tarih) tek
+// bir akış halinde gösteriyor — "bugün ne oldu" sorusuna tek bakışta
+// cevap. Kategori rozeti (ikon) her satırda küçük olarak duruyor, tıklayınca
+// aynı detay paneli (kategoriye göre görünümdekiyle birebir aynı alanlar)
+// açılıyor. Kategoriye göre görünüme HİÇ dokunulmadı, bu tamamen ayrı bir
+// render fonksiyonu.
+function dayLabelFor(ts, locale) {
+    const d = new Date(ts);
+    const now = new Date();
+    const startOfDay = x => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime();
+    const diffDays = Math.round((startOfDay(now) - startOfDay(d)) / 86400000);
+    if (diffDays === 0) return currentLang === 'en' ? 'Today' : 'Bugün';
+    if (diffDays === 1) return currentLang === 'en' ? 'Yesterday' : 'Dün';
+    return d.toLocaleDateString(locale, { day: '2-digit', month: 'long', year: 'numeric' });
+}
+function renderAuditLogTimeline(){
+    const resultsEl=document.getElementById('audit-log-results');
+    if(!resultsEl) return;
+    if(!_auditLogEntries.length){ resultsEl.innerHTML=`<div style="color:#64748b;font-size:0.75em;text-align:center;padding:20px;">Henüz kayıt yok.</div>`; return; }
+    const locale=currentLang==='en'?'en-GB':'tr-TR';
+    // Zaten backend ts-desc sıralı geliyor; sadece gün başlıklarına göre
+    // ard arda gelen kayıtları grupluyoruz (ekstra sort GEREKMİYOR, mevcut
+    // sırayı bozmamak için sort ATLANIYOR).
+    let currentDayLabel = null;
+    const html = _auditLogEntries.map((e, idx) => {
+        const cat = auditCategoryFor(e.action);
+        const dLabel = dayLabelFor(e.ts, locale);
+        const isNewDay = dLabel !== currentDayLabel;
+        currentDayLabel = dLabel;
+        const isEntryOpen = _auditLogOpenEntryId === e.id;
+        const timeOnly = new Date(e.ts).toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' });
+        const fullTime = new Date(e.ts).toLocaleString(locale);
+        const dayHeader = isNewDay ? `<div style="color:#818cf8;font-size:0.7em;font-weight:900;margin:${idx===0?'0':'12px'} 0 4px 2px;">${dLabel}</div>` : '';
+        return `${dayHeader}<div style="background:#0f172a;border:1px solid #1e293b;border-radius:8px;margin-bottom:4px;overflow:hidden;">
+            <div onclick="window.toggleAuditEntry('${e.id}')" style="display:flex;justify-content:space-between;align-items:center;gap:8px;padding:8px 10px;cursor:pointer;">
+                <div style="display:flex;align-items:center;gap:7px;min-width:0;flex:1;">
+                    <span style="font-size:0.85em;flex-shrink:0;">${cat.icon}</span>
+                    <div style="min-width:0;">
+                        <div style="color:#cbd5e1;font-size:0.7em;font-weight:800;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(e.action)}</div>
+                        <div style="color:#64748b;font-size:0.62em;">👤 @${escapeHtml(e.admin)} · ${timeOnly}</div>
+                    </div>
+                </div>
+                <span style="color:#64748b;font-size:0.7em;flex-shrink:0;transform:${isEntryOpen?'rotate(90deg)':'rotate(0deg)'};transition:transform 0.15s;">▶</span>
+            </div>
+            ${isEntryOpen?`<div style="background:#020617;border-radius:8px;padding:9px 10px;margin:0 8px 8px 8px;font-size:0.7em;color:#94a3b8;line-height:1.6;">
+                <div><b style="color:#cbd5e1;">${t('auditFieldAdmin')}:</b> @${escapeHtml(e.admin)}</div>
+                <div><b style="color:#cbd5e1;">${t('auditFieldTime')}:</b> ${fullTime}</div>
+                <div><b style="color:#cbd5e1;">${t('auditFieldAction')}:</b> ${escapeHtml(e.action)}</div>
+                ${e.details?`<div style="margin-top:4px;word-break:break-word;"><b style="color:#cbd5e1;">${t('auditFieldDetails')}:</b> ${escapeHtml(e.details)}</div>`:''}
+            </div>`:''}
+        </div>`;
+    }).join('');
+    resultsEl.innerHTML = html;
 }
 
 window.runSystemCheckup=async function(){
