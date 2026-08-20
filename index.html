@@ -1356,6 +1356,15 @@
                 </div>
                 <div id="webpush-unsupported-note" style="display:none;font-size:0.66em;color:#94a3b8;line-height:1.4;"></div>
             </div>
+
+            <!-- YENİ: Bildirim Kategori Tercihleri (Öneri #4) — sadece
+                 DIŞ kanalları (Telegram/e-posta/push) etkiler, uygulama
+                 içi bildirim hiçbir zaman kapanmaz (bkz. approve.js'deki
+                 açıklama). Varsayılan: hepsi açık. -->
+            <div style="border-top:1px solid #1e293b;margin-top:2px;padding-top:10px;display:flex;flex-direction:column;gap:8px;">
+                <span style="font-size:0.72em;color:#94a3b8;font-weight:700;">Hangi bildirimleri almak istersiniz? (uygulama içi bildirimler her zaman gösterilir, bu sadece Telegram/e-posta/push'u etkiler)</span>
+                <div id="notif-category-toggles" style="display:flex;flex-direction:column;gap:6px;"></div>
+            </div>
         </div>
         <button class="pi-btn" style="background:#6366f1;animation:none;padding:10px;margin:14px 0 0 0;width:100%;" onclick="document.getElementById('profile-modal').style.display='none'" data-i18n="close"></button>
     </div>
@@ -1447,6 +1456,7 @@
         <div id="receipt-print-area"></div>
         <div class="receipt-no-print" style="display:flex;gap:8px;margin-top:16px;">
             <button onclick="window.print()" style="flex:1;padding:10px;border-radius:9px;border:none;background:#6366f1;color:#fff;font-weight:800;cursor:pointer;font-size:0.8em;" data-i18n="receiptPrintBtn"></button>
+            <button onclick="window.downloadReceiptFile()" style="flex:1;padding:10px;border-radius:9px;border:1.5px solid #10b981;background:rgba(16,185,129,0.1);color:#6ee7b7;font-weight:800;cursor:pointer;font-size:0.8em;">⬇️ İndir</button>
             <button onclick="document.getElementById('receipt-modal').style.display='none'" style="flex-shrink:0;padding:10px 16px;border-radius:9px;border:1px solid #475569;background:transparent;color:#94a3b8;font-weight:800;cursor:pointer;font-size:0.8em;" data-i18n="close"></button>
         </div>
     </div>
@@ -2421,7 +2431,7 @@
                 <b style="color:#818cf8;" data-i18n="imgPathExampleLabel"></b> <code style="background:#0f172a;padding:2px 6px;border-radius:4px;color:#34d399;">assets/domain-adi.jpeg</code> <span data-i18n="orWord"></span> <code style="background:#0f172a;padding:2px 6px;border-radius:4px;color:#34d399;">assets/domain-adi.png</code><br>
                 <span style="color:#94a3b8;" data-i18n="imgPathInstructions"></span>
             </div>
-                <select id="new-domain-type" class="admin-date-picker" style="margin-bottom:0;">
+                <select id="new-domain-type" class="admin-date-picker" style="margin-bottom:0;" onchange="window.loadPriceGuidance(this.value)">
                     <option value="genel" data-i18n="typeGeneral"></option><option value="finans" data-i18n="typeFinance"></option>
                     <option value="bankacilik" data-i18n="typeBanking"></option>
                     <option value="eticaret" data-i18n="typeEcommerce"></option><option value="kisisel" data-i18n="typePersonal"></option>
@@ -2429,6 +2439,11 @@
                     <option value="saglik" data-i18n="typeHealth"></option><option value="egitim" data-i18n="typeEducation"></option>
                     <option value="gayrimenkul" data-i18n="typeRealEstate"></option><option value="diger" data-i18n="typeOther"></option>
                 </select>
+                <!-- YENİ: Fiyat Rehberi (Öneri #3) — kategori seçilince
+                     otomatik yükleniyor (onchange). Satıcı körlemesine
+                     fiyat girmek yerine "bu tarz domainler ne kadara
+                     satılmış" bilgisini görüyor. -->
+                <div id="price-guidance-box" style="display:none;font-size:0.68em;color:#94a3b8;background:rgba(99,102,241,0.08);border:1px dashed #6366f1;border-radius:6px;padding:6px 8px;line-height:1.5;"></div>
                 <textarea id="new-domain-desc" data-i18n-placeholder="descriptionPlaceholder" class="admin-date-picker" rows="2" style="resize:none;margin-bottom:0;"></textarea>
                 <button class="pi-btn" style="margin:4px 0 0 0;animation:none;background:#10b981;padding:8px;" onclick="handleAddDomain()" data-i18n="addDomainBtn"></button>
             </div>
@@ -3009,6 +3024,41 @@ const firebaseConfig = {
 };
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
+
+// ══════════════════════════════════════════════════════════════════════
+//  YENİ: Erişilebilirlik iyileştirmeleri (Öneri #5)
+//  Uygulamada 36 farklı modal (.modal-overlay) var; her birini tek tek
+//  elle düzenlemek (yüksek risk, biri unutulabilir) yerine, TEK bir
+//  merkezi mekanizmadan tümüne uygulanan iki iyileştirme:
+//   1) role="dialog" + aria-modal="true" — ekran okuyucular bu
+//      elemanların bir diyalog penceresi olduğunu anlar.
+//   2) ESC tuşu — o an görünür olan (en üstteki) modalı kapatır. Fare/
+//      dokunma kullanamayan (klavye ile gezinen) kullanıcılar için
+//      standart, beklenen bir davranış.
+//  Dışarı tıklayınca kapanma BİLEREK eklenmedi — form doldurulurken
+//  yanlışlıkla dışarı dokunup veri kaybetme riski olurdu.
+// ══════════════════════════════════════════════════════════════════════
+function applyModalAccessibility() {
+    document.querySelectorAll('.modal-overlay').forEach(overlay => {
+        if (!overlay.hasAttribute('role')) overlay.setAttribute('role', 'dialog');
+        if (!overlay.hasAttribute('aria-modal')) overlay.setAttribute('aria-modal', 'true');
+    });
+}
+document.addEventListener('DOMContentLoaded', applyModalAccessibility);
+if (document.readyState !== 'loading') applyModalAccessibility();
+
+document.addEventListener('keydown', (e) => {
+    if (e.key !== 'Escape') return;
+    // Görünür (display !== 'none') tüm modal-overlay'leri bul, DOM
+    // sırasına göre SONUNCUYU (genelde en son açılan/en üstteki) kapat.
+    const visibleModals = Array.from(document.querySelectorAll('.modal-overlay')).filter(m => {
+        const style = window.getComputedStyle(m);
+        return style.display !== 'none';
+    });
+    if (visibleModals.length === 0) return;
+    const topModal = visibleModals[visibleModals.length - 1];
+    topModal.style.display = 'none';
+});
 
 // NOT: Firebase App Check (reCAPTCHA v3) burada denenmişti, ama bu
 // uygulama sadece Pi Browser (uygulama-içi WebView) üzerinde çalıştığı
@@ -5295,8 +5345,55 @@ async function loadNotificationPrefs(){
         // pushSubscriptionCount sadece bilgi amaçlı, buton state'i için
         // kullanılmıyor çünkü bu CİHAZDAKİ abonelik durumu önemli.
         refreshWebPushButtonState();
+
+        // YENİ: Bildirim kategori tercihleri (Öneri #4)
+        renderNotifCategoryToggles(d.categoryPrefs || {});
     }catch(e){ console.error('loadNotificationPrefs hatası:',e); }
 }
+
+// YENİ: 6 kategori için basit aç/kapa anahtarları. Her tıklamada TEK bir
+// kategoriyi kaydediyor (toplu kaydetme yok) — kullanıcı bir anahtara
+// bastığında hemen kaydedilip görsel olarak yansımalı, "Kaydet" butonu
+// beklemek gereksiz sürtünme olurdu.
+const NOTIF_CATEGORY_LABELS = {
+    sales: '💰 Satış & Ödemeler',
+    offers: '🔄 Teklifler',
+    tickets: '🎫 Destek Talepleri',
+    favorites: '⭐ Favoriler & Kayıtlı Aramalar',
+    messages: '💬 Mesajlar',
+    legal: '⚖️ Marka Hakkı & Şikayetler'
+};
+function renderNotifCategoryToggles(prefs){
+    const container=document.getElementById('notif-category-toggles');
+    if(!container) return;
+    container.innerHTML=Object.entries(NOTIF_CATEGORY_LABELS).map(([key,label])=>{
+        const on = prefs[key] !== false; // varsayılan: açık
+        return `<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
+            <span style="font-size:0.74em;color:#cbd5e1;">${label}</span>
+            <button onclick="window.toggleNotifCategory('${key}',${!on})" role="switch" aria-checked="${on}" aria-label="${label}" style="flex-shrink:0;width:40px;height:22px;border-radius:11px;border:none;cursor:pointer;position:relative;background:${on?'#22c55e':'#334155'};transition:background 0.15s;">
+                <span style="position:absolute;top:2px;left:${on?'20px':'2px'};width:18px;height:18px;border-radius:50%;background:#fff;transition:left 0.15s;"></span>
+            </button>
+        </div>`;
+    }).join('');
+}
+window.toggleNotifCategory=async function(category, enabled){
+    // İyimser güncelleme: önce arayüzü hemen değiştir, istek başarısız
+    // olursa geri al — kullanıcı her tıklamada ağ gecikmesini beklemesin.
+    const container=document.getElementById('notif-category-toggles');
+    const prevHtml = container ? container.innerHTML : '';
+    const optimisticPrefs = {};
+    Object.keys(NOTIF_CATEGORY_LABELS).forEach(k=>{ optimisticPrefs[k] = (k===category) ? enabled : (container?.querySelector(`[aria-label="${NOTIF_CATEGORY_LABELS[k]}"]`)?.getAttribute('aria-checked')==='true'); });
+    renderNotifCategoryToggles(optimisticPrefs);
+    try{
+        const r=await fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'set_notification_category_pref',category,enabled,accessToken:piAccessToken})});
+        const d=await r.json();
+        if(!d.success){ if(container) container.innerHTML=prevHtml; showToast(t('genericError')||'Bir hata oluştu'); }
+    }catch(e){
+        console.error('toggleNotifCategory hatası:',e);
+        if(container) container.innerHTML=prevHtml;
+        showToast(t('genericError')||'Bir hata oluştu');
+    }
+};
 
 window.handleTelegramLinkClick=async function(){
     if(!isAuth){showToast(t('profileLoginRequired'));return;}
@@ -6196,6 +6293,50 @@ window.revealDetailMoreToggle=function(){
     const btn=document.getElementById('detail-more-toggle-btn');
     if(btn) btn.style.display='block';
 };
+// YENİ: Paylaş butonu (Öneri #1). Pi Browser'ın kısıtlı WebView'inde
+// modern tarayıcı API'lerinin (reCAPTCHA'da, flexbox'ta gördüğümüz gibi)
+// güvenilmez olabileceğini bildiğimiz için, en modern yöntemden en eskiye
+// doğru KADEMELİ olarak deniyoruz — hiçbiri çalışmazsa kullanıcı en
+// azından linki elle kopyalayabileceği bir metin görür.
+window.shareDomainListing = function(domainName, price) {
+    const url = `${window.location.origin}${window.location.pathname}?domain=${encodeURIComponent(domainName)}`;
+    const text = `🌐 ${domainName}${price ? ` — ${price} Pi` : ''}\n${url}`;
+
+    // 1) Web Share API (varsa) — mobilde native paylaşım menüsünü açar.
+    if (navigator.share) {
+        navigator.share({ title: domainName, text, url }).catch(() => {
+            // Kullanıcı paylaşım menüsünü iptal ettiyse hata fırlatır,
+            // bu normal bir durum — sessizce geç, fallback'e düşme.
+        });
+        return;
+    }
+    // 2) Clipboard API (modern tarayıcılar)
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(() => {
+            showToast('🔗 Link panoya kopyalandı');
+        }).catch(() => legacyCopyToClipboard(text));
+        return;
+    }
+    // 3) Eski yöntem (document.execCommand) — Clipboard API hiç yoksa
+    legacyCopyToClipboard(text);
+};
+function legacyCopyToClipboard(text) {
+    try {
+        const ta = document.createElement('textarea');
+        ta.value = text;
+        ta.style.position = 'fixed';
+        ta.style.left = '-9999px';
+        document.body.appendChild(ta);
+        ta.focus();
+        ta.select();
+        const ok = document.execCommand('copy');
+        document.body.removeChild(ta);
+        showToast(ok ? '🔗 Link panoya kopyalandı' : 'Kopyalanamadı, linki elle seçip kopyalayın: ' + text);
+    } catch (e) {
+        showToast('Kopyalanamadı, linki elle seçip kopyalayın: ' + text);
+    }
+}
+
 window.openDomainDetail=function(domainName){
     const domain=domains.find(d=>d.name===domainName); if(!domain) return;
     currentDetailDomainName=domainName; // YENİ: İlan şikayet formu hangi domain için açıldığını bilsin diye.
@@ -6399,6 +6540,15 @@ window.openDomainDetail=function(domainName){
     // bırakıldı — bunlar en önemli/son eylemler, öne çıkmaları gerekiyor.
     let primaryHtml='';
     let secondaryHtml='';
+    // YENİ: Paylaş butonu (Öneri #1) — giriş şartı yok, herkes görebilir.
+    // Domain adı + fiyat + doğrudan link panoya kopyalanıyor. Bunun
+    // sebebi: OG (Open Graph) etiketleri şu an SABİT/genel (bkz. <head>) —
+    // bu SPA yapısında her domain için gerçek dinamik önizleme (sunucu
+    // taraflı render) ayrı bir mimari iş olurdu. Bu buton, paylaşan
+    // kişinin en azından METİN olarak domain adını/fiyatını ilettiği
+    // pratik bir ara çözüm; WhatsApp/Telegram'da paylaşılan mesaj kendi
+    // içinde bu bilgiyi taşıyor, tıklayan kişi önizlemeye bağımlı kalmıyor.
+    secondaryHtml+=`<button onclick="window.shareDomainListing('${domainName.replace(/'/g,"\\'")}', ${data.price||0})" style="padding:9px 6px;border-radius:9px;border:1.5px solid #38bdf8;background:rgba(56,189,248,0.1);color:#7dd3fc;font-weight:800;font-size:0.74em;cursor:pointer;">🔗 Paylaş</button>`;
     if(isAuth){
         const isFav=userFavorites.has(domainName);
         secondaryHtml+=`<button id="detail-fav-btn" onclick="window.toggleFavorite('${domainName}')" style="padding:9px 6px;border-radius:9px;border:1.5px solid #f59e0b;background:${isFav?'rgba(245,158,11,0.9)':'rgba(245,158,11,0.1)'};color:${isFav?'#1e1b4b':'#fbbf24'};font-weight:800;font-size:0.74em;cursor:pointer;">${isFav?'★ '+t('favoriteRemoveBtn'):'☆ '+t('favoriteAddBtn')}</button>`;
@@ -10632,6 +10782,28 @@ function piVerifiedBadge(){
 // kaydedilebilir bir makbuz. Yeni kütüphane eklemeden (jsPDF vb.), tarayıcının
 // yerleşik "Yazdır → PDF olarak kaydet" özelliğini kullanan ayrı bir
 // pencere açıyoruz — böylece ek bağımlılık veya CDN riski olmuyor.
+// YENİ: Fiyat Rehberi (Öneri #3) — aynı kategorideki geçmiş satışların
+// istatistiğini gösterir. Sonuç yoksa (o kategoride hiç satış yoksa)
+// kutu hiç gösterilmiyor — boş/faydasız bir kutuyla kafa karıştırmasın.
+window.loadPriceGuidance = async function(domainType) {
+    const box = document.getElementById('price-guidance-box');
+    if (!box || !domainType) return;
+    box.style.display = 'block';
+    box.textContent = '📊 Fiyat rehberi yükleniyor…';
+    try {
+        const r = await fetch('/api/approve', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'get_price_guidance', domainType }) });
+        const d = await r.json();
+        if (!d.success || !d.count) {
+            box.style.display = 'none';
+            return;
+        }
+        box.innerHTML = `📊 Bu kategoride satılmış <b>${d.count}</b> domain — ortalama <b>${d.avg} Pi</b> (${d.min}–${d.max} Pi arası)`;
+    } catch (e) {
+        console.error('[PriceGuidance] yüklenemedi:', e);
+        box.style.display = 'none';
+    }
+};
+
 window.printReceipt=function(domainName){
     const data=domainData[domainName];
     if(!data){ showToast(t('genericError')); return; }
@@ -10653,6 +10825,56 @@ window.printReceipt=function(domainName){
         <div style="margin-top:16px;font-size:0.68em;color:#64748b;line-height:1.5;">${t('receiptTestnetNote')}</div>
     `;
     document.getElementById('receipt-modal').style.display='flex';
+    // Bir sonraki indirme için bu makbuzun verisini saklıyoruz (bkz.
+    // downloadReceiptFile) — modal içeriğini yeniden parse etmek yerine.
+    window._currentReceiptData = { domainName, data, dateStr };
+};
+// YENİ (Öneri #2): window.print() Pi Browser'ın kısıtlı WebView'inde
+// güvenilir çalışmayabilir (reCAPTCHA ve flexbox'ta yaşadığımız gibi
+// benzer bir platform kısıtlaması riski var — Android'in birçok uygulama-
+// içi tarayıcısı yazdırma API'sini hiç desteklemez). Bu yüzden, CSV
+// export'ta zaten KANITLANMIŞ ÇALIŞAN Blob-indirme tekniğiyle, makbuzu
+// tek başına açılabilen, temiz bir HTML dosyası olarak da indirilebilir
+// hale getiriyoruz — yazdırma çalışmasa bile kullanıcının elinde her
+// zaman resmi bir kayıt kalır.
+window.downloadReceiptFile = function() {
+    const r = window._currentReceiptData;
+    if (!r) { showToast(t('genericError')); return; }
+    const { domainName, data, dateStr } = r;
+    const esc = (s) => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    const html = `<!DOCTYPE html>
+<html lang="tr"><head><meta charset="UTF-8"><title>Makbuz - ${esc(domainName)}</title>
+<style>
+  body { font-family: -apple-system, Segoe UI, Roboto, sans-serif; background:#fff; color:#1e293b; padding:24px; max-width:480px; margin:0 auto; }
+  h1 { font-size:18px; text-align:center; margin-bottom:2px; }
+  .sub { text-align:center; color:#64748b; font-size:13px; margin-bottom:20px; }
+  table { width:100%; border-collapse:collapse; font-size:14px; }
+  td { padding:10px 4px; border-bottom:1px solid #e2e8f0; }
+  td:first-child { color:#64748b; width:45%; }
+  .note { margin-top:18px; font-size:11px; color:#94a3b8; line-height:1.5; }
+</style></head>
+<body>
+  <h1>Web3 Domain Gateway</h1>
+  <div class="sub">${esc(t('receiptTitle'))}</div>
+  <table>
+    <tr><td>${esc(t('detailFieldDomain'))}</td><td><b>${esc(domainName)}</b></td></tr>
+    <tr><td>${esc(t('detailFieldPrice'))}</td><td><b>${esc(data.price)} Pi</b></td></tr>
+    <tr><td>${esc(t('saleDateLabel'))}</td><td>${esc(dateStr)}</td></tr>
+    <tr><td>${esc(t('detailFieldSellerUser'))}</td><td>${data.sellerUsername ? '@' + esc(data.sellerUsername) : esc(t('systemSellerLabel'))}</td></tr>
+    <tr><td>${esc(t('receiptBuyerLabel'))}</td><td>@${esc(currentUser || '')}</td></tr>
+    <tr><td>${esc(t('detailFieldTxid'))}</td><td style="word-break:break-all;">${esc(data.txid || '—')}</td></tr>
+  </table>
+  <div class="note">${esc(t('receiptTestnetNote'))}</div>
+</body></html>`;
+    const blob = new Blob([html], { type: 'text/html;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `makbuz-${domainName}.html`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
 };
 // YENİ: Tek tip, ikonlu boş durum (empty state) gösterimi. Öncesinde
 // birçok liste (bildirimler, tekliflerim, alımlarım, ilanlarım, lider
@@ -10781,6 +11003,19 @@ onSnapshot(collection(db,"domains"),(snapshot)=>{
     // yanıp sönmeyini (flickering) engeller.
     if(!firstDomainsSnapshotReceived){
         firstDomainsSnapshotReceived=true;
+        // YENİ (Öneri #1 ile bağlantılı): Paylaşılan linkte (?domain=...)
+        // belirtilen domain, veri geldiğinde otomatik olarak detay
+        // modalını açıyor. Bu, "Paylaş" butonuyla üretilen linklerin
+        // gerçekten işe yaramasını sağlıyor — daha önce bu parametre
+        // web push bildirim hedefinde ÜRETİLİYORDU ama hiçbir yerde
+        // OKUNMUYORDU, yani tıklanan link sessizce ana sayfayı açıyordu.
+        // Sadece İLK veri geldiğinde (uygulama ilk açılışında) çalışır,
+        // sonraki her güncellemede tekrar tetiklenmesin diye bu blok
+        // firstDomainsSnapshotReceived'in İÇİNE alındı.
+        const deepLinkDomain = new URLSearchParams(window.location.search).get('domain');
+        if (deepLinkDomain && domainData[deepLinkDomain]) {
+            setTimeout(() => window.openDomainDetail(deepLinkDomain), 300);
+        }
     }
     debouncedRender();
     if(hasRelevantChange) debouncedProfileRefresh();
