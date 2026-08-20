@@ -2135,6 +2135,80 @@ async function handlerImpl(req, res) {
     }
   }
 
+  // ── YENİ: "Bugün Yapılacaklar" özeti (Admin Panel Önerisi #2) ──────────
+  // Admin panelinde bekleyen işler 7 farklı sekmeye/rozete dağılmış
+  // durumda (Bekleyen Onaylar, Destek Talepleri, Marka Hakkı, Ödemeler,
+  // Teklifler, Şikayetler, Kullanıcı Mesajları). Panel açıldığında hangi
+  // sekmeye bakılması gerektiğini tahmin etmek yerine, TEK bir istekte
+  // hepsinin güncel sayısını dönüyoruz. Her sayının filtre mantığı,
+  // ilgili sekmenin KENDİ rozetini besleyen sorgularla BİREBİR AYNI
+  // (kopyalanmadı, aynı kaynak koleksiyon/durum alanları kullanıldı) —
+  // böylece özet ile sekme rozetleri arasında ASLA tutarsızlık olmaz.
+  if (action === 'get_admin_todo_summary') {
+    const isAdmin = await verifyAdmin(accessToken, req);
+    if (!isAdmin) return res.status(403).json({ error: "Yetki yok" });
+    try {
+      const db = getDb();
+      const [
+        sellReqSnap, ticketsSnap, ticketSeenSnap,
+        tmSnap, payoutsSnap, offersSnap,
+        reportsSnap, reportSeenSnap,
+        convSnap, msgSeenSnap
+      ] = await Promise.all([
+        db.collection('sell_requests').where('status', '==', 'pending').get(),
+        db.collection('tickets').get(),
+        db.collection('system_config').doc('admin_ticket_seen').get(),
+        db.collection('trademark_claims').where('status', 'in', ['new', 'reviewing']).get(),
+        db.collection('global_sales').where('payoutStatus', '==', 'pending').get(),
+        db.collection('offers').where('status', '==', 'pending').get(),
+        db.collection('listing_reports').where('status', 'in', ['new', 'reviewing', 'resolved']).get(),
+        db.collection('system_config').doc('admin_report_seen').get(),
+        db.collection('conversations').get(),
+        db.collection('system_config').doc('admin_messages_seen').get()
+      ]);
+
+      // Tickets: get_all_tickets ile BİREBİR AYNI mantık (status!=='closed' + lastUpdate>seenAt)
+      const ticketSeenAt = ticketSeenSnap.exists ? (ticketSeenSnap.data().seenAt || 0) : 0;
+      let openTickets = 0;
+      ticketsSnap.forEach(d => {
+        const t = d.data();
+        if (t.status !== 'closed' && (t.lastUpdate || 0) > ticketSeenAt) openTickets++;
+      });
+
+      // Şikayetler: get_listing_reports ile BİREBİR AYNI mantık
+      const reportSeenAt = reportSeenSnap.exists ? (reportSeenSnap.data().seenAt || 0) : 0;
+      let unseenReports = 0;
+      reportsSnap.forEach(d => {
+        const r = d.data();
+        if ((r.createdAt || 0) > reportSeenAt) unseenReports++;
+      });
+
+      // Kullanıcı mesajları: get_all_conversations ile BİREBİR AYNI mantık
+      const msgSeenAt = msgSeenSnap.exists ? (msgSeenSnap.data().seenAt || 0) : 0;
+      let unseenMessages = 0;
+      convSnap.forEach(d => {
+        const c = d.data();
+        if ((c.lastMessageAt || 0) > msgSeenAt) unseenMessages++;
+      });
+
+      const summary = {
+        pendingApprovals: sellReqSnap.size,
+        openTickets,
+        pendingTrademark: tmSnap.size,
+        pendingPayouts: payoutsSnap.size,
+        pendingOffers: offersSnap.size,
+        unseenReports,
+        unseenMessages
+      };
+      summary.total = Object.values(summary).reduce((a, b) => a + b, 0);
+
+      return res.status(200).json({ success: true, summary });
+    } catch (e) {
+      console.error("get_admin_todo_summary hatası:", e);
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
   if (action === 'run_system_checkup') {
     const isAdmin = await verifyAdmin(accessToken, req);
     if (!isAdmin) return res.status(403).json({ error: "Yetki yok" });
