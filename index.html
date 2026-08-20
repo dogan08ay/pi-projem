@@ -1540,6 +1540,16 @@
             <button id="audit-view-category-btn" onclick="window.setAuditLogViewMode('category')" style="flex:1;padding:7px 6px;border-radius:8px;border:1.5px solid #6366f1;background:rgba(99,102,241,0.15);color:#a5b4fc;font-size:0.68em;font-weight:800;cursor:pointer;">📁 Kategoriye Göre</button>
             <button id="audit-view-timeline-btn" onclick="window.setAuditLogViewMode('timeline')" style="flex:1;padding:7px 6px;border-radius:8px;border:1.5px solid #334155;background:transparent;color:#94a3b8;font-size:0.68em;font-weight:800;cursor:pointer;">🕐 Zaman Akışı</button>
         </div>
+        <!-- YENİ: Arama/filtre kutusu — hem Kategoriye Göre hem Zaman
+             Akışı görünümünde çalışır. Backend'e yeni istek ATMIYOR,
+             zaten yüklü olan (son 100 kayıt) _auditLogEntries üzerinde
+             CANLI, istemci-taraflı filtreleme yapıyor — çünkü veri seti
+             zaten küçük (max 100), ekstra ağ isteğine gerek yok. Admin
+             kullanıcı adı VEYA action/detay metninde arar. -->
+        <div style="display:flex;gap:6px;margin-bottom:8px;flex-shrink:0;">
+            <input id="audit-log-search-input" type="text" placeholder="🔍 Admin, işlem veya detay ara…" oninput="window.filterAuditLog(this.value)" style="flex:1;min-width:0;background:#0f172a;border:1.5px solid #334155;border-radius:8px;padding:7px 10px;color:#e2e8f0;font-size:0.72em;">
+            <button onclick="window.exportAuditLogCSV()" title="CSV olarak indir" style="flex-shrink:0;padding:7px 10px;border-radius:8px;border:1.5px solid #10b981;background:rgba(16,185,129,0.12);color:#6ee7b7;font-size:0.72em;font-weight:800;cursor:pointer;">⬇️ CSV</button>
+        </div>
         <!-- FIX (kök neden — "başlık açılınca diğerleri görünmüyor, ekran
              kendi içinde kaymıyor"): Üstteki .modal-content'in TEMEL CSS
              sınıfı (bkz. .modal-content{...overflow-y:auto...}) zaten
@@ -2295,6 +2305,23 @@
                 <span id="network-mode-status-text" style="font-size:0.68em;color:#94a3b8;font-weight:700;flex:1;">…</span>
                 <button id="network-mode-toggle-btn" onclick="window.openNetworkModeModal()" style="padding:6px 12px;border:none;border-radius:8px;background:linear-gradient(135deg,#f59e0b,#ea580c);color:#fff;font-size:0.65em;font-weight:800;cursor:pointer;white-space:nowrap;" data-i18n="networkModeManageBtn"></button>
             </div>
+        </div>
+        <!-- YENİ: "Bugün Yapılacaklar" özeti — 7 farklı sekmeye dağılmış
+             bekleyen işleri (onay, ticket, marka hakkı, ödeme, teklif,
+             şikayet, mesaj) tek bir şeritte topluyor. Admin panel
+             açılır açılmaz hangi sekmeye bakması gerektiğini tahmin
+             etmek zorunda kalmıyor — sayı 0'dan büyükse tıklayınca
+             doğrudan ilgili sekmeye gidiyor (switchAdminTab), 0 ise o
+             kart hiç gösterilmiyor (gürültü olmasın diye). Hiçbiri
+             bekliyorsa "Bugün için bekleyen işiniz yok" görünüyor.
+             AYRI bir Firestore sorgusu YAPMIYOR — sekmelerin zaten
+             kullandığı KANITLANMIŞ filtre mantığını backend'de
+             tekrar kullanıyor (bkz. get_admin_todo_summary). -->
+        <div id="admin-todo-summary" style="background:#0f172a;border:1.5px solid rgba(99,102,241,0.35);border-radius:14px;padding:10px;margin-bottom:10px;">
+            <div style="display:flex;align-items:center;gap:6px;margin-bottom:9px;padding-bottom:7px;border-bottom:1px solid rgba(99,102,241,0.25);">
+                <span style="font-size:0.78em;color:#a5b4fc;font-weight:900;text-transform:uppercase;letter-spacing:0.5px;">📌 Bugün Yapılacaklar</span>
+            </div>
+            <div id="admin-todo-summary-body" style="font-size:0.72em;color:#64748b;text-align:center;padding:8px;">Yükleniyor…</div>
         </div>
         <!-- YENİ: Yönetim sekmeleri (kullanıcılar, istatistikler, onaylar vb.)
              artık ayrı, kendi başlıklı çerçevesi içinde — sistem
@@ -5437,6 +5464,10 @@ window.switchAdminTab=function(tabId){
     if(tabId==='tab-offers'){ window.loadAdminOffersTable(); const b=document.getElementById('offers-count-badge'); if(b) b.style.display='none'; }
     if(tabId==='tab-reports'){ window.loadListingReports(); window.startReportsPolling(); } else { window.stopReportsPolling(); }
     if(tabId==='tab-messages'){ window.loadAdminConversations(); }
+    // Sekme değiştirmek genelde bir şeyi "görülmüş" işaretler (rozet
+    // sıfırlanır) — özet şeridin de bunu hemen yansıtması için kısa bir
+    // gecikmeyle (backend'in seenAt yazması için) tazeliyoruz.
+    setTimeout(loadAdminTodoSummary, 800);
 };
 window.switchUserTab=function(tabId){
     // FIX (Yardım & Şikayetler birleştirmesi): "utab-tickets",
@@ -6974,6 +7005,18 @@ function renderAdminPriceList(){
         }
     }
 }
+// ── YENİ: Geri alınamaz/parasal işlemler için ikinci onay katmanı ─────
+// Tek bir confirm() (Tamam/İptal) yanlışlıkla tek dokunuşla geçilebilir.
+// Bu yardımcı, admin'in İŞLEMİN KONUSUNU (domain adı gibi) TAM OLARAK
+// yazmasını istiyor — refleksle "Tamam"a basmak yerine bilinçli bir
+// eylem gerektiriyor. Mevcut prompt() kullanım deseniyle tutarlı
+// (kodda zaten reddetme sebebi, teklif fiyatı gibi yerlerde kullanılıyor).
+function confirmByTyping(expectedText, warningMessage) {
+    const typed = prompt(`${warningMessage}\n\nOnaylamak için tam olarak şunu yazın:\n"${expectedText}"`);
+    if (typed === null) return false; // İptal
+    return typed.trim() === expectedText;
+}
+
 window.handleRestoreDomain=async function(domainName){
     if(!confirm(t('restoreConfirm')(domainName))) return;
     const r=await fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'restore_domain',domainName,accessToken:piAccessToken})});
@@ -6983,6 +7026,12 @@ window.handleRestoreDomain=async function(domainName){
 };
 window.handlePermanentDelete=async function(domainName){
     if(!confirm(t('permanentDeleteConfirm')(domainName))) return;
+    // YENİ: Kalıcı silme geri alınamaz olduğu için ikinci bir onay katmanı
+    // eklendi — admin domain adını tam olarak yazmadan işlem gerçekleşmez.
+    if(!confirmByTyping(domainName, 'Bu domain KALICI olarak silinecek, GERİ ALINAMAZ.')) {
+        showToast('İptal edildi — yazılan metin domain adıyla eşleşmedi.');
+        return;
+    }
     const r=await fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'permanent_delete_domain',domainName,accessToken:piAccessToken})});
     const result=await r.json();
     if(!r.ok||!result.success) showToast(t('permanentDeleteFail')+(result.error||''));
@@ -7940,6 +7989,51 @@ let _auditLogEntries = [];
 let _auditLogOpenCategory = null;
 let _auditLogOpenEntryId = null;
 let _auditLogViewMode = 'category'; // YENİ: 'category' (mevcut, varsayılan) | 'timeline' (yeni)
+let _auditLogSearchQuery = ''; // YENİ: arama/filtre metni
+// YENİ: Her iki render fonksiyonunun da ORTAK kullandığı filtre — admin
+// kullanıcı adında, action adında veya detay metninde arama yapar
+// (küçük/büyük harf duyarsız). Sorgu boşsa tüm kayıtları olduğu gibi
+// döndürür (mevcut davranış birebir korunur).
+function getFilteredAuditEntries() {
+    const q = _auditLogSearchQuery.trim().toLowerCase();
+    if (!q) return _auditLogEntries;
+    return _auditLogEntries.filter(e =>
+        (e.admin || '').toLowerCase().includes(q) ||
+        (e.action || '').toLowerCase().includes(q) ||
+        (e.details || '').toLowerCase().includes(q)
+    );
+}
+window.filterAuditLog = function(query) {
+    _auditLogSearchQuery = query || '';
+    if (_auditLogViewMode === 'timeline') renderAuditLogTimeline(); else renderAuditLogGrouped();
+};
+// YENİ: Filtrelenmiş (veya tümü, filtre boşsa) kayıtları CSV olarak
+// indirir — muhasebe/vergi kaydı için "son 100 işlem" tek tıkla dışa
+// aktarılabilir. Yeni bir backend isteği ATMIYOR, zaten yüklü veriyi
+// kullanıyor. Excel'de Türkçe karakterlerin bozulmaması için UTF-8 BOM
+// ekleniyor (sales export'ta da kullanılan aynı desen).
+window.exportAuditLogCSV = function() {
+    const entries = getFilteredAuditEntries();
+    if (!entries.length) { showToast('İndirilecek kayıt yok'); return; }
+    const escCsv = (v) => `"${String(v ?? '').replace(/"/g, '""')}"`;
+    const header = ['Tarih', 'Admin', 'İşlem', 'Detay'].map(escCsv).join(',');
+    const rows = entries.map(e => [
+        new Date(e.ts).toLocaleString('tr-TR'),
+        e.admin || '',
+        e.action || '',
+        e.details || ''
+    ].map(escCsv).join(','));
+    const csv = '\uFEFF' + [header, ...rows].join('\r\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `admin-islem-gunlugu-${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+};
 window.setAuditLogViewMode = function(mode) {
     _auditLogViewMode = mode;
     _auditLogOpenCategory = null;
@@ -7952,10 +8046,56 @@ window.setAuditLogViewMode = function(mode) {
     if (tlBtn) tlBtn.style.cssText = tlBtn.style.cssText.replace(/border:.*?;background:.*?;color:.*?;/, '') + (mode === 'timeline' ? activeStyle : inactiveStyle);
     if (mode === 'timeline') renderAuditLogTimeline(); else renderAuditLogGrouped();
 };
+// ── YENİ: "Bugün Yapılacaklar" özet şeridi ──────────────────────────────
+let adminTodoPollTimer = null;
+async function loadAdminTodoSummary() {
+    const body = document.getElementById('admin-todo-summary-body');
+    if (!body) return;
+    try {
+        const r = await fetch('/api/approve', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'get_admin_todo_summary', accessToken: piAccessToken }) });
+        const result = await r.json();
+        if (!result.success) { body.innerHTML = `<span style="color:#f87171;">Yüklenemedi</span>`; return; }
+        const s = result.summary;
+        // Her kart: {sayı, etiket, ikon, hedef sekme}. Sayı 0 ise kart hiç gösterilmiyor.
+        const items = [
+            { n: s.pendingApprovals, label: 'Bekleyen Onay', icon: '🏷️', tab: 'tab-pending' },
+            { n: s.openTickets, label: 'Destek Talebi', icon: '🎫', tab: 'tab-tickets' },
+            { n: s.pendingTrademark, label: 'Marka Hakkı', icon: '🔖', tab: 'tab-trademark' },
+            { n: s.pendingPayouts, label: 'Bekleyen Ödeme', icon: '💸', tab: 'tab-payouts' },
+            { n: s.pendingOffers, label: 'Teklif', icon: '🔄', tab: 'tab-offers' },
+            { n: s.unseenReports, label: 'Şikayet', icon: '🚩', tab: 'tab-reports' },
+            { n: s.unseenMessages, label: 'Mesaj', icon: '💬', tab: 'tab-messages' }
+        ].filter(i => i.n > 0);
+        if (!items.length) {
+            body.innerHTML = `<span style="color:#6ee7b7;">✅ Bugün için bekleyen işiniz yok</span>`;
+            return;
+        }
+        body.style.textAlign = 'left';
+        body.style.padding = '0';
+        body.innerHTML = `<div style="display:flex;flex-wrap:wrap;gap:6px;">${items.map(i => `
+            <button onclick="window.switchAdminTab('${i.tab}');document.getElementById('${i.tab}')?.scrollIntoView({behavior:'smooth',block:'start'});" style="display:flex;align-items:center;gap:5px;background:rgba(99,102,241,0.12);border:1.5px solid #6366f1;border-radius:20px;padding:5px 11px;color:#e0e7ff;font-size:0.72em;font-weight:800;cursor:pointer;white-space:nowrap;">
+                <span>${i.icon}</span><span>${i.n} ${i.label}</span>
+            </button>`).join('')}</div>`;
+    } catch (e) {
+        console.error('[TodoSummary] yüklenemedi:', e);
+        body.innerHTML = `<span style="color:#f87171;">Yüklenemedi</span>`;
+    }
+}
+function startAdminTodoSummaryPolling() {
+    if (adminTodoPollTimer) clearInterval(adminTodoPollTimer);
+    loadAdminTodoSummary();
+    adminTodoPollTimer = setInterval(loadAdminTodoSummary, 30000);
+}
+
 window.openAuditLogModal=async function(){
     const resultsEl=document.getElementById('audit-log-results');
     resultsEl.innerHTML=`<div style="text-align:center;color:#64748b;font-size:0.75em;padding:20px;">${t('loadingLabel')}</div>`;
     document.getElementById('audit-log-modal').style.display='flex';
+    // Modal her açıldığında arama kutusu temizlenir — önceki oturumdan
+    // kalma bir filtre yüzünden "veri yok" sanılmasın diye.
+    _auditLogSearchQuery = '';
+    const searchInput = document.getElementById('audit-log-search-input');
+    if (searchInput) searchInput.value = '';
     try{
         const r=await fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'get_admin_audit_log',accessToken:piAccessToken})});
         const result=await r.json();
@@ -7981,11 +8121,13 @@ function renderAuditLogGrouped(){
     const resultsEl=document.getElementById('audit-log-results');
     if(!resultsEl) return;
     if(!_auditLogEntries.length){ resultsEl.innerHTML=`<div style="color:#64748b;font-size:0.75em;text-align:center;padding:20px;">Henüz kayıt yok.</div>`; return; }
+    const filtered = getFilteredAuditEntries();
+    if(!filtered.length){ resultsEl.innerHTML=`<div style="color:#64748b;font-size:0.75em;text-align:center;padding:20px;">"${escapeHtml(_auditLogSearchQuery)}" ile eşleşen kayıt yok.</div>`; return; }
     const locale=currentLang==='en'?'en-GB':'tr-TR';
     // Kayıtları kategoriye göre grupla, her grup içinde zaten en yeni-en
     // eski sırayla geliyor (backend orderBy('ts','desc') ile veriyor).
     const grouped={};
-    _auditLogEntries.forEach(e=>{
+    filtered.forEach(e=>{
         const cat=auditCategoryFor(e.action);
         if(!grouped[cat.key]) grouped[cat.key]=[];
         grouped[cat.key].push(e);
@@ -8060,6 +8202,8 @@ function renderAuditLogTimeline(){
     const resultsEl=document.getElementById('audit-log-results');
     if(!resultsEl) return;
     if(!_auditLogEntries.length){ resultsEl.innerHTML=`<div style="color:#64748b;font-size:0.75em;text-align:center;padding:20px;">Henüz kayıt yok.</div>`; return; }
+    const filtered = getFilteredAuditEntries();
+    if(!filtered.length){ resultsEl.innerHTML=`<div style="color:#64748b;font-size:0.75em;text-align:center;padding:20px;">"${escapeHtml(_auditLogSearchQuery)}" ile eşleşen kayıt yok.</div>`; return; }
     const locale=currentLang==='en'?'en-GB':'tr-TR';
     // Zaten backend ts-desc sıralı geliyor; sadece gün başlıklarına göre
     // ard arda gelen kayıtları grupluyoruz (ekstra sort GEREKMİYOR, mevcut
@@ -8078,7 +8222,7 @@ function renderAuditLogTimeline(){
     let currentDayLabel = null;
     let skippedCount = 0;
     const parts = [];
-    _auditLogEntries.forEach((e, idx) => {
+    filtered.forEach((e, idx) => {
         try {
             const cat = auditCategoryFor(e.action);
             const dLabel = dayLabelFor(e.ts, locale);
@@ -10132,6 +10276,7 @@ async function performPiConnect() {
                 listenToTrademarkClaims();
                 listenToPendingPayouts();
                 listenToPendingOffersBadge();
+                startAdminTodoSummaryPolling();
                 const today = new Date().toISOString().split("T")[0];
                 const dateInput = document.getElementById("admin-date-input");
                 dateInput.value = today;
@@ -12759,6 +12904,12 @@ window.adminReleasePayout = async function(saleId, domainName, sellerUsername) {
 window.adminRefundPayout = async function(saleId, domainName, buyerUsername) {
     if (!buyerUsername) { showToast(t('payoutNoBuyerWarning')); return; }
     if (!confirm(`"${domainName}" ${t('payoutConfirmRefund')}`)) return;
+    // YENİ: Gerçek Pi parası geri gönderiliyor ve bu geri alınamaz — ikinci
+    // onay katmanı olarak admin domain adını tam yazmak zorunda.
+    if (!confirmByTyping(domainName, 'Bu işlemle GERÇEK Pi parası alıcıya iade edilecek, GERİ ALINAMAZ.')) {
+        showToast('İptal edildi — yazılan metin domain adıyla eşleşmedi.');
+        return;
+    }
 
     try {
         const r = await fetch('/api/approve', {
