@@ -15,8 +15,17 @@
     },
     "api/telegram-webhook.js": {
       "maxDuration": 10
+    },
+    "api/cron-daily-digest.js": {
+      "maxDuration": 10
     }
   },
+  "crons": [
+    {
+      "path": "/api/cron-daily-digest",
+      "schedule": "0 6 * * *"
+    }
+  ],
   "routes": [
     {
       "src": "/api/approve",
@@ -29,6 +38,10 @@
     {
       "src": "/api/telegram-webhook",
       "dest": "/api/telegram-webhook.js"
+    },
+    {
+      "src": "/api/cron-daily-digest",
+      "dest": "/api/cron-daily-digest.js"
     },
     {
       "src": "/privacy.html",
