@@ -737,6 +737,42 @@ async function checkRateLimit(ip, action, maxReq = 10, windowMs = 60000) {
 }
 
 // ─── Bildirim Yardımcıları (Firebase Realtime Database) ───────────────────
+
+// YENİ: Bildirim Tercihleri (Öneri #4) — ~30 farklı bildirim `type`'ını
+// kullanıcının anlayabileceği 6 kategoriye eşliyoruz. Kullanıcı bir
+// kategoriyi kapatırsa, o kategorideki bildirimler için Telegram/e-posta/
+// push (DIŞ kanallar) gönderilmez — ama UYGULAMA İÇİ bildirim HER ZAMAN
+// yazılır (yukarıdaki rtdb.push çağrısı bu fonksiyonun DIŞINDA/ÖNCESİNDE,
+// tercihlerden etkilenmiyor) çünkü bu, hesabıyla ilgili önemli bir olayın
+// kaybolmaması için son bir güvence — kullanıcı sadece "beni rahatsız
+// etme" diyor, "bu bilgiyi bana hiç gösterme" demiyor.
+const NOTIF_CATEGORY_MAP = {
+  sales: ['new_sale', 'purchase_success', 'payout_released', 'refund_issued', 'domain_resold',
+    'favorite_sold', 'dispute_response', 'amount_mismatch_review_needed', 'own_listing_refund_needed',
+    'race_condition_refund_needed', 'reservation_conflict_refund_needed', 'payout_needs_login',
+    'refund_needs_login', 'purchase_reversed', 'referral_bonus', 'new_sell_request',
+    'sell_request_approved', 'sell_request_rejected'],
+  offers: ['offer_received', 'offer_accepted', 'offer_rejected', 'offer_countered',
+    'counter_offer_accepted', 'counter_offer_rejected'],
+  tickets: ['ticket_created', 'ticket_message', 'ticket_admin_reply', 'ticket_status_update', 'ticket_deleted'],
+  favorites: ['favorite_price_changed', 'favorite_relisted', 'saved_search_match', 'domain_relisted', 'rating_reminder'],
+  messages: ['new_message'],
+  legal: ['trademark_claim', 'domain_removed_trademark', 'listing_reported', 'report_status_update']
+};
+function notificationCategoryFor(type) {
+  for (const [cat, types] of Object.entries(NOTIF_CATEGORY_MAP)) {
+    if (types.includes(type)) return cat;
+  }
+  return 'sales'; // bilinmeyen/yeni bir type eklenirse en güvenli varsayılan: göster
+}
+// Varsayılan: TÜMÜ açık (opt-out modeli) — kullanıcı hiçbir şey
+// ayarlamadıysa mevcut davranış (her şeyi gönder) birebir korunur.
+function isNotifCategoryEnabled(prof, category) {
+  const prefs = prof && prof.notifCategoryPrefs;
+  if (!prefs || typeof prefs !== 'object') return true;
+  return prefs[category] !== false;
+}
+
 async function sendNotification(targetUsername, notification) {
   if (!targetUsername) return;
   try {
@@ -766,6 +802,13 @@ async function sendNotification(targetUsername, notification) {
     const profSnap = await db.collection('user_profiles').doc(targetUsername).get();
     if (profSnap.exists) {
       const prof = profSnap.data();
+      // YENİ: Bu bildirim türü kullanıcının kapattığı bir kategorideyse,
+      // dış kanalları (Telegram/e-posta/push) ATLA — uygulama içi
+      // bildirim zaten yukarıda yazıldı, o hiçbir zaman engellenmiyor.
+      const category = notificationCategoryFor(notification.type);
+      if (!isNotifCategoryEnabled(prof, category)) {
+        return;
+      }
       const text = `${notification.title ? notification.title + '\n\n' : ''}${notification.body || ''}`;
       if (prof.telegramChatId) {
         await sendTG(prof.telegramChatId, text);
@@ -3300,8 +3343,38 @@ async function handlerImpl(req, res) {
         telegramLinked: !!d.telegramChatId,
         email: d.email || null,
         emailVerified: !!d.emailVerified,
-        pushSubscriptionCount: Array.isArray(d.pushSubscriptions) ? d.pushSubscriptions.length : 0
+        pushSubscriptionCount: Array.isArray(d.pushSubscriptions) ? d.pushSubscriptions.length : 0,
+        // YENİ: kategori bazlı tercihler — hiç ayarlanmadıysa tümü "true"
+        // (varsayılan: her şey açık, mevcut davranışla birebir aynı).
+        categoryPrefs: {
+          sales: isNotifCategoryEnabled(d, 'sales'),
+          offers: isNotifCategoryEnabled(d, 'offers'),
+          tickets: isNotifCategoryEnabled(d, 'tickets'),
+          favorites: isNotifCategoryEnabled(d, 'favorites'),
+          messages: isNotifCategoryEnabled(d, 'messages'),
+          legal: isNotifCategoryEnabled(d, 'legal')
+        }
       });
+    } catch (e) {
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  // YENİ: Bildirim kategori tercihini kaydet (Öneri #4). Sadece DIŞ
+  // kanalları (Telegram/e-posta/push) etkiler — uygulama içi bildirimler
+  // hiçbir zaman kapatılamaz, bkz. sendNotification'daki yorum.
+  if (action === 'set_notification_category_pref') {
+    const realUsername = await getRealUsername(accessToken);
+    if (!realUsername) return res.status(401).json({ error: "Geçersiz oturum" });
+    const { category, enabled } = req.body;
+    const validCategories = ['sales', 'offers', 'tickets', 'favorites', 'messages', 'legal'];
+    if (!validCategories.includes(category)) return res.status(400).json({ error: "Geçersiz kategori" });
+    try {
+      const db = getDb();
+      await db.collection('user_profiles').doc(realUsername).set({
+        notifCategoryPrefs: { [category]: !!enabled }
+      }, { merge: true });
+      return res.status(200).json({ success: true });
     } catch (e) {
       return res.status(500).json({ error: e.message });
     }
@@ -5500,6 +5573,50 @@ async function handlerImpl(req, res) {
       return res.status(200).json({ success: true });
     } catch (e) {
       console.error("check_expired_reservation hatası:", e);
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  // ── YENİ: Fiyat Rehberi (Öneri #3) ──────────────────────────────────
+  // Bir domain listelenirken/eklenirken, aynı kategorideki (domainType)
+  // DAHA ÖNCE SATILMIŞ domainlerin fiyat istatistiklerini (min/ortalama/
+  // maks) döndürür. Satıcı "bu tarz domainler genelde kaça satılıyor"
+  // sorusuna körlemesine tahmin yürütmek yerine somut bir referansla
+  // cevap bulur. Herkese açık (giriş şartı yok) — sadece toplu/anonim
+  // istatistik döndürüyor, tek bir satışın kime ait olduğunu göstermiyor.
+  // Kötüye kullanımı (aşırı sorgu) önlemek için yine de rate limit var.
+  if (action === 'get_price_guidance') {
+    const { domainType } = req.body;
+    if (!domainType) return res.status(400).json({ error: "domainType zorunlu" });
+    if (!await checkRateLimit(clientIp, 'get_price_guidance', 30, 60000))
+      return res.status(429).json({ error: "Çok fazla istek" });
+    try {
+      const db = getDb();
+      const snap = await db.collection('domains')
+        .where('sold', '==', true)
+        .where('type', '==', domainType)
+        .limit(200) // son 200 satışla sınırlı — hem hızlı hem yeterince temsili
+        .get();
+      const prices = [];
+      snap.forEach(d => {
+        const p = Number(d.data().price);
+        if (p > 0) prices.push(p);
+      });
+      if (prices.length === 0) {
+        return res.status(200).json({ success: true, count: 0 });
+      }
+      const min = Math.min(...prices);
+      const max = Math.max(...prices);
+      const avg = prices.reduce((a, b) => a + b, 0) / prices.length;
+      return res.status(200).json({
+        success: true,
+        count: prices.length,
+        min: Math.round(min * 1e4) / 1e4,
+        max: Math.round(max * 1e4) / 1e4,
+        avg: Math.round(avg * 1e4) / 1e4
+      });
+    } catch (e) {
+      console.error("get_price_guidance hatası:", e);
       return res.status(500).json({ error: e.message });
     }
   }
