@@ -8087,8 +8087,8 @@ function renderAuditLogTimeline(){
             const isEntryOpen = _auditLogOpenEntryId === e.id;
             const timeOnly = new Date(e.ts).toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' });
             const fullTime = new Date(e.ts).toLocaleString(locale);
-            const dayHeader = isNewDay ? `<div style="color:#818cf8;font-size:0.7em;font-weight:900;margin:${idx===0?'0':'12px'} 0 4px 2px;">${dLabel}</div>` : '';
-            parts.push(`${dayHeader}<div style="background:#0f172a;border:1px solid #1e293b;border-radius:8px;margin-bottom:4px;overflow:hidden;">
+            const dayHeader = isNewDay ? `<div style="color:#818cf8;font-size:0.7em;font-weight:900;margin:${idx===0?'0':'12px'} 0 4px 2px;flex-shrink:0;">${dLabel}</div>` : '';
+            parts.push(`${dayHeader}<div style="background:#0f172a;border:1px solid #1e293b;border-radius:8px;margin-bottom:4px;overflow:hidden;flex-shrink:0;min-height:20px;">
                 <div onclick="window.toggleAuditEntry('${e.id}')" style="display:flex;justify-content:space-between;align-items:center;gap:8px;padding:8px 10px;cursor:pointer;">
                     <div style="display:flex;align-items:center;gap:7px;min-width:0;flex:1;">
                         <span style="font-size:0.85em;flex-shrink:0;">${cat.icon}</span>
