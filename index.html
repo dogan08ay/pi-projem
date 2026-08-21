@@ -1178,6 +1178,14 @@
     </svg>
 </button>
 <button id="tour-fab" onclick="window.startOnboardingTour()" title="Uygulama Turu" aria-label="Uygulama turunu başlat" style="display:none;position:fixed;bottom:16px;right:14px;z-index:900;width:46px;height:46px;border-radius:50%;background:linear-gradient(135deg,#6366f1,#818cf8);border:2px solid rgba(255,255,255,0.25);box-shadow:0 6px 18px rgba(99,102,241,0.55);color:#fff;font-size:1.15em;font-weight:900;cursor:pointer;align-items:center;justify-content:center;animation:tour-fab-pulse 2.4s ease-in-out infinite;">?</button>
+<!-- YENİ: Admin için hızlı erişim butonu (Öneri #3 — "adminin paneline
+     ulaşmak için çok kaydırması gerekiyor" sorununa çözüm). Sadece admin
+     giriş yaptığında (syncAdminQuickJumpFab ile) gösteriliyor; tıklayınca
+     sayfanın en başına dönmek yerine doğrudan #admin-panel'e kaydırıyor —
+     her girişte hero banner + kişisel istatistikler + rozetlerin
+     TAMAMINI geçmek zorunda kalmadan admin araçlarına ulaşılabiliyor.
+     Mevcut sayfa YAPISINA hiç dokunulmadı, sadece ek bir kısayol. -->
+<button id="admin-quickjump-fab" onclick="document.getElementById('admin-panel')?.scrollIntoView({behavior:'smooth',block:'start'});" title="Admin Paneline Git" aria-label="Admin paneline git" style="display:none;position:fixed;bottom:70px;right:14px;z-index:900;width:40px;height:40px;border-radius:50%;background:linear-gradient(135deg,#f59e0b,#fbbf24);border:2px solid rgba(255,255,255,0.25);box-shadow:0 6px 18px rgba(245,158,11,0.5);color:#1e1b4b;font-size:1.05em;cursor:pointer;align-items:center;justify-content:center;">🛠️</button>
 <style>@keyframes tour-fab-pulse{0%,100%{box-shadow:0 6px 18px rgba(99,102,241,0.55);}50%{box-shadow:0 6px 26px rgba(99,102,241,0.9),0 0 0 6px rgba(99,102,241,0.15);}}</style>
 <div class="side-menu-overlay" id="side-menu-overlay" onclick="toggleSideMenu()"></div>
 
@@ -5529,6 +5537,8 @@ window.handleLogout=async function(){
     const ap=document.getElementById("admin-panel"); if(ap){ap.style.display="none";ap.style.opacity='';ap.style.transform='';delete ap.dataset.hiddenByViewAsUser;}
     const vab=document.getElementById("view-as-user-box"); if(vab) vab.style.display="none";
     window._viewAsUserMode=false;
+    // YENİ: Çıkış yapınca admin hızlı erişim butonu da gizlensin.
+    const qjf=document.getElementById("admin-quickjump-fab"); if(qjf) qjf.style.display="none";
     const nb=document.getElementById("notif-btn"); if(nb) nb.style.visibility="hidden";
     const uab=document.getElementById("user-avatar-btn"); if(uab){uab.style.display="none";if(uab._userMenuTimeout){clearTimeout(uab._userMenuTimeout);}}
     const tfab=document.getElementById("tour-fab"); if(tfab) tfab.style.display="none";
@@ -9522,6 +9532,16 @@ function render(){
     const _nowTs=Date.now();
     const _isBoosted=(d)=>{ const dd=domainData[d.name]; return !!(dd && dd.boostedUntil && dd.boostedUntil>_nowTs && !dd.sold); };
     sortedDomains.sort((a,b)=>(_isBoosted(b)?1:0)-(_isBoosted(a)?1:0));
+    // YENİ: Satılmış (ama silinmemiş — admin/geçmiş görünümü için hâlâ
+    // listede duran) ilanlar, artık listenin EN SONUNA itiliyor. Öncesinde
+    // bunlar normal sıralamada (ör. "en yeni eklenen") kaldıkları için,
+    // yeni satılan bir domain "Satın Alabileceğiniz Domainler" başlığının
+    // HEMEN ALTINDA kırmızı "SATILDI" kartı olarak görünebiliyordu — bu da
+    // gerçekten satın alınabilecek ilanları aşağı itip kafa karıştırıyordu.
+    // Array.sort() kararlı (stable) olduğu için, hem "en yeni üstte" hem
+    // "boosted önce" sıralamalarını BOZMADAN sadece satılmışları en sona
+    // gruplayan üçüncü, ayrı bir geçiş.
+    sortedDomains.sort((a,b)=>(domainData[a.name]?.sold?1:0)-(domainData[b.name]?.sold?1:0));
     const sortSelectEl=document.getElementById('domain-sort-select');
     if(sortSelectEl && sortSelectEl.value!==domainSortOrder) sortSelectEl.value=domainSortOrder;
     const isAdminViewing=isAuth&&currentUser===APP_CONFIG.adminUsername&&!window._viewAsUserMode;
@@ -10118,14 +10138,29 @@ async function loadUniqueBadgeCount(){
 
 // AKTİF KULLANICI
 onSnapshot(collection(db,"active_users"),(snap)=>{
-    const now=Date.now();let count=0;
-    snap.forEach(d=>{if(d.data().lastSeen&&(now-d.data().lastSeen)<30000)count++;});
-    const el=document.getElementById("online-count"); if(el) el.innerText=count;
+    const now=Date.now();
+    let strictCount=0; // Admin'in "Anlık Aktif" panelinde kalan HASSAS pencere (30sn) — değişmedi
+    // YENİ: Ana sayfadaki halka açık "Aktif Kullanıcı" istatistiği için
+    // AYRI, daha geniş bir pencere (15 dakika). Sebep: 30 saniyelik pencere
+    // teknik olarak doğru ama düşük trafikli anlarda neredeyse HER ZAMAN
+    // "0" gösteriyordu — bu da yeni bir ziyaretçiye "kimse kullanmıyor"
+    // izlenimi veriyordu (sosyal kanıt açısından zararlı). 15 dakika hâlâ
+    // dürüst/doğru bir rakam (gerçekten son 15 dakikada aktif olanlar) ama
+    // "0" görünme ihtimalini büyük ölçüde azaltıyor.
+    let recentCount=0;
+    snap.forEach(d=>{
+        const lastSeen=d.data().lastSeen;
+        if(!lastSeen) return;
+        const diff=now-lastSeen;
+        if(diff<30000) strictCount++;
+        if(diff<900000) recentCount++;
+    });
+    const el=document.getElementById("online-count"); if(el) el.innerText=recentCount;
     // FIX: Admin panelindeki "Anlık Aktif Kullanıcılar" butonunun rozeti de
     // modalı hiç açmadan, bu zaten var olan canlı dinleyiciden anında
     // güncellensin (önceden sadece modal açılınca dolduruluyordu, o ana
     // kadar "—" görünüyordu).
-    const badgeEl=document.getElementById("active-users-badge"); if(badgeEl) badgeEl.textContent=count;
+    const badgeEl=document.getElementById("active-users-badge"); if(badgeEl) badgeEl.textContent=strictCount;
 });
 async function updateActiveStatus(){if(currentUser) await setDoc(doc(db,"active_users",currentUser),{lastSeen:Date.now()},{merge:true});}
 window.addEventListener('beforeunload',async()=>{if(currentUser) await deleteDoc(doc(db,"active_users",currentUser));});
@@ -10174,6 +10209,10 @@ window.toggleViewAsUser = function(){
             delete adminPanel.dataset.hiddenByViewAsUser;
         }
     }
+    // YENİ: Admin paneli görünmezken kısayol butonunun da görünmesi
+    // anlamsız olurdu (tıklayınca gizli bir elemana kaydırırdı).
+    const quickJumpFab = document.getElementById('admin-quickjump-fab');
+    if (quickJumpFab) quickJumpFab.style.display = window._viewAsUserMode ? 'none' : 'flex';
     debouncedRender();
 };
 function syncViewAsUserButton(){
@@ -10529,6 +10568,9 @@ async function performPiConnect() {
                             adminPanel.style.opacity = '1';
                             adminPanel.style.transform = 'translateY(0)';
                         });
+                        // YENİ: Admin hızlı erişim butonunu göster (Öneri #3)
+                        const quickJumpFab = document.getElementById('admin-quickjump-fab');
+                        if (quickJumpFab) quickJumpFab.style.display = 'flex';
                         // FIX (kök neden — "Ağ Modu kutusu girişte '...' yazıp
                         // sayfa yenilenince düzeliyor"): admin paneli ilk
                         // açıldığında hiçbir veri çekilmiyordu — Ağ Modu, şikayet
