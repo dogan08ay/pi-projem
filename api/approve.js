@@ -2514,16 +2514,36 @@ async function handlerImpl(req, res) {
       // Backend'in (Vercel Function) çalışıyor olması, sitenin gerçekten
       // ziyaretçilere ULAŞTIĞI anlamına gelmez (ör. DNS/CDN/domain süresi
       // dolması gibi backend'in hiç haberdar olmadığı sorunlar olabilir).
+      //
+      // FIX (kök neden — "504 FUNCTION_INVOCATION_TIMEOUT, tam 10 saniyede
+      // kesiliyor, External APIs: GET boş kalıyor"): Bu istekler kendi
+      // kendine (uygulamanın kendi domainine) yapılan GET istekleriydi ve
+      // hiçbir ZAMAN SINIRI (timeout) YOKTU. Bir sunucunun kendi kendine
+      // yaptığı bu tür istekler bazı durumlarda (Vercel'in fonksiyon
+      // eşzamanlılık sınırları, soğuk başlangıç kuyruğu vb.) hiç yanıt
+      // vermeden asılı kalabiliyor — bu da TÜM /api/approve isteğinin
+      // (hangi action olursa olsun, sadece Sistem Kontrolü değil, aynı
+      // fonksiyon örneğini paylaşan HER İSTEK) 10 saniye sonra Vercel
+      // tarafından zorla kesilmesine yol açıyordu. Çözüm: (1) her isteğe
+      // AbortController ile 4 saniyelik kesin bir süre sınırı, (2) 3 ayrı
+      // isteği sırayla değil PARALEL çalıştırmak — worst-case süre
+      // 3×4=12sn'den 4sn'ye düşüyor.
       const SITE_BASE_URL = process.env.SITE_URL || 'https://dofiay.com';
-      for (const path of ['/', '/robots.txt', '/sitemap.xml']) {
+      const sitePaths = ['/', '/robots.txt', '/sitemap.xml'];
+      await Promise.all(sitePaths.map(async (path) => {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 4000);
         try {
-          const siteResp = await fetch(SITE_BASE_URL + path, { method: 'GET' });
+          const siteResp = await fetch(SITE_BASE_URL + path, { method: 'GET', signal: controller.signal });
           if (siteResp.ok) connResults.push(`✅ Site erişilebilir: ${path} (HTTP ${siteResp.status})`);
           else addIssue('warning', `Site sayfası beklenmeyen durum kodu döndü: ${path}`, `HTTP ${siteResp.status} — ${SITE_BASE_URL}${path}`);
         } catch (e) {
-          addIssue('error', `Site sayfasına ulaşılamadı: ${path}`, String(e.message || e) + ` — ${SITE_BASE_URL}${path} adresini tarayıcıdan elle açıp kontrol edin (DNS/domain süresi/CDN sorunu olabilir).`);
+          const isTimeout = e.name === 'AbortError';
+          addIssue('error', `Site sayfasına ulaşılamadı: ${path}`, (isTimeout ? '4 saniyede yanıt gelmedi (timeout)' : String(e.message || e)) + ` — ${SITE_BASE_URL}${path} adresini tarayıcıdan elle açıp kontrol edin (DNS/domain süresi/CDN sorunu olabilir).`);
+        } finally {
+          clearTimeout(timeoutId);
         }
-      }
+      }));
 
       // ── YENİ: Admin güvenlik özeti (Faz 4) ─────────────────────────────
       try {
