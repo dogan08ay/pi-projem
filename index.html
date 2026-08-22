@@ -7656,16 +7656,21 @@ window.loadAdminOffersTable=async function(){
 let myOffersExpanded=false;
 // FIX: "Tekliflerim" başlığındaki bildirim rozeti artık sekme açılışında değil,
 // bu panel GERÇEKTEN açıldığında kayboluyor (bkz. switchUserTab'daki not).
-// YENİ: Çift tetiklenme koruması (debounce). Pi Browser'ın kısıtlı
-// WebView'inde bazı dokunma (touch) olayları tek bir dokunuşta İKİ KEZ
-// tetiklenebiliyor (reCAPTCHA ve flexbox'ta yaşadığımız benzer platform
-// kısıtlamaları gibi) — bu da "aç → hemen kapan" (yükleniyor anlık
-// görünüp kayboluyor) izlenimine yol açıyordu. Aynı butona 400ms içinde
-// ikinci bir tetiklenme gelirse görmezden geliniyor.
+// YENİ (2. deneme — daha sağlam çözüm): İlk denemede zaman tabanlı 400ms
+// koruma yeterli olmadı (Pi Browser'da "hayalet tıklama" gecikmesi bazen
+// bu pencereyi aşabiliyor — video kaydıyla doğrulandı). Bunun yerine bir
+// İSTEK KİLİDİ kullanıyoruz — "Teklif Ver" butonundaki (_offerSubmitInFlight)
+// KANITLANMIŞ desenin aynısı: bir istek devam ederken (zaman farkı ne
+// olursa olsun) ikinci bir tetiklenme TAMAMEN görmezden geliniyor. Bu,
+// "kaç milisaniye güvenli" tahmin etmek zorunda kalmadan sorunu kökten
+// çözüyor — zaman tabanlı koruma da ek güvence olarak yanında kalıyor.
+let _myOffersLoadInFlight=false;
+let _receivedOffersLoadInFlight=false;
 let _lastMyOffersToggleAt = 0;
 let _lastReceivedOffersToggleAt = 0;
 
 window.toggleMyOffersList=function(){
+    if(_myOffersLoadInFlight) return;
     const now=Date.now();
     if(now-_lastMyOffersToggleAt<400) return;
     _lastMyOffersToggleAt=now;
@@ -7750,12 +7755,20 @@ window.loadMyOffers=async function(silent){
     const box=document.getElementById('my-offers-content');
     if(!box) return;
     if(!myOffersExpanded){ box.style.display='none'; return; }
+    // YENİ: Zaten devam eden bir istek varsa (ör. arka plandaki sessiz
+    // yenileme ile kullanıcının az önceki tıklaması çakıştıysa) yeni bir
+    // istek BAŞLATMA — aynı anda iki isteğin birbirinin kilidini
+    // erken açması gibi bir yarış durumu (race condition) oluşmasın.
+    if(_myOffersLoadInFlight) return;
     box.style.display='block';
     // FIX: "silent"=true olduğunda (arka plandaki periyodik otomatik
     // tazeleme) "yükleniyor" yazısı gösterilmiyor — aksi halde panel
     // açıkken her 8 saniyede bir içerik yanıp sönerdi. Sadece kullanıcının
     // panelin kendi elleriyle AÇTIĞI ilk yüklemede gösteriliyor.
     if(!silent) box.innerHTML=`<p style="font-size:0.72em;opacity:0.5;text-align:center;">${t('loadingLabel')}</p>`;
+    // YENİ: İstek kilidi — bu istek bitene kadar toggleMyOffersList()
+    // başka bir tetiklenmeyi görmezden gelir (yukarıdaki not).
+    _myOffersLoadInFlight=true;
     try{
         const r=await fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'get_my_offers',accessToken:piAccessToken})});
         const result=await r.json();
@@ -7763,6 +7776,7 @@ window.loadMyOffers=async function(silent){
         lastMyOffersData=result.offers;
         renderMyOffersBox();
     }catch(e){ if(!silent) box.innerHTML=`<p style="color:#f87171;font-size:0.72em;text-align:center;">${t('genericError')}</p>`; }
+    finally{ _myOffersLoadInFlight=false; }
 };
 // YENİ: Sadece görüntüyü (backend'e tekrar sormadan) günceller — kabul
 // edilmiş bir teklifin rezervasyon geri sayımı azalırken veya süre dolup
@@ -7802,6 +7816,7 @@ let receivedOffersExpanded=false;
 // FIX: "Gelen Teklifler" başlığındaki bildirim rozeti artık sekme açılışında
 // değil, bu panel GERÇEKTEN açıldığında kayboluyor (bkz. switchUserTab'daki not).
 window.toggleReceivedOffersList=function(){
+    if(_receivedOffersLoadInFlight) return;
     const now=Date.now();
     if(now-_lastReceivedOffersToggleAt<400) return;
     _lastReceivedOffersToggleAt=now;
@@ -7814,8 +7829,10 @@ window.loadReceivedOffers=async function(silent){
     const box=document.getElementById('received-offers-content');
     if(!box) return;
     if(!receivedOffersExpanded){ box.style.display='none'; return; }
+    if(_receivedOffersLoadInFlight) return;
     box.style.display='block';
     if(!silent) box.innerHTML=`<p style="font-size:0.72em;opacity:0.5;text-align:center;">${t('loadingLabel')}</p>`;
+    _receivedOffersLoadInFlight=true;
     try{
         const r=await fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'get_received_offers',accessToken:piAccessToken})});
         const result=await r.json();
@@ -7823,6 +7840,7 @@ window.loadReceivedOffers=async function(silent){
         lastReceivedOffersData=result.offers;
         renderReceivedOffersBox();
     }catch(e){ if(!silent) box.innerHTML=`<p style="color:#f87171;font-size:0.72em;text-align:center;">${t('genericError')}</p>`; }
+    finally{ _receivedOffersLoadInFlight=false; }
 };
 // YENİ: Aynı loadMyOffers/renderMyOffersBox mantığı — kabul edilmiş bir
 // teklifin rezervasyon geri sayımı/sonucu, backend'e tekrar sormadan,
