@@ -154,8 +154,8 @@
         .admin-tab-panel{display:none;}
         .admin-tab-panel.active{display:block;animation:card-rise 0.3s ease backwards;}
         .pending-badge{background:#ef4444;color:#fff;font-size:0.6em;font-weight:900;border-radius:8px;padding:1px 5px;flex-shrink:0;min-width:15px;text-align:center;line-height:1.3;position:absolute;top:3px;right:4px;box-shadow:0 0 6px rgba(239,68,68,0.6);}
-        .user-tabs{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;margin-bottom:6px;width:100%;box-sizing:border-box;}
-        .user-tab-btn{min-width:0;background:linear-gradient(135deg,#1e293b 0%,#0f172a 100%);border:1.5px solid #334155;color:#94a3b8;padding:7px 3px;border-radius:8px;font-size:0.62em;font-weight:800;cursor:pointer;white-space:normal;line-height:1.25;transition:all 0.2s;text-align:center;box-shadow:0 2px 8px rgba(0,0,0,0.3);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;min-height:40px;position:relative;}
+        .user-tabs{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:6px;width:100%;box-sizing:border-box;}
+        .user-tab-btn{min-width:0;background:linear-gradient(135deg,#1e293b 0%,#0f172a 100%);border:1.5px solid #334155;color:#94a3b8;padding:9px 4px;border-radius:8px;font-size:0.68em;font-weight:800;cursor:pointer;white-space:normal;line-height:1.3;transition:all 0.2s;text-align:center;box-shadow:0 2px 8px rgba(0,0,0,0.3);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;min-height:46px;position:relative;}
         .user-tab-btn span[data-i18n]{overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;word-break:break-word;}
         .user-tab-btn.active{background:rgba(16,185,129,0.15);border-color:#10b981;color:#6ee7b7;}
         /* YENİ: "Yardım & Şikayetler" birleşik sekmesi içindeki alt seçim
@@ -970,7 +970,7 @@
   .domain-grid{gap:4px;}
   .stats-bar{font-size:0.48em;gap:0;}
   .user-tabs{gap:3px;}
-  .user-tab-btn{font-size:0.58em;padding:6px 2px;min-height:36px;}
+  .user-tab-btn{font-size:0.63em;padding:8px 3px;min-height:42px;}
   .ticket-table-header,.ticket-table-row{font-size:0.58em;}
   .ticket-table-header > div,.ticket-table-row > div{padding:6px 3px;}
   .side-menu{width:88%;}
@@ -2033,7 +2033,7 @@
             <!-- YENİ: kullanıcının tüm geçmiş işlemlerini (ilan, satın alma,
                  şikayet, destek talebi, marka itirazı) tek bir yerden,
                  konu başlıklarıyla ayrılmış şekilde görebildiği sekme. -->
-            <button class="user-tab-btn" data-utab="utab-history" onclick="switchUserTab('utab-history')">🕓<span data-i18n="myHistoryTab"></span></button>
+            <button class="user-tab-btn" data-utab="utab-history" onclick="switchUserTab('utab-history')" style="grid-column:1 / -1;flex-direction:row;gap:6px;">🕓<span data-i18n="myHistoryTab"></span></button>
 
         </div>
         <div class="user-tab-panel active" id="utab-overview">
@@ -2453,7 +2453,7 @@
                      satılmış" bilgisini görüyor. -->
                 <div id="price-guidance-box" style="display:none;font-size:0.68em;color:#94a3b8;background:rgba(99,102,241,0.08);border:1px dashed #6366f1;border-radius:6px;padding:6px 8px;line-height:1.5;"></div>
                 <textarea id="new-domain-desc" data-i18n-placeholder="descriptionPlaceholder" class="admin-date-picker" rows="2" style="resize:none;margin-bottom:0;"></textarea>
-                <button class="pi-btn" style="margin:4px 0 0 0;animation:none;background:#10b981;padding:8px;" onclick="handleAddDomain()" data-i18n="addDomainBtn"></button>
+                <button id="add-domain-btn" class="pi-btn" style="margin:4px 0 0 0;animation:none;background:#10b981;padding:8px;" onclick="handleAddDomain()" data-i18n="addDomainBtn"></button>
             </div>
             <!-- YENİ: Toplu Domain İçe Aktarma (CSV) — çok sayıda domain
                  eklerken tek tek form doldurmak yerine bir CSV dosyası
@@ -3284,7 +3284,7 @@ const i18n = {
     allSalesDetail:"Tüm Satış Detayları",clickToLoad:"Yüklemek için yenile butonuna basın.",
     saleDetailDomain:"Domain",saleDetailBuyer:"Alıcı",saleDetailDate:"Tarih",saleDetailPrice:"Tutar",saleDetailSeller:"Satıcı",
     salesCount:"SATIŞ ADEDİ",volumePi:"HACİM (Pİ)",noPendingDomains:"Bekleyen domain önerisi yok.",
-    addDomainBtn:"Domain Ekle",newDomainPlaceholder:"domain-adi.pi",
+    addDomainBtn:"Domain Ekle",newDomainPlaceholder:"domain-adi.pi",processingLabel:"İşleniyor…",
     bulkImportTitle:"Toplu Domain İçe Aktar (CSV)",
     bulkImportNote:"CSV dosyanızın ilk satırı başlık olmalı: domainName,price,type,description (type ve description isteğe bağlı).",
     bulkImportChooseFileBtn:"CSV Dosyası Seç",
@@ -4228,7 +4228,7 @@ const i18n = {
     allSalesDetail:"All Sales Detail",clickToLoad:"Press refresh to load.",
     saleDetailDomain:"Domain",saleDetailBuyer:"Buyer",saleDetailDate:"Date",saleDetailPrice:"Amount",saleDetailSeller:"Seller",
     salesCount:"SALES COUNT",volumePi:"VOLUME (PI)",noPendingDomains:"No pending domain submissions.",
-    addDomainBtn:"Add Domain",newDomainPlaceholder:"domain-name.pi",
+    addDomainBtn:"Add Domain",newDomainPlaceholder:"domain-name.pi",processingLabel:"Processing…",
     bulkImportTitle:"Bulk Import Domains (CSV)",
     bulkImportNote:"Your CSV's first row must be a header: domainName,price,type,description (type and description are optional).",
     bulkImportChooseFileBtn:"Choose CSV File",
@@ -7227,17 +7227,33 @@ window.handleDeleteDomain=async function(domainName){
     // onSnapshot içindeki "deleted===true" kontrolüyle otomatik olur.
     showToast(t('deleteSuccess')(domainName));
 };
+// YENİ: "Teklif Ver" butonundaki (confirmSubmitOffer) KANITLANMIŞ çift-
+// tıklama koruma deseni buraya da uygulandı — öncesinde bu buton hiç
+// korumasızdı, hızlı art arda tıklamada aynı domain iki kez eklenmeye
+// çalışılabiliyordu (ikinci istek muhtemelen "zaten var" hatası alırdı
+// ama gereksiz bir istek + kafa karıştırıcı bir hata mesajı üretiyordu).
+let _addDomainInFlight=false;
 window.handleAddDomain=async function(){
+    if(_addDomainInFlight) return;
     const name=document.getElementById("new-domain-name").value.trim();
     const price=Number(document.getElementById("new-domain-price").value);
     const img=document.getElementById("new-domain-img").value.trim()||'assets/default.jpeg';
     const domainType=document.getElementById("new-domain-type").value;
     const description=document.getElementById("new-domain-desc").value.trim();
     if(!name||!price||price<=0){showToast(t('domainNamePriceRequired'));return;}
-    const r=await fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'add_domain',domainName:name,newPrice:price,imgPath:img,domainType,description,accessToken:piAccessToken})});
-    const result=await r.json();
-    if(!r.ok||!result.success) showToast(t('addDomainFail')+(result.error||''));
-    else{showToast(t('addDomainSuccess')(name));['new-domain-name','new-domain-price','new-domain-img','new-domain-desc'].forEach(id=>document.getElementById(id).value='');}
+    const btn=document.getElementById('add-domain-btn');
+    _addDomainInFlight=true;
+    if(btn){btn.disabled=true;btn.style.opacity='0.6';btn.dataset.origText=btn.textContent;btn.textContent=t('processingLabel')||'İşleniyor…';}
+    try{
+        const r=await fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'add_domain',domainName:name,newPrice:price,imgPath:img,domainType,description,accessToken:piAccessToken})});
+        const result=await r.json();
+        if(!r.ok||!result.success) showToast(t('addDomainFail')+(result.error||''));
+        else{showToast(t('addDomainSuccess')(name));['new-domain-name','new-domain-price','new-domain-img','new-domain-desc'].forEach(id=>document.getElementById(id).value='');}
+    }catch(e){ showToast(t('genericError')); }
+    finally{
+        _addDomainInFlight=false;
+        if(btn){btn.disabled=false;btn.style.opacity='1';if(btn.dataset.origText) btn.textContent=btn.dataset.origText;}
+    }
 };
 
 // ══════════════════════════════════════════════════════════════════════
@@ -7640,7 +7656,19 @@ window.loadAdminOffersTable=async function(){
 let myOffersExpanded=false;
 // FIX: "Tekliflerim" başlığındaki bildirim rozeti artık sekme açılışında değil,
 // bu panel GERÇEKTEN açıldığında kayboluyor (bkz. switchUserTab'daki not).
+// YENİ: Çift tetiklenme koruması (debounce). Pi Browser'ın kısıtlı
+// WebView'inde bazı dokunma (touch) olayları tek bir dokunuşta İKİ KEZ
+// tetiklenebiliyor (reCAPTCHA ve flexbox'ta yaşadığımız benzer platform
+// kısıtlamaları gibi) — bu da "aç → hemen kapan" (yükleniyor anlık
+// görünüp kayboluyor) izlenimine yol açıyordu. Aynı butona 400ms içinde
+// ikinci bir tetiklenme gelirse görmezden geliniyor.
+let _lastMyOffersToggleAt = 0;
+let _lastReceivedOffersToggleAt = 0;
+
 window.toggleMyOffersList=function(){
+    const now=Date.now();
+    if(now-_lastMyOffersToggleAt<400) return;
+    _lastMyOffersToggleAt=now;
     myOffersExpanded=!myOffersExpanded;
     if(myOffersExpanded){ markRoleNotificationsRead('buyer',['offer_accepted','offer_rejected','offer_countered']); }
     window.loadMyOffers();
@@ -7774,6 +7802,9 @@ let receivedOffersExpanded=false;
 // FIX: "Gelen Teklifler" başlığındaki bildirim rozeti artık sekme açılışında
 // değil, bu panel GERÇEKTEN açıldığında kayboluyor (bkz. switchUserTab'daki not).
 window.toggleReceivedOffersList=function(){
+    const now=Date.now();
+    if(now-_lastReceivedOffersToggleAt<400) return;
+    _lastReceivedOffersToggleAt=now;
     receivedOffersExpanded=!receivedOffersExpanded;
     if(receivedOffersExpanded){ markRoleNotificationsRead('seller',['offer_received','counter_offer_accepted','counter_offer_rejected']); }
     window.loadReceivedOffers();
