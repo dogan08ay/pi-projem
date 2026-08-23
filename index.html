@@ -7772,10 +7772,21 @@ window.loadMyOffers=async function(silent){
     try{
         const r=await fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'get_my_offers',accessToken:piAccessToken})});
         const result=await r.json();
+        // YENİ (3. deneme — KESİN çözüm): Artık `myOffersExpanded`
+        // değişkenine HİÇ bakmıyoruz — o değişken ara durumlarda
+        // (başka bir tetiklenme, arka plan işlemi vb.) beklenmedik şekilde
+        // değişmiş olabilir ve bu render'ı yanlış yönlendirebilirdi.
+        // Bunun yerine SADECE kutunun O AN GERÇEKTEN EKRANDA görünüp
+        // görünmediğine (box.style.display) bakıyoruz — bunu SADECE bu
+        // fonksiyonlar değiştiriyor, başka hiçbir kod dokunmuyor. Kutu
+        // gerçekten kapatılmışsa (display:none) sonucu yok sayıyoruz;
+        // açıksa HER ZAMAN (veri olsun ya da olmasın) bir sonuç gösteriyoruz
+        // — "yükleniyor" yazısı asılı kalmıyor, boşta da kalmıyor.
+        if(box.style.display==='none') return;
         if(!result.success||!result.offers||!result.offers.length){ lastMyOffersData=[]; box.innerHTML=`${emptyState('💬',t('noOffersYet'))}`; return; }
         lastMyOffersData=result.offers;
-        renderMyOffersBox();
-    }catch(e){ if(!silent) box.innerHTML=`<p style="color:#f87171;font-size:0.72em;text-align:center;">${t('genericError')}</p>`; }
+        renderMyOffersBox(true);
+    }catch(e){ if(box.style.display!=='none' && !silent) box.innerHTML=`<p style="color:#f87171;font-size:0.72em;text-align:center;">${t('genericError')}</p>`; }
     finally{ _myOffersLoadInFlight=false; }
 };
 // YENİ: Sadece görüntüyü (backend'e tekrar sormadan) günceller — kabul
@@ -7784,9 +7795,15 @@ window.loadMyOffers=async function(silent){
 // domainData zaten onSnapshot ile anlık güncel; bu fonksiyon periyodik
 // olarak (aşağıdaki setInterval) veya domainData her değiştiğinde tekrar
 // çağrılıp mevcut teklif verisini güncel domain durumuna göre yeniden çizer.
-function renderMyOffersBox(){
+//
+// YENİ parametre `forceRender`: loadMyOffers'ın az önce doğruladığı
+// "kutu gerçekten açık" durumunu tekrar sorgulamadan (myOffersExpanded
+// değişkenine güvenmeden) doğrudan çizmesi için. Parametre verilmezse
+// (periyodik/otomatik çağrılarda olduğu gibi) eski davranış aynen korunur.
+function renderMyOffersBox(forceRender){
     const box=document.getElementById('my-offers-content');
-    if(!box || !myOffersExpanded) return;
+    if(!box) return;
+    if(!forceRender && (!myOffersExpanded || box.style.display==='none')) return;
     if(!lastMyOffersData.length){ box.innerHTML=`${emptyState('💬',t('noOffersYet'))}`; return; }
     const statusMap={pending:{label:t('offerStatusPending'),color:'#fbbf24'},accepted:{label:t('offerStatusAccepted'),color:'#34d399'},rejected:{label:t('offerStatusRejected'),color:'#f87171'},withdrawn:{label:t('offerStatusWithdrawn'),color:'#94a3b8'},expired:{label:t('offerStatusExpired'),color:'#94a3b8'},countered:{label:t('offerStatusCountered'),color:'#818cf8'}};
     box.innerHTML=lastMyOffersData.map(o=>{
@@ -7836,18 +7853,22 @@ window.loadReceivedOffers=async function(silent){
     try{
         const r=await fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'get_received_offers',accessToken:piAccessToken})});
         const result=await r.json();
+        // bkz. loadMyOffers'daki aynı yorum — myOffersExpanded yerine
+        // kutunun GERÇEK görünürlüğüne bakılıyor.
+        if(box.style.display==='none') return;
         if(!result.success||!result.offers||!result.offers.length){ lastReceivedOffersData=[]; box.innerHTML=`${emptyState('💬',t('noOffersYet'))}`; return; }
         lastReceivedOffersData=result.offers;
-        renderReceivedOffersBox();
-    }catch(e){ if(!silent) box.innerHTML=`<p style="color:#f87171;font-size:0.72em;text-align:center;">${t('genericError')}</p>`; }
+        renderReceivedOffersBox(true);
+    }catch(e){ if(box.style.display!=='none' && !silent) box.innerHTML=`<p style="color:#f87171;font-size:0.72em;text-align:center;">${t('genericError')}</p>`; }
     finally{ _receivedOffersLoadInFlight=false; }
 };
 // YENİ: Aynı loadMyOffers/renderMyOffersBox mantığı — kabul edilmiş bir
 // teklifin rezervasyon geri sayımı/sonucu, backend'e tekrar sormadan,
 // güncel domainData'ya göre canlı yeniden çiziliyor.
-function renderReceivedOffersBox(){
+function renderReceivedOffersBox(forceRender){
     const box=document.getElementById('received-offers-content');
-    if(!box || !receivedOffersExpanded) return;
+    if(!box) return;
+    if(!forceRender && (!receivedOffersExpanded || box.style.display==='none')) return;
     if(!lastReceivedOffersData.length){ box.innerHTML=`${emptyState('💬',t('noOffersYet'))}`; return; }
     const statusMap={pending:{label:t('offerStatusPending'),color:'#fbbf24'},countered:{label:t('offerStatusCountered'),color:'#818cf8'},accepted:{label:t('offerStatusAccepted'),color:'#34d399'}};
     box.innerHTML=lastReceivedOffersData.map(o=>{
