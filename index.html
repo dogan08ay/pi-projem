@@ -7669,12 +7669,33 @@ let _receivedOffersLoadInFlight=false;
 let _lastMyOffersToggleAt = 0;
 let _lastReceivedOffersToggleAt = 0;
 
+// ══════════════════════════════════════════════════════════════════════
+//  GEÇİCİ TEŞHİS MODU — "Tekliflerim yükleniyor diyip kayboluyor" hatasını
+//  kesin olarak yakalamak için. Her önemli adımı zaman damgasıyla kutunun
+//  İÇİNE yazıyor ve kutu ASLA gizlenmiyor (normal davranış geçici olarak
+//  devre dışı) — böylece "kayboluyor" dediğiniz an, aslında ne olduğunu
+//  (kaç kez tetiklendi, istek ne zaman bitti, ne döndü) ekranda göreceğiz.
+//  Teşhis bitince bu blok kaldırılıp normal davranışa dönülecek.
+// ══════════════════════════════════════════════════════════════════════
+let _myOffersDebugLog=[];
+function _myOffersDebugPrint(box){
+    const lines=_myOffersDebugLog.map(l=>`<div style="font-family:monospace;">${l}</div>`).join('');
+    box.innerHTML=`<div style="background:#450a0a;border:2px solid #ef4444;border-radius:8px;padding:8px;font-size:0.65em;color:#fecaca;text-align:left;">
+        <div style="font-weight:900;margin-bottom:4px;">🔍 TEŞHİS MODU (geçici)</div>${lines}
+    </div>`;
+    box.style.display='block';
+}
 window.toggleMyOffersList=function(){
-    if(_myOffersLoadInFlight) return;
+    const box=document.getElementById('my-offers-content');
+    _myOffersDebugLog.push(`[${new Date().toLocaleTimeString('tr-TR')}] toggle çağrıldı. inFlight=${_myOffersLoadInFlight}, expanded(önce)=${myOffersExpanded}`);
+    if(box) _myOffersDebugPrint(box);
+    if(_myOffersLoadInFlight){ _myOffersDebugLog.push('→ inFlight true olduğu için DURDURULDU'); if(box) _myOffersDebugPrint(box); return; }
     const now=Date.now();
-    if(now-_lastMyOffersToggleAt<400) return;
+    if(now-_lastMyOffersToggleAt<400){ _myOffersDebugLog.push('→ 400ms debounce yüzünden DURDURULDU'); if(box) _myOffersDebugPrint(box); return; }
     _lastMyOffersToggleAt=now;
     myOffersExpanded=!myOffersExpanded;
+    _myOffersDebugLog.push(`→ expanded(sonra)=${myOffersExpanded}`);
+    if(box) _myOffersDebugPrint(box);
     if(myOffersExpanded){ markRoleNotificationsRead('buyer',['offer_accepted','offer_rejected','offer_countered']); }
     window.loadMyOffers();
 };
@@ -7754,39 +7775,21 @@ let lastMyOffersData=[];
 window.loadMyOffers=async function(silent){
     const box=document.getElementById('my-offers-content');
     if(!box) return;
-    if(!myOffersExpanded){ box.style.display='none'; return; }
-    // YENİ: Zaten devam eden bir istek varsa (ör. arka plandaki sessiz
-    // yenileme ile kullanıcının az önceki tıklaması çakıştıysa) yeni bir
-    // istek BAŞLATMA — aynı anda iki isteğin birbirinin kilidini
-    // erken açması gibi bir yarış durumu (race condition) oluşmasın.
-    if(_myOffersLoadInFlight) return;
+    _myOffersDebugLog.push(`[${new Date().toLocaleTimeString('tr-TR')}] loadMyOffers başladı. silent=${silent}, expanded=${myOffersExpanded}, boxDisplay(önce)=${box.style.display}`);
+    _myOffersDebugPrint(box);
+    if(!myOffersExpanded){ _myOffersDebugLog.push('→ expanded false, kutu gizlendi, DURDU'); _myOffersDebugPrint(box); return; }
+    if(_myOffersLoadInFlight){ _myOffersDebugLog.push('→ zaten inFlight, DURDU'); _myOffersDebugPrint(box); return; }
     box.style.display='block';
-    // FIX: "silent"=true olduğunda (arka plandaki periyodik otomatik
-    // tazeleme) "yükleniyor" yazısı gösterilmiyor — aksi halde panel
-    // açıkken her 8 saniyede bir içerik yanıp sönerdi. Sadece kullanıcının
-    // panelin kendi elleriyle AÇTIĞI ilk yüklemede gösteriliyor.
-    if(!silent) box.innerHTML=`<p style="font-size:0.72em;opacity:0.5;text-align:center;">${t('loadingLabel')}</p>`;
-    // YENİ: İstek kilidi — bu istek bitene kadar toggleMyOffersList()
-    // başka bir tetiklenmeyi görmezden gelir (yukarıdaki not).
+    _myOffersDebugLog.push('→ istek atılıyor…');
+    _myOffersDebugPrint(box);
     _myOffersLoadInFlight=true;
     try{
         const r=await fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'get_my_offers',accessToken:piAccessToken})});
         const result=await r.json();
-        // YENİ (3. deneme — KESİN çözüm): Artık `myOffersExpanded`
-        // değişkenine HİÇ bakmıyoruz — o değişken ara durumlarda
-        // (başka bir tetiklenme, arka plan işlemi vb.) beklenmedik şekilde
-        // değişmiş olabilir ve bu render'ı yanlış yönlendirebilirdi.
-        // Bunun yerine SADECE kutunun O AN GERÇEKTEN EKRANDA görünüp
-        // görünmediğine (box.style.display) bakıyoruz — bunu SADECE bu
-        // fonksiyonlar değiştiriyor, başka hiçbir kod dokunmuyor. Kutu
-        // gerçekten kapatılmışsa (display:none) sonucu yok sayıyoruz;
-        // açıksa HER ZAMAN (veri olsun ya da olmasın) bir sonuç gösteriyoruz
-        // — "yükleniyor" yazısı asılı kalmıyor, boşta da kalmıyor.
-        if(box.style.display==='none') return;
-        if(!result.success||!result.offers||!result.offers.length){ lastMyOffersData=[]; box.innerHTML=`${emptyState('💬',t('noOffersYet'))}`; return; }
-        lastMyOffersData=result.offers;
-        renderMyOffersBox(true);
-    }catch(e){ if(box.style.display!=='none' && !silent) box.innerHTML=`<p style="color:#f87171;font-size:0.72em;text-align:center;">${t('genericError')}</p>`; }
+        _myOffersDebugLog.push(`[${new Date().toLocaleTimeString('tr-TR')}] yanıt geldi. success=${result.success}, offers.length=${result.offers?result.offers.length:'yok'}, boxDisplay(şimdi)=${box.style.display}`);
+        _myOffersDebugPrint(box);
+        lastMyOffersData=result.offers||[];
+    }catch(e){ _myOffersDebugLog.push(`HATA: ${e.message}`); _myOffersDebugPrint(box); }
     finally{ _myOffersLoadInFlight=false; }
 };
 // YENİ: Sadece görüntüyü (backend'e tekrar sormadan) günceller — kabul
