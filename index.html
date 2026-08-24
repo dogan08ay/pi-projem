@@ -7783,7 +7783,17 @@ window.loadMyOffers=async function(silent){
         // yukarıdaki 1.5sn korumasıyla ortadan kalktı.
         if(box.style.display==='none') return;
         lastMyOffersData=result.offers||[];
-        renderMyOffersBox(true);
+        // YENİ (teşhis amaçlı güvenlik ağı): renderMyOffersBox içinde bir
+        // hata olursa (ör. teklif verisinde beklenmeyen bir alan), önceki
+        // haliyle bu hata SESSİZCE yutulup kutu "takılı" kalıyordu — dışarıdan
+        // "kayboldu" gibi görünüyordu. Artık ayrı bir try/catch ile
+        // sarmalanıp, bir hata olursa TAM HATA METNİ kırmızı olarak
+        // gösteriliyor — kesin teşhis için.
+        try{
+            renderMyOffersBox(true);
+        }catch(renderErr){
+            box.innerHTML=`<div style="background:#450a0a;border:2px solid #ef4444;border-radius:8px;padding:8px;font-size:0.65em;color:#fecaca;text-align:left;font-family:monospace;">RENDER HATASI: ${renderErr.message}<br>${(renderErr.stack||'').slice(0,300)}</div>`;
+        }
     }catch(e){ if(box.style.display!=='none' && !silent) box.innerHTML=`<p style="color:#f87171;font-size:0.72em;text-align:center;">${t('genericError')}</p>`; }
     finally{ _myOffersLoadInFlight=false; }
 };
@@ -7804,7 +7814,18 @@ function renderMyOffersBox(forceRender){
     if(!forceRender && (!myOffersExpanded || box.style.display==='none')) return;
     if(!lastMyOffersData.length){ box.innerHTML=`${emptyState('💬',t('noOffersYet'))}`; return; }
     const statusMap={pending:{label:t('offerStatusPending'),color:'#fbbf24'},accepted:{label:t('offerStatusAccepted'),color:'#34d399'},rejected:{label:t('offerStatusRejected'),color:'#f87171'},withdrawn:{label:t('offerStatusWithdrawn'),color:'#94a3b8'},expired:{label:t('offerStatusExpired'),color:'#94a3b8'},countered:{label:t('offerStatusCountered'),color:'#818cf8'}};
-    box.innerHTML=lastMyOffersData.map(o=>{
+    // FIX (KÖK NEDEN — GERÇEK HATA BURADAYDI): Aşağıdaki .map() içindeki
+    // her teklif kendi try/catch'iyle render ediliyor, hata olursa o kayıt
+    // için '' (boş string) döndürüyordu. Tek teklifiniz olduğu için, O
+    // TEKLİF render edilirken bir hata oluşunca (ör. domainData'da o domain
+    // artık farklı bir durumda), sonuç dizisi [''] oluyor, .join('') da bunu
+    // TAMAMEN BOŞ bir string'e çeviriyordu — kutu içeriksiz kalıp
+    // "kapanmış" gibi görünüyordu. "Henüz teklif yok" kontrolü SADECE
+    // dizi boşken (lastMyOffersData.length===0) çalışıyordu, dizi doluyken
+    // AMA render'ı başarısız olan bir tek kayıt için hiçbir yedek yoktu.
+    // Şimdi: render sonucu boşsa (tüm kayıtlar başarısız olduysa bile)
+    // kullanıcıya SESSİZ boş bir kutu değil, görünür bir uyarı gösteriliyor.
+    const renderedHtml=lastMyOffersData.map(o=>{
         // FIX: Beklenmedik/eksik alanlı TEK bir teklif kaydı (ör. eski/bozuk
         // veri) tüm listenin render'ını patlatıp panelin "bir hata oluştu"
         // demesine sebep oluyordu. Artık her kayıt kendi try/catch'i içinde
@@ -7822,10 +7843,19 @@ function renderMyOffersBox(forceRender){
                     </div>`:''}
             </div>`;
         }catch(renderErr){
-            console.error('Teklif kaydı çizilemedi, atlanıyor:', o && o.id, renderErr);
-            return '';
+            // YENİ: Artık sessizce '' döndürmek yerine, o KAYDA ÖZEL küçük
+            // bir uyarı gösteriliyor — hem kullanıcı "bir şey var ama
+            // gösterilemiyor" bilgisini alıyor, hem de gerçek hata mesajı
+            // görünür olduğu için ileride benzer bir sorun anında teşhis
+            // edilebiliyor (konsola bakmaya gerek kalmadan).
+            console.error('Teklif kaydı çizilemedi:', o && o.id, renderErr);
+            return `<div style="background:#450a0a;border-radius:9px;padding:8px;margin-bottom:8px;font-size:0.65em;color:#fecaca;">⚠️ Bir teklif gösterilemedi (${escapeHtml(o&&o.domainName||'?')}): ${escapeHtml(renderErr.message)}</div>`;
         }
     }).join('');
+    // YENİ: Yukarıdaki .map() sonucu (teorik olarak) yine de boş çıkarsa
+    // (ör. lastMyOffersData içinde tamamen boş/null bir kayıt varsa),
+    // kutu SESSİZCE boş kalmasın diye son bir güvence.
+    box.innerHTML = renderedHtml || emptyState('💬', t('noOffersYet'));
 }
 let receivedOffersExpanded=false;
 // FIX: "Gelen Teklifler" başlığındaki bildirim rozeti artık sekme açılışında
@@ -7873,7 +7903,7 @@ function renderReceivedOffersBox(forceRender){
     if(!forceRender && (!receivedOffersExpanded || box.style.display==='none')) return;
     if(!lastReceivedOffersData.length){ box.innerHTML=`${emptyState('💬',t('noOffersYet'))}`; return; }
     const statusMap={pending:{label:t('offerStatusPending'),color:'#fbbf24'},countered:{label:t('offerStatusCountered'),color:'#818cf8'},accepted:{label:t('offerStatusAccepted'),color:'#34d399'}};
-    box.innerHTML=lastReceivedOffersData.map(o=>{
+    const renderedHtml=lastReceivedOffersData.map(o=>{
       try{
         const sv=statusMap[o.status]||statusMap.pending;
         const {html:detailHtml, resolved}=buildOfferDetailTable(o, sv.label, sv.color);
@@ -7903,11 +7933,15 @@ function renderReceivedOffersBox(forceRender){
         </div>`;
       }catch(renderErr){
         // FIX: tek bir bozuk teklif kaydı tüm "Gelen Teklifler" panelini
-        // çökertmesin diye — o kayıt atlanır, diğerleri normal görünür.
-        console.error('Teklif kaydı çizilemedi, atlanıyor:', o && o.id, renderErr);
-        return '';
+        // çökertmesin diye — o kayıt atlanır, ama artık SESSİZCE '' değil,
+        // görünür küçük bir uyarı gösterilir (bkz. loadMyOffers'daki aynı
+        // düzeltmenin gerekçesi — tek kayıt varken sessiz '' dönmek
+        // panelin tamamen boş/kapalı görünmesine yol açıyordu).
+        console.error('Teklif kaydı çizilemedi:', o && o.id, renderErr);
+        return `<div style="background:#450a0a;border-radius:9px;padding:8px;margin-bottom:8px;font-size:0.65em;color:#fecaca;">⚠️ Bir teklif gösterilemedi (${escapeHtml(o&&o.domainName||'?')}): ${escapeHtml(renderErr.message)}</div>`;
       }
     }).join('');
+    box.innerHTML = renderedHtml || emptyState('💬', t('noOffersYet'));
 }
 // YENİ: Tekliflerim/Gelen Teklifler panelleri açıkken, kabul edilmiş bir
 // teklifin 15 dakikalık geri sayımını ve süre dolunca "satın alma
