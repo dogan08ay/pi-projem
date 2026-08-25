@@ -2240,13 +2240,18 @@
             <!-- YENİ: filtre başlıkları — öncesinde 5 bölüm de her zaman
                  üst üste gösteriliyordu, karışık/kalabalık duruyordu.
                  Artık "Tümü" ya da tek bir konu seçilebiliyor. -->
-            <div id="history-filter-bar" style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:10px;padding:0 3px;box-sizing:border-box;">
-                <button class="history-filter-btn active" data-filter="all" onclick="window.setHistoryFilter('all')" style="width:100%;box-sizing:border-box;padding:7px 4px;border-radius:10px;border:1.5px solid #6366f1;background:#6366f1;color:#fff;font-size:0.62em;font-weight:800;cursor:pointer;white-space:normal;word-break:break-word;line-height:1.25;" data-i18n="historyFilterAll"></button>
-                <button class="history-filter-btn" data-filter="listings" onclick="window.setHistoryFilter('listings')" style="width:100%;box-sizing:border-box;padding:7px 4px;border-radius:10px;border:1.5px solid #6366f1;background:none;color:#a5b4fc;font-size:0.62em;font-weight:800;cursor:pointer;white-space:normal;word-break:break-word;line-height:1.25;">🏷️ <span data-i18n="historyListingsTitle"></span></button>
-                <button class="history-filter-btn" data-filter="purchases" onclick="window.setHistoryFilter('purchases')" style="width:100%;box-sizing:border-box;padding:7px 4px;border-radius:10px;border:1.5px solid #10b981;background:none;color:#6ee7b7;font-size:0.62em;font-weight:800;cursor:pointer;white-space:normal;word-break:break-word;line-height:1.25;">🛒 <span data-i18n="historyPurchasesTitle"></span></button>
-                <button class="history-filter-btn" data-filter="reports" onclick="window.setHistoryFilter('reports')" style="width:100%;box-sizing:border-box;padding:7px 4px;border-radius:10px;border:1.5px solid #ef4444;background:none;color:#fca5a5;font-size:0.62em;font-weight:800;cursor:pointer;white-space:normal;word-break:break-word;line-height:1.25;">🚩 <span data-i18n="historyReportsTitle"></span></button>
-                <button class="history-filter-btn" data-filter="tickets" onclick="window.setHistoryFilter('tickets')" style="width:100%;box-sizing:border-box;padding:7px 4px;border-radius:10px;border:1.5px solid #f59e0b;background:none;color:#fbbf24;font-size:0.62em;font-weight:800;cursor:pointer;white-space:normal;word-break:break-word;line-height:1.25;">🎫 <span data-i18n="historyTicketsTitle"></span></button>
-                <button class="history-filter-btn" data-filter="trademark" onclick="window.setHistoryFilter('trademark')" style="width:100%;box-sizing:border-box;padding:7px 4px;border-radius:10px;border:1.5px solid #64748b;background:none;color:#cbd5e1;font-size:0.62em;font-weight:800;cursor:pointer;white-space:normal;word-break:break-word;line-height:1.25;">🔖 <span data-i18n="historyTrademarkTitle"></span></button>
+            <div id="history-filter-bar" style="display:flex;flex-direction:column;gap:6px;margin-bottom:10px;padding:0 3px;box-sizing:border-box;">
+                <button class="history-filter-btn active" data-filter="all" onclick="window.setHistoryFilter('all')" style="width:100%;box-sizing:border-box;padding:8px 4px;border-radius:10px;border:1.5px solid #6366f1;background:#6366f1;color:#fff;font-size:0.66em;font-weight:800;cursor:pointer;white-space:normal;word-break:break-word;line-height:1.25;" data-i18n="historyFilterAll"></button>
+                <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;">
+                    <button class="history-filter-btn" data-filter="listings" onclick="window.setHistoryFilter('listings')" style="width:100%;box-sizing:border-box;padding:7px 4px;border-radius:10px;border:1.5px solid #6366f1;background:none;color:#a5b4fc;font-size:0.62em;font-weight:800;cursor:pointer;white-space:normal;word-break:break-word;line-height:1.25;">🏷️ <span data-i18n="historyListingsTitle"></span></button>
+                    <button class="history-filter-btn" data-filter="purchases" onclick="window.setHistoryFilter('purchases')" style="width:100%;box-sizing:border-box;padding:7px 4px;border-radius:10px;border:1.5px solid #10b981;background:none;color:#6ee7b7;font-size:0.62em;font-weight:800;cursor:pointer;white-space:normal;word-break:break-word;line-height:1.25;">🛒 <span data-i18n="historyPurchasesTitle"></span></button>
+                    <button class="history-filter-btn" data-filter="offers" onclick="window.setHistoryFilter('offers')" style="width:100%;box-sizing:border-box;padding:7px 4px;border-radius:10px;border:1.5px solid #818cf8;background:none;color:#c7d2fe;font-size:0.62em;font-weight:800;cursor:pointer;white-space:normal;word-break:break-word;line-height:1.25;">💬 <span data-i18n="historyOffersTitle"></span></button>
+                </div>
+                <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;">
+                    <button class="history-filter-btn" data-filter="reports" onclick="window.setHistoryFilter('reports')" style="width:100%;box-sizing:border-box;padding:7px 4px;border-radius:10px;border:1.5px solid #ef4444;background:none;color:#fca5a5;font-size:0.62em;font-weight:800;cursor:pointer;white-space:normal;word-break:break-word;line-height:1.25;">🚩 <span data-i18n="historyReportsTitle"></span></button>
+                    <button class="history-filter-btn" data-filter="tickets" onclick="window.setHistoryFilter('tickets')" style="width:100%;box-sizing:border-box;padding:7px 4px;border-radius:10px;border:1.5px solid #f59e0b;background:none;color:#fbbf24;font-size:0.62em;font-weight:800;cursor:pointer;white-space:normal;word-break:break-word;line-height:1.25;">🎫 <span data-i18n="historyTicketsTitle"></span></button>
+                    <button class="history-filter-btn" data-filter="trademark" onclick="window.setHistoryFilter('trademark')" style="width:100%;box-sizing:border-box;padding:7px 4px;border-radius:10px;border:1.5px solid #64748b;background:none;color:#cbd5e1;font-size:0.62em;font-weight:800;cursor:pointer;white-space:normal;word-break:break-word;line-height:1.25;">🔖 <span data-i18n="historyTrademarkTitle"></span></button>
+                </div>
             </div>
 
             <div id="history-section-listings" style="background:#1e1b3a;border:2px solid #6366f1;border-radius:12px;padding:10px;margin-bottom:10px;">
@@ -2261,6 +2266,16 @@
                     <span style="display:flex;align-items:center;gap:6px;font-size:0.72em;color:#6ee7b7;font-weight:800;text-transform:uppercase;">🛒 <span data-i18n="historyPurchasesTitle"></span></span>
                 </div>
                 <div id="history-purchases-list"><p style="font-size:0.75em;opacity:0.5;text-align:center;" data-i18n="loadingLabel"></p></div>
+            </div>
+
+            <!-- YENİ: Sonuçlanmış teklifler (verilen + alınan) — aktif/
+                 bekleyen teklifler burada DEĞİL, onlar zaten "Tekliflerim"/
+                 "Gelen Teklifler" canlı panellerinde gösteriliyor. -->
+            <div id="history-section-offers" style="background:#1e1b3a;border:2px solid #818cf8;border-radius:12px;padding:10px;margin-bottom:10px;">
+                <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;padding-bottom:7px;border-bottom:1px solid #3730a3;">
+                    <span style="display:flex;align-items:center;gap:6px;font-size:0.72em;color:#c7d2fe;font-weight:800;text-transform:uppercase;">💬 <span data-i18n="historyOffersTitle"></span></span>
+                </div>
+                <div id="history-offers-list"><p style="font-size:0.75em;opacity:0.5;text-align:center;" data-i18n="loadingLabel"></p></div>
             </div>
 
             <div id="history-section-reports" style="background:#1e1b3a;border:2px solid #ef4444;border-radius:12px;padding:10px;margin-bottom:10px;">
@@ -3865,6 +3880,7 @@ const i18n = {
     myHistoryNote:"Tüm ilan, satın alma, şikayet, destek talebi ve marka itirazı geçmişinizi burada konu başlıklarına ayrılmış şekilde görebilirsiniz. İlgili domain veya kayıt silinirse buradan da otomatik kalkar.",
     historyListingsTitle:"İlanlarım",
     historyPurchasesTitle:"Satın Aldıklarım",
+    historyOffersTitle:"Teklifler",historyOfferRoleBuyer:"Verdiğim teklif",historyOfferRoleSeller:"Aldığım teklif",
     historyReportsTitle:"Şikayetlerim",
     historyTicketsTitle:"Destek Taleplerim",
     historyTrademarkTitle:"Marka İtirazlarım",
@@ -4796,6 +4812,7 @@ const i18n = {
     myHistoryNote:"See your full listing, purchase, report, support ticket, and trademark claim history here, organized by topic. If the related domain or record is deleted, it disappears from here automatically too.",
     historyListingsTitle:"My Listings",
     historyPurchasesTitle:"My Purchases",
+    historyOffersTitle:"Offers",historyOfferRoleBuyer:"Offer I made",historyOfferRoleSeller:"Offer I received",
     historyReportsTitle:"My Reports",
     historyTicketsTitle:"My Support Tickets",
     historyTrademarkTitle:"My Trademark Claims",
@@ -7763,6 +7780,31 @@ function buildOfferDetailTable(o, statusLabel, statusColor){
     </table>`;
     return {html, resolved};
 }
+// YENİ: Bir teklifin HÂLÂ AKTİF (bekleyen/devam eden) olup olmadığını
+// belirler. "Tekliflerim" ve "Gelen Teklifler" panelleri artık SADECE bu
+// fonksiyonun true döndürdüğü kayıtları gösteriyor — sonuçlanmış
+// (satın alınmış, reddedilmiş, süresi dolmuş, geri çekilmiş) teklifler bu
+// canlı panellerden kaldırıldı. Sebep iki yönlü: (1) kullanıcı deneyimi —
+// "Tekliflerim" başlığı zaten "şu an bekleyenler" anlamına geliyor, geçmiş
+// karışınca "hangisi hâlâ aktif?" diye ayıklamak gerekiyordu; (2) sağlamlık
+// — az önceki hata TAM OLARAK sonuçlanmış (satılmış domaine ait) bir
+// teklifi bu canlı panelde render etmeye çalışırken oldu; artık böyle bir
+// kayıt bu panele hiç girmiyor. Hata ihtimaline karşı try/catch içinde —
+// bir şey ölçülemezse EN GÜVENLİ varsayım "aktif değil" (false) kabul
+// edilir, "belki aktiftir" diye göstermeye çalışıp yine çökmesin.
+function isOfferStillActive(o){
+    try{
+        if(!o || o.status==='rejected' || o.status==='withdrawn' || o.status==='expired') return false;
+        const dd=domainData[o.domainName];
+        if(dd && dd.sold===true) return false; // domain satıldı (bu alıcıya olsun ya da olmasın) → sonuçlandı
+        if(o.status==='accepted'){
+            // Sadece rezervasyon süresi hâlâ aktifse "devam ediyor" sayılır;
+            // süre dolmuşsa (satın alma gerçekleşmemişse) artık pasif.
+            return !!(dd && dd.reservedFor===o.buyerUsername && dd.reservedUntil && dd.reservedUntil>Date.now());
+        }
+        return true; // pending veya countered, domain hâlâ satılmamış
+    }catch(e){ return false; }
+}
 let lastMyOffersData=[];
 window.loadMyOffers=async function(silent){
     const box=document.getElementById('my-offers-content');
@@ -7782,7 +7824,9 @@ window.loadMyOffers=async function(silent){
         // harcama — ama artık bunun asıl sebebi (yanlışlıkla anlık kapanma)
         // yukarıdaki 1.5sn korumasıyla ortadan kalktı.
         if(box.style.display==='none') return;
-        lastMyOffersData=result.offers||[];
+        // YENİ: Sadece hâlâ aktif teklifleri sakla (bkz. isOfferStillActive
+        // yorumu) — sonuçlanmış olanlar bu canlı panelden çıkarıldı.
+        lastMyOffersData=(result.offers||[]).filter(isOfferStillActive);
         // YENİ (teşhis amaçlı güvenlik ağı): renderMyOffersBox içinde bir
         // hata olursa (ör. teklif verisinde beklenmeyen bir alan), önceki
         // haliyle bu hata SESSİZCE yutulup kutu "takılı" kalıyordu — dışarıdan
@@ -7888,8 +7932,12 @@ window.loadReceivedOffers=async function(silent){
         // bkz. loadMyOffers'daki aynı yorum — myOffersExpanded yerine
         // kutunun GERÇEK görünürlüğüne bakılıyor.
         if(box.style.display==='none') return;
-        if(!result.success||!result.offers||!result.offers.length){ lastReceivedOffersData=[]; box.innerHTML=`${emptyState('💬',t('noOffersYet'))}`; return; }
-        lastReceivedOffersData=result.offers;
+        // YENİ: Aynı aktiflik filtresi burada da uygulanıyor (bkz.
+        // isOfferStillActive yorumu) — sonuçlanmış teklifler bu canlı
+        // panelden çıkarıldı, "Henüz teklif yok" kontrolü artık FİLTRELİ
+        // diziye göre çalışıyor.
+        lastReceivedOffersData=(result.offers||[]).filter(isOfferStillActive);
+        if(!lastReceivedOffersData.length){ box.innerHTML=`${emptyState('💬',t('noOffersYet'))}`; return; }
         renderReceivedOffersBox(true);
     }catch(e){ if(box.style.display!=='none' && !silent) box.innerHTML=`<p style="color:#f87171;font-size:0.72em;text-align:center;">${t('genericError')}</p>`; }
     finally{ _receivedOffersLoadInFlight=false; }
@@ -12932,11 +12980,11 @@ window.setHistoryFilter = function(filter) {
         if (isActive) { btn.style.background = color; btn.style.color = '#fff'; }
         else {
             btn.style.background = 'none';
-            const colorMap = { listings: '#a5b4fc', purchases: '#6ee7b7', reports: '#fca5a5', tickets: '#fbbf24', trademark: '#cbd5e1', all: '#a5b4fc' };
+            const colorMap = { listings: '#a5b4fc', purchases: '#6ee7b7', offers: '#c7d2fe', reports: '#fca5a5', tickets: '#fbbf24', trademark: '#cbd5e1', all: '#a5b4fc' };
             btn.style.color = colorMap[btn.dataset.filter] || '#cbd5e1';
         }
     });
-    const sections = ['listings', 'purchases', 'reports', 'tickets', 'trademark'];
+    const sections = ['listings', 'purchases', 'offers', 'reports', 'tickets', 'trademark'];
     sections.forEach(s => {
         const el = document.getElementById('history-section-' + s);
         if (el) el.style.display = (filter === 'all' || filter === s) ? 'block' : 'none';
@@ -12944,7 +12992,7 @@ window.setHistoryFilter = function(filter) {
 };
 async function loadMyActivityHistory() {
     if (!isAuth) return;
-    const ids = ['history-listings-list', 'history-purchases-list', 'history-reports-list', 'history-tickets-list', 'history-trademark-list'];
+    const ids = ['history-listings-list', 'history-purchases-list', 'history-offers-list', 'history-reports-list', 'history-tickets-list', 'history-trademark-list'];
     ids.forEach(id => { const el = document.getElementById(id); if (el) el.innerHTML = `<p style="font-size:0.75em;opacity:0.5;text-align:center;">${t('loadingLabel')}</p>`; });
     try {
         const r = await fetch('/api/approve', {
@@ -12958,6 +13006,7 @@ async function loadMyActivityHistory() {
         }
         renderHistorySection('history-listings-list', result.listings, 'listings');
         renderHistorySection('history-purchases-list', result.purchases, 'purchases');
+        renderHistorySection('history-offers-list', result.offers, 'offers');
         renderHistorySection('history-reports-list', result.reports, 'reports');
         renderHistorySection('history-tickets-list', result.tickets, 'tickets');
         renderHistorySection('history-trademark-list', result.trademarkClaims, 'trademark');
@@ -12988,14 +13037,25 @@ function renderHistorySection(containerId, items, kind) {
     };
     const reasonLabel = { fake: t('reportReasonFake'), inappropriate: t('reportReasonInappropriate'), price_manipulation: t('reportReasonPriceManipulation'), trademark: t('reportReasonTrademark'), other: t('reportReasonOther') };
     container.innerHTML = items.map(it => {
-        const color = statusColors[it.status] || '#6366f1';
-        const statusLabel = statusLabelKeys[it.status] ? t(statusLabelKeys[it.status]) : (it.status || '-');
+        // YENİ: Teklif geçmişi kendi renk/etiket eşlemesini kullanıyor —
+        // "Tekliflerim" panelindeki AYNI offerStatusX çeviri anahtarları
+        // (tutarlılık için, ayrı bir metin seti icat edilmedi).
+        const offerColors = { accepted: '#34d399', rejected: '#f87171', withdrawn: '#94a3b8', expired: '#94a3b8' };
+        const color = kind === 'offers' ? (offerColors[it.status] || '#818cf8') : (statusColors[it.status] || '#6366f1');
+        const statusLabel = kind === 'offers' ? (t('offerStatus' + it.status.charAt(0).toUpperCase() + it.status.slice(1)) || it.status) : (statusLabelKeys[it.status] ? t(statusLabelKeys[it.status]) : (it.status || '-'));
         let title = '', detailLine = '';
         if (kind === 'listings') { title = `🌐 ${escapeHtml(it.domainName)}`; detailLine = `${t('historyPriceLabel')}: ${it.price ?? '-'} π`; }
         else if (kind === 'purchases') { title = `🌐 ${escapeHtml(it.domainName)}`; detailLine = `${t('historyPriceLabel')}: ${it.price ?? '-'} π${it.sellerUsername ? ' · ' + t('historySellerLabel') + ': @' + escapeHtml(it.sellerUsername) : ''}`; }
         else if (kind === 'reports') { title = `🌐 ${escapeHtml(it.domainName || '-')}`; detailLine = `🚩 ${reasonLabel[it.reason] || it.reason || '-'}`; }
         else if (kind === 'tickets') { title = `🎫 ${escapeHtml(it.subject || '-')}`; detailLine = it.category ? escapeHtml(it.category) : ''; }
         else if (kind === 'trademark') { title = `🌐 ${escapeHtml(it.domainName || '-')}`; detailLine = it.companyName ? `🏢 ${escapeHtml(it.companyName)}` : ''; }
+        else if (kind === 'offers') {
+            const roleIcon = it.role === 'buyer' ? '📤' : '📥';
+            const roleLabel = it.role === 'buyer' ? t('historyOfferRoleBuyer') : t('historyOfferRoleSeller');
+            const shownPrice = it.counterPrice != null ? it.counterPrice : it.offerPrice;
+            title = `${roleIcon} ${escapeHtml(it.domainName || '-')}`;
+            detailLine = `${roleLabel} · ${t('historyPriceLabel')}: ${shownPrice ?? '-'} π`;
+        }
         // YENİ: "Geçmişim"deki sonuçlanmış (resolved/closed) şikayet
         // kayıtları kullanıcı isterse kalıcı olarak silinebilsin diye bir
         // silme butonu — trademark taleplerindeki AYNI desen (bkz.
