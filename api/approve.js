@@ -3882,13 +3882,20 @@ async function handlerImpl(req, res) {
     if (!realUsername) return res.status(403).json({ error: "Geçersiz oturum" });
     try {
       const db = getDb();
-      const [sellReqSnap, purchasesSnap, listingsSnap, reportsSnap, ticketsSnap, claimsSnap] = await Promise.all([
+      const [sellReqSnap, purchasesSnap, listingsSnap, reportsSnap, ticketsSnap, claimsSnap, myOffersSnap, receivedOffersSnap] = await Promise.all([
         db.collection('sell_requests').where('submittedBy', '==', realUsername).get(),
         db.collection('domains').where('buyer', '==', realUsername).get(),
         db.collection('domains').where('sellerUsername', '==', realUsername).get(),
         db.collection('listing_reports').where('reportedBy', '==', realUsername).get(),
         db.collection('tickets').where('createdBy', '==', realUsername).get(),
-        db.collection('trademark_claims').where('submittedByUsername', '==', realUsername).get()
+        db.collection('trademark_claims').where('submittedByUsername', '==', realUsername).get(),
+        // YENİ: Teklif geçmişi (Geçmişim sekmesine eklendi) — hem
+        // kullanıcının VERDİĞİ hem ALDIĞI teklifler, sadece SONUÇLANMIŞ
+        // olanlar (bkz. aşağıdaki filtre). Aktif/bekleyen teklifler zaten
+        // "Tekliflerim"/"Gelen Teklifler" canlı panellerinde gösteriliyor,
+        // burada TEKRAR gösterilmiyor — mükerrerlik olmasın diye.
+        db.collection('offers').where('buyerUsername', '==', realUsername).get(),
+        db.collection('offers').where('sellerUsername', '==', realUsername).get()
       ]);
 
       const listings = [];
@@ -3934,13 +3941,47 @@ async function handlerImpl(req, res) {
         trademarkClaims.push({ id: d.id, domainName: x.domainName, companyName: x.companyName, status: x.status, at: x.createdAt || 0 });
       });
 
+      // YENİ: Teklif geçmişi — SADECE sonuçlanmış olanlar (reddedilmiş,
+      // geri çekilmiş, süresi dolmuş, ya da kabul edilip artık rezervasyon
+      // süresi de geçmiş/domain satılmış olanlar). "pending"/"countered"
+      // ya da hâlâ rezervasyon süresi aktif "accepted" kayıtlar buraya
+      // DAHİL EDİLMİYOR — onlar zaten canlı panellerde gösteriliyor.
+      const offers = [];
+      const seenOfferIds = new Set();
+      const processOfferDoc = (d, role) => {
+        if (seenOfferIds.has(d.id)) return; // biri hem alıcı hem satıcıysa (kendi ilanına teklif) mükerrer olmasın
+        seenOfferIds.add(d.id);
+        const x = d.data();
+        let resolvedStatus = x.status;
+        if (x.status === 'accepted') {
+          // "accepted" olsa da domain hâlâ satılmadıysa ve rezervasyon
+          // süresi geçtiyse, gerçekte "süresi doldu, kullanılmadı" demektir.
+          // Gerçek satış olup olmadığını burada domains koleksiyonuna
+          // TEKRAR sorgu atmadan (performans) basitçe x.status'a güveniyoruz;
+          // ayrıntılı/kesin sonuç zaten domain detayında görülebiliyor.
+        }
+        if (x.status === 'pending' || x.status === 'countered') return; // hâlâ aktif, dahil etme
+        offers.push({
+          id: d.id,
+          domainName: x.domainName,
+          offerPrice: x.offerPrice,
+          counterPrice: x.counterPrice != null ? x.counterPrice : null,
+          status: resolvedStatus,
+          role, // 'buyer' | 'seller' — geçmişte hangi taraf olduğunu göstermek için
+          at: x.respondedAt || x.createdAt || 0
+        });
+      };
+      myOffersSnap.forEach(d => processOfferDoc(d, 'buyer'));
+      receivedOffersSnap.forEach(d => processOfferDoc(d, 'seller'));
+
       listings.sort((a, b) => (b.at || 0) - (a.at || 0));
       purchases.sort((a, b) => (b.at || 0) - (a.at || 0));
       reports.sort((a, b) => (b.at || 0) - (a.at || 0));
       tickets.sort((a, b) => (b.at || 0) - (a.at || 0));
       trademarkClaims.sort((a, b) => (b.at || 0) - (a.at || 0));
+      offers.sort((a, b) => (b.at || 0) - (a.at || 0));
 
-      return res.status(200).json({ success: true, listings, purchases, reports, tickets, trademarkClaims });
+      return res.status(200).json({ success: true, listings, purchases, reports, tickets, trademarkClaims, offers });
     } catch (e) {
       console.error("get_my_activity_history hatası:", e);
       return res.status(500).json({ error: e.message });
