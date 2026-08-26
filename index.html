@@ -190,7 +190,7 @@
         #log-list::-webkit-scrollbar{width:5px;}
         #log-list::-webkit-scrollbar-thumb{background:#6366f1;border-radius:10px;}
         .log-item{display:flex;justify-content:space-between;background:#0f172a;padding:4px 8px;border-radius:6px;margin-bottom:5px;font-size:0.8em;}
-        .user-info-note{background:rgba(99,102,241,0.1);border:1px dashed #6366f1;color:#94a3b8;padding:5px;border-radius:10px;font-size:0.75em;line-height:1.6;margin-bottom:10px;text-align:left;box-sizing:border-box;width:100%;max-width:100%;overflow-wrap:break-word;word-break:break-word;hyphens:auto;}
+        .user-info-note{background:rgba(245,158,11,0.1);border:1.5px solid #f59e0b;color:#fde68a;padding:9px 8px;border-radius:10px;font-size:0.78em;line-height:1.65;margin-bottom:10px;text-align:left;box-sizing:border-box;width:100%;max-width:100%;overflow-wrap:break-word;word-break:break-word;hyphens:auto;box-shadow:0 0 10px rgba(245,158,11,0.15);}
         .user-info-note-text{display:block;white-space:normal;text-align:left;word-break:break-word;overflow-wrap:break-word;hyphens:none;font-size:0.88em;line-height:1.7;}
         .btn-fake-buy{background:var(--accent);color:white;padding:1px 4px;border-radius:3px;font-weight:900;font-size:0.85em;}
         .income-box{background:linear-gradient(135deg,#064e3b 0%,#065f46 100%);border:2px solid #10b981;border-radius:9px;padding:7px;margin-bottom:8px;text-align:center;}
@@ -2056,6 +2056,10 @@
             </button>
             <div style="background:#0f172a;border:1px dashed #334155;border-radius:10px;padding:8px;margin-top:4px;">
                 <div style="font-size:0.6em;color:#64748b;font-weight:800;text-transform:uppercase;margin-bottom:6px;letter-spacing:0.5px;" data-i18n="badgeInfoTitle"></div>
+                <!-- YENİ: Sıfır puanlı yeni bir kullanıcı bu bölümü ilk
+                     gördüğünde "boş/anlamsız" hissetmesin diye, puanların
+                     NASIL kazanıldığını kısaca açıklayan bir satır eklendi. -->
+                <div style="font-size:0.62em;color:#94a3b8;line-height:1.5;margin-bottom:8px;" data-i18n="badgeHowToEarn"></div>
                 <div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:4px;">
                     <div style="background:#1e293b;border-radius:8px;padding:5px 3px;text-align:center;">
                         <div style="font-size:1em;">🥉</div>
@@ -3286,7 +3290,7 @@ const i18n = {
     myListingsTitle:"İLAN TAKİP PANELİ",listNewDomain:"+ Yeni İlan Ver",
     totalEarned:"TOPLAM GELİR",earnedNote:"Satılan domainlerinizden, %5 platform komisyonu düşüldükten sonra cüzdanınıza geçen/geçecek net tutar.",
     info:"BİLGİ",
-    testNetNote:"<div style=\'display:grid;grid-template-columns:auto 1fr;gap:4px 8px;align-items:start;font-size:0.95em;\'><div>🧪</div><div>Bu uygulama <b>Test-Pi</b> ağında deneme amaçlıdır.</div><div>🔄</div><div>Satın aldığınız domainler tekrar <span class=\"btn-fake-buy\">SATIN AL</span> olarak görünebilir.</div><div>⚠️</div><div>Satın alma geçmişinizden silinebilir.</div></div>",
+    testNetNote:"<div style=\'display:grid;grid-template-columns:auto 1fr;gap:4px 8px;align-items:start;font-size:0.95em;\'><div>🧪</div><div>Bu uygulama <b>Test-Pi</b> ağında deneme amaçlıdır, gerçek Pi bakiyeniz kullanılmaz.</div><div>🔄</div><div><b>Satın aldığınız domainler tekrar</b> <span class=\"btn-fake-buy\">SATIN AL</span> <b>olarak görünebilir</b> — bu normaldir, ikinci kez ödeme almazsınız.</div><div>⚠️</div><div><b>Satın alma geçmişiniz zaman zaman sıfırlanabilir.</b> Bu bir hata değil, test ortamının doğasıdır.</div></div>",
     purchasedDomains:"Satın Alınan Domainler",
     noDomains:"Henüz satın alma geçmişiniz bulunmuyor.",
     noListings:"Henüz satışa sunduğunuz bir domain yok.",
@@ -3629,6 +3633,7 @@ const i18n = {
     shareText:(d)=>`🚀 Web3 Domain Gateway üzerinden ${d} domainini satın aldım! Test-Pİ ile siz de katılın.`,
     badgeBronze:"🥉 Bronz",badgeSilver:"🥈 Gümüş",badgeGold:"🥇 Altın",badgeDiamond:"💎 Elmas",
     badgeInfoTitle:"Rozet Kazanma Koşulları",
+    badgeHowToEarn:"💡 Puan nasıl kazanılır: domain listeleyip onaylandığında, bir domain satın aldığınızda veya arkadaşınızı davet ettiğinizde puan kazanırsınız.",
     badgeBronzeReq:"10+ Puan",badgeSilverReq:"50+ Puan",badgeGoldReq:"200+ Puan",badgeDiamondReq:"500+ Puan",
     statusPending:"⏳ Onay Bekliyor",statusApproved:"✅ Onaylandı",statusRejected:"❌ Reddedildi",statusWithdrawn:"🚫 Geri Çekildi",statusSold:"✅ Satıldı",
     myListingsStatusTitle:"📋 İlan Son Durumu",withdrawnAtLabel:"Geri Çekilme:",approvalDateLabel:"Onay Tarihi",listingDateLabel:"İlan Tarihi",
@@ -4233,7 +4238,7 @@ const i18n = {
     myListingsTitle:"LISTING TRACKING PANEL",listNewDomain:"+ New Listing",
     totalEarned:"TOTAL EARNINGS",earnedNote:"Net amount (after the 5% platform commission) that has been or will be paid out to your wallet from your sold domains.",
     info:"INFO",
-    testNetNote:"<div style=\'display:grid;grid-template-columns:auto 1fr;gap:4px 8px;align-items:start;font-size:0.95em;\'><div>🧪</div><div>This app runs on <b>Test-Pi</b> for demo purposes.</div><div>🔄</div><div>Purchased domains may reappear as <span class=\"btn-fake-buy\">BUY</span> in the market.</div><div>⚠️</div><div>They may be removed from your purchase history.</div></div>",
+    testNetNote:"<div style=\'display:grid;grid-template-columns:auto 1fr;gap:4px 8px;align-items:start;font-size:0.95em;\'><div>🧪</div><div>This app runs on <b>Test-Pi</b> for demo purposes — your real Pi balance is never used.</div><div>🔄</div><div><b>Purchased domains may reappear</b> as <span class=\"btn-fake-buy\">BUY</span> in the market — this is normal, you won't be charged again.</div><div>⚠️</div><div><b>Your purchase history may reset from time to time.</b> This is expected in a test environment, not a bug.</div></div>",
     purchasedDomains:"Purchased Domains",noDomains:"No purchase history found yet.",
     noListings:"You haven't listed any domains yet.",noSoldDomains:"None of your domains have been sold yet.",
     noActiveListings:"You have no domains currently on sale.",
@@ -4570,6 +4575,7 @@ const i18n = {
     shareText:(d)=>`🚀 I just purchased the ${d} domain on Web3 Domain Gateway! Join with Test-PI.`,
     badgeBronze:"🥉 Bronze",badgeSilver:"🥈 Silver",badgeGold:"🥇 Gold",badgeDiamond:"💎 Diamond",
     badgeInfoTitle:"Badge Requirements",
+    badgeHowToEarn:"💡 How to earn points: list a domain and get it approved, purchase a domain, or invite a friend.",
     badgeBronzeReq:"10+ Points",badgeSilverReq:"50+ Points",badgeGoldReq:"200+ Points",badgeDiamondReq:"500+ Points",
     statusPending:"⏳ Pending Approval",statusApproved:"✅ Approved",statusRejected:"❌ Rejected",statusWithdrawn:"🚫 Withdrawn",statusSold:"✅ Sold",
     myListingsStatusTitle:"📋 Listing Status",withdrawnAtLabel:"Withdrawn:",approvalDateLabel:"Approval Date",listingDateLabel:"Listing Date",
