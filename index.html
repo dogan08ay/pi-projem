@@ -94,6 +94,14 @@
         .web3-slogan-text{display:block;font-size:0.72em;color:#b6c2d9;font-weight:700;letter-spacing:0.15px;text-transform:none;word-break:break-word;overflow-wrap:break-word;}
         .web3-slogan-initial{color:#fbbf24;font-weight:900;font-size:1.2em;display:inline-block;transform-origin:center;text-shadow:0 0 4px rgba(251,191,36,0.5);animation:web3-initial-heartbeat 1.8s ease-in-out infinite;}
         @keyframes web3-initial-heartbeat{0%,38%,100%{transform:scale(1);text-shadow:0 0 4px rgba(251,191,36,0.5);}12%{transform:scale(1.38);text-shadow:0 0 15px rgba(251,191,36,1),0 0 26px rgba(251,191,36,0.65);}24%{transform:scale(1);text-shadow:0 0 4px rgba(251,191,36,0.5);}30%{transform:scale(1.25);text-shadow:0 0 12px rgba(251,191,36,0.9),0 0 20px rgba(251,191,36,0.5);}}
+        /* YENİ: Rozet kazanma koşulları listesi — kazanılmamış rozetler soluk/gri,
+           kazanılanlar parlak+renkli çerçeve/glow ile öne çıkıyor (ilerleme hissi). */
+        .badge-legend-item{background:#1e293b;border-radius:8px;padding:5px 3px;text-align:center;border:1.5px solid transparent;filter:grayscale(0.9) brightness(0.6);opacity:0.5;transform:scale(1);transition:filter .35s ease,opacity .35s ease,transform .35s ease,box-shadow .35s ease,border-color .35s ease;}
+        .badge-legend-item.earned{filter:none;opacity:1;transform:scale(1.04);}
+        .badge-legend-item.earned.tier-bronze{border-color:rgba(205,127,50,0.65);background:linear-gradient(160deg,#2a1c10 0%,#1e293b 100%);box-shadow:0 0 10px rgba(205,127,50,0.45);}
+        .badge-legend-item.earned.tier-silver{border-color:rgba(148,163,184,0.65);background:linear-gradient(160deg,#26303f 0%,#1e293b 100%);box-shadow:0 0 10px rgba(148,163,184,0.4);}
+        .badge-legend-item.earned.tier-gold{border-color:rgba(251,191,36,0.7);background:linear-gradient(160deg,#332708 0%,#1e293b 100%);box-shadow:0 0 12px rgba(251,191,36,0.5);}
+        .badge-legend-item.earned.tier-diamond{border-color:rgba(129,140,248,0.7);background:linear-gradient(160deg,#221f3d 0%,#1e293b 100%);box-shadow:0 0 12px rgba(129,140,248,0.5);}
         .locked-content{filter:blur(8px);opacity:0.45;pointer-events:none;transition:filter 0.3s ease,opacity 0.3s ease;}.premium-lock-overlay.active{opacity:1;visibility:visible;pointer-events:auto;}
         .premium-lock-overlay{position:absolute;top:0;left:0;right:0;bottom:0;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;background:rgba(10,15,30,0.72);backdrop-filter:blur(3px);z-index:100;padding:6px 8px 4px 8px;text-align:center;overflow-y:auto;opacity:0;visibility:hidden;pointer-events:none;transition:opacity 0.3s ease,visibility 0.3s ease;}
         .diamond-spin{margin-bottom:1px;display:inline-block;animation:diamond-rotate 5s ease-in-out infinite;filter:drop-shadow(0 0 14px #818cf8);}
@@ -2053,11 +2061,11 @@
                 <div class="info-badge-header"><span class="info-badge-icon">ℹ️</span><span data-i18n="info"></span></div>
                 <div class="user-info-note-text" data-i18n="testNetNote"></div>
             </div>
-            <div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px;margin-bottom:8px;min-width:0;">
-                <div style="background:#0f172a;border:1px solid #334155;border-radius:10px;padding:10px;text-align:center;"><div style="font-size:0.6em;color:#94a3b8;font-weight:700;margin-bottom:4px;" data-i18n="purchasedDomainLabel"></div><div id="up-domain-count" style="font-size:1.5em;font-weight:900;color:#fbbf24;">0</div></div>
-                <div style="background:#0f172a;border:1px solid #334155;border-radius:10px;padding:10px;text-align:center;"><div style="font-size:0.6em;color:#94a3b8;font-weight:700;margin-bottom:4px;" data-i18n="totalPoints"></div><div id="up-points" style="font-size:1.5em;font-weight:900;color:#a5b4fc;">0</div></div>
-                <div style="background:#0f172a;border:1px solid #334155;border-radius:10px;padding:10px;text-align:center;"><div style="font-size:0.6em;color:#94a3b8;font-weight:700;margin-bottom:4px;" data-i18n="totalSpent"></div><div id="up-spent" style="font-size:1.2em;font-weight:900;color:#f87171;">0 Pi</div></div>
-                <div style="background:#0f172a;border:1px solid #334155;border-radius:10px;padding:10px;text-align:center;"><div style="font-size:0.6em;color:#94a3b8;font-weight:700;margin-bottom:4px;" data-i18n="myListingsCount"></div><div id="up-listing-count" style="font-size:1.5em;font-weight:900;color:#34d399;">0</div></div>
+            <div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:6px;margin-bottom:8px;min-width:0;">
+                <div style="background:#0f172a;border:1px solid #334155;border-radius:10px;padding:7px 8px;text-align:center;"><div style="font-size:0.6em;color:#94a3b8;font-weight:700;margin-bottom:3px;" data-i18n="purchasedDomainLabel"></div><div id="up-domain-count" style="font-size:1.4em;font-weight:900;color:#fbbf24;">0</div></div>
+                <div style="background:#0f172a;border:1px solid #334155;border-radius:10px;padding:7px 8px;text-align:center;"><div style="font-size:0.6em;color:#94a3b8;font-weight:700;margin-bottom:3px;" data-i18n="totalPoints"></div><div id="up-points" style="font-size:1.4em;font-weight:900;color:#a5b4fc;">0</div></div>
+                <div style="background:#0f172a;border:1px solid #334155;border-radius:10px;padding:7px 8px;text-align:center;"><div style="font-size:0.6em;color:#94a3b8;font-weight:700;margin-bottom:3px;" data-i18n="totalSpent"></div><div id="up-spent" style="font-size:1.1em;font-weight:900;color:#f87171;">0 Pi</div></div>
+                <div style="background:#0f172a;border:1px solid #334155;border-radius:10px;padding:7px 8px;text-align:center;"><div style="font-size:0.6em;color:#94a3b8;font-weight:700;margin-bottom:3px;" data-i18n="myListingsCount"></div><div id="up-listing-count" style="font-size:1.4em;font-weight:900;color:#34d399;">0</div></div>
             </div>
             <div id="up-badge-area" style="text-align:center;margin-bottom:6px;"></div>
             <!-- YENİ: Referral (davet) istatistiği — kaç kişi davet edildi,
@@ -2073,22 +2081,22 @@
                      NASIL kazanıldığını kısaca açıklayan bir satır eklendi. -->
                 <div style="font-size:0.62em;color:#94a3b8;line-height:1.5;margin-bottom:8px;" data-i18n="badgeHowToEarn"></div>
                 <div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:4px;">
-                    <div style="background:#1e293b;border-radius:8px;padding:5px 3px;text-align:center;">
+                    <div id="badge-legend-bronze" class="badge-legend-item tier-bronze">
                         <div style="font-size:1em;">🥉</div>
                         <div style="font-size:0.6em;font-weight:800;color:#cd7f32;" data-i18n="badgeBronze"></div>
                         <div style="font-size:0.58em;color:#64748b;" data-i18n="badgeBronzeReq"></div>
                     </div>
-                    <div style="background:#1e293b;border-radius:8px;padding:5px 3px;text-align:center;">
+                    <div id="badge-legend-silver" class="badge-legend-item tier-silver">
                         <div style="font-size:1em;">🥈</div>
                         <div style="font-size:0.6em;font-weight:800;color:#94a3b8;" data-i18n="badgeSilver"></div>
                         <div style="font-size:0.58em;color:#64748b;" data-i18n="badgeSilverReq"></div>
                     </div>
-                    <div style="background:#1e293b;border-radius:8px;padding:5px 3px;text-align:center;">
+                    <div id="badge-legend-gold" class="badge-legend-item tier-gold">
                         <div style="font-size:1em;">🥇</div>
                         <div style="font-size:0.6em;font-weight:800;color:#fbbf24;" data-i18n="badgeGold"></div>
                         <div style="font-size:0.58em;color:#64748b;" data-i18n="badgeGoldReq"></div>
                     </div>
-                    <div style="background:#1e293b;border-radius:8px;padding:5px 3px;text-align:center;">
+                    <div id="badge-legend-diamond" class="badge-legend-item tier-diamond">
                         <div style="font-size:1em;">💎</div>
                         <div style="font-size:0.6em;font-weight:800;color:#818cf8;" data-i18n="badgeDiamond"></div>
                         <div style="font-size:0.58em;color:#64748b;" data-i18n="badgeDiamondReq"></div>
@@ -2321,8 +2329,9 @@
         <span style="font-size:0.68em;color:#94a3b8;font-weight:700;flex:1;" data-i18n="viewAsUserLabel"></span>
         <button id="view-as-user-toggle-btn" onclick="window.toggleViewAsUser()" style="padding:6px 12px;border:none;border-radius:8px;background:linear-gradient(135deg,#6366f1,#818cf8);color:#fff;font-size:0.65em;font-weight:800;cursor:pointer;white-space:nowrap;"></button>
     </div>
-    <div class="card" id="admin-panel" style="display:none;border:2px solid #6366f1;box-shadow:0 0 12px rgba(99,102,241,0.2);padding:5px;box-sizing:border-box;width:calc(100% - 16px);margin-left:auto;margin-right:auto;">
-        <h3 style="color:#fbbf24;margin:-5px -5px 8px -5px;padding:8px 5px;font-size:0.95em;display:flex;align-items:center;justify-content:center;gap:6px;background:linear-gradient(135deg,rgba(99,102,241,0.2) 0%,rgba(67,56,202,0.1) 100%);border-bottom:1.5px solid rgba(99,102,241,0.4);border-radius:14px 14px 0 0;font-weight:900;position:relative;">🛠 Admin Panel
+    <div class="card" id="admin-panel" style="display:none;background:linear-gradient(165deg,#241209 0%,#1a0f08 55%,#20120a 100%);border:2px solid #f59e0b;box-shadow:0 0 16px rgba(245,158,11,0.3);padding:5px;box-sizing:border-box;width:calc(100% - 16px);margin-left:auto;margin-right:auto;position:relative;">
+        <span style="position:absolute;top:-10px;right:12px;z-index:5;background:linear-gradient(135deg,#f59e0b,#ef4444);color:#1e1b4b;font-size:0.55em;font-weight:900;padding:4px 11px;border-radius:8px;letter-spacing:0.5px;text-transform:uppercase;box-shadow:0 3px 10px rgba(0,0,0,0.4),0 0 0 2px #1a0f08;white-space:nowrap;" data-i18n="adminOnlyBadge"></span>
+        <h3 style="color:#fbbf24;margin:-5px -5px 8px -5px;padding:8px 5px;font-size:0.95em;display:flex;align-items:center;justify-content:center;gap:6px;background:linear-gradient(135deg,rgba(245,158,11,0.22) 0%,rgba(153,27,27,0.16) 100%);border-bottom:1.5px solid rgba(245,158,11,0.45);border-radius:14px 14px 0 0;font-weight:900;position:relative;">🛠 Admin Panel
             <button id="admin-panel-refresh-btn" class="panel-refresh-btn" onclick="window.refreshAdminPanel()" title="Yenile">
                 <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
             </button>
@@ -3335,6 +3344,7 @@ const i18n = {
     availableDomains:"Satın Alabileceğiniz Domainler",filterAll:"Hepsi",filtersSelectedSuffix:"seçili",
     saleStatusFilterLabel:"Satış Durumu",saleStatusForSale:"Satışta Olanlar",saleStatusSold:"Satılanlar",
     joinWeb3:"Ayrıcalıklı Web3 Dünyasına Katılın",secureConnection:"Güvenli Bağlantı",
+    adminOnlyBadge:"Sadece Admin",
     web3Slogan:'<span class="web3-slogan-initial">D</span>ijital <span class="web3-slogan-initial">O</span>rtam, <span class="web3-slogan-initial">F</span>inansal <span class="web3-slogan-initial">İ</span>vme, <span class="web3-slogan-initial">A</span>kıllı <span class="web3-slogan-initial">Y</span>atırımlar.',
     trustIntroTitle:"Devam Etmeden Önce Bilgilendirme",
     trustIntroBody:"Bu uygulama, Pi Network üzerinden domain alım-satımı yapılan bir Web3 pazar yeridir. Cüzdanınızı bağladığınızda özel anahtarınız, şifreniz veya seed ifadeniz <b>asla</b> istenmez ya da saklanmaz — bağlantı tamamen resmi Pi SDK üzerinden, sizin onayınızla gerçekleşir.",
@@ -4282,6 +4292,7 @@ const i18n = {
     availableDomains:"Domains Available for Purchase",filterAll:"All",filtersSelectedSuffix:"selected",
     saleStatusFilterLabel:"Sale Status",saleStatusForSale:"Available for Sale",saleStatusSold:"Sold",
     joinWeb3:"Join the Exclusive Web3 World",secureConnection:"Secure Connection",
+    adminOnlyBadge:"Admin Only",
     web3Slogan:'<span class="web3-slogan-initial">D</span>igital <span class="web3-slogan-initial">O</span>ptimism, <span class="web3-slogan-initial">F</span>inancial <span class="web3-slogan-initial">I</span>mpact, <span class="web3-slogan-initial">A</span>sset <span class="web3-slogan-initial">Y</span>ields.',
     trustIntroTitle:"Before You Continue",
     trustIntroBody:"This app is a Web3 marketplace for buying and selling domains via Pi Network. When you connect your wallet, your private key, password, or seed phrase is <b>never</b> requested or stored — the connection happens entirely through the official Pi SDK, with your approval.",
@@ -9243,6 +9254,15 @@ function renderUserPanel(){
     document.getElementById('up-spent').textContent=userTotalSpent.toFixed(2)+' Pi';
     document.getElementById('up-listing-count').textContent=userSellRequests.length;
     document.getElementById('up-badge-area').innerHTML=userProfile.badge?`<div style="font-size:1.1em;">${badgeHTML(userProfile.badge)}</div>`:'';
+    // YENİ: Rozet kazanma koşulları listesinde kazanılan seviyeleri parlak/renkli göster.
+    (function updateBadgeLegendEarnedStates(){
+        const pts=userProfile.points||0;
+        const tiers=[['badge-legend-bronze',10],['badge-legend-silver',50],['badge-legend-gold',200],['badge-legend-diamond',500]];
+        tiers.forEach(([id,threshold])=>{
+            const el=document.getElementById(id);
+            if(el) el.classList.toggle('earned', pts>=threshold);
+        });
+    })();
     // YENİ: Referral sayacı — sadece en az 1 kişi davet edilmişse gösterilir.
     const referralCount=userProfile.referralCount||0;
     const referralBox=document.getElementById('up-referral-box');
