@@ -1202,7 +1202,7 @@
     <div style="width:100%;max-width:360px;background:linear-gradient(165deg,#0a0f1e 0%,#1e1b4b 55%,#0a0f1e 100%);border:1.5px solid rgba(129,140,248,0.45);border-radius:18px;padding:26px 20px;box-shadow:0 8px 32px rgba(0,0,0,0.5),0 0 26px rgba(99,102,241,0.25);text-align:center;">
         <div style="font-size:2.4em;margin-bottom:10px;">👋</div>
         <div style="color:#e0e7ff;font-size:1.05em;font-weight:800;line-height:1.6;min-height:2.6em;"><span id="welcome-greeting-typed"></span><span class="wg-caret"></span></div>
-        <div style="margin-top:14px;font-size:0.66em;color:#64748b;font-weight:600;" data-i18n="welcomeGreetingSkipHint"></div>
+        <button onclick="event.stopPropagation();window.skipWelcomeGreeting();" style="margin-top:16px;padding:9px 22px;border:1.5px solid rgba(165,180,252,0.5);border-radius:20px;background:rgba(99,102,241,0.15);color:#c7d2fe;font-size:0.72em;font-weight:800;cursor:pointer;display:inline-flex;align-items:center;gap:5px;" data-i18n="welcomeGreetingSkipHint"></button>
     </div>
 </div>
 <button id="trust-fab" onclick="window.openTrustInfo()" title="Güvenlik ve Gizlilik Bilgisi" style="position:fixed;bottom:16px;left:14px;z-index:900;width:46px;height:46px;border-radius:50%;background:linear-gradient(135deg,#f59e0b,#fbbf24);border:2px solid rgba(255,255,255,0.25);box-shadow:0 6px 18px rgba(245,158,11,0.55);color:#1e1b4b;cursor:pointer;display:flex;align-items:center;justify-content:center;animation:tour-fab-pulse 2.4s ease-in-out infinite;">
@@ -3366,7 +3366,7 @@ const i18n = {
     joinWeb3:"Ayrıcalıklı Web3 Dünyasına Katılın",secureConnection:"Güvenli Bağlantı",
     adminOnlyBadge:"Sadece Admin",
     welcomeGreeting:(name)=>`Hoş geldin, @${name}! 🎉 Dofiay ailesine katıldığın için teşekkürler.`,
-    welcomeGreetingSkipHint:"Geçmek için dokun",
+    welcomeGreetingSkipHint:"Devam Et →",
     web3Slogan:'<span class="web3-slogan-initial">D</span>ijital <span class="web3-slogan-initial">O</span>rtam, <span class="web3-slogan-initial">F</span>inansal <span class="web3-slogan-initial">İ</span>vme, <span class="web3-slogan-initial">A</span>kıllı <span class="web3-slogan-initial">Y</span>atırımlar.',
     trustIntroTitle:"Devam Etmeden Önce Bilgilendirme",
     trustIntroBody:"Bu uygulama, Pi Network üzerinden domain alım-satımı yapılan bir Web3 pazar yeridir. Cüzdanınızı bağladığınızda özel anahtarınız, şifreniz veya seed ifadeniz <b>asla</b> istenmez ya da saklanmaz — bağlantı tamamen resmi Pi SDK üzerinden, sizin onayınızla gerçekleşir.",
@@ -4316,7 +4316,7 @@ const i18n = {
     joinWeb3:"Join the Exclusive Web3 World",secureConnection:"Secure Connection",
     adminOnlyBadge:"Admin Only",
     welcomeGreeting:(name)=>`Welcome, @${name}! 🎉 Thanks for joining Dofiay.`,
-    welcomeGreetingSkipHint:"Tap to skip",
+    welcomeGreetingSkipHint:"Continue →",
     web3Slogan:'<span class="web3-slogan-initial">D</span>igital <span class="web3-slogan-initial">O</span>ptimism, <span class="web3-slogan-initial">F</span>inancial <span class="web3-slogan-initial">I</span>mpact, <span class="web3-slogan-initial">A</span>sset <span class="web3-slogan-initial">Y</span>ields.',
     trustIntroTitle:"Before You Continue",
     trustIntroBody:"This app is a Web3 marketplace for buying and selling domains via Pi Network. When you connect your wallet, your private key, password, or seed phrase is <b>never</b> requested or stored — the connection happens entirely through the official Pi SDK, with your approval.",
@@ -6698,7 +6698,13 @@ window.openDomainDetail=function(domainName){
     }
     const secondaryGridHtml = secondaryHtml ? `<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px;margin-top:8px;">${secondaryHtml}</div>` : '';
     actionEl.innerHTML = primaryHtml + secondaryGridHtml;
-    document.getElementById('domain-detail-modal').style.display='flex';
+    const detailModalEl = document.getElementById('domain-detail-modal');
+    detailModalEl.style.display='flex';
+    // YENİ: Modal her açıldığında en başa kaydırılır — önceki bir görüntülemeden
+    // kalan kaydırma konumuyla (ör. sayfanın ortasından) açılmasın; bu aynı
+    // zamanda tur adımlarının (ör. satıcı profili) doğru konumda ölçülmesine de yardımcı olur.
+    const detailModalContent = detailModalEl.querySelector('.modal-content');
+    if (detailModalContent) detailModalContent.scrollTop = 0;
 };
 
 window.toggleOwnershipVerified=async function(domainName,verified){
@@ -9826,6 +9832,10 @@ function render(){
         const data=domainData[d.name]||{sold:false,price:d.price};
         const card=document.createElement('div');
         card.className='domain-card';
+        // YENİ: Tur, "Satıcı Profili" adımı için bir satıcısı OLAN domaini
+        // güvenilir şekilde bulabilsin diye (bkz. tourSyncContext) kart, ait
+        // olduğu domain adını data-attribute olarak taşıyor.
+        card.dataset.domainName=d.name;
         // FIX (yanıp sönme bug'ı): render() sık sık tetiklendiği için (her
         // onSnapshot güncellemesinde) kartlar sürekli yeniden oluşturuluyor
         // ve her seferinde "card-rise" giriş animasyonu baştan oynatılıyordu.
@@ -11344,10 +11354,14 @@ if(localStorage.getItem('w3dg_trust_intro_seen')){
 let wgTimer = null, wgCloseTimer = null, wgFullText = '', wgOnDone = null;
 function wgScheduleAutoClose(){
     clearTimeout(wgCloseTimer);
-    wgCloseTimer = setTimeout(closeWelcomeGreeting, 1400);
+    // YENİ: Yazı tamamlandıktan sonra hemen kaybolmasın diye bekleme süresi
+    // 1.4sn'den 1.8sn'ye çıkarıldı (kullanıcı isteği: tamamlandıktan sonra
+    // ekranda 1-2 saniye kalsın).
+    wgCloseTimer = setTimeout(closeWelcomeGreeting, 1800);
 }
 function closeWelcomeGreeting(){
     clearTimeout(wgCloseTimer);
+    clearInterval(wgTimer); wgTimer = null;
     const modal = document.getElementById('welcome-greeting-modal');
     if (!modal || modal.style.display === 'none') {
         if (wgOnDone) { const cb = wgOnDone; wgOnDone = null; cb(); }
@@ -11360,15 +11374,12 @@ function closeWelcomeGreeting(){
         if (wgOnDone) { const cb = wgOnDone; wgOnDone = null; cb(); }
     }, 300);
 }
+// YENİ: Beklemek istemeyen kullanıcı için — panele veya "Devam Et" butonuna
+// dokunmak, yazının hangi aşamada olduğuna bakmaksızın paneli ANINDA kapatır
+// (önceki iki aşamalı davranış — önce yazıyı tamamla, sonra kapat — yerine
+// tek dokunuşla net bir "devam et" hareketi).
 window.skipWelcomeGreeting = function(){
-    const typedEl = document.getElementById('welcome-greeting-typed');
-    if (wgTimer) {
-        clearInterval(wgTimer); wgTimer = null;
-        if (typedEl) typedEl.textContent = wgFullText;
-        wgScheduleAutoClose();
-    } else {
-        closeWelcomeGreeting();
-    }
+    closeWelcomeGreeting();
 };
 window.showWelcomeGreeting = function(username, onDone){
     if (sessionStorage.getItem('w3dg_welcome_shown')) {
@@ -11389,6 +11400,8 @@ window.showWelcomeGreeting = function(username, onDone){
 
     let i = 0;
     clearInterval(wgTimer);
+    // YENİ: Daktilo hızı biraz daha yavaş (32ms → 55ms/karakter) — kullanıcı
+    // isteği: "biraz daha yavaş olsun".
     wgTimer = setInterval(() => {
         i++;
         typedEl.textContent = wgFullText.slice(0, i);
@@ -11396,7 +11409,7 @@ window.showWelcomeGreeting = function(username, onDone){
             clearInterval(wgTimer); wgTimer = null;
             wgScheduleAutoClose();
         }
-    }, 32);
+    }, 55);
 };
 
 let firstDomainsSnapshotReceived=false;
@@ -11815,7 +11828,18 @@ function tourSyncContext(step) {
     // Domain detay modalı
     if (step.context === 'modal') {
         if (!modal || modal.style.display === 'none') {
-            const c = document.querySelector('#domain-list .domain-card');
+            // ÖNEMLİ (FIX — "satıcı profili" adımı yanlış/hiç göstermiyordu):
+            // '.seller-link-pulse' hedefi SADECE gerçek bir satıcı kullanıcı
+            // adı olan (data.sellerUsername) domainlerde render ediliyor —
+            // sistem/admin domainlerinde bu span hiç yok. Eskiden listede HER
+            // ZAMAN İLK kart (çoğunlukla sellerUsername'i olmayan bir sistem
+            // domaini) otomatik açılıyordu; bu durumda hedef DOM'da hiç
+            // bulunamıyor, adım ya yanlış konumlanıyor ya da sessizce
+            // atlanıyordu. Artık listede gerçekten bir SATICISI olan İLK
+            // domaini bulup onu açıyoruz.
+            const cardWithSeller = Array.from(document.querySelectorAll('#domain-list .domain-card'))
+                .find(el => domainData[el.dataset.domainName]?.sellerUsername);
+            const c = cardWithSeller || document.querySelector('#domain-list .domain-card');
             if (c) c.click();
         }
     } else if (modal) {
