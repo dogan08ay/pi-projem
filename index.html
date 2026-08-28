@@ -96,12 +96,13 @@
         @keyframes web3-initial-heartbeat{0%,38%,100%{transform:scale(1);text-shadow:0 0 4px rgba(251,191,36,0.5);}12%{transform:scale(1.38);text-shadow:0 0 15px rgba(251,191,36,1),0 0 26px rgba(251,191,36,0.65);}24%{transform:scale(1);text-shadow:0 0 4px rgba(251,191,36,0.5);}30%{transform:scale(1.25);text-shadow:0 0 12px rgba(251,191,36,0.9),0 0 20px rgba(251,191,36,0.5);}}
         /* YENİ: Rozet kazanma koşulları listesi — kazanılmamış rozetler soluk/gri,
            kazanılanlar parlak+renkli çerçeve/glow ile öne çıkıyor (ilerleme hissi). */
-        .badge-legend-item{background:#1e293b;border-radius:8px;padding:5px 3px;text-align:center;border:1.5px solid transparent;filter:grayscale(0.9) brightness(0.6);opacity:0.5;transform:scale(1);transition:filter .35s ease,opacity .35s ease,transform .35s ease,box-shadow .35s ease,border-color .35s ease;}
-        .badge-legend-item.earned{filter:none;opacity:1;transform:scale(1.04);}
-        .badge-legend-item.earned.tier-bronze{border-color:rgba(205,127,50,0.65);background:linear-gradient(160deg,#2a1c10 0%,#1e293b 100%);box-shadow:0 0 10px rgba(205,127,50,0.45);}
-        .badge-legend-item.earned.tier-silver{border-color:rgba(148,163,184,0.65);background:linear-gradient(160deg,#26303f 0%,#1e293b 100%);box-shadow:0 0 10px rgba(148,163,184,0.4);}
-        .badge-legend-item.earned.tier-gold{border-color:rgba(251,191,36,0.7);background:linear-gradient(160deg,#332708 0%,#1e293b 100%);box-shadow:0 0 12px rgba(251,191,36,0.5);}
-        .badge-legend-item.earned.tier-diamond{border-color:rgba(129,140,248,0.7);background:linear-gradient(160deg,#221f3d 0%,#1e293b 100%);box-shadow:0 0 12px rgba(129,140,248,0.5);}
+        .badge-legend-item{background:#1e293b;border-radius:8px;padding:5px 3px;text-align:center;border:1.5px solid rgba(51,65,85,0.6);filter:grayscale(0.55) brightness(0.92);opacity:0.8;transform:scale(1);transition:filter .35s ease,opacity .35s ease,transform .35s ease,box-shadow .35s ease,border-color .35s ease;}
+        .badge-legend-item.earned{filter:none;opacity:1;transform:scale(1.05);position:relative;}
+        .badge-legend-item.earned::after{content:"✓";position:absolute;top:-6px;right:-4px;width:15px;height:15px;line-height:15px;font-size:0.6em;font-weight:900;color:#052e16;background:#34d399;border-radius:50%;box-shadow:0 0 0 2px #1e293b,0 2px 5px rgba(0,0,0,0.4);}
+        .badge-legend-item.earned.tier-bronze{border-color:rgba(205,127,50,0.85);background:linear-gradient(160deg,#3a2711 0%,#1e293b 100%);box-shadow:0 0 12px rgba(205,127,50,0.55);}
+        .badge-legend-item.earned.tier-silver{border-color:rgba(203,213,225,0.85);background:linear-gradient(160deg,#334155 0%,#1e293b 100%);box-shadow:0 0 12px rgba(203,213,225,0.5);}
+        .badge-legend-item.earned.tier-gold{border-color:rgba(251,191,36,0.9);background:linear-gradient(160deg,#453309 0%,#1e293b 100%);box-shadow:0 0 14px rgba(251,191,36,0.65);}
+        .badge-legend-item.earned.tier-diamond{border-color:rgba(129,140,248,0.9);background:linear-gradient(160deg,#2a2650 0%,#1e293b 100%);box-shadow:0 0 14px rgba(129,140,248,0.65);}
         .locked-content{filter:blur(8px);opacity:0.45;pointer-events:none;transition:filter 0.3s ease,opacity 0.3s ease;}.premium-lock-overlay.active{opacity:1;visibility:visible;pointer-events:auto;}
         .premium-lock-overlay{position:absolute;top:0;left:0;right:0;bottom:0;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;background:rgba(10,15,30,0.72);backdrop-filter:blur(3px);z-index:100;padding:6px 8px 4px 8px;text-align:center;overflow-y:auto;opacity:0;visibility:hidden;pointer-events:none;transition:opacity 0.3s ease,visibility 0.3s ease;}
         .diamond-spin{margin-bottom:1px;display:inline-block;animation:diamond-rotate 5s ease-in-out infinite;filter:drop-shadow(0 0 14px #818cf8);}
