@@ -11354,10 +11354,8 @@ if(localStorage.getItem('w3dg_trust_intro_seen')){
 let wgTimer = null, wgCloseTimer = null, wgFullText = '', wgOnDone = null;
 function wgScheduleAutoClose(){
     clearTimeout(wgCloseTimer);
-    // YENİ: Yazı tamamlandıktan sonra hemen kaybolmasın diye bekleme süresi
-    // 1.4sn'den 1.8sn'ye çıkarıldı (kullanıcı isteği: tamamlandıktan sonra
-    // ekranda 1-2 saniye kalsın).
-    wgCloseTimer = setTimeout(closeWelcomeGreeting, 1800);
+    // YENİ: Kullanıcı isteği — yazı tamamlandıktan sonra 4 saniye ekranda kalsın.
+    wgCloseTimer = setTimeout(closeWelcomeGreeting, 4000);
 }
 function closeWelcomeGreeting(){
     clearTimeout(wgCloseTimer);
@@ -11400,8 +11398,8 @@ window.showWelcomeGreeting = function(username, onDone){
 
     let i = 0;
     clearInterval(wgTimer);
-    // YENİ: Daktilo hızı biraz daha yavaş (32ms → 55ms/karakter) — kullanıcı
-    // isteği: "biraz daha yavaş olsun".
+    // YENİ: Daktilo hızı tekrar yavaşlatıldı (55ms → 85ms/karakter) — kullanıcı
+    // isteği: "hala çok fazla, biraz daha yavaş olmalı".
     wgTimer = setInterval(() => {
         i++;
         typedEl.textContent = wgFullText.slice(0, i);
@@ -11409,7 +11407,7 @@ window.showWelcomeGreeting = function(username, onDone){
             clearInterval(wgTimer); wgTimer = null;
             wgScheduleAutoClose();
         }
-    }, 55);
+    }, 85);
 };
 
 let firstDomainsSnapshotReceived=false;
