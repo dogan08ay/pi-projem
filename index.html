@@ -94,6 +94,9 @@
         .web3-slogan-text{display:block;font-size:0.72em;color:#b6c2d9;font-weight:700;letter-spacing:0.15px;text-transform:none;word-break:break-word;overflow-wrap:break-word;}
         .web3-slogan-initial{color:#fbbf24;font-weight:900;font-size:1.2em;display:inline-block;transform-origin:center;text-shadow:0 0 4px rgba(251,191,36,0.5);animation:web3-initial-heartbeat 1.8s ease-in-out infinite;}
         @keyframes web3-initial-heartbeat{0%,38%,100%{transform:scale(1);text-shadow:0 0 4px rgba(251,191,36,0.5);}12%{transform:scale(1.38);text-shadow:0 0 15px rgba(251,191,36,1),0 0 26px rgba(251,191,36,0.65);}24%{transform:scale(1);text-shadow:0 0 4px rgba(251,191,36,0.5);}30%{transform:scale(1.25);text-shadow:0 0 12px rgba(251,191,36,0.9),0 0 20px rgba(251,191,36,0.5);}}
+        /* YENİ: Karşılama panelindeki daktilo efekti için yanıp sönen imleç. */
+        .wg-caret{display:inline-block;width:2px;height:1em;background:#a5b4fc;margin-left:2px;vertical-align:text-bottom;animation:wg-blink 0.85s steps(1,end) infinite;}
+        @keyframes wg-blink{50%{opacity:0;}}
         /* YENİ: Rozet kazanma koşulları listesi — kazanılmamış rozetler soluk/gri,
            kazanılanlar parlak+renkli çerçeve/glow ile öne çıkıyor (ilerleme hissi). */
         .badge-legend-item{background:#1e293b;border-radius:8px;padding:5px 3px;text-align:center;border:1.5px solid rgba(51,65,85,0.6);filter:grayscale(0.55) brightness(0.92);opacity:0.8;transform:scale(1);transition:filter .35s ease,opacity .35s ease,transform .35s ease,box-shadow .35s ease,border-color .35s ease;}
@@ -1184,6 +1187,22 @@
         <div style="color:#fbbf24;font-size:0.78em;font-weight:800;line-height:1.5;background:rgba(251,191,36,0.08);border:1px solid rgba(251,191,36,0.25);border-radius:8px;padding:8px 10px;margin-bottom:10px;" data-i18n="trustIntroWarning"></div>
         <div style="color:#a5b4fc;font-size:0.74em;font-weight:700;line-height:1.5;background:rgba(99,102,241,0.08);border:1px solid rgba(99,102,241,0.25);border-radius:8px;padding:8px 10px;margin-bottom:16px;" data-i18n="oneAccountPolicyNote"></div>
         <button onclick="window.closeTrustIntro()" style="width:100%;padding:12px;border:none;border-radius:10px;background:linear-gradient(135deg,#6366f1,#818cf8);color:#fff;font-weight:800;font-size:0.9em;cursor:pointer;box-shadow:0 4px 14px rgba(99,102,241,0.4);" data-i18n="trustIntroButton"></button>
+    </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     KİŞİSEL KARŞILAMA PANELİ ("Pi ile Bağlan" SONRASI)
+     Başarılı bağlantı sonrası, oturum başına (sessionStorage — sekme
+     kapanınca sıfırlanır) bir kez, kullanıcı adını daktilo efektiyle
+     yazan kısa bir karşılama gösterilir. Yazı bitince ~1.4sn sonra
+     otomatik kapanır. Dokununca: yazı hâlâ yazılıyorsa anında tamamlanır,
+     yazı tamamsa panel hemen kapanır.
+     ═══════════════════════════════════════════════════════════════ -->
+<div id="welcome-greeting-modal" onclick="window.skipWelcomeGreeting()" style="display:none;position:fixed;inset:0;z-index:100000;background:rgba(5,8,20,0.88);backdrop-filter:blur(6px);align-items:center;justify-content:center;padding:16px;box-sizing:border-box;cursor:pointer;">
+    <div style="width:100%;max-width:360px;background:linear-gradient(165deg,#0a0f1e 0%,#1e1b4b 55%,#0a0f1e 100%);border:1.5px solid rgba(129,140,248,0.45);border-radius:18px;padding:26px 20px;box-shadow:0 8px 32px rgba(0,0,0,0.5),0 0 26px rgba(99,102,241,0.25);text-align:center;">
+        <div style="font-size:2.4em;margin-bottom:10px;">👋</div>
+        <div style="color:#e0e7ff;font-size:1.05em;font-weight:800;line-height:1.6;min-height:2.6em;"><span id="welcome-greeting-typed"></span><span class="wg-caret"></span></div>
+        <div style="margin-top:14px;font-size:0.66em;color:#64748b;font-weight:600;" data-i18n="welcomeGreetingSkipHint"></div>
     </div>
 </div>
 <button id="trust-fab" onclick="window.openTrustInfo()" title="Güvenlik ve Gizlilik Bilgisi" style="position:fixed;bottom:16px;left:14px;z-index:900;width:46px;height:46px;border-radius:50%;background:linear-gradient(135deg,#f59e0b,#fbbf24);border:2px solid rgba(255,255,255,0.25);box-shadow:0 6px 18px rgba(245,158,11,0.55);color:#1e1b4b;cursor:pointer;display:flex;align-items:center;justify-content:center;animation:tour-fab-pulse 2.4s ease-in-out infinite;">
@@ -3346,6 +3365,8 @@ const i18n = {
     saleStatusFilterLabel:"Satış Durumu",saleStatusForSale:"Satışta Olanlar",saleStatusSold:"Satılanlar",
     joinWeb3:"Ayrıcalıklı Web3 Dünyasına Katılın",secureConnection:"Güvenli Bağlantı",
     adminOnlyBadge:"Sadece Admin",
+    welcomeGreeting:(name)=>`Hoş geldin, @${name}! 🎉 Dofiay ailesine katıldığın için teşekkürler.`,
+    welcomeGreetingSkipHint:"Geçmek için dokun",
     web3Slogan:'<span class="web3-slogan-initial">D</span>ijital <span class="web3-slogan-initial">O</span>rtam, <span class="web3-slogan-initial">F</span>inansal <span class="web3-slogan-initial">İ</span>vme, <span class="web3-slogan-initial">A</span>kıllı <span class="web3-slogan-initial">Y</span>atırımlar.',
     trustIntroTitle:"Devam Etmeden Önce Bilgilendirme",
     trustIntroBody:"Bu uygulama, Pi Network üzerinden domain alım-satımı yapılan bir Web3 pazar yeridir. Cüzdanınızı bağladığınızda özel anahtarınız, şifreniz veya seed ifadeniz <b>asla</b> istenmez ya da saklanmaz — bağlantı tamamen resmi Pi SDK üzerinden, sizin onayınızla gerçekleşir.",
@@ -4294,6 +4315,8 @@ const i18n = {
     saleStatusFilterLabel:"Sale Status",saleStatusForSale:"Available for Sale",saleStatusSold:"Sold",
     joinWeb3:"Join the Exclusive Web3 World",secureConnection:"Secure Connection",
     adminOnlyBadge:"Admin Only",
+    welcomeGreeting:(name)=>`Welcome, @${name}! 🎉 Thanks for joining Dofiay.`,
+    welcomeGreetingSkipHint:"Tap to skip",
     web3Slogan:'<span class="web3-slogan-initial">D</span>igital <span class="web3-slogan-initial">O</span>ptimism, <span class="web3-slogan-initial">F</span>inancial <span class="web3-slogan-initial">I</span>mpact, <span class="web3-slogan-initial">A</span>sset <span class="web3-slogan-initial">Y</span>ields.',
     trustIntroTitle:"Before You Continue",
     trustIntroBody:"This app is a Web3 marketplace for buying and selling domains via Pi Network. When you connect your wallet, your private key, password, or seed phrase is <b>never</b> requested or stored — the connection happens entirely through the official Pi SDK, with your approval.",
@@ -10797,7 +10820,10 @@ async function performPiConnect() {
                     setTimeout(() => {
                         userPanel.style.opacity = '1';
                         userPanel.style.transform = 'translateY(0)';
-                        maybeStartOnboardingTour();
+                        // YENİ: Kişisel karşılama paneli (daktilo efekti) — oturum
+                        // başına bir kez, kullanıcı adıyla. Tur ile üst üste
+                        // binmemesi için tur, karşılama kapandıktan SONRA başlar.
+                        showWelcomeGreeting(currentUser, maybeStartOnboardingTour);
                     }, isAdmin ? 200 : 80);
                 });
             });
@@ -11304,6 +11330,74 @@ window.openTrustInfo = function(){
 if(localStorage.getItem('w3dg_trust_intro_seen')){
     document.getElementById('trust-fab')?.style.setProperty('animation','none');
 }
+
+// ── KİŞİSEL KARŞILAMA PANELİ (daktilo efekti) ─────────────────────────
+// Her başarılı "Pi ile Bağlan" sonrası, bu SEKME için (sessionStorage)
+// bir kez kullanıcı adını daktilo efektiyle yazan kısa bir karşılama
+// gösterilir; yazı bitince otomatik kapanır. Dokunma davranışı:
+//  - Hâlâ yazılıyorsa: yazıyı anında tamamlar (otomatik kapanma sayacı başlar)
+//  - Yazı tamamsa: paneli hemen kapatır
+// `onDone` callback'i (ör. maybeStartOnboardingTour) panel kapandıktan
+// SONRA çağrılır ki tur ile karşılama üst üste binmesin. Bu oturumda
+// daha önce gösterildiyse (veya gerekli DOM elemanları yoksa) callback
+// gecikmesizce çağrılır.
+let wgTimer = null, wgCloseTimer = null, wgFullText = '', wgOnDone = null;
+function wgScheduleAutoClose(){
+    clearTimeout(wgCloseTimer);
+    wgCloseTimer = setTimeout(closeWelcomeGreeting, 1400);
+}
+function closeWelcomeGreeting(){
+    clearTimeout(wgCloseTimer);
+    const modal = document.getElementById('welcome-greeting-modal');
+    if (!modal || modal.style.display === 'none') {
+        if (wgOnDone) { const cb = wgOnDone; wgOnDone = null; cb(); }
+        return;
+    }
+    modal.style.opacity = '0';
+    setTimeout(() => {
+        modal.style.display = 'none';
+        modal.style.opacity = '1';
+        if (wgOnDone) { const cb = wgOnDone; wgOnDone = null; cb(); }
+    }, 300);
+}
+window.skipWelcomeGreeting = function(){
+    const typedEl = document.getElementById('welcome-greeting-typed');
+    if (wgTimer) {
+        clearInterval(wgTimer); wgTimer = null;
+        if (typedEl) typedEl.textContent = wgFullText;
+        wgScheduleAutoClose();
+    } else {
+        closeWelcomeGreeting();
+    }
+};
+window.showWelcomeGreeting = function(username, onDone){
+    if (sessionStorage.getItem('w3dg_welcome_shown')) {
+        if (onDone) onDone();
+        return;
+    }
+    sessionStorage.setItem('w3dg_welcome_shown', '1');
+    const modal = document.getElementById('welcome-greeting-modal');
+    const typedEl = document.getElementById('welcome-greeting-typed');
+    if (!modal || !typedEl) { if (onDone) onDone(); return; }
+    wgOnDone = onDone || null;
+    wgFullText = t('welcomeGreeting')(username || '');
+    typedEl.textContent = '';
+    modal.style.display = 'flex';
+    modal.style.opacity = '0';
+    modal.style.transition = 'opacity 0.3s ease';
+    requestAnimationFrame(() => { modal.style.opacity = '1'; });
+
+    let i = 0;
+    clearInterval(wgTimer);
+    wgTimer = setInterval(() => {
+        i++;
+        typedEl.textContent = wgFullText.slice(0, i);
+        if (i >= wgFullText.length) {
+            clearInterval(wgTimer); wgTimer = null;
+            wgScheduleAutoClose();
+        }
+    }, 32);
+};
 
 let firstDomainsSnapshotReceived=false;
 window.addEventListener("load",()=>{
