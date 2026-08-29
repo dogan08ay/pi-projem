@@ -213,7 +213,7 @@
         .btn-fake-buy{background:var(--accent);color:white;padding:1px 4px;border-radius:3px;font-weight:900;font-size:0.85em;}
         .income-box{background:linear-gradient(135deg,#064e3b 0%,#065f46 100%);border:2px solid #10b981;border-radius:9px;padding:7px;margin-bottom:8px;text-align:center;}
         .income-value{font-size:1.4em;font-weight:900;color:#34d399;}
-        .detail-img{width:100%;max-height:120px;object-fit:contain;border-radius:10px;margin-bottom:10px;background:#334155;}
+        .detail-img{width:100%;height:120px;max-height:120px;object-fit:contain;border-radius:10px;margin-bottom:10px;background:#334155;}
         .img-upload-area{border:2px dashed #f59e0b;border-radius:7px;padding:8px;text-align:center;cursor:pointer;margin-bottom:8px;color:#94a3b8;font-size:0.8em;}
         .img-upload-area:hover{border-color:#fcd34d;background:rgba(245,158,11,0.05);}
         .img-preview{width:100%;max-height:80px;object-fit:contain;border-radius:8px;margin-top:6px;display:none;}
@@ -12103,6 +12103,28 @@ async function tourRenderStep() {
     const step = TOUR_STEPS[tourStepIndex];
     tourSyncContext(step);
     const stepIndexAtStart = tourStepIndex;
+    // YENİ (FIX — "satıcı profili" adımı: konum doğru gösterilip ANLIK yine
+    // aşağı kayıyordu): Domain detay modalındaki görsel (#detail-modal-img)
+    // henüz yüklenmeden hedefin (satıcı satırı) konumu ölçülebiliyor. Görsel
+    // bir an sonra (ağdan) yüklenince yüksekliği ~0'dan gerçek boyutuna
+    // sıçrıyor ve ALTINDAKİ TÜM satırları (satıcı satırı dahil) aşağı itiyor —
+    // vurgu bunu yakalayamıyordu. Bu adım bir modal içindeyse ve görsel henüz
+    // yüklenmediyse, yüklenince (veya hata verirse) konumu GÖRÜNMEZKEN
+    // yeniden hesaplıyoruz ki düzeltme de görünür bir kayma yaratmasın.
+    if (step.context === 'modal') {
+        const modalImg = document.getElementById('detail-modal-img');
+        if (modalImg && !modalImg.complete) {
+            const onImgSettled = () => {
+                modalImg.removeEventListener('load', onImgSettled);
+                modalImg.removeEventListener('error', onImgSettled);
+                if (!tourEls || tourStepIndex !== stepIndexAtStart) return;
+                tourHideEls();
+                tourRepositionUntilReady(stepIndexAtStart);
+            };
+            modalImg.addEventListener('load', onImgSettled);
+            modalImg.addEventListener('error', onImgSettled);
+        }
+    }
     // Hedefi anında aramak yerine, konumu gerçekten sabitlenene kadar bekle
     // (bkz. tourWaitForTarget) — panel/menü/sekme geçiş animasyonları veya veri
     // render'ı yüzünden eleman anlık olarak hazır olmayabilir ya da yanlış
