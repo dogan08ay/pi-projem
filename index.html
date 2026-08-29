@@ -12012,15 +12012,26 @@ function tourReposition() {
     // Hedef az önce >=10px eşiğini geçmiş olabilir ama bu, scrollIntoView
     // animasyonu HÂLÂ SÜRERKEN de olabiliyordu (henüz tam yerleşmeden eşik
     // geçiliyordu) — konum sabitlenip gösterildikten SONRA kaydırma devam
-    // ediyor, bu da görünür bir "kayma" yaratıyordu. Bu yüzden ayrıca hedefin
-    // konumunun art arda İKİ KAREDE de DEĞİŞMEDİĞİNİ (kaydırmanın/varsa diğer
-    // animasyonların gerçekten bittiğini) doğruluyoruz. Kaydırma gerektirmeyen
-    // sabit hedefler için bu sadece 1 kare (~16ms) gecikme ekler, fark edilmez.
-    const roundedTop = Math.round(rect.top), roundedLeft = Math.round(rect.left);
-    const stableKey = roundedTop + ',' + roundedLeft;
-    if (tourLastStableTop[tourStepIndex] !== stableKey) {
-        tourLastStableTop[tourStepIndex] = stableKey;
-        return false;
+    // ediyor, bu da görünür bir "kayma" yaratıyordu. Bu yüzden hedefin
+    // konumunun art arda İKİ KAREDE de DEĞİŞMEDİĞİNİ doğruluyoruz.
+    // ÖNEMLİ (KRİTİK REGRESYON DÜZELTMESİ — tur hiçbir şey göstermiyordu): Bu
+    // kontrol SADECE bu adım kendi iç kaydırma kurtarma mekanizmamızı
+    // (tourClipRescueAttempts — modal gibi İÇ İÇE bir alan tarafından
+    // kırpılan hedefler için) tetiklediyse uygulanır. Aşağıdaki ESKİ/
+    // KANITLANMIŞ pencere-seviyesi "ekran dışı" kaydırma mantığı kendi TEK
+    // SEFERLİK setTimeout tabanlı yeniden deneme mekanizmasına sahip ve rAF
+    // döngüsünün DIŞINDA çalışıyor — bu stabilite şartını ona da dayatmak,
+    // o tek seferlik çağrıda hep "henüz stabil değil" sonucunu verip
+    // KİMSENİN TEKRAR DENEMEDİĞİ bir çıkmaza (tur tamamen görünmez şekilde
+    // kilitlenir) yol açıyordu. Bu yüzden o akışa (aşağıda, dokunulmadı)
+    // karışmıyoruz.
+    if (tourClipRescueAttempts[tourStepIndex]) {
+        const roundedTop = Math.round(rect.top), roundedLeft = Math.round(rect.left);
+        const stableKey = roundedTop + ',' + roundedLeft;
+        if (tourLastStableTop[tourStepIndex] !== stableKey) {
+            tourLastStableTop[tourStepIndex] = stableKey;
+            return false;
+        }
     }
     const vh = window.innerHeight, vw = window.innerWidth;
 
