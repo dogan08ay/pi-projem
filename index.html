@@ -11609,6 +11609,10 @@ let tourExitConfirmPending = false;
 let tourExitConfirmTimer = null;
 let tourInitialState = null; // tur başlamadan ÖNCE panel/menü/modal açık mıydı — bitince buna geri dönülür
 let tourDirection = 'forward'; // 'forward' | 'backward' — hedefi olmayan bir adıma denk gelince hangi yöne atlanacağını belirler
+// YENİ: Bir adımın hedefi, kendi iç kaydırma alanı (ör. modal) tarafından
+// kırpıldığında kaç kez "kaydırıp tekrar dene" yapıldığını adım bazında
+// sayar — sonsuz döngüyü önlemek için (bkz. tourReposition).
+let tourClipRescueAttempts = {};
 
 // Ekrana (overlay'e) yanlışlıkla dokunulduğunda turu ANINDA kapatmak yerine,
 // ilk dokunuşta bir uyarı gösterip yalnızca KISA SÜRE İÇİNDE gelen ikinci bir
@@ -11631,6 +11635,7 @@ function tourCleanup() {
     tourEls?.tooltip?.remove();
     tourEls?.hand?.remove();
     tourEls = null;
+    tourClipRescueAttempts = {};
     window.removeEventListener('resize', tourReposition);
     if (window.visualViewport) window.visualViewport.removeEventListener('resize', tourReposition);
     clearTimeout(tourExitConfirmTimer);
@@ -11689,7 +11694,19 @@ function tourGetVisibleRect(el) {
     let hops = 0;
     while (node && node !== document.body && hops < 12) {
         const cs = getComputedStyle(node);
-        if (cs.overflow === 'hidden' || cs.overflowY === 'hidden' || cs.overflowX === 'hidden') {
+        // BUG DÜZELTMESİ ("Satıcı Profili" adımı işareti alta kayıyordu):
+        // Önceden SADECE overflow:hidden kırpma olarak sayılıyordu. Ama domain
+        // detay modalının içeriği (.modal-content: max-height:90vh;
+        // overflow-y:auto) 'auto' ile kırpıyor — bu hesaba katılmadığı için
+        // modalın görünür alanının biraz altına taşan bir hedef (ör. satıcı
+        // satırı) hâlâ "tam görünür" sayılıp vurgu/ok, modalın GERÇEK alt
+        // sınırının dışında/altında, yanlış bir konumda çiziliyordu. Artık
+        // 'auto' ve 'scroll' da kırpma olarak hesaba katılıyor — bu, zaten tam
+        // görünür olan hedefleri ETKİLEMİYOR (kesişim onların tam boyutuna eşit
+        // kalıyor), sadece gerçekten taşan/kısmen gizli hedefleri düzeltiyor.
+        if (cs.overflow === 'hidden' || cs.overflowY === 'hidden' || cs.overflowX === 'hidden' ||
+            cs.overflowY === 'auto' || cs.overflowY === 'scroll' ||
+            cs.overflowX === 'auto' || cs.overflowX === 'scroll') {
             const ar = node.getBoundingClientRect();
             top = Math.max(top, ar.top);
             left = Math.max(left, ar.left);
@@ -11920,7 +11937,28 @@ function tourReposition() {
     // taşıp kırpılan bir öğe "başarılı" sayılıp üzerine anlamsız/yanlış
     // konumda bir vurgu çizilebiliyordu.
     const visRect = tourGetVisibleRect(target);
-    if (visRect.width < 10 || visRect.height < 10) return false;
+    if (visRect.width < 10 || visRect.height < 10) {
+        // YENİ (FIX — "Satıcı Profili" adımının işareti alta kayıyordu): Hedefin
+        // HAM boyutu yeterliyse (rect) ama GÖRÜNÜR/kırpılmış boyutu (visRect) çok
+        // küçükse, hedef muhtemelen kendi iç kaydırma alanı olan bir kapsayıcı
+        // tarafından kırpılıyordur (ör. domain detay modalının .modal-content'i:
+        // max-height:90vh;overflow-y:auto). scrollIntoView, window dahil TÜM
+        // kaydırılabilir üst kapsayıcıları hedefi ortalayacak şekilde otomatik
+        // kaydırır. Sonsuz döngüyü önlemek için adım başına en fazla 3 deneme
+        // yapılır; başarısız olursa adım atlanır (turun kilitlenmesi yerine).
+        if (rect.width >= 10 && rect.height >= 10) {
+            const rescueKey = tourStepIndex;
+            tourClipRescueAttempts[rescueKey] = (tourClipRescueAttempts[rescueKey] || 0) + 1;
+            if (tourClipRescueAttempts[rescueKey] <= 3) {
+                target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                setTimeout(() => { if (tourEls && tourStepIndex === rescueKey) tourReposition(); }, 300);
+                return true;
+            }
+            if (tourEls && tourStepIndex === rescueKey) tourSkipUnavailableStep();
+            return true;
+        }
+        return false;
+    }
     const vh = window.innerHeight, vw = window.innerWidth;
 
     // NOT (iki turdur bozulan bug'lar sonrası bilinçli karar): Kaydırma
