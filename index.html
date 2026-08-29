@@ -11702,25 +11702,38 @@ function tourGetVisibleRect(el) {
     let node = el.parentElement;
     let hops = 0;
     while (node && node !== document.body && hops < 12) {
-        const cs = getComputedStyle(node);
-        // BUG DÜZELTMESİ ("Satıcı Profili" adımı işareti alta kayıyordu):
-        // Önceden SADECE overflow:hidden kırpma olarak sayılıyordu. Ama domain
-        // detay modalının içeriği (.modal-content: max-height:90vh;
-        // overflow-y:auto) 'auto' ile kırpıyor — bu hesaba katılmadığı için
-        // modalın görünür alanının biraz altına taşan bir hedef (ör. satıcı
-        // satırı) hâlâ "tam görünür" sayılıp vurgu/ok, modalın GERÇEK alt
-        // sınırının dışında/altında, yanlış bir konumda çiziliyordu. Artık
-        // 'auto' ve 'scroll' da kırpma olarak hesaba katılıyor — bu, zaten tam
-        // görünür olan hedefleri ETKİLEMİYOR (kesişim onların tam boyutuna eşit
-        // kalıyor), sadece gerçekten taşan/kısmen gizli hedefleri düzeltiyor.
-        if (cs.overflow === 'hidden' || cs.overflowY === 'hidden' || cs.overflowX === 'hidden' ||
-            cs.overflowY === 'auto' || cs.overflowY === 'scroll' ||
-            cs.overflowX === 'auto' || cs.overflowX === 'scroll') {
-            const ar = node.getBoundingClientRect();
-            top = Math.max(top, ar.top);
-            left = Math.max(left, ar.left);
-            right = Math.min(right, ar.right);
-            bottom = Math.min(bottom, ar.bottom);
+        // BUG DÜZELTMESİ (KRİTİK REGRESYON — tur hiçbir şey göstermiyordu):
+        // '.main-scroll', uygulamanın KENDİ ana sayfa kaydırma alanıdır ve
+        // onun kaydırılması zaten AYRI, kanıtlanmış bir mekanizmayla
+        // (tourReposition içindeki window/vh tabanlı scrollIntoView) doğru
+        // şekilde yönetiliyor. Aşağıdaki auto/scroll kırpma mantığını ona da
+        // uygulamak, sayfa henüz o hedefe (ör. #domain-list) kaydırılmamışken
+        // hedefi "hiç görünmüyor" sayıyor, bu da tourWaitForTarget'ın —ki
+        // henüz kaydırma tetiklemez— SONSUZA KADAR beklemesine (yani turun
+        // hiç açılmamasına) yol açıyordu. Bu YENİ kırpma mantığı SADECE gerçek
+        // İÇ İÇE kaydırma alanları için (ör. domain detay modalının
+        // .modal-content'i) geçerli olmalı — '.main-scroll' bu kapsamın DIŞINDA
+        // tutuluyor.
+        if (!node.classList.contains('main-scroll')) {
+            const cs = getComputedStyle(node);
+            // Önceden SADECE overflow:hidden kırpma olarak sayılıyordu. Ama domain
+            // detay modalının içeriği (.modal-content: max-height:90vh;
+            // overflow-y:auto) 'auto' ile kırpıyor — bu hesaba katılmadığı için
+            // modalın görünür alanının biraz altına taşan bir hedef (ör. satıcı
+            // satırı) hâlâ "tam görünür" sayılıp vurgu/ok, modalın GERÇEK alt
+            // sınırının dışında/altında, yanlış bir konumda çiziliyordu. Artık
+            // 'auto' ve 'scroll' da kırpma olarak hesaba katılıyor — bu, zaten tam
+            // görünür olan hedefleri ETKİLEMİYOR (kesişim onların tam boyutuna eşit
+            // kalıyor), sadece gerçekten taşan/kısmen gizli hedefleri düzeltiyor.
+            if (cs.overflow === 'hidden' || cs.overflowY === 'hidden' || cs.overflowX === 'hidden' ||
+                cs.overflowY === 'auto' || cs.overflowY === 'scroll' ||
+                cs.overflowX === 'auto' || cs.overflowX === 'scroll') {
+                const ar = node.getBoundingClientRect();
+                top = Math.max(top, ar.top);
+                left = Math.max(left, ar.left);
+                right = Math.min(right, ar.right);
+                bottom = Math.min(bottom, ar.bottom);
+            }
         }
         node = node.parentElement;
         hops++;
