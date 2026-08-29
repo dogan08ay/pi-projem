@@ -11920,6 +11920,33 @@ function tourGetOccludedBottomHeight() {
     return r.height;
 }
 
+// YENİ (FIX — adım geçişlerinde "önce başka bir yer, sonra doğru yer" flaşı):
+// Bir adımdan diğerine geçerken, YENİ adımın konumu netleşene kadar
+// vurgu/tooltip/el elemanlarını GİZLİYORUZ ve CSS transition'ı KAPATIYORUZ.
+// Böylece: (1) eski adımın konumunda donup kalmıyorlar, (2) konum
+// hesaplandığında ESKİ konumdan YENİ konuma doğru KAYARAK değil, doğrudan
+// doğru yerde ANINDA beliriyorlar. tourRevealEls(), gerçek/son konumlama
+// başarıyla tamamlandığında tourReposition() içinden çağrılır; sonrasında
+// transition kısa bir gecikmeyle geri açılır ki AYNI adım içindeki kaydırma/
+// resize düzeltmeleri yine yumuşak kalsın.
+function tourHideEls() {
+    if (!tourEls) return;
+    [tourEls.highlight, tourEls.tooltip, tourEls.hand].forEach(el => {
+        if (el) { el.style.transition = 'none'; el.style.opacity = '0'; }
+    });
+}
+function tourRevealEls() {
+    if (!tourEls) return;
+    if (tourEls.highlight.style.opacity !== '0') return; // zaten görünür, tekrar iş yapma
+    [tourEls.highlight, tourEls.tooltip, tourEls.hand].forEach(el => { if (el) el.style.opacity = '1'; });
+    requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+            if (!tourEls) return;
+            [tourEls.highlight, tourEls.tooltip, tourEls.hand].forEach(el => { if (el) el.style.transition = ''; });
+        });
+    });
+}
+
 function tourReposition() {
     // true: konum başarıyla güncellendi. false: hedef o an ölçülemedi (henüz
     // render/animasyon bitmemiş olabilir) — çağıran taraf bunu tekrar deneyip
@@ -12024,6 +12051,9 @@ function tourReposition() {
         const tRect = { left: left, top: top, width: tooltip.offsetWidth, height: tHeight, bottom: top + tHeight };
         tourUpdateArrow(tRect, hRect);
     }
+    // YENİ: Konum GERÇEKTEN (ham/kırpılmamış olarak değil, görünür alana göre)
+    // hesaplanıp uygulandı — artık güvenle gösterebiliriz.
+    tourRevealEls();
     return true;
 }
 
@@ -12066,6 +12096,10 @@ function tourUpdateArrow(tooltipRect, highlightRect) {
 
 async function tourRenderStep() {
     if (!tourEls) return; // bu arada tur kapatılmış olabilir (ör. skip)
+    // YENİ: Yeni adımın konumu netleşene kadar ESKİ adımın vurgu/tooltip/eli
+    // ekranda donup kalmasın veya konum değişince ona doğru KAYMASIN diye
+    // hemen gizliyoruz (bkz. tourHideEls/tourRevealEls yorumları).
+    tourHideEls();
     const step = TOUR_STEPS[tourStepIndex];
     tourSyncContext(step);
     const stepIndexAtStart = tourStepIndex;
@@ -12161,6 +12195,10 @@ async function startOnboardingTour() {
     const tooltip = document.createElement('div');
     tooltip.className = 'tour-tooltip';
     tooltip.addEventListener('click', (e) => e.stopPropagation());
+    // YENİ (FIX — adımlar arası geçişte "başka bir yeri anlık gösterme" hatası):
+    // Elemanlar konumlanmadan ÖNCE görünmesinler diye başlangıçta gizli ve
+    // transition'sız oluşturuluyor — bkz. tourHideEls()/tourRevealEls().
+    [highlight, tooltip, hand].forEach(el => { el.style.transition = 'none'; el.style.opacity = '0'; });
 
     document.body.appendChild(overlay);
     document.body.appendChild(highlight);
