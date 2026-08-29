@@ -11609,10 +11609,18 @@ let tourExitConfirmPending = false;
 let tourExitConfirmTimer = null;
 let tourInitialState = null; // tur başlamadan ÖNCE panel/menü/modal açık mıydı — bitince buna geri dönülür
 let tourDirection = 'forward'; // 'forward' | 'backward' — hedefi olmayan bir adıma denk gelince hangi yöne atlanacağını belirler
-// YENİ: Bir adımın hedefi, kendi iç kaydırma alanı (ör. modal) tarafından
-// kırpıldığında kaç kez "kaydırıp tekrar dene" yapıldığını adım bazında
-// sayar — sonsuz döngüyü önlemek için (bkz. tourReposition).
+// YENİ: Bir adımın hedefi kendi iç kaydırma alanı (ör. modal) tarafından
+// kırpıldığında scrollIntoView'in adım başına SADECE BİR KEZ tetiklenmesini
+// sağlar (her karede tekrar tekrar kaydırma başlatılmasını önler) — bkz.
+// tourReposition.
 let tourClipRescueAttempts = {};
+// YENİ: scrollIntoView tetiklendikten sonra hedefin "tam görünür" olması TEK
+// BAŞINA yeterli değil — hedef kısmen görünür olur olmaz (kaydırma animasyonu
+// HÂLÂ SÜRERKEN) eşik geçilip yanlışlıkla "hazır" sayılabiliyordu, bu da
+// pozisyon sabitlendikten SONRA kaydırmanın devam etmesiyle görünür bir
+// "kayma" yaratıyordu. Bu yüzden ayrıca hedefin konumunun art arda İKİ
+// KAREDE de DEĞİŞMEDİĞİNİ (kaydırmanın gerçekten bittiğini) doğruluyoruz.
+let tourLastStableTop = {};
 
 // Ekrana (overlay'e) yanlışlıkla dokunulduğunda turu ANINDA kapatmak yerine,
 // ilk dokunuşta bir uyarı gösterip yalnızca KISA SÜRE İÇİNDE gelen ikinci bir
@@ -11636,6 +11644,7 @@ function tourCleanup() {
     tourEls?.hand?.remove();
     tourEls = null;
     tourClipRescueAttempts = {};
+    tourLastStableTop = {};
     window.removeEventListener('resize', tourReposition);
     if (window.visualViewport) window.visualViewport.removeEventListener('resize', tourReposition);
     clearTimeout(tourExitConfirmTimer);
@@ -11964,26 +11973,38 @@ function tourReposition() {
     // taşıp kırpılan bir öğe "başarılı" sayılıp üzerine anlamsız/yanlış
     // konumda bir vurgu çizilebiliyordu.
     const visRect = tourGetVisibleRect(target);
-    if (visRect.width < 10 || visRect.height < 10) {
+    // YENİ (FIX — "Satıcı Profili" adımı: doğru gösterip ANLIK alta
+    // kayıyordu): Önceden hedef sadece KISMEN görünür olsa bile (visRect
+    // yüksekliği >=10px) "hazır" sayılıyordu — ama bu, scrollIntoView
+    // animasyonu HÂLÂ SÜRERKEN de gerçekleşebiliyor (hedef henüz tam
+    // yerleşmeden eşiği geçiyor). Bu durumda konum sabitlenip gösterildikten
+    // SONRA kaydırma devam ediyor, bu da görünür bir "kayma" yaratıyordu.
+    // Artık hedefin TAMAMEN (kırpılmadan) görünür olmasını ZORUNLU tutuyoruz.
+    const fullyVisible = visRect.width >= rect.width - 1 && visRect.height >= rect.height - 1
+        && visRect.width >= 10 && visRect.height >= 10;
+    if (!fullyVisible) {
         // YENİ (FIX — "Satıcı Profili" adımının işareti alta kayıyordu): Hedefin
         // HAM boyutu yeterliyse (rect) ama GÖRÜNÜR/kırpılmış boyutu (visRect) çok
-        // küçükse, hedef muhtemelen kendi iç kaydırma alanı olan bir kapsayıcı
-        // tarafından kırpılıyordur (ör. domain detay modalının .modal-content'i:
-        // max-height:90vh;overflow-y:auto). scrollIntoView, window dahil TÜM
-        // kaydırılabilir üst kapsayıcıları hedefi ortalayacak şekilde otomatik
-        // kaydırır. Sonsuz döngüyü önlemek için adım başına en fazla 3 deneme
-        // yapılır; başarısız olursa adım atlanır (turun kilitlenmesi yerine).
-        if (rect.width >= 10 && rect.height >= 10) {
-            const rescueKey = tourStepIndex;
-            tourClipRescueAttempts[rescueKey] = (tourClipRescueAttempts[rescueKey] || 0) + 1;
-            if (tourClipRescueAttempts[rescueKey] <= 3) {
-                target.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                setTimeout(() => { if (tourEls && tourStepIndex === rescueKey) tourReposition(); }, 300);
-                return true;
-            }
-            if (tourEls && tourStepIndex === rescueKey) tourSkipUnavailableStep();
-            return true;
+        // küçükse, hedef kendi iç kaydırma alanı olan bir kapsayıcı tarafından
+        // kırpılıyordur (ör. domain detay modalının .modal-content'i:
+        // max-height:90vh;overflow-y:auto). scrollIntoView adım başına sadece
+        // BİR KEZ tetiklenir; "hazır mı" kontrolü zaten var olan kare-bazlı
+        // (rAF) yeniden deneme döngüsüne bırakılır (en fazla ~90 kare/1.5sn
+        // dener, sonra adımı atlar) — süre TAHMİN ETMEK yerine kaydırma
+        // GERÇEKTEN bitip hedef TAM görünür olduğu anki kareyi yakalar.
+        if (rect.width >= 10 && rect.height >= 10 && !tourClipRescueAttempts[tourStepIndex]) {
+            tourClipRescueAttempts[tourStepIndex] = true;
+            target.scrollIntoView({ behavior: 'smooth', block: 'center' });
         }
+        return false;
+    }
+    // Ek stabilite kontrolü: hedef son karede de TAM OLARAK AYNI konumdaysa
+    // (kaydırma/animasyon gerçekten bitmiş demektir) devam ediyoruz; hâlâ
+    // hareket halindeyse bir kare daha bekliyoruz.
+    const roundedTop = Math.round(rect.top), roundedLeft = Math.round(rect.left);
+    const stableKey = roundedTop + ',' + roundedLeft;
+    if (tourLastStableTop[tourStepIndex] !== stableKey) {
+        tourLastStableTop[tourStepIndex] = stableKey;
         return false;
     }
     const vh = window.innerHeight, vw = window.innerWidth;
