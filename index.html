@@ -11973,34 +11973,36 @@ function tourReposition() {
     // taşıp kırpılan bir öğe "başarılı" sayılıp üzerine anlamsız/yanlış
     // konumda bir vurgu çizilebiliyordu.
     const visRect = tourGetVisibleRect(target);
-    // YENİ (FIX — "Satıcı Profili" adımı: doğru gösterip ANLIK alta
-    // kayıyordu): Önceden hedef sadece KISMEN görünür olsa bile (visRect
-    // yüksekliği >=10px) "hazır" sayılıyordu — ama bu, scrollIntoView
-    // animasyonu HÂLÂ SÜRERKEN de gerçekleşebiliyor (hedef henüz tam
-    // yerleşmeden eşiği geçiyor). Bu durumda konum sabitlenip gösterildikten
-    // SONRA kaydırma devam ediyor, bu da görünür bir "kayma" yaratıyordu.
-    // Artık hedefin TAMAMEN (kırpılmadan) görünür olmasını ZORUNLU tutuyoruz.
-    const fullyVisible = visRect.width >= rect.width - 1 && visRect.height >= rect.height - 1
-        && visRect.width >= 10 && visRect.height >= 10;
-    if (!fullyVisible) {
-        // YENİ (FIX — "Satıcı Profili" adımının işareti alta kayıyordu): Hedefin
-        // HAM boyutu yeterliyse (rect) ama GÖRÜNÜR/kırpılmış boyutu (visRect) çok
-        // küçükse, hedef kendi iç kaydırma alanı olan bir kapsayıcı tarafından
-        // kırpılıyordur (ör. domain detay modalının .modal-content'i:
-        // max-height:90vh;overflow-y:auto). scrollIntoView adım başına sadece
-        // BİR KEZ tetiklenir; "hazır mı" kontrolü zaten var olan kare-bazlı
-        // (rAF) yeniden deneme döngüsüne bırakılır (en fazla ~90 kare/1.5sn
-        // dener, sonra adımı atlar) — süre TAHMİN ETMEK yerine kaydırma
-        // GERÇEKTEN bitip hedef TAM görünür olduğu anki kareyi yakalar.
+    // BUG DÜZELTMESİ (regresyon): Bir önceki denemede burada hedefin TAMAMEN
+    // (kırpılmadan) görünür olması ZORUNLU tutulmuştu. Ama #domain-list gibi
+    // ekran boyundan çok daha uzun/kaydırılabilir hedefler için bu şart HİÇBİR
+    // ZAMAN sağlanamıyordu (liste asla %100 aynı anda görünür olamaz) — bu da
+    // turun İLK ADIMDA bile hiçbir şey göstermeden takılı kalmasına yol açtı.
+    // Doğru çözüm: sadece "en az anlamlı bir kısmı görünür mü" (eskisi gibi,
+    // >=10px) kontrol ediyoruz; "hâlâ kayma animasyonu sürüyor mu" sorusunu ise
+    // aşağıdaki AYRI stabilite kontrolü (iki kare üst üste aynı konum) çözüyor.
+    if (visRect.width < 10 || visRect.height < 10) {
+        // Hedefin HAM boyutu yeterliyse (rect) ama GÖRÜNÜR/kırpılmış boyutu
+        // (visRect) çok küçükse, hedef kendi iç kaydırma alanı olan bir
+        // kapsayıcı tarafından kırpılıyordur (ör. domain detay modalının
+        // .modal-content'i: max-height:90vh;overflow-y:auto). scrollIntoView
+        // adım başına sadece BİR KEZ tetiklenir; "hazır mı" kontrolü zaten var
+        // olan kare-bazlı (rAF) yeniden deneme döngüsüne bırakılır (en fazla
+        // ~90 kare/1.5sn dener, sonra adımı atlar).
         if (rect.width >= 10 && rect.height >= 10 && !tourClipRescueAttempts[tourStepIndex]) {
             tourClipRescueAttempts[tourStepIndex] = true;
             target.scrollIntoView({ behavior: 'smooth', block: 'center' });
         }
         return false;
     }
-    // Ek stabilite kontrolü: hedef son karede de TAM OLARAK AYNI konumdaysa
-    // (kaydırma/animasyon gerçekten bitmiş demektir) devam ediyoruz; hâlâ
-    // hareket halindeyse bir kare daha bekliyoruz.
+    // YENİ (FIX — "Satıcı Profili" adımı: doğru gösterip ANLIK alta kayıyordu):
+    // Hedef az önce >=10px eşiğini geçmiş olabilir ama bu, scrollIntoView
+    // animasyonu HÂLÂ SÜRERKEN de olabiliyordu (henüz tam yerleşmeden eşik
+    // geçiliyordu) — konum sabitlenip gösterildikten SONRA kaydırma devam
+    // ediyor, bu da görünür bir "kayma" yaratıyordu. Bu yüzden ayrıca hedefin
+    // konumunun art arda İKİ KAREDE de DEĞİŞMEDİĞİNİ (kaydırmanın/varsa diğer
+    // animasyonların gerçekten bittiğini) doğruluyoruz. Kaydırma gerektirmeyen
+    // sabit hedefler için bu sadece 1 kare (~16ms) gecikme ekler, fark edilmez.
     const roundedTop = Math.round(rect.top), roundedLeft = Math.round(rect.left);
     const stableKey = roundedTop + ',' + roundedLeft;
     if (tourLastStableTop[tourStepIndex] !== stableKey) {
