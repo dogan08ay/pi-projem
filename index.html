@@ -11935,7 +11935,32 @@ function tourRepositionUntilReady(forStepIndex, maxFrames = 90) {
     (function tick() {
         if (!tourEls || tourStepIndex !== forStepIndex) return; // bu arada adım değişti/tur kapandı
         const ok = tourReposition();
-        if (ok) return;
+        if (ok) {
+            // GERÇEK KÖK NEDEN DÜZELTMESİ ("Satıcı Profili" adımı ÖNCE doğru
+            // konumda beliriyor, hemen ardından ipucu metninin üzerine
+            // KAYIYORDU — bkz. ekran kaydı): tourReposition() içindeki
+            // "art arda İKİ KAREDE aynı konum" kararı, tarayıcının native
+            // scrollIntoView({behavior:'smooth'}) animasyonunu YANLIŞLIKLA
+            // "durdu" sanabiliyor — ease-in-out eğrisinin bazı noktalarında
+            // İKİ ARDIŞIK kare arasındaki fark <0.5px olabiliyor, ama scroll
+            // GERÇEKTE hâlâ devam ediyor. Bu yanlış "stabil" kararı bir kez
+            // verilince tick() döngüsü TAMAMEN duruyordu (return;) — bu yüzden
+            // scroll birkaç piksel/onlarca piksel daha ilerleyip GERÇEK son
+            // konumuna ulaştığında bunu YAKALAYAN hiçbir mekanizma kalmıyordu;
+            // vurgu, o yanlışlıkla "stabil" sayılan ESKİ konumda donup
+            // kalıyordu. Çözüm: konumu "kesin" ilan ettikten SONRA da, kısa
+            // bir aralıkla 2 kez daha (görünürlüğü/animasyonu bozmadan,
+            // sessizce) yeniden ölçüp gerekiyorsa düzeltiyoruz — scroll
+            // animasyonu o ana kadar (180-420ms) her zaman gerçekten bitmiş
+            // olur, böylece geç kalan kayma da yakalanıp anında telafi edilir.
+            [180, 420].forEach(delay => {
+                setTimeout(() => {
+                    if (!tourEls || tourStepIndex !== forStepIndex) return;
+                    tourReposition();
+                }, delay);
+            });
+            return;
+        }
         frame++;
         if (frame < maxFrames) { requestAnimationFrame(tick); return; }
         if (!tourEls || tourStepIndex !== forStepIndex) return;
@@ -12048,12 +12073,30 @@ function tourReposition() {
     // kilitlenir) yol açıyordu. Bu yüzden o akışa (aşağıda, dokunulmadı)
     // karışmıyoruz.
     if (tourClipRescueAttempts[tourStepIndex]) {
+        // GERÇEK KÖK NEDEN DÜZELTMESİ (ekran kaydıyla doğrulandı — "Satıcı
+        // Profili" adımı ÖNCE doğru, HEMEN ARDINDAN yanlış/aşağı konumda
+        // donuyordu): "art arda SADECE İKİ karede aynı konum" şartı çok
+        // gevşekti — native scrollIntoView({behavior:'smooth'}) animasyonunun
+        // ease-in-out eğrisinde, hareket HÂLÂ SÜRERKEN bile iki ardışık kare
+        // arasındaki fark <0.5px'e düşebiliyor (özellikle eğrinin yavaş
+        // başlangıç/bitiş kısımlarında). Bu, scroll gerçekte bitmeden
+        // "stabil" sanılmasına ve vurgunun scroll'un GERÇEK son noktasına
+        // ulaşmadan donmasına yol açıyordu. Artık üst üste 8 kare (≈130ms
+        // @60fps) aynı konum istiyoruz — bu, tek seferlik ölçüm gürültüsünü
+        // gerçek bir "durdu" durumundan güvenilir şekilde ayırt etmeye
+        // yetiyor; ek güvenlik için tourRepositionUntilReady da konumu
+        // "kesin" ilan ettikten sonra 180ms/420ms'de sessizce tekrar
+        // doğruluyor (bkz. o fonksiyondaki yorum).
+        const REQUIRED_SCROLL_STABLE_FRAMES = 8;
         const roundedTop = Math.round(rect.top), roundedLeft = Math.round(rect.left);
         const stableKey = roundedTop + ',' + roundedLeft;
-        if (tourLastStableTop[tourStepIndex] !== stableKey) {
-            tourLastStableTop[tourStepIndex] = stableKey;
+        const prevStable = tourLastStableTop[tourStepIndex];
+        if (!prevStable || prevStable.key !== stableKey) {
+            tourLastStableTop[tourStepIndex] = { key: stableKey, count: 1 };
             return false;
         }
+        prevStable.count++;
+        if (prevStable.count < REQUIRED_SCROLL_STABLE_FRAMES) return false;
     }
     const vh = window.innerHeight, vw = window.innerWidth;
 
