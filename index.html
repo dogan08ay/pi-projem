@@ -9836,6 +9836,13 @@ function render(){
         // güvenilir şekilde bulabilsin diye (bkz. tourSyncContext) kart, ait
         // olduğu domain adını data-attribute olarak taşıyor.
         card.dataset.domainName=d.name;
+        // YENİ (FIX — "Kartlar Tıklanabilir" adımı bir kartı vurguluyor,
+        // hemen ardından gelen "Satıcı Profili" adımı BAŞKA bir kartı
+        // (satıcısı olan ilk kartı) açıyordu; kullanıcı için "az önce
+        // gösterilen kart" ile "şimdi açılan kart" tutarsız görünüyordu).
+        // Bu attribute sayesinde her iki adım da AYNI seçici mantığıyla
+        // (satıcısı olan kartlar önce) aynı kartı işaret edebiliyor.
+        if(data.sellerUsername) card.dataset.hasSeller='1';
         // FIX (yanıp sönme bug'ı): render() sık sık tetiklendiği için (her
         // onSnapshot güncellemesinde) kartlar sürekli yeniden oluşturuluyor
         // ve her seferinde "card-rise" giriş animasyonu baştan oynatılıyordu.
@@ -11588,7 +11595,7 @@ window.submitTrademarkClaim = async function(){
 // ═══════════════════════════════════════════════════════════════════════
 const TOUR_STEPS = [
     { selector: '#domain-list', titleKey: 'tourStep1Title', descKey: 'tourStep1Desc', placement: 'top', context: 'main' },
-    { selector: '#domain-list .domain-card', titleKey: 'tourStepCardTapTitle', descKey: 'tourStepCardTapDesc', placement: 'bottom', context: 'main' },
+    { selector: '#domain-list .domain-card[data-has-seller="1"], #domain-list .domain-card', titleKey: 'tourStepCardTapTitle', descKey: 'tourStepCardTapDesc', placement: 'bottom', context: 'main' },
     { selector: '.seller-link-pulse', titleKey: 'tourStepSellerLinkTitle', descKey: 'tourStepSellerLinkDesc', placement: 'top', context: 'modal' },
     { selector: '#hamburger-btn', titleKey: 'tourStep2Title', descKey: 'tourStep2Desc', placement: 'bottom', context: 'main' },
     { selector: '#notif-btn', titleKey: 'tourStep3Title', descKey: 'tourStep3Desc', placement: 'bottom', context: 'main' },
@@ -11747,6 +11754,21 @@ function tourGetVisibleRect(el) {
 // art arda birkaç karede aynı konumu görene kadar bekliyoruz: animasyonu olmayan
 // adımlarda neredeyse anında devam eder, animasyonlu adımlarda ise animasyon tam
 // bitene kadar bekleyip HATALI/ERKEN bir konumu asla ölçmez.
+// YENİ: Bazı adımlar birden fazla, ÖNCELİK SIRALI seçici içerebilir (virgülle
+// ayrılmış — ör. "önce satıcılı bir kart varsa onu, yoksa herhangi bir kartı
+// hedefle"). document.querySelector('A, B') bunu YAPMAZ — DOM sırasına göre
+// A veya B ile eşleşen İLK elemanı döndürür, öncelik A > B garantisi vermez.
+// Bu yardımcı fonksiyon, virgülle ayrılmış parçaları SIRAYLA dener ve ilk
+// eşleşen parçanın sonucunu döndürür — gerçek öncelik sıralaması sağlanır.
+function tourQuerySelector(selector) {
+    const parts = selector.split(',');
+    for (const part of parts) {
+        const el = document.querySelector(part.trim());
+        if (el) return el;
+    }
+    return null;
+}
+
 function tourWaitForTarget(selector, maxFrames = 90, requiredStableFrames = 5) {
     return new Promise(resolve => {
         let lastRect = null, stableFrames = 0, frame = 0, everSeen = false;
@@ -11758,7 +11780,7 @@ function tourWaitForTarget(selector, maxFrames = 90, requiredStableFrames = 5) {
         const EXISTENCE_GRACE_FRAMES = 36; // ~600ms @60fps
         (function tick() {
             frame++;
-            const el = document.querySelector(selector);
+            const el = tourQuerySelector(selector);
             if (el) {
                 everSeen = true;
                 // ÖNEMLİ: ham getBoundingClientRect değil, kırpılmayı da hesaba
@@ -11975,7 +11997,7 @@ function tourReposition() {
     // denemeyeceğine karar verir.
     if (!tourEls) return true; // tur zaten kapalı, tekrar denemeye gerek yok
     const step = TOUR_STEPS[tourStepIndex];
-    const target = document.querySelector(step.selector);
+    const target = tourQuerySelector(step.selector);
     // ÖNEMLİ: Bu fonksiyon konumu GÜNCELLEMEK içindir — adım ilerletmek bu
     // fonksiyonun işi değil. Hedef o an ölçülemiyorsa sessizce false döner;
     // aksi halde resize sırasında turu istemeden ileri attırıyordu.
@@ -12147,6 +12169,25 @@ async function tourRenderStep() {
     // ekranda donup kalmasın veya konum değişince ona doğru KAYMASIN diye
     // hemen gizliyoruz (bkz. tourHideEls/tourRevealEls yorumları).
     tourHideEls();
+    // GERÇEK KÖK NEDEN DÜZELTMESİ ("Satıcı Profili" adımı yanlış konumda/hiç
+    // gösterilmiyordu — ÖZELLİKLE bu adıma "Geri" ile bir kez uğrayıp
+    // ardından "İleri" ile TEKRAR gelindiğinde): tourReposition() içindeki
+    // tourClipRescueAttempts[tourStepIndex] bayrağı bir adım için SADECE
+    // tur boyunca BİR KEZ (ilk karşılaşmada) scrollIntoView tetikliyordu ve
+    // tourCleanup() dışında HİÇBİR YERDE sıfırlanmıyordu. Ama bu adımın
+    // hedefi (satıcı satırı), context:'modal' her devreye girdiğinde domain
+    // detay modalını YENİDEN açıyor ve scrollTop'u her seferinde 0'a
+    // sıfırlıyor (bkz. openDomainDetail) — yani hedef HER render'da yeniden
+    // kırpılmış oluyor. Bayrak ikinci karşılaşmada zaten "kullanılmış"
+    // sayıldığından scrollIntoView bir daha ASLA tetiklenmiyor; hedef sonsuza
+    // kadar kırpılı kalıp tourReposition() hep false dönüyor, highlight/
+    // tooltip görünmeden (opacity:0) 90 kare boyunca bekleyip adım sessizce
+    // atlanıyordu — kullanıcıya "yerini göstermiyor" gibi görünüyordu.
+    // Çözüm: bu iki adım-bazlı önbelleği her render'ın BAŞINDA temizleyip
+    // kurtarma/stabilite kontrolünün her seferinde SIFIRDAN çalışmasını
+    // sağlıyoruz (yalnızca bu adıma özgü; diğer adımların önbelleği bozulmaz).
+    delete tourClipRescueAttempts[tourStepIndex];
+    delete tourLastStableTop[tourStepIndex];
     const step = TOUR_STEPS[tourStepIndex];
     tourSyncContext(step);
     const stepIndexAtStart = tourStepIndex;
