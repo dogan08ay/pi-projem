@@ -5045,6 +5045,21 @@ async function handlerImpl(req, res) {
       const d = snap.exists ? snap.data() : {};
       const count = d.ratingCount || 0;
       const avg = count > 0 ? Math.round((d.ratingSum / count) * 10) / 10 : null;
+      // YENİ: Takip Et özelliği için — bu satıcının takipçi sayısı ve
+      // (giriş yapılmışsa) çağıran kullanıcının onu zaten takip edip
+      // etmediği. accessToken YOKSA (herkese açık görüntüleme) bu
+      // sadece null döner — sayfa yine de sorunsuz çalışır, sadece buton
+      // "giriş yapın" durumuna düşer (bkz. openSellerProfile).
+      const followerCount = d.followerCount || 0;
+      let isFollowing = null;
+      if (accessToken) {
+        const viewerUsername = await getRealUsername(accessToken).catch(() => null);
+        if (viewerUsername) {
+          const viewerSnap = await db.collection('user_profiles').doc(viewerUsername).get();
+          const viewerFollows = viewerSnap.exists ? (viewerSnap.data().followedSellers || []) : [];
+          isFollowing = viewerFollows.includes(sellerUsername);
+        }
+      }
       // YENİ: "Güvenilir Satıcı" rozeti — yeterince değerlendirme almış
       // (5+) VE ortalaması yüksek (4.5+) satıcılar otomatik olarak
       // öne çıkarılıyor. Eşik değerleri burada tek bir yerden yönetiliyor.
@@ -5155,7 +5170,7 @@ async function handlerImpl(req, res) {
       else if (trustScore >= 40) trustLevel = 'growing';
       else trustLevel = 'new';
 
-      return res.status(200).json({ success: true, avg, count, recentReviews, isTrusted, salesCount, sellerTier, activeListings, joinedAt, hasVerifiedListing, avgResponseMinutes, trustScore, trustLevel });
+      return res.status(200).json({ success: true, avg, count, recentReviews, isTrusted, salesCount, sellerTier, activeListings, joinedAt, hasVerifiedListing, avgResponseMinutes, trustScore, trustLevel, followerCount, isFollowing });
     } catch (e) {
       return res.status(500).json({ error: e.message });
     }
@@ -5794,6 +5809,36 @@ async function handlerImpl(req, res) {
       } else if (!addFavorite && alreadyFav) {
         await ref.set({ favorites: FieldValue.arrayRemove(domainName) }, { merge: true });
         await db.collection('domains').doc(domainName).set({ favoriteCount: FieldValue.increment(-1) }, { merge: true }).catch(() => {});
+      }
+      return res.status(200).json({ success: true });
+    } catch (e) {
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  // YENİ: Satıcı Takip Et — kullanıcı, favorilediği domainler dışında
+  // beğendiği bir satıcının YENİ ilanlarından haberdar olmak isteyebilir.
+  // 'favorites' ile aynı desen (user_profiles.followedSellers dizisi +
+  // satıcı profilinde görünen followerCount sayacı), çift artış/azalışı
+  // önlemek için önce mevcut durum okunuyor.
+  if (action === 'toggle_follow_seller') {
+    const { sellerUsername, follow } = req.body;
+    const realUsername = await getRealUsername(accessToken);
+    if (!realUsername) return res.status(403).json({ error: "Geçersiz oturum" });
+    if (!sellerUsername) return res.status(400).json({ error: "Geçersiz satıcı adı" });
+    if (sellerUsername === realUsername) return res.status(400).json({ error: "Kendinizi takip edemezsiniz" });
+    try {
+      const db = getDb();
+      const ref = db.collection('user_profiles').doc(realUsername);
+      const profSnap = await ref.get();
+      const currentFollows = profSnap.exists ? (profSnap.data().followedSellers || []) : [];
+      const alreadyFollowing = currentFollows.includes(sellerUsername);
+      if (follow && !alreadyFollowing) {
+        await ref.set({ followedSellers: FieldValue.arrayUnion(sellerUsername) }, { merge: true });
+        await db.collection('user_profiles').doc(sellerUsername).set({ followerCount: FieldValue.increment(1) }, { merge: true }).catch(() => {});
+      } else if (!follow && alreadyFollowing) {
+        await ref.set({ followedSellers: FieldValue.arrayRemove(sellerUsername) }, { merge: true });
+        await db.collection('user_profiles').doc(sellerUsername).set({ followerCount: FieldValue.increment(-1) }, { merge: true }).catch(() => {});
       }
       return res.status(200).json({ success: true });
     } catch (e) {
