@@ -2010,10 +2010,20 @@
         </div>
         <img src="assets/logo.jpeg" alt="Logo" class="app-logo" style="width:92px;height:92px;margin:4px auto 2px auto;">
         <h1 class="app-title" style="margin:0 0 2px 0;font-size:1.4em;">Web3 Domain Gateway</h1>
-        <div class="stats-bar" style="margin:0 auto 1px auto;max-width:100%;width:calc(100% - 16px);font-size:0.55em;overflow:hidden;padding:5px 2px;gap:1px;">
+        <!-- YENİ (SADELEŞTİRME): Üçü de sıfırken ("Satılan Domain: 0,
+             Aktif Kullanıcı: 0") yeni bir ziyaretçiye "burada kimse yok,
+             çalışmıyor" izlenimi veriyordu. Artık HER ÜÇÜ de aynı anda
+             sıfırsa (gerçekten hiç trafik/satış yoksa) rakamlar yerine
+             nötr/pozitif tek bir mesaj gösteriliyor; herhangi biri sıfırdan
+             büyür büyümez normal sayısal görünüme otomatik dönüyor —
+             bkz. window.refreshStatsBarVisibility (render.js bölümü). -->
+        <div class="stats-bar" id="stats-bar-numbers" style="margin:0 auto 1px auto;max-width:100%;width:calc(100% - 16px);font-size:0.55em;overflow:hidden;padding:5px 2px;gap:1px;">
             <div class="stats-item" style="white-space:nowrap;line-height:1.2;overflow:hidden;text-overflow:ellipsis;flex:1 1 auto;min-width:0;padding:0 1px;"><span data-i18n="soldDomains"></span>: <span id="total-sold">0</span></div>
             <div class="stats-item" style="white-space:nowrap;line-height:1.2;overflow:hidden;text-overflow:ellipsis;flex:1 1 auto;min-width:0;padding:0 1px;"><span data-i18n="totalVolume"></span>: <span id="total-volume">0</span><span style="font-size:0.8em;">π</span></div>
             <div class="stats-item" style="white-space:nowrap;line-height:1.2;overflow:hidden;text-overflow:ellipsis;flex:1 1 auto;min-width:0;padding:0 1px;"><span data-i18n="activeUsers"></span>: <span id="online-count">0</span></div>
+        </div>
+        <div id="stats-bar-empty-msg" style="display:none;margin:0 auto 1px auto;max-width:100%;width:calc(100% - 16px);padding:6px 10px;text-align:center;">
+            <span style="font-size:0.68em;color:#a5b4fc;font-weight:700;">🚀 <span data-i18n="statsBarEmptyMsg"></span></span>
         </div>
         <div id="join-web3-banner" style="display:none;padding:3px 8px 0 8px;">
             <div class="lock-title-box" style="margin:0 auto;">
@@ -2024,12 +2034,14 @@
                 </div>
             </div>
         </div>
-        <!-- YENİ: "Nasıl Çalışır" ve "SSS" artık aynı satırda, yan yana —
-             öncesinde iki ayrı tam-genişlik satır ilk açılışta ekstra yer
-             kaplayıp "Panelim" kartını aşağı itiyordu, kaydırma gerektiriyordu. -->
+        <!-- YENİ (SADELEŞTİRME): Bu iki buton öncesinde "Pi ile Bağlan" ile
+             neredeyse AYNI görsel ağırlıktaydı (dolu renk + gölge) — asıl
+             birincil aksiyon hangisi belli değildi. Artık ikincil/anahat
+             (outline) stilde: "Pi ile Bağlan" (aşağıda, pulse animasyonlu
+             mavi buton) tek göz alıcı birincil aksiyon olarak öne çıkıyor. -->
         <div style="display:flex;gap:8px;padding:5px 8px 0 8px;">
-            <button onclick="window.openHowItWorksModal()" style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px;padding:8px 6px;border-radius:11px;border:none;background:linear-gradient(135deg,#6366f1,#818cf8);color:#fff;font-size:0.72em;font-weight:900;cursor:pointer;box-shadow:0 4px 14px rgba(99,102,241,0.4);transition:transform 0.15s;" onmousedown="this.style.transform='scale(0.96)'" onmouseup="this.style.transform='scale(1)'" ontouchstart="this.style.transform='scale(0.96)'" ontouchend="this.style.transform='scale(1)'">📖 <span data-i18n="howItWorksMenuItem"></span></button>
-            <button onclick="window.openFaqModal()" style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px;padding:8px 6px;border-radius:11px;border:none;background:linear-gradient(135deg,#14b8a6,#2dd4bf);color:#052e28;font-size:0.72em;font-weight:900;cursor:pointer;box-shadow:0 4px 14px rgba(20,184,166,0.4);transition:transform 0.15s;" onmousedown="this.style.transform='scale(0.96)'" onmouseup="this.style.transform='scale(1)'" ontouchstart="this.style.transform='scale(0.96)'" ontouchend="this.style.transform='scale(1)'">❓ <span data-i18n="faqMenuItem"></span></button>
+            <button onclick="window.openHowItWorksModal()" style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px;padding:7px 6px;border-radius:11px;border:1.5px solid rgba(99,102,241,0.45);background:rgba(99,102,241,0.08);color:#a5b4fc;font-size:0.7em;font-weight:800;cursor:pointer;transition:transform 0.15s;" onmousedown="this.style.transform='scale(0.96)'" onmouseup="this.style.transform='scale(1)'" ontouchstart="this.style.transform='scale(0.96)'" ontouchend="this.style.transform='scale(1)'">📖 <span data-i18n="howItWorksMenuItem"></span></button>
+            <button onclick="window.openFaqModal()" style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px;padding:7px 6px;border-radius:11px;border:1.5px solid rgba(20,184,166,0.4);background:rgba(20,184,166,0.07);color:#5eead4;font-size:0.7em;font-weight:800;cursor:pointer;transition:transform 0.15s;" onmousedown="this.style.transform='scale(0.96)'" onmouseup="this.style.transform='scale(1)'" ontouchstart="this.style.transform='scale(0.96)'" ontouchend="this.style.transform='scale(1)'">❓ <span data-i18n="faqMenuItem"></span></button>
         </div>
         
     </div>
@@ -2077,8 +2089,17 @@
             </div>
             <!-- YENİ: kullanıcının tüm geçmiş işlemlerini (ilan, satın alma,
                  şikayet, destek talebi, marka itirazı) tek bir yerden,
-                 konu başlıklarıyla ayrılmış şekilde görebildiği sekme. -->
-            <button class="user-tab-btn" data-utab="utab-history" onclick="switchUserTab('utab-history')" style="grid-column:1 / -1;flex-direction:row;gap:6px;">🕓<span data-i18n="myHistoryTab"></span></button>
+                 konu başlıklarıyla ayrılmış şekilde görebildiği sekme.
+                 DÜZEN DÜZELTMESİ: önceden diğer 6 kutucukla AYNI kare
+                 kart görünümünde ama tek başına tam genişlikte kalıyordu —
+                 grid'in "yarım kalmış son satırı" gibi dağınık görünüyordu.
+                 Artık kasıtlı olarak FARKLI bir görünümde: üstünde ince bir
+                 ayraç çizgisiyle "diğerlerinden ayrı, tümünü gör" bağlantısı
+                 gibi sunuluyor — düzensizlik değil, bilinçli bir ikincil
+                 aksiyon olduğu netleşiyor. -->
+            <div style="grid-column:1 / -1;border-top:1px solid #1e293b;margin-top:2px;padding-top:6px;">
+                <button class="user-tab-btn" data-utab="utab-history" onclick="switchUserTab('utab-history')" style="width:100%;flex-direction:row;gap:6px;background:rgba(99,102,241,0.06);border-style:dashed;">🕓<span data-i18n="myHistoryTab"></span></button>
+            </div>
 
         </div>
         <div class="user-tab-panel active" id="utab-overview">
@@ -2086,6 +2107,13 @@
                 <div class="info-badge-header"><span class="info-badge-icon">ℹ️</span><span data-i18n="info"></span></div>
                 <div class="user-info-note-text" data-i18n="testNetNote"></div>
             </div>
+            <!-- YENİ: Bu 4 kart KİŞİSEL istatistikler (sizin domainleriniz,
+                 puanınız, harcamanız) — sayfanın en üstündeki bar ise
+                 PLATFORM GENELİ rakamlar (herkesin toplamı). İkisi de benzer
+                 koyu kart görünümünde olduğu için "aynı şey iki kez
+                 gösteriliyor" gibi algılanabiliyordu. Küçük bir başlıkla
+                 ayrıştırıp neyin KİME ait olduğunu netleştiriyoruz. -->
+            <div style="font-size:0.66em;color:#64748b;font-weight:800;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:5px;padding-left:2px;">👤 <span data-i18n="myStatsSectionLabel"></span></div>
             <div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:6px;margin-bottom:8px;min-width:0;">
                 <div style="background:#0f172a;border:1px solid #334155;border-radius:10px;padding:7px 8px;text-align:center;"><div style="font-size:0.6em;color:#94a3b8;font-weight:700;margin-bottom:3px;" data-i18n="purchasedDomainLabel"></div><div id="up-domain-count" style="font-size:1.4em;font-weight:900;color:#fbbf24;">0</div></div>
                 <div style="background:#0f172a;border:1px solid #334155;border-radius:10px;padding:7px 8px;text-align:center;"><div style="font-size:0.6em;color:#94a3b8;font-weight:700;margin-bottom:3px;" data-i18n="totalPoints"></div><div id="up-points" style="font-size:1.4em;font-weight:900;color:#a5b4fc;">0</div></div>
@@ -2356,11 +2384,18 @@
     </div>
     <div class="card" id="admin-panel" style="display:none;background:linear-gradient(165deg,#241209 0%,#1a0f08 55%,#20120a 100%);border:2px solid #f59e0b;box-shadow:0 0 16px rgba(245,158,11,0.3);padding:5px;box-sizing:border-box;width:calc(100% - 16px);margin-left:auto;margin-right:auto;position:relative;">
         <span style="position:absolute;top:-10px;left:12px;z-index:5;background:linear-gradient(135deg,#f59e0b,#ef4444);color:#1e1b4b;font-size:0.55em;font-weight:900;padding:4px 11px;border-radius:8px;letter-spacing:0.5px;text-transform:uppercase;box-shadow:0 3px 10px rgba(0,0,0,0.4),0 0 0 2px #1a0f08;white-space:nowrap;" data-i18n="adminOnlyBadge"></span>
-        <h3 style="color:#fbbf24;margin:-5px -5px 8px -5px;padding:8px 5px;font-size:0.95em;display:flex;align-items:center;justify-content:center;gap:6px;background:linear-gradient(135deg,rgba(245,158,11,0.22) 0%,rgba(153,27,27,0.16) 100%);border-bottom:1.5px solid rgba(245,158,11,0.45);border-radius:14px 14px 0 0;font-weight:900;position:relative;">🛠 Admin Panel
-            <button id="admin-panel-refresh-btn" class="panel-refresh-btn" onclick="window.refreshAdminPanel()" title="Yenile">
+        <!-- YENİ: Başlık artık tıklanabilir — Admin Panel her gün açılan
+             uzun bir sayfa olduğundan (sistem araçları + bugün yapılacaklar +
+             onlarca yönetim sekmesi) katlanabilir (accordion) yapıldı.
+             Tercih localStorage'da tutuluyor: bir kez açarsanız bir sonraki
+             girişte de açık başlar, kapatırsanız kapalı başlar. -->
+        <h3 onclick="window.toggleAdminPanelBody()" style="cursor:pointer;user-select:none;color:#fbbf24;margin:-5px -5px 8px -5px;padding:8px 5px;font-size:0.95em;display:flex;align-items:center;justify-content:center;gap:6px;background:linear-gradient(135deg,rgba(245,158,11,0.22) 0%,rgba(153,27,27,0.16) 100%);border-bottom:1.5px solid rgba(245,158,11,0.45);border-radius:14px 14px 0 0;font-weight:900;position:relative;">🛠 Admin Panel
+            <span id="admin-panel-chevron" style="font-size:0.8em;transition:transform 0.2s ease;margin-left:2px;">▾</span>
+            <button id="admin-panel-refresh-btn" class="panel-refresh-btn" onclick="event.stopPropagation();window.refreshAdminPanel()" title="Yenile">
                 <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
             </button>
         </h3>
+        <div id="admin-panel-body" style="display:none;">
         <!-- YENİ: Sistem araçları artık kendi başlıklı, çerçeveli bölümünde —
              öncesinde 4 buton + bakım kutusu, sekmelerle (kullanıcılar,
              satış istatistikleri vb.) aynı görsel seviyede art arda
@@ -2371,7 +2406,14 @@
             </div>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;">
                 <button id="checkup-btn" onclick="window.runSystemCheckup()" style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:12px 6px;border:1.5px solid rgba(20,184,166,0.5);border-radius:11px;background:linear-gradient(135deg,rgba(20,184,166,0.18) 0%,rgba(15,118,110,0.20) 100%);color:#5eead4;font-size:0.7em;font-weight:800;cursor:pointer;text-align:center;line-height:1.3;"><span style="font-size:1.5em;">🩺</span><span data-i18n="runSystemCheckupBtn"></span></button>
-                <button id="cleanup-orphaned-btn" onclick="window.handleCleanupOrphanedOffers()" style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:12px 6px;border:1.5px solid rgba(168,85,247,0.5);border-radius:11px;background:linear-gradient(135deg,rgba(168,85,247,0.18) 0%,rgba(107,33,168,0.20) 100%);color:#d8b4fe;font-size:0.7em;font-weight:800;cursor:pointer;text-align:center;line-height:1.3;"><span style="font-size:1.5em;">🧹</span><span data-i18n="cleanupOrphanedBtn"></span></button>
+                <!-- YENİ RENK KODLAMASI: Bu buton GERİ ALINAMAZ bir silme
+                     işlemi başlatıyor (bkz. handleCleanupOrphanedOffers
+                     içindeki onay metni) — önceden nötr/mor renkteydi,
+                     riskli olduğu görsel olarak belli değildi. Artık
+                     turuncu/amber ("dikkatli ol, kalıcı bir işlem")
+                     tonunda; tam kırmızı değil çünkü kapsamı dar (sadece
+                     zaten var olmayan domainlerin yetim teklif kayıtları). -->
+                <button id="cleanup-orphaned-btn" onclick="window.handleCleanupOrphanedOffers()" style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:12px 6px;border:1.5px solid rgba(245,158,11,0.5);border-radius:11px;background:linear-gradient(135deg,rgba(245,158,11,0.18) 0%,rgba(180,83,9,0.20) 100%);color:#fcd34d;font-size:0.7em;font-weight:800;cursor:pointer;text-align:center;line-height:1.3;"><span style="font-size:1.5em;">🧹</span><span data-i18n="cleanupOrphanedBtn"></span></button>
                 <button onclick="window.openAuditLogModal()" style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:12px 6px;border:1.5px solid rgba(148,163,184,0.4);border-radius:11px;background:rgba(148,163,184,0.08);color:#cbd5e1;font-size:0.7em;font-weight:800;cursor:pointer;text-align:center;line-height:1.3;"><span style="font-size:1.5em;">📋</span><span data-i18n="adminAuditLogBtn"></span></button>
                 <button onclick="window.openDeletionRequestsModal()" style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:12px 6px;border:1.5px solid rgba(239,68,68,0.4);border-radius:11px;background:rgba(239,68,68,0.08);color:#fca5a5;font-size:0.7em;font-weight:800;cursor:pointer;text-align:center;line-height:1.3;"><span style="font-size:1.5em;">🗑️</span><span data-i18n="deletionRequestsBtn"></span></button>
             </div>
@@ -2690,6 +2732,7 @@
             </div>
         </div>
         </div>
+        </div>
 </div>
 
     <!-- Market -->
@@ -2770,32 +2813,30 @@
         </div>
         <div id="premium-lock" class="premium-lock-overlay">
             <div class="secure-badge" style="background:linear-gradient(165deg,#0a0f1e 0%,#0f172a 30%,#1e1b4b 50%,#0f172a 70%,#0a0f1e 100%);border:2px solid rgba(129,140,248,0.55);border-radius:16px;padding:14px 16px;box-shadow:0 4px 20px rgba(0,0,0,0.4),0 0 22px rgba(99,102,241,0.25),inset 0 1px 0 rgba(255,255,255,0.05);width:92%;margin:6px 0;backdrop-filter:blur(10px);">
-            <!-- DÜZENLENDİ (kullanıcı geri bildirimi — "alt çizgi ekranı
-                 kaydırmadan görünmüyor"): ikon ve boşluklar biraz
-                 küçültüldü ki kartın TAMAMI (alt çizgisi dahil) kısa
-                 ekranlarda bile kaydırmaya gerek kalmadan sığsın. -->
-            <div style="display:flex;justify-content:center;margin-bottom:18px;">
-                <div style="position:relative;width:88px;height:88px;">
-                <!-- Rotating ring effect -->
-                <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:104px;height:104px;border-radius:50%;border:2px solid rgba(59,130,246,0.3);border-top-color:#3b82f6;animation:spin-ring 3s linear infinite;"></div>
-                <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:96px;height:96px;border-radius:50%;border:2px solid rgba(99,102,241,0.2);border-bottom-color:#818cf8;animation:spin-ring 4s linear infinite reverse;"></div>
-                <!-- Pulse glow -->
-                <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:80px;height:80px;border-radius:50%;background:radial-gradient(circle,rgba(59,130,246,0.15) 0%,transparent 70%);animation:icon-pulse-glow 2s ease-in-out infinite;"></div>
-                <!-- Icon with glow -->
-                <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);animation:shield-pulse 2.5s ease-in-out infinite;filter:drop-shadow(0 0 15px rgba(59,130,246,0.6)) drop-shadow(0 0 30px rgba(99,102,241,0.3));">
-                <img src="assets/secure-shield.webp" style="width:72px;height:72px;object-fit:contain;position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);display:block;filter:drop-shadow(0 0 10px rgba(59,130,246,0.5));" alt="Secure Connection">
+            <!-- YENİ (SADELEŞTİRME): Öncesinde bu kart 4 ayrı kademeden
+                 oluşuyordu — büyük animasyonlu ikon (çift dönen halka),
+                 "Güvenli Bağlantı" rozet başlığı, testnet açıklama paragrafı
+                 ve ayrı bir büyük harfli uyarı satırı — 4 kat vurgu üst üste
+                 birikince "bağırıyor" ve gereğinden uzun sürüyordu. Artık
+                 TEK bir kompakt rozette birleşti: küçültülmüş ikon + tek
+                 satırlık "Güvenli Bağlantı · Test-Pi Ağı — gerçek bakiye
+                 kullanılmaz" metni. Aynı bilgi, çok daha az yer, tek bakışta
+                 okunuyor. -->
+            <div style="display:flex;justify-content:center;margin-bottom:10px;">
+                <div style="position:relative;width:56px;height:56px;">
+                <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:66px;height:66px;border-radius:50%;border:2px solid rgba(59,130,246,0.3);border-top-color:#3b82f6;animation:spin-ring 3s linear infinite;"></div>
+                <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:44px;height:44px;border-radius:50%;background:radial-gradient(circle,rgba(59,130,246,0.15) 0%,transparent 70%);animation:icon-pulse-glow 2s ease-in-out infinite;"></div>
+                <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);animation:shield-pulse 2.5s ease-in-out infinite;filter:drop-shadow(0 0 10px rgba(59,130,246,0.6));">
+                <img src="assets/secure-shield.webp" style="width:40px;height:40px;object-fit:contain;position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);display:block;filter:drop-shadow(0 0 8px rgba(59,130,246,0.5));" alt="Secure Connection">
                 </div>
             </div>
             </div>
-<!-- YENİ: "Güvenli Bağlantı" başlığı artık kendi belirgin çerçeveli
-     kutusunda (dış karttan ayrı, net görünen bir iç çerçeve) — öncesinde
-     hem dış kartın hem bu başlığın çerçevesi çok soluktu (opacity 0.2-0.25),
-     koyu arka planla neredeyse hiç fark edilmiyordu. -->
-<div style="display:flex;justify-content:center;margin-bottom:7px;">
-    <div class="secure-badge-title" style="display:inline-block;color:#c7d2fe;font-size:0.95em;font-weight:900;text-shadow:0 0 15px rgba(199,210,254,0.4);letter-spacing:1px;border:1.5px solid rgba(129,140,248,0.55);background:rgba(99,102,241,0.14);border-radius:20px;padding:6px 16px;box-shadow:0 0 14px rgba(99,102,241,0.2);" data-i18n="secureConnection"></div>
-</div>
-                <div class="secure-badge-body" style="color:#e0e7ff;font-size:0.8em;line-height:1.45;margin-bottom:6px;font-weight:600;border-bottom:1px solid rgba(129,140,248,0.35);padding-bottom:7px;word-wrap:break-word;overflow-wrap:break-word;white-space:normal;" data-i18n="testNetBadgeBody"></div>
-                <div class="secure-badge-warning" style="color:#fbbf24;font-size:0.85em;font-weight:900;line-height:1.25;text-transform:uppercase;text-shadow:0 0 12px rgba(251,191,36,0.4);letter-spacing:1.1px;" data-i18n="testNetWarning"></div>
+            <div style="display:flex;justify-content:center;">
+                <div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap;justify-content:center;color:#e0e7ff;font-size:0.78em;font-weight:700;line-height:1.5;border:1.5px solid rgba(129,140,248,0.5);background:rgba(99,102,241,0.12);border-radius:14px;padding:7px 14px;max-width:100%;box-sizing:border-box;text-align:center;">
+                    <span style="color:#c7d2fe;font-weight:900;letter-spacing:0.4px;" data-i18n="secureConnection"></span>
+                    <span style="color:#475569;">·</span>
+                    <span data-i18n="secureConnectionCompactNotice"></span>
+                </div>
             </div>
             <!-- DÜZENLENDİ (kullanıcı geri bildirimi — tekrarlayan "boşluk"
                  şikayeti): "Pi ile Bağlan" barı artık position:fixed +
@@ -3331,8 +3372,10 @@ const i18n = {
     typePersonal:"Kişisel İsim",typeTechnology:"Teknoloji",typeOther:"Diğer",
     typeTourism:"Turizm ve Seyahat",typeHealth:"Sağlık",typeEducation:"Eğitim",typeRealEstate:"Gayrimenkul",
     soldDomains:"Satılan Domain",totalVolume:"Toplam Hacim",activeUsers:"Aktif Kullanıcı",
+    statsBarEmptyMsg:"Bu platformdaki ilk hareketler yakında burada görünecek — ilk siz olun!",
     overview:"Genel",myPurchases:"Alımlarım",myListings:"İlanlarım",myIncome:"Gelirim",
     totalSpent:"Toplam Harcama",myListingsCount:"İlan Sayım",
+    myStatsSectionLabel:"Sizin İstatistikleriniz",
     myListingsTitle:"İLAN TAKİP PANELİ",listNewDomain:"+ Yeni İlan Ver",
     totalEarned:"TOPLAM GELİR",earnedNote:"Satılan domainlerinizden, %5 platform komisyonu düşüldükten sonra cüzdanınıza geçen/geçecek net tutar.",
     info:"BİLGİ",
@@ -3369,6 +3412,7 @@ const i18n = {
     availableDomains:"Satın Alabileceğiniz Domainler",filterAll:"Hepsi",filtersSelectedSuffix:"seçili",
     saleStatusFilterLabel:"Satış Durumu",saleStatusForSale:"Satışta Olanlar",saleStatusSold:"Satılanlar",
     joinWeb3:"Ayrıcalıklı Web3 Dünyasına Katılın",secureConnection:"Güvenli Bağlantı",
+    secureConnectionCompactNotice:"<b>Test-Pi Ağı</b> — gerçek Pi bakiyeniz kesinlikle kullanılmaz",
     adminOnlyBadge:"Sadece Admin",
     welcomeGreeting:(name)=>`Hoş geldin, @${name}! 🎉 Dofiay ailesine katıldığın için teşekkürler.`,
     welcomeGreetingSkipHint:"Devam Et →",
@@ -4284,8 +4328,10 @@ const i18n = {
     typePersonal:"Personal Name",typeTechnology:"Technology",typeOther:"Other",
     typeTourism:"Tourism & Travel",typeHealth:"Health",typeEducation:"Education",typeRealEstate:"Real Estate",
     soldDomains:"Sold Domains",totalVolume:"Total Volume",activeUsers:"Active Users",
+    statsBarEmptyMsg:"The first activity on this platform will show up here soon — be the first!",
     overview:"Overview",myPurchases:"My Purchases",myListings:"My Listings",myIncome:"My Income",
     totalSpent:"Total Spent",myListingsCount:"My Listings",
+    myStatsSectionLabel:"Your Stats",
     myListingsTitle:"LISTING TRACKING PANEL",listNewDomain:"+ New Listing",
     totalEarned:"TOTAL EARNINGS",earnedNote:"Net amount (after the 5% platform commission) that has been or will be paid out to your wallet from your sold domains.",
     info:"INFO",
@@ -4320,6 +4366,7 @@ const i18n = {
     availableDomains:"Domains Available for Purchase",filterAll:"All",filtersSelectedSuffix:"selected",
     saleStatusFilterLabel:"Sale Status",saleStatusForSale:"Available for Sale",saleStatusSold:"Sold",
     joinWeb3:"Join the Exclusive Web3 World",secureConnection:"Secure Connection",
+    secureConnectionCompactNotice:"<b>Test-Pi Network</b> — your real Pi balance is never used",
     adminOnlyBadge:"Admin Only",
     welcomeGreeting:(name)=>`Welcome, @${name}! 🎉 Thanks for joining Dofiay.`,
     welcomeGreetingSkipHint:"Continue →",
@@ -9236,6 +9283,24 @@ window.refreshUserPanel=async function(){
     }
 };
 
+// YENİ: Admin Panel katlanabilir (accordion) gövde — tercih localStorage'da
+// kalıcı. Açıkken içerik zaten periyodik olarak render ediliyordu; burada
+// ek olarak "ilk kez açılıyorsa admin verilerini otomatik tazele" davranışı
+// da eklendi ki kullanıcı panelı her açtığında elle "Yenile"ye basmasın.
+window.toggleAdminPanelBody=function(){
+    const body=document.getElementById('admin-panel-body');
+    const chevron=document.getElementById('admin-panel-chevron');
+    if(!body) return;
+    const willOpen=body.style.display==='none';
+    body.style.display=willOpen?'block':'none';
+    if(chevron) chevron.style.transform=willOpen?'rotate(180deg)':'rotate(0deg)';
+    localStorage.setItem('w3dg_admin_panel_open', willOpen?'1':'0');
+    if(willOpen && typeof window.refreshAdminPanel==='function' && !window._adminPanelFirstOpenDone){
+        window._adminPanelFirstOpenDone=true;
+        window.refreshAdminPanel();
+    }
+};
+
 // ── ADMIN PANEL YENİLEME ──────────────────────────────────────────────
 // Kullanıcı panelindeki ile aynı görsel dilde: buton tıklanınca ripple +
 // dönme animasyonu oynar, arka planda admin verileri (biletler, benzersiz
@@ -10460,6 +10525,24 @@ async function loadUniqueBadgeCount(){
     try{const s=await fetchUniqueUsers();const b=document.getElementById("unique-users-badge");if(b)b.innerText=s.length;}catch(e){}
 }
 
+// YENİ: Üç istatistiğin (satılan domain, hacim, aktif kullanıcı) üçü de
+// sıfırsa sayısal barı gizleyip nötr/pozitif bir mesaj gösteriyor; biri bile
+// sıfırdan büyükse normal sayısal görünüme dönüyor. İki farklı canlı
+// dinleyici (domains + active_users) güncelleme yapabildiği için ortak bir
+// yerden, DOM'daki GÜNCEL değerleri okuyarak karar veriyor — ayrı bir state
+// tutmaya gerek kalmıyor.
+window.refreshStatsBarVisibility = function() {
+    const tsEl = document.getElementById('total-sold');
+    const tvEl = document.getElementById('total-volume');
+    const ocEl = document.getElementById('online-count');
+    const numbersBar = document.getElementById('stats-bar-numbers');
+    const emptyMsg = document.getElementById('stats-bar-empty-msg');
+    if (!tsEl || !tvEl || !ocEl || !numbersBar || !emptyMsg) return;
+    const allZero = (parseFloat(tsEl.innerText) || 0) === 0 && (parseFloat(tvEl.innerText) || 0) === 0 && (parseFloat(ocEl.innerText) || 0) === 0;
+    numbersBar.style.display = allZero ? 'none' : 'flex';
+    emptyMsg.style.display = allZero ? 'block' : 'none';
+};
+
 // AKTİF KULLANICI
 onSnapshot(collection(db,"active_users"),(snap)=>{
     const now=Date.now();
@@ -10480,6 +10563,7 @@ onSnapshot(collection(db,"active_users"),(snap)=>{
         if(diff<900000) recentCount++;
     });
     const el=document.getElementById("online-count"); if(el) el.innerText=recentCount;
+    if (typeof window.refreshStatsBarVisibility === 'function') window.refreshStatsBarVisibility();
     // FIX: Admin panelindeki "Anlık Aktif Kullanıcılar" butonunun rozeti de
     // modalı hiç açmadan, bu zaten var olan canlı dinleyiciden anında
     // güncellensin (önceden sadece modal açılınca dolduruluyordu, o ana
@@ -10892,6 +10976,19 @@ async function performPiConnect() {
                             adminPanel.style.opacity = '1';
                             adminPanel.style.transform = 'translateY(0)';
                         });
+                        // YENİ: Katlanabilir gövdenin açık/kapalı başlangıç
+                        // durumu — kaydedilmiş tercih varsa ona göre, yoksa
+                        // (ilk kullanım) KAPALI başlıyor: günlük kullanımda
+                        // en sık ihtiyaç duyulan "Bugün Yapılacaklar" özeti
+                        // zaten üstte kaldığı için admin sekmelerini elle
+                        // açmak gerekiyor — bu, sayfa uzunluğunu ilk açılışta
+                        // ciddi ölçüde kısaltıyor.
+                        const wantsOpen = localStorage.getItem('w3dg_admin_panel_open') === '1';
+                        const abody = document.getElementById('admin-panel-body');
+                        const achevron = document.getElementById('admin-panel-chevron');
+                        if (abody) abody.style.display = wantsOpen ? 'block' : 'none';
+                        if (achevron) achevron.style.transform = wantsOpen ? 'rotate(180deg)' : 'rotate(0deg)';
+                        if (wantsOpen) window._adminPanelFirstOpenDone = true;
                         // YENİ: Admin hızlı erişim butonunu göster (Öneri #3)
                         const quickJumpFab = document.getElementById('admin-quickjump-fab');
                         if (quickJumpFab) quickJumpFab.style.display = 'flex';
@@ -11365,6 +11462,7 @@ onSnapshot(collection(db,"domains"),(snapshot)=>{
     snapshot.forEach(docSnap=>{const data=docSnap.data();if(data.sold===true){totalSold++;totalVolume+=Number(data.price||0);}});
     const tsEl=document.getElementById("total-sold");const tvEl=document.getElementById("total-volume");
     if(tsEl) tsEl.innerText=totalSold; if(tvEl) tvEl.innerText=Math.round(totalVolume*100)/100;
+    if (typeof window.refreshStatsBarVisibility === 'function') window.refreshStatsBarVisibility();
 
     // FIX 1: İlk veri paketi geldiğinde bile debouncedRender() çağrılır.
     // render() fonksiyonu kendi içinde firstDomainsSnapshotReceived kontrolü
