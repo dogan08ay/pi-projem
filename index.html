@@ -8146,8 +8146,22 @@ const faqItems=[
     ['faqQ1','faqA1'],['faqQ2','faqA2'],['faqQ3','faqA3'],['faqQ4','faqA4'],
     ['faqQ5','faqA5'],['faqQ6','faqA6'],['faqQ7','faqA7'],['faqQ8','faqA8'],['faqQ9','faqA9']
 ];
-window.openFaqModal=function(){
+// KÖK NEDEN DÜZELTMESİ ("Nasıl Çalışır" modalının İÇİNDEKİ SSS sekme butonu
+// ilk seferde tıklayınca açılmıyordu, ama önce ANA SAYFADAKİ SSS butonuna
+// basılınca "çalışmaya başlıyordu"): #faq-list'in içeriğini dolduran kod
+// SADECE openFaqModal() içindeydi. Modal İÇİNDEKİ sekme butonu ise doğrudan
+// switchInfoTab('faq') çağırıyordu — bu fonksiyon SADECE sekmeler arası
+// görünürlüğü değiştiriyor, listeyi HİÇ doldurmuyordu. Liste daha önce
+// (ana sayfadaki buton üzerinden) bir kez doldurulmamışsa, sekmeye
+// geçildiğinde tamamen BOŞ bir panel görünüyordu — "açılmıyor" gibi
+// algılanıyordu. Bir kez openFaqModal() çalışınca içerik DOM'da kalıyor
+// (display:none listeyi temizlemiyor), bu yüzden sekme o andan sonra
+// "çalışıyor" gibi görünüyordu. Çözüm: doldurma mantığını TEK bir yerde
+// topladık ve HER İKİ giriş noktasından (doğrudan SSS butonu + modal
+// içindeki sekme) da çağrılmasını sağladık.
+function renderFaqList(){
     const list=document.getElementById('faq-list');
+    if(!list) return;
     list.innerHTML=faqItems.map((pair,i)=>`
         <div style="border-bottom:1px solid #1e293b;">
             <button onclick="window.toggleFaqItem(${i})" style="width:100%;text-align:left;background:none;border:none;padding:10px 4px;display:flex;justify-content:space-between;align-items:center;gap:8px;cursor:pointer;color:#f1f5f9;font-weight:800;font-size:0.92em;">
@@ -8156,6 +8170,9 @@ window.openFaqModal=function(){
             </button>
             <div id="faq-answer-${i}" style="display:none;padding:0 4px 10px 4px;color:#94a3b8;font-size:0.92em;">${t(pair[1])}</div>
         </div>`).join('');
+}
+window.openFaqModal=function(){
+    renderFaqList();
     document.getElementById('info-modal').style.display='flex';
     window.switchInfoTab('faq');
 };
@@ -8169,6 +8186,11 @@ window.switchInfoTab=function(tab){
     const activeStyle=(color1,color2)=>`flex:1;padding:11px 6px;border-radius:11px;border:none;background:linear-gradient(135deg,${color1},${color2});color:#fff;font-size:0.8em;font-weight:900;cursor:pointer;transition:transform 0.15s,box-shadow 0.15s;box-shadow:0 4px 14px ${color1}66;`;
     const inactiveStyle=(color)=>`flex:1;padding:11px 6px;border-radius:11px;border:1.5px solid ${color}59;background:${color}14;color:${color};font-size:0.8em;font-weight:900;cursor:pointer;transition:transform 0.15s,box-shadow 0.15s;`;
     if(tab==='faq'){
+        // KÖK NEDEN DÜZELTMESİ: liste boşsa (ilk kez buradan giriliyorsa)
+        // dolduruyoruz. Sürekli yeniden doldurmuyoruz (gereksiz DOM
+        // işlemi + açık bir öğe varsa onun kapanması) — sadece BOŞSA.
+        const list=document.getElementById('faq-list');
+        if(list && !list.hasChildNodes()) renderFaqList();
         hiwPane.style.display='none'; faqPane.style.display='flex';
         hiwBtn.style.cssText=inactiveStyle('#6366f1');
         faqBtn.style.cssText=activeStyle('#14b8a6','#2dd4bf');
