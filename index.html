@@ -1100,6 +1100,11 @@
 .tour-progress-track { flex:1; height:5px; border-radius:3px; background:rgba(148,163,184,0.2); overflow:hidden; }
 .tour-progress-fill { height:100%; border-radius:3px; background:linear-gradient(90deg,#6366f1,#818cf8); transition:width 0.3s ease; }
 .tour-progress-text { font-size:0.68em; font-weight:800; color:#94a3b8; white-space:nowrap; }
+.tour-dots { display:flex; flex-wrap:wrap; gap:5px; margin-bottom:12px; }
+.tour-dot { width:7px; height:7px; border-radius:50%; background:rgba(148,163,184,0.28); border:none; padding:0; cursor:pointer; flex-shrink:0; transition:background 0.2s ease, transform 0.2s ease; }
+.tour-dot:hover { transform:scale(1.35); }
+.tour-dot.tour-dot-done { background:#818cf8; }
+.tour-dot.tour-dot-active { background:#fff; box-shadow:0 0 0 3px rgba(99,102,241,0.45); transform:scale(1.2); }
 .tour-actions { display:flex; justify-content:space-between; align-items:center; gap:8px; }
 .tour-actions-right { display:flex; align-items:center; gap:6px; }
 .tour-skip { background:none; border:none; color:#64748b; font-size:0.72em; font-weight:700; cursor:pointer; padding:6px 4px; }
@@ -3698,6 +3703,7 @@ const i18n = {
     imageUploading:"Görsel yükleniyor...",imageUploadFailed:"Görsel yüklenemedi.",
     myActiveListings:"Satıştaki Domainleriniz",mySoldDomainsLabel:"Satılan Domainleriniz",
     searchPlaceholder:"🔍 Domain adı ara...",loginRequiredForFavorite:"Favorilere eklemek için giriş yapmalısınız.",
+    followSellerBtn:"Satıcıyı Takip Et",followingSellerBtn:"Takip Ediliyor",followersCountLabel:"takipçi",
     priceMinPlaceholder:"Min Pi",
     priceMaxPlaceholder:"Max Pi",
     ownershipVerifiedBadge:"Sahiplik Doğrulandı",
@@ -4644,6 +4650,7 @@ const i18n = {
     imageUploading:"Uploading image...",imageUploadFailed:"Image upload failed.",
     myActiveListings:"Domains Currently on Sale",mySoldDomainsLabel:"Your Sold Domains",
     searchPlaceholder:"🔍 Search domain name...",loginRequiredForFavorite:"You need to log in to add favorites.",
+    followSellerBtn:"Follow Seller",followingSellerBtn:"Following",followersCountLabel:"followers",
     priceMinPlaceholder:"Min Pi",
     priceMaxPlaceholder:"Max Pi",
     ownershipVerifiedBadge:"Ownership Verified",
@@ -6554,6 +6561,14 @@ window.openDomainDetail=function(domainName){
                     ${responseTimeText}
                 </div>`;
                 el.innerHTML=`${trustScoreHtml}<div style="display:flex;gap:6px;align-items:baseline;flex-wrap:wrap;"><span style="color:#64748b;flex-shrink:0;font-weight:700;min-width:100px;">⭐ ${t('sellerRatingLabel')}:</span><span style="color:#fbbf24;font-weight:900;">${ratingText}</span>${trustedBadge}${tierBadge}</div>`;
+                // YENİ (KESİN KÖK NEDEN DÜZELTMESİ): bu satır tam turun
+                // hedeflediği "Satıcı:" satırının HEMEN ALTINA ekleniyor ve
+                // önceden yüksekliği 0'dı (display:none) — şimdi gerçek
+                // yüksekliğe kavuşunca içerik aşağı doğru itiliyor/kayıyor.
+                // Bu değişikliğin GERÇEKLEŞTİĞİ ANI (tahmini bir gecikme
+                // yerine) tur'a bildirip anında yeniden konumlanmasını
+                // sağlıyoruz (bkz. tourNotifyContentShift tanımı).
+                if (typeof tourNotifyContentShift === 'function') tourNotifyContentShift();
                 // YENİ: Yorumlar (varsa) "Daha Fazla Detay" toggle'ının
                 // içine — özet güven bilgisi zaten yukarıda görünüyor,
                 // tek tek yorumları okumak isteyen genişletsin.
@@ -6807,7 +6822,7 @@ window.openSellerProfile=async function(username){
     modal.style.display='flex';
     document.getElementById('seller-profile-username').textContent='@'+username;
     try{
-        const r=await fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'get_seller_rating',sellerUsername:username})});
+        const r=await fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'get_seller_rating',sellerUsername:username,accessToken:piAccessToken})});
         const res=await r.json();
         if(!res.success){ body.innerHTML=`<p style="color:#f87171;font-size:0.8em;text-align:center;">${t('genericError')}</p>`; return; }
         const locale=currentLang==='en'?'en-GB':'tr-TR';
@@ -6857,7 +6872,59 @@ window.openSellerProfile=async function(username){
             <div style="font-size:0.72em;color:#94a3b8;">🗓️ ${t('sellerProfileJoinedLabel')}: <span style="color:#e2e8f0;font-weight:700;">${joinedStr}</span></div>
             ${reviewsHtml}
         `;
+        // YENİ: "Satıcıyı Takip Et" — kullanıcı kendi profiline bakmıyorsa
+        // ve giriş yapmışsa gösterilir. Favori butonuyla AYNI iyimser
+        // (optimistic) güncelleme deseni: tıklanır tıklanmaz arayüz anında
+        // değişir, sunucu isteği arka planda gider; başarısız olursa geri
+        // alınır. res.isFollowing===null demek "giriş yapılmamış" — bu
+        // durumda buton, tıklanınca giriş uyarısı gösteren pasif bir
+        // görünümde sunulur.
+        if(username!==currentUser){
+            const followBtnRow=document.createElement('div');
+            followBtnRow.style.marginTop='12px';
+            followBtnRow.innerHTML=tourBuildFollowSellerButtonHtml(username, !!res.isFollowing, res.followerCount||0);
+            body.appendChild(followBtnRow);
+        }
     }catch(e){ body.innerHTML=`<p style="color:#f87171;font-size:0.8em;text-align:center;">${t('genericError')}</p>`; }
+};
+
+// YENİ: "Takip Et" butonunun HTML'ini üreten küçük yardımcı — hem ilk
+// açılışta hem de tıklama sonrası buton içeriğini yeniden çizmek için
+// (window.toggleFollowSeller) tek bir yerden kullanılıyor, kopya kod
+// olmasın diye.
+function tourBuildFollowSellerButtonHtml(sellerUsername, isFollowing, followerCount){
+    const safeUser=sellerUsername.replace(/'/g,"\\'");
+    const label=isFollowing?('✓ '+t('followingSellerBtn')):('➕ '+t('followSellerBtn'));
+    const bg=isFollowing?'rgba(148,163,184,0.15)':'rgba(99,102,241,0.9)';
+    const border=isFollowing?'1.5px solid #64748b':'1.5px solid #6366f1';
+    const color=isFollowing?'#cbd5e1':'#fff';
+    return `<button id="seller-follow-btn" onclick="window.toggleFollowSeller('${safeUser}')" style="width:100%;padding:10px;border-radius:10px;border:${border};background:${bg};color:${color};font-weight:800;font-size:0.82em;cursor:pointer;">${label}</button>
+        <div id="seller-follow-count" style="text-align:center;font-size:0.66em;color:#64748b;margin-top:5px;font-weight:700;">👥 ${followerCount} ${t('followersCountLabel')}</div>`;
+}
+
+window.toggleFollowSeller=async function(sellerUsername){
+    if(!isAuth){ showToast(t('loginRequiredForFavorite')); return; }
+    const btn=document.getElementById('seller-follow-btn');
+    const countEl=document.getElementById('seller-follow-count');
+    if(!btn) return;
+    const wasFollowing=btn.textContent.trim().startsWith('✓');
+    const currentCount=parseInt(((countEl?.textContent||'').match(/\d+/)||['0'])[0],10)||0;
+    // İyimser (optimistic) güncelleme — toggleFavorite ile aynı desen.
+    const apply=(following,count)=>{
+        btn.outerHTML=tourBuildFollowSellerButtonHtml(sellerUsername, following, count);
+    };
+    apply(!wasFollowing, wasFollowing?Math.max(0,currentCount-1):currentCount+1);
+    try{
+        const r=await fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'toggle_follow_seller',sellerUsername,follow:!wasFollowing,accessToken:piAccessToken})});
+        const result=await r.json();
+        if(!result.success){
+            apply(wasFollowing, currentCount);
+            showToast(result.error||t('genericError'));
+        }
+    }catch(e){
+        apply(wasFollowing, currentCount);
+        showToast(t('genericError'));
+    }
 };
 
 // SATIŞ ÖNERİSİ DETAY (Admin) — başlık/açıklama formatında sıralı gösterim
@@ -12016,6 +12083,32 @@ function tourRevealEls() {
     });
 }
 
+// YENİ (KESİN KÖK NEDEN DÜZELTMESİ — "Satıcı Profili" adımı hâlâ yanlış
+// konumda kalıyordu, ekran kaydıyla doğrulandı): Önceki iki düzeltme
+// (bayrak sıfırlama + scroll-animasyonu-bitmesini-bekleme) YANLIŞ teşhise
+// dayanıyordu. GERÇEK neden: domain detay modalı açılır açılmaz arka planda
+// bir get_seller_rating isteği atılıyor (Firestore'da onlarca domain/mesaj/
+// satış kaydı tarıyor) ve bu istek TAMAMEN AĞ HIZINA bağlı — 100ms de
+// sürebilir, serverless "soğuk başlangıç"ta 1-2 saniye de. Sonuç dönünce
+// "Güven Skoru" kutusu TAM kullanıcı adı satırının altına ekleniyor ve
+// sayfa düzenini değiştiriyor. Sabit bir gecikmeyle (180/420ms) bunu
+// yakalamaya çalışmak KUMARdı — ağ o süreden uzun sürerse yine kaçırılıyordu.
+// Doğru çözüm: TAHMİN etmek yerine, içeriği asıl DEĞİŞTİREN kod (openDomainDetail
+// içindeki get_seller_rating/get_domain_price_history .then() blokları) bu
+// fonksiyonu DOĞRUDAN çağırıyor — tur o an açık ve bir hedefi takip
+// ediyorsa anında (gecikmesiz, doğru zamanda) yeniden konumlanıyor.
+function tourNotifyContentShift() {
+    if (!tourEls) return; // tur açık değilse hiçbir şey yapma
+    // tourRenderStep() bilerek TAMAMEN yeniden çağrılıyor (sadece
+    // tourReposition() değil): bu, o adıma özel kaydırma/kırpma-kurtarma
+    // önbelleğini (tourClipRescueAttempts/tourLastStableTop) sıfırdan
+    // temizleyip gerekiyorsa YENİ bir scrollIntoView tetikler — içerik
+    // eklenmesi hedefi tekrar kırpılmış hale getirmiş olsa bile kurtarma
+    // mekanizması bir kez daha devreye girebilir (bkz. tourRenderStep
+    // başındaki `delete tourClipRescueAttempts[...]` yorumu).
+    tourRenderStep();
+}
+
 function tourReposition() {
     // true: konum başarıyla güncellendi. false: hedef o an ölçülemedi (henüz
     // render/animasyon bitmemiş olabilir) — çağıran taraf bunu tekrar deneyip
@@ -12276,10 +12369,20 @@ async function tourRenderStep() {
 
     const isLast = tourStepIndex === TOUR_STEPS.length - 1;
     const progressPct = ((tourStepIndex + 1) / TOUR_STEPS.length * 100).toFixed(1);
+    // YENİ: İlerleme çubuğunun ("X/14") yanına küçük bir adım haritası
+    // (dot indicator) — hangi adımların geride kaldığını, hangisinde
+    // olunduğunu ve kaç adım kaldığını tek bakışta gösterir. Her nokta
+    // kendi adımının başlığını (title attribute) taşır ve tıklanabilir —
+    // kullanıcı doğrudan o adıma atlayabilir, gezinmeyi kolaylaştırır.
+    const dotsHtml = TOUR_STEPS.map((s, i) => {
+        const cls = i === tourStepIndex ? 'tour-dot-active' : (i < tourStepIndex ? 'tour-dot-done' : '');
+        return `<button type="button" class="tour-dot ${cls}" title="${escapeHtml(t(s.titleKey))}" aria-label="${escapeHtml(t(s.titleKey))}" onclick="event.stopPropagation();window.tourGoToStep(${i})"></button>`;
+    }).join('');
 
     tourEls.tooltip.innerHTML = `
         <h4>${t(step.titleKey)}</h4>
         <p>${t(step.descKey)}</p>
+        <div class="tour-dots">${dotsHtml}</div>
         <div class="tour-progress-row">
             <div class="tour-progress-track"><div class="tour-progress-fill" style="width:${progressPct}%"></div></div>
             <div class="tour-progress-text">${tourStepIndex + 1}/${TOUR_STEPS.length}</div>
@@ -12306,6 +12409,16 @@ window.tourPrevStep = function() {
     if (!tourEls || tourStepIndex <= 0) return;
     tourDirection = 'backward';
     tourStepIndex--;
+    tourRenderStep();
+};
+// YENİ: Nokta haritasından (tour-dots) doğrudan bir adıma atlama. Geçerli
+// adımla aynıysa hiçbir şey yapmıyoruz; ileri/geri yönü doğru animasyon/
+// kaydırma davranışı için (tourNextStep/tourPrevStep ile aynı mantık)
+// hedefin geçerli adımdan önce mi sonra mı olduğuna göre belirleniyor.
+window.tourGoToStep = function(index) {
+    if (!tourEls || index === tourStepIndex || index < 0 || index >= TOUR_STEPS.length) return;
+    tourDirection = index > tourStepIndex ? 'forward' : 'backward';
+    tourStepIndex = index;
     tourRenderStep();
 };
 window.tourFinish = tourFinish;
