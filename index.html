@@ -12111,14 +12111,22 @@ function tourRevealEls() {
 // ediyorsa anında (gecikmesiz, doğru zamanda) yeniden konumlanıyor.
 function tourNotifyContentShift() {
     if (!tourEls) return; // tur açık değilse hiçbir şey yapma
-    // tourRenderStep() bilerek TAMAMEN yeniden çağrılıyor (sadece
-    // tourReposition() değil): bu, o adıma özel kaydırma/kırpma-kurtarma
-    // önbelleğini (tourClipRescueAttempts/tourLastStableTop) sıfırdan
-    // temizleyip gerekiyorsa YENİ bir scrollIntoView tetikler — içerik
-    // eklenmesi hedefi tekrar kırpılmış hale getirmiş olsa bile kurtarma
-    // mekanizması bir kez daha devreye girebilir (bkz. tourRenderStep
-    // başındaki `delete tourClipRescueAttempts[...]` yorumu).
-    tourRenderStep();
+    // DÜZELTME (bu fonksiyonun kendisinin yarattığı YENİ bir bug — "ekran bir
+    // kez yanıp sönüyor"): İlk halinde burada tam tourRenderStep() çağrılıyordu.
+    // O fonksiyon EN BAŞTA tourHideEls() ile highlight/tooltip/eli opacity:0
+    // yapıp SONRA tekrar görünür kılıyor — konum zaten doğruyken bile bu
+    // gizle/göster turu bir "yanıp sönme" (flash) olarak görünüyordu. Oysa
+    // buradaki tek ihtiyaç KONUMU güncellemek; elemanlar zaten görünürken hiç
+    // gizlemeye gerek yok — .tour-highlight/.tour-tooltip/.tour-hand'in CSS'i
+    // zaten `transition: top .35s ease, left .35s ease` içeriyor, yani
+    // tourReposition() doğrudan (gizlemeden) çağrılırsa konum GÖRÜNÜR
+    // kalarak, yumuşakça yeni yerine kayar — flash olmaz.
+    // Kırpma/kaydırma kurtarma önbelleğini yine de sıfırlıyoruz: içerik
+    // eklenmesi hedefi yeniden kırpmış olabilir, bu durumda tourReposition()
+    // gerekiyorsa YENİ bir scrollIntoView tetikleyebilsin diye.
+    delete tourClipRescueAttempts[tourStepIndex];
+    delete tourLastStableTop[tourStepIndex];
+    tourRepositionUntilReady(tourStepIndex);
 }
 
 function tourReposition() {
