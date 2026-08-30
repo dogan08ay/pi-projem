@@ -11755,6 +11755,18 @@ function tourFinish() {
     tourRestoreInitialState();
     tourCleanup();
 
+    // YENİ: Tur nasıl biterse bitsin (normal tamamlama, "Geç", ekrana çift
+    // dokunup kapatma, hatta bir adımın hedefi bulunamayıp otomatik atlanması)
+    // kullanıcı turun o an bıraktığı yerde (ör. listenin ortasına kaydırılmış,
+    // bir modalın içinde vs.) kalıyordu. Artık tur bittiğinde HER ZAMAN ana
+    // sayfanın en başına (kaydırma sıfırlanmış hâlde) dönülüyor — kullanıcı
+    // nereden başladıysa oraya, temiz bir başlangıç noktasına geliyor.
+    // tourRestoreInitialState() panel/menü/modal AÇIK/KAPALI durumunu geri
+    // getiriyor; bu ise SADECE kaydırma konumunu sıfırlıyor, ikisi çakışmıyor.
+    const mainScroll = document.querySelector('.main-scroll');
+    if (mainScroll) mainScroll.scrollTo({ top: 0, left: 0, behavior: 'smooth' });
+    window.scrollTo({ top: 0, left: 0, behavior: 'smooth' });
+
     // Tur baştan sona tamamlandıysa (erken "Geç" ile değil), kullanıcıyı zorla
     // profil ekranına atmak yerine, oraya nazikçe yönlendiren hafif bir bildirim
     // gösteriyoruz — "Başlangıç Adımların" listesine menüden profilime girerek
