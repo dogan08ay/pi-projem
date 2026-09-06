@@ -2014,25 +2014,28 @@
                 </div>
             </div>
         </div>
-        <img src="assets/logo.jpeg" alt="Logo" class="app-logo" style="width:92px;height:92px;margin:4px auto 2px auto;">
+        <!-- DÜZENLENDİ: "Yeni platform" motivasyon metni (#stats-growing-note)
+             tamamen kaldırıldı — "Pi ile Bağlan" öncesi zaten aynı mesajı
+             (AYRICALIKLI WEB3 DÜNYASINA KATILIN / dofiay.com sloganı) veren
+             #join-web3-banner var, bu ikinci metin gereksiz tekrardı. Boşalan
+             yükseklik logoyu büyütmek için kullanıldı (aşağıda 92px→124px).
+             İlk açılışta hâlâ kaydırma gerektirmeyecek şekilde ölçülüp
+             ayarlandı. -->
+        <img src="assets/logo.jpeg" alt="Logo" class="app-logo" style="width:124px;height:124px;margin:6px auto 4px auto;">
         <h1 class="app-title" style="margin:0 0 2px 0;font-size:1.4em;">Web3 Domain Gateway</h1>
         <!-- DEĞİŞTİ: İlk açılışta (giriş yapılmadan önce) ham rakamlar
              (0 domain, 0 hacim, 0-1 kullanıcı) yeni bir ziyaretçiye "burası
              boş/güvenilmez" izlenimi veriyordu. Artık giriş öncesinde bu
-             rakamlar TAMAMEN GİZLİ, yerine güzel/motive edici bir metin
-             (#stats-growing-note) gösteriliyor. Arka plandaki sayaçlar
-             (total-sold/total-volume/online-count) elementleri DOM'dan
-             kaldırılmıyor, sadece görünmüyor — yani veri akışı/sayaç
-             güncellemeleri kesintisiz arka planda çalışmaya devam ediyor.
-             Giriş yapılınca (bkz. ~satır 10883 ve çıkışta ~satır 5649)
-             #public-stats-bar gösterilir, #stats-growing-note gizlenir. -->
+             rakamlar TAMAMEN GİZLİ. Arka plandaki sayaçlar (total-sold/
+             total-volume/online-count) elementleri DOM'dan kaldırılmıyor,
+             sadece görünmüyor — yani veri akışı/sayaç güncellemeleri
+             kesintisiz arka planda çalışmaya devam ediyor. Giriş yapılınca
+             (bkz. ~satır 10883 ve çıkışta ~satır 5649) #public-stats-bar
+             gösterilir. -->
         <div class="stats-bar" id="public-stats-bar" style="display:none;margin:0 auto 1px auto;max-width:100%;width:calc(100% - 16px);font-size:0.55em;overflow:hidden;padding:5px 2px;gap:1px;">
             <div class="stats-item" style="white-space:nowrap;line-height:1.2;overflow:hidden;text-overflow:ellipsis;flex:1 1 auto;min-width:0;padding:0 1px;"><span data-i18n="soldDomains"></span>: <span id="total-sold">0</span></div>
             <div class="stats-item" style="white-space:nowrap;line-height:1.2;overflow:hidden;text-overflow:ellipsis;flex:1 1 auto;min-width:0;padding:0 1px;"><span data-i18n="totalVolume"></span>: <span id="total-volume">0</span><span style="font-size:0.8em;">π</span></div>
             <div class="stats-item" style="white-space:nowrap;line-height:1.2;overflow:hidden;text-overflow:ellipsis;flex:1 1 auto;min-width:0;padding:0 1px;"><span data-i18n="activeUsers"></span>: <span id="online-count">0</span></div>
-        </div>
-        <div class="stats-note" id="stats-growing-note" style="display:block;text-align:center;margin:0 auto 4px auto;max-width:calc(100% - 16px);padding:7px 10px;font-size:0.66em;line-height:1.4;color:#c7d2fe;font-weight:700;background:rgba(99,102,241,0.1);border:1px solid rgba(99,102,241,0.3);border-radius:8px;box-sizing:border-box;">
-            <span data-i18n="statsGrowingNote"></span>
         </div>
         <div id="join-web3-banner" style="display:none;padding:3px 8px 0 8px;">
             <div class="lock-title-box" style="margin:0 auto;">
@@ -3358,7 +3361,6 @@ const i18n = {
     typePersonal:"Kişisel İsim",typeTechnology:"Teknoloji",typeOther:"Diğer",
     typeTourism:"Turizm ve Seyahat",typeHealth:"Sağlık",typeEducation:"Eğitim",typeRealEstate:"Gayrimenkul",
     soldDomains:"Satılan Domain",totalVolume:"Toplam Hacim",activeUsers:"Aktif Kullanıcı",
-    statsGrowingNote:"🚀 Platformumuz henüz yeni açıldı — ilk domain sahiplerinden biri olma ve Web3 dünyasında öncü olma fırsatını kaçırmayın!",
     overview:"Genel",myPurchases:"Alımlarım",myListings:"İlanlarım",myIncome:"Gelirim",
     totalSpent:"Toplam Harcama",myListingsCount:"İlan Sayım",
     myListingsTitle:"İLAN TAKİP PANELİ",listNewDomain:"+ Yeni İlan Ver",
@@ -4312,7 +4314,6 @@ const i18n = {
     typePersonal:"Personal Name",typeTechnology:"Technology",typeOther:"Other",
     typeTourism:"Tourism & Travel",typeHealth:"Health",typeEducation:"Education",typeRealEstate:"Real Estate",
     soldDomains:"Sold Domains",totalVolume:"Total Volume",activeUsers:"Active Users",
-    statsGrowingNote:"🚀 We just launched — don't miss your chance to be one of the first domain owners and a pioneer in the Web3 world!",
     overview:"Overview",myPurchases:"My Purchases",myListings:"My Listings",myIncome:"My Income",
     totalSpent:"Total Spent",myListingsCount:"My Listings",
     myListingsTitle:"LISTING TRACKING PANEL",listNewDomain:"+ New Listing",
@@ -5663,10 +5664,8 @@ window.handleLogout=async function(){
     const fs=document.getElementById('filter-section');
     if(lock){lock.classList.add('active');lock.style.opacity='1';lock.style.visibility='visible';lock.style.pointerEvents='auto';}
     const jwb1=document.getElementById('join-web3-banner'); if(jwb1) jwb1.style.display='block';
-    // YENİ: Çıkış yapılınca gerçek istatistik çubuğu tekrar gizlenir,
-    // "yeni platform" motivasyon metni geri gelir.
+    // YENİ: Çıkış yapılınca gerçek istatistik çubuğu tekrar gizlenir.
     const psb1=document.getElementById('public-stats-bar'); if(psb1) psb1.style.display='none';
-    const sgn1=document.getElementById('stats-growing-note'); if(sgn1) sgn1.style.display='block';
     if(dlist){dlist.classList.add('locked-content');dlist.style.filter='blur(8px)';dlist.style.opacity='0.45';dlist.style.pointerEvents='none';}
     if(mt)mt.style.display='none';
     if(fs)fs.style.display='none';
@@ -9861,10 +9860,9 @@ function render(){
     else{lock.classList.remove("active");list.classList.remove("locked-content");}
     const jwb2=document.getElementById('join-web3-banner'); if(jwb2) jwb2.style.display=isAuth?'none':'block';
     // YENİ: render() her çalıştığında (domain verisi her güncellendiğinde)
-    // istatistik çubuğu/motivasyon metni görünürlüğünü de isAuth'a göre
-    // garantiye al — böylece hangi kod yolu önce çalışırsa çalışsın tutarlı kalır.
+    // istatistik çubuğu görünürlüğünü de isAuth'a göre garantiye al —
+    // böylece hangi kod yolu önce çalışırsa çalışsın tutarlı kalır.
     const psb4=document.getElementById('public-stats-bar'); if(psb4) psb4.style.display=isAuth?'flex':'none';
-    const sgn4=document.getElementById('stats-growing-note'); if(sgn4) sgn4.style.display=isAuth?'none':'block';
 
     // ... gerisi aynı (domain-grid oluşturma kısmı değişmedi)
     // YENİ: Sıralama artık kullanıcının seçtiği domainSortOrder'a göre.
@@ -10906,11 +10904,10 @@ async function performPiConnect() {
                         lockOverlay.style.visibility = 'hidden';
                         lockOverlay.style.pointerEvents = 'none';
                         const jwb3 = document.getElementById('join-web3-banner'); if (jwb3) jwb3.style.display = 'none';
-                        // YENİ: Giriş yapılınca gerçek istatistik çubuğunu göster,
-                        // "yeni platform" motivasyon metnini gizle. Sayaçlar zaten
-                        // arka planda çalışmaya devam ediyordu, sadece görünürlük değişiyor.
+                        // YENİ: Giriş yapılınca gerçek istatistik çubuğunu göster.
+                        // Sayaçlar zaten arka planda çalışmaya devam ediyordu,
+                        // sadece görünürlük değişiyor.
                         const psb = document.getElementById('public-stats-bar'); if (psb) psb.style.display = 'flex';
-                        const sgn = document.getElementById('stats-growing-note'); if (sgn) sgn.style.display = 'none';
                     }
                     if (domainList) {
                         domainList.classList.remove('locked-content');
