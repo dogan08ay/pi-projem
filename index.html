@@ -2039,7 +2039,17 @@
             <div class="stats-item" style="white-space:nowrap;line-height:1.2;overflow:hidden;text-overflow:ellipsis;flex:1 1 auto;min-width:0;padding:0 1px;"><span data-i18n="totalVolume"></span>: <span id="total-volume">0</span><span style="font-size:0.8em;">π</span></div>
             <div class="stats-item" style="white-space:nowrap;line-height:1.2;overflow:hidden;text-overflow:ellipsis;flex:1 1 auto;min-width:0;padding:0 1px;"><span data-i18n="activeUsers"></span>: <span id="online-count">0</span></div>
         </div>
-        <div id="join-web3-banner" style="display:none;padding:3px 8px 0 8px;">
+        <!-- DÜZENLENDİ: Artık sayfa ilk yüklendiğinde (JS auth durumunu
+             tespit edene kadar) HEM stats-bar HEM join-web3-banner gizliydi
+             — bu da kısa bir an ekranın tamamen boş görünüp sonra giriş
+             ekranının aniden belirmesine (flash/bug hissi) yol açıyordu.
+             çözüm: join-web3-banner artık VARSAYILAN OLARAK görünür
+             (display:none KALDIRILDI) çünkü ziyaretçilerin büyük
+             çoğunluğu zaten giriş yapmamış oluyor — yani bu, doğru
+             varsayılan ekran. Kullanıcı giriş yapmışsa JS (render/login
+             akışı) bunu hemen gizleyip gerçek panele geçiyor. Böylece ilk
+             an hep DOLU bir ekranla karşılaşılıyor, boşluk kalmıyor. -->
+        <div id="join-web3-banner" style="padding:3px 8px 0 8px;">
             <div class="lock-title-box" style="margin:0 auto;">
                 <span class="jw-title" data-i18n="joinWeb3"></span>
                 <div class="web3-slogan-box">
@@ -14516,7 +14526,7 @@ document.addEventListener('input', function(e) {
 </div>
 
 <!-- YENİ: Konuşma silme seçenekleri — "Kendimden Sil" / "Herkesten Sil". -->
-<div id="delete-chat-modal" class="modal-overlay" style="display:none;z-index:2001;">
+<div id="delete-chat-modal" class="modal-overlay" style="display:none;z-index:10000;">
     <div class="modal-content" style="text-align:center;max-width:340px;">
         <h3 style="margin:0 0 10px 0;font-size:1em;color:#f87171;">🗑️ <span data-i18n="deleteChatTitle"></span></h3>
         <p style="font-size:0.78em;color:#94a3b8;line-height:1.6;margin:0 0 16px 0;" data-i18n="deleteChatDesc"></p>
