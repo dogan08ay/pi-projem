@@ -10,6 +10,18 @@
     <link rel="icon" type="image/png" sizes="512x512" href="assets/favicon-512.png">
     <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32.png">
     <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
+    <!-- YENİ: İlk açılışta görünen İKİ kritik görsel (üstteki logo ve
+         "Güvenli Bağlantı" kartındaki kalkan ikonu) tarayıcı HTML'i
+         parse ederken bu görsellerin <img> etiketlerine ulaşana kadar
+         indirilmeye BAŞLAMIYORDU — sayfanın geri kalanı (metin/arka
+         plan) hemen görünse bile bu iki görsel birkaç yüz ms sonra
+         "pop-in" ediyordu (kullanıcının bahsettiği kalan ufak gecikme).
+         preload + fetchpriority="high" ile tarayıcıya bu ikisini EN
+         BAŞTAN, en yüksek öncelikle indirmesi söyleniyor; böylece HTML
+         parse'ı onlara ulaştığında büyük ihtimalle zaten inmiş/önbellekte
+         oluyorlar. -->
+    <link rel="preload" as="image" href="assets/logo.jpeg" fetchpriority="high">
+    <link rel="preload" as="image" href="assets/secure-shield.webp" fetchpriority="high">
     <!-- YENİ: PWA / "Ana Ekrana Ekle" desteği. manifest.json içinde
          isim, ikonlar ve tema rengi tanımlı — kullanıcı Pi Browser'da
          "Ana ekrana ekle" dediğinde artık düzgün bir uygulama ikonu,
@@ -2051,7 +2063,7 @@
              kaymasına yol açtığı için 110px'e düşürüldü).
              İlk açılışta hâlâ kaydırma gerektirmeyecek şekilde ölçülüp
              ayarlandı. -->
-        <img src="assets/logo.jpeg" alt="Logo" class="app-logo" style="width:110px;height:110px;margin:4px auto 2px auto;">
+        <img src="assets/logo.jpeg" alt="Logo" class="app-logo" fetchpriority="high" style="width:110px;height:110px;margin:4px auto 2px auto;">
         <h1 class="app-title" style="margin:0 0 2px 0;font-size:1.4em;">Web3 Domain Gateway</h1>
         <!-- DEĞİŞTİ: İlk açılışta (giriş yapılmadan önce) ham rakamlar
              (0 domain, 0 hacim, 0-1 kullanıcı) yeni bir ziyaretçiye "burası
@@ -2905,7 +2917,7 @@
                 <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:80px;height:80px;border-radius:50%;background:radial-gradient(circle,rgba(59,130,246,0.15) 0%,transparent 70%);animation:icon-pulse-glow 2s ease-in-out infinite;"></div>
                 <!-- Icon with glow -->
                 <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);animation:shield-pulse 2.5s ease-in-out infinite;filter:drop-shadow(0 0 15px rgba(59,130,246,0.6)) drop-shadow(0 0 30px rgba(99,102,241,0.3));">
-                <img src="assets/secure-shield.webp" style="width:72px;height:72px;object-fit:contain;position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);display:block;filter:drop-shadow(0 0 10px rgba(59,130,246,0.5));" alt="Secure Connection">
+                <img src="assets/secure-shield.webp" fetchpriority="high" style="width:72px;height:72px;object-fit:contain;position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);display:block;filter:drop-shadow(0 0 10px rgba(59,130,246,0.5));" alt="Secure Connection">
                 </div>
             </div>
             </div>
