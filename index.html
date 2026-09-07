@@ -47,7 +47,21 @@
     <meta name="twitter:description" content="Pi Network üzerinde .pi domain al ve sat. Escrow korumalı, güvenli ve şeffaf alışveriş.">
     <meta name="twitter:image" content="https://dofiay.com/assets/og-image.png">
 
-    <script src="https://sdk.minepi.com/pi-sdk.js"></script>
+    <!-- DÜZENLENDİ: Bu script daha önce "render-blocking" şekilde
+         yükleniyordu — yani tarayıcı, bu harici dosya (sdk.minepi.com)
+         tamamen indirilip çalıştırılana kadar SAYFANIN GERİSİNİ EKRANA
+         ÇİZMİYORDU. Zayıf/yavaş bağlantılarda (videoda görülen tek
+         çubuk sinyal gibi) bu, "önce bomboş beyaz ekran, sonra birden
+         içerik" hissine yol açan asıl sebeplerden biriydi.
+         `defer` eklendi: script artık HTML ayrıştırılırken paralelde
+         indiriliyor ve sayfa DOM'u hazır olduğunda (DOMContentLoaded'dan
+         hemen önce) çalıştırılıyor — HTML çizimini ARTIK ENGELLEMİYOR.
+         Bu güvenli, çünkü kod zaten `Pi` nesnesini senkron/hazır
+         varsaymıyor: waitForPi() fonksiyonu (~satır 3224) `typeof Pi`
+         tanımlı olana kadar 100ms aralıklarla polling yapıp en fazla
+         6 saniye bekliyor, yoksa zaman aşımına düşüyor. Yani Pi SDK
+         birkaç yüz ms geç gelse bile hiçbir işlevsellik bozulmuyor. -->
+    <script src="https://sdk.minepi.com/pi-sdk.js" defer></script>
     <style>
         :root { --bg:#0f172a; --card:#1e293b; --accent:#6366f1; --text:#f8fafc; --sold:#ef4444; --price:#fbbf24; --success:#10b981; }
         *, *::before, *::after { box-sizing: inherit; }
@@ -2727,7 +2741,18 @@
                         <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
                     </button>
                 </div>
-                <input type="text" id="admin-messages-search" oninput="window.renderAdminConversationsList()" placeholder="🔍" data-i18n-placeholder="adminMessagesSearchPlaceholder" style="width:100%;box-sizing:border-box;background:#0f172a;border:1.5px solid #164e63;border-radius:8px;padding:8px 10px;color:#e2e8f0;font-size:0.78em;margin-bottom:8px;">
+                <!-- YENİ: Tarih filtresi. Boşken (varsayılan) SADECE BUGÜN
+                     gösterilir; geriye dönük bir tarih seçilince o günün
+                     verisi (varsa) listelenir. "Bugün" bağlantısı filtreyi
+                     hızlıca sıfırlamak için. -->
+                <div style="display:flex;gap:6px;margin-bottom:4px;">
+                    <input type="text" id="admin-messages-search" oninput="window.renderAdminConversationsList()" placeholder="🔍" data-i18n-placeholder="adminMessagesSearchPlaceholder" style="flex:1 1 auto;min-width:0;box-sizing:border-box;background:#0f172a;border:1.5px solid #164e63;border-radius:8px;padding:8px 10px;color:#e2e8f0;font-size:0.78em;">
+                    <input type="date" id="admin-messages-date-filter" onchange="window.renderAdminConversationsList()" style="flex:0 0 auto;max-width:132px;box-sizing:border-box;background:#0f172a;border:1.5px solid #164e63;border-radius:8px;padding:7px 6px;color:#e2e8f0;font-size:0.68em;">
+                </div>
+                <div style="font-size:0.6em;color:#64748b;margin:0 0 8px 0;text-align:right;">
+                    <span data-i18n="dateFilterHint"></span>
+                    <a href="javascript:void(0)" onclick="document.getElementById('admin-messages-date-filter').value='';window.renderAdminConversationsList();" style="color:#67e8f9;font-weight:700;text-decoration:underline;margin-left:4px;" data-i18n="dateFilterTodayBtn"></a>
+                </div>
                 <div id="admin-messages-list">
                     <p style="font-size:0.75em;opacity:0.5;text-align:center;" data-i18n="clickToLoad"></p>
                 </div>
@@ -2750,7 +2775,17 @@
                     </button>
                 </div>
                 <div style="font-size:0.65em;color:#94a3b8;margin-bottom:8px;line-height:1.5;" data-i18n="deletedMessagesNote"></div>
-                <input type="text" id="admin-deleted-messages-search" oninput="window.renderDeletedConversationsList()" placeholder="🔍" data-i18n-placeholder="adminMessagesSearchPlaceholder" style="width:100%;box-sizing:border-box;background:#0f172a;border:1.5px solid #7f1d1d;border-radius:8px;padding:8px 10px;color:#e2e8f0;font-size:0.78em;margin-bottom:8px;">
+                <!-- YENİ: Tarih filtresi — boşken sadece BUGÜN silinen
+                     kayıtlar, geriye dönük tarih seçilince o günün
+                     kayıtları (varsa) gösterilir. -->
+                <div style="display:flex;gap:6px;margin-bottom:4px;">
+                    <input type="text" id="admin-deleted-messages-search" oninput="window.renderDeletedConversationsList()" placeholder="🔍" data-i18n-placeholder="adminMessagesSearchPlaceholder" style="flex:1 1 auto;min-width:0;box-sizing:border-box;background:#0f172a;border:1.5px solid #7f1d1d;border-radius:8px;padding:8px 10px;color:#e2e8f0;font-size:0.78em;">
+                    <input type="date" id="admin-deleted-messages-date-filter" onchange="window.renderDeletedConversationsList()" style="flex:0 0 auto;max-width:132px;box-sizing:border-box;background:#0f172a;border:1.5px solid #7f1d1d;border-radius:8px;padding:7px 6px;color:#e2e8f0;font-size:0.68em;">
+                </div>
+                <div style="font-size:0.6em;color:#64748b;margin:0 0 8px 0;text-align:right;">
+                    <span data-i18n="dateFilterHint"></span>
+                    <a href="javascript:void(0)" onclick="document.getElementById('admin-deleted-messages-date-filter').value='';window.renderDeletedConversationsList();" style="color:#fca5a5;font-weight:700;text-decoration:underline;margin-left:4px;" data-i18n="dateFilterTodayBtn"></a>
+                </div>
                 <div id="admin-deleted-messages-list">
                     <p style="font-size:0.75em;opacity:0.5;text-align:center;" data-i18n="clickToLoad"></p>
                 </div>
@@ -3482,6 +3517,8 @@ const i18n = {
     deletedByLabel:"Silen",
     deletedTypeForMe:"Kendinden Sildi",
     deletedTypeForEveryone:"Herkesten Sildi",
+    dateFilterHint:"Tarih seçilmezse sadece bugün gösterilir.",
+    dateFilterTodayBtn:"Bugüne Dön",
     adminNoConversations:"Henüz hiç kullanıcı mesajlaşması yok.",
     adminMsgCountSuffix:"mesaj",
     trademarkStatusNew:"Yeni",
@@ -4447,6 +4484,8 @@ const i18n = {
     deletedByLabel:"Deleted by",
     deletedTypeForMe:"Deleted For Self",
     deletedTypeForEveryone:"Deleted For Everyone",
+    dateFilterHint:"Shows today only unless a date is selected.",
+    dateFilterTodayBtn:"Back To Today",
     adminNoConversations:"No user conversations yet.",
     adminMsgCountSuffix:"messages",
     trademarkStatusNew:"New",
@@ -12802,6 +12841,16 @@ function escapeHtml(text) {
     return div.innerHTML;
 }
 
+// ── Admin mesaj panelleri için tarih filtresi yardımcıları ──────────────
+// Bir zaman damgasını kullanıcının YEREL saatine göre "YYYY-MM-DD" biçimine
+// çevirir (UTC'ye göre değil — gece yarısına yakın saatlerde yanlış güne
+// düşmesin diye). <input type="date"> değeri de zaten bu formatta gelir.
+function ymdLocal(ts){
+    const d=new Date(ts);
+    return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+}
+function todayYmd(){ return ymdLocal(Date.now()); }
+
 // ── KULLANICI: Yeni ticket formunu göster ────────────────────────────
 window.showCreateTicketForm = function() {
     document.getElementById('ticket-create-modal').style.display = 'flex';
@@ -13228,7 +13277,12 @@ window.renderAdminConversationsList=function(){
     if(!listEl) return;
     const searchEl=document.getElementById('admin-messages-search');
     const q=(searchEl?searchEl.value:'').trim().toLowerCase();
-    let items=adminConversations;
+    // YENİ: Tarih filtresi — seçili tarih YOKSA sadece BUGÜN'e ait
+    // (lastMessageAt bugüne denk gelen) konuşmalar gösterilir. Geriye
+    // dönük bir tarih seçilirse o günün verisi (varsa) gösterilir.
+    const dateEl=document.getElementById('admin-messages-date-filter');
+    const selectedDate=(dateEl&&dateEl.value)?dateEl.value:todayYmd();
+    let items=adminConversations.filter(c=>c.lastMessageAt&&ymdLocal(c.lastMessageAt)===selectedDate);
     if(q){
         items=items.filter(c=>{
             const participants=(c.participants||[]).join(' ').toLowerCase();
@@ -13309,7 +13363,12 @@ window.renderDeletedConversationsList=function(){
     if(!listEl) return;
     const searchEl=document.getElementById('admin-deleted-messages-search');
     const q=(searchEl?searchEl.value:'').trim().toLowerCase();
-    let items=deletedConversationsCache;
+    // YENİ: Tarih filtresi — seçili tarih YOKSA sadece BUGÜN silinen
+    // kayıtlar gösterilir. Geriye dönük bir tarih seçilirse o güne ait
+    // silme olayları (varsa) gösterilir.
+    const dateEl=document.getElementById('admin-deleted-messages-date-filter');
+    const selectedDate=(dateEl&&dateEl.value)?dateEl.value:todayYmd();
+    let items=deletedConversationsCache.filter(it=>it.deletedAt&&ymdLocal(it.deletedAt)===selectedDate);
     if(q){
         items=items.filter(it=>{
             const participants=(it.participants||[]).join(' ').toLowerCase();
