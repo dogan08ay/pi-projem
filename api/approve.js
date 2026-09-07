@@ -6029,6 +6029,15 @@ async function handlerImpl(req, res) {
       const conversations = [];
       snap.forEach(doc => {
         const data = doc.data();
+        // YENİ: "Herkesten Sil" ile silinmiş bir konuşma HİÇBİR katılımcıya
+        // gösterilmez (doküman Firestore'da audit amacıyla saklanır, sadece
+        // listeye dahil edilmez).
+        if (data.deletedGlobally) return;
+        // YENİ: "Kendimden Sil" — sadece BU kullanıcı için gizlenir. Silme
+        // anından SONRA yeni bir mesaj gelirse konuşma bu kullanıcı için
+        // tekrar görünür hale gelir (WhatsApp'taki "sohbeti sil" mantığı).
+        const myHiddenAt = (data.hiddenFor && data.hiddenFor[realUsername]) || 0;
+        if (myHiddenAt && (data.lastMessageAt || 0) <= myHiddenAt) return;
         const myReadAt = (data.readBy && data.readBy[realUsername]) || 0;
         const unread = (data.lastMessageAt || 0) > myReadAt && data.lastMessageBy !== realUsername;
         conversations.push({ id: doc.id, ...data, unread });
@@ -6107,7 +6116,10 @@ async function handlerImpl(req, res) {
       const db = getDb();
       const snap = await db.collection('conversations').get();
       const conversations = [];
-      snap.forEach(doc => conversations.push({ id: doc.id, ...doc.data() }));
+      // YENİ: "Herkesten Sil" ile silinmiş konuşmalar artık normal admin
+      // mesaj kutusunda değil, ayrı "Silinen Mesajlar" ekranında
+      // (get_deleted_conversations) listelenir.
+      snap.forEach(doc => { const d = doc.data(); if (!d.deletedGlobally) conversations.push({ id: doc.id, ...d }); });
       conversations.sort((a, b) => (b.lastMessageAt || 0) - (a.lastMessageAt || 0));
       // YENİ: get_listing_reports ile AYNI desen — tek bir seenAt zaman
       // damgasıyla "okunmamış konuşma" sayısı hesaplanıyor. Admin bir
@@ -6206,6 +6218,115 @@ async function handlerImpl(req, res) {
   }
 
   // ══════════════════════════════════════════════════════════════════════
+  //  MESAJLAŞMA — KONUŞMA SİLME (kullanıcı tarafı)
+  //  İki seçenek sunulur:
+  //   1) "Kendimden Sil"      -> sadece bu kullanıcının kendi listesinden
+  //      kaybolur, karşı taraf hiçbir şey fark etmez, konuşma devam
+  //      edebilir (yeni mesaj gelirse bu kullanıcı için tekrar görünür).
+  //   2) "Herkesten Sil"      -> konuşma HER İKİ katılımcı için de
+  //      kaybolur (deletedGlobally=true).
+  //  Her iki durumda da veri Firestore'dan GERÇEKTEN silinmiyor — admin'in
+  //  gerektiğinde inceleyebilmesi için 'deleted_conversations_log'
+  //  koleksiyonuna, kim tarafından/ne zaman/hangi türde silindiği ve o
+  //  andaki mesaj geçmişinin tam bir kopyası (snapshot) yazılıyor.
+  // ══════════════════════════════════════════════════════════════════════
+  if (action === 'delete_conversation_for_me') {
+    const { conversationId } = req.body;
+    const realUsername = await getRealUsername(accessToken);
+    if (!realUsername) return res.status(403).json({ error: "Geçersiz oturum" });
+    if (!conversationId) return res.status(400).json({ error: "Geçersiz ID" });
+    try {
+      const db = getDb();
+      const convRef = db.collection('conversations').doc(conversationId);
+      const snap = await convRef.get();
+      if (!snap.exists) return res.status(404).json({ error: "Konuşma bulunamadı" });
+      const data = snap.data();
+      if (!Array.isArray(data.participants) || !data.participants.includes(realUsername))
+        return res.status(403).json({ error: "Yetkiniz yok" });
+      const now = Date.now();
+      await convRef.update({ [`hiddenFor.${realUsername}`]: now });
+      // Denetim kaydı — sadece bu kullanıcının görünümünden kaldırıldığı
+      // için type: 'for_me'.
+      await db.collection('deleted_conversations_log').add({
+        conversationId,
+        domainName: data.domainName || null,
+        participants: data.participants || [],
+        messages: data.messages || [],
+        deletedBy: realUsername,
+        deletedAt: now,
+        type: 'for_me'
+      });
+      return res.status(200).json({ success: true });
+    } catch (e) {
+      console.error("delete_conversation_for_me hatası:", e);
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  if (action === 'delete_conversation_for_everyone') {
+    const { conversationId } = req.body;
+    const realUsername = await getRealUsername(accessToken);
+    if (!realUsername) return res.status(403).json({ error: "Geçersiz oturum" });
+    if (!conversationId) return res.status(400).json({ error: "Geçersiz ID" });
+    try {
+      const db = getDb();
+      const convRef = db.collection('conversations').doc(conversationId);
+      const snap = await convRef.get();
+      if (!snap.exists) return res.status(404).json({ error: "Konuşma bulunamadı" });
+      const data = snap.data();
+      if (!Array.isArray(data.participants) || !data.participants.includes(realUsername))
+        return res.status(403).json({ error: "Yetkiniz yok" });
+      const now = Date.now();
+      await convRef.update({ deletedGlobally: true, deletedBy: realUsername, deletedAt: now });
+      // Denetim kaydı — HER İKİ taraftan da kaybolduğu için type: 'for_everyone'.
+      await db.collection('deleted_conversations_log').add({
+        conversationId,
+        domainName: data.domainName || null,
+        participants: data.participants || [],
+        messages: data.messages || [],
+        deletedBy: realUsername,
+        deletedAt: now,
+        type: 'for_everyone'
+      });
+      // Karşı tarafa bilgi verelim — sessizce kaybolması kafa karıştırıcı olabilir.
+      const otherUsername = (data.participants || []).find(u => u !== realUsername);
+      if (otherUsername) {
+        await sendNotification(otherUsername, {
+          type: 'conversation_deleted',
+          title: '🗑️ Bir Mesajlaşma Silindi',
+          body: `@${realUsername}, "${data.domainName || ''}" hakkındaki mesajlaşmanızı herkesten sildi.`,
+          domainName: data.domainName || null
+        });
+      }
+      return res.status(200).json({ success: true });
+    } catch (e) {
+      console.error("delete_conversation_for_everyone hatası:", e);
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  // ── ADMIN: Silinmiş Mesajlaşma Kayıtları ────────────────────────────────
+  // Kullanıcıların "Kendimden Sil" veya "Herkesten Sil" ile sildiği TÜM
+  // konuşmaların denetim kaydı. Her kayıt: hangi iki kullanıcı arasında,
+  // hangi domain hakkında, kim tarafından, ne zaman ve hangi türde
+  // silindiği + o andaki mesajların tam kopyasını içerir.
+  if (action === 'get_deleted_conversations') {
+    const isAdmin = await verifyAdmin(accessToken, req);
+    if (!isAdmin) return res.status(403).json({ error: "Yetki yok" });
+    try {
+      const db = getDb();
+      const snap = await db.collection('deleted_conversations_log').orderBy('deletedAt', 'desc').limit(300).get();
+      const items = [];
+      snap.forEach(doc => items.push({ id: doc.id, ...doc.data() }));
+      return res.status(200).json({ success: true, items });
+    } catch (e) {
+      console.error("get_deleted_conversations hatası:", e);
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  // ══════════════════════════════════════════════════════════════════════
+
   //  WEB PUSH (Tarayıcı Bildirimleri) — kullanıcı bir cihazda/tarayıcıda
   //  bildirim iznini verince, tarayıcının verdiği "subscription" nesnesi
   //  (endpoint + şifreleme anahtarları) burada saklanır. Bir kullanıcının
