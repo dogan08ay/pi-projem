@@ -2018,10 +2018,12 @@
              tamamen kaldırıldı — "Pi ile Bağlan" öncesi zaten aynı mesajı
              (AYRICALIKLI WEB3 DÜNYASINA KATILIN / dofiay.com sloganı) veren
              #join-web3-banner var, bu ikinci metin gereksiz tekrardı. Boşalan
-             yükseklik logoyu büyütmek için kullanıldı (aşağıda 92px→124px).
+             yükseklik logoyu büyütmek için kullanıldı (aşağıda 92px→110px;
+             ilk denemede 124px yapılmıştı ama ilk ekranın taşıp hafif
+             kaymasına yol açtığı için 110px'e düşürüldü).
              İlk açılışta hâlâ kaydırma gerektirmeyecek şekilde ölçülüp
              ayarlandı. -->
-        <img src="assets/logo.jpeg" alt="Logo" class="app-logo" style="width:124px;height:124px;margin:6px auto 4px auto;">
+        <img src="assets/logo.jpeg" alt="Logo" class="app-logo" style="width:110px;height:110px;margin:4px auto 2px auto;">
         <h1 class="app-title" style="margin:0 0 2px 0;font-size:1.4em;">Web3 Domain Gateway</h1>
         <!-- DEĞİŞTİ: İlk açılışta (giriş yapılmadan önce) ham rakamlar
              (0 domain, 0 hacim, 0-1 kullanıcı) yeni bir ziyaretçiye "burası
@@ -2457,7 +2459,9 @@
             <!-- YENİ: Bildirilen İlanlar sekmesi. -->
             <button class="admin-tab-btn" data-tab="tab-reports" onclick="switchAdminTab('tab-reports')">🚩<span data-i18n="reportsTabLabel" style="font-size:0.9em;"></span><span class="pending-badge" id="reports-count-badge" style="display:none;">0</span></button>
             <!-- YENİ: Admin, kullanıcılar arası doğrudan mesajlaşmaları
-                 (alıcı-satıcı) takip edebilsin diye. -->
+                 (alıcı-satıcı) takip edebilsin diye. "Silinen Mesajlar"
+                 artık ayrı bir sekme değil, bu sekmenin İÇİNDE alt bölüm
+                 olarak gösteriliyor (bkz. tab-messages panel içeriği). -->
             <button class="admin-tab-btn" data-tab="tab-messages" onclick="switchAdminTab('tab-messages')">💬<span data-i18n="adminMessagesTabLabel" style="font-size:0.9em;"></span><span class="pending-badge" id="admin-messages-count-badge" style="display:none;">0</span></button>
 
         </div>
@@ -2715,6 +2719,29 @@
                 </div>
                 <input type="text" id="admin-messages-search" oninput="window.renderAdminConversationsList()" placeholder="🔍" data-i18n-placeholder="adminMessagesSearchPlaceholder" style="width:100%;box-sizing:border-box;background:#0f172a;border:1.5px solid #164e63;border-radius:8px;padding:8px 10px;color:#e2e8f0;font-size:0.78em;margin-bottom:8px;">
                 <div id="admin-messages-list">
+                    <p style="font-size:0.75em;opacity:0.5;text-align:center;" data-i18n="clickToLoad"></p>
+                </div>
+            </div>
+            <!-- DÜZENLENDİ: "Silinen Mesajlar" artık AYRI bir admin sekmesi
+                 DEĞİL — "Kullanıcı Mesajları" sekmesinin İÇİNDE, ayrı bir
+                 alt bölüm (kart) olarak gösteriliyor. Kullanıcıların
+                 "Kendimden Sil" / "Herkesten Sil" ile sildiği tüm
+                 mesajlaşmaların denetim kaydı burada. Her konuşma (farklı
+                 kullanıcı çifti) kendi ayrı kartında listelenir; her
+                 karttaki her silme olayı kim tarafından, ne zaman ve hangi
+                 türde silindiğini gösterir. Bir olaya tıklanınca o andaki
+                 mesajların tam kopyası (admin-chat-view-modal üzerinden)
+                 görüntülenebilir. -->
+            <div style="background:#0a0f1e;border:2px solid #ef4444;border-radius:12px;padding:10px;box-sizing:border-box;max-width:100%;overflow-x:hidden;margin-top:10px;">
+                <div style="position:relative;display:flex;align-items:center;justify-content:center;padding:6px 34px 8px 6px;margin-bottom:8px;border-bottom:1px solid #7f1d1d;">
+                    <span style="font-size:0.72em;color:#fca5a5;font-weight:800;text-transform:uppercase;">🗑️ <span data-i18n="deletedMessagesTabLabel"></span></span>
+                    <button id="admin-deleted-messages-refresh-btn" class="panel-refresh-btn" onclick="window.loadDeletedConversations()" title="Yenile">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+                    </button>
+                </div>
+                <div style="font-size:0.65em;color:#94a3b8;margin-bottom:8px;line-height:1.5;" data-i18n="deletedMessagesNote"></div>
+                <input type="text" id="admin-deleted-messages-search" oninput="window.renderDeletedConversationsList()" placeholder="🔍" data-i18n-placeholder="adminMessagesSearchPlaceholder" style="width:100%;box-sizing:border-box;background:#0f172a;border:1.5px solid #7f1d1d;border-radius:8px;padding:8px 10px;color:#e2e8f0;font-size:0.78em;margin-bottom:8px;">
+                <div id="admin-deleted-messages-list">
                     <p style="font-size:0.75em;opacity:0.5;text-align:center;" data-i18n="clickToLoad"></p>
                 </div>
             </div>
@@ -3439,6 +3466,12 @@ const i18n = {
     trademarkTabLabel:"Marka Hakkı Talepleri",
     adminMessagesTabLabel:"Kullanıcı Mesajları",
     adminMessagesSearchPlaceholder:"Kullanıcı adı veya domain ara...",
+    deletedMessagesTabLabel:"Silinen Mesajlar",
+    deletedMessagesNote:"Kullanıcıların \"Kendimden Sil\" veya \"Herkesten Sil\" ile sildiği mesajlaşmaların denetim kaydı. Her konuşma kendi bölümünde, silme olaylarıyla birlikte listelenir.",
+    deletedMessagesEmpty:"Henüz silinmiş bir mesajlaşma yok.",
+    deletedByLabel:"Silen",
+    deletedTypeForMe:"Kendinden Sildi",
+    deletedTypeForEveryone:"Herkesten Sildi",
     adminNoConversations:"Henüz hiç kullanıcı mesajlaşması yok.",
     adminMsgCountSuffix:"mesaj",
     trademarkStatusNew:"Yeni",
@@ -3690,6 +3723,14 @@ const i18n = {
     newMsgBadge:"YENİ",
     messageSellerBtn:"Mesaj Gönder",
     chatReplyPlaceholder:"Mesajınızı yazın...",
+    deleteChatTitle:"Mesajlaşmayı Sil",
+    deleteChatDesc:"Bu mesajlaşmayı nasıl silmek istersiniz?",
+    deleteChatForMeBtn:"🙈 Sadece Kendimden Sil",
+    deleteChatForEveryoneBtn:"🗑️ Herkesten Sil",
+    deleteChatForEveryoneConfirm:"Bu mesajlaşma karşı taraftan da tamamen silinecek ve geri alınamayacak. Emin misiniz?",
+    deleteChatForMeSuccess:"Mesajlaşma listenizden kaldırıldı.",
+    deleteChatForEveryoneSuccess:"Mesajlaşma her iki taraftan da silindi.",
+    deleteChatFail:"Mesajlaşma silinemedi: ",
     webPushLabel:"Tarayıcı Bildirimleri",
     webPushConnect:"Etkinleştir",
     webPushDisconnect:"Kapat",
@@ -4390,6 +4431,12 @@ const i18n = {
     trademarkTabLabel:"Trademark Claims",
     adminMessagesTabLabel:"User Messages",
     adminMessagesSearchPlaceholder:"Search username or domain...",
+    deletedMessagesTabLabel:"Deleted Messages",
+    deletedMessagesNote:"Audit log of conversations users deleted with \"Delete For Me\" or \"Delete For Everyone\". Each conversation is listed in its own section, along with its deletion events.",
+    deletedMessagesEmpty:"No deleted conversations yet.",
+    deletedByLabel:"Deleted by",
+    deletedTypeForMe:"Deleted For Self",
+    deletedTypeForEveryone:"Deleted For Everyone",
     adminNoConversations:"No user conversations yet.",
     adminMsgCountSuffix:"messages",
     trademarkStatusNew:"New",
@@ -4637,6 +4684,14 @@ const i18n = {
     newMsgBadge:"NEW",
     messageSellerBtn:"Message Seller",
     chatReplyPlaceholder:"Write your message...",
+    deleteChatTitle:"Delete Conversation",
+    deleteChatDesc:"How would you like to delete this conversation?",
+    deleteChatForMeBtn:"🙈 Delete For Me Only",
+    deleteChatForEveryoneBtn:"🗑️ Delete For Everyone",
+    deleteChatForEveryoneConfirm:"This conversation will be permanently deleted for the other person too, and cannot be undone. Are you sure?",
+    deleteChatForMeSuccess:"The conversation was removed from your list.",
+    deleteChatForEveryoneSuccess:"The conversation was deleted for both parties.",
+    deleteChatFail:"Couldn't delete the conversation: ",
     webPushLabel:"Browser Notifications",
     webPushConnect:"Enable",
     webPushDisconnect:"Disable",
@@ -5681,7 +5736,7 @@ window.switchAdminTab=function(tabId){
     if(tabId==='tab-tickets'){ adminLoadTickets(); markTicketsSeen(); }
     if(tabId==='tab-offers'){ window.loadAdminOffersTable(); const b=document.getElementById('offers-count-badge'); if(b) b.style.display='none'; }
     if(tabId==='tab-reports'){ window.loadListingReports(); window.startReportsPolling(); } else { window.stopReportsPolling(); }
-    if(tabId==='tab-messages'){ window.loadAdminConversations(); }
+    if(tabId==='tab-messages'){ window.loadAdminConversations(); window.loadDeletedConversations(); }
     // Sekme değiştirmek genelde bir şeyi "görülmüş" işaretler (rozet
     // sıfırlanır) — özet şeridin de bunu hemen yansıtması için kısa bir
     // gecikmeyle (backend'in seenAt yazması için) tazeliyoruz.
@@ -13013,6 +13068,7 @@ window.openConversationDetail=async function(conversationId){
     currentChatDomainName=null; currentChatTargetUser=null;
     window.renderChatDetail(conversationId);
     document.getElementById('chat-reply-text').value='';
+    const cdb=document.getElementById('chat-delete-btn'); if(cdb) cdb.style.display='inline-flex';
     document.getElementById('chat-detail-modal').style.display='flex';
     const conv=myConversations.find(c=>c.id===conversationId);
     if(conv && conv.unread){
@@ -13042,6 +13098,9 @@ window.openOrStartConversation=function(domainName,sellerUsername){
         document.getElementById('chat-detail-header').innerHTML=`<div class="ticket-detail-header"><h4>💬 @${sellerUsername} — ${escapeHtml(domainName)}</h4></div>`;
         document.getElementById('chat-detail-messages').innerHTML=`<p style="font-size:0.75em;opacity:0.5;text-align:center;padding:14px 0;">${t('chatStartHint')}</p>`;
         document.getElementById('chat-reply-text').value='';
+        // YENİ: Henüz kaydedilmiş bir konuşma yok (ilk mesaj gönderilmedi),
+        // silinecek bir şey olmadığı için sil butonu gizli kalır.
+        const cdb=document.getElementById('chat-delete-btn'); if(cdb) cdb.style.display='none';
         document.getElementById('chat-detail-modal').style.display='flex';
     }
 };
@@ -13065,9 +13124,53 @@ window.sendChatReply=async function(){
         textEl.value='';
         currentChatConversationId=result.conversationId;
         currentChatDomainName=null; currentChatTargetUser=null;
+        // YENİ: İlk mesaj gönderilip konuşma artık gerçekten var olduğu
+        // için sil butonu görünür hale getirilir.
+        const cdb=document.getElementById('chat-delete-btn'); if(cdb) cdb.style.display='inline-flex';
         await window.loadMyConversations(true);
         window.renderChatDetail(currentChatConversationId);
     }catch(e){ showToast(t('sendMessageError')); }
+};
+
+// ── Konuşma Silme (kullanıcı) ───────────────────────────────────────────
+window.openDeleteChatOptions=function(){
+    if(!currentChatConversationId) return;
+    document.getElementById('delete-chat-modal').style.display='flex';
+};
+
+window.confirmDeleteChatForMe=async function(){
+    const convId=currentChatConversationId;
+    if(!convId) return;
+    try{
+        const r=await fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'delete_conversation_for_me',conversationId:convId,accessToken:piAccessToken})});
+        const result=await r.json();
+        if(!r.ok||!result.success){ showToast(t('deleteChatFail')+(result.error||'')); return; }
+        document.getElementById('delete-chat-modal').style.display='none';
+        window.closeChatDetailModal();
+        myConversations=myConversations.filter(c=>c.id!==convId);
+        renderConversationsList();
+        window.updateMessagesBadge();
+        showToast(t('deleteChatForMeSuccess'));
+    }catch(e){ showToast(t('deleteChatFail')); }
+};
+
+window.confirmDeleteChatForEveryone=async function(){
+    const convId=currentChatConversationId;
+    if(!convId) return;
+    // Geri alınamayan, karşı tarafı da etkileyen bir işlem olduğu için
+    // ek bir native onay (confirm) ile son bir kez teyit alınıyor.
+    if(!confirm(t('deleteChatForEveryoneConfirm'))) return;
+    try{
+        const r=await fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'delete_conversation_for_everyone',conversationId:convId,accessToken:piAccessToken})});
+        const result=await r.json();
+        if(!r.ok||!result.success){ showToast(t('deleteChatFail')+(result.error||'')); return; }
+        document.getElementById('delete-chat-modal').style.display='none';
+        window.closeChatDetailModal();
+        myConversations=myConversations.filter(c=>c.id!==convId);
+        renderConversationsList();
+        window.updateMessagesBadge();
+        showToast(t('deleteChatForEveryoneSuccess'));
+    }catch(e){ showToast(t('deleteChatFail')); }
 };
 
 // ══════════════════════════════════════════════════════════════════════
@@ -13167,6 +13270,99 @@ window.openAdminConversationDetail=function(conversationId){
     setTimeout(()=>{ messagesContainer.scrollTop=messagesContainer.scrollHeight; },50);
 };
 
+// ══════════════════════════════════════════════════════════════════════
+//  ADMIN: Silinmiş Mesajlaşma Kayıtları (denetim) ───────────────────────
+//  Kullanıcıların "Kendimden Sil" / "Herkesten Sil" ile sildiği TÜM
+//  konuşmaların kaydı. Aynı konuşmaya (conversationId) ait birden fazla
+//  silme olayı olabileceği için (ör. önce bir taraf kendinden sildi, daha
+//  sonra diğer taraf herkesten sildi), kayıtlar conversationId'ye göre
+//  GRUPLANIP her konuşma kendi "bölümünde" (kartında) gösteriliyor —
+//  farklı kullanıcı çiftleri birbirine karışmıyor.
+// ══════════════════════════════════════════════════════════════════════
+let deletedConversationsCache=[];
+window.loadDeletedConversations=async function(){
+    const listEl=document.getElementById('admin-deleted-messages-list');
+    if(listEl) listEl.innerHTML='<p style="font-size:0.75em;opacity:0.5;text-align:center;">⏳ ...</p>';
+    try{
+        const r=await fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'get_deleted_conversations',accessToken:piAccessToken})});
+        const result=await r.json();
+        if(!result.success){ if(listEl) listEl.innerHTML=emptyState('🗑️',t('adminNoConversations')); return; }
+        deletedConversationsCache=result.items||[];
+        window.renderDeletedConversationsList();
+    }catch(e){
+        console.error('loadDeletedConversations hatası:',e);
+        if(listEl) listEl.innerHTML=emptyState('🗑️',t('adminNoConversations'));
+    }
+};
+window.renderDeletedConversationsList=function(){
+    const listEl=document.getElementById('admin-deleted-messages-list');
+    if(!listEl) return;
+    const searchEl=document.getElementById('admin-deleted-messages-search');
+    const q=(searchEl?searchEl.value:'').trim().toLowerCase();
+    let items=deletedConversationsCache;
+    if(q){
+        items=items.filter(it=>{
+            const participants=(it.participants||[]).join(' ').toLowerCase();
+            const domain=(it.domainName||'').toLowerCase();
+            return participants.includes(q)||domain.includes(q);
+        });
+    }
+    if(!items.length){
+        listEl.innerHTML=emptyState('🗑️',t('deletedMessagesEmpty'));
+        return;
+    }
+    const locale=currentLang==='en'?'en-GB':'tr-TR';
+    // Aynı konuşmaya ait tüm silme olaylarını tek bir "bölüm" (kart) altında topla.
+    const groups={};
+    items.forEach(it=>{ (groups[it.conversationId]=groups[it.conversationId]||[]).push(it); });
+    const sections=Object.keys(groups).map(convId=>{
+        const events=groups[convId].sort((a,b)=>(b.deletedAt||0)-(a.deletedAt||0));
+        const head=events[0];
+        const participants=(head.participants||[]).map(u=>'@'+escapeHtml(u)).join(' ↔ ');
+        const eventsHtml=events.map(ev=>{
+            const dateStr=ev.deletedAt?new Date(ev.deletedAt).toLocaleString(locale,{day:'2-digit',month:'2-digit',year:'2-digit',hour:'2-digit',minute:'2-digit'}):'—';
+            const typeLabel=ev.type==='for_everyone'?t('deletedTypeForEveryone'):t('deletedTypeForMe');
+            const typeColor=ev.type==='for_everyone'?'#f87171':'#fbbf24';
+            return `<div onclick="window.openDeletedConversationSnapshot('${ev.id}')" style="background:#0f172a;border:1.5px solid #334155;border-radius:8px;padding:8px 9px;margin-top:6px;cursor:pointer;">
+                <div style="display:flex;justify-content:space-between;align-items:center;gap:6px;flex-wrap:wrap;">
+                    <span style="font-size:0.68em;font-weight:800;color:${typeColor};">🗑️ ${typeLabel}</span>
+                    <span style="font-size:0.6em;color:#64748b;white-space:nowrap;">${dateStr}</span>
+                </div>
+                <div style="font-size:0.68em;color:#94a3b8;margin-top:3px;">${t('deletedByLabel')}: <b style="color:#e2e8f0;">@${escapeHtml(ev.deletedBy||'?')}</b></div>
+            </div>`;
+        }).join('');
+        return `<div style="background:#0a0f1e;border:1.5px solid #7f1d1d;border-radius:10px;padding:9px 10px;margin-bottom:10px;">
+            <div style="font-weight:800;color:#e2e8f0;font-size:0.8em;margin-bottom:2px;">${participants}</div>
+            <div style="font-size:0.7em;color:#67e8f9;">🏷️ ${escapeHtml(head.domainName||'—')}</div>
+            ${eventsHtml}
+        </div>`;
+    });
+    listEl.innerHTML=sections.join('');
+};
+// Silinmiş bir kaydın o anki mesaj kopyasını (snapshot) admin-chat-view
+// penceresinde, kim/ne zaman/hangi türde sildiğini belirten bir uyarı
+// başlığıyla birlikte gösterir.
+window.openDeletedConversationSnapshot=function(logId){
+    const item=deletedConversationsCache.find(it=>it.id===logId);
+    if(!item) return;
+    const locale=currentLang==='en'?'en-GB':'tr-TR';
+    const participants=(item.participants||[]).map(u=>'@'+escapeHtml(u)).join(' ↔ ');
+    const dateStr=item.deletedAt?new Date(item.deletedAt).toLocaleString(locale,{day:'2-digit',month:'2-digit',year:'2-digit',hour:'2-digit',minute:'2-digit'}):'—';
+    const typeLabel=item.type==='for_everyone'?t('deletedTypeForEveryone'):t('deletedTypeForMe');
+    document.getElementById('admin-chat-view-header').innerHTML=`<div class="ticket-detail-header"><h4>💬 ${participants} — ${escapeHtml(item.domainName||'')}</h4></div>
+        <div style="background:rgba(239,68,68,0.1);border:1px solid #ef4444;border-radius:8px;padding:7px 9px;margin-bottom:8px;font-size:0.68em;color:#fca5a5;">🗑️ ${typeLabel} · ${t('deletedByLabel')}: <b>@${escapeHtml(item.deletedBy||'?')}</b> · ${dateStr}</div>`;
+    const messagesContainer=document.getElementById('admin-chat-view-messages');
+    messagesContainer.innerHTML=(item.messages||[]).map(msg=>{
+        const isFirstParticipant=item.participants&&msg.from===item.participants[0];
+        const time=msg.timestamp?new Date(msg.timestamp).toLocaleString(locale,{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}):'';
+        return `<div class="ticket-message ${isFirstParticipant?'user':'admin'}">
+            <div class="ticket-message-header"><span>👤 @${escapeHtml(msg.from)}</span><span style="font-weight:700;text-transform:none;opacity:0.85;">${time}</span></div>
+            <div class="ticket-message-text">${escapeHtml(msg.text)}</div>
+        </div>`;
+    }).join('');
+    document.getElementById('admin-chat-view-modal').style.display='flex';
+    setTimeout(()=>{ messagesContainer.scrollTop=messagesContainer.scrollHeight; },50);
+};
 
 // ── KULLANICI: Ticket paneline scroll ──────────────────────────────────
 window.scrollToTicketPanel = function() {
@@ -14307,7 +14503,28 @@ document.addEventListener('input', function(e) {
             <textarea id="chat-reply-text" rows="2" maxlength="1000" data-i18n-placeholder="chatReplyPlaceholder"></textarea>
             <button class="pi-btn" style="background:#06b6d4;animation:none;padding:10px 14px;margin:0;flex-shrink:0;" onclick="window.sendChatReply()" data-i18n="ticketSendReply"></button>
         </div>
-        <button class="pi-btn" style="background:#475569;animation:none;padding:12px;margin:8px 0 0 0;width:100%;position:sticky;bottom:0;z-index:20;box-shadow:0 -6px 12px -4px rgba(0,0,0,0.6);" onclick="window.closeChatDetailModal()" data-i18n="close"></button>
+        <!-- YENİ: "Kapat" yanına, kullanıcının bu mesajlaşmayı silebilmesi
+             için bir 🗑️ buton eklendi. Henüz hiç mesaj gönderilmemiş
+             (conversationId olmayan) yepyeni bir pencerede silinecek bir
+             şey olmadığı için bu buton JS'te (openConversationDetail /
+             openOrStartConversation) gizlenip gösteriliyor. -->
+        <div style="display:flex;gap:8px;margin:8px 0 0 0;position:sticky;bottom:0;z-index:20;box-shadow:0 -6px 12px -4px rgba(0,0,0,0.6);">
+            <button id="chat-delete-btn" class="pi-btn" style="display:none;background:rgba(239,68,68,0.15);border:1.5px solid #ef4444;color:#f87171;animation:none;padding:12px;flex:0 0 auto;width:auto;" onclick="window.openDeleteChatOptions()" title="Sil">🗑️</button>
+            <button class="pi-btn" style="background:#475569;animation:none;padding:12px;width:100%;" onclick="window.closeChatDetailModal()" data-i18n="close"></button>
+        </div>
+    </div>
+</div>
+
+<!-- YENİ: Konuşma silme seçenekleri — "Kendimden Sil" / "Herkesten Sil". -->
+<div id="delete-chat-modal" class="modal-overlay" style="display:none;z-index:2001;">
+    <div class="modal-content" style="text-align:center;max-width:340px;">
+        <h3 style="margin:0 0 10px 0;font-size:1em;color:#f87171;">🗑️ <span data-i18n="deleteChatTitle"></span></h3>
+        <p style="font-size:0.78em;color:#94a3b8;line-height:1.6;margin:0 0 16px 0;" data-i18n="deleteChatDesc"></p>
+        <div style="display:flex;flex-direction:column;gap:8px;">
+            <button class="pi-btn" style="background:#475569;animation:none;padding:11px;" onclick="window.confirmDeleteChatForMe()" data-i18n="deleteChatForMeBtn"></button>
+            <button class="pi-btn" style="background:#dc2626;animation:none;padding:11px;" onclick="window.confirmDeleteChatForEveryone()" data-i18n="deleteChatForEveryoneBtn"></button>
+            <button class="pi-btn" style="background:transparent;border:1.5px solid #334155;animation:none;padding:10px;color:#94a3b8;" onclick="document.getElementById('delete-chat-modal').style.display='none'" data-i18n="cancel"></button>
+        </div>
     </div>
 </div>
 
