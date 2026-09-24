@@ -150,23 +150,64 @@
            tarayıcıda aynı ve öngörülebilir şekilde, doğrudan bu kartın
            gerçek içerik yüksekliğinden hesaplanıyor. */
         .premium-lock-overlay.active{position:static;width:100%;box-sizing:border-box;background:transparent;backdrop-filter:none;opacity:1;visibility:visible;pointer-events:auto;}
-        /* YENİ: Kısa ekranlarda (kullanıcının "başkasının ekranında sığmıyor"
-           dediği durumların büyük çoğunluğu — küçük telefon veya tarayıcı
-           arayüzünün (adres çubuğu vb.) daha fazla yer kapladığı cihazlar)
-           giriş öncesi üstteki logo/başlık/banner/"Nasıl Çalışır-SSS"
-           satırını otomatik olarak küçültüp sıkılaştırıyoruz ki "Pi ile
-           Bağlan" kartı ilk ekrana daha kolay sığsın. Inline stilleri
-           ezmek gerektiği için !important kullanılıyor. */
-        @media (max-height:700px){
-            .app-logo{width:74px !important;height:74px !important;margin:2px auto 2px auto !important;}
-            .app-title{font-size:1.15em !important;margin:0 0 1px 0 !important;}
-            #join-web3-banner{padding-top:0 !important;}
-            #join-web3-banner .lock-title-box{padding:4px 8px !important;}
-        }
-        @media (max-height:620px){
-            .app-logo{width:56px !important;height:56px !important;}
-            #join-web3-banner .web3-slogan-box{display:none !important;}
-        }
+        /* YENİ: Sabit "max-height:700px" gibi tahminlere dayalı medya
+           sorguları KALDIRILDI — çünkü hangi cihazda ne kadar sıkıştırma
+           gerektiği piksel tahminiyle değil, sayfanın GERÇEK ölçülen
+           yüksekliğiyle (bkz. aşağıdaki fitLoginHero() JS fonksiyonu)
+           belirleniyor. JS, giriş ekranı görünürken içerik gerçekten
+           viewport'a sığmıyorsa body'ye fit-lvl-1 → fit-lvl-2 → fit-lvl-3
+           sınıflarını sırayla ekleyip her adımda yeniden ölçüyor; sığdığı
+           an durup fazla küçültmüyor. Böylece HEM senin telefonunda
+           (içerik zaten sığıyorsa hiçbir sınıf eklenmez, tasarım aynen
+           kalır) HEM başka bir telefonda (gerçekten taşıyorsa otomatik
+           küçülür) doğru sonuç garanti edilir — sabit piksel tahminine
+           güvenmiyoruz. */
+        body.fit-lvl-1 #secure-icon-wrap{margin-bottom:8px !important;}
+        body.fit-lvl-1 #secure-icon-box{width:60px !important;height:60px !important;}
+        body.fit-lvl-1 #secure-icon-box img{width:48px !important;height:48px !important;}
+        body.fit-lvl-1 .secure-icon-decor{display:none !important;}
+        body.fit-lvl-1 .secure-badge{padding:9px 12px !important;margin:3px 0 !important;}
+        body.fit-lvl-1 .secure-badge-body{font-size:0.72em !important;line-height:1.3 !important;margin-bottom:4px !important;padding-bottom:4px !important;}
+        body.fit-lvl-1 .secure-badge-warning{font-size:0.72em !important;}
+        body.fit-lvl-1 #secure-title-wrap{margin-bottom:4px !important;}
+        body.fit-lvl-1 .app-logo{width:72px !important;height:72px !important;margin:2px auto 2px auto !important;}
+        body.fit-lvl-1 .app-title{font-size:1.15em !important;margin:0 0 1px 0 !important;}
+        body.fit-lvl-1 #join-web3-banner{padding-top:0 !important;}
+        body.fit-lvl-1 #global-connect-bar{padding:4px 2px 2px 2px !important;}
+
+        body.fit-lvl-2 #secure-icon-wrap{margin-bottom:8px !important;}
+        body.fit-lvl-2 #secure-icon-box{width:44px !important;height:44px !important;}
+        body.fit-lvl-2 #secure-icon-box img{width:34px !important;height:34px !important;}
+        body.fit-lvl-2 .secure-icon-decor{display:none !important;}
+        body.fit-lvl-2 .secure-badge{padding:7px 10px !important;margin:2px 0 !important;}
+        body.fit-lvl-2 .secure-badge-body{font-size:0.66em !important;line-height:1.25 !important;margin-bottom:3px !important;padding-bottom:3px !important;}
+        body.fit-lvl-2 .secure-badge-warning{font-size:0.66em !important;}
+        body.fit-lvl-2 #secure-title-wrap{margin-bottom:3px !important;}
+        body.fit-lvl-2 .secure-badge-title{padding:4px 12px !important;font-size:0.85em !important;}
+        body.fit-lvl-2 .app-logo{width:52px !important;height:52px !important;margin:2px auto 0 auto !important;}
+        body.fit-lvl-2 .app-title{font-size:1.05em !important;margin:0 !important;}
+        body.fit-lvl-2 #join-web3-banner{padding-top:0 !important;}
+        body.fit-lvl-2 #join-web3-banner .web3-slogan-box{display:none !important;}
+        body.fit-lvl-2 #quick-links-row{display:none !important;}
+        body.fit-lvl-2 #global-connect-bar{padding:3px 2px 2px 2px !important;}
+        body.fit-lvl-2 #connect-prompt-text{font-size:0.66em !important;margin:0 0 3px 0 !important;}
+        body.fit-lvl-2 #connect-use-btn-text{font-size:0.62em !important;margin-bottom:3px !important;}
+
+        body.fit-lvl-3 #secure-icon-wrap{display:none !important;}
+        body.fit-lvl-3 .secure-badge{padding:6px 9px !important;margin:2px 0 !important;}
+        body.fit-lvl-3 .secure-badge-body{font-size:0.6em !important;line-height:1.2 !important;margin-bottom:2px !important;padding-bottom:2px !important;}
+        body.fit-lvl-3 .secure-badge-warning{font-size:0.58em !important;}
+        body.fit-lvl-3 #secure-title-wrap{margin-bottom:2px !important;}
+        body.fit-lvl-3 .secure-badge-title{padding:3px 10px !important;font-size:0.78em !important;}
+        body.fit-lvl-3 .app-logo{width:40px !important;height:40px !important;margin:2px auto 0 auto !important;}
+        body.fit-lvl-3 .app-title{font-size:0.95em !important;margin:0 !important;}
+        body.fit-lvl-3 #join-web3-banner{padding-top:0 !important;}
+        body.fit-lvl-3 #join-web3-banner .web3-slogan-box{display:none !important;}
+        body.fit-lvl-3 #quick-links-row{display:none !important;}
+        body.fit-lvl-3 #public-stats-bar{display:none !important;}
+        body.fit-lvl-3 #global-connect-bar{padding:2px 2px 2px 2px !important;}
+        body.fit-lvl-3 #connect-prompt-text{font-size:0.6em !important;margin:0 0 2px 0 !important;}
+        body.fit-lvl-3 #connect-use-btn-text{font-size:0.58em !important;margin-bottom:2px !important;}
         /* DÜZENLENDİ: Bu overlay ("Güvenli Bağlantı" kartı) eskiden
            varsayılan olarak GİZLİYDİ (opacity:0/visibility:hidden) ve
            sadece render() fonksiyonu (domain verisi ağdan gelip auth
@@ -2135,7 +2176,7 @@
         <!-- YENİ: "Nasıl Çalışır" ve "SSS" artık aynı satırda, yan yana —
              öncesinde iki ayrı tam-genişlik satır ilk açılışta ekstra yer
              kaplayıp "Panelim" kartını aşağı itiyordu, kaydırma gerektiriyordu. -->
-        <div style="display:flex;gap:8px;padding:5px 8px 0 8px;">
+        <div id="quick-links-row" style="display:flex;gap:8px;padding:5px 8px 0 8px;">
             <button onclick="window.openHowItWorksModal()" style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px;padding:8px 6px;border-radius:11px;border:none;background:linear-gradient(135deg,#6366f1,#818cf8);color:#fff;font-size:0.72em;font-weight:900;cursor:pointer;box-shadow:0 4px 14px rgba(99,102,241,0.4);transition:transform 0.15s;" onmousedown="this.style.transform='scale(0.96)'" onmouseup="this.style.transform='scale(1)'" ontouchstart="this.style.transform='scale(0.96)'" ontouchend="this.style.transform='scale(1)'">📖 <span data-i18n="howItWorksMenuItem"></span></button>
             <button onclick="window.openFaqModal()" style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px;padding:8px 6px;border-radius:11px;border:none;background:linear-gradient(135deg,#14b8a6,#2dd4bf);color:#052e28;font-size:0.72em;font-weight:900;cursor:pointer;box-shadow:0 4px 14px rgba(20,184,166,0.4);transition:transform 0.15s;" onmousedown="this.style.transform='scale(0.96)'" onmouseup="this.style.transform='scale(1)'" ontouchstart="this.style.transform='scale(0.96)'" ontouchend="this.style.transform='scale(1)'">❓ <span data-i18n="faqMenuItem"></span></button>
         </div>
@@ -2942,13 +2983,13 @@
                  kaydırmadan görünmüyor"): ikon ve boşluklar biraz
                  küçültüldü ki kartın TAMAMI (alt çizgisi dahil) kısa
                  ekranlarda bile kaydırmaya gerek kalmadan sığsın. -->
-            <div style="display:flex;justify-content:center;margin-bottom:18px;">
-                <div style="position:relative;width:88px;height:88px;">
+            <div id="secure-icon-wrap" style="display:flex;justify-content:center;margin-bottom:18px;">
+                <div id="secure-icon-box" style="position:relative;width:88px;height:88px;">
                 <!-- Rotating ring effect -->
-                <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:104px;height:104px;border-radius:50%;border:2px solid rgba(59,130,246,0.3);border-top-color:#3b82f6;animation:spin-ring 3s linear infinite;"></div>
-                <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:96px;height:96px;border-radius:50%;border:2px solid rgba(99,102,241,0.2);border-bottom-color:#818cf8;animation:spin-ring 4s linear infinite reverse;"></div>
+                <div class="secure-icon-decor" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:104px;height:104px;border-radius:50%;border:2px solid rgba(59,130,246,0.3);border-top-color:#3b82f6;animation:spin-ring 3s linear infinite;"></div>
+                <div class="secure-icon-decor" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:96px;height:96px;border-radius:50%;border:2px solid rgba(99,102,241,0.2);border-bottom-color:#818cf8;animation:spin-ring 4s linear infinite reverse;"></div>
                 <!-- Pulse glow -->
-                <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:80px;height:80px;border-radius:50%;background:radial-gradient(circle,rgba(59,130,246,0.15) 0%,transparent 70%);animation:icon-pulse-glow 2s ease-in-out infinite;"></div>
+                <div class="secure-icon-decor" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:80px;height:80px;border-radius:50%;background:radial-gradient(circle,rgba(59,130,246,0.15) 0%,transparent 70%);animation:icon-pulse-glow 2s ease-in-out infinite;"></div>
                 <!-- Icon with glow -->
                 <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);animation:shield-pulse 2.5s ease-in-out infinite;filter:drop-shadow(0 0 15px rgba(59,130,246,0.6)) drop-shadow(0 0 30px rgba(99,102,241,0.3));">
                 <img src="assets/secure-shield.webp" fetchpriority="high" style="width:72px;height:72px;object-fit:contain;position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);display:block;filter:drop-shadow(0 0 10px rgba(59,130,246,0.5));" alt="Secure Connection">
@@ -2959,7 +3000,7 @@
      kutusunda (dış karttan ayrı, net görünen bir iç çerçeve) — öncesinde
      hem dış kartın hem bu başlığın çerçevesi çok soluktu (opacity 0.2-0.25),
      koyu arka planla neredeyse hiç fark edilmiyordu. -->
-<div style="display:flex;justify-content:center;margin-bottom:7px;">
+<div id="secure-title-wrap" style="display:flex;justify-content:center;margin-bottom:7px;">
     <div class="secure-badge-title" style="display:inline-block;color:#c7d2fe;font-size:0.95em;font-weight:900;text-shadow:0 0 15px rgba(199,210,254,0.4);letter-spacing:1px;border:1.5px solid rgba(129,140,248,0.55);background:rgba(99,102,241,0.14);border-radius:20px;padding:6px 16px;box-shadow:0 0 14px rgba(99,102,241,0.2);" data-i18n="secureConnection"></div>
 </div>
                 <div class="secure-badge-body" style="color:#e0e7ff;font-size:0.8em;line-height:1.45;margin-bottom:6px;font-weight:600;border-bottom:1px solid rgba(129,140,248,0.35);padding-bottom:7px;word-wrap:break-word;overflow-wrap:break-word;white-space:normal;" data-i18n="testNetBadgeBody"></div>
@@ -2976,8 +3017,8 @@
                  içinde isAuth durumuna göre JS ile kontrol ediliyor. -->
             <div id="global-connect-bar" style="display:none;width:100%;box-sizing:border-box;padding:10px 2px 2px 2px;text-align:center;">
                 <div style="background:linear-gradient(165deg,#1e1b4b 0%,#0f172a 100%);border:2px solid rgba(96,165,250,0.5);border-radius:14px;padding:10px 12px;box-shadow:0 0 16px rgba(59,130,246,0.2);">
-                    <p style="font-size:0.72em;color:#cbd5e1;font-weight:600;line-height:1.4;margin:0 0 6px 0;" data-i18n="connectPrompt"></p>
-                    <div style="color:#fbbf24;font-weight:700;margin-bottom:6px;font-size:0.7em;" data-i18n="useButton"></div>
+                    <p id="connect-prompt-text" style="font-size:0.72em;color:#cbd5e1;font-weight:600;line-height:1.4;margin:0 0 6px 0;" data-i18n="connectPrompt"></p>
+                    <div id="connect-use-btn-text" style="color:#fbbf24;font-weight:700;margin-bottom:6px;font-size:0.7em;" data-i18n="useButton"></div>
                     <button class="pi-btn pi-connect-btn" onclick="window.loginWithPi()" data-i18n="connectWithPi"></button>
                 </div>
             </div>
@@ -9978,6 +10019,7 @@ function render(){
     // güvenceye alıyor.
     const gcb=document.getElementById('global-connect-bar');
     if(gcb) gcb.style.display = isAuth ? 'none' : 'block';
+    if(window.fitLoginHero) requestAnimationFrame(()=>requestAnimationFrame(window.fitLoginHero));
     // GÜVENLİK KATMANI (yukarıdaki performPiConnect düzeltmesinin
     // tamamlayıcısı): Başarılı girişte connectBtn artık normale
     // DÖNDÜRÜLMÜYOR (bilerek — "flaş" bug'ını önlemek için, bkz. o
@@ -10346,6 +10388,102 @@ if(window.ResizeObserver){
         if(lockEl) _lockObserver.observe(lockEl);
     }
 }
+
+// ══════════════════════════════════════════════════════════════════════
+// FIT-TO-SCREEN: "Pi ile Bağlan" ekranının GERÇEKTEN ilk ekrana sığması
+// ══════════════════════════════════════════════════════════════════════
+// SORUN: Sabit piksel değerleri veya "max-height:700px" gibi tahmini
+// medya sorguları, geliştiricinin KENDİ cihazına göre ayarlanınca başka
+// bir cihazda (farklı ekran yüksekliği, farklı tarayıcı arayüzü/adres
+// çubuğu boyutu, farklı yazı tipi ölçeklemesi) yanlış sonuç veriyordu —
+// bir cihazda tam sığarken diğerinde buton ekran dışında kalıyordu.
+//
+// ÇÖZÜM: Piksel tahmini YOK. Bunun yerine, giriş ekranı görünürken
+// gerçek içerik yüksekliği (#premium-lock'un dışarıdan en son çizgisi)
+// ile gerçekten görünen viewport yüksekliği karşılaştırılıyor. Sığmıyorsa
+// body'ye fit-lvl-1 sınıfı eklenip yeniden ölçülüyor; hâlâ sığmıyorsa
+// fit-lvl-2, o da yetmezse fit-lvl-3 uygulanıyor. Sığdığı anda durur —
+// yani bir cihazda içerik zaten sığıyorsa hiçbir küçültme uygulanmaz,
+// tasarım olduğu gibi kalır (kullanıcının "benim telefonumda tam
+// sığıyordu, şimdi kayıyor" şikayetinin tekrarlanmaması için önemli).
+(function(){
+    const FIT_LEVELS=['fit-lvl-1','fit-lvl-2','fit-lvl-3'];
+    let fitRaf=null;
+
+    function currentViewportHeight(){
+        // visualViewport, mobil tarayıcılarda klavye/adres çubuğu
+        // durumuna göre GERÇEK görünür alanı window.innerHeight'tan
+        // daha doğru verir; yoksa innerHeight'e düşülüyor.
+        if(window.visualViewport && window.visualViewport.height) return window.visualViewport.height;
+        return window.innerHeight || document.documentElement.clientHeight || 0;
+    }
+
+    function contentFits(){
+        const lock=document.getElementById('premium-lock');
+        if(!lock) return true;
+        const rect=lock.getBoundingClientRect();
+        // Kilit kartının alt kenarı, görünür alanın altına taşmıyorsa
+        // (küçük bir tolerans payıyla) "sığıyor" kabul ediyoruz.
+        return rect.bottom <= currentViewportHeight() + 2;
+    }
+
+    function applyLevel(idx){
+        FIT_LEVELS.forEach((cls,i)=>{
+            document.body.classList.toggle(cls, i===idx);
+        });
+    }
+
+    function fitLoginHero(){
+        if(typeof isAuth!=='undefined' && isAuth){
+            // Giriş yapılmışsa bu ekran zaten gösterilmiyor —
+            // sıkıştırma sınıflarını kaldırıp normale dön.
+            applyLevel(-1);
+            return;
+        }
+        const lock=document.getElementById('premium-lock');
+        if(!lock || !lock.offsetParent){ return; } // ekranda değilse dokunma
+
+        applyLevel(-1); // önce tam boy ile ölç
+        if(contentFits()) return;
+
+        for(let i=0;i<FIT_LEVELS.length;i++){
+            applyLevel(i);
+            // Tarayıcının stilleri uygulayıp layout'u güncellemesi için
+            // bir sonraki adımda ölçüyoruz (senkron reflow yerine).
+            if(contentFits()) return;
+        }
+        // En agresif seviyede bile sığmazsa (çok kısa bir ekran veya çok
+        // büyük yazı tipi ölçeklemesi), kullanıcı normal şekilde
+        // kaydırarak butona ulaşabilir — bu son çare, veri kaybı ya da
+        // erişilemezlik yaratmaz.
+    }
+    window.fitLoginHero=fitLoginHero;
+
+    function scheduleFit(){
+        if(fitRaf) cancelAnimationFrame(fitRaf);
+        fitRaf=requestAnimationFrame(()=>requestAnimationFrame(fitLoginHero));
+    }
+
+    document.addEventListener('DOMContentLoaded',scheduleFit);
+    window.addEventListener('load',scheduleFit);
+    window.addEventListener('resize',scheduleFit);
+    window.addEventListener('orientationchange',scheduleFit);
+    if(window.visualViewport){
+        window.visualViewport.addEventListener('resize',scheduleFit);
+    }
+    if(document.fonts && document.fonts.ready){ document.fonts.ready.then(scheduleFit); }
+    // Dil değişimi, auth durumu değişimi veya içerik güncellemesi
+    // #premium-lock'un iç metnini/boyutunu değiştirebilir — bunları da
+    // otomatik yakalamak için MutationObserver kullanılıyor.
+    if(window.MutationObserver){
+        const mo=new MutationObserver(scheduleFit);
+        document.addEventListener('DOMContentLoaded',()=>{
+            const lockEl=document.getElementById('premium-lock');
+            if(lockEl) mo.observe(lockEl,{childList:true,subtree:true,characterData:true,attributes:true,attributeFilter:['class','style']});
+        });
+    }
+    if(document.readyState==='complete'||document.readyState==='interactive') scheduleFit();
+})();
 
 // ══════════════════════════════════════════════════════════════════════
 //  WEB PUSH (Tarayıcı Bildirimleri) ──────────────────────────────────────
