@@ -80,7 +80,7 @@
         html { box-sizing: border-box; overflow-x:hidden; }
         html,body{height:100%;}
         body{font-family:'Segoe UI',sans-serif;background:var(--bg);color:var(--text);margin:0;padding:0;width:100%;min-height:100vh;overflow-x:hidden;box-sizing:border-box;line-height:1.25;}
-        .container{max-width:600px;width:100%;min-width:320px;text-align:center;display:flex;flex-direction:column;min-height:100vh;padding:0;gap:2px;box-sizing:border-box;margin-left:auto;margin-right:auto;justify-content:space-between;}
+        .container{max-width:600px;width:100%;min-width:320px;text-align:center;display:flex;flex-direction:column;min-height:100vh;min-height:100dvh;padding:0;gap:2px;box-sizing:border-box;margin-left:auto;margin-right:auto;justify-content:space-between;}
         .card{background:var(--card);padding:5px;border-radius:12px;box-shadow:0 5px 8px -3px rgba(0,0,0,0.3);margin-bottom:3px;position:relative;overflow:visible;box-sizing:border-box;width:100%;min-width:0;max-width:100%;}
         .app-logo{width:130px;height:130px;margin:22px auto 4px auto;display:block;border-radius:50%;box-shadow:0 0 40px rgba(99,102,241,0.9);border:3px solid #818cf8;object-fit:cover;animation:logo-pulse 3s ease-in-out infinite;}
         @keyframes logo-pulse{0%,100%{transform:scale(1);}50%{transform:scale(1.05);}}
@@ -132,7 +132,41 @@
         .badge-legend-item.earned.tier-silver{border-color:rgba(203,213,225,0.85);background:linear-gradient(160deg,#334155 0%,#1e293b 100%);box-shadow:0 0 12px rgba(203,213,225,0.5);}
         .badge-legend-item.earned.tier-gold{border-color:rgba(251,191,36,0.9);background:linear-gradient(160deg,#453309 0%,#1e293b 100%);box-shadow:0 0 14px rgba(251,191,36,0.65);}
         .badge-legend-item.earned.tier-diamond{border-color:rgba(129,140,248,0.9);background:linear-gradient(160deg,#2a2650 0%,#1e293b 100%);box-shadow:0 0 14px rgba(129,140,248,0.65);}
-        .locked-content{filter:blur(8px);opacity:0.45;pointer-events:none;transition:filter 0.3s ease,opacity 0.3s ease;}.premium-lock-overlay.active{opacity:1;visibility:visible;pointer-events:auto;}
+        .locked-content{filter:blur(8px);opacity:0.45;pointer-events:none;transition:filter 0.3s ease,opacity 0.3s ease;}
+        /* FIX (kullanıcı geri bildirimi — "Pi ile Bağlan butonu bazı
+           ekranlarda kaydırmadan görünmüyor"): Kilit ekranı ÖNCEDEN
+           position:absolute + top:0/right:0/bottom:0/left:0 ile
+           #market-card'ın (position:relative, height:auto) İÇİNE
+           "kaplayacak" şekilde konumlandırılıyordu. Mutlak konumlu bir
+           kutunun top+bottom her ikisi de verilip height verilmediğinde
+           gerçek yüksekliğinin nasıl hesaplanacağı, ebeveyninin yüksekliği
+           belirsiz (auto) olduğunda tarayıcıdan tarayıcıya (ve Pi
+           Browser'ın kullandığı WebKit/Chromium sürümüne göre) FARKLI
+           sonuçlar verebiliyordu — bu da "benim ekranımda tam sığıyor,
+           başkasının ekranında buton altta kalıyor" tutarsızlığının asıl
+           kaynağıydı. Çözüm: giriş yapılmamış durumda (.active sınıfı
+           eklendiğinde) kilit kartını normal doküman akışına (position:
+           static) alıyoruz. Böylece #market-card'ın yüksekliği, HER
+           tarayıcıda aynı ve öngörülebilir şekilde, doğrudan bu kartın
+           gerçek içerik yüksekliğinden hesaplanıyor. */
+        .premium-lock-overlay.active{position:static;width:100%;box-sizing:border-box;background:transparent;backdrop-filter:none;opacity:1;visibility:visible;pointer-events:auto;}
+        /* YENİ: Kısa ekranlarda (kullanıcının "başkasının ekranında sığmıyor"
+           dediği durumların büyük çoğunluğu — küçük telefon veya tarayıcı
+           arayüzünün (adres çubuğu vb.) daha fazla yer kapladığı cihazlar)
+           giriş öncesi üstteki logo/başlık/banner/"Nasıl Çalışır-SSS"
+           satırını otomatik olarak küçültüp sıkılaştırıyoruz ki "Pi ile
+           Bağlan" kartı ilk ekrana daha kolay sığsın. Inline stilleri
+           ezmek gerektiği için !important kullanılıyor. */
+        @media (max-height:700px){
+            .app-logo{width:74px !important;height:74px !important;margin:2px auto 2px auto !important;}
+            .app-title{font-size:1.15em !important;margin:0 0 1px 0 !important;}
+            #join-web3-banner{padding-top:0 !important;}
+            #join-web3-banner .lock-title-box{padding:4px 8px !important;}
+        }
+        @media (max-height:620px){
+            .app-logo{width:56px !important;height:56px !important;}
+            #join-web3-banner .web3-slogan-box{display:none !important;}
+        }
         /* DÜZENLENDİ: Bu overlay ("Güvenli Bağlantı" kartı) eskiden
            varsayılan olarak GİZLİYDİ (opacity:0/visibility:hidden) ve
            sadece render() fonksiyonu (domain verisi ağdan gelip auth
@@ -2902,7 +2936,7 @@
             </div>
             </div>
         </div>
-        <div id="premium-lock" class="premium-lock-overlay">
+        <div id="premium-lock" class="premium-lock-overlay active">
             <div class="secure-badge" style="background:linear-gradient(165deg,#0a0f1e 0%,#0f172a 30%,#1e1b4b 50%,#0f172a 70%,#0a0f1e 100%);border:2px solid rgba(129,140,248,0.55);border-radius:16px;padding:14px 16px;box-shadow:0 4px 20px rgba(0,0,0,0.4),0 0 22px rgba(99,102,241,0.25),inset 0 1px 0 rgba(255,255,255,0.05);width:92%;margin:6px 0;backdrop-filter:blur(10px);">
             <!-- DÜZENLENDİ (kullanıcı geri bildirimi — "alt çizgi ekranı
                  kaydırmadan görünmüyor"): ikon ve boşluklar biraz
