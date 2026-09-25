@@ -248,6 +248,20 @@
         .item-title{color:#60a5fa;font-weight:800;width:105px;flex-shrink:0;font-size:0.85em;}
         .item-red-val-small{color:#ef4444;font-weight:900;flex:1;white-space:nowrap;font-size:0.88em;}
         .my-domain-item{background:#0f172a;padding:6px;border-radius:9px;display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;border:1px solid #334155;gap:8px;}
+        /* YENİ: Alıcının satın alma detayında escrow (emanet) sürecinin
+           hangi aşamada olduğunu gösteren adım adım ilerleme çubuğu. */
+        .escrow-progress{display:flex;align-items:flex-start;margin:8px 0;padding:8px 4px;background:rgba(15,23,42,0.5);border:1px solid rgba(148,163,184,0.15);border-radius:10px;}
+        .escrow-step{display:flex;flex-direction:column;align-items:center;flex:0 0 auto;width:56px;text-align:center;}
+        .escrow-step-dot{width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:0.62em;font-weight:900;background:#1e293b;color:#64748b;border:1.5px solid #334155;flex-shrink:0;}
+        .escrow-step-done .escrow-step-dot{background:#10b981;color:#052e21;border-color:#10b981;}
+        .escrow-step-current .escrow-step-dot{background:#f59e0b;color:#452a04;border-color:#f59e0b;box-shadow:0 0 0 3px rgba(245,158,11,0.25);animation:escrow-pulse 1.6s ease-in-out infinite;}
+        @keyframes escrow-pulse{0%,100%{box-shadow:0 0 0 3px rgba(245,158,11,0.25);}50%{box-shadow:0 0 0 5px rgba(245,158,11,0.1);}}
+        .escrow-step-label{font-size:0.56em;color:#64748b;margin-top:3px;line-height:1.2;font-weight:700;}
+        .escrow-step-done .escrow-step-label{color:#6ee7b7;}
+        .escrow-step-current .escrow-step-label{color:#fbbf24;}
+        .escrow-step-line{flex:1 1 auto;height:2px;background:#334155;margin:9px -2px 0 -2px;min-width:6px;}
+        .escrow-step-line-done{background:#10b981;}
+        .escrow-progress-issue{margin:8px 0;padding:8px 10px;background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.4);border-radius:10px;font-size:0.68em;color:#fca5a5;font-weight:800;text-align:center;}
         .verify-btn{background:linear-gradient(135deg,#0ea5e9 0%,#0284c7 100%);color:#ffffff;border:none;padding:4px 8px;border-radius:6px;font-size:0.68em;cursor:pointer;font-weight:800;text-decoration:none;display:inline-flex;align-items:center;gap:5px;white-space:nowrap;flex-shrink:0;animation:verify-btn-glow 2s ease-in-out infinite;}
         @keyframes verify-btn-glow{0%,100%{box-shadow:0 0 0 0 rgba(14,165,233,0.6);transform:scale(1);}50%{box-shadow:0 0 0 6px rgba(14,165,233,0);transform:scale(1.06);}}
         @keyframes report-btn-glow{0%,100%{box-shadow:0 0 0 0 rgba(239,68,68,0.45);}50%{box-shadow:0 0 0 5px rgba(239,68,68,0);}}
@@ -277,6 +291,38 @@
         .side-menu-divider{height:1px;background:rgba(99,102,241,0.2);margin:2px 0;}
         .lang-pill{margin-left:auto;font-size:0.65em;background:rgba(99,102,241,0.3);padding:2px 8px;border-radius:8px;color:#a5b4fc;}
         .lang-option{display:flex;align-items:center;gap:6px;padding:5px 7px;color:#f1f5f9;font-size:0.75em;font-weight:700;cursor:pointer;border-radius:8px;margin:2px 0;border:none;background:transparent;width:100%;box-sizing:border-box;transition:background 0.15s;}
+        /* ══════════════════════════════════════════════════════════════
+           YENİ: AÇIK TEMA (kapsamı bilinçli olarak DAR tutuldu)
+           ══════════════════════════════════════════════════════════════
+           Uygulamanın geneli (kartlar, modallar, ana arka plan) binlerce
+           yerde SABİT koyu-tema renk koduyla yazılmış; bunların tamamını
+           tek seferde, gerçek cihazda görsel test yapmadan değiştirmek
+           yüksek hata riski taşır. Bu yüzden açık tema kasıtlı olarak
+           SADECE yan menüye (side-menu) uygulanıyor — bu panel sayfa
+           yüklendiğinde bir kere yazılıyor (kartlar gibi sürekli yeniden
+           oluşturulmuyor), bu da güvenle kapsamlı şekilde temalamayı
+           mümkün kılıyor. Geri kalan ekranlar bilerek koyu kalıyor. */
+        body.light-theme .side-menu{background:linear-gradient(165deg,#ffffff 0%,#eef1f8 100%);box-shadow:-8px 0 30px rgba(30,41,59,0.18);}
+        body.light-theme .side-menu-header > div{color:#312e81 !important;}
+        body.light-theme .side-menu-close{background:rgba(99,102,241,0.12);border-color:#6366f1;color:#4338ca;}
+        body.light-theme .side-menu-item{color:#1e293b;}
+        body.light-theme .side-menu-item:hover,body.light-theme .side-menu-item:active{background:rgba(99,102,241,0.08);}
+        body.light-theme .side-menu-item span:not([style*="color"]){color:#1e293b;}
+        body.light-theme .side-menu-section-label{color:#3730a3;text-shadow:none;background:linear-gradient(90deg,rgba(99,102,241,0.14) 0%,rgba(99,102,241,0.04) 85%,transparent 100%);}
+        body.light-theme .side-menu-divider{background:rgba(99,102,241,0.18);}
+        body.light-theme .lang-option{color:#1e293b;}
+        body.light-theme .lang-option:hover{background:rgba(99,102,241,0.08);}
+        body.light-theme .lang-pill{background:rgba(99,102,241,0.14);color:#4338ca;}
+        body.light-theme .side-menu-footer{border-top-color:rgba(99,102,241,0.18);}
+        body.light-theme #side-menu-username{color:#1e293b !important;}
+        body.light-theme .side-menu-mini-stat{background:#eef1f8 !important;}
+        body.light-theme #side-menu-profile-box{background:rgba(99,102,241,0.08) !important;}
+        /* Menüdeki tema anahtarı (toggle) düğmesi */
+        .theme-toggle-row{display:flex;align-items:center;justify-content:space-between;padding:6px 8px;margin-bottom:2px;}
+        .theme-toggle-switch{position:relative;width:40px;height:22px;border-radius:11px;background:rgba(148,163,184,0.35);border:1px solid rgba(148,163,184,0.5);cursor:pointer;flex-shrink:0;transition:background 0.2s;}
+        .theme-toggle-switch::after{content:'';position:absolute;top:1.5px;left:1.5px;width:17px;height:17px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,0.4);transition:transform 0.2s;}
+        body.light-theme .theme-toggle-switch{background:#6366f1;border-color:#6366f1;}
+        body.light-theme .theme-toggle-switch::after{transform:translateX(18px);}
         .lang-option:hover,.lang-option.active{background:rgba(99,102,241,0.2);}
         .lang-option.active{color:#a5b4fc;}
         .admin-tabs{display:grid;grid-template-columns:repeat(3,1fr);gap:5px;margin-top:18px;margin-bottom:8px;padding-top:14px;padding-bottom:3px;width:100%;box-sizing:border-box;border-top:1px dashed rgba(99,102,241,0.3);}
@@ -1366,11 +1412,11 @@
             </div>
         </div>
         <div style="display:flex;gap:8px;">
-            <div style="flex:1;background:#0f172a;border-radius:8px;padding:6px;text-align:center;">
+            <div class="side-menu-mini-stat" style="flex:1;background:#0f172a;border-radius:8px;padding:6px;text-align:center;">
                 <div style="font-size:0.6em;color:#94a3b8;" data-i18n="purchasedDomain"></div>
                 <div id="side-menu-domain-count" style="font-size:1.1em;font-weight:900;color:#fbbf24;">0</div>
             </div>
-            <div style="flex:1;background:#0f172a;border-radius:8px;padding:6px;text-align:center;">
+            <div class="side-menu-mini-stat" style="flex:1;background:#0f172a;border-radius:8px;padding:6px;text-align:center;">
                 <div style="font-size:0.6em;color:#94a3b8;" data-i18n="firstLogin"></div>
                 <div id="side-menu-first-seen" style="font-size:0.75em;font-weight:800;color:#a5b4fc;margin-top:3px;">—</div>
             </div>
@@ -1420,6 +1466,13 @@
     <div id="lang-picker" style="display:none;padding:4px 0 4px 16px;text-align:left;">
         <button class="lang-option" id="lang-btn-tr" onclick="setLang('tr')">🇹🇷 Türkçe</button>
         <button class="lang-option" id="lang-btn-en" onclick="setLang('en')">🇬🇧 English</button>
+    </div>
+    <!-- YENİ: Açık/Koyu tema anahtarı — kapsamı BİLİNÇLİ olarak sadece bu
+         menü panelinin kendisiyle sınırlı (bkz. yukarıdaki CSS açıklaması).
+         Uygulamanın geri kalanı (kartlar, modallar, ana arka plan) etkilenmez. -->
+    <div class="theme-toggle-row">
+        <span style="display:flex;align-items:center;gap:8px;color:#e2e8f0;font-weight:700;font-size:0.82em;" id="theme-toggle-label">🌙 <span data-i18n="menuThemeLabel"></span></span>
+        <div class="theme-toggle-switch" id="theme-toggle-switch" onclick="window.toggleAppTheme()" role="button" aria-label="Tema değiştir"></div>
     </div>
     <div class="side-menu-divider"></div>
     <div class="side-menu-section-label" data-i18n="whatsNewSection"></div>
@@ -3488,7 +3541,7 @@ window.openPreBuyModal=function(domainName, price){
 
 const i18n = {
   tr: {
-    menu:"Menü",account:"Hesap",preferences:"Tercihler",connected:"Bağlı",
+    menu:"Menü",account:"Hesap",preferences:"Tercihler",connected:"Bağlı",menuThemeLabel:"Menü Teması",
     purchasedDomain:"ALINAN DOMAIN",firstLogin:"İLK GİRİŞ",
     profileSettings:"Profil Ayarları",myPanel:"Panelim",sellMyDomain:"Domainimi Satışa Çıkar",
     languageOptions:"Dil Seçenekleri",logout:"Çıkış Yap",connectWithPi:"<span style='display:inline-flex;align-items:center;gap:10px;'><span style='display:inline-block;animation:logo-pulse 1.5s ease-in-out infinite;font-size:1.3em;'>π</span><span style='font-size:1.05em;'>Pi ile Bağlan</span></span>",
@@ -3743,6 +3796,8 @@ const i18n = {
     clearAllNotifsError:"Bağlantı hatası, lütfen tekrar deneyin.",
     verify:"🔍 DOĞRULA",verifyLocked:"🔒 DOĞRULA",buyNow:"SATIN AL",sold:"SATILDI",
     soldPendingConfirmation:"SATILDI - ONAY AŞAMASINDA",
+    escrowStepPayment:"Ödeme Alındı",escrowStepPending:"Emanette",escrowStepConfirmed:"Devir Onaylandı",escrowStepReleased:"Tamamlandı",
+    escrowRefundedLabel:"Ödeme alıcıya iade edildi.",escrowRefundProcessingLabel:"İade işlemi sürüyor…",escrowIssueLabel:"Ödemede bir sorun oluştu, ekibimiz inceliyor.",
     hideBtn:"🙈 Gizle",unhideBtn:"👁 Satışa Çıkar",hiddenTag:"Gizli",hideToggleFail:"İşlem başarısız: ",
     filterPasif:"🔒 Pasife Alınmış",
     finalizedSaleTag:"Ödemesi Onaylandı - Satıştan Kaldırıldı",
@@ -3915,6 +3970,8 @@ const i18n = {
     deleteListingBtn:"🗑️ İlanı Sil",editResubmitBtn:"✏️ Düzenle & Yeniden Gönder",withdrawRequestBtn:"🚫 İlanı Geri Çek",rejectReasonLabel:"Red Sebebi",
     domainOnSale:"Satışta",domainSold:"Satıldı",sellerLabel:"Satıcı:",descriptionEmpty:"Açıklama girilmemiş.",
     boostedTag:"Öne Çıkan",
+    newListingTag:"Yeni",
+    popularListingTag:"İlgi Görüyor",
     listingStatsLabel:"İlgi",
     watchAdBoostBtn:"Reklam İzle, 24 Saat Öne Çıkar",
     watchAdBoostAlreadyBoosted:"Bu ilan zaten öne çıkarılmış durumda.",
@@ -4458,7 +4515,7 @@ const i18n = {
     emailRemoved:"E-posta kaldırıldı.",
   },
   en: {
-    menu:"Menu",account:"Account",preferences:"Preferences",connected:"Connected",
+    menu:"Menu",account:"Account",preferences:"Preferences",connected:"Connected",menuThemeLabel:"Menu Theme",
     purchasedDomain:"OWNED DOMAINS",firstLogin:"FIRST LOGIN",
     profileSettings:"Profile Settings",myPanel:"My Panel",sellMyDomain:"List My Domain for Sale",
     languageOptions:"Language Options",logout:"Sign Out",connectWithPi:"<span style='display:inline-flex;align-items:center;gap:10px;'><span style='display:inline-block;animation:logo-pulse 1.5s ease-in-out infinite;font-size:1.3em;'>π</span><span style='font-size:1.05em;'>Connect with Pi</span></span>",
@@ -4709,6 +4766,8 @@ const i18n = {
     clearAllNotifsError:"Connection error, please try again.",
     verify:"🔍 VERIFY",verifyLocked:"🔒 VERIFY",buyNow:"BUY NOW",sold:"SOLD",
     soldPendingConfirmation:"SOLD - PENDING CONFIRMATION",
+    escrowStepPayment:"Payment Received",escrowStepPending:"In Escrow",escrowStepConfirmed:"Transfer Confirmed",escrowStepReleased:"Completed",
+    escrowRefundedLabel:"Payment was refunded to the buyer.",escrowRefundProcessingLabel:"Refund in progress…",escrowIssueLabel:"There was an issue with the payment — our team is reviewing it.",
     hideBtn:"🙈 Hide",unhideBtn:"👁 List for Sale",hiddenTag:"Hidden",hideToggleFail:"Action failed: ",
     filterPasif:"🔒 Deactivated",
     finalizedSaleTag:"Payment Confirmed - Removed from Sale",
@@ -4878,6 +4937,8 @@ const i18n = {
     deleteListingBtn:"🗑️ Delete Listing",editResubmitBtn:"✏️ Edit & Resubmit",withdrawRequestBtn:"🚫 Withdraw Request",rejectReasonLabel:"Reject Reason",
     domainOnSale:"On Sale",domainSold:"Sold",sellerLabel:"Seller:",descriptionEmpty:"No description provided.",
     boostedTag:"Featured",
+    newListingTag:"New",
+    popularListingTag:"Trending",
     listingStatsLabel:"Interest",
     watchAdBoostBtn:"Watch Ad, Feature for 24h",
     watchAdBoostAlreadyBoosted:"This listing is already featured.",
@@ -5432,6 +5493,26 @@ function applyTranslations() {
 window.setLang=function(lang){ currentLang=lang; localStorage.setItem('w3dg_lang',lang); applyTranslations(); debouncedRender(); if(typeof adminTickets!=='undefined'&&adminTickets.length) renderAdminTicketList(); if(typeof myTickets!=='undefined'&&myTickets.length) renderTicketList(); document.getElementById('lang-picker').style.display='none'; };
 // STATE
 let currentUser=null,piAccessToken=null,isAuth=false;
+
+// YENİ: Yan menü açık/koyu tema tercihi. Kapsamı sadece yan menüyle
+// sınırlı (bkz. ilgili CSS açıklaması) — sayfa yüklendiğinde önceki
+// tercih localStorage'dan geri yükleniyor.
+function applyMenuThemePreference(){
+    const isLight=localStorage.getItem('w3dg_menu_theme')==='light';
+    document.body.classList.toggle('light-theme', isLight);
+    const label=document.getElementById('theme-toggle-label');
+    if(label){
+        const span=label.querySelector('span[data-i18n]');
+        label.firstChild.textContent = isLight ? '☀️ ' : '🌙 ';
+    }
+}
+window.toggleAppTheme=function(){
+    const isLight=!document.body.classList.contains('light-theme');
+    localStorage.setItem('w3dg_menu_theme', isLight?'light':'dark');
+    applyMenuThemePreference();
+};
+document.addEventListener('DOMContentLoaded', applyMenuThemePreference);
+if(document.readyState==='complete'||document.readyState==='interactive') applyMenuThemePreference();
 let currentDetailDomainName=null; // YENİ: İlan şikayet formu için
 // YENİ: Referral (davet) sistemi — URL'de ?ref=kullaniciadi varsa yakala.
 // Sadece bu değişkende tutuluyor, girişte sync_user_uid çağrısına
@@ -5959,7 +6040,7 @@ window.setSaleStatusFilter=function(val){
 
 // ── Arama + Favoriler ────────────────────────────────────────────────────
 let domainSearchQuery='';
-let showOnlyFavorites=false;
+let showOnlyFavorites=localStorage.getItem('w3dg_only_favorites')==='1';
 // YENİ: Fiyata/tarihe göre sıralama. Öncesinde sıralama sabitti (sadece
 // en yeni eklenen en üstte) — domain sayısı arttıkça "en ucuzu bulmak"
 // gibi basit bir ihtiyaç bile imkansızdı. localStorage'da saklanıyor ki
@@ -5976,8 +6057,11 @@ window.onDomainSearchInput=function(val){
     clearTimeout(domainSearchDebounceTimer);
     domainSearchDebounceTimer=setTimeout(()=>{ domainSearchQuery=val.trim().toLowerCase(); debouncedRender(); },200);
 };
-// YENİ: Fiyat aralığı filtresi.
-let priceMinFilter=null, priceMaxFilter=null;
+// YENİ: Fiyat aralığı filtresi. Kullanıcı deneyimini iyileştirmek için
+// (her ziyarette aynı aralığı yeniden yazmak zorunda kalmasın diye)
+// localStorage'da saklanıp sayfa yüklendiğinde geri yükleniyor.
+let priceMinFilter=(function(){const v=localStorage.getItem('w3dg_price_min'); return v!==null&&v!==''&&!isNaN(v)?Number(v):null;})();
+let priceMaxFilter=(function(){const v=localStorage.getItem('w3dg_price_max'); return v!==null&&v!==''&&!isNaN(v)?Number(v):null;})();
 let priceRangeDebounceTimer=null;
 window.onPriceRangeInput=function(){
     clearTimeout(priceRangeDebounceTimer);
@@ -5986,6 +6070,8 @@ window.onPriceRangeInput=function(){
         const maxVal=document.getElementById('price-max-input').value;
         priceMinFilter = minVal!==''&&!isNaN(minVal) ? Number(minVal) : null;
         priceMaxFilter = maxVal!==''&&!isNaN(maxVal) ? Number(maxVal) : null;
+        priceMinFilter!==null ? localStorage.setItem('w3dg_price_min',String(priceMinFilter)) : localStorage.removeItem('w3dg_price_min');
+        priceMaxFilter!==null ? localStorage.setItem('w3dg_price_max',String(priceMaxFilter)) : localStorage.removeItem('w3dg_price_max');
         debouncedRender();
     },250);
 };
@@ -6133,6 +6219,7 @@ function updateAdvancedFiltersActiveDot(){
 }
 window.toggleFavoritesFilter=function(){
     showOnlyFavorites=!showOnlyFavorites;
+    localStorage.setItem('w3dg_only_favorites', showOnlyFavorites?'1':'0');
     const btn=document.getElementById('favorites-filter-toggle');
     if(btn){
         btn.textContent = showOnlyFavorites ? '★' : '☆';
@@ -6266,6 +6353,21 @@ function syncCategoryFilterCheckboxes(){
     updateCategoryFilterLabel();
     const statusSel=document.getElementById('sale-status-filter-select');
     if(statusSel&&statusSel.value!==saleStatusFilter) statusSel.value=saleStatusFilter;
+    // YENİ: Fiyat aralığı ve "sadece favoriler" tercihleri de sayfa
+    // yeniden yüklendiğinde (veya render() her çalıştığında) hafızadaki
+    // değerle senkron kalsın — kullanıcı bu inputlara elle bir şey
+    // yazmamışsa (input henüz odaklanmadıysa) değeri buradan yansıtıyoruz.
+    const minEl=document.getElementById('price-min-input');
+    const maxEl=document.getElementById('price-max-input');
+    if(minEl && document.activeElement!==minEl && minEl.value===''&&priceMinFilter!==null) minEl.value=priceMinFilter;
+    if(maxEl && document.activeElement!==maxEl && maxEl.value===''&&priceMaxFilter!==null) maxEl.value=priceMaxFilter;
+    const favBtn=document.getElementById('favorites-filter-toggle');
+    if(favBtn && favBtn.dataset.synced!=='1'){
+        favBtn.textContent = showOnlyFavorites ? '★' : '☆';
+        favBtn.style.background = showOnlyFavorites ? 'rgba(245,158,11,0.9)' : 'rgba(245,158,11,0.1)';
+        favBtn.style.color = showOnlyFavorites ? '#1e1b4b' : '#fbbf24';
+        favBtn.dataset.synced='1';
+    }
 }
 
 // GÖRSEL SEÇME
@@ -9606,6 +9708,36 @@ function renderEvidenceThumbsHtml(urls){
     ).join('')}</div>`;
 }
 
+// YENİ: Alıcının satın alma detayında escrow (emanet) sürecinin GERÇEK
+// durumuna (payoutStatus + buyerConfirmed/sellerConfirmed) göre adım adım
+// bir ilerleme çubuğu üretir. Sadece gerçek bir satıcı olduğunda (escrow
+// gerektiren satışlarda) gösterilir — sistem tarafından anında tamamlanan
+// satışlarda (sellerUsername yok) gereksizdir. Ödeme başarısız/iade
+// durumlarında normal ilerleme yerine ayrı bir uyarı gösterilir, çünkü bu
+// durumlarda süreç "ileri" gitmiyor, ayrı bir müdahale gerektiriyor.
+function buildEscrowProgressHtml(data){
+    if(!data || !data.sellerUsername) return '';
+    const ps=data.payoutStatus;
+    if(ps==='refunded') return `<div class="escrow-progress-issue">↩️ ${t('escrowRefundedLabel')}</div>`;
+    if(ps==='refund_processing') return `<div class="escrow-progress-issue">↩️ ${t('escrowRefundProcessingLabel')}</div>`;
+    if(ps==='refund_failed'||ps==='failed') return `<div class="escrow-progress-issue">⚠️ ${t('escrowIssueLabel')}</div>`;
+
+    const bothConfirmed=data.buyerConfirmed===true && data.sellerConfirmed===true;
+    let step=1; // 0:ödeme alındı 1:emanette/onay bekleniyor 2:onaylandı/işleniyor 3:tamamlandı
+    if(ps==='released') step=3;
+    else if(bothConfirmed || ps==='processing') step=2;
+
+    const labels=[t('escrowStepPayment'),t('escrowStepPending'),t('escrowStepConfirmed'),t('escrowStepReleased')];
+    let html='<div class="escrow-progress">';
+    labels.forEach((label,i)=>{
+        const state = i<step ? 'done' : (i===step ? 'current' : 'upcoming');
+        html+=`<div class="escrow-step escrow-step-${state}"><div class="escrow-step-dot">${i<step?'✓':(i+1)}</div><div class="escrow-step-label">${label}</div></div>`;
+        if(i<labels.length-1) html+=`<div class="escrow-step-line ${i<step?'escrow-step-line-done':''}"></div>`;
+    });
+    html+='</div>';
+    return html;
+}
+
 // USER PANEL RENDER
 function renderUserPanel(){
     if(!isAuth) return;
@@ -9689,6 +9821,7 @@ function renderUserPanel(){
                         <div style="display:flex;gap:6px;align-items:baseline;"><span style="color:#64748b;flex-shrink:0;font-weight:700;min-width:90px;">👤 ${t('detailFieldSellerUser')}:</span><span style="color:#94a3b8;">${data.sellerUsername?'@'+data.sellerUsername:t('systemSellerLabel')}</span></div>
                         <div style="display:flex;gap:6px;align-items:baseline;word-break:break-all;"><span style="color:#64748b;flex-shrink:0;font-weight:700;min-width:90px;">🧾 ${t('detailFieldTxid')}:</span><span style="color:#94a3b8;font-size:0.9em;">${data.txid||'—'}</span></div>
                     </div>
+                    ${buildEscrowProgressHtml(data)}
                     ${confirmHtml}
                     ${ratingHtml}
                     <button onclick="window.printReceipt('${d.name}')" style="margin-top:8px;padding:6px 10px;border-radius:8px;border:1px solid #6366f1;background:rgba(99,102,241,0.08);color:#a5b4fc;font-size:0.68em;font-weight:800;cursor:pointer;">🧾 ${t('downloadReceiptBtn')}</button>
@@ -10205,10 +10338,15 @@ function render(){
         // öne çıkarabiliyor (bkz. handleWatchAdForBoost) — bu rozet o süre
         // boyunca kartta görünür.
         const boostTag=(data.boostedUntil&&data.boostedUntil>Date.now()&&!data.sold)?`<span class="domain-type-tag" style="background:linear-gradient(135deg,#f59e0b,#ea580c);color:#fff;">🔥 ${t('boostedTag')}</span>`:'';
+        // YENİ: "Yeni" rozeti — sadece satışta, gizli olmayan, zaten "Öne
+        // Çıkan" (boost) rozeti taşımayan ve son 3 gün içinde eklenmiş
+        // kartlarda gösteriliyor (kalabalık olmasın diye tek rozet).
+        const newTag=(!data.sold && !data.hidden && !boostTag && data.createdAt && (Date.now()-data.createdAt)<=3*24*60*60*1000)
+            ?`<span class="domain-type-tag" style="background:rgba(52,211,153,0.18);color:#6ee7b7;border:1px solid rgba(52,211,153,0.4);">🆕 ${t('newListingTag')}</span>`:'';
         const imgSrc=data.img||d.img;
         const favBtn=isAuth?`<button onclick="window.toggleFavorite('${d.name}',event)" aria-label="${userFavorites.has(d.name)?'Favorilerden çıkar':'Favorilere ekle'}" style="position:absolute;top:6px;right:6px;z-index:3;width:26px;height:26px;border-radius:50%;border:none;background:rgba(15,23,42,0.7);color:${userFavorites.has(d.name)?'#fbbf24':'#94a3b8'};font-size:0.95em;display:flex;align-items:center;justify-content:center;cursor:pointer;backdrop-filter:blur(4px);">${userFavorites.has(d.name)?'★':'☆'}</button>`:'';
         card.style.position='relative';
-        card.innerHTML=`${favBtn}<img src="${imgSrc}" class="domain-img" onerror="this.src='data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMDAiIGhlaWdodD0iMTAwIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjNDc1NTY5Ii8+PC9zdmc+'">${boostTag}${tTag}${hiddenTag}<div class="domain-name">${d.name} <span style="color:#fbbf24;font-weight:800;">(${data.price} π)</span></div><div class="domain-price">${data.price} PI</div>${usdEstimateHtml(data.price)}<div class="card-tap-hint">👆 ${t('tapForDetailHint')}</div>`;
+        card.innerHTML=`${favBtn}<img src="${imgSrc}" class="domain-img" onerror="this.src='data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMDAiIGhlaWdodD0iMTAwIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjNDc1NTY5Ii8+PC9zdmc+'">${boostTag}${newTag}${tTag}${hiddenTag}<div class="domain-name">${d.name} <span style="color:#fbbf24;font-weight:800;">(${data.price} π)</span></div><div class="domain-price">${data.price} PI</div>${usdEstimateHtml(data.price)}<div class="card-tap-hint">👆 ${t('tapForDetailHint')}</div>`;
 
         if(data.sold){
             // Satıcılı bir satışta, escrow ödemesi admin tarafından serbest
