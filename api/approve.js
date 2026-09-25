@@ -241,7 +241,7 @@ async function notifyFavoriters(db, domainName, { excludeUsername, type, title, 
 // 'save_search' action'ı) tam koleksiyon taraması burada kabul edilebilir
 // bir maliyet — recompute_all_ratings ve reconcile gibi diğer admin
 // işlemleri de aynı şekilde tam tarama yapıyor.
-async function notifySavedSearches(db, domainName, domainData) {
+async function notifySavedSearches(db, domainName, domainData, reason = 'new_listing') {
   try {
     const snap = await db.collection('saved_searches').get();
     if (snap.empty) return;
@@ -259,10 +259,17 @@ async function notifySavedSearches(db, domainName, domainData) {
         if (!nameLower.includes(kw) && !descLower.includes(kw)) continue;
       }
       notifiedUsernames.add(s.username);
+      // YENİ: Bildirimi tetikleyen neden yeni bir ilan mı yoksa mevcut bir
+      // domainin fiyat düşüşü mü olduğuna göre başlık/metin ayrılıyor —
+      // aksi halde fiyatı düşen ESKİ bir domain için yanlışlıkla "yeni
+      // domain eklendi" mesajı gönderilirdi.
+      const isPriceDrop = reason === 'price_drop';
       await sendNotification(s.username, {
         type: 'saved_search_match',
-        title: '🔎 Kayıtlı Aramanıza Uygun Yeni Domain!',
-        body: `"${domainName}" domaini kayıtlı arama kriterlerinize uyuyor (${domainData.price} Pi).`,
+        title: isPriceDrop ? '📉 Kayıtlı Aramanıza Uygun Fiyat Düşüşü!' : '🔎 Kayıtlı Aramanıza Uygun Yeni Domain!',
+        body: isPriceDrop
+          ? `"${domainName}" domaininin fiyatı kayıtlı arama kriterinize uyacak şekilde ${domainData.price} Pi'ye düştü.`
+          : `"${domainName}" domaini kayıtlı arama kriterlerinize uyuyor (${domainData.price} Pi).`,
         domainName
       });
     }
@@ -753,7 +760,8 @@ const NOTIF_CATEGORY_MAP = {
     'refund_needs_login', 'purchase_reversed', 'referral_bonus', 'new_sell_request',
     'sell_request_approved', 'sell_request_rejected'],
   offers: ['offer_received', 'offer_accepted', 'offer_rejected', 'offer_countered',
-    'counter_offer_accepted', 'counter_offer_rejected'],
+    'counter_offer_accepted', 'counter_offer_rejected',
+    'auction_outbid', 'auction_won', 'auction_won_seller', 'auction_cancelled'],
   tickets: ['ticket_created', 'ticket_message', 'ticket_admin_reply', 'ticket_status_update', 'ticket_deleted'],
   favorites: ['favorite_price_changed', 'favorite_relisted', 'saved_search_match', 'domain_relisted', 'rating_reminder'],
   messages: ['new_message'],
@@ -1612,9 +1620,254 @@ async function handlerImpl(req, res) {
           title: `${priceNum < oldPrice ? '🎉' : 'ℹ️'} Favori Domaininizin Fiyatı ${priceNum < oldPrice ? 'Düştü' : 'Değişti'}`,
           body: `Favorilediğiniz "${dName}" domaininin fiyatı ${oldPrice} Pi'den ${priceNum} Pi'ye ${direction}.`
         });
+        // YENİ (fiyat düşüş alarmı): notifySavedSearches öncesinde SADECE
+        // yeni bir domain markete eklendiğinde çağrılıyordu — mevcut bir
+        // domainin fiyatı düşüp bir kullanıcının "azami fiyat" kriteriyle
+        // YENİDEN eşleştiği an hiç kontrol edilmiyordu. Fiyat artışında
+        // (sadece azami fiyat kriteri yeniden karşılanabileceğinden)
+        // tetiklemeye gerek yok, bu yüzden sadece düşüşte çağrılıyor.
+        // notifyFavoriters'tan zaten bildirim alan kullanıcılar burada
+        // TEKRAR bildirim alabilir (biri "favorilemiş", diğeri "arama
+        // kaydetmiş" olabilir) — bu iki ayrı, kasıtlı abonelik türü
+        // olduğu için kabul edilebilir bir durum.
+        if (priceNum < oldPrice) {
+          const dd = domainSnap.data();
+          await notifySavedSearches(db, dName, {
+            type: dd.type || 'genel',
+            price: priceNum,
+            description: dd.description || '',
+            sellerUsername: dd.sellerUsername || null
+          }, 'price_drop').catch(() => {});
+        }
       }
       return res.status(200).json({ success: true });
     } catch (e) {
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  // ══════════════════════════════════════════════════════════════════════
+  //  AÇIK ARTIRMA (Auction) — YENİ
+  //  Tasarım kararı: Teklifler (bid) sadece birer SAYISAL TAAHHÜTTÜR, tıpkı
+  //  mevcut "Teklif Ver" (submit_offer) mekanizmasında olduğu gibi — teklif
+  //  verme anında GERÇEK Pi ödemesi yapılmaz. Açık artırma bittiğinde en
+  //  yüksek teklifi veren kişi, respond_offer'ın "kabul et" dalıyla BİREBİR
+  //  AYNI rezervasyon desenini (reservedFor/reservedUntil) kullanarak
+  //  domaini kendine ayırır; gerçek ödeme hâlâ mevcut, test edilmiş,
+  //  escrow'lu satın alma akışı üzerinden yürür. Böylece yeni bir ödeme/
+  //  iade kodu YAZILMASINA gerek kalmadı — para hareketi zaten
+  //  sağlamlaştırılmış tek bir hatta akıyor.
+  //  Bu projede zamanlanmış görev (cron) yok (bkz. notifySavedSearches
+  //  yorumu). Süre dolumu bu yüzden "tembel" (lazy) kontrol ediliyor: bitiş
+  //  zamanı geçmiş bir açık artırmayı kimse otomatik kapatmaz; en yüksek
+  //  teklifi veren kişi 'claim_auction_win' çağırdığında sunucu zamanı
+  //  yeniden doğrular.
+  // ══════════════════════════════════════════════════════════════════════
+
+  if (action === 'start_auction') {
+    const { domainName, startPrice, minIncrement, durationHours } = req.body;
+    const isAdmin = await verifyAdmin(accessToken, req);
+    if (!isAdmin) return res.status(403).json({ error: "Yetki yok" });
+    const startNum = Number(startPrice);
+    const incNum = Number(minIncrement);
+    const hoursNum = Number(durationHours);
+    if (!domainName || !Number.isFinite(startNum) || startNum <= 0)
+      return res.status(400).json({ error: "Geçersiz başlangıç fiyatı" });
+    if (!Number.isFinite(incNum) || incNum <= 0)
+      return res.status(400).json({ error: "Geçersiz minimum artış tutarı" });
+    if (!Number.isFinite(hoursNum) || hoursNum <= 0 || hoursNum > 168)
+      return res.status(400).json({ error: "Süre 1-168 saat arasında olmalı" });
+    try {
+      const db = getDb();
+      const domainRef = db.collection('domains').doc(domainName);
+      const domainSnap = await domainRef.get();
+      if (!domainSnap.exists) return res.status(404).json({ error: "Domain bulunamadı" });
+      const data = domainSnap.data();
+      if (data.sold === true) return res.status(400).json({ error: "Satılmış domain için açık artırma başlatılamaz" });
+      if (data.auctionActive === true) return res.status(400).json({ error: "Bu domain için zaten aktif bir açık artırma var" });
+      if (data.reservedFor && data.reservedUntil && data.reservedUntil > Date.now())
+        return res.status(400).json({ error: "Bu domain şu anda bir alıcı için rezerve — açık artırma başlatılamaz" });
+      const auctionEndsAt = Date.now() + hoursNum * 3600 * 1000;
+      await domainRef.set({
+        auctionActive: true,
+        auctionStartPrice: startNum,
+        auctionMinIncrement: incNum,
+        auctionHighestBid: null,
+        auctionHighestBidder: null,
+        auctionBidCount: 0,
+        auctionEndsAt,
+        auctionStartedAt: Date.now(),
+        price: startNum
+      }, { merge: true });
+      // YENİ (açık artırma bütünlüğü): Bu domain için önceden var olan,
+      // henüz yanıtlanmamış teklifleri geçersiz kılıyoruz — aksi halde
+      // satıcı/admin açık artırma sürerken eski bir teklifi kabul edip
+      // (respond_offer) reservedFor'ı ayarlayarak açık artırmayı
+      // bypass edebilirdi.
+      const staleOffers = await db.collection('offers').where('domainName', '==', domainName).get();
+      const offerBatch = db.batch();
+      staleOffers.forEach(d => {
+        const s = d.data().status;
+        if (s === 'pending' || s === 'countered') offerBatch.set(d.ref, { status: 'expired', respondedAt: Date.now() }, { merge: true });
+      });
+      await offerBatch.commit();
+      const adminUsername = await getRealUsername(accessToken);
+      await logAdminAction(adminUsername, 'start_auction', `${domainName}: başlangıç ${startNum} Pi, min artış ${incNum} Pi, ${hoursNum} saat`);
+      return res.status(200).json({ success: true, auctionEndsAt });
+    } catch (e) {
+      console.error("start_auction hatası:", e);
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  if (action === 'cancel_auction') {
+    const { domainName } = req.body;
+    const isAdmin = await verifyAdmin(accessToken, req);
+    if (!isAdmin) return res.status(403).json({ error: "Yetki yok" });
+    if (!domainName) return res.status(400).json({ error: "Geçersiz domain adı" });
+    try {
+      const db = getDb();
+      const domainRef = db.collection('domains').doc(domainName);
+      const domainSnap = await domainRef.get();
+      if (!domainSnap.exists) return res.status(404).json({ error: "Domain bulunamadı" });
+      const data = domainSnap.data();
+      if (data.auctionActive !== true) return res.status(400).json({ error: "Bu domain için aktif bir açık artırma yok" });
+      const highestBidder = data.auctionHighestBidder;
+      await domainRef.set({
+        auctionActive: false,
+        auctionEndsAt: null,
+        price: data.auctionStartPrice || data.price
+      }, { merge: true });
+      // Hiçbir aşamada gerçek Pi tahsil edilmediği için (bkz. yukarıdaki
+      // tasarım notu) iptalde İADE gerekmiyor — sadece bilgilendirme.
+      if (highestBidder) {
+        await sendNotification(highestBidder, {
+          type: 'auction_cancelled',
+          role: 'buyer',
+          title: '⚠️ Açık Artırma İptal Edildi',
+          body: `"${domainName}" için açık artırma satıcı tarafından iptal edildi. Herhangi bir ödeme alınmadığı için iade gerekmiyor.`,
+          domainName
+        });
+      }
+      const adminUsername = await getRealUsername(accessToken);
+      await logAdminAction(adminUsername, 'cancel_auction', `${domainName}`);
+      return res.status(200).json({ success: true });
+    } catch (e) {
+      console.error("cancel_auction hatası:", e);
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  if (action === 'place_auction_bid') {
+    const { domainName, bidAmount } = req.body;
+    const realUsername = await getRealUsername(accessToken);
+    if (!realUsername) return res.status(403).json({ error: "Geçersiz oturum" });
+    if (!await checkRateLimit(clientIp, 'place_auction_bid', 20, 60000))
+      return res.status(429).json({ error: "Çok fazla teklif verdiniz, lütfen biraz bekleyin." });
+    const bidNum = Number(bidAmount);
+    if (!domainName || !Number.isFinite(bidNum) || bidNum <= 0)
+      return res.status(400).json({ error: "Geçersiz teklif tutarı" });
+    try {
+      const db = getDb();
+      const domainRef = db.collection('domains').doc(domainName);
+      const domainSnap = await domainRef.get();
+      if (!domainSnap.exists) return res.status(404).json({ error: "Domain bulunamadı" });
+      const data = domainSnap.data();
+      if (data.auctionActive !== true) return res.status(400).json({ error: "Bu domain için aktif bir açık artırma yok" });
+      if (!data.auctionEndsAt || data.auctionEndsAt <= Date.now())
+        return res.status(400).json({ error: "Bu açık artırmanın süresi doldu" });
+      if (data.sellerUsername === realUsername) return res.status(400).json({ error: "Kendi ilanınıza teklif veremezsiniz" });
+      const minAcceptable = data.auctionHighestBid
+        ? data.auctionHighestBid + (data.auctionMinIncrement || 1)
+        : data.auctionStartPrice;
+      if (bidNum < minAcceptable)
+        return res.status(400).json({ error: `Teklif en az ${minAcceptable} Pi olmalı` });
+      if (data.auctionHighestBidder === realUsername)
+        return res.status(400).json({ error: "Zaten en yüksek teklifi siz verdiniz" });
+
+      const previousBidder = data.auctionHighestBidder;
+      await domainRef.set({
+        auctionHighestBid: bidNum,
+        auctionHighestBidder: realUsername,
+        auctionBidCount: (data.auctionBidCount || 0) + 1
+      }, { merge: true });
+
+      // Teklif geçmişi — ayrı bir koleksiyonda tutuluyor ki domain
+      // dokümanı büyümesin (bkz. codebase'in offers/history desenine
+      // benzer yaklaşımı).
+      await db.collection('auction_bids').add({
+        domainName, username: realUsername, bidAmount: bidNum, at: Date.now()
+      });
+
+      if (previousBidder && previousBidder !== realUsername) {
+        await sendNotification(previousBidder, {
+          type: 'auction_outbid',
+          role: 'buyer',
+          title: '⚠️ Teklifiniz Geçildi',
+          body: `"${domainName}" için verdiğiniz teklif @${realUsername} tarafından geçildi (yeni en yüksek teklif: ${bidNum} Pi).`,
+          domainName
+        });
+      }
+      return res.status(200).json({ success: true, highestBid: bidNum });
+    } catch (e) {
+      console.error("place_auction_bid hatası:", e);
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  if (action === 'claim_auction_win') {
+    const { domainName } = req.body;
+    const realUsername = await getRealUsername(accessToken);
+    if (!realUsername) return res.status(403).json({ error: "Geçersiz oturum" });
+    if (!domainName) return res.status(400).json({ error: "Geçersiz domain adı" });
+    try {
+      const db = getDb();
+      const domainRef = db.collection('domains').doc(domainName);
+      const domainSnap = await domainRef.get();
+      if (!domainSnap.exists) return res.status(404).json({ error: "Domain bulunamadı" });
+      const data = domainSnap.data();
+      if (data.sold === true) return res.status(400).json({ error: "Bu domain zaten satılmış" });
+      if (data.auctionActive !== true) return res.status(400).json({ error: "Bu domain için aktif bir açık artırma yok" });
+      if (!data.auctionEndsAt || data.auctionEndsAt > Date.now())
+        return res.status(400).json({ error: "Açık artırma henüz bitmedi" });
+      if (!data.auctionHighestBidder)
+        return res.status(400).json({ error: "Bu açık artırmaya hiç teklif verilmedi" });
+      if (data.auctionHighestBidder !== realUsername)
+        return res.status(403).json({ error: "Bu açık artırmayı sadece en yüksek teklifi veren kazanabilir" });
+
+      // Kabul edilmiş bir teklifle BİREBİR AYNI rezervasyon deseni —
+      // gerçek ödeme buradan sonra mevcut satın alma akışı üzerinden
+      // yürüyecek (bkz. dosya başındaki tasarım notu).
+      const reservedUntil = Date.now() + OFFER_RESERVATION_MS;
+      const preNegotiationPrice = data.price;
+      await domainRef.set({
+        price: data.auctionHighestBid,
+        reservedFor: realUsername,
+        reservedUntil,
+        preNegotiationPrice,
+        auctionActive: false
+      }, { merge: true });
+
+      const minutes = Math.round(OFFER_RESERVATION_MS / 60000);
+      await sendNotification(realUsername, {
+        type: 'auction_won',
+        role: 'buyer',
+        title: '🏆 Açık Artırmayı Kazandınız!',
+        body: `"${domainName}" açık artırmasını ${data.auctionHighestBid} Pi ile kazandınız. Satın alma işlemini ${minutes} dakika içinde tamamlamanız gerekiyor, aksi halde rezervasyon iptal olur.`,
+        domainName
+      });
+      if (data.sellerUsername) {
+        await sendNotification(data.sellerUsername, {
+          type: 'auction_won_seller',
+          role: 'seller',
+          title: '🏆 Açık Artırmanız Sona Erdi',
+          body: `"${domainName}" için açık artırma ${data.auctionHighestBid} Pi ile @${realUsername} tarafından kazanıldı. Alıcının ödemesini tamamlamasını bekleyin.`,
+          domainName
+        });
+      }
+      return res.status(200).json({ success: true, price: data.auctionHighestBid, reservedUntil });
+    } catch (e) {
+      console.error("claim_auction_win hatası:", e);
       return res.status(500).json({ error: e.message });
     }
   }
@@ -5240,6 +5493,12 @@ async function handlerImpl(req, res) {
       if (data.sold === true) return res.status(400).json({ error: "Bu domain zaten satılmış" });
       if (data.deleted === true || data.hidden === true) return res.status(400).json({ error: "Bu domain artık satışta değil" });
       if (data.sellerUsername === realUsername) return res.status(400).json({ error: "Kendi domaininize teklif veremezsiniz" });
+      // YENİ (açık artırma bütünlüğü): Aktif açık artırma süren bir domain
+      // için normal "Teklif Ver" kapalı — aksi halde satıcı/admin bu
+      // teklifi kabul edip (respond_offer) reservedFor'ı doğrudan
+      // ayarlayarak açık artırmayı tamamen bypass edebilirdi. Teklif
+      // vermek isteyenler açık artırma bitene kadar sadece bid verebilir.
+      if (data.auctionActive === true) return res.status(400).json({ error: "Bu domain şu anda açık artırmada — teklif yerine açık artırmaya katılmalısınız." });
 
       // FIX (kök neden — "2. tur teklifler yeni bir tablo olarak çıkıyor"):
       // Öncesinde her "Teklif Ver" işlemi, o alıcı-domain arasında zaten
@@ -5403,6 +5662,11 @@ async function handlerImpl(req, res) {
         const domainSnap = await domainRef.get();
         if (!domainSnap.exists || domainSnap.data().sold === true)
           return res.status(400).json({ error: "Domain artık müsait değil" });
+        // YENİ (açık artırma bütünlüğü, savunma katmanı): start_auction
+        // bu domain için bekleyen teklifleri zaten geçersiz kılıyor, ama
+        // yine de burada bir kez daha kontrol ediyoruz.
+        if (domainSnap.data().auctionActive === true)
+          return res.status(400).json({ error: "Bu domain şu anda açık artırmada — teklif kabul edilemez." });
 
         const reservedUntil = Date.now() + OFFER_RESERVATION_MS;
         const preNegotiationPrice = domainSnap.data().price;
@@ -5543,6 +5807,8 @@ async function handlerImpl(req, res) {
         const domainSnap = await domainRef.get();
         if (!domainSnap.exists || domainSnap.data().sold === true)
           return res.status(400).json({ error: "Domain artık müsait değil" });
+        if (domainSnap.data().auctionActive === true)
+          return res.status(400).json({ error: "Bu domain şu anda açık artırmada — teklif kabul edilemez." });
 
         const reservedUntil = Date.now() + OFFER_RESERVATION_MS;
         const preNegotiationPrice = domainSnap.data().price;
@@ -6920,6 +7186,14 @@ async function handlerImpl(req, res) {
             return res.status(409).json({ error: `Bu domain şu anda anlaşma sağlanan bir alıcı için ayrılmış. ${minutesLeft} dakika sonra herkese açılacak.`, reserved: true, reservedUntil: dData.reservedUntil });
           }
         }
+        // YENİ (açık artırma bütünlüğü): Aktif bir açık artırma sürerken
+        // normal "Satın Al" ile ödeme başlatılmasını en baştan (Pi
+        // cüzdanı onayından ÖNCE) engelliyoruz — asıl kesin koruma
+        // 'complete' adımındaki transaction'da (bkz. 'auction_active'
+        // reason'ı), bu sadece erken/ucuz bir ön-kontrol.
+        if (dData.auctionActive === true) {
+          return res.status(409).json({ error: "Bu domain şu anda açık artırmada — normal satın alma ile alınamaz, teklif vermeniz gerekiyor.", auctionActive: true });
+        }
       }
     } catch (e) {
       console.error("approve ön-kontrol hatası:", e);
@@ -7054,6 +7328,18 @@ async function handlerImpl(req, res) {
           if (dData.reservedFor && dData.reservedUntil && dData.reservedUntil > Date.now() && dData.reservedFor !== username) {
             return { ok: false, reason: 'reserved', reservedUntil: dData.reservedUntil };
           }
+          // YENİ (açık artırma bütünlüğü): Bir domain için aktif bir açık
+          // artırma sürüyorsa, kimse (kazanan bile) normal "Satın Al" ile
+          // — yani teklif vermeden, o an listelenen (genelde düşük
+          // başlangıç) fiyattan — domaini alamaz. Kazanan kişi önce
+          // 'claim_auction_win' ile rezervasyonunu almalı (bu da
+          // auctionActive'i false yapar); ancak o zaman normal satın alma
+          // akışına girebilir. Bu kontrol olmadan biri açık artırmayı
+          // görmezden gelip anında düşük başlangıç fiyatından satın
+          // alabilirdi.
+          if (dData.auctionActive === true) {
+            return { ok: false, reason: 'auction_active' };
+          }
 
           // ── GÜVENLİK: Gerçek ödenen tutar, domainin (transaction içinde
           // az önce okunan, dolayısıyla güncel) fiyatını karşılıyor mu?
@@ -7126,6 +7412,28 @@ async function handlerImpl(req, res) {
             return res.status(409).json({
               error: "Bu domain, ödemeniz tamamlanırken anlaşma sağlanan başka bir alıcı için rezerve edilmiş. Paranız alındığı için otomatik olarak destek ekibine bildirildi, en kısa sürede sizinle iletişime geçip iadenizi yapacaklar.",
               raceCondition: true
+            });
+          }
+          if (txResult.reason === 'auction_active') {
+            // Aktif bir açık artırma sürerken biri normal "Satın Al" ile
+            // ödeme tamamladı — 'approve' aşamasındaki ön-kontrol bunu
+            // normalde en baştan engeller (bkz. yukarı); bu dal sadece o
+            // kontrolün atlandığı dar bir kenar durumda tetiklenir. Ödeme
+            // blockchain'de tamamlanmış olabileceğinden diğer yarış
+            // durumu dallarıyla BİREBİR AYNI acil-elle-iade akışı izleniyor.
+            raceLost = true;
+            console.error(`[AÇIK ARTIRMA İHLALİ] ${username}, aktif açık artırması süren ${domainName} için normal satın alma ile ödeme tamamladı. txid:${txid}`);
+            await logSystemError('complete_auction_bypass', new Error('Buyer completed normal purchase while auction was active — payment completed'), `Alıcı:@${username} Domain:${domainName} Txid:${txid} — MANUEL İADE GEREKİYOR`);
+            await sendTG(TG_CHAT_ID, `🚨 *ACİL — AKTİF AÇIK ARTIRMADA NORMAL SATIN ALMA / MANUEL İADE GEREKİYOR*\n\n@${username}, aktif açık artırması süren "${domainName}" için normal satın alma ile ödeme yaptı (txid: ${txid}). Bu kullanıcıya elle Pi iadesi yapılması gerekiyor.`);
+            await sendNotificationToAdmin({
+              type: 'own_listing_refund_needed',
+              title: '🚨 Acil: Elle İade Gerekiyor (Açık Artırma İhlali)',
+              body: `@${username}, aktif açık artırması süren "${domainName}" için normal satın alma ile ödeme yaptı (txid: ${txid}). Manuel iade gerekiyor.`,
+              domainName, buyer: username, txid
+            });
+            return res.status(409).json({
+              error: "Bu domain şu anda açık artırmada — normal satın alma ile alınamaz. Paranız alındığı için otomatik olarak destek ekibine bildirildi, en kısa sürede sizinle iletişime geçip iadenizi yapacaklar.",
+              auctionActive: true
             });
           }
           if (txResult.reason === 'own_listing') {
