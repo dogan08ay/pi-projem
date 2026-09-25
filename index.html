@@ -316,6 +316,38 @@
         body.light-theme .side-menu-footer{border-top-color:rgba(99,102,241,0.18);}
         body.light-theme #side-menu-username{color:#1e293b !important;}
         body.light-theme .side-menu-mini-stat{background:#eef1f8 !important;}
+        /* DÜZELTME (kullanıcı geri bildirimi — "menü beyazken bazı yazılar
+           görünmüyor"): Menüdeki SVG ikon renkleri ve bazı metin renkleri
+           (amber-400, indigo-300, emerald-300, red-300, slate-400 gibi
+           "pastel" tonlar) KOYU arka plan için seçilmişti — o zeminde güzel
+           dururken, beyaz zeminde neredeyse görünmez hale geliyorlardı
+           (düşük kontrast). Her birini, aynı rengin çok daha KOYU bir
+           tonuyla değiştiriyoruz — hem satır içi metin renklerini
+           (style="color:...") hem SVG ikon çizgi renklerini (stroke="...")
+           kapsayacak şekilde. Bu menü statik/tek seferlik render edildiği
+           için (kartlar gibi sürekli yeniden oluşturulmuyor) bu kapsamlı,
+           tek tek renk eşleme yaklaşımı güvenle uygulanabiliyor. */
+        body.light-theme .side-menu [style*="color:#fbbf24"]{color:#b45309 !important;}
+        body.light-theme .side-menu [style*="color:#fde68a"]{color:#92400e !important;}
+        body.light-theme .side-menu [style*="color:#fca5a5"]{color:#b91c1c !important;}
+        body.light-theme .side-menu [style*="color:#f87171"]{color:#b91c1c !important;}
+        body.light-theme .side-menu [style*="color:#6ee7b7"]{color:#047857 !important;}
+        body.light-theme .side-menu [style*="color:#4ade80"]{color:#15803d !important;}
+        body.light-theme .side-menu [style*="color:#818cf8"]{color:#4338ca !important;}
+        body.light-theme .side-menu [style*="color:#a5b4fc"]{color:#4338ca !important;}
+        body.light-theme .side-menu [style*="color:#c7d2fe"]{color:#3730a3 !important;}
+        body.light-theme .side-menu [style*="color:#38bdf8"]{color:#0369a1 !important;}
+        body.light-theme .side-menu [style*="color:#94a3b8"]{color:#475569 !important;}
+        body.light-theme .side-menu [style*="color:#e2e8f0"]{color:#1e293b !important;}
+        body.light-theme .side-menu [style*="color:#f1f5f9"]{color:#1e293b !important;}
+        body.light-theme .side-menu svg[stroke="#fbbf24"]{stroke:#b45309 !important;}
+        body.light-theme .side-menu svg[stroke="#fca5a5"]{stroke:#b91c1c !important;}
+        body.light-theme .side-menu svg[stroke="#6ee7b7"]{stroke:#047857 !important;}
+        body.light-theme .side-menu svg[stroke="#34d399"]{stroke:#047857 !important;}
+        body.light-theme .side-menu svg[stroke="#4ade80"]{stroke:#15803d !important;}
+        body.light-theme .side-menu svg[stroke="#818cf8"]{stroke:#4338ca !important;}
+        body.light-theme .side-menu svg[stroke="#a5b4fc"]{stroke:#4338ca !important;}
+        body.light-theme .side-menu svg[stroke="#38bdf8"]{stroke:#0369a1 !important;}
         body.light-theme #side-menu-profile-box{background:rgba(99,102,241,0.08) !important;}
         /* Menüdeki tema anahtarı (toggle) düğmesi */
         .theme-toggle-row{display:flex;align-items:center;justify-content:space-between;padding:6px 8px;margin-bottom:2px;}
@@ -3910,7 +3942,7 @@ const i18n = {
     advancedFiltersToggle:"Gelişmiş Filtreler (Fiyat, Kategori, Durum)",
     savedSearchesBtn:"Kayıtlı Aramalarım",
     savedSearchesTitle:"🔔 Kayıtlı Aramalarım",
-    savedSearchesSubtitle:"Kriterlerinize uyan yeni bir domain eklendiğinde bildirim alırsınız.",
+    savedSearchesSubtitle:"Kriterlerinize uyan yeni bir domain eklendiğinde veya mevcut bir domainin fiyatı düşüp kriterinize uyduğunda bildirim alırsınız.",
     savedSearchesEmpty:"Henüz kayıtlı bir aramanız yok. Filtreleri ayarlayıp \"Bu Aramayı Kaydet\"e basın.",
     savedSearchMatchesLabel:"Yeni Eşleşmeler",
     savedSearchCriteriaLabel:"Kayıtlı Kriterleriniz",
@@ -4069,6 +4101,15 @@ const i18n = {
     ownListingTag:"Kendi İlanınız — Satın Alamazsınız",
     raceConditionMsg:"Bu domain, ödemeniz tamamlanırken çok kısa bir süre önce başka biri tarafından satın alınmış. Paranız alındığı için destek ekibimize otomatik bildirim gitti, en kısa sürede sizinle iletişime geçip iadenizi yapacaklar.",
     reservedForYouMsg:(m)=>`🎉 Anlaştınız! ${m} dakika boyunca bu domaini sadece siz alabilirsiniz`,
+    auctionTag:"Açık Artırma",auctionEndedLabel:"Süre Doldu",
+    auctionHighestBidLabel:"En Yüksek Teklif",auctionNoBidsLabel:"Henüz teklif yok · Başlangıç",
+    auctionBidCountLabel:(n)=>n===1?"1 teklif":`${n} teklif`,
+    auctionTimeLeft:(m)=>m<60?`⏳ ${m} dk kaldı`:(m<2880?`⏳ ${Math.floor(m/60)} sa kaldı`:`⏳ ${Math.floor(m/1440)} gün kaldı`),
+    auctionBidBtn:"🔨 Teklif Ver",auctionPlaceBidTitle:"Teklif Ver",
+    auctionMinBidLabel:(v)=>`Minimum teklif: ${v} π`,auctionBidInputPlaceholder:"Teklif tutarınız (π)",
+    auctionBidSubmitBtn:"Teklifi Gönder",auctionYouAreHighest:"🏆 Şu anda en yüksek teklif sizde!",
+    auctionWonClaimBtn:"🏆 Kazandınız! Satın Almayı Tamamla",auctionEndedNoBids:"Açık artırma süresi doldu — teklif verilmedi",
+    auctionEndedOthersWon:"Açık artırma sona erdi",
     reservedForOtherMsg:(m)=>`🔒 Anlaşma sağlanan bir alıcı için ayrılmış — ${m} dakika sonra herkese açılır`,
     invalidOfferPrice:"Lütfen geçerli bir teklif tutarı girin.",offerSentSuccess:"✅ Teklifiniz gönderildi! Satıcı yanıt verdiğinde bildirim alacaksınız.",
     confirmWithdrawOffer:"Bu teklifi geri çekmek istediğinize emin misiniz?",
@@ -4877,7 +4918,7 @@ const i18n = {
     advancedFiltersToggle:"Advanced Filters (Price, Category, Status)",
     savedSearchesBtn:"My Saved Searches",
     savedSearchesTitle:"🔔 My Saved Searches",
-    savedSearchesSubtitle:"You'll get notified when a new domain matches your criteria.",
+    savedSearchesSubtitle:"You'll get notified when a new domain matches your criteria, or when an existing domain's price drops to match it.",
     savedSearchesEmpty:"You don't have any saved searches yet. Set your filters and tap \"Save This Search\".",
     savedSearchMatchesLabel:"New Matches",
     savedSearchCriteriaLabel:"Your Saved Criteria",
@@ -5027,6 +5068,15 @@ const i18n = {
     ownListingTag:"Your Own Listing — Can't Buy",
     raceConditionMsg:"This domain was purchased by someone else moments before your payment finished. Since your payment was received, our support team has been notified automatically and will contact you soon to process your refund.",
     reservedForYouMsg:(m)=>`🎉 Deal made! You're the only one who can buy this domain for the next ${m} min`,
+    auctionTag:"Auction",auctionEndedLabel:"Ended",
+    auctionHighestBidLabel:"Highest Bid",auctionNoBidsLabel:"No bids yet · Starting at",
+    auctionBidCountLabel:(n)=>n===1?"1 bid":`${n} bids`,
+    auctionTimeLeft:(m)=>m<60?`⏳ ${m} min left`:(m<2880?`⏳ ${Math.floor(m/60)} h left`:`⏳ ${Math.floor(m/1440)} d left`),
+    auctionBidBtn:"🔨 Place Bid",auctionPlaceBidTitle:"Place a Bid",
+    auctionMinBidLabel:(v)=>`Minimum bid: ${v} π`,auctionBidInputPlaceholder:"Your bid amount (π)",
+    auctionBidSubmitBtn:"Submit Bid",auctionYouAreHighest:"🏆 You're currently the highest bidder!",
+    auctionWonClaimBtn:"🏆 You Won! Complete Purchase",auctionEndedNoBids:"Auction ended — no bids were placed",
+    auctionEndedOthersWon:"Auction has ended",
     reservedForOtherMsg:(m)=>`🔒 Reserved for a buyer who reached a deal — opens to everyone in ${m} min`,
     invalidOfferPrice:"Please enter a valid offer amount.",offerSentSuccess:"✅ Your offer was sent! You'll be notified when the seller responds.",
     confirmWithdrawOffer:"Are you sure you want to withdraw this offer?",
@@ -6999,8 +7049,37 @@ window.openDomainDetail=function(domainName){
         // İSTİSNA: admin kendi ilanını da test amaçlı satın alabilsin diye
         // bu kısıtlamadan muaf — backend'de de aynı istisna var.
         const isOwnListing=data.sellerUsername && data.sellerUsername===currentUser && currentUser!==APP_CONFIG.adminUsername;
+        const auctionIsLive=data.auctionActive===true && data.auctionEndsAt && data.auctionEndsAt>Date.now();
+        const auctionIsEnded=data.auctionActive===true && data.auctionEndsAt && data.auctionEndsAt<=Date.now();
         if(isOwnListing){
             primaryHtml+=`<div style="width:100%;padding:10px;font-size:0.9em;border-radius:9px;background:#334155;color:#94a3b8;text-align:center;font-weight:800;">👤 ${t('ownListingTag')}</div>`;
+        } else if(auctionIsLive){
+            // YENİ: Canlı açık artırma — normal "Satın Al" yerine teklif
+            // verme alanı gösteriliyor (backend zaten normal satın almayı
+            // reddediyor, bu yüzden burada hiç göstermiyoruz).
+            const minBid=data.auctionHighestBid ? data.auctionHighestBid+(data.auctionMinIncrement||1) : data.auctionStartPrice;
+            const youAreHighest=data.auctionHighestBidder===currentUser;
+            const safeDomainForJs=domainName.replace(/'/g,"\\'");
+            primaryHtml+=`<div style="width:100%;">
+                <div style="text-align:center;font-size:0.74em;color:#94a3b8;margin-bottom:6px;">
+                    ${data.auctionHighestBid!==null?`${t('auctionHighestBidLabel')}: <b style="color:#fbbf24;">${data.auctionHighestBid} π</b>`:`${t('auctionNoBidsLabel')} ${data.auctionStartPrice} π`}
+                    · ${t('auctionTimeLeft')(Math.max(1,Math.ceil((data.auctionEndsAt-Date.now())/60000)))}
+                </div>
+                ${youAreHighest?`<div style="text-align:center;font-size:0.7em;font-weight:800;color:#6ee7b7;margin-bottom:6px;">${t('auctionYouAreHighest')}</div>`:''}
+                <div style="display:flex;gap:6px;">
+                    <input type="number" id="auction-bid-input" min="${minBid}" step="any" placeholder="${t('auctionMinBidLabel')(minBid)}" style="flex:1;min-width:0;padding:9px;border-radius:9px;border:1.5px solid #6366f1;background:#0f172a;color:#f1f5f9;font-size:0.85em;box-sizing:border-box;">
+                    <button class="btn-buy" style="background:linear-gradient(135deg,#6366f1,#8b5cf6);white-space:nowrap;padding:9px 12px;" onclick="window.submitAuctionBid('${safeDomainForJs}',${minBid})">${t('auctionBidSubmitBtn')}</button>
+                </div>
+            </div>`;
+        } else if(auctionIsEnded){
+            const safeDomainForJs=domainName.replace(/'/g,"\\'");
+            if(data.auctionHighestBidder===currentUser){
+                primaryHtml+=`<button class="btn-buy" style="width:100%;padding:10px;font-size:0.9em;background:linear-gradient(135deg,#f59e0b,#ea580c);" onclick="window.claimAuctionWin('${safeDomainForJs}');">${t('auctionWonClaimBtn')}</button>`;
+            } else if(!data.auctionHighestBidder){
+                primaryHtml+=`<div style="width:100%;padding:10px;font-size:0.85em;border-radius:9px;background:#334155;color:#94a3b8;text-align:center;font-weight:800;">${t('auctionEndedNoBids')}</div>`;
+            } else {
+                primaryHtml+=`<div style="width:100%;padding:10px;font-size:0.85em;border-radius:9px;background:#334155;color:#94a3b8;text-align:center;font-weight:800;">${t('auctionEndedOthersWon')}</div>`;
+            }
         } else {
             primaryHtml+=`<button class="btn-buy" style="width:100%;padding:10px;font-size:0.9em;" onclick="document.getElementById('domain-detail-modal').style.display='none';window.openPreBuyModal('${domainName}',${data.price});">${t('buyNow')}</button>`;
         }
@@ -7010,7 +7089,7 @@ window.openDomainDetail=function(domainName){
         const minutesLeft=Math.max(1,Math.ceil((data.reservedUntil-Date.now())/60000));
         primaryHtml+=`<div style="margin-top:8px;padding:7px 10px;border-radius:8px;font-size:0.68em;font-weight:800;text-align:center;${isMine?'background:rgba(16,185,129,0.15);border:1px solid #10b981;color:#6ee7b7;':'background:rgba(148,163,184,0.12);border:1px solid #64748b;color:#94a3b8;'}">${isMine?t('reservedForYouMsg')(minutesLeft):t('reservedForOtherMsg')(minutesLeft)}</div>`;
     }
-    if(!data.sold&&isAuth){secondaryHtml+=`<button onclick="window.handleOfferButtonClick('${domainName}')" style="padding:9px 6px;border-radius:9px;border:1.5px solid #f59e0b;background:rgba(245,158,11,0.1);color:#fbbf24;font-weight:800;font-size:0.74em;cursor:pointer;">💬 ${t('makeOfferBtn')}</button>`;}
+    if(!data.sold&&isAuth&&data.auctionActive!==true){secondaryHtml+=`<button onclick="window.handleOfferButtonClick('${domainName}')" style="padding:9px 6px;border-radius:9px;border:1.5px solid #f59e0b;background:rgba(245,158,11,0.1);color:#fbbf24;font-weight:800;font-size:0.74em;cursor:pointer;">💬 ${t('makeOfferBtn')}</button>`;}
     // YENİ: Alıcı-satıcı doğrudan mesajlaşma — sadece satıcısı olan ve
     // kendi ilanımız olmayan domainlerde gösterilir (satış durumundan
     // bağımsız — devir sonrası sorular için de kullanılabilsin diye).
@@ -7612,6 +7691,41 @@ window.handleRejectSellRequest=async function(requestId){
     const r=await fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'reject_sell_request',requestId,rejectReason:reason.trim(),accessToken:piAccessToken})});
     const result=await r.json(); if(!r.ok||!result.success) showToast(t('rejectFail')+(result.error||''));
 };
+// YENİ: Admin — açık artırma başlat/iptal et. Basit sıralı prompt() akışı,
+// bu panelin geri kalanıyla (handleRejectSellRequest, confirmByTyping)
+// aynı hızlı-admin-aksiyonu deseninde.
+window.handleStartAuction=async function(domainName){
+    const isTr=currentLang==='tr';
+    const startPriceStr=prompt(isTr?`"${domainName}" için başlangıç fiyatı (π):`:`Starting price for "${domainName}" (π):`);
+    if(startPriceStr===null) return;
+    const startPrice=Number(startPriceStr);
+    if(!startPrice||startPrice<=0){ showToast(isTr?'Geçersiz başlangıç fiyatı.':'Invalid starting price.'); return; }
+    const minIncStr=prompt(isTr?'Minimum teklif artışı (π):':'Minimum bid increment (π):', '1');
+    if(minIncStr===null) return;
+    const minIncrement=Number(minIncStr);
+    if(!minIncrement||minIncrement<=0){ showToast(isTr?'Geçersiz minimum artış.':'Invalid minimum increment.'); return; }
+    const durationStr=prompt(isTr?'Süre (saat, 1-168 arası):':'Duration (hours, 1-168):', '24');
+    if(durationStr===null) return;
+    const durationHours=Number(durationStr);
+    if(!durationHours||durationHours<=0||durationHours>168){ showToast(isTr?'Süre 1-168 saat arasında olmalı.':'Duration must be 1-168 hours.'); return; }
+    if(!confirm(isTr?`"${domainName}" için ${startPrice} π'den başlayan, ${durationHours} saat sürecek bir açık artırma başlatılsın mı?`:`Start a ${durationHours}-hour auction for "${domainName}" starting at ${startPrice} π?`)) return;
+    try{
+        const r=await fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'start_auction',domainName,startPrice,minIncrement,durationHours,accessToken:piAccessToken})});
+        const result=await r.json();
+        if(!result.success){ showToast(result.error||t('genericError')); return; }
+        showToast(isTr?'Açık artırma başlatıldı.':'Auction started.');
+    }catch(e){ showToast(t('genericError')); }
+};
+window.handleCancelAuction=async function(domainName){
+    const isTr=currentLang==='tr';
+    if(!confirm(isTr?`"${domainName}" için açık artırma iptal edilsin mi? (Hiçbir ödeme alınmadığı için iade gerekmez.)`:`Cancel the auction for "${domainName}"? (No refund needed — no payment was ever collected.)`)) return;
+    try{
+        const r=await fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'cancel_auction',domainName,accessToken:piAccessToken})});
+        const result=await r.json();
+        if(!result.success){ showToast(result.error||t('genericError')); return; }
+        showToast(isTr?'Açık artırma iptal edildi.':'Auction cancelled.');
+    }catch(e){ showToast(t('genericError')); }
+};
 // ADMIN PRICE LIST
 function renderAdminPriceList(){
     const container=document.getElementById("admin-price-list"); if(!container) return;
@@ -7623,10 +7737,19 @@ function renderAdminPriceList(){
         const data=domainData[d.name]||{price:d.price,sold:false};
         const isSold=data.sold===true;
         const canDelete=!isSold||data.payoutStatus==='released';
-        return `<div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;background:#0f172a;padding:6px 8px;border-radius:8px;">
+        // YENİ: Açık artırma kontrolü — aktif değilse başlatma butonu,
+        // aktifse durum özeti + iptal butonu gösteriliyor. Basit,
+        // sıralı prompt() akışı kullanılıyor — bu panel zaten
+        // confirmByTyping/prompt tabanlı hızlı-admin-aksiyonları deseniyle
+        // tutarlı (bkz. handleRejectSellRequest).
+        const auctionCtrlHtml=isSold?'':(data.auctionActive===true
+            ? `<button onclick="window.handleCancelAuction('${d.name}')" style="background:#ef4444;color:#fff;border:none;padding:5px 8px;border-radius:6px;font-size:0.65em;font-weight:bold;cursor:pointer;white-space:nowrap;">⏰🛑 ${data.auctionHighestBid?data.auctionHighestBid+' π':'0 teklif'}</button>`
+            : `<button onclick="window.handleStartAuction('${d.name}')" style="background:#8b5cf6;color:#fff;border:none;padding:5px 8px;border-radius:6px;font-size:0.65em;font-weight:bold;cursor:pointer;white-space:nowrap;">⏰ Açık Art.</button>`);
+        return `<div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;background:#0f172a;padding:6px 8px;border-radius:8px;flex-wrap:wrap;">
             <span style="flex:1;font-size:0.8em;font-weight:bold;color:#e2e8f0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${d.name}${isSold?' 🔒':''}</span>
             <input type="number" id="price-input-${d.name}" value="${data.price}" ${isSold?'disabled':''} style="width:70px;background:#1e293b;border:1px solid #6366f1;color:#fff;border-radius:6px;padding:4px 6px;font-size:0.8em;">
             <button onclick="handlePriceUpdate('${d.name}')" ${isSold?'disabled':''} style="background:#6366f1;color:#fff;border:none;padding:5px 8px;border-radius:6px;font-size:0.7em;font-weight:bold;cursor:pointer;opacity:${isSold?'0.4':'1'};">${t('updateBtn')}</button>
+            ${auctionCtrlHtml}
             ${canDelete?`<button onclick="handleDeleteDomain('${d.name}')" style="background:#ef4444;color:#fff;border:none;padding:5px 8px;border-radius:6px;font-size:0.7em;font-weight:bold;cursor:pointer;">${t('deleteBtn')}</button>`:''}
         </div>`;}).join('');
 
@@ -7922,6 +8045,43 @@ window.withdrawOffer=async function(offerId){
         const result=await r.json();
         if(!result.success){ showToast(result.error||t('genericError')); return; }
         window.loadMyOffers();
+    }catch(e){ showToast(t('genericError')); }
+};
+// YENİ: Açık artırmaya teklif verme — desen confirmSubmitOffer ile BİREBİR
+// AYNI (aynı kilit, aynı hata/başarı akışı). Gerçek Pi ödemesi burada
+// YAPILMAZ (bkz. approve.js'teki tasarım notu) — bu sadece sayısal bir
+// teklif kaydı; ödeme, açık artırmayı kazandıktan SONRA normal satın alma
+// akışı üzerinden tamamlanır.
+let _auctionBidInFlight=false;
+window.submitAuctionBid=async function(domainName, minBid){
+    if(_auctionBidInFlight) return;
+    if(!isAuth){ showToast(t('loginRequired')); return; }
+    const inputEl=document.getElementById('auction-bid-input');
+    const bidAmount=parseFloat(inputEl ? inputEl.value : '');
+    if(!bidAmount || bidAmount<=0 || bidAmount<minBid){ showToast(t('auctionMinBidLabel')(minBid)); return; }
+    _auctionBidInFlight=true;
+    if(inputEl) inputEl.disabled=true;
+    try{
+        const r=await fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'place_auction_bid',domainName,bidAmount,accessToken:piAccessToken})});
+        const result=await r.json();
+        if(!result.success){ showToast(result.error||t('genericError')); return; }
+        showToast(t('auctionYouAreHighest'));
+        if(document.getElementById('domain-detail-modal').style.display!=='none') window.openDomainDetail(domainName);
+    }catch(e){ showToast(t('genericError')); }
+    finally{ _auctionBidInFlight=false; if(inputEl) inputEl.disabled=false; }
+};
+// YENİ: Kazanılan açık artırmayı talep etme — sunucu tarafında en yüksek
+// teklifi veren kişi olduğu ve sürenin gerçekten dolduğu yeniden doğrulanır,
+// başarılı olursa domain kabul edilmiş bir teklif gibi kullanıcıya rezerve
+// edilir ve ödeme mevcut, test edilmiş satın alma akışı üzerinden açılır.
+window.claimAuctionWin=async function(domainName){
+    if(!isAuth){ showToast(t('loginRequired')); return; }
+    try{
+        const r=await fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'claim_auction_win',domainName,accessToken:piAccessToken})});
+        const result=await r.json();
+        if(!result.success){ showToast(result.error||t('genericError')); return; }
+        document.getElementById('domain-detail-modal').style.display='none';
+        window.openPreBuyModal(domainName, result.price);
     }catch(e){ showToast(t('genericError')); }
 };
 window.respondOffer=async function(offerId, accept){
@@ -10343,10 +10503,32 @@ function render(){
         // kartlarda gösteriliyor (kalabalık olmasın diye tek rozet).
         const newTag=(!data.sold && !data.hidden && !boostTag && data.createdAt && (Date.now()-data.createdAt)<=3*24*60*60*1000)
             ?`<span class="domain-type-tag" style="background:rgba(52,211,153,0.18);color:#6ee7b7;border:1px solid rgba(52,211,153,0.4);">🆕 ${t('newListingTag')}</span>`:'';
+        // YENİ: Açık artırma rozeti ve fiyat alanı. Açık artırma sırasında
+        // 'price' alanı HER ZAMAN başlangıç fiyatı olarak kalır (bkz.
+        // approve.js — bid verilince price GÜNCELLENMEZ, sadece
+        // auctionHighestBid güncellenir); bu yüzden karttaki fiyat
+        // gösterimini "Satılık Fiyat" değil "En Yüksek Teklif / Başlangıç"
+        // olarak ayrı gösteriyoruz — aksi halde kullanıcı bunu normal bir
+        // "Satın Al" fiyatı sanabilirdi.
+        const auctionIsLive=data.auctionActive===true && data.auctionEndsAt && data.auctionEndsAt>Date.now();
+        const auctionIsEnded=data.auctionActive===true && data.auctionEndsAt && data.auctionEndsAt<=Date.now();
+        const auctionTag=(auctionIsLive||auctionIsEnded)?`<span class="domain-type-tag" style="background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;">⏰ ${t('auctionTag')}</span>`:'';
+        const auctionPriceBlockHtml=(function(){
+            if(!auctionIsLive && !auctionIsEnded) return '';
+            const bid=data.auctionHighestBid;
+            const label=bid!==null ? `${t('auctionHighestBidLabel')}: <b style="color:#fbbf24;">${bid} π</b>` : `${t('auctionNoBidsLabel')} ${data.auctionStartPrice} π`;
+            const timeHtml=auctionIsLive
+                ? `<div style="font-size:0.6em;color:#a5b4fc;margin-top:2px;">${t('auctionTimeLeft')(Math.max(1,Math.ceil((data.auctionEndsAt-Date.now())/60000)))} · ${t('auctionBidCountLabel')(data.auctionBidCount||0)}</div>`
+                : `<div style="font-size:0.6em;color:#fca5a5;margin-top:2px;">${t('auctionEndedLabel')}</div>`;
+            return `<div class="domain-price" style="font-size:0.78em;">${label}</div>${timeHtml}`;
+        })();
         const imgSrc=data.img||d.img;
         const favBtn=isAuth?`<button onclick="window.toggleFavorite('${d.name}',event)" aria-label="${userFavorites.has(d.name)?'Favorilerden çıkar':'Favorilere ekle'}" style="position:absolute;top:6px;right:6px;z-index:3;width:26px;height:26px;border-radius:50%;border:none;background:rgba(15,23,42,0.7);color:${userFavorites.has(d.name)?'#fbbf24':'#94a3b8'};font-size:0.95em;display:flex;align-items:center;justify-content:center;cursor:pointer;backdrop-filter:blur(4px);">${userFavorites.has(d.name)?'★':'☆'}</button>`:'';
         card.style.position='relative';
-        card.innerHTML=`${favBtn}<img src="${imgSrc}" class="domain-img" onerror="this.src='data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMDAiIGhlaWdodD0iMTAwIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjNDc1NTY5Ii8+PC9zdmc+'">${boostTag}${newTag}${tTag}${hiddenTag}<div class="domain-name">${d.name} <span style="color:#fbbf24;font-weight:800;">(${data.price} π)</span></div><div class="domain-price">${data.price} PI</div>${usdEstimateHtml(data.price)}<div class="card-tap-hint">👆 ${t('tapForDetailHint')}</div>`;
+        const cardNameLineHtml=(auctionIsLive||auctionIsEnded)
+            ? `<div class="domain-name">${d.name}</div>${auctionPriceBlockHtml}`
+            : `<div class="domain-name">${d.name} <span style="color:#fbbf24;font-weight:800;">(${data.price} π)</span></div><div class="domain-price">${data.price} PI</div>${usdEstimateHtml(data.price)}`;
+        card.innerHTML=`${favBtn}<img src="${imgSrc}" class="domain-img" onerror="this.src='data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMDAiIGhlaWdodD0iMTAwIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjNDc1NTY5Ii8+PC9zdmc+'">${boostTag}${auctionTag}${newTag}${tTag}${hiddenTag}${cardNameLineHtml}<div class="card-tap-hint">👆 ${t('tapForDetailHint')}</div>`;
 
         if(data.sold){
             // Satıcılı bir satışta, escrow ödemesi admin tarafından serbest
@@ -11831,7 +12013,18 @@ onSnapshot(collection(db,"domains"),(snapshot)=>{
             appLinkIsResponding:docData.appLinkIsResponding===true,
             hasActiveApp:docData.hasActiveApp===true,
             activeAppVerifiedAt:docData.activeAppVerifiedAt||null,
-            activeAppVerifiedBy:docData.activeAppVerifiedBy||null
+            activeAppVerifiedBy:docData.activeAppVerifiedBy||null,
+            // YENİ: Açık artırma alanları — yukarıdaki ownershipVerified
+            // hatasından ders alınarak, yeni bir alan eklenirken bu
+            // listeye BAŞTAN dahil ediliyor (aksi halde bir sonraki
+            // Firestore snapshot'ında sessizce silinir).
+            auctionActive:docData.auctionActive===true,
+            auctionStartPrice:typeof docData.auctionStartPrice==='number'?docData.auctionStartPrice:null,
+            auctionMinIncrement:typeof docData.auctionMinIncrement==='number'?docData.auctionMinIncrement:null,
+            auctionHighestBid:typeof docData.auctionHighestBid==='number'?docData.auctionHighestBid:null,
+            auctionHighestBidder:docData.auctionHighestBidder||null,
+            auctionBidCount:docData.auctionBidCount||0,
+            auctionEndsAt:docData.auctionEndsAt||null
         };
         if(!defaultDomain){
             domains.unshift({name,img:docData.img||'assets/default.jpeg',price:docData.price||0,type:docData.type||'genel',description:docData.description||''});
