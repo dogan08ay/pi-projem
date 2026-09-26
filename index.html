@@ -3050,6 +3050,9 @@
             <select id="sale-status-filter-select" onchange="window.setSaleStatusFilter(this.value)" class="filter-select-prominent" style="--filter-accent:#6366f1;">
                 <option value="hepsi" data-i18n="trademarkFilterAll"></option>
                 <option value="satista" data-i18n="saleStatusForSale"></option>
+                <!-- YENİ: Kullanıcıların sadece o an canlı açık artırması
+                     olan domainleri kolayca bulabilmesi için eklendi. -->
+                <option value="acik_artirma" data-i18n="saleStatusAuction"></option>
                 <option value="satildi" data-i18n="saleStatusSold"></option>
                 <option value="pasif" data-i18n="filterPasif"></option>
             </select>
@@ -4101,7 +4104,7 @@ const i18n = {
     ownListingTag:"Kendi İlanınız — Satın Alamazsınız",
     raceConditionMsg:"Bu domain, ödemeniz tamamlanırken çok kısa bir süre önce başka biri tarafından satın alınmış. Paranız alındığı için destek ekibimize otomatik bildirim gitti, en kısa sürede sizinle iletişime geçip iadenizi yapacaklar.",
     reservedForYouMsg:(m)=>`🎉 Anlaştınız! ${m} dakika boyunca bu domaini sadece siz alabilirsiniz`,
-    auctionTag:"Açık Artırma",auctionEndedLabel:"Süre Doldu",
+    auctionTag:"Açık Artırma",auctionEndedLabel:"Süre Doldu",saleStatusAuction:"⏰ Açık Artırmada",
     auctionHighestBidLabel:"En Yüksek Teklif",auctionNoBidsLabel:"Henüz teklif yok · Başlangıç",
     auctionBidCountLabel:(n)=>n===1?"1 teklif":`${n} teklif`,
     auctionTimeLeft:(m)=>m<60?`⏳ ${m} dk kaldı`:(m<2880?`⏳ ${Math.floor(m/60)} sa kaldı`:`⏳ ${Math.floor(m/1440)} gün kaldı`),
@@ -4110,6 +4113,8 @@ const i18n = {
     auctionBidSubmitBtn:"Teklifi Gönder",auctionYouAreHighest:"🏆 Şu anda en yüksek teklif sizde!",
     auctionWonClaimBtn:"🏆 Kazandınız! Satın Almayı Tamamla",auctionEndedNoBids:"Açık artırma süresi doldu — teklif verilmedi",
     auctionEndedOthersWon:"Açık artırma sona erdi",
+    auctionBidHistoryLink:"🕓 Teklif Geçmişini Gör",auctionBidHistoryTitle:"Teklif Geçmişi",
+    auctionBidHistoryEmpty:"Henüz teklif verilmedi.",auctionBidHistoryLoading:"Yükleniyor…",
     reservedForOtherMsg:(m)=>`🔒 Anlaşma sağlanan bir alıcı için ayrılmış — ${m} dakika sonra herkese açılır`,
     invalidOfferPrice:"Lütfen geçerli bir teklif tutarı girin.",offerSentSuccess:"✅ Teklifiniz gönderildi! Satıcı yanıt verdiğinde bildirim alacaksınız.",
     confirmWithdrawOffer:"Bu teklifi geri çekmek istediğinize emin misiniz?",
@@ -5068,7 +5073,7 @@ const i18n = {
     ownListingTag:"Your Own Listing — Can't Buy",
     raceConditionMsg:"This domain was purchased by someone else moments before your payment finished. Since your payment was received, our support team has been notified automatically and will contact you soon to process your refund.",
     reservedForYouMsg:(m)=>`🎉 Deal made! You're the only one who can buy this domain for the next ${m} min`,
-    auctionTag:"Auction",auctionEndedLabel:"Ended",
+    auctionTag:"Auction",auctionEndedLabel:"Ended",saleStatusAuction:"⏰ In Auction",
     auctionHighestBidLabel:"Highest Bid",auctionNoBidsLabel:"No bids yet · Starting at",
     auctionBidCountLabel:(n)=>n===1?"1 bid":`${n} bids`,
     auctionTimeLeft:(m)=>m<60?`⏳ ${m} min left`:(m<2880?`⏳ ${Math.floor(m/60)} h left`:`⏳ ${Math.floor(m/1440)} d left`),
@@ -5077,6 +5082,8 @@ const i18n = {
     auctionBidSubmitBtn:"Submit Bid",auctionYouAreHighest:"🏆 You're currently the highest bidder!",
     auctionWonClaimBtn:"🏆 You Won! Complete Purchase",auctionEndedNoBids:"Auction ended — no bids were placed",
     auctionEndedOthersWon:"Auction has ended",
+    auctionBidHistoryLink:"🕓 View Bid History",auctionBidHistoryTitle:"Bid History",
+    auctionBidHistoryEmpty:"No bids placed yet.",auctionBidHistoryLoading:"Loading…",
     reservedForOtherMsg:(m)=>`🔒 Reserved for a buyer who reached a deal — opens to everyone in ${m} min`,
     invalidOfferPrice:"Please enter a valid offer amount.",offerSentSuccess:"✅ Your offer was sent! You'll be notified when the seller responds.",
     confirmWithdrawOffer:"Are you sure you want to withdraw this offer?",
@@ -7083,6 +7090,16 @@ window.openDomainDetail=function(domainName){
         } else {
             primaryHtml+=`<button class="btn-buy" style="width:100%;padding:10px;font-size:0.9em;" onclick="document.getElementById('domain-detail-modal').style.display='none';window.openPreBuyModal('${domainName}',${data.price});">${t('buyNow')}</button>`;
         }
+        // YENİ: Teklif geçmişi — şeffaflık için. Açık artırma canlı veya
+        // bitmiş olduğu her durumda (ilan sahibi dahil) gösteriliyor;
+        // tıklanana kadar sorgu yapılmıyor (gereksiz istek olmasın diye).
+        if(auctionIsLive||auctionIsEnded){
+            const safeDomainForJs=domainName.replace(/'/g,"\\'");
+            primaryHtml+=`<div style="width:100%;margin-top:8px;text-align:center;">
+                <a href="javascript:void(0)" onclick="window.showAuctionBidHistory('${safeDomainForJs}',this)" style="font-size:0.68em;color:#a5b4fc;font-weight:700;text-decoration:underline;">${t('auctionBidHistoryLink')}</a>
+                <div id="auction-bid-history-area" style="margin-top:6px;text-align:left;"></div>
+            </div>`;
+        }
     }
     if(!data.sold && data.reservedFor && data.reservedUntil && data.reservedUntil>Date.now()){
         const isMine=isAuth && data.reservedFor===currentUser;
@@ -8083,6 +8100,35 @@ window.claimAuctionWin=async function(domainName){
         document.getElementById('domain-detail-modal').style.display='none';
         window.openPreBuyModal(domainName, result.price);
     }catch(e){ showToast(t('genericError')); }
+};
+// YENİ: Teklif geçmişini göster — şeffaflık için. Tıklanana kadar hiç
+// sorgu yapılmıyor; ikinci tıklamada tekrar sorgu atmadan sadece
+// aç/kapa yapıyor.
+window.showAuctionBidHistory=async function(domainName, linkEl){
+    const area=document.getElementById('auction-bid-history-area');
+    if(!area) return;
+    if(area.dataset.loaded==='1'){
+        area.style.display = area.style.display==='none' ? 'block' : 'none';
+        return;
+    }
+    area.dataset.loaded='1';
+    area.innerHTML=`<div style="text-align:center;font-size:0.7em;color:#94a3b8;padding:6px;">${t('auctionBidHistoryLoading')}</div>`;
+    try{
+        const r=await fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'get_auction_bids',domainName})});
+        const result=await r.json();
+        if(!result.success){ area.innerHTML=`<div style="text-align:center;font-size:0.7em;color:#f87171;">${result.error||t('genericError')}</div>`; return; }
+        if(!result.bids||!result.bids.length){
+            area.innerHTML=`<div style="text-align:center;font-size:0.7em;color:#94a3b8;">${t('auctionBidHistoryEmpty')}</div>`;
+            return;
+        }
+        area.innerHTML=`<div style="background:#0f172a;border-radius:9px;padding:8px;max-height:180px;overflow-y:auto;">${result.bids.map(b=>
+            `<div style="display:flex;justify-content:space-between;align-items:center;padding:4px 2px;border-bottom:1px solid #1e293b;font-size:0.72em;">
+                <span style="color:#e2e8f0;font-weight:700;">@${escapeHtml(b.username)}</span>
+                <span style="color:#fbbf24;font-weight:800;">${b.bidAmount} π</span>
+                <span style="color:#64748b;font-size:0.9em;">${new Date(b.at).toLocaleString(currentLang==='tr'?'tr-TR':'en-US',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})}</span>
+            </div>`
+        ).join('')}</div>`;
+    }catch(e){ area.innerHTML=`<div style="text-align:center;font-size:0.7em;color:#f87171;">${t('genericError')}</div>`; }
 };
 window.respondOffer=async function(offerId, accept){
     if(!confirm(accept?t('confirmAcceptOffer'):t('confirmRejectOffer'))) return;
@@ -10454,6 +10500,7 @@ function render(){
             if(saleStatusFilter==='pasif') return isHidden;
             if(saleStatusFilter==='satildi') return isSold && !isHidden;
             if(saleStatusFilter==='satista') return !isSold && !isHidden;
+            if(saleStatusFilter==='acik_artirma') return !isHidden && domainData[d.name]?.auctionActive===true && domainData[d.name]?.auctionEndsAt>Date.now();
             return true;
         });
     }
