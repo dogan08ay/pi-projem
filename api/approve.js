@@ -1285,6 +1285,27 @@ async function handlerImpl(req, res) {
     }
   }
 
+  // ── YENİ: Cron Tetikleyici — "Açık Artırma Süre Az Kaldı" Kontrolü ──────
+  // cron-job.org (veya başka bir zamanlayıcı) tarafından düzenli aralıklarla
+  // POST body'si { "action": "check_auctions", "accessToken": "<CRON_SECRET>" }
+  // şeklinde çağrılır. accessToken burada bir Pi kullanıcı oturumu DEĞİL,
+  // Vercel'deki CRON_SECRET ortam değişkeniyle karşılaştırılan paylaşılan bir
+  // sırdır — böylece bu endpoint'i sadece cron-job.org (veya sırrı bilen biri)
+  // tetikleyebilir, rastgele biri tetikleyemez.
+  if (action === 'check_auctions') {
+    if (!process.env.CRON_SECRET || accessToken !== process.env.CRON_SECRET) {
+      return res.status(403).json({ error: "Yetkisiz" });
+    }
+    try {
+      await checkEndingAuctions(getDb());
+      return res.status(200).json({ success: true });
+    } catch (e) {
+      console.error("[check_auctions] hata:", e);
+      await logSystemError('check_auctions', e);
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
   // ── Bildirimleri Getir ───────────────────────────────────────────────────
   if (action === 'get_notifications') {
     const realUsername = await getRealUsername(accessToken);
