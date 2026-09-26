@@ -124,6 +124,67 @@ const REFERRAL_BONUS_REFERRED = 15; // davet edilen (yeni) kişiye "hoş geldin"
 // herkese açılır (ilk gelen alır).
 const OFFER_RESERVATION_MS = 15 * 60 * 1000; // 15 dakika
 
+// ── Açık Artırma "Süre Az Kaldı" Uyarısı — throttle durumu ──────────────
+// Bu projede zamanlanmış görev (cron) yok, bu yüzden "bitmeden 1 saat
+// kala uyar" kontrolü, aşağıdaki checkEndingAuctions() fonksiyonu ile,
+// zaten çok sık çağrılan get_notifications isteğine "bindirilerek"
+// (piggyback) çalıştırılıyor — her aktif kullanıcının istemcisi bildirim
+// kontrolü için zaten 4 saniyede bir bu action'ı çağırıyor. Fonksiyon
+// modül belleğinde tuttuğu bu zaman damgasıyla en fazla dakikada bir
+// gerçekten veritabanını tarıyor (aksi halde her 4 saniyede bir tüm aktif
+// açık artırmaları taramak gereksiz maliyetli olurdu). Bu "en iyi çaba"
+// (best-effort) bir çözümdür: sunucusuz (serverless) ortamda örnek
+// (instance) soğuk başladığında bu bellek sıfırlanır — ama gerçek bir
+// cron olmadığı için pratikte en makul yaklaşım budur.
+let _lastAuctionEndingCheckAt = 0;
+const AUCTION_ENDING_CHECK_INTERVAL_MS = 60 * 1000; // en fazla dakikada bir tara
+const AUCTION_ENDING_WARNING_WINDOW_MS = 60 * 60 * 1000; // bitmesine 1 saatten az kalanları uyar
+
+async function checkEndingAuctions(db) {
+  if (Date.now() - _lastAuctionEndingCheckAt < AUCTION_ENDING_CHECK_INTERVAL_MS) return;
+  _lastAuctionEndingCheckAt = Date.now(); // eşzamanlı çift taramayı önlemek için await'ten önce kilitleniyor
+  try {
+    const snap = await db.collection('domains').where('auctionActive', '==', true).get();
+    if (snap.empty) return;
+    const now = Date.now();
+    for (const doc of snap.docs) {
+      const data = doc.data();
+      if (!data.auctionEndsAt) continue;
+      const remaining = data.auctionEndsAt - now;
+      if (remaining <= 0 || remaining > AUCTION_ENDING_WARNING_WINDOW_MS) continue;
+      // Aynı açık artırma için tekrar tekrar uyarı gitmesin diye, bu
+      // bitiş zamanı için zaten uyarı gönderildiyse atla. (auctionEndsAt
+      // kontrolü, açık artırma iptal edilip yeniden başlatıldığında yeni
+      // bir uyarının gönderilebilmesini de sağlıyor.)
+      if (data.auctionEndingWarnedFor === data.auctionEndsAt) continue;
+      await doc.ref.set({ auctionEndingWarnedFor: data.auctionEndsAt }, { merge: true });
+      const minutesLeft = Math.max(1, Math.round(remaining / 60000));
+      if (data.auctionHighestBidder) {
+        await sendNotification(data.auctionHighestBidder, {
+          type: 'auction_ending_soon',
+          role: 'buyer',
+          title: '⏰ Açık Artırma Bitmek Üzere!',
+          body: `"${doc.id}" için verdiğiniz teklif hâlâ en yüksek — açık artırma yaklaşık ${minutesLeft} dakika içinde bitiyor. Geçilmemek için son durumu kontrol edin.`,
+          domainName: doc.id
+        });
+      }
+      if (data.sellerUsername) {
+        await sendNotification(data.sellerUsername, {
+          type: 'auction_ending_soon_seller',
+          role: 'seller',
+          title: '⏰ Açık Artırmanız Bitmek Üzere',
+          body: `"${doc.id}" için açık artırma yaklaşık ${minutesLeft} dakika içinde sona eriyor.`,
+          domainName: doc.id
+        });
+      }
+    }
+  } catch (e) {
+    // Bu kontrol arka plan iyileştirmesi — hata olsa bile asıl isteği
+    // (bildirim listesini getirme) ASLA engellememeli.
+    console.error("checkEndingAuctions hatası:", e);
+  }
+}
+
 // ── Süresi Dolmuş Rezervasyonu Eski Fiyata Döndür ───────────────────────
 // Anlaşan alıcı, öncelik penceresi (OFFER_RESERVATION_MS) içinde domaini
 // satın almazsa, anlaşılan indirimli fiyat KALICI olarak kalmamalı — aksi
@@ -761,7 +822,8 @@ const NOTIF_CATEGORY_MAP = {
     'sell_request_approved', 'sell_request_rejected'],
   offers: ['offer_received', 'offer_accepted', 'offer_rejected', 'offer_countered',
     'counter_offer_accepted', 'counter_offer_rejected',
-    'auction_outbid', 'auction_won', 'auction_won_seller', 'auction_cancelled'],
+    'auction_outbid', 'auction_won', 'auction_won_seller', 'auction_cancelled',
+    'auction_ending_soon', 'auction_ending_soon_seller'],
   tickets: ['ticket_created', 'ticket_message', 'ticket_admin_reply', 'ticket_status_update', 'ticket_deleted'],
   favorites: ['favorite_price_changed', 'favorite_relisted', 'saved_search_match', 'domain_relisted', 'rating_reminder'],
   messages: ['new_message'],
@@ -1227,6 +1289,13 @@ async function handlerImpl(req, res) {
   if (action === 'get_notifications') {
     const realUsername = await getRealUsername(accessToken);
     if (!realUsername) return res.status(403).json({ error: "Geçersiz oturum" });
+    // YENİ: Bu action zaten her aktif kullanıcının istemcisi tarafından
+    // 4 saniyede bir çağrılıyor — cron olmadığı için bu, "açık artırma
+    // bitmeden 1 saat kala uyar" kontrolünü tetiklemek için en pratik
+    // yer. Bilerek await EDİLMİYOR (fire-and-forget): bu arka plan
+    // kontrolü asıl bildirim listesini getirme isteğini YAVAŞLATMAMALI
+    // veya hata durumunda ENGELLEMEMELİ.
+    checkEndingAuctions(getDb()).catch(() => {});
     try {
       const rtdb = getRtdb();
       const snap = await rtdb.ref(`notifications/${realUsername}`).once('value');
@@ -1868,6 +1937,29 @@ async function handlerImpl(req, res) {
       return res.status(200).json({ success: true, price: data.auctionHighestBid, reservedUntil });
     } catch (e) {
       console.error("claim_auction_win hatası:", e);
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  // YENİ: Açık artırma teklif geçmişi — her teklif place_auction_bid'de
+  // zaten 'auction_bids' koleksiyonuna kaydediliyordu, ama bunu okuyup
+  // kullanıcıya gösteren hiçbir yer yoktu. Şeffaflık için (kullanıcı sadece
+  // "en yüksek teklif X" rakamına güvenmek zorunda kalmasın) eklendi.
+  // Giriş gerektirmiyor — açık artırma zaten herkese açık bir bilgi
+  // (en yüksek teklif zaten domain kartında herkese görünüyor), sadece
+  // kötüye kullanımı önlemek için IP başına hız sınırı var.
+  if (action === 'get_auction_bids') {
+    const { domainName } = req.body;
+    if (!domainName) return res.status(400).json({ error: "Geçersiz domain adı" });
+    if (!await checkRateLimit(clientIp, 'get_auction_bids', 30, 60000))
+      return res.status(429).json({ error: "Çok fazla istek, lütfen biraz bekleyin." });
+    try {
+      const db = getDb();
+      const snap = await db.collection('auction_bids').where('domainName', '==', domainName).get();
+      const bids = snap.docs.map(d => d.data()).sort((a, b) => b.at - a.at).slice(0, 50);
+      return res.status(200).json({ success: true, bids });
+    } catch (e) {
+      console.error("get_auction_bids hatası:", e);
       return res.status(500).json({ error: e.message });
     }
   }
