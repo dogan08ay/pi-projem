@@ -208,6 +208,28 @@
         body.fit-lvl-3 #global-connect-bar{padding:2px 2px 2px 2px !important;}
         body.fit-lvl-3 #connect-prompt-text{font-size:0.6em !important;margin:0 0 2px 0 !important;}
         body.fit-lvl-3 #connect-use-btn-text{font-size:0.58em !important;margin-bottom:2px !important;}
+
+        /* YENİ: fit-lvl-3 bile yetmeyen ÇOK kısa ekranlar (küçük eski
+           telefonlar, klavye açıkken daralan viewport, aşırı büyük sistem
+           yazı tipi ölçeklemesi vb.) için son ve en agresif seviye. Kalkan
+           ikonu tamamen kaldırılır, logo/başlık/rozet metinleri en aza
+           indirilir, "Ayrıcalıklı Web3 Dünyasına Katılın" banner'ı tümüyle
+           gizlenir — sadece "Güvenli Bağlantı" özeti ve "Pi ile Bağlan"
+           butonu (asıl amaç) görünür kalır. */
+        body.fit-lvl-4 #secure-icon-wrap{display:none !important;}
+        body.fit-lvl-4 .secure-badge{padding:5px 8px !important;margin:1px 0 !important;}
+        body.fit-lvl-4 .secure-badge-body{font-size:0.56em !important;line-height:1.15 !important;margin-bottom:2px !important;padding-bottom:2px !important;}
+        body.fit-lvl-4 .secure-badge-warning{font-size:0.54em !important;}
+        body.fit-lvl-4 #secure-title-wrap{margin-bottom:1px !important;}
+        body.fit-lvl-4 .secure-badge-title{padding:2px 8px !important;font-size:0.72em !important;}
+        body.fit-lvl-4 .app-logo{width:32px !important;height:32px !important;margin:1px auto 0 auto !important;}
+        body.fit-lvl-4 .app-title{font-size:0.85em !important;margin:0 !important;}
+        body.fit-lvl-4 #join-web3-banner{display:none !important;}
+        body.fit-lvl-4 #quick-links-row{display:none !important;}
+        body.fit-lvl-4 #public-stats-bar{display:none !important;}
+        body.fit-lvl-4 #global-connect-bar{padding:1px 2px 1px 2px !important;}
+        body.fit-lvl-4 #connect-prompt-text{font-size:0.56em !important;margin:0 !important;}
+        body.fit-lvl-4 #connect-use-btn-text{font-size:0.54em !important;margin-bottom:1px !important;}
         /* DÜZENLENDİ: Bu overlay ("Güvenli Bağlantı" kartı) eskiden
            varsayılan olarak GİZLİYDİ (opacity:0/visibility:hidden) ve
            sadece render() fonksiyonu (domain verisi ağdan gelip auth
@@ -9000,6 +9022,42 @@ const AUDIT_LOG_CATEGORIES = [
 function auditCategoryFor(actionName) {
     return AUDIT_LOG_CATEGORIES.find(c => c.actions.includes(actionName)) || { key: 'other', icon: '📄', labelKey: 'auditCatOther' };
 }
+// YENİ: Kayıtlardaki ham action anahtarı (ör. "approve_sell_request") teknik
+// bir kod ismi — admin panelinde "ben ne yapmışım" sorusuna direkt cevap
+// vermiyor. Bu sözlük her action'ı okunaklı, tam bir Türkçe cümleye
+// çeviriyor. Sözlükte olmayan (ileride eklenecek) bir action gelirse ham
+// anahtarı olduğu gibi gösterip sessizce devam ediyoruz — hiçbir kayıt
+// kaybolmuyor veya hata vermiyor.
+const AUDIT_ACTION_LABELS_TR = {
+    release_seller_payment: 'Satıcıya Ödeme Serbest Bırakıldı',
+    refund_buyer: 'Alıcıya İade Yapıldı',
+    export_sales_data: 'Satış Verisi Dışa Aktarıldı',
+    reset_platform_stats: 'Platform İstatistikleri Sıfırlandı',
+    approve_sell_request: 'Satış Talebi Onaylandı',
+    reject_sell_request: 'Satış Talebi Reddedildi',
+    bulk_approve_sell_requests: 'Toplu Satış Talebi Onayı',
+    delete_domain: 'Domain Silindi',
+    toggle_ownership_verified: 'Sahiplik Doğrulaması Değiştirildi',
+    toggle_active_app_verified: 'Aktif Uygulama Onayı Değiştirildi',
+    bulk_add_domains: 'Toplu Domain Eklendi',
+    respond_offer: 'Teklife Yanıt Verildi',
+    counter_offer: 'Karşı Teklif Verildi',
+    respond_counter_offer: 'Karşı Teklife Yanıt Verildi',
+    resolve_dispute: 'İhtilaf Çözüldü',
+    update_report_status: 'Şikayet Durumu Güncellendi',
+    update_trademark_claim_status: 'Marka Hakkı Talebi Durumu Güncellendi',
+    approve_trademark_claim: 'Marka Hakkı Talebi Onaylandı (Domain Kaldırıldı)',
+    resolve_deletion_request: 'Hesap Silme Talebi Çözüldü',
+    admin_send_email_to_user: 'Kullanıcıya E-posta Gönderildi',
+    set_maintenance_mode: 'Bakım Modu Değiştirildi',
+    cleanup_orphaned_offers: 'Yetim Kayıtlar Temizlendi',
+    recompute_all_ratings: 'Tüm Puanlar Yeniden Hesaplandı',
+    start_auction: 'Açık Artırma Başlatıldı',
+    cancel_auction: 'Açık Artırma İptal Edildi',
+};
+function auditActionLabel(actionName) {
+    return AUDIT_ACTION_LABELS_TR[actionName] || actionName;
+}
 let _auditLogEntries = [];
 let _auditLogOpenCategory = null;
 let _auditLogOpenEntryId = null;
@@ -9015,6 +9073,7 @@ function getFilteredAuditEntries() {
     return _auditLogEntries.filter(e =>
         (e.admin || '').toLowerCase().includes(q) ||
         (e.action || '').toLowerCase().includes(q) ||
+        auditActionLabel(e.action).toLowerCase().includes(q) ||
         (e.details || '').toLowerCase().includes(q)
     );
 }
@@ -9035,7 +9094,7 @@ window.exportAuditLogCSV = function() {
     const rows = entries.map(e => [
         new Date(e.ts).toLocaleString('tr-TR'),
         e.admin || '',
-        e.action || '',
+        auditActionLabel(e.action) || '',
         e.details || ''
     ].map(escCsv).join(','));
     const csv = '\uFEFF' + [header, ...rows].join('\r\n');
@@ -9158,7 +9217,7 @@ function renderAuditLogGrouped(){
             return `<div style="border-bottom:1px solid #1e293b;">
                 <div onclick="window.toggleAuditEntry('${e.id}')" style="display:flex;justify-content:space-between;align-items:center;gap:8px;padding:8px 4px;cursor:pointer;">
                     <div style="flex:1;min-width:0;">
-                        <div style="color:#cbd5e1;font-size:0.7em;font-weight:800;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(e.action)}</div>
+                        <div style="color:#cbd5e1;font-size:0.7em;font-weight:800;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(auditActionLabel(e.action))}</div>
                         <div style="color:#64748b;font-size:0.62em;">👤 @${escapeHtml(e.admin)} · ${shortTime}</div>
                     </div>
                     <span style="color:#64748b;font-size:0.7em;flex-shrink:0;transform:${isEntryOpen?'rotate(90deg)':'rotate(0deg)'};transition:transform 0.15s;">▶</span>
@@ -9166,7 +9225,7 @@ function renderAuditLogGrouped(){
                 ${isEntryOpen?`<div style="background:#0f172a;border-radius:8px;padding:9px 10px;margin:0 4px 8px 4px;font-size:0.7em;color:#94a3b8;line-height:1.6;">
                     <div><b style="color:#cbd5e1;">${t('auditFieldAdmin')}:</b> @${escapeHtml(e.admin)}</div>
                     <div><b style="color:#cbd5e1;">${t('auditFieldTime')}:</b> ${fullTime}</div>
-                    <div><b style="color:#cbd5e1;">${t('auditFieldAction')}:</b> ${escapeHtml(e.action)}</div>
+                    <div><b style="color:#cbd5e1;">${t('auditFieldAction')}:</b> ${escapeHtml(auditActionLabel(e.action))}</div>
                     ${e.details?`<div style="margin-top:4px;word-break:break-word;"><b style="color:#cbd5e1;">${t('auditFieldDetails')}:</b> ${escapeHtml(e.details)}</div>`:''}
                 </div>`:''}
             </div>`;
@@ -9252,7 +9311,7 @@ function renderAuditLogTimeline(){
                     <div style="display:flex;align-items:center;gap:7px;min-width:0;flex:1;">
                         <span style="font-size:0.85em;flex-shrink:0;">${cat.icon}</span>
                         <div style="min-width:0;">
-                            <div style="color:#cbd5e1;font-size:0.7em;font-weight:800;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(e.action)}</div>
+                            <div style="color:#cbd5e1;font-size:0.7em;font-weight:800;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(auditActionLabel(e.action))}</div>
                             <div style="color:#64748b;font-size:0.62em;">👤 @${escapeHtml(e.admin)} · ${timeOnly}</div>
                         </div>
                     </div>
@@ -9261,7 +9320,7 @@ function renderAuditLogTimeline(){
                 ${isEntryOpen?`<div style="background:#020617;border-radius:8px;padding:9px 10px;margin:0 8px 8px 8px;font-size:0.7em;color:#94a3b8;line-height:1.6;">
                     <div><b style="color:#cbd5e1;">${t('auditFieldAdmin')}:</b> @${escapeHtml(e.admin)}</div>
                     <div><b style="color:#cbd5e1;">${t('auditFieldTime')}:</b> ${fullTime}</div>
-                    <div><b style="color:#cbd5e1;">${t('auditFieldAction')}:</b> ${escapeHtml(e.action)}</div>
+                    <div><b style="color:#cbd5e1;">${t('auditFieldAction')}:</b> ${escapeHtml(auditActionLabel(e.action))}</div>
                     ${e.details?`<div style="margin-top:4px;word-break:break-word;"><b style="color:#cbd5e1;">${t('auditFieldDetails')}:</b> ${escapeHtml(e.details)}</div>`:''}
                 </div>`:''}
             </div>`);
@@ -10774,7 +10833,7 @@ if(window.ResizeObserver){
 // tasarım olduğu gibi kalır (kullanıcının "benim telefonumda tam
 // sığıyordu, şimdi kayıyor" şikayetinin tekrarlanmaması için önemli).
 (function(){
-    const FIT_LEVELS=['fit-lvl-1','fit-lvl-2','fit-lvl-3'];
+    const FIT_LEVELS=['fit-lvl-1','fit-lvl-2','fit-lvl-3','fit-lvl-4'];
     let fitRaf=null;
 
     function currentViewportHeight(){
