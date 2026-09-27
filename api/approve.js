@@ -1,5 +1,5 @@
 import { initializeApp, getApps, cert } from 'firebase-admin/app';
-import { getFirestore, FieldValue, Timestamp } from 'firebase-admin/firestore';
+import { getFirestore, FieldValue, Timestamp, FieldPath } from 'firebase-admin/firestore';
 import { getStorage } from 'firebase-admin/storage';
 import { getDatabase } from 'firebase-admin/database';
 import webpush from 'web-push';
@@ -5715,6 +5715,63 @@ async function handlerImpl(req, res) {
       offers.sort((a, b) => b.createdAt - a.createdAt);
       return res.status(200).json({ success: true, offers });
     } catch (e) {
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  // ── YENİ: Kullanıcının Teklif Verdiği Açık Artırmaları Getir ────────────
+  // "Tekliflerim" panelinin açık artırma karşılığı — açık artırma verileri
+  // 'offers' koleksiyonunda DEĞİL, ayrı bir modelde (domain dokümanı +
+  // 'auction_bids' geçmiş koleksiyonu) tutulduğu için get_my_offers bunları
+  // hiç göremiyordu. Önce kullanıcının teklif verdiği TÜM domainleri
+  // (auction_bids'ten benzersiz) buluyoruz, sonra her biri için domain
+  // dokümanındaki GÜNCEL açık artırma durumunu (aktif mi, en yüksek teklif
+  // kimde, ne zaman bitiyor) döndürüyoruz.
+  if (action === 'get_my_auctions') {
+    const realUsername = await getRealUsername(accessToken);
+    if (!realUsername) return res.status(403).json({ error: "Geçersiz oturum" });
+    if (!await checkRateLimit(clientIp, 'get_my_auctions', 30, 60000))
+      return res.status(429).json({ error: "Çok fazla istek, lütfen biraz bekleyin." });
+    try {
+      const db = getDb();
+      const bidsSnap = await db.collection('auction_bids').where('username', '==', realUsername).orderBy('at', 'desc').limit(500).get();
+      const myHighestBidByDomain = {};
+      const domainNamesInOrder = [];
+      bidsSnap.forEach(d => {
+        const v = d.data();
+        if (!(v.domainName in myHighestBidByDomain)) domainNamesInOrder.push(v.domainName);
+        myHighestBidByDomain[v.domainName] = Math.max(myHighestBidByDomain[v.domainName] || 0, v.bidAmount);
+      });
+      if (!domainNamesInOrder.length) return res.status(200).json({ success: true, auctions: [] });
+      // Firestore 'in' sorgusu en fazla 30 değer alabiliyor, bu yüzden
+      // parça parça (chunk) çekiyoruz.
+      const domainDocs = [];
+      for (let i = 0; i < domainNamesInOrder.length; i += 30) {
+        const chunk = domainNamesInOrder.slice(i, i + 30);
+        const snap = await db.collection('domains').where(FieldPath.documentId(), 'in', chunk).get();
+        snap.forEach(d => domainDocs.push({ id: d.id, ...d.data() }));
+      }
+      const now = Date.now();
+      const auctions = domainDocs.map(v => ({
+        domainName: v.id,
+        sellerUsername: v.sellerUsername || null,
+        auctionActive: v.auctionActive === true,
+        auctionHighestBid: v.auctionHighestBid ?? null,
+        auctionHighestBidder: v.auctionHighestBidder || null,
+        auctionEndsAt: v.auctionEndsAt || null,
+        myHighestBid: myHighestBidByDomain[v.id] || null,
+        isMeHighestBidder: v.auctionHighestBidder === realUsername,
+        sold: v.sold === true,
+        reservedFor: v.reservedFor || null,
+      }));
+      // Aktif + bitişi en yakın olanlar üstte; bitmiş/sonuçlanmışlar altta.
+      auctions.sort((a, b) => {
+        if (a.auctionActive !== b.auctionActive) return a.auctionActive ? -1 : 1;
+        return (a.auctionEndsAt || 0) - (b.auctionEndsAt || 0);
+      });
+      return res.status(200).json({ success: true, auctions });
+    } catch (e) {
+      console.error("get_my_auctions hatası:", e);
       return res.status(500).json({ error: e.message });
     }
   }
