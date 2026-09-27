@@ -9177,8 +9177,40 @@ const AUDIT_ACTION_LABELS_TR = {
     start_auction: 'Açık Artırma Başlatıldı',
     cancel_auction: 'Açık Artırma İptal Edildi',
 };
+// YENİ: Bir önceki sürümde SADECE Türkçe sözlük vardı — İngilizce
+// seçiliyken bile bu etiket hep Türkçe kalıyordu (asıl şikayet buydu).
+// Şimdi aynı anahtarların İngilizce karşılığı da tanımlı; auditActionLabel
+// artık aktif dile göre doğru sözlükten okuyor.
+const AUDIT_ACTION_LABELS_EN = {
+    release_seller_payment: 'Seller Payment Released',
+    refund_buyer: 'Buyer Refunded',
+    export_sales_data: 'Sales Data Exported',
+    reset_platform_stats: 'Platform Stats Reset',
+    approve_sell_request: 'Sell Request Approved',
+    reject_sell_request: 'Sell Request Rejected',
+    bulk_approve_sell_requests: 'Bulk Sell Request Approval',
+    delete_domain: 'Domain Deleted',
+    toggle_ownership_verified: 'Ownership Verification Toggled',
+    toggle_active_app_verified: 'Active App Verification Toggled',
+    bulk_add_domains: 'Bulk Domains Added',
+    respond_offer: 'Offer Responded To',
+    counter_offer: 'Counter Offer Sent',
+    respond_counter_offer: 'Counter Offer Responded To',
+    resolve_dispute: 'Dispute Resolved',
+    update_report_status: 'Report Status Updated',
+    update_trademark_claim_status: 'Trademark Claim Status Updated',
+    approve_trademark_claim: 'Trademark Claim Approved (Domain Removed)',
+    resolve_deletion_request: 'Account Deletion Request Resolved',
+    admin_send_email_to_user: 'Email Sent to User',
+    set_maintenance_mode: 'Maintenance Mode Toggled',
+    cleanup_orphaned_offers: 'Orphaned Records Cleaned Up',
+    recompute_all_ratings: 'All Ratings Recomputed',
+    start_auction: 'Auction Started',
+    cancel_auction: 'Auction Cancelled',
+};
 function auditActionLabel(actionName) {
-    return AUDIT_ACTION_LABELS_TR[actionName] || actionName;
+    const dict = currentLang === 'en' ? AUDIT_ACTION_LABELS_EN : AUDIT_ACTION_LABELS_TR;
+    return dict[actionName] || actionName;
 }
 // YENİ: "action" etiketini yukarıda çevirdik, ama her kaydın asıl "detay"
 // metni (ör. "example.com: başlangıç 50 Pi, min artış 5 Pi, 24 saat") sabit
