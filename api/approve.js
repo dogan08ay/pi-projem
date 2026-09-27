@@ -5536,7 +5536,7 @@ async function handlerImpl(req, res) {
       else if (trustScore >= 40) trustLevel = 'growing';
       else trustLevel = 'new';
 
-      return res.status(200).json({ success: true, avg, count, recentReviews, isTrusted, salesCount, sellerTier, activeListings, joinedAt, hasVerifiedListing, avgResponseMinutes, trustScore, trustLevel, followerCount, isFollowing });
+      return res.status(200).json({ success: true, avg, count, recentReviews, isTrusted, salesCount, sellerTier, activeListings, joinedAt, hasVerifiedListing, avgResponseMinutes, trustScore, trustLevel, followerCount, isFollowing, isPlatformOwner: sellerUsername === ADMIN_USERNAME });
     } catch (e) {
       return res.status(500).json({ error: e.message });
     }
