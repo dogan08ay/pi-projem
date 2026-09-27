@@ -133,6 +133,15 @@
         .badge-legend-item.earned.tier-gold{border-color:rgba(251,191,36,0.9);background:linear-gradient(160deg,#453309 0%,#1e293b 100%);box-shadow:0 0 14px rgba(251,191,36,0.65);}
         .badge-legend-item.earned.tier-diamond{border-color:rgba(129,140,248,0.9);background:linear-gradient(160deg,#2a2650 0%,#1e293b 100%);box-shadow:0 0 14px rgba(129,140,248,0.65);}
         .locked-content{filter:blur(8px);opacity:0.45;pointer-events:none;transition:filter 0.3s ease,opacity 0.3s ease;}
+        /* YENİ (kullanıcı geri bildirimi — "iletişim panelinin üstünde
+           buğulu ekranda ana ekranın yansıması kötü duruyor"): kilit ekranı
+           aktifken bulanıklaştırılmış domain listesi önizlemesi artık hiç
+           gösterilmiyor (sadece blur/opaklık değil, tamamen gizleniyor).
+           Böylece "Pi ile Bağlan" kartı ile alt bilgi (iletişim) paneli
+           arasında bulanık/hayalet bir görüntü kalmıyor. Bağlantı
+           kurulduğunda #premium-lock'tan "active" sınıfı kaldırılıyor,
+           bu kural da otomatik geçersiz kalıp normal liste görünüyor. -->
+        .premium-lock-overlay.active~.locked-content{display:none !important;}
         /* FIX (kullanıcı geri bildirimi — "Pi ile Bağlan butonu bazı
            ekranlarda kaydırmadan görünmüyor"): Kilit ekranı ÖNCEDEN
            position:absolute + top:0/right:0/bottom:0/left:0 ile
@@ -2923,13 +2932,30 @@
             <div style="background:#0a0f1e;border:2px solid #818cf8;border-radius:12px;padding:10px;box-sizing:border-box;max-width:100%;overflow-x:hidden;">
                 <div style="position:relative;display:flex;align-items:center;justify-content:center;padding:6px 34px 8px 6px;margin-bottom:8px;border-bottom:1px solid #312e81;">
                     <span style="font-size:0.72em;color:#a5b4fc;font-weight:800;text-transform:uppercase;">🔄 <span data-i18n="offersTabLabel"></span></span>
-                    <button id="offers-refresh-btn" class="panel-refresh-btn" onclick="window.loadAdminOffersTable()" title="Yenile">
+                    <button id="offers-refresh-btn" class="panel-refresh-btn" onclick="window.currentOffersSubTab==='auction'?window.loadAdminAuctionsTable():window.loadAdminOffersTable()" title="Yenile">
                         <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
                     </button>
                 </div>
-                <div style="font-size:0.65em;color:#94a3b8;margin-bottom:8px;line-height:1.5;" data-i18n="offersTabExplainer"></div>
-                <div id="admin-offers-table-wrap" style="width:100%;box-sizing:border-box;overflow-x:auto;">
-                    <p style="font-size:0.75em;opacity:0.5;text-align:center;" data-i18n="clickToLoad"></p>
+                <!-- YENİ: "Teklifler" sekmesi artık iki alt bölüme ayrıldı —
+                     ① düz teklif/karşı-teklif akışı (öncekiyle birebir aynı)
+                     ② açık artırma takibi (yeni). Böylece admin, açık
+                     artırmalara dair TÜM geçmişi (aktif/bitmiş/iptal/
+                     kazanılmış) ayrı bir üst menü açmadan burada görür. -->
+                <div style="display:flex;gap:6px;margin-bottom:10px;">
+                    <button id="offers-subtab-btn-offer" onclick="window.switchOffersSubTab('offer')" style="flex:1;background:rgba(129,140,248,0.18);border:1.5px solid #818cf8;color:#c7d2fe;font-weight:800;font-size:0.68em;padding:7px 6px;border-radius:9px;cursor:pointer;">🔄 Teklifler</button>
+                    <button id="offers-subtab-btn-auction" onclick="window.switchOffersSubTab('auction')" style="flex:1;background:transparent;border:1.5px solid #334155;color:#94a3b8;font-weight:800;font-size:0.68em;padding:7px 6px;border-radius:9px;cursor:pointer;">⏰ Açık Artırma Takip</button>
+                </div>
+                <div id="offers-subtab-offer">
+                    <div style="font-size:0.65em;color:#94a3b8;margin-bottom:8px;line-height:1.5;" data-i18n="offersTabExplainer"></div>
+                    <div id="admin-offers-table-wrap" style="width:100%;box-sizing:border-box;overflow-x:auto;">
+                        <p style="font-size:0.75em;opacity:0.5;text-align:center;" data-i18n="clickToLoad"></p>
+                    </div>
+                </div>
+                <div id="offers-subtab-auction" style="display:none;">
+                    <div style="font-size:0.65em;color:#94a3b8;margin-bottom:8px;line-height:1.5;">Platformda şu ana kadar başlatılmış TÜM açık artırmalar — aktif olanlar, bitip kazananı belli olanlar, süresi dolup teklif almayanlar ve satıcı tarafından iptal edilenler dahil.</div>
+                    <div id="admin-auctions-table-wrap" style="width:100%;box-sizing:border-box;overflow-x:auto;">
+                        <p style="font-size:0.75em;opacity:0.5;text-align:center;" data-i18n="clickToLoad"></p>
+                    </div>
                 </div>
             </div>
         </div>
@@ -8382,6 +8408,90 @@ window.loadAdminOffersTable=async function(){
         }).join('');
         wrap.innerHTML=cards;
     }catch(e){ console.error('Admin teklif tablosu hatası:', e); wrap.innerHTML=`<p style="color:#f87171;font-size:0.75em;text-align:center;">${t('genericError')}</p>`; }
+};
+// ── YENİ: "Teklifler" sekmesi alt-sekme geçişi (Teklifler / Açık Artırma Takip) ──
+window.currentOffersSubTab='offer';
+let _adminAuctionsLoadedOnce=false;
+window.switchOffersSubTab=function(sub){
+    window.currentOffersSubTab=sub;
+    const isAuction=sub==='auction';
+    document.getElementById('offers-subtab-offer').style.display=isAuction?'none':'block';
+    document.getElementById('offers-subtab-auction').style.display=isAuction?'block':'none';
+    const bOffer=document.getElementById('offers-subtab-btn-offer'), bAuc=document.getElementById('offers-subtab-btn-auction');
+    if(bOffer&&bAuc){
+        bOffer.style.background=isAuction?'transparent':'rgba(129,140,248,0.18)';
+        bOffer.style.borderColor=isAuction?'#334155':'#818cf8';
+        bOffer.style.color=isAuction?'#94a3b8':'#c7d2fe';
+        bAuc.style.background=isAuction?'rgba(129,140,248,0.18)':'transparent';
+        bAuc.style.borderColor=isAuction?'#818cf8':'#334155';
+        bAuc.style.color=isAuction?'#c7d2fe':'#94a3b8';
+    }
+    if(isAuction && !_adminAuctionsLoadedOnce){ _adminAuctionsLoadedOnce=true; window.loadAdminAuctionsTable(); }
+};
+// ── YENİ: Admin — Tüm Açık Artırmaları Takip Tablosu ────────────────────────
+// get_all_auctions'ı çeker; her açık artırmayı durumuna göre (aktif / kazanıldı /
+// süresi doldu-teklifsiz / iptal edildi) renkli bir rozetle, satıcı+en yüksek
+// teklif+teklif sayısı+bitiş zamanıyla birlikte kart olarak listeler. Bir karta
+// tıklanınca o domainin TÜM teklif geçmişi (get_auction_bids) altında açılır.
+window.loadAdminAuctionsTable=async function(){
+    const wrap=document.getElementById('admin-auctions-table-wrap');
+    if(!wrap) return;
+    wrap.innerHTML=`<p style="font-size:0.75em;opacity:0.5;text-align:center;">${t('loadingLabel')}</p>`;
+    try{
+        const r=await fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'get_all_auctions',accessToken:piAccessToken})});
+        const result=await r.json();
+        if(!result.success){ wrap.innerHTML=`<p style="color:#f87171;font-size:0.75em;text-align:center;">${escapeHtml(result.error||t('genericError'))}</p>`; return; }
+        const auctions=result.auctions||[];
+        if(!auctions.length){ wrap.innerHTML=`${emptyState('⏰','Henüz hiç açık artırma başlatılmamış.')}`; return; }
+        const locale=currentLang==='en'?'en-GB':'tr-TR';
+        const fmtDate=(ts)=>ts?new Date(ts).toLocaleDateString(locale,{day:'2-digit',month:'2-digit',year:'2-digit',hour:'2-digit',minute:'2-digit'}):'—';
+        const now=Date.now();
+        const statusOf=(a)=>{
+            if(a.auctionActive) return {icon:'⏳',label:'Aktif',color:'#fbbf24'};
+            if(a.sold || a.reservedFor) return {icon:'🏆',label:'Kazanıldı',color:'#34d399'};
+            if(a.auctionEndsAt && a.auctionEndsAt<=now && !a.auctionHighestBidder) return {icon:'⌛',label:'Süresi Doldu (Teklif Yok)',color:'#94a3b8'};
+            if(a.auctionEndsAt && a.auctionEndsAt<=now && a.auctionHighestBidder) return {icon:'✅',label:'Bitti — Kazanan Bekleniyor',color:'#60a5fa'};
+            return {icon:'🚫',label:'İptal Edildi',color:'#f87171'};
+        };
+        const cards=auctions.map(a=>{
+            const st=statusOf(a);
+            const detailId='auc-detail-'+a.domainName.replace(/[^a-zA-Z0-9]/g,'_');
+            return `<div style="background:#0f172a;border:1px solid #1e293b;border-radius:10px;padding:10px 12px;margin-bottom:10px;">
+                <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px;margin-bottom:6px;padding-bottom:6px;border-bottom:1px solid #1e293b;">
+                    <b style="color:#f1f5f9;font-size:0.75em;">🌐 ${escapeHtml(a.domainName)}</b>
+                    <span style="font-size:0.62em;font-weight:800;color:${st.color};background:${st.color}1a;border:1px solid ${st.color}55;border-radius:6px;padding:2px 8px;">${st.icon} ${st.label}</span>
+                </div>
+                <div style="font-size:0.68em;color:#cbd5e1;line-height:1.75;">
+                    <div>👤 Satıcı: <b style="color:#e2e8f0;">@${escapeHtml(a.sellerUsername||'—')}</b></div>
+                    <div>💰 Başlangıç: <b>${a.auctionStartPrice??'—'} Pi</b> · Min. artış: <b>${a.auctionMinIncrement??'—'} Pi</b></div>
+                    <div>🔥 En yüksek teklif: <b style="color:#34d399;">${a.auctionHighestBid??'— (henüz teklif yok)'}${a.auctionHighestBid!=null?' Pi':''}</b>${a.auctionHighestBidder?` — @${escapeHtml(a.auctionHighestBidder)}`:''}</div>
+                    <div>📊 Toplam teklif sayısı: <b>${a.auctionBidCount||0}</b></div>
+                    <div>🕐 Başladı: ${fmtDate(a.auctionStartedAt)} · Bitiş: ${fmtDate(a.auctionEndsAt)}</div>
+                </div>
+                <button onclick="window.toggleAdminAuctionDetail('${a.domainName.replace(/'/g,"\\'")}','${detailId}')" style="margin-top:8px;width:100%;background:rgba(99,102,241,0.12);border:1px solid #6366f1;color:#a5b4fc;font-size:0.65em;font-weight:800;padding:6px;border-radius:8px;cursor:pointer;">📜 Tüm Teklif Geçmişini Göster</button>
+                <div id="${detailId}" style="display:none;margin-top:8px;padding-top:8px;border-top:1px dashed #1e293b;"></div>
+            </div>`;
+        }).join('');
+        wrap.innerHTML=cards;
+    }catch(e){ console.error('Admin açık artırma tablosu hatası:', e); wrap.innerHTML=`<p style="color:#f87171;font-size:0.75em;text-align:center;">${t('genericError')}</p>`; }
+};
+// Bir açık artırma kartındaki "Tüm Teklif Geçmişini Göster" — zaten var olan,
+// herkese açık get_auction_bids action'ını tekrar kullanıyor (giriş bilgisi
+// gerektirmiyor, sadece IP bazlı hız sınırı var).
+window.toggleAdminAuctionDetail=async function(domainName,detailId){
+    const box=document.getElementById(detailId);
+    if(!box) return;
+    if(box.style.display!=='none'){ box.style.display='none'; return; }
+    box.style.display='block';
+    box.innerHTML=`<p style="font-size:0.7em;opacity:0.5;text-align:center;">${t('loadingLabel')}</p>`;
+    try{
+        const r=await fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'get_auction_bids',domainName})});
+        const result=await r.json();
+        const bids=(result&&result.bids)||[];
+        if(!bids.length){ box.innerHTML=`<p style="font-size:0.68em;color:#64748b;text-align:center;">Henüz teklif verilmemiş.</p>`; return; }
+        const locale=currentLang==='en'?'en-GB':'tr-TR';
+        box.innerHTML=bids.map(b=>`<div style="display:flex;justify-content:space-between;font-size:0.66em;color:#cbd5e1;padding:4px 0;border-bottom:1px solid #1e293b;"><span>@${escapeHtml(b.username||'—')}</span><span style="color:#34d399;font-weight:700;">${b.bidAmount} Pi</span><span style="color:#64748b;">${b.at?new Date(b.at).toLocaleString(locale,{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}):'—'}</span></div>`).join('');
+    }catch(e){ box.innerHTML=`<p style="font-size:0.68em;color:#f87171;text-align:center;">${t('genericError')}</p>`; }
 };
 let myOffersExpanded=false;
 // FIX: "Tekliflerim" başlığındaki bildirim rozeti artık sekme açılışında değil,
