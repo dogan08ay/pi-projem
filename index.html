@@ -9180,6 +9180,56 @@ const AUDIT_ACTION_LABELS_TR = {
 function auditActionLabel(actionName) {
     return AUDIT_ACTION_LABELS_TR[actionName] || actionName;
 }
+// YENİ: "action" etiketini yukarıda çevirdik, ama her kaydın asıl "detay"
+// metni (ör. "example.com: başlangıç 50 Pi, min artış 5 Pi, 24 saat") sabit
+// bir i18n anahtarı değil — sunucunun o an ürettiği SERBEST METİN. Sabit bir
+// çeviri sözlüğüyle karşılanamaz, bu yüzden İngilizce seçiliyken bilinen
+// Türkçe kalıpları/kelimeleri tanıyıp İngilizceye çeviren küçük bir kural
+// tabanlı çevirici kullanıyoruz. Tanımadığı bir metni OLDUĞU GİBİ bırakır
+// (asla veri kaybetmez/bozmaz) — sadece bilinen kalıpları düzeltir.
+function translateAuditDetailsEN(text) {
+    if (!text) return text;
+    let s = String(text);
+    // 1) Sözcük sırası TR/EN'de farklı olan, bu yüzden düz kelime
+    //    değişimiyle doğru çıkmayan tam kalıpları önce (en özelden en
+    //    genele) yakalayıp yeniden kuruyoruz.
+    s = s.replace(/^(.+): @(.+)'in ([\d.]+) Pi teklifine ([\d.]+) Pi karşı teklif verildi$/,
+        (_, a, b, c, d) => `${a}: countered @${b}'s ${c} Pi offer with ${d} Pi`);
+    s = s.replace(/^(.+): @(.+)'in ([\d.]+) Pi teklifi (kabul edildi|reddedildi)$/,
+        (_, a, b, c, d) => `${a}: @${b}'s ${c} Pi offer ${d === 'kabul edildi' ? 'accepted' : 'rejected'}`);
+    s = s.replace(/^(.+): ([\d.]+) Pi karşı teklif (kabul edildi|reddedildi)$/,
+        (_, a, b, c) => `${a}: ${b} Pi counter offer ${c === 'kabul edildi' ? 'accepted' : 'rejected'}`);
+    s = s.replace(/^(.+): başlangıç ([\d.]+) Pi, min artış ([\d.]+) Pi, ([\d.]+) saat$/,
+        (_, a, b, c, d) => `${a}: start ${b} Pi, min increase ${c} Pi, ${d} hours`);
+    // 2) Tüm metin birebir sabit bir cümleyse doğrudan karşılığı.
+    const wholeMap = { 'TÜM satış geçmişi ve puanlar sıfırlandı': 'ALL sales history and ratings reset' };
+    if (wholeMap[s]) return wholeMap[s];
+    // 3) Kalan kalıplardaki tekil kelime/öbekleri (sırayla, en uzun
+    //    öbekten en kısasına) değiştiriyoruz — geri kalan kısım (domain
+    //    adları, @kullanıcıadları, sayılar, Pi) zaten değişmeden kalıyor.
+    const subs = [
+        [/aktif uygulama onaylandı/g, 'active app approved'],
+        [/doğrulama kaldırıldı/g, 'verification removed'],
+        [/domain başarıyla eklendi/g, 'domains added successfully'],
+        [/profil güncellendi/g, 'profiles updated'],
+        [/şikayet dahil/g, 'reports included'],
+        [/\bdoğrulandı\b/g, 'verified'],
+        [/\bonay kaldırıldı\b/g, 'approval removed'],
+        [/\bkayıt\b/g, 'records'],
+        [/\bonaylandı\b/g, 'approved'],
+        [/\bbaşarısız\b/g, 'failed'],
+        [/\bkaldırıldı\b/g, 'removed'],
+        [/konu:/g, 'subject:'],
+        [/\bAÇILDI\b/g, 'ENABLED'],
+        [/\bKAPATILDI\b/g, 'DISABLED'],
+        [/\bsatır\b/g, 'rows'],
+    ];
+    subs.forEach(([re, rep]) => { s = s.replace(re, rep); });
+    return s;
+}
+function auditDetailsText(rawDetails) {
+    return currentLang === 'en' ? translateAuditDetailsEN(rawDetails) : rawDetails;
+}
 let _auditLogEntries = [];
 let _auditLogOpenCategory = null;
 let _auditLogOpenEntryId = null;
@@ -9217,7 +9267,7 @@ window.exportAuditLogCSV = function() {
         new Date(e.ts).toLocaleString('tr-TR'),
         e.admin || '',
         auditActionLabel(e.action) || '',
-        e.details || ''
+        auditDetailsText(e.details) || ''
     ].map(escCsv).join(','));
     const csv = '\uFEFF' + [header, ...rows].join('\r\n');
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
@@ -9348,7 +9398,7 @@ function renderAuditLogGrouped(){
                     <div><b style="color:#cbd5e1;">${t('auditFieldAdmin')}:</b> @${escapeHtml(e.admin)}</div>
                     <div><b style="color:#cbd5e1;">${t('auditFieldTime')}:</b> ${fullTime}</div>
                     <div><b style="color:#cbd5e1;">${t('auditFieldAction')}:</b> ${escapeHtml(auditActionLabel(e.action))}</div>
-                    ${e.details?`<div style="margin-top:4px;word-break:break-word;"><b style="color:#cbd5e1;">${t('auditFieldDetails')}:</b> ${escapeHtml(e.details)}</div>`:''}
+                    ${e.details?`<div style="margin-top:4px;word-break:break-word;"><b style="color:#cbd5e1;">${t('auditFieldDetails')}:</b> ${escapeHtml(auditDetailsText(e.details))}</div>`:''}
                 </div>`:''}
             </div>`;
         }).join('');
@@ -9443,7 +9493,7 @@ function renderAuditLogTimeline(){
                     <div><b style="color:#cbd5e1;">${t('auditFieldAdmin')}:</b> @${escapeHtml(e.admin)}</div>
                     <div><b style="color:#cbd5e1;">${t('auditFieldTime')}:</b> ${fullTime}</div>
                     <div><b style="color:#cbd5e1;">${t('auditFieldAction')}:</b> ${escapeHtml(auditActionLabel(e.action))}</div>
-                    ${e.details?`<div style="margin-top:4px;word-break:break-word;"><b style="color:#cbd5e1;">${t('auditFieldDetails')}:</b> ${escapeHtml(e.details)}</div>`:''}
+                    ${e.details?`<div style="margin-top:4px;word-break:break-word;"><b style="color:#cbd5e1;">${t('auditFieldDetails')}:</b> ${escapeHtml(auditDetailsText(e.details))}</div>`:''}
                 </div>`:''}
             </div>`);
         } catch (err) {
