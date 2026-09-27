@@ -5993,6 +5993,49 @@ async function handlerImpl(req, res) {
     }
   }
 
+  // ── YENİ: Admin — Tüm Açık Artırmaları Takip Et ─────────────────────────
+  // "Teklifler" sekmesindeki get_all_offers'ın açık artırma karşılığı.
+  // Şu an aktif olan VE daha önce başlamış (bitmiş/iptal/kazanılmış)
+  // açık artırmaların TAMAMINI tek listede döner — admin panelindeki
+  // yeni "Açık Artırma Takip" alt sekmesi bunu kullanır. auctionStartedAt
+  // alanı bir açık artırma hiç başlamamışsa hiç var olmuyor, bu yüzden
+  // ">0" filtresi sadece gerçekten açık artırmaya çıkmış domainleri getirir.
+  if (action === 'get_all_auctions') {
+    const isAdmin = await verifyAdmin(accessToken, req);
+    if (!isAdmin) return res.status(403).json({ error: "Yetki yok" });
+    try {
+      const db = getDb();
+      const snap = await db.collection('domains')
+        .where('auctionStartedAt', '>', 0)
+        .orderBy('auctionStartedAt', 'desc')
+        .limit(300)
+        .get();
+      const auctions = [];
+      snap.forEach(d => {
+        const v = d.data();
+        auctions.push({
+          domainName: d.id,
+          sellerUsername: v.sellerUsername || null,
+          auctionActive: v.auctionActive === true,
+          auctionStartPrice: v.auctionStartPrice ?? null,
+          auctionMinIncrement: v.auctionMinIncrement ?? null,
+          auctionHighestBid: v.auctionHighestBid ?? null,
+          auctionHighestBidder: v.auctionHighestBidder || null,
+          auctionBidCount: v.auctionBidCount || 0,
+          auctionStartedAt: v.auctionStartedAt || null,
+          auctionEndsAt: v.auctionEndsAt || null,
+          sold: v.sold === true,
+          reservedFor: v.reservedFor || null,
+          reservedUntil: v.reservedUntil || null,
+        });
+      });
+      return res.status(200).json({ success: true, auctions });
+    } catch (e) {
+      console.error("get_all_auctions hatası:", e);
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
   // ── Teklifler Sekmesi Rozeti İçin Hafif Sayaç ───────────────────────────
   // Admin panelindeki "Teklifler" başlığında yeni/bekleyen teklif olduğunu
   // gösteren küçük bir bildirim rozeti için — get_all_offers gibi 500
