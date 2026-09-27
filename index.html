@@ -28,6 +28,14 @@
          ismi ve splash-screen rengiyle açılıyor (sekme gibi değil). -->
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#0a0f1e">
+    <!-- YENİ: "teklif verirken yazdığım rakam görünmüyor" şikayeti — sayfa
+         zaten koyu temalı olduğu halde bunu tarayıcıya bildirmiyorduk.
+         Android WebView (Pi Browser) telefon karanlık moddayken, bunu
+         görmeyince form alanlarını KENDİ KENDİNE ters çevirebiliyor; bu da
+         koyu arka plan üstüne koyu (görünmez) yazıya yol açıyordu.
+         color-scheme:dark ile tarayıcıya "bu sayfa zaten karanlık, form
+         alanlarına dokunma" diyoruz. -->
+    <meta name="color-scheme" content="dark">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Web3 Domain">
@@ -75,7 +83,14 @@
          birkaç yüz ms geç gelse bile hiçbir işlevsellik bozulmuyor. -->
     <script src="https://sdk.minepi.com/pi-sdk.js" defer></script>
     <style>
-        :root { --bg:#0f172a; --card:#1e293b; --accent:#6366f1; --text:#f8fafc; --sold:#ef4444; --price:#fbbf24; --success:#10b981; }
+        :root { --bg:#0f172a; --card:#1e293b; --accent:#6366f1; --text:#f8fafc; --sold:#ef4444; --price:#fbbf24; --success:#10b981; color-scheme:dark; }
+        /* YENİ: meta[color-scheme] bazı eski WebView'larda tek başına
+           yetmeyebiliyor — form alanlarına EK bir güvence olarak burada da
+           açıkça karanlık renk şeması ve okunabilir metin/imleç rengi
+           zorlanıyor. Böylece "yazdığım teklif tutarını göremiyorum"
+           sorunu, inline style'lar aynı kalsa bile bir daha yaşanmaz. */
+        input, textarea, select { color-scheme:dark; caret-color:#f1f5f9; }
+        input[type="number"], input[type="text"] { -webkit-text-fill-color:currentColor; }
         *, *::before, *::after { box-sizing: inherit; }
         html { box-sizing: border-box; overflow-x:hidden; }
         html,body{height:100%;}
@@ -4135,7 +4150,7 @@ const i18n = {
     receiptFieldPriceCol:"Satış Fiyatı",
     tapForDetailHint:"Detay için dokun",
     sellerDetailHint:"satıcı detayı için tıklayın",
-    sellerProfileUnknownJoinDate:"Bilinmiyor",
+    sellerProfileUnknownJoinDate:"Bilinmiyor",platformOwnerBadge:"Platform Sahibi",
     sellerProfileRatingLabel:"Puan",
     sellerProfileActiveListingsLabel:"Aktif İlan",
     sellerProfileSalesLabel:"Satış",
@@ -5112,7 +5127,7 @@ const i18n = {
     receiptFieldPriceCol:"Sale Price",
     tapForDetailHint:"Tap for details",
     sellerDetailHint:"tap for seller details",
-    sellerProfileUnknownJoinDate:"Unknown",
+    sellerProfileUnknownJoinDate:"Unknown",platformOwnerBadge:"Platform Owner",
     sellerProfileRatingLabel:"Rating",
     sellerProfileActiveListingsLabel:"Active Listings",
     sellerProfileSalesLabel:"Sales",
@@ -7362,7 +7377,14 @@ window.openSellerProfile=async function(username){
         const res=await r.json();
         if(!res.success){ body.innerHTML=`<p style="color:#f87171;font-size:0.8em;text-align:center;">${t('genericError')}</p>`; return; }
         const locale=currentLang==='en'?'en-GB':'tr-TR';
-        const joinedStr=res.joinedAt?new Date(res.joinedAt).toLocaleDateString(locale,{day:'2-digit',month:'long',year:'numeric'}):t('sellerProfileUnknownJoinDate');
+        // YENİ: Admin, domainlerini normal "satış talebi" akışının dışında
+        // (toplu ekleme aracıyla) eklediği için gerçek bir "katılma tarihi"
+        // hesaplanamıyor — bu, veri eksikliği değil, admin hesabının doğası
+        // gereği böyle. "Bilinmiyor" yazmak yerine, daha doğru ve anlamlı
+        // olan "Platform Sahibi" rozetini gösteriyoruz.
+        const joinedLineHtml = res.isPlatformOwner
+            ? `<div style="font-size:0.72em;color:#94a3b8;">🏛️ <span style="color:#fbbf24;font-weight:800;">${t('platformOwnerBadge')}</span></div>`
+            : `<div style="font-size:0.72em;color:#94a3b8;">🗓️ ${t('sellerProfileJoinedLabel')}: <span style="color:#e2e8f0;font-weight:700;">${res.joinedAt?new Date(res.joinedAt).toLocaleDateString(locale,{day:'2-digit',month:'long',year:'numeric'}):t('sellerProfileUnknownJoinDate')}</span></div>`;
         const ratingText=res.count>0?`⭐ ${res.avg} <span style="color:#64748b;font-size:0.75em;">(${res.count})</span>`:t('noRatingsYet');
         const trustedBadge=res.isTrusted?`<span style="background:rgba(16,185,129,0.15);border:1px solid #10b981;color:#6ee7b7;font-size:0.65em;font-weight:900;padding:3px 9px;border-radius:20px;">✅ ${t('trustedSellerBadge')}</span>`:'';
         const tierMap={gold:['🏅',t('sellerTierGold'),'#fbbf24','rgba(251,191,36,0.15)'],silver:['🥈',t('sellerTierSilver'),'#cbd5e1','rgba(203,213,225,0.12)'],bronze:['🥉',t('sellerTierBronze'),'#d97706','rgba(217,119,6,0.12)']};
@@ -7405,7 +7427,7 @@ window.openSellerProfile=async function(username){
                 ${statBox('🏷️',t('sellerProfileActiveListingsLabel'),res.activeListings||0)}
                 ${statBox('✅',t('sellerProfileSalesLabel'),res.salesCount||0)}
             </div>
-            <div style="font-size:0.72em;color:#94a3b8;">🗓️ ${t('sellerProfileJoinedLabel')}: <span style="color:#e2e8f0;font-weight:700;">${joinedStr}</span></div>
+            ${joinedLineHtml}
             ${reviewsHtml}
         `;
         // YENİ: "Satıcıyı Takip Et" — kullanıcı kendi profiline bakmıyorsa
@@ -11154,12 +11176,14 @@ if(window.ResizeObserver){
     }
 
     function contentFits(){
-        const lock=document.getElementById('premium-lock');
-        if(!lock) return true;
-        const rect=lock.getBoundingClientRect();
-        // Kilit kartının alt kenarı, görünür alanın altına taşmıyorsa
-        // (küçük bir tolerans payıyla) "sığıyor" kabul ediyoruz.
-        return rect.bottom <= currentViewportHeight() + 2;
+        // FIX: Önceki sürüm SADECE #premium-lock kartının alt kenarını
+        // ölçüyordu — kartın kendisi sığsa bile, ALTINDA gelen iletişim/
+        // footer kutusu (SORULARINIZ İÇİN...) hesaba katılmıyordu, bu
+        // yüzden footer taştığında algoritma bunu hiç fark etmiyordu.
+        // Artık TÜM SAYFANIN gerçekten kaydırma gerektirip gerektirmediğini
+        // ölçüyoruz — bu, footer dahil ekrandaki HER ŞEYİ otomatik olarak
+        // hesaba katan tek güvenilir yöntem.
+        return document.documentElement.scrollHeight <= currentViewportHeight() + 2;
     }
 
     function applyLevel(idx){
