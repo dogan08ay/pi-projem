@@ -5734,11 +5734,17 @@ async function handlerImpl(req, res) {
       return res.status(429).json({ error: "Çok fazla istek, lütfen biraz bekleyin." });
     try {
       const db = getDb();
-      const bidsSnap = await db.collection('auction_bids').where('username', '==', realUsername).orderBy('at', 'desc').limit(500).get();
+      // NOT: Burada bilinçli olarak .orderBy('at','desc') KULLANMIYORUZ —
+      // where('username','==',...) + orderBy('at',...) birleşimi Firestore'da
+      // bir "composite index" gerektiriyor (manuel Firebase konsolu adımı
+      // ister). Onun yerine ham sonucu çekip aşağıda JS tarafında
+      // sıralıyoruz — veri seti zaten küçük (bir kullanıcının teklifleri),
+      // bu fark yaratmaz ve hiçbir index kurulumuna ihtiyaç bırakmaz.
+      const bidsSnap = await db.collection('auction_bids').where('username', '==', realUsername).limit(1000).get();
       const myHighestBidByDomain = {};
       const domainNamesInOrder = [];
-      bidsSnap.forEach(d => {
-        const v = d.data();
+      const bidDocsSorted = bidsSnap.docs.map(d => d.data()).sort((a, b) => (b.at || 0) - (a.at || 0));
+      bidDocsSorted.forEach(v => {
         if (!(v.domainName in myHighestBidByDomain)) domainNamesInOrder.push(v.domainName);
         myHighestBidByDomain[v.domainName] = Math.max(myHighestBidByDomain[v.domainName] || 0, v.bidAmount);
       });
