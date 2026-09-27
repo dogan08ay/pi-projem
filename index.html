@@ -4199,7 +4199,8 @@ const i18n = {
     auctionTimeLeft:(m)=>m<60?`⏳ ${m} dk kaldı`:(m<2880?`⏳ ${Math.floor(m/60)} sa kaldı`:`⏳ ${Math.floor(m/1440)} gün kaldı`),
     auctionBidBtn:"🔨 Teklif Ver",auctionPlaceBidTitle:"Teklif Ver",
     auctionMinBidLabel:(v)=>`Minimum teklif: ${v} π`,auctionBidInputPlaceholder:"Teklif tutarınız (π)",
-    auctionBidSubmitBtn:"Teklifi Gönder",auctionYouAreHighest:"🏆 Şu anda en yüksek teklif sizde!",
+    auctionBidSubmitBtn:"Açık Artırma Teklifini Gönder",auctionYouAreHighest:"🏆 Şu anda en yüksek teklif sizde!",
+    auctionBidBindingWarning:"⚠️ Bu, pazarlık edilen normal bir teklif değildir — verdiğiniz açık artırma teklifi bağlayıcıdır ve geri alınamaz.",
     auctionWonClaimBtn:"🏆 Kazandınız! Satın Almayı Tamamla",auctionEndedNoBids:"Açık artırma süresi doldu — teklif verilmedi",
     auctionEndedOthersWon:"Açık artırma sona erdi",
     auctionBidHistoryLink:"🕓 Teklif Geçmişini Gör",auctionBidHistoryTitle:"Teklif Geçmişi",
@@ -5177,6 +5178,7 @@ const i18n = {
     auctionBidBtn:"🔨 Place Bid",auctionPlaceBidTitle:"Place a Bid",
     auctionMinBidLabel:(v)=>`Minimum bid: ${v} π`,auctionBidInputPlaceholder:"Your bid amount (π)",
     auctionBidSubmitBtn:"Submit Bid",auctionYouAreHighest:"🏆 You're currently the highest bidder!",
+    auctionBidBindingWarning:"⚠️ This is not a negotiable offer — your auction bid is binding and cannot be withdrawn.",
     auctionWonClaimBtn:"🏆 You Won! Complete Purchase",auctionEndedNoBids:"Auction ended — no bids were placed",
     auctionEndedOthersWon:"Auction has ended",
     auctionBidHistoryLink:"🕓 View Bid History",auctionBidHistoryTitle:"Bid History",
@@ -7183,6 +7185,7 @@ window.openDomainDetail=function(domainName){
                     · ${t('auctionTimeLeft')(Math.max(1,Math.ceil((data.auctionEndsAt-Date.now())/60000)))}
                 </div>
                 ${youAreHighest?`<div style="text-align:center;font-size:0.7em;font-weight:800;color:#6ee7b7;margin-bottom:6px;">${t('auctionYouAreHighest')}</div>`:''}
+                <div style="text-align:center;font-size:0.62em;color:#fca5a5;font-weight:700;margin-bottom:6px;">${t('auctionBidBindingWarning')}</div>
                 <div style="display:flex;gap:6px;">
                     <input type="number" id="auction-bid-input" min="${minBid}" step="any" placeholder="${t('auctionMinBidLabel')(minBid)}" style="flex:1;min-width:0;padding:9px;border-radius:9px;border:1.5px solid #6366f1;background:#0f172a;color:#f1f5f9;font-size:0.85em;box-sizing:border-box;">
                     <button class="btn-buy" style="background:linear-gradient(135deg,#6366f1,#8b5cf6);white-space:nowrap;padding:9px 12px;" onclick="window.submitAuctionBid('${safeDomainForJs}',${minBid})">${t('auctionBidSubmitBtn')}</button>
