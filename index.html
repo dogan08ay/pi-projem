@@ -102,6 +102,24 @@
         input[type="number"] { -webkit-appearance:none; -moz-appearance:textfield; appearance:none; width:100%; }
         input[type="number"]::-webkit-outer-spin-button,
         input[type="number"]::-webkit-inner-spin-button { -webkit-appearance:none; margin:0; }
+        /* SERT ÇÖZÜM: Önceki iki deneme (color-scheme + appearance:none) tek
+           başına yetmedi — kullanıcı hâlâ "yazdığım rakamı hiçbir yerde
+           göremiyorum" bildirdi. Artık aday sebeplerin TAMAMINI aynı anda,
+           !important ile, tek tek kapatıyoruz:
+           - forced-color-adjust:none → Android WebView'ın form alanlarını
+             kendi "zorla renklendirme" moduyla boyamasını (CSS'in bile
+             göremediği bir tarayıcı-seviyesi müdahale) tamamen devre dışı
+             bırakır. Bu, önceki denemelerde HİÇ kullanılmamıştı.
+           - color/background-color/-webkit-text-fill-color'ı SABİT (currentColor
+             DEĞİL) değerlerle ve !important ile veriyoruz, böylece hiçbir
+             miras/hesaplama belirsizliği kalmıyor. */
+        input[type="number"], input[type="text"], input[type="email"], textarea {
+            forced-color-adjust:none !important;
+            color:#f1f5f9 !important;
+            -webkit-text-fill-color:#f1f5f9 !important;
+            background-color:#0f172a !important;
+            opacity:1 !important;
+        }
         *, *::before, *::after { box-sizing: inherit; }
         html { box-sizing: border-box; overflow-x:hidden; }
         html,body{height:100%;}
