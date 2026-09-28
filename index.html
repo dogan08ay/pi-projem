@@ -1954,7 +1954,8 @@
         <h2 style="color:#fbbf24;margin:0 0 4px 0;font-size:1.05em;font-weight:900;">💬 <span data-i18n="submitOfferTitle"></span></h2>
         <p id="offer-modal-domain-name" style="color:#94a3b8;font-size:0.75em;margin:0 0 14px 0;"></p>
         <label style="display:block;font-size:0.7em;color:#94a3b8;font-weight:700;margin-bottom:5px;" data-i18n="offerPriceLabel"></label>
-        <input type="number" id="offer-price-input" min="0.001" step="0.001" style="width:100%;box-sizing:border-box;background:#0f172a;border:1.5px solid #334155;border-radius:9px;padding:10px;color:#e2e8f0;font-size:0.9em;margin-bottom:10px;">
+        <input type="text" inputmode="decimal" autocomplete="off" id="offer-price-input" oninput="sanitizeNumericInput(this,'offer-price-echo')" style="width:100%;box-sizing:border-box;background:#0f172a;border:1.5px solid #334155;border-radius:9px;padding:10px;color:#e2e8f0;font-size:0.9em;margin-bottom:2px;">
+        <div id="offer-price-echo" style="min-height:1.3em;color:#34d399;font-weight:900;font-size:0.95em;margin-bottom:8px;"></div>
         <label style="display:block;font-size:0.7em;color:#94a3b8;font-weight:700;margin-bottom:5px;" data-i18n="offerMessageLabel"></label>
         <textarea id="offer-message-input" maxlength="300" rows="2" style="width:100%;box-sizing:border-box;background:#0f172a;border:1.5px solid #334155;border-radius:9px;padding:10px;color:#e2e8f0;font-size:0.82em;margin-bottom:14px;resize:vertical;"></textarea>
         <button id="offer-submit-btn" onclick="window.confirmSubmitOffer()" style="width:100%;padding:10px;border-radius:9px;border:none;background:linear-gradient(135deg,#f59e0b,#d97706);color:#1e1b4b;font-weight:900;font-size:0.82em;cursor:pointer;margin-bottom:8px;" data-i18n="sendOfferBtn"></button>
@@ -7219,9 +7220,10 @@ window.openDomainDetail=function(domainName){
                 ${youAreHighest?`<div style="text-align:center;font-size:0.7em;font-weight:800;color:#6ee7b7;margin-bottom:6px;">${t('auctionYouAreHighest')}</div>`:''}
                 <div style="text-align:center;font-size:0.62em;color:#fca5a5;font-weight:700;margin-bottom:6px;">${t('auctionBidBindingWarning')}</div>
                 <div style="display:flex;gap:6px;">
-                    <input type="number" id="auction-bid-input" min="${minBid}" step="any" placeholder="${t('auctionMinBidLabel')(minBid)}" style="flex:1;min-width:0;padding:9px;border-radius:9px;border:1.5px solid #6366f1;background:#0f172a;color:#f1f5f9;font-size:0.85em;box-sizing:border-box;">
+                    <input type="text" inputmode="decimal" autocomplete="off" id="auction-bid-input" placeholder="${t('auctionMinBidLabel')(minBid)}" oninput="sanitizeNumericInput(this,'auction-bid-echo')" style="flex:1;min-width:0;padding:9px;border-radius:9px;border:1.5px solid #6366f1;background:#0f172a;color:#f1f5f9;font-size:0.85em;box-sizing:border-box;">
                     <button class="btn-buy" style="background:linear-gradient(135deg,#6366f1,#8b5cf6);white-space:nowrap;padding:9px 12px;" onclick="window.submitAuctionBid('${safeDomainForJs}',${minBid})">${t('auctionBidSubmitBtn')}</button>
                 </div>
+                <div id="auction-bid-echo" style="text-align:center;min-height:1.3em;color:#34d399;font-weight:900;font-size:1em;margin-top:5px;"></div>
             </div>`;
         } else if(auctionIsEnded){
             const safeDomainForJs=domainName.replace(/'/g,"\\'");
@@ -8167,6 +8169,7 @@ window.openOfferModal=function(domainName){
     const data=domainData[domainName]||{price:domain.price};
     document.getElementById('offer-modal-domain-name').textContent=`${domainName} — ${t('currentPriceLabel')}: ${data.price} Pi`;
     document.getElementById('offer-price-input').value='';
+    const opEcho=document.getElementById('offer-price-echo'); if(opEcho) opEcho.textContent='';
     document.getElementById('offer-price-input').dataset.domain=domainName;
     document.getElementById('offer-message-input').value='';
     document.getElementById('offer-modal').style.display='flex';
@@ -8505,6 +8508,27 @@ window.loadAdminOffersTable=async function(){
     }catch(e){ console.error('Admin teklif tablosu hatası:', e); wrap.innerHTML=`<p style="color:#f87171;font-size:0.75em;text-align:center;">${t('genericError')}</p>`; }
 };
 // ── YENİ: "Teklifler" sekmesi alt-sekme geçişi (Teklifler / Açık Artırma Takip) ──
+// YENİ (kök çözüm): type="number" alanları bu ortamda (Pi Browser / bazı
+// Android WebView sürümleri) sayısal klavyeyi açmasına rağmen yazılan
+// rakamı görünür şekilde ÇİZMİYOR — üç ayrı CSS denemesi (appearance,
+// color-scheme, forced-color-adjust) bunu çözemedi, demek ki sorun CSS
+// değil, type="number" alanının bu ortamdaki temel render davranışıydı.
+// Çözüm: alanı type="text" + inputmode="decimal" yapıp (yine sayısal
+// klavye açılır ama render tamamen normal metin gibi, native "number"
+// motoru devre dışı) YAZARKEN geçersiz karakterleri temizliyoruz VE
+// yazılan tutarı, inputun kendisinden TAMAMEN BAĞIMSIZ ayrı bir satırda
+// büyük punto ile CANLI gösteriyoruz — input'ta bir render sorunu devam
+// etse bile kullanıcı ne yazdığını her zaman bu satırdan görür.
+function sanitizeNumericInput(el, echoElId){
+    let v = el.value.replace(/[^0-9.]/g,'');
+    const firstDot = v.indexOf('.');
+    if(firstDot!==-1) v = v.slice(0,firstDot+1) + v.slice(firstDot+1).replace(/\./g,'');
+    if(v!==el.value) el.value = v;
+    const echo = echoElId ? document.getElementById(echoElId) : null;
+    if(echo) echo.textContent = v ? (v+' π') : '';
+    return v;
+}
+window.sanitizeNumericInput = sanitizeNumericInput;
 window.currentOffersSubTab='offer';
 let _adminAuctionsLoadedOnce=false;
 window.switchOffersSubTab=function(sub){
