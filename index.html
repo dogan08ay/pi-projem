@@ -1954,8 +1954,7 @@
         <h2 style="color:#fbbf24;margin:0 0 4px 0;font-size:1.05em;font-weight:900;">💬 <span data-i18n="submitOfferTitle"></span></h2>
         <p id="offer-modal-domain-name" style="color:#94a3b8;font-size:0.75em;margin:0 0 14px 0;"></p>
         <label style="display:block;font-size:0.7em;color:#94a3b8;font-weight:700;margin-bottom:5px;" data-i18n="offerPriceLabel"></label>
-        <input type="text" inputmode="decimal" autocomplete="off" id="offer-price-input" oninput="sanitizeNumericInput(this,'offer-price-echo')" style="width:100%;box-sizing:border-box;background:#0f172a;border:1.5px solid #334155;border-radius:9px;padding:10px;color:#e2e8f0;font-size:0.9em;margin-bottom:2px;">
-        <div id="offer-price-echo" style="min-height:1.3em;color:#34d399;font-weight:900;font-size:0.95em;margin-bottom:8px;"></div>
+        <input type="text" inputmode="decimal" autocomplete="off" id="offer-price-input" data-i18n-placeholder="offerAmountPlaceholder" oninput="sanitizeNumericInput(this)" style="width:100%;box-sizing:border-box;background:#0f172a;border:2.5px solid #f59e0b;border-radius:10px;padding:14px 12px;color:#34d399;font-size:1.3em;font-weight:900;text-align:center;margin-bottom:10px;">
         <label style="display:block;font-size:0.7em;color:#94a3b8;font-weight:700;margin-bottom:5px;" data-i18n="offerMessageLabel"></label>
         <textarea id="offer-message-input" maxlength="300" rows="2" style="width:100%;box-sizing:border-box;background:#0f172a;border:1.5px solid #334155;border-radius:9px;padding:10px;color:#e2e8f0;font-size:0.82em;margin-bottom:14px;resize:vertical;"></textarea>
         <button id="offer-submit-btn" onclick="window.confirmSubmitOffer()" style="width:100%;padding:10px;border-radius:9px;border:none;background:linear-gradient(135deg,#f59e0b,#d97706);color:#1e1b4b;font-weight:900;font-size:0.82em;cursor:pointer;margin-bottom:8px;" data-i18n="sendOfferBtn"></button>
@@ -4228,7 +4227,7 @@ const i18n = {
     auctionBidCountLabel:(n)=>n===1?"1 teklif":`${n} teklif`,
     auctionTimeLeft:(m)=>m<60?`⏳ ${m} dk kaldı`:(m<2880?`⏳ ${Math.floor(m/60)} sa kaldı`:`⏳ ${Math.floor(m/1440)} gün kaldı`),
     auctionBidBtn:"🔨 Teklif Ver",auctionPlaceBidTitle:"Teklif Ver",
-    auctionMinBidLabel:(v)=>`Minimum teklif: ${v} π`,auctionBidInputPlaceholder:"Teklif tutarınız (π)",
+    auctionMinBidLabel:(v)=>`Minimum teklif: ${v} π`,auctionBidInputPlaceholder:"✍️ Teklifinizi girin",offerAmountPlaceholder:"✍️ Teklifinizi girin",
     auctionBidSubmitBtn:"Açık Artırma Teklifini Gönder",auctionYouAreHighest:"🏆 Şu anda en yüksek teklif sizde!",
     auctionBidBindingWarning:"⚠️ Bu, pazarlık edilen normal bir teklif değildir — verdiğiniz açık artırma teklifi bağlayıcıdır ve geri alınamaz.",
     auctionWonClaimBtn:"🏆 Kazandınız! Satın Almayı Tamamla",auctionEndedNoBids:"Açık artırma süresi doldu — teklif verilmedi",
@@ -5207,7 +5206,7 @@ const i18n = {
     auctionBidCountLabel:(n)=>n===1?"1 bid":`${n} bids`,
     auctionTimeLeft:(m)=>m<60?`⏳ ${m} min left`:(m<2880?`⏳ ${Math.floor(m/60)} h left`:`⏳ ${Math.floor(m/1440)} d left`),
     auctionBidBtn:"🔨 Place Bid",auctionPlaceBidTitle:"Place a Bid",
-    auctionMinBidLabel:(v)=>`Minimum bid: ${v} π`,auctionBidInputPlaceholder:"Your bid amount (π)",
+    auctionMinBidLabel:(v)=>`Minimum bid: ${v} π`,auctionBidInputPlaceholder:"✍️ Enter your offer",offerAmountPlaceholder:"✍️ Enter your offer",
     auctionBidSubmitBtn:"Submit Bid",auctionYouAreHighest:"🏆 You're currently the highest bidder!",
     auctionBidBindingWarning:"⚠️ This is not a negotiable offer — your auction bid is binding and cannot be withdrawn.",
     auctionWonClaimBtn:"🏆 You Won! Complete Purchase",auctionEndedNoBids:"Auction ended — no bids were placed",
@@ -7219,11 +7218,9 @@ window.openDomainDetail=function(domainName){
                 </div>
                 ${youAreHighest?`<div style="text-align:center;font-size:0.7em;font-weight:800;color:#6ee7b7;margin-bottom:6px;">${t('auctionYouAreHighest')}</div>`:''}
                 <div style="text-align:center;font-size:0.62em;color:#fca5a5;font-weight:700;margin-bottom:6px;">${t('auctionBidBindingWarning')}</div>
-                <div style="display:flex;gap:6px;">
-                    <input type="text" inputmode="decimal" autocomplete="off" id="auction-bid-input" placeholder="${t('auctionMinBidLabel')(minBid)}" oninput="sanitizeNumericInput(this,'auction-bid-echo')" style="flex:1;min-width:0;padding:9px;border-radius:9px;border:1.5px solid #6366f1;background:#0f172a;color:#f1f5f9;font-size:0.85em;box-sizing:border-box;">
-                    <button class="btn-buy" style="background:linear-gradient(135deg,#6366f1,#8b5cf6);white-space:nowrap;padding:9px 12px;" onclick="window.submitAuctionBid('${safeDomainForJs}',${minBid})">${t('auctionBidSubmitBtn')}</button>
-                </div>
-                <div id="auction-bid-echo" style="text-align:center;min-height:1.3em;color:#34d399;font-weight:900;font-size:1em;margin-top:5px;"></div>
+                <input type="text" inputmode="decimal" autocomplete="off" id="auction-bid-input" placeholder="${t('auctionBidInputPlaceholder')}" oninput="sanitizeNumericInput(this)" style="width:100%;box-sizing:border-box;padding:14px 12px;border-radius:10px;border:2.5px solid #6366f1;background:#0f172a;color:#34d399;font-size:1.3em;font-weight:900;text-align:center;margin-bottom:8px;">
+                <div style="font-size:0.6em;color:#94a3b8;text-align:center;margin:-4px 0 8px 0;">${t('auctionMinBidLabel')(minBid)}</div>
+                <button class="btn-buy" style="width:100%;background:linear-gradient(135deg,#6366f1,#8b5cf6);padding:11px 12px;font-size:0.9em;" onclick="window.submitAuctionBid('${safeDomainForJs}',${minBid})">${t('auctionBidSubmitBtn')}</button>
             </div>`;
         } else if(auctionIsEnded){
             const safeDomainForJs=domainName.replace(/'/g,"\\'");
@@ -8520,12 +8517,16 @@ window.loadAdminOffersTable=async function(){
 // büyük punto ile CANLI gösteriyoruz — input'ta bir render sorunu devam
 // etse bile kullanıcı ne yazdığını her zaman bu satırdan görür.
 function sanitizeNumericInput(el, echoElId){
+    // GÜNCELLEME: Artık ayrı bir "yankı" satırı YOK — kullanıcı "iki kutu
+    // kafa karıştırıyor, hangisine tıklayacağım belli değil" dedi. Bunun
+    // yerine YAZDIĞI RAKAM DOĞRUDAN KUTUNUN İÇİNDE (büyük, yeşil, kalın)
+    // görünüyor — echoElId artık kullanılmıyor ama eski çağrılar hata
+    // vermesin diye parametre olarak duruyor.
     let v = el.value.replace(/[^0-9.]/g,'');
     const firstDot = v.indexOf('.');
     if(firstDot!==-1) v = v.slice(0,firstDot+1) + v.slice(firstDot+1).replace(/\./g,'');
     if(v!==el.value) el.value = v;
-    const echo = echoElId ? document.getElementById(echoElId) : null;
-    if(echo) echo.textContent = v ? (v+' π') : '';
+    if(echoElId){ const echo=document.getElementById(echoElId); if(echo) echo.textContent = v ? (v+' π') : ''; }
     return v;
 }
 window.sanitizeNumericInput = sanitizeNumericInput;
