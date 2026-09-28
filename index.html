@@ -91,6 +91,17 @@
            sorunu, inline style'lar aynı kalsa bile bir daha yaşanmaz. */
         input, textarea, select { color-scheme:dark; caret-color:#f1f5f9; }
         input[type="number"], input[type="text"] { -webkit-text-fill-color:currentColor; }
+        /* YENİ: "teklif tutarını yazarken göremiyorum" + "bid kutusu küçük
+           siyah bir kapsül gibi görünüyor" şikayetleri — tarayıcı,
+           type="number" alanları için kendi NATIVE (yerleşik) görünümünü
+           dayatıyor ve bizim genişlik/renk stillerimizi görmezden
+           geliyordu. appearance:none ile bu native görünümü tamamen
+           kapatıp KENDİ stillerimizin (genişlik, arka plan, yazı rengi)
+           her zaman uygulanmasını garanti ediyoruz — hem teklif hem açık
+           artırma giriş kutuları için geçerli, tek bir global kural.  */
+        input[type="number"] { -webkit-appearance:none; -moz-appearance:textfield; appearance:none; width:100%; }
+        input[type="number"]::-webkit-outer-spin-button,
+        input[type="number"]::-webkit-inner-spin-button { -webkit-appearance:none; margin:0; }
         *, *::before, *::after { box-sizing: inherit; }
         html { box-sizing: border-box; overflow-x:hidden; }
         html,body{height:100%;}
@@ -4211,6 +4222,7 @@ const i18n = {
     confirmAcceptOffer:"Bu teklifi kabul etmek istediğinize emin misiniz? Domain fiyatı teklif tutarına güncellenecek.",
     confirmRejectOffer:"Bu teklifi reddetmek istediğinize emin misiniz?",
     myOffersTitle:"Tekliflerim",receivedOffersTitle:"Gelen Teklifler",noOffersYet:"Henüz teklif yok.",
+    viewDomainBtn:"Domaine Git",myOfferOnDomainTitle:"💬 Teklifiniz",myOfferPanelHint:"Tüm tekliflerinizi Panelim → Alımlarım → Tekliflerim bölümünden yönetebilirsiniz.",
     myAuctionsTitle:"Açık Artırmalarım",noAuctionsYet:"Henüz bir açık artırmaya teklif vermediniz.",
     myBidLabel:"Sizin Teklifiniz",viewAuctionDomainBtn:"Domaine Git",
     myAuctionLeading:"🥇 Şu An Öndesiniz",myAuctionOutbid:"⚠️ Geçildiniz",
@@ -5189,6 +5201,7 @@ const i18n = {
     confirmAcceptOffer:"Are you sure you want to accept this offer? The domain's price will be updated to the offer amount.",
     confirmRejectOffer:"Are you sure you want to reject this offer?",
     myOffersTitle:"My Offers",receivedOffersTitle:"Received Offers",noOffersYet:"No offers yet.",
+    viewDomainBtn:"View Domain",myOfferOnDomainTitle:"💬 Your Offer",myOfferPanelHint:"You can manage all your offers under My Panel → Purchases → My Offers.",
     myAuctionsTitle:"My Auctions",noAuctionsYet:"You haven't bid on any auctions yet.",
     myBidLabel:"Your Bid",viewAuctionDomainBtn:"View Domain",
     myAuctionLeading:"🥇 You're Currently Leading",myAuctionOutbid:"⚠️ You've Been Outbid",
@@ -6941,6 +6954,7 @@ function legacyCopyToClipboard(text) {
 }
 
 window.openDomainDetail=function(domainName){
+    window._detailDomainName=domainName;
     const domain=domains.find(d=>d.name===domainName); if(!domain) return;
     currentDetailDomainName=domainName; // YENİ: İlan şikayet formu hangi domain için açıldığını bilsin diye.
     // YENİ: Görüntülenme sayacı — satıcıların ilanlarına ilgiyi görebilmesi
@@ -7266,7 +7280,7 @@ window.openDomainDetail=function(domainName){
         secondaryHtml+=`<button onclick="window.openConnectAppModal('${domainName}')" style="padding:9px 6px;border-radius:9px;border:1.5px solid #a855f7;background:rgba(168,85,247,0.12);color:#d8b4fe;font-weight:800;font-size:0.74em;cursor:pointer;">🔌 ${data.connectedAppUrl?t('editConnectedAppBtn'):t('addConnectedAppBtn')}</button>`;
     }
     const secondaryGridHtml = secondaryHtml ? `<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px;margin-top:8px;">${secondaryHtml}</div>` : '';
-    actionEl.innerHTML = primaryHtml + secondaryGridHtml;
+    actionEl.innerHTML = buildMyOfferBlockHtml(domainName) + primaryHtml + secondaryGridHtml;
     const detailModalEl = document.getElementById('domain-detail-modal');
     detailModalEl.style.display='flex';
     // YENİ: Modal her açıldığında en başa kaydırılır — önceki bir görüntülemeden
@@ -8172,6 +8186,7 @@ window.confirmSubmitOffer=async function(){
         if(!result.success){ showToast(result.error||t('genericError')); return; }
         document.getElementById('offer-modal').style.display='none';
         showToast(t('offerSentSuccess'));
+        window.refreshMyOffersCache();
     }catch(e){ showToast(t('genericError')); }
     finally{ _offerSubmitInFlight=false; if(btn){btn.disabled=false;btn.style.opacity='1';} }
 };
@@ -8182,6 +8197,7 @@ window.withdrawOffer=async function(offerId){
         const result=await r.json();
         if(!result.success){ showToast(result.error||t('genericError')); return; }
         window.loadMyOffers();
+        window.refreshMyOffersCache();
     }catch(e){ showToast(t('genericError')); }
 };
 // YENİ: Açık artırmaya teklif verme — desen confirmSubmitOffer ile BİREBİR
@@ -8282,6 +8298,7 @@ window.respondCounterOffer=async function(offerId, accept){
         if(!result.success){ showToast(result.error||t('genericError')); return; }
         window.loadMyOffers();
         loadUserProfile().then(()=>debouncedRender());
+        window.refreshMyOffersCache();
     }catch(e){ showToast(t('genericError')); }
 };
 // ── Admin: Tüm Teklif Trafiği Tablosu ─────────────────────────────────────
@@ -8630,6 +8647,7 @@ window.toggleMyAuctionsList=function(){
 // bunu kullanarak aksiyon butonlarını (kabul/reddet/karşı teklif/geri çek)
 // domain satıldıysa HER ZAMAN gizliyor — o.status ne olursa olsun.
 function buildOfferDetailTable(o, statusLabel, statusColor){
+    const locale=currentLang==='en'?'en-GB':'tr-TR';
     const rows=[
         [t('offerDetailDomain'), escapeHtml(o.domainName||'—')],
         [t('offerDetailStatus'), `<span style="color:${statusColor};font-weight:800;">${statusLabel}</span>`],
@@ -8741,6 +8759,80 @@ window.loadMyOffers=async function(silent){
     }catch(e){ if(box.style.display!=='none' && !silent) box.innerHTML=`<p style="color:#f87171;font-size:0.72em;text-align:center;">${t('genericError')}</p>`; }
     finally{ _myOffersLoadInFlight=false; }
 };
+// ── YENİ: Domain kartı/detayında "Teklifiniz" bilgisini gösterebilmek için
+// hafif önbellek. "Tekliflerim" paneli sadece AÇIKKEN veri çekiyordu; bu
+// yüzden panel kapalıyken domain kartı kullanıcının teklifinden habersizdi.
+// Bu önbellek panelden bağımsız, arka planda (giriş yapılmışsa) tazeleniyor.
+window.myOffersByDomain=window.myOffersByDomain||{};
+let _offersCacheInFlight=false;
+function getMyOfferFor(domainName){ return (window.myOffersByDomain||{})[domainName]||null; }
+function offerStatusMeta(status){
+    const m={pending:{label:t('offerStatusPending'),color:'#fbbf24'},accepted:{label:t('offerStatusAccepted'),color:'#34d399'},rejected:{label:t('offerStatusRejected'),color:'#f87171'},countered:{label:t('offerStatusCountered'),color:'#818cf8'}};
+    return m[status]||m.pending;
+}
+function offerSignature(map){
+    return JSON.stringify(Object.keys(map).sort().map(k=>[k,map[k].id,map[k].status,map[k].counterPrice,map[k].offerPrice]));
+}
+window.refreshMyOffersCache=async function(){
+    if(typeof isAuth==='undefined' || !isAuth || _offersCacheInFlight) return;
+    _offersCacheInFlight=true;
+    try{
+        const r=await fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'get_my_offers',accessToken:piAccessToken})});
+        const result=await r.json();
+        if(!result || !result.success) return;
+        const map={};
+        (result.offers||[]).forEach(o=>{
+            if(!o || !o.domainName) return;
+            if(o.status==='withdrawn' || o.status==='expired') return;
+            const prev=map[o.domainName];
+            if(!prev || (o.createdAt||0)>(prev.createdAt||0)) map[o.domainName]=o;
+        });
+        const changed=offerSignature(map)!==offerSignature(window.myOffersByDomain||{});
+        window.myOffersByDomain=map;
+        if(changed){
+            debouncedRender();
+            // Detay penceresi açıksa ve kullanıcı o an bir kutuya yazmıyorsa yenile.
+            const modal=document.getElementById('domain-detail-modal');
+            const cur=window._detailDomainName;
+            const ae=document.activeElement;
+            const typing=ae && (ae.tagName==='INPUT'||ae.tagName==='TEXTAREA');
+            if(modal && modal.style.display==='flex' && cur && !typing) window.openDomainDetail(cur);
+        }
+    }catch(e){ /* sessiz: arka plan tazelemesi */ }
+    finally{ _offersCacheInFlight=false; }
+};
+setInterval(()=>{ window.refreshMyOffersCache(); }, 12000);
+[2500,7000].forEach(ms=>setTimeout(()=>window.refreshMyOffersCache(),ms));
+// Detay penceresi için "Teklifiniz" bloğu — Tekliflerim panelindeki AYNI detay
+// tablosunu (buildOfferDetailTable) yeniden kullanır, böylece iki yerde farklı
+// bilgi görünmez.
+function buildMyOfferBlockHtml(domainName){
+    try{
+        if(typeof isAuth==='undefined' || !isAuth) return '';
+        const o=getMyOfferFor(domainName);
+        if(!o) return '';
+        const dd=domainData[domainName];
+        if(dd && dd.sold===true && dd.buyer!==o.buyerUsername) return '';
+        const sv=offerStatusMeta(o.status);
+        const {html}=buildOfferDetailTable(o, sv.label, sv.color);
+        return `<div style="background:#0f172a;border:1.5px solid ${sv.color};border-radius:10px;padding:8px;margin-bottom:10px;">
+            <div style="font-size:0.72em;font-weight:800;color:${sv.color};margin-bottom:6px;text-align:left;">${t('myOfferOnDomainTitle')}</div>
+            ${html}
+            <div style="font-size:0.6em;color:#64748b;margin-top:6px;text-align:left;">${t('myOfferPanelHint')}</div>
+        </div>`;
+    }catch(e){ return ''; }
+}
+// Domain LİSTE kartındaki küçük "teklifiniz" etiketi (sadece aktif teklifler).
+function buildMyOfferChipHtml(domainName){
+    try{
+        if(typeof isAuth==='undefined' || !isAuth) return '';
+        const o=getMyOfferFor(domainName);
+        if(!o || !isOfferStillActive(o)) return '';
+        const sv=offerStatusMeta(o.status);
+        const price=(o.status==='countered' && o.counterPrice!=null)?o.counterPrice:((o.status==='accepted' && o.counterPrice!=null)?o.counterPrice:o.offerPrice);
+        return `<div style="margin-top:4px;font-size:0.6em;font-weight:800;color:${sv.color};background:${sv.color}1a;border:1px solid ${sv.color}66;border-radius:6px;padding:2px 6px;display:inline-block;">💬 ${price} π · ${sv.label}</div>`;
+    }catch(e){ return ''; }
+}
 // ── YENİ: "Açık Artırmalarım" — teklif verdiğim açık artırmaları getir ────
 // get_my_auctions'ı çağırır ve her birini kişisel duruma göre (öndesiniz /
 // geçildiniz / kazandınız / kaybettiniz / bitti-bekleniyor / iptal) etiketler.
@@ -8836,6 +8928,7 @@ function renderMyOffersBox(forceRender){
                         <button onclick="window.respondCounterOffer('${o.id}',true)" style="flex:1;padding:6px;border-radius:6px;border:none;background:#10b981;color:#fff;font-weight:800;font-size:0.65em;cursor:pointer;">✅ ${t('acceptOfferBtn')}</button>
                         <button onclick="window.respondCounterOffer('${o.id}',false)" style="flex:1;padding:6px;border-radius:6px;border:none;background:#ef4444;color:#fff;font-weight:800;font-size:0.65em;cursor:pointer;">❌ ${t('rejectOfferBtn')}</button>
                     </div>`:''}
+                <button onclick="window.openDomainDetail('${String(o.domainName||'').replace(/'/g,"\\'")}')" style="margin-top:7px;width:100%;background:rgba(129,140,248,0.12);border:1px solid #818cf8;color:#c7d2fe;font-size:0.64em;font-weight:800;padding:6px;border-radius:8px;cursor:pointer;">🔗 ${t('viewDomainBtn')}</button>
             </div>`;
         }catch(renderErr){
             // YENİ: Artık sessizce '' döndürmek yerine, o KAYDA ÖZEL küçük
@@ -10968,7 +11061,7 @@ function render(){
         const cardNameLineHtml=(auctionIsLive||auctionIsEnded)
             ? `<div class="domain-name">${d.name}</div>${auctionPriceBlockHtml}`
             : `<div class="domain-name">${d.name} <span style="color:#fbbf24;font-weight:800;">(${data.price} π)</span></div><div class="domain-price">${data.price} PI</div>${usdEstimateHtml(data.price)}`;
-        card.innerHTML=`${favBtn}<img src="${imgSrc}" class="domain-img" onerror="this.src='data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMDAiIGhlaWdodD0iMTAwIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjNDc1NTY5Ii8+PC9zdmc+'">${boostTag}${auctionTag}${newTag}${tTag}${hiddenTag}${cardNameLineHtml}<div class="card-tap-hint">👆 ${t('tapForDetailHint')}</div>`;
+        card.innerHTML=`${favBtn}<img src="${imgSrc}" class="domain-img" onerror="this.src='data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMDAiIGhlaWdodD0iMTAwIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjNDc1NTY5Ii8+PC9zdmc+'">${boostTag}${auctionTag}${newTag}${tTag}${hiddenTag}${cardNameLineHtml}${buildMyOfferChipHtml(d.name)}<div class="card-tap-hint">👆 ${t('tapForDetailHint')}</div>`;
 
         if(data.sold){
             // Satıcılı bir satışta, escrow ödemesi admin tarafından serbest
@@ -11186,7 +11279,21 @@ if(window.ResizeObserver){
         // Artık TÜM SAYFANIN gerçekten kaydırma gerektirip gerektirmediğini
         // ölçüyoruz — bu, footer dahil ekrandaki HER ŞEYİ otomatik olarak
         // hesaba katan tek güvenilir yöntem.
-        return document.documentElement.scrollHeight <= currentViewportHeight() + 2;
+        const vh=currentViewportHeight();
+        if(document.documentElement.scrollHeight > vh + 2) return false;
+        // EK GÜVENCE: iletişim kutusu (footer) 'sticky' olduğu için
+        // içeriğin ALTINA binip onu örtebiliyor — sayfa teknik olarak
+        // taşmasa bile kartın alt kısmı footer'ın arkasında kalıyorsa
+        // "sığmıyor" sayılmalı (kullanıcının gördüğü tam olarak buydu:
+        // Pi ile Bağlan butonunun altı footer'ın altında kalıyordu).
+        const lockEl=document.getElementById('premium-lock');
+        const footEl=document.querySelector('.footer-section');
+        if(lockEl && footEl){
+            const lb=lockEl.getBoundingClientRect().bottom;
+            const ft=footEl.getBoundingClientRect().top;
+            if(lb > ft + 1) return false;
+        }
+        return true;
     }
 
     function applyLevel(idx){
@@ -11244,6 +11351,15 @@ if(window.ResizeObserver){
             if(lockEl) mo.observe(lockEl,{childList:true,subtree:true,characterData:true,attributes:true,attributeFilter:['class','style']});
         });
     }
+    // Geç gelen düzen değişikliklerini (görsel yüklenmesi, gecikmeli içerik,
+    // yazı tipi değişimi) yakalamak için ilk saniyelerde birkaç kez daha
+    // ölçüyoruz; ayrıca ekrandaki görseller yüklendiğinde de yeniden ölçüyoruz.
+    [300,1000,2500,5000].forEach(ms=>setTimeout(scheduleFit,ms));
+    document.addEventListener('DOMContentLoaded',()=>{
+        document.querySelectorAll('.app-logo, #secure-icon-wrap img').forEach(img=>{
+            if(!img.complete) img.addEventListener('load',scheduleFit,{once:true});
+        });
+    });
     if(document.readyState==='complete'||document.readyState==='interactive') scheduleFit();
 })();
 
