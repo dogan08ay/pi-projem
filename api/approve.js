@@ -5632,7 +5632,26 @@ async function handlerImpl(req, res) {
       // teklifi kabul edip (respond_offer) reservedFor'ı doğrudan
       // ayarlayarak açık artırmayı tamamen bypass edebilirdi. Teklif
       // vermek isteyenler açık artırma bitene kadar sadece bid verebilir.
-      if (data.auctionActive === true) return res.status(400).json({ error: "Bu domain şu anda açık artırmada — teklif yerine açık artırmaya katılmalısınız." });
+      //
+      // DÜZELTME (ÖN YÜZLE TUTARLILIK — kritik): Süresi dolmuş VE hiç
+      // teklif almamış bir açık artırma, arka plandaki cron çalışana kadar
+      // (en geç ~10 dk) veritabanında hâlâ auctionActive:true görünüyor.
+      // Ön yüz bu durumu ANINDA "artık açık artırmada değil" sayıp "Teklif
+      // Ver" butonunu geri gösteriyor — ama backend hâlâ ham auctionActive
+      // alanına bakıyorsa, kullanıcı butona basınca burada reddediliyordu
+      // ("açık artırmaya katılın, teklif veremezsiniz" hatası) — halbuki
+      // görünürde artık bir açık artırma YOK. İkisi artık AYNI kuralı
+      // kullanıyor: teklifi olan bir açık artırma hâlâ engelliyor (kazanan
+      // satın almayı tamamlayana kadar bu kasıtlı), ama teklifsiz + süresi
+      // dolmuş bir açık artırma artık teklif vermeyi engellemiyor.
+      const auctionExpiredNoBids = data.auctionActive === true && data.auctionEndsAt && data.auctionEndsAt <= Date.now() && !data.auctionHighestBidder;
+      if (data.auctionActive === true && !auctionExpiredNoBids) return res.status(400).json({ error: "Bu domain şu anda açık artırmada — teklif yerine açık artırmaya katılmalısınız." });
+      if (auctionExpiredNoBids) {
+        // Fırsat bu fırsat: madem buraya kadar geldik, veritabanındaki
+        // "hayalet" auctionActive:true bayrağını da hemen temizleyelim —
+        // cron'un ~10 dk'lık gecikmesini beklemeye gerek yok.
+        await domainSnap.ref.set({ auctionActive: false, auctionEndsAt: FieldValue.delete() }, { merge: true });
+      }
 
       // FIX (kök neden — "2. tur teklifler yeni bir tablo olarak çıkıyor"):
       // Öncesinde her "Teklif Ver" işlemi, o alıcı-domain arasında zaten
