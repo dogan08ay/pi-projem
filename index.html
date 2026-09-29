@@ -102,6 +102,24 @@
         input[type="number"] { -webkit-appearance:none; -moz-appearance:textfield; appearance:none; width:100%; }
         input[type="number"]::-webkit-outer-spin-button,
         input[type="number"]::-webkit-inner-spin-button { -webkit-appearance:none; margin:0; }
+        /* SERT ÇÖZÜM #2: Dört ayrı deneme (renk, appearance, color-scheme,
+           type=text) bu cihazda input'un YAZILAN METNİ GÖRÜNÜR ŞEKİLDE
+           ÇİZMESİNİ sağlayamadı — demek ki sorun CSS/attribute değil,
+           bu tarayıcının input render motorunun kendisinde. Çözüm: gerçek
+           <input> TAMAMEN GÖRÜNMEZ (klavyeyi/odağı/yazmayı o yakalıyor),
+           yazdığınız değer ayrı, SAF BİR <div>'e (amount-display) metin
+           olarak yazdırılıyor — div'in textContent'i render etmemesi diye
+           bir ihtimal yok, bu yüzden %100 garantili görünür. İkisi aynı
+           konumda üst üste durduğu için kullanıcı TEK bir kutu görüyor.
+           Odaklanınca sahte (CSS ile çizilen) bir imleç yanıp sönüyor. */
+        .amount-input-wrap{position:relative;}
+        .amount-input-wrap input{position:absolute;inset:0;width:100%;height:100%;opacity:0;z-index:2;margin:0;padding:0;border:none;cursor:text;}
+        .amount-display{width:100%;box-sizing:border-box;text-align:center;font-weight:900;pointer-events:none;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+        .amount-display:not(.amount-has-value){opacity:0.55;font-weight:700;}
+        .amount-input-wrap input:focus ~ .amount-display::after{content:'';display:inline-block;width:2px;height:1em;vertical-align:-0.15em;margin-left:3px;background:currentColor;animation:blinkCaret 1s step-end infinite;}
+        @keyframes blinkCaret{0%,100%{opacity:1;}50%{opacity:0;}}
+        @keyframes blinkWarn{0%,100%{opacity:1;}50%{opacity:0.25;}}
+        .blink-warn{animation:blinkWarn 0.9s ease-in-out infinite;}
         /* SERT ÇÖZÜM: Önceki iki deneme (color-scheme + appearance:none) tek
            başına yetmedi — kullanıcı hâlâ "yazdığım rakamı hiçbir yerde
            göremiyorum" bildirdi. Artık aday sebeplerin TAMAMINI aynı anda,
@@ -1954,7 +1972,10 @@
         <h2 style="color:#fbbf24;margin:0 0 4px 0;font-size:1.05em;font-weight:900;">💬 <span data-i18n="submitOfferTitle"></span></h2>
         <p id="offer-modal-domain-name" style="color:#94a3b8;font-size:0.75em;margin:0 0 14px 0;"></p>
         <label style="display:block;font-size:0.7em;color:#94a3b8;font-weight:700;margin-bottom:5px;" data-i18n="offerPriceLabel"></label>
-        <input type="text" inputmode="decimal" autocomplete="off" id="offer-price-input" data-i18n-placeholder="offerAmountPlaceholder" oninput="sanitizeNumericInput(this)" style="width:100%;box-sizing:border-box;background:#0f172a;border:2.5px solid #f59e0b;border-radius:10px;padding:14px 12px;color:#34d399;caret-color:#34d399;font-size:1.3em;font-weight:900;text-align:center;margin-bottom:10px;">
+        <div class="amount-input-wrap" style="background:#0f172a;border:2.5px solid #f59e0b;border-radius:10px;padding:14px 12px;color:#34d399;font-size:1.3em;margin-bottom:10px;">
+            <input type="text" inputmode="decimal" autocomplete="off" id="offer-price-input" oninput="sanitizeNumericInput(this);window.syncAmountDisplay(this,'offer-price-display', t('offerAmountPlaceholder'))">
+            <div class="amount-display" id="offer-price-display">✍️ Teklifinizi girin</div>
+        </div>
         <label style="display:block;font-size:0.7em;color:#94a3b8;font-weight:700;margin-bottom:5px;" data-i18n="offerMessageLabel"></label>
         <textarea id="offer-message-input" maxlength="300" rows="2" style="width:100%;box-sizing:border-box;background:#0f172a;border:1.5px solid #334155;border-radius:9px;padding:10px;color:#e2e8f0;font-size:0.82em;margin-bottom:14px;resize:vertical;"></textarea>
         <button id="offer-submit-btn" onclick="window.confirmSubmitOffer()" style="width:100%;padding:10px;border-radius:9px;border:none;background:linear-gradient(135deg,#f59e0b,#d97706);color:#1e1b4b;font-weight:900;font-size:0.82em;cursor:pointer;margin-bottom:8px;" data-i18n="sendOfferBtn"></button>
@@ -7183,6 +7204,9 @@ window.openDomainDetail=function(domainName){
     // bırakıldı — bunlar en önemli/son eylemler, öne çıkmaları gerekiyor.
     let primaryHtml='';
     let secondaryHtml='';
+    // Fonksiyon kapsamının en üstünde tanımlanıyor ki aşağıda hem açık
+    // artırma bloğunda hem "Teklif Ver" butonu kontrolünde kullanılabilsin.
+    const auctionExpiredNoBids = data.auctionActive===true && data.auctionEndsAt && data.auctionEndsAt<=Date.now() && !data.auctionHighestBidder;
     // YENİ: Paylaş butonu (Öneri #1) — giriş şartı yok, herkes görebilir.
     // Domain adı + fiyat + doğrudan link panoya kopyalanıyor. Bunun
     // sebebi: OG (Open Graph) etiketleri şu an SABİT/genel (bkz. <head>) —
@@ -7200,8 +7224,14 @@ window.openDomainDetail=function(domainName){
         // İSTİSNA: admin kendi ilanını da test amaçlı satın alabilsin diye
         // bu kısıtlamadan muaf — backend'de de aynı istisna var.
         const isOwnListing=data.sellerUsername && data.sellerUsername===currentUser && currentUser!==APP_CONFIG.adminUsername;
-        const auctionIsLive=data.auctionActive===true && data.auctionEndsAt && data.auctionEndsAt>Date.now();
-        const auctionIsEnded=data.auctionActive===true && data.auctionEndsAt && data.auctionEndsAt<=Date.now();
+        // GÜNCELLEME: Teklifsiz bitmiş bir açık artırmanın normal satışa
+        // dönmesi backend'deki cron'a (en geç ~10 dk) bağlıydı — kullanıcı
+        // bu süreyi beklemeden ANINDA "Teklif Ver"in geri gelmesini istedi.
+        // Bu yüzden süresi geçmiş VE hiç teklifi olmayan bir açık artırmayı
+        // burada, ön yüzde, "artık açık artırmada değil" sayıyoruz; cron
+        // arka planda veriyi zaten aynı mantıkla kalıcı olarak temizliyor.
+        const auctionIsLive=data.auctionActive===true && !auctionExpiredNoBids && data.auctionEndsAt && data.auctionEndsAt>Date.now();
+        const auctionIsEnded=data.auctionActive===true && !auctionExpiredNoBids && data.auctionEndsAt && data.auctionEndsAt<=Date.now();
         if(isOwnListing){
             primaryHtml+=`<div style="width:100%;padding:10px;font-size:0.9em;border-radius:9px;background:#334155;color:#94a3b8;text-align:center;font-weight:800;">👤 ${t('ownListingTag')}</div>`;
         } else if(auctionIsLive){
@@ -7218,8 +7248,11 @@ window.openDomainDetail=function(domainName){
                 </div>
                 ${youAreHighest?`<div style="text-align:center;font-size:0.7em;font-weight:800;color:#6ee7b7;margin-bottom:6px;">${t('auctionYouAreHighest')}</div>`:''}
                 <div style="text-align:center;font-size:0.62em;color:#fca5a5;font-weight:700;margin-bottom:6px;">${t('auctionBidBindingWarning')}</div>
-                <input type="text" inputmode="decimal" autocomplete="off" id="auction-bid-input" data-minbid="${minBid}" placeholder="${t('auctionBidInputPlaceholder')}" oninput="sanitizeNumericInput(this);checkAuctionBidValidity(this)" style="width:100%;box-sizing:border-box;padding:14px 12px;border-radius:10px;border:2.5px solid #6366f1;background:#0f172a;color:#34d399;caret-color:#34d399;font-size:1.3em;font-weight:900;text-align:center;margin-bottom:8px;">
-                <div id="auction-bid-warning" style="display:none;font-size:0.65em;color:#f87171;font-weight:800;text-align:center;margin:-4px 0 8px 0;">⚠️ ${t('auctionMinBidLabel')(minBid)}</div>
+                <div class="amount-input-wrap" style="padding:14px 12px;border-radius:10px;border:2.5px solid #6366f1;background:#0f172a;color:#34d399;font-size:1.3em;margin-bottom:8px;">
+                    <input type="text" inputmode="decimal" autocomplete="off" id="auction-bid-input" data-minbid="${minBid}" oninput="sanitizeNumericInput(this);checkAuctionBidValidity(this);window.syncAmountDisplay(this,'auction-bid-display', t('auctionBidInputPlaceholder'))">
+                    <div class="amount-display" id="auction-bid-display">${t('auctionBidInputPlaceholder')}</div>
+                </div>
+                <div id="auction-bid-warning" class="blink-warn" style="display:none;font-size:0.65em;color:#f87171;font-weight:800;text-align:center;margin:-4px 0 8px 0;">⚠️ ${t('auctionMinBidLabel')(minBid)}</div>
                 <div id="auction-bid-hint" style="font-size:0.6em;color:#94a3b8;text-align:center;margin:-4px 0 8px 0;">${t('auctionMinBidLabel')(minBid)}</div>
                 <button id="auction-bid-submit-btn" class="btn-buy" style="width:100%;background:linear-gradient(135deg,#6366f1,#8b5cf6);padding:11px 12px;font-size:0.9em;" onclick="window.submitAuctionBid('${safeDomainForJs}',${minBid})">${t('auctionBidSubmitBtn')}</button>
             </div>`;
@@ -7251,7 +7284,12 @@ window.openDomainDetail=function(domainName){
         const minutesLeft=Math.max(1,Math.ceil((data.reservedUntil-Date.now())/60000));
         primaryHtml+=`<div style="margin-top:8px;padding:7px 10px;border-radius:8px;font-size:0.68em;font-weight:800;text-align:center;${isMine?'background:rgba(16,185,129,0.15);border:1px solid #10b981;color:#6ee7b7;':'background:rgba(148,163,184,0.12);border:1px solid #64748b;color:#94a3b8;'}">${isMine?t('reservedForYouMsg')(minutesLeft):t('reservedForOtherMsg')(minutesLeft)}</div>`;
     }
-    if(!data.sold&&isAuth&&data.auctionActive!==true){secondaryHtml+=`<button onclick="window.handleOfferButtonClick('${domainName}')" style="padding:9px 6px;border-radius:9px;border:1.5px solid #f59e0b;background:rgba(245,158,11,0.1);color:#fbbf24;font-weight:800;font-size:0.74em;cursor:pointer;">💬 ${t('makeOfferBtn')}</button>`;}
+    // DÜZELTME: Bu kontrol önceden HAM data.auctionActive alanına bakıyordu —
+    // süresi dolmuş+teklifsiz bir açık artırma backend'de cron çalışana kadar
+    // hâlâ auctionActive:true kaldığı için, "Satın Al" butonu geri gelse bile
+    // bu buton yanlışlıkla gizli kalıyordu. Artık yukarıdaki aynı
+    // auctionExpiredNoBids istisnasını kullanıyor, ikisi tutarlı.
+    if(!data.sold&&isAuth&&(data.auctionActive!==true||auctionExpiredNoBids)){secondaryHtml+=`<button onclick="window.handleOfferButtonClick('${domainName}')" style="padding:9px 6px;border-radius:9px;border:1.5px solid #f59e0b;background:rgba(245,158,11,0.1);color:#fbbf24;font-weight:800;font-size:0.74em;cursor:pointer;">💬 ${t('makeOfferBtn')}</button>`;}
     // YENİ: Alıcı-satıcı doğrudan mesajlaşma — sadece satıcısı olan ve
     // kendi ilanımız olmayan domainlerde gösterilir (satış durumundan
     // bağımsız — devir sonrası sorular için de kullanılabilsin diye).
@@ -8167,7 +8205,7 @@ window.openOfferModal=function(domainName){
     const data=domainData[domainName]||{price:domain.price};
     document.getElementById('offer-modal-domain-name').textContent=`${domainName} — ${t('currentPriceLabel')}: ${data.price} Pi`;
     document.getElementById('offer-price-input').value='';
-    const opEcho=document.getElementById('offer-price-echo'); if(opEcho) opEcho.textContent='';
+    window.syncAmountDisplay(document.getElementById('offer-price-input'),'offer-price-display', t('offerAmountPlaceholder'));
     document.getElementById('offer-price-input').dataset.domain=domainName;
     document.getElementById('offer-message-input').value='';
     document.getElementById('offer-modal').style.display='flex';
@@ -8535,6 +8573,12 @@ window.sanitizeNumericInput = sanitizeNumericInput;
 // teklifin ALTINDA bir tutar yazılırsa buton devre dışı kalır ve kırmızı
 // bir uyarı çıkar; kullanıcı "Gönder"e basıp backend'in reddetmesini
 // beklemek zorunda kalmaz, hatasını yazarken anında görür.
+window.syncAmountDisplay=function(inputEl, displayId, placeholderText){
+    const disp=document.getElementById(displayId);
+    if(!disp) return;
+    if(inputEl.value){ disp.textContent=inputEl.value; disp.classList.add('amount-has-value'); }
+    else { disp.textContent=placeholderText; disp.classList.remove('amount-has-value'); }
+};
 window.checkAuctionBidValidity=function(el){
     const minBid=parseFloat(el.dataset.minbid);
     const warn=document.getElementById('auction-bid-warning');
@@ -11103,8 +11147,15 @@ function render(){
         // gösterimini "Satılık Fiyat" değil "En Yüksek Teklif / Başlangıç"
         // olarak ayrı gösteriyoruz — aksi halde kullanıcı bunu normal bir
         // "Satın Al" fiyatı sanabilirdi.
-        const auctionIsLive=data.auctionActive===true && data.auctionEndsAt && data.auctionEndsAt>Date.now();
-        const auctionIsEnded=data.auctionActive===true && data.auctionEndsAt && data.auctionEndsAt<=Date.now();
+        // GÜNCELLEME: Teklifsiz bitmiş bir açık artırmanın normal satışa
+        // dönmesi backend'deki cron'a (en geç ~10 dk) bağlıydı — kullanıcı
+        // bu süreyi beklemeden ANINDA "Teklif Ver"in geri gelmesini istedi.
+        // Bu yüzden süresi geçmiş VE hiç teklifi olmayan bir açık artırmayı
+        // burada, ön yüzde, "artık açık artırmada değil" sayıyoruz; cron
+        // arka planda veriyi zaten aynı mantıkla kalıcı olarak temizliyor.
+        const auctionExpiredNoBids = data.auctionActive===true && data.auctionEndsAt && data.auctionEndsAt<=Date.now() && !data.auctionHighestBidder;
+        const auctionIsLive=data.auctionActive===true && !auctionExpiredNoBids && data.auctionEndsAt && data.auctionEndsAt>Date.now();
+        const auctionIsEnded=data.auctionActive===true && !auctionExpiredNoBids && data.auctionEndsAt && data.auctionEndsAt<=Date.now();
         const auctionTag=(auctionIsLive||auctionIsEnded)?`<span class="domain-type-tag" style="background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;">⏰ ${t('auctionTag')}</span>`:'';
         const auctionPriceBlockHtml=(function(){
             if(!auctionIsLive && !auctionIsEnded) return '';
