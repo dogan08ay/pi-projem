@@ -151,7 +151,28 @@ async function checkEndingAuctions(db) {
       const data = doc.data();
       if (!data.auctionEndsAt) continue;
       const remaining = data.auctionEndsAt - now;
-      if (remaining <= 0 || remaining > AUCTION_ENDING_WARNING_WINDOW_MS) continue;
+      // YENİ: Süresi dolmuş VE hiç teklif almamış açık artırmalar önceden
+      // SONSUZA KADAR "auctionActive:true" kalıyordu — bunu kapatan hiçbir
+      // mekanizma yoktu. Sonuç: domain kartında normal "Teklif Ver" butonu
+      // bir daha asla geri gelmiyordu. Teklifi olan (auctionHighestBidder
+      // dolu) açık artırmalara dokunmuyoruz — kazanan claim_auction_win ile
+      // satın almayı tamamlayana kadar o hâliyle bekliyor, bu kasıtlı.
+      if (remaining <= 0) {
+        if (!data.auctionHighestBidder) {
+          await doc.ref.set({ auctionActive: false, auctionEndsAt: FieldValue.delete() }, { merge: true });
+          if (data.sellerUsername) {
+            await sendNotification(data.sellerUsername, {
+              type: 'auction_ended_no_bids',
+              role: 'seller',
+              title: '⏳ Açık Artırma Teklifsiz Sona Erdi',
+              body: `"${doc.id}" için açık artırma süresi doldu ve hiç teklif alınmadı. İlan normal satış listesine geri döndü.`,
+              domainName: doc.id
+            });
+          }
+        }
+        continue;
+      }
+      if (remaining > AUCTION_ENDING_WARNING_WINDOW_MS) continue;
       // Aynı açık artırma için tekrar tekrar uyarı gitmesin diye, bu
       // bitiş zamanı için zaten uyarı gönderildiyse atla. (auctionEndsAt
       // kontrolü, açık artırma iptal edilip yeniden başlatıldığında yeni
