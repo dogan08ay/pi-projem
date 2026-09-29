@@ -114,8 +114,8 @@
            Odaklanınca sahte (CSS ile çizilen) bir imleç yanıp sönüyor. */
         .amount-input-wrap{position:relative;}
         .amount-input-wrap input{position:absolute;inset:0;width:100%;height:100%;opacity:0;z-index:2;margin:0;padding:0;border:none;cursor:text;}
-        .amount-display{width:100%;box-sizing:border-box;text-align:center;font-weight:900;pointer-events:none;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-        .amount-display:not(.amount-has-value){opacity:0.55;font-weight:700;}
+        .amount-display{width:100%;box-sizing:border-box;text-align:center;font-weight:900;font-size:1.3em;pointer-events:none;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+        .amount-display:not(.amount-has-value){opacity:0.6;font-weight:700;font-size:0.72em;}
         .amount-input-wrap input:focus ~ .amount-display::after{content:'';display:inline-block;width:2px;height:1em;vertical-align:-0.15em;margin-left:3px;background:currentColor;animation:blinkCaret 1s step-end infinite;}
         @keyframes blinkCaret{0%,100%{opacity:1;}50%{opacity:0;}}
         @keyframes blinkWarn{0%,100%{opacity:1;}50%{opacity:0.25;}}
@@ -1973,7 +1973,7 @@
         <p id="offer-modal-domain-name" style="color:#94a3b8;font-size:0.75em;margin:0 0 14px 0;"></p>
         <label style="display:block;font-size:0.7em;color:#94a3b8;font-weight:700;margin-bottom:5px;" data-i18n="offerPriceLabel"></label>
         <div class="amount-input-wrap" style="background:#0f172a;border:2.5px solid #f59e0b;border-radius:10px;padding:14px 12px;color:#34d399;font-size:1.3em;margin-bottom:10px;">
-            <input type="text" inputmode="decimal" autocomplete="off" id="offer-price-input" oninput="sanitizeNumericInput(this);window.syncAmountDisplay(this,'offer-price-display', t('offerAmountPlaceholder'))">
+            <input type="text" inputmode="decimal" autocomplete="off" id="offer-price-input" oninput="sanitizeNumericInput(this);window.syncAmountDisplay(this,'offer-price-display', t('offerAmountPlaceholder'))" onfocus="window.onAmountInputFocus(this,'offer-price-display', t('offerAmountPlaceholder'))" onblur="window.onAmountInputBlur(this,'offer-price-display', t('offerAmountPlaceholder'))">
             <div class="amount-display" id="offer-price-display">✍️ Teklifinizi girin</div>
         </div>
         <label style="display:block;font-size:0.7em;color:#94a3b8;font-weight:700;margin-bottom:5px;" data-i18n="offerMessageLabel"></label>
@@ -4248,7 +4248,7 @@ const i18n = {
     auctionBidCountLabel:(n)=>n===1?"1 teklif":`${n} teklif`,
     auctionTimeLeft:(m)=>m<60?`⏳ ${m} dk kaldı`:(m<2880?`⏳ ${Math.floor(m/60)} sa kaldı`:`⏳ ${Math.floor(m/1440)} gün kaldı`),
     auctionBidBtn:"🔨 Teklif Ver",auctionPlaceBidTitle:"Teklif Ver",
-    auctionMinBidLabel:(v)=>`Minimum teklif: ${v} π`,auctionBidInputPlaceholder:"✍️ Teklifinizi girin",offerAmountPlaceholder:"✍️ Teklifinizi girin",
+    auctionMinBidLabel:(v)=>`Minimum teklif: ${v} π`,auctionBidInputPlaceholder:"✍️ Lütfen teklifinizi giriniz",offerAmountPlaceholder:"✍️ Lütfen teklifinizi giriniz",
     auctionBidSubmitBtn:"Açık Artırma Teklifini Gönder",auctionYouAreHighest:"🏆 Şu anda en yüksek teklif sizde!",
     auctionBidBindingWarning:"⚠️ Bu, pazarlık edilen normal bir teklif değildir — verdiğiniz açık artırma teklifi bağlayıcıdır ve geri alınamaz.",
     auctionWonClaimBtn:"🏆 Kazandınız! Satın Almayı Tamamla",auctionEndedNoBids:"Açık artırma süresi doldu — teklif verilmedi",
@@ -4256,6 +4256,7 @@ const i18n = {
     auctionBidHistoryLink:"🕓 Teklif Geçmişini Gör",auctionBidHistoryTitle:"Teklif Geçmişi",
     auctionBidHistoryEmpty:"Henüz teklif verilmedi.",auctionBidHistoryLoading:"Yükleniyor…",
     reservedForOtherMsg:(m)=>`🔒 Anlaşma sağlanan bir alıcı için ayrılmış — ${m} dakika sonra herkese açılır`,
+    reservedBlocksBuyMsg:(m)=>`🔒 Bu domain şu an başka bir alıcı için rezerve edilmiş (ör. açık artırma kazananı ödemesini tamamlıyor). ${m} dakika içinde tamamlanmazsa herkese açılacaktır.`,reservedBlocksBuyShort:"Rezerve — Şu An Satın Alınamaz",
     invalidOfferPrice:"Lütfen geçerli bir teklif tutarı girin.",offerSentSuccess:"✅ Teklifiniz gönderildi! Satıcı yanıt verdiğinde bildirim alacaksınız.",
     confirmWithdrawOffer:"Bu teklifi geri çekmek istediğinize emin misiniz?",
     confirmAcceptOffer:"Bu teklifi kabul etmek istediğinize emin misiniz? Domain fiyatı teklif tutarına güncellenecek.",
@@ -5235,6 +5236,7 @@ const i18n = {
     auctionBidHistoryLink:"🕓 View Bid History",auctionBidHistoryTitle:"Bid History",
     auctionBidHistoryEmpty:"No bids placed yet.",auctionBidHistoryLoading:"Loading…",
     reservedForOtherMsg:(m)=>`🔒 Reserved for a buyer who reached a deal — opens to everyone in ${m} min`,
+    reservedBlocksBuyMsg:(m)=>`🔒 This domain is currently reserved for another buyer (e.g. the auction winner completing payment). It will reopen to everyone in ${m} min if not completed.`,reservedBlocksBuyShort:"Reserved — Not Available Right Now",
     invalidOfferPrice:"Please enter a valid offer amount.",offerSentSuccess:"✅ Your offer was sent! You'll be notified when the seller responds.",
     confirmWithdrawOffer:"Are you sure you want to withdraw this offer?",
     confirmAcceptOffer:"Are you sure you want to accept this offer? The domain's price will be updated to the offer amount.",
@@ -7249,7 +7251,7 @@ window.openDomainDetail=function(domainName){
                 ${youAreHighest?`<div style="text-align:center;font-size:0.7em;font-weight:800;color:#6ee7b7;margin-bottom:6px;">${t('auctionYouAreHighest')}</div>`:''}
                 <div style="text-align:center;font-size:0.62em;color:#fca5a5;font-weight:700;margin-bottom:6px;">${t('auctionBidBindingWarning')}</div>
                 <div class="amount-input-wrap" style="padding:14px 12px;border-radius:10px;border:2.5px solid #6366f1;background:#0f172a;color:#34d399;font-size:1.3em;margin-bottom:8px;">
-                    <input type="text" inputmode="decimal" autocomplete="off" id="auction-bid-input" data-minbid="${minBid}" oninput="sanitizeNumericInput(this);checkAuctionBidValidity(this);window.syncAmountDisplay(this,'auction-bid-display', t('auctionBidInputPlaceholder'))">
+                    <input type="text" inputmode="decimal" autocomplete="off" id="auction-bid-input" data-minbid="${minBid}" oninput="sanitizeNumericInput(this);checkAuctionBidValidity(this);window.syncAmountDisplay(this,'auction-bid-display', t('auctionBidInputPlaceholder'))" onfocus="window.onAmountInputFocus(this,'auction-bid-display', t('auctionBidInputPlaceholder'))" onblur="window.onAmountInputBlur(this,'auction-bid-display', t('auctionBidInputPlaceholder'))">
                     <div class="amount-display" id="auction-bid-display">${t('auctionBidInputPlaceholder')}</div>
                 </div>
                 <div id="auction-bid-warning" class="blink-warn" style="display:none;font-size:0.65em;color:#f87171;font-weight:800;text-align:center;margin:-4px 0 8px 0;">⚠️ ${t('auctionMinBidLabel')(minBid)}</div>
@@ -7265,6 +7267,18 @@ window.openDomainDetail=function(domainName){
             } else {
                 primaryHtml+=`<div style="width:100%;padding:10px;font-size:0.85em;border-radius:9px;background:#334155;color:#94a3b8;text-align:center;font-weight:800;">${t('auctionEndedOthersWon')}</div>`;
             }
+        } else if (data.reservedFor && data.reservedUntil && data.reservedUntil > Date.now() && data.reservedFor !== currentUser) {
+            // DÜZELTME (KRİTİK — "başka biri satın al deyince ödeme ekranı
+            // açılıyor" hatası): Bu domain şu an biri için (ör. açık
+            // artırmayı kazanan kişi ödemesini tamamlasın diye) rezerve
+            // edilmişken, önceki kod bu durumu HİÇ KONTROL ETMEDEN normal
+            // "Satın Al" butonunu gösteriyordu — buton tıklanabilir kalıyor
+            // ve ödeme ekranını AÇIYORDU, altına sadece küçük bir bilgi
+            // notu ekleniyordu. Artık rezerve süresi dolmadığı ve rezerve
+            // SİZİN İÇİN değilse, buton yerine doğrudan engelleyici bir
+            // uyarı gösteriliyor — ödeme ekranı hiç açılmıyor.
+            const minutesLeft=Math.max(1,Math.ceil((data.reservedUntil-Date.now())/60000));
+            primaryHtml+=`<div style="width:100%;padding:10px;font-size:0.8em;border-radius:9px;background:rgba(239,68,68,0.12);border:1.5px solid #ef4444;color:#fca5a5;text-align:center;font-weight:800;">${t('reservedBlocksBuyMsg')(minutesLeft)}</div>`;
         } else {
             primaryHtml+=`<button class="btn-buy" style="width:100%;padding:10px;font-size:0.9em;" onclick="document.getElementById('domain-detail-modal').style.display='none';window.openPreBuyModal('${domainName}',${data.price});">${t('buyNow')}</button>`;
         }
@@ -7279,10 +7293,13 @@ window.openDomainDetail=function(domainName){
             </div>`;
         }
     }
-    if(!data.sold && data.reservedFor && data.reservedUntil && data.reservedUntil>Date.now()){
-        const isMine=isAuth && data.reservedFor===currentUser;
+    if(!data.sold && data.reservedFor && data.reservedUntil && data.reservedUntil>Date.now() && data.reservedFor===currentUser){
+        // NOT: "başkası için rezerve" durumu artık yukarıdaki buy-button
+        // bloğunda net bir engelleyici uyarıyla zaten gösteriliyor — burada
+        // TEKRAR aynı şeyi söylememek için bu blok artık sadece rezervasyon
+        // SİZİN OLDUĞUNDA (ödemenizi tamamlamanız gerektiğinde) çalışıyor.
         const minutesLeft=Math.max(1,Math.ceil((data.reservedUntil-Date.now())/60000));
-        primaryHtml+=`<div style="margin-top:8px;padding:7px 10px;border-radius:8px;font-size:0.68em;font-weight:800;text-align:center;${isMine?'background:rgba(16,185,129,0.15);border:1px solid #10b981;color:#6ee7b7;':'background:rgba(148,163,184,0.12);border:1px solid #64748b;color:#94a3b8;'}">${isMine?t('reservedForYouMsg')(minutesLeft):t('reservedForOtherMsg')(minutesLeft)}</div>`;
+        primaryHtml+=`<div style="margin-top:8px;padding:7px 10px;border-radius:8px;font-size:0.68em;font-weight:800;text-align:center;background:rgba(16,185,129,0.15);border:1px solid #10b981;color:#6ee7b7;">${t('reservedForYouMsg')(minutesLeft)}</div>`;
     }
     // DÜZELTME: Bu kontrol önceden HAM data.auctionActive alanına bakıyordu —
     // süresi dolmuş+teklifsiz bir açık artırma backend'de cron çalışana kadar
@@ -8577,7 +8594,20 @@ window.syncAmountDisplay=function(inputEl, displayId, placeholderText){
     const disp=document.getElementById(displayId);
     if(!disp) return;
     if(inputEl.value){ disp.textContent=inputEl.value; disp.classList.add('amount-has-value'); }
+    else if(document.activeElement===inputEl){ disp.textContent=''; disp.classList.remove('amount-has-value'); }
     else { disp.textContent=placeholderText; disp.classList.remove('amount-has-value'); }
+};
+// YENİ: "Oraya tıklayınca yazı [placeholder] kaybolsun, imleç yanıp
+// sönmeye başlasın" — önceden placeholder yalnızca YAZMAYA BAŞLAYINCA
+// kayboluyordu. Artık kutuya dokunulur dokunulmaz (henüz hiçbir rakam
+// girilmeden) placeholder hemen kayboluyor, boş ve yanıp sönen imleçli
+// bir kutu kalıyor; kutu boş bırakılıp çıkılırsa (blur) placeholder
+// geri geliyor.
+window.onAmountInputFocus=function(inputEl, displayId, placeholderText){
+    window.syncAmountDisplay(inputEl, displayId, placeholderText);
+};
+window.onAmountInputBlur=function(inputEl, displayId, placeholderText){
+    window.syncAmountDisplay(inputEl, displayId, placeholderText);
 };
 window.checkAuctionBidValidity=function(el){
     const minBid=parseFloat(el.dataset.minbid);
@@ -11235,6 +11265,17 @@ function render(){
                 ownTag.style.cssText='background:#334155;color:#94a3b8;cursor:default;text-align:center;';
                 ownTag.innerText='👤 '+t('ownListingTag');
                 card.appendChild(ownTag);
+            } else if (data.reservedFor && data.reservedUntil && data.reservedUntil > Date.now() && data.reservedFor !== currentUser) {
+                // DÜZELTME (aynı hatanın kart üzerindeki karşılığı): domain
+                // başka biri için rezerveliyken bu buton öncesinde yine
+                // HER ZAMAN tıklanabilir kalıyor ve ödeme ekranını
+                // açıyordu — reservedFor kontrolü sadece ayrı bir bilgi
+                // rozeti ekliyordu, tıklamayı engellemiyordu.
+                const blockTag=document.createElement('div');
+                blockTag.className='btn-buy';
+                blockTag.style.cssText='background:rgba(239,68,68,0.12);border:1.5px solid #ef4444;color:#fca5a5;cursor:default;text-align:center;';
+                blockTag.innerText='🔒 '+t('reservedBlocksBuyShort');
+                card.appendChild(blockTag);
             } else {
             const btn=document.createElement('button');
             btn.className='btn-buy';btn.innerText=t('buyNow');
@@ -11278,16 +11319,28 @@ function render(){
             // "teklif bölümü hiç yok" hissi yaratıyordu. Artık buyNow ile
             // AYNI desen: buton HER ZAMAN görünür, kontrol tıklama anında
             // yapılır (giriş yoksa uyarı, kendi domainiyse uyarı).
-            const offerBtn=document.createElement('button');
-            offerBtn.className='btn-buy';offerBtn.style.background='rgba(245,158,11,0.15)';offerBtn.style.border='1.5px solid #f59e0b';offerBtn.style.color='#fbbf24';offerBtn.style.marginTop='4px';
-            offerBtn.innerText='💬 '+t('makeOfferBtn');
-            offerBtn.onclick=(e)=>{
-                e.stopPropagation();
-                if(!isAuth){ showToast(t('loginRequired')); return; }
-                if(data.sellerUsername && data.sellerUsername===currentUser){ showToast(t('cannotOfferOwnDomain')); return; }
-                window.openOfferModal(d.name);
-            };
-            card.appendChild(offerBtn);
+            // DÜZELTME (KÖK NEDEN — "Teklif Ver'e basınca açık artırmaya
+            // katılın diyor" hatası): Bu buton öncesinde AÇIK ARTIRMA
+            // DURUMUNA HİÇ BAKMADAN her domain kartına ekleniyordu. Domain
+            // aktif açık artırmadayken bile buton görünüyor, kullanıcı
+            // tıklayıp teklif göndermeye çalışınca backend (doğru şekilde)
+            // reddediyor ve kafa karıştırıcı bir hata gösteriyordu. Artık
+            // modal içindeki AYNI kural burada da uygulanıyor: aktif VE
+            // teklifi olan bir açık artırma varsa bu buton hiç eklenmiyor;
+            // açık artırma yoksa, iptal edildiyse, ya da teklifsiz süresi
+            // dolduysa (auctionExpiredNoBids) buton normal şekilde çıkıyor.
+            if (!data.sold && (data.auctionActive !== true || auctionExpiredNoBids)) {
+                const offerBtn=document.createElement('button');
+                offerBtn.className='btn-buy';offerBtn.style.background='rgba(245,158,11,0.15)';offerBtn.style.border='1.5px solid #f59e0b';offerBtn.style.color='#fbbf24';offerBtn.style.marginTop='4px';
+                offerBtn.innerText='💬 '+t('makeOfferBtn');
+                offerBtn.onclick=(e)=>{
+                    e.stopPropagation();
+                    if(!isAuth){ showToast(t('loginRequired')); return; }
+                    if(data.sellerUsername && data.sellerUsername===currentUser){ showToast(t('cannotOfferOwnDomain')); return; }
+                    window.openOfferModal(d.name);
+                };
+                card.appendChild(offerBtn);
+            }
 
             if(isAdminViewing){
                 const hideBtn=document.createElement('button');
