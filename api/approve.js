@@ -1888,9 +1888,14 @@ async function handlerImpl(req, res) {
       if (!data.auctionEndsAt || data.auctionEndsAt <= Date.now())
         return res.status(400).json({ error: "Bu açık artırmanın süresi doldu" });
       if (data.sellerUsername === realUsername) return res.status(400).json({ error: "Kendi ilanınıza teklif veremezsiniz" });
+      // DÜZELTME (kritik): İLK teklif için minimum, sadece başlangıç
+      // fiyatıydı — minimum artış tutarı hiç hesaba katılmıyordu. Örnek:
+      // başlangıç 2 Pi, minimum artış 1 Pi olan bir açık artırmada 2.5 Pi
+      // gibi bir teklif kabul ediliyordu, oysa ilk teklif de en az
+      // "başlangıç + minimum artış" (bu örnekte 3 Pi) olmalı.
       const minAcceptable = data.auctionHighestBid
         ? data.auctionHighestBid + (data.auctionMinIncrement || 1)
-        : data.auctionStartPrice;
+        : data.auctionStartPrice + (data.auctionMinIncrement || 1);
       if (bidNum < minAcceptable)
         return res.status(400).json({ error: `Teklif en az ${minAcceptable} Pi olmalı` });
       if (data.auctionHighestBidder === realUsername)
