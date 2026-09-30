@@ -112,11 +112,25 @@
            bir ihtimal yok, bu yüzden %100 garantili görünür. İkisi aynı
            konumda üst üste durduğu için kullanıcı TEK bir kutu görüyor.
            Odaklanınca sahte (CSS ile çizilen) bir imleç yanıp sönüyor. */
-        .amount-input-wrap{position:relative;}
-        .amount-input-wrap input{position:absolute;inset:0;width:100%;height:100%;opacity:0;z-index:2;margin:0;padding:0;border:none;cursor:text;}
-        .amount-display{width:100%;box-sizing:border-box;text-align:center;font-weight:900;font-size:1.3em;pointer-events:none;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-        .amount-display:not(.amount-has-value){opacity:0.6;font-weight:700;font-size:0.72em;}
-        .amount-input-wrap input:focus ~ .amount-display::after{content:'';display:inline-block;width:2px;height:1em;vertical-align:-0.15em;margin-left:3px;background:currentColor;animation:blinkCaret 1s step-end infinite;}
+        .amount-input-wrap{position:relative;cursor:text;}
+        /* DÜZELTME (boş teklif kutusu): Yukarıdaki global
+           input[type="text"]{opacity:1 !important; background:#0f172a !important}
+           kuralı, buradaki opacity:0'ı EZİYORDU (!important kazanır). Sonuç:
+           "görünmez" olması gereken gerçek input, z-index:2 ile tüm kutuyu
+           opak bir arka planla KAPATIYOR, altındaki amount-display (placeholder
+           + yanıp sönen imleç + ortalanmış rakam) hiç görünmüyordu.
+           Özgüllüğü (specificity) daha yüksek + !important ile input'u
+           gerçekten şeffaf/görünmez yapıyoruz; klavye ve odak yine ondan. */
+        .amount-input-wrap input[type="text"]{position:absolute;inset:0;width:100%;height:100%;margin:0;padding:0;border:none;outline:none;z-index:2;cursor:text;
+            opacity:0 !important;background:transparent !important;background-color:transparent !important;
+            color:transparent !important;-webkit-text-fill-color:transparent !important;caret-color:transparent !important;
+            font-size:16px !important;text-align:center;box-shadow:none !important;}
+        .amount-display{width:100%;box-sizing:border-box;display:flex;align-items:center;justify-content:center;text-align:center;min-height:2.6em;font-weight:900;font-size:1.3em;pointer-events:none;white-space:nowrap;overflow:hidden;}
+        /* Boş + odakta değil: placeholder (küçük, soluk, gerekirse 2 satıra sarar) */
+        .amount-display.amount-placeholder{opacity:0.65;font-weight:700;font-size:0.72em;white-space:normal;line-height:1.3;color:#94a3b8;}
+        /* Odakta + boş: placeholder kaybolur, ortada yanıp sönen imleç kalır */
+        .amount-input-wrap input:focus ~ .amount-display::after{content:'';display:inline-block;flex:0 0 auto;width:2px;height:1.1em;margin-left:2px;background:#f8fafc;animation:blinkCaret 1s step-end infinite;}
+        .amount-input-wrap:focus-within{box-shadow:0 0 0 3px rgba(129,140,248,0.35);}
         @keyframes blinkCaret{0%,100%{opacity:1;}50%{opacity:0;}}
         @keyframes blinkWarn{0%,100%{opacity:1;}50%{opacity:0.25;}}
         .blink-warn{animation:blinkWarn 0.9s ease-in-out infinite;}
@@ -1974,7 +1988,7 @@
         <label style="display:block;font-size:0.7em;color:#94a3b8;font-weight:700;margin-bottom:5px;" data-i18n="offerPriceLabel"></label>
         <div class="amount-input-wrap" style="background:#0f172a;border:2.5px solid #f59e0b;border-radius:10px;padding:14px 12px;color:#34d399;font-size:1.3em;margin-bottom:10px;">
             <input type="text" inputmode="decimal" autocomplete="off" id="offer-price-input" oninput="sanitizeNumericInput(this);window.syncAmountDisplay(this,'offer-price-display', t('offerAmountPlaceholder'))" onfocus="window.onAmountInputFocus(this,'offer-price-display', t('offerAmountPlaceholder'))" onblur="window.onAmountInputBlur(this,'offer-price-display', t('offerAmountPlaceholder'))">
-            <div class="amount-display" id="offer-price-display">✍️ Teklifinizi girin</div>
+            <div class="amount-display amount-placeholder" id="offer-price-display">Lütfen şartlara uygun teklifinizi giriniz</div>
         </div>
         <label style="display:block;font-size:0.7em;color:#94a3b8;font-weight:700;margin-bottom:5px;" data-i18n="offerMessageLabel"></label>
         <textarea id="offer-message-input" maxlength="300" rows="2" style="width:100%;box-sizing:border-box;background:#0f172a;border:1.5px solid #334155;border-radius:9px;padding:10px;color:#e2e8f0;font-size:0.82em;margin-bottom:14px;resize:vertical;"></textarea>
@@ -4248,7 +4262,7 @@ const i18n = {
     auctionBidCountLabel:(n)=>n===1?"1 teklif":`${n} teklif`,
     auctionTimeLeft:(m)=>m<60?`⏳ ${m} dk kaldı`:(m<2880?`⏳ ${Math.floor(m/60)} sa kaldı`:`⏳ ${Math.floor(m/1440)} gün kaldı`),
     auctionBidBtn:"🔨 Teklif Ver",auctionPlaceBidTitle:"Teklif Ver",
-    auctionMinBidLabel:(v)=>`Minimum teklif: ${v} π`,auctionBidInputPlaceholder:"✍️ Lütfen teklifinizi giriniz",offerAmountPlaceholder:"✍️ Lütfen teklifinizi giriniz",
+    auctionMinBidLabel:(v)=>`Minimum teklif: ${v} π`,auctionBidInputPlaceholder:"Lütfen şartlara uygun teklifinizi giriniz",offerAmountPlaceholder:"Lütfen şartlara uygun teklifinizi giriniz",
     auctionInProgressTag:"Açık Artırma Devam Ediyor",auctionAwaitingWinnerTag:"Açık Artırma Bitti — Kazanan Onaylıyor",
     auctionBidSubmitBtn:"Açık Artırma Teklifini Gönder",auctionYouAreHighest:"🏆 Şu anda en yüksek teklif sizde!",
     auctionBidBindingWarning:"⚠️ Bu, pazarlık edilen normal bir teklif değildir — verdiğiniz açık artırma teklifi bağlayıcıdır ve geri alınamaz.",
@@ -5229,7 +5243,7 @@ const i18n = {
     auctionBidCountLabel:(n)=>n===1?"1 bid":`${n} bids`,
     auctionTimeLeft:(m)=>m<60?`⏳ ${m} min left`:(m<2880?`⏳ ${Math.floor(m/60)} h left`:`⏳ ${Math.floor(m/1440)} d left`),
     auctionBidBtn:"🔨 Place Bid",auctionPlaceBidTitle:"Place a Bid",
-    auctionMinBidLabel:(v)=>`Minimum bid: ${v} π`,auctionBidInputPlaceholder:"✍️ Enter your offer",offerAmountPlaceholder:"✍️ Enter your offer",
+    auctionMinBidLabel:(v)=>`Minimum bid: ${v} π`,auctionBidInputPlaceholder:"Please enter a bid that meets the requirements",offerAmountPlaceholder:"Please enter a bid that meets the requirements",
     auctionInProgressTag:"Auction In Progress",auctionAwaitingWinnerTag:"Auction Ended — Awaiting Winner",
     auctionBidSubmitBtn:"Submit Bid",auctionYouAreHighest:"🏆 You're currently the highest bidder!",
     auctionBidBindingWarning:"⚠️ This is not a negotiable offer — your auction bid is binding and cannot be withdrawn.",
@@ -7256,7 +7270,7 @@ window.openDomainDetail=function(domainName){
                 <div style="text-align:center;font-size:0.62em;color:#fca5a5;font-weight:700;margin-bottom:6px;">${t('auctionBidBindingWarning')}</div>
                 <div class="amount-input-wrap" style="padding:14px 12px;border-radius:10px;border:2.5px solid #6366f1;background:#0f172a;color:#34d399;font-size:1.3em;margin-bottom:8px;">
                     <input type="text" inputmode="decimal" autocomplete="off" id="auction-bid-input" data-minbid="${minBid}" oninput="sanitizeNumericInput(this);checkAuctionBidValidity(this);window.syncAmountDisplay(this,'auction-bid-display', t('auctionBidInputPlaceholder'))" onfocus="window.onAmountInputFocus(this,'auction-bid-display', t('auctionBidInputPlaceholder'))" onblur="window.onAmountInputBlur(this,'auction-bid-display', t('auctionBidInputPlaceholder'))">
-                    <div class="amount-display" id="auction-bid-display">${t('auctionBidInputPlaceholder')}</div>
+                    <div class="amount-display amount-placeholder" id="auction-bid-display">${t('auctionBidInputPlaceholder')}</div>
                 </div>
                 <div id="auction-bid-warning" class="blink-warn" style="display:none;font-size:0.65em;color:#f87171;font-weight:800;text-align:center;margin:-4px 0 8px 0;">⚠️ ${t('auctionMinBidLabel')(minBid)}</div>
                 <div id="auction-bid-hint" style="font-size:0.6em;color:#94a3b8;text-align:center;margin:-4px 0 8px 0;">${t('auctionMinBidLabel')(minBid)}</div>
@@ -8596,10 +8610,11 @@ window.sanitizeNumericInput = sanitizeNumericInput;
 // beklemek zorunda kalmaz, hatasını yazarken anında görür.
 window.syncAmountDisplay=function(inputEl, displayId, placeholderText){
     const disp=document.getElementById(displayId);
-    if(!disp) return;
+    if(!disp || !inputEl) return;
+    disp.classList.remove('amount-has-value','amount-placeholder');
     if(inputEl.value){ disp.textContent=inputEl.value; disp.classList.add('amount-has-value'); }
-    else if(document.activeElement===inputEl){ disp.textContent=''; disp.classList.remove('amount-has-value'); }
-    else { disp.textContent=placeholderText; disp.classList.remove('amount-has-value'); }
+    else if(document.activeElement===inputEl){ disp.textContent=''; }   // odakta: sadece yanıp sönen imleç
+    else { disp.textContent=placeholderText; disp.classList.add('amount-placeholder'); }
 };
 // YENİ: "Oraya tıklayınca yazı [placeholder] kaybolsun, imleç yanıp
 // sönmeye başlasın" — önceden placeholder yalnızca YAZMAYA BAŞLAYINCA
