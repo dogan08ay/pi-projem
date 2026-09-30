@@ -4249,6 +4249,7 @@ const i18n = {
     auctionTimeLeft:(m)=>m<60?`⏳ ${m} dk kaldı`:(m<2880?`⏳ ${Math.floor(m/60)} sa kaldı`:`⏳ ${Math.floor(m/1440)} gün kaldı`),
     auctionBidBtn:"🔨 Teklif Ver",auctionPlaceBidTitle:"Teklif Ver",
     auctionMinBidLabel:(v)=>`Minimum teklif: ${v} π`,auctionBidInputPlaceholder:"✍️ Lütfen teklifinizi giriniz",offerAmountPlaceholder:"✍️ Lütfen teklifinizi giriniz",
+    auctionInProgressTag:"Açık Artırma Devam Ediyor",auctionAwaitingWinnerTag:"Açık Artırma Bitti — Kazanan Onaylıyor",
     auctionBidSubmitBtn:"Açık Artırma Teklifini Gönder",auctionYouAreHighest:"🏆 Şu anda en yüksek teklif sizde!",
     auctionBidBindingWarning:"⚠️ Bu, pazarlık edilen normal bir teklif değildir — verdiğiniz açık artırma teklifi bağlayıcıdır ve geri alınamaz.",
     auctionWonClaimBtn:"🏆 Kazandınız! Satın Almayı Tamamla",auctionEndedNoBids:"Açık artırma süresi doldu — teklif verilmedi",
@@ -5229,6 +5230,7 @@ const i18n = {
     auctionTimeLeft:(m)=>m<60?`⏳ ${m} min left`:(m<2880?`⏳ ${Math.floor(m/60)} h left`:`⏳ ${Math.floor(m/1440)} d left`),
     auctionBidBtn:"🔨 Place Bid",auctionPlaceBidTitle:"Place a Bid",
     auctionMinBidLabel:(v)=>`Minimum bid: ${v} π`,auctionBidInputPlaceholder:"✍️ Enter your offer",offerAmountPlaceholder:"✍️ Enter your offer",
+    auctionInProgressTag:"Auction In Progress",auctionAwaitingWinnerTag:"Auction Ended — Awaiting Winner",
     auctionBidSubmitBtn:"Submit Bid",auctionYouAreHighest:"🏆 You're currently the highest bidder!",
     auctionBidBindingWarning:"⚠️ This is not a negotiable offer — your auction bid is binding and cannot be withdrawn.",
     auctionWonClaimBtn:"🏆 You Won! Complete Purchase",auctionEndedNoBids:"Auction ended — no bids were placed",
@@ -7240,7 +7242,9 @@ window.openDomainDetail=function(domainName){
             // YENİ: Canlı açık artırma — normal "Satın Al" yerine teklif
             // verme alanı gösteriliyor (backend zaten normal satın almayı
             // reddediyor, bu yüzden burada hiç göstermiyoruz).
-            const minBid=data.auctionHighestBid ? data.auctionHighestBid+(data.auctionMinIncrement||1) : data.auctionStartPrice;
+            // DÜZELTME (backend'le aynı kritik hata): ilk teklif için de
+            // minimum artış tutarı eklenmeli — sadece başlangıç fiyatı yetmez.
+            const minBid=data.auctionHighestBid ? data.auctionHighestBid+(data.auctionMinIncrement||1) : data.auctionStartPrice+(data.auctionMinIncrement||1);
             const youAreHighest=data.auctionHighestBidder===currentUser;
             const safeDomainForJs=domainName.replace(/'/g,"\\'");
             primaryHtml+=`<div style="width:100%;">
@@ -11207,8 +11211,15 @@ function render(){
         const auctionInlineStatusHtml = auctionIsLive
             ? `<span style="color:#a5b4fc;font-weight:800;">(${data.auctionHighestBid!=null?data.auctionHighestBid+' π':data.auctionStartPrice+' π'} · ⏰ ${t('auctionTag')})</span>`
             : `<span style="color:#fca5a5;font-weight:800;">(⏰ ${t('auctionTag')} · ${t('auctionEndedLabel')})</span>`;
+        // DÜZELTME (kart görseli — "yazının yarısı görünmüyor"): .domain-name
+        // sınıfı white-space:nowrap + ellipsis ZORLUYOR; domain adı + açık
+        // artırma durumu aynı satıra sığmayınca metin ortadan kesiliyordu.
+        // Açık artırma satırı için bu kısıtlamayı kaldırıp satırın normal
+        // şekilde alta kaymasına (wrap) izin veriyoruz — hiçbir karakter
+        // artık gizlenmiyor. Normal (açık artırmasız) kartlar eskisi gibi
+        // tek satırda kalmaya devam ediyor, onlara dokunmadık.
         const cardNameLineHtml=(auctionIsLive||auctionIsEnded)
-            ? `<div class="domain-name">${d.name} ${auctionInlineStatusHtml}</div>${auctionPriceBlockHtml}`
+            ? `<div class="domain-name" style="white-space:normal;overflow:visible;text-overflow:clip;line-height:1.35;">${d.name} ${auctionInlineStatusHtml}</div>${auctionPriceBlockHtml}`
             : `<div class="domain-name">${d.name} <span style="color:#fbbf24;font-weight:800;">(${data.price} π)</span></div><div class="domain-price">${data.price} PI</div>${usdEstimateHtml(data.price)}`;
         card.innerHTML=`${favBtn}<img src="${imgSrc}" class="domain-img" onerror="this.src='data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMDAiIGhlaWdodD0iMTAwIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjNDc1NTY5Ii8+PC9zdmc+'">${boostTag}${auctionTag}${newTag}${tTag}${hiddenTag}${cardNameLineHtml}${buildMyOfferChipHtml(d.name)}<div class="card-tap-hint">👆 ${t('tapForDetailHint')}</div>`;
 
@@ -11248,6 +11259,22 @@ function render(){
                     card.appendChild(hideBtn);
                 }
             }
+        } else if (auctionIsLive || auctionIsEnded) {
+            // DÜZELTME (KRİTİK — "açık artırmadaki domainde hâlâ Satın Al
+            // çıkıyor" hatası): Bu "else" bloğu önceden açık artırma
+            // durumuna HİÇ bakmıyordu — data.sold=false olan HER domain
+            // (aktif açık artırmadakiler dahil) buraya düşüp normal
+            // tıklanabilir "Satın Al" butonunu gösteriyordu. Artık açık
+            // artırma sürüyorsa (ya da bitip kazananı bekleniyorsa) buton
+            // yerine net, tıklanamaz bir durum etiketi gösteriliyor.
+            // Açık artırma iptal edilir ya da teklifsiz süresi dolarsa
+            // (auctionIsLive/auctionIsEnded ikisi de false olur) bu dal
+            // hiç çalışmaz, akış normal "Satın Al" dalına düşer.
+            const auctionStatusTag=document.createElement('div');
+            auctionStatusTag.className='btn-buy';
+            auctionStatusTag.style.cssText='background:rgba(129,140,248,0.15);border:1.5px solid #818cf8;color:#c7d2fe;cursor:default;text-align:center;';
+            auctionStatusTag.innerText = auctionIsLive ? '⏰ '+t('auctionInProgressTag') : '🏆 '+t('auctionAwaitingWinnerTag');
+            card.appendChild(auctionStatusTag);
         } else {
             // FIX: Satıcının kendi ilanına "Satın Al" butonu gösteriliyordu.
             // Satıcı bir teklif anlaşması sonrası (ya da sırf merakla) kendi
