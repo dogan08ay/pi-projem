@@ -124,6 +124,190 @@ const REFERRAL_BONUS_REFERRED = 15; // davet edilen (yeni) kişiye "hoş geldin"
 // herkese açılır (ilk gelen alır).
 const OFFER_RESERVATION_MS = 15 * 60 * 1000; // 15 dakika
 
+// ══════════════════════════════════════════════════════════════════════
+//  AÇIK ARTIRMA — SABİTLER VE YARDIMCILAR
+// ══════════════════════════════════════════════════════════════════════
+// Kazanan, açık artırma BİTTİĞİ ANDA otomatik olarak domaine rezerve edilir
+// ve bu süre içinde satın almayı tamamlamak zorundadır. Süre dolarsa açık
+// artırma iptal edilir, domain eski fiyatıyla yeniden satışa açılır ve
+// kazanana (ödemediği için) ceza uygulanır. (Süreyi değiştirmek için sadece
+// bu sabiti değiştirmek yeterli — bildirim metinleri ve istemci otomatik uyar.)
+const AUCTION_WIN_WINDOW_MS = 24 * 60 * 60 * 1000; // 24 saat
+// Anti-sniping: bitmesine bu kadar süre kala gelen her teklif, süreyi tekrar
+// bu değere kadar uzatır (en fazla AUCTION_MAX_EXTENSIONS kez).
+const AUCTION_SNIPE_WINDOW_MS = 5 * 60 * 1000;
+const AUCTION_MAX_EXTENSIONS = 30;
+// Pi ondalık hassasiyeti (en fazla 7 basamak) ve kayan-nokta hatasına karşı
+// tüm karşılaştırmalar 1e7 ile çarpılmış TAM SAYILAR üzerinden yapılır.
+const PI_SCALE = 1e7;
+const toPiUnits = (x) => Math.round(Number(x) * PI_SCALE);
+const fromPiUnits = (u) => u / PI_SCALE;
+function hasValidPiPrecision(x) {
+  if (!Number.isFinite(x)) return false;
+  return Math.abs(x * PI_SCALE - Math.round(x * PI_SCALE)) < 1e-6;
+}
+// Ödeme yapmayan kazanana kademeli ceza: 1. ihlal uyarı, 2. ihlal 7 gün,
+// 3. ve sonrası 30 gün açık artırmalara teklif verme yasağı.
+function auctionBanDaysFor(defaultCount) {
+  if (defaultCount >= 3) return 30;
+  if (defaultCount === 2) return 7;
+  return 0;
+}
+const fmtTRDateTime = (ms) => new Date(ms).toLocaleString('tr-TR', {
+  timeZone: 'Europe/Istanbul', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit'
+});
+const fmtHoursLabel = (ms) => {
+  const h = ms / 3600000;
+  return Number.isInteger(h) ? `${h} saat` : `${Math.round(h * 10) / 10} saat`;
+};
+// Satış tamamlanınca / açık artırma kapanınca kazanan alanlarını temizlemek için.
+const AUCTION_WIN_CLEAR_FIELDS = () => ({
+  auctionWinPending: FieldValue.delete(),
+  auctionWinner: FieldValue.delete(),
+  auctionWinPrice: FieldValue.delete(),
+  auctionWonAt: FieldValue.delete(),
+  auctionWinDeadline: FieldValue.delete(),
+  auctionWinWarnStage: FieldValue.delete()
+});
+
+// Süresi dolan açık artırmayı SONUÇLANDIRIR: teklif sahibi varsa kazanan,
+// domaine AUCTION_WIN_WINDOW_MS boyunca rezerve edilir (süre BU ANDA başlar),
+// fiyat kazanan teklife çekilir ve kazanana "kazandınız" bildirimi gider.
+// Transaction + idempotent: cron, bildirim polling'i ve kullanıcının kendi
+// isteği aynı anda çağırsa bile yalnızca BİR KEZ çalışır.
+async function finalizeEndedAuction(db, domainName) {
+  const ref = db.collection('domains').doc(domainName);
+  let info = null;
+  try {
+    info = await db.runTransaction(async (tx) => {
+      const snap = await tx.get(ref);
+      if (!snap.exists) return null;
+      const d = snap.data();
+      if (d.sold === true || d.auctionActive !== true) return null;
+      if (!d.auctionEndsAt || d.auctionEndsAt > Date.now()) return null;
+      if (!d.auctionHighestBidder) return null;
+      const now = Date.now();
+      const deadline = now + AUCTION_WIN_WINDOW_MS;
+      const revertTo = typeof d.auctionStartPrice === 'number' ? d.auctionStartPrice : d.price;
+      tx.set(ref, {
+        auctionActive: false,
+        auctionWinPending: true,
+        auctionWinner: d.auctionHighestBidder,
+        auctionWinPrice: d.auctionHighestBid,
+        auctionWonAt: now,
+        auctionWinDeadline: deadline,
+        auctionWinWarnStage: 0,
+        price: d.auctionHighestBid,
+        reservedFor: d.auctionHighestBidder,
+        reservedUntil: deadline,
+        preNegotiationPrice: revertTo
+      }, { merge: true });
+      return { winner: d.auctionHighestBidder, price: d.auctionHighestBid, deadline, seller: d.sellerUsername || null };
+    });
+  } catch (e) {
+    console.error(`finalizeEndedAuction hatası (${domainName}):`, e);
+    return null;
+  }
+  if (!info) return null;
+  await sendNotification(info.winner, {
+    type: 'auction_won',
+    role: 'buyer',
+    title: '🏆 Açık Artırmayı Kazandınız!',
+    body: `"${domainName}" açık artırmasını ${info.price} Pi ile kazandınız. Satın alma işlemini ${fmtHoursLabel(AUCTION_WIN_WINDOW_MS)} içinde (son tarih: ${fmtTRDateTime(info.deadline)}) tamamlayabilirsiniz. ⚠️ Bu süre içinde satın almazsanız açık artırma İPTAL EDİLİR, domain yeniden satışa açılır ve hesabınıza ceza uygulanır.`,
+    domainName,
+    price: info.price,
+    deadline: info.deadline
+  });
+  if (info.seller) {
+    await sendNotification(info.seller, {
+      type: 'auction_won_seller',
+      role: 'seller',
+      title: '🏆 Açık Artırmanız Sona Erdi',
+      body: `"${domainName}" için açık artırma ${info.price} Pi ile @${info.winner} tarafından kazanıldı. Alıcının ${fmtHoursLabel(AUCTION_WIN_WINDOW_MS)} içinde ödemesini tamamlaması bekleniyor; tamamlamazsa açık artırma iptal edilip ilanınız tekrar satışa açılacak.`,
+      domainName
+    });
+  }
+  return info;
+}
+
+// Kazananın satın alma süresi DOLDUYSA: açık artırmayı iptal eder, fiyatı
+// açık artırma öncesi değerine döndürür, rezervasyonu kaldırır, kazanana
+// kademeli ceza uygular ve kazanan + satıcıya bildirim gönderir.
+// Idempotent + transaction (çifte ceza/çifte bildirim olmaz).
+async function expireAuctionWin(db, domainName) {
+  const ref = db.collection('domains').doc(domainName);
+  let info = null;
+  try {
+    info = await db.runTransaction(async (tx) => {
+      const snap = await tx.get(ref);
+      if (!snap.exists) return null;
+      const d = snap.data();
+      if (d.auctionWinPending !== true) return null;
+      if (d.sold === true) { // güvenlik: satılmışsa sadece bayrakları temizle
+        tx.set(ref, AUCTION_WIN_CLEAR_FIELDS(), { merge: true });
+        return null;
+      }
+      if (!d.auctionWinDeadline || d.auctionWinDeadline > Date.now()) return null;
+      const revertPrice = typeof d.preNegotiationPrice === 'number' ? d.preNegotiationPrice
+        : (typeof d.auctionStartPrice === 'number' ? d.auctionStartPrice : d.price);
+      tx.set(ref, {
+        ...AUCTION_WIN_CLEAR_FIELDS(),
+        reservedFor: FieldValue.delete(),
+        reservedUntil: FieldValue.delete(),
+        preNegotiationPrice: FieldValue.delete(),
+        auctionActive: false,
+        auctionEndsAt: FieldValue.delete(),
+        auctionHighestBid: null,
+        auctionHighestBidder: null,
+        price: revertPrice
+      }, { merge: true });
+      return { winner: d.auctionWinner, price: d.auctionWinPrice, seller: d.sellerUsername || null, revertPrice };
+    });
+  } catch (e) {
+    console.error(`expireAuctionWin hatası (${domainName}):`, e);
+    return null;
+  }
+  if (!info) return null;
+  // Ceza (kademeli) — kullanıcı profiline yazılıyor.
+  let defaultCount = 1, banUntil = null;
+  try {
+    const pref = db.collection('user_profiles').doc(info.winner);
+    await db.runTransaction(async (tx) => {
+      const ps = await tx.get(pref);
+      const prev = ps.exists ? (ps.data().auctionDefaults || 0) : 0;
+      defaultCount = prev + 1;
+      const days = auctionBanDaysFor(defaultCount);
+      const upd = { auctionDefaults: defaultCount, auctionLastDefaultAt: Date.now() };
+      if (days > 0) { banUntil = Date.now() + days * 86400000; upd.auctionBidBanUntil = banUntil; }
+      tx.set(pref, upd, { merge: true });
+    });
+    await db.collection('auction_defaults').add({ domainName, username: info.winner, price: info.price, at: Date.now(), defaultCount, banUntil });
+  } catch (e) {
+    console.error('auction default cezası yazılamadı:', e);
+  }
+  const penaltyText = banUntil
+    ? `Bu ${defaultCount}. ihlaliniz olduğu için ${fmtTRDateTime(banUntil)} tarihine kadar açık artırmalara teklif veremezsiniz.`
+    : `Bu ilk ihlaliniz — uyarı olarak kaydedildi. Tekrarında açık artırmalara teklif verme yasağı uygulanacak.`;
+  await sendNotification(info.winner, {
+    type: 'auction_win_expired',
+    role: 'buyer',
+    title: '❌ Açık Artırma İptal Edildi',
+    body: `"${domainName}" açık artırmasını ${info.price} Pi ile kazanmıştınız ancak ${fmtHoursLabel(AUCTION_WIN_WINDOW_MS)} içinde satın alma işlemini tamamlamadınız. Açık artırma iptal edildi. ${penaltyText}`,
+    domainName
+  });
+  if (info.seller) {
+    await sendNotification(info.seller, {
+      type: 'auction_win_expired_seller',
+      role: 'seller',
+      title: '⚠️ Açık Artırma İptal Oldu',
+      body: `"${domainName}" için kazanan @${info.winner} süre içinde ödemeyi tamamlamadı. Açık artırma iptal edildi; ilanınız ${info.revertPrice} Pi fiyatıyla yeniden satışa açıldı.`,
+      domainName
+    });
+  }
+  console.log(`[Açık artırma iptal] ${domainName}: kazanan @${info.winner} süre içinde ödemedi (ihlal #${defaultCount})`);
+  return info;
+}
+
 // ── Açık Artırma "Süre Az Kaldı" Uyarısı — throttle durumu ──────────────
 // Bu projede zamanlanmış görev (cron) yok, bu yüzden "bitmeden 1 saat
 // kala uyar" kontrolü, aşağıdaki checkEndingAuctions() fonksiyonu ile,
@@ -143,22 +327,17 @@ const AUCTION_ENDING_WARNING_WINDOW_MS = 60 * 60 * 1000; // bitmesine 1 saatten 
 async function checkEndingAuctions(db) {
   if (Date.now() - _lastAuctionEndingCheckAt < AUCTION_ENDING_CHECK_INTERVAL_MS) return;
   _lastAuctionEndingCheckAt = Date.now(); // eşzamanlı çift taramayı önlemek için await'ten önce kilitleniyor
+  // ── A) Aktif açık artırmalar: biteni sonuçlandır, bitmek üzere olanı uyar ──
   try {
     const snap = await db.collection('domains').where('auctionActive', '==', true).get();
-    if (snap.empty) return;
     const now = Date.now();
     for (const doc of snap.docs) {
       const data = doc.data();
       if (!data.auctionEndsAt) continue;
       const remaining = data.auctionEndsAt - now;
-      // YENİ: Süresi dolmuş VE hiç teklif almamış açık artırmalar önceden
-      // SONSUZA KADAR "auctionActive:true" kalıyordu — bunu kapatan hiçbir
-      // mekanizma yoktu. Sonuç: domain kartında normal "Teklif Ver" butonu
-      // bir daha asla geri gelmiyordu. Teklifi olan (auctionHighestBidder
-      // dolu) açık artırmalara dokunmuyoruz — kazanan claim_auction_win ile
-      // satın almayı tamamlayana kadar o hâliyle bekliyor, bu kasıtlı.
       if (remaining <= 0) {
         if (!data.auctionHighestBidder) {
+          // Teklifsiz biten açık artırma: normal satışa geri dön.
           await doc.ref.set({ auctionActive: false, auctionEndsAt: FieldValue.delete() }, { merge: true });
           if (data.sellerUsername) {
             await sendNotification(data.sellerUsername, {
@@ -169,14 +348,15 @@ async function checkEndingAuctions(db) {
               domainName: doc.id
             });
           }
+        } else {
+          // Teklifi olan açık artırma: kazananı belirle, satın alma süresini BAŞLAT.
+          await finalizeEndedAuction(db, doc.id);
         }
         continue;
       }
       if (remaining > AUCTION_ENDING_WARNING_WINDOW_MS) continue;
-      // Aynı açık artırma için tekrar tekrar uyarı gitmesin diye, bu
-      // bitiş zamanı için zaten uyarı gönderildiyse atla. (auctionEndsAt
-      // kontrolü, açık artırma iptal edilip yeniden başlatıldığında yeni
-      // bir uyarının gönderilebilmesini de sağlıyor.)
+      // Aynı bitiş zamanı için tekrar uyarı gitmesin (süre uzatılırsa yeni
+      // auctionEndsAt değeri sayesinde yeniden uyarı gönderilebilir).
       if (data.auctionEndingWarnedFor === data.auctionEndsAt) continue;
       await doc.ref.set({ auctionEndingWarnedFor: data.auctionEndsAt }, { merge: true });
       const minutesLeft = Math.max(1, Math.round(remaining / 60000));
@@ -200,9 +380,38 @@ async function checkEndingAuctions(db) {
       }
     }
   } catch (e) {
-    // Bu kontrol arka plan iyileştirmesi — hata olsa bile asıl isteği
-    // (bildirim listesini getirme) ASLA engellememeli.
-    console.error("checkEndingAuctions hatası:", e);
+    // Arka plan iyileştirmesi — hata asıl isteği ASLA engellememeli.
+    console.error("checkEndingAuctions (aktif) hatası:", e);
+  }
+  // ── B) Kazananın satın alma süresi: hatırlat, süresi dolanı iptal et ──
+  try {
+    const wsnap = await db.collection('domains').where('auctionWinPending', '==', true).get();
+    const now = Date.now();
+    for (const doc of wsnap.docs) {
+      const d = doc.data();
+      if (d.sold === true || !d.auctionWinDeadline) { await expireAuctionWin(db, doc.id); continue; }
+      const remaining = d.auctionWinDeadline - now;
+      if (remaining <= 0) { await expireAuctionWin(db, doc.id); continue; }
+      const stage = d.auctionWinWarnStage || 0;
+      let newStage = stage;
+      if (remaining <= 60 * 60 * 1000 && stage < 2) newStage = 2;
+      else if (remaining <= 6 * 60 * 60 * 1000 && stage < 1) newStage = 1;
+      if (newStage === stage) continue;
+      await doc.ref.set({ auctionWinWarnStage: newStage }, { merge: true });
+      const minLeft = Math.max(1, Math.round(remaining / 60000));
+      const leftText = minLeft >= 60 ? `yaklaşık ${Math.round(minLeft / 60)} saat` : `${minLeft} dakika`;
+      await sendNotification(d.auctionWinner, {
+        type: 'auction_win_reminder',
+        role: 'buyer',
+        title: '⏳ Satın Alma Süreniz Bitiyor!',
+        body: `"${doc.id}" açık artırmasını kazandınız ve satın almak için ${leftText} süreniz kaldı (son: ${fmtTRDateTime(d.auctionWinDeadline)}). Tamamlamazsanız açık artırma iptal edilir ve hesabınıza ceza uygulanır.`,
+        domainName: doc.id,
+        price: d.auctionWinPrice,
+        deadline: d.auctionWinDeadline
+      });
+    }
+  } catch (e) {
+    console.error("checkEndingAuctions (kazanan süresi) hatası:", e);
   }
 }
 
@@ -226,6 +435,11 @@ async function revertExpiredReservation(db, domainName) {
     if (data.sold === true) return null;
     if (!data.reservedFor || !data.reservedUntil) return null;
     if (data.reservedUntil > Date.now()) return null; // hâlâ geçerli, dokunma
+    // Açık artırma kazananının süresi dolduysa: iptal + ceza + bildirim akışı.
+    if (data.auctionWinPending === true) {
+      const r = await expireAuctionWin(db, domainName);
+      return r ? r.revertPrice : null;
+    }
 
     const revertPrice = typeof data.preNegotiationPrice === 'number' ? data.preNegotiationPrice : null;
     const update = { reservedFor: FieldValue.delete(), reservedUntil: FieldValue.delete(), preNegotiationPrice: FieldValue.delete() };
@@ -844,7 +1058,8 @@ const NOTIF_CATEGORY_MAP = {
   offers: ['offer_received', 'offer_accepted', 'offer_rejected', 'offer_countered',
     'counter_offer_accepted', 'counter_offer_rejected',
     'auction_outbid', 'auction_won', 'auction_won_seller', 'auction_cancelled',
-    'auction_ending_soon', 'auction_ending_soon_seller'],
+    'auction_ending_soon', 'auction_ending_soon_seller',
+    'auction_win_reminder', 'auction_win_expired', 'auction_win_expired_seller', 'auction_new_bid_seller'],
   tickets: ['ticket_created', 'ticket_message', 'ticket_admin_reply', 'ticket_status_update', 'ticket_deleted'],
   favorites: ['favorite_price_changed', 'favorite_relisted', 'saved_search_match', 'domain_relisted', 'rating_reminder'],
   messages: ['new_message'],
@@ -1806,9 +2021,11 @@ async function handlerImpl(req, res) {
         auctionHighestBid: null,
         auctionHighestBidder: null,
         auctionBidCount: 0,
+        auctionExtensions: 0,
         auctionEndsAt,
         auctionStartedAt: Date.now(),
-        price: startNum
+        price: startNum,
+        ...AUCTION_WIN_CLEAR_FIELDS()
       }, { merge: true });
       // YENİ (açık artırma bütünlüğü): Bu domain için önceden var olan,
       // henüz yanıtlanmamış teklifleri geçersiz kılıyoruz — aksi halde
@@ -1842,6 +2059,29 @@ async function handlerImpl(req, res) {
       const domainSnap = await domainRef.get();
       if (!domainSnap.exists) return res.status(404).json({ error: "Domain bulunamadı" });
       const data = domainSnap.data();
+      // Kazananı belirlenmiş ve satın almasını bekleyen açık artırma da iptal
+      // edilebilir (yönetici kararı — kazanana CEZA uygulanmaz).
+      if (data.auctionWinPending === true && data.sold !== true) {
+        await domainRef.set({
+          ...AUCTION_WIN_CLEAR_FIELDS(),
+          reservedFor: FieldValue.delete(),
+          reservedUntil: FieldValue.delete(),
+          preNegotiationPrice: FieldValue.delete(),
+          auctionActive: false,
+          auctionEndsAt: null,
+          price: data.auctionStartPrice || data.preNegotiationPrice || data.price
+        }, { merge: true });
+        await sendNotification(data.auctionWinner, {
+          type: 'auction_cancelled',
+          role: 'buyer',
+          title: '⚠️ Açık Artırma İptal Edildi',
+          body: `"${domainName}" için kazandığınız açık artırma yönetici tarafından iptal edildi. Herhangi bir ödeme alınmadığı için iade gerekmiyor ve hesabınıza ceza uygulanmadı.`,
+          domainName
+        });
+        const adminUsernameW = await getRealUsername(accessToken);
+        await logAdminAction(adminUsernameW, 'cancel_auction', `${domainName} (kazanan bekleniyordu)`);
+        return res.status(200).json({ success: true });
+      }
       if (data.auctionActive !== true) return res.status(400).json({ error: "Bu domain için aktif bir açık artırma yok" });
       const highestBidder = data.auctionHighestBidder;
       await domainRef.set({
@@ -1878,59 +2118,88 @@ async function handlerImpl(req, res) {
     const bidNum = Number(bidAmount);
     if (!domainName || !Number.isFinite(bidNum) || bidNum <= 0)
       return res.status(400).json({ error: "Geçersiz teklif tutarı" });
+    if (!hasValidPiPrecision(bidNum))
+      return res.status(400).json({ error: "Teklif en fazla 7 ondalık basamak içerebilir" });
     try {
       const db = getDb();
+      // Ödeme yapmayan kazananlara uygulanan teklif yasağı kontrolü.
+      const profSnap = await db.collection('user_profiles').doc(realUsername).get();
+      const banUntil = profSnap.exists ? profSnap.data().auctionBidBanUntil : null;
+      if (banUntil && banUntil > Date.now())
+        return res.status(403).json({ error: `Kazandığınız açık artırmayı süresinde ödemediğiniz için ${fmtTRDateTime(banUntil)} tarihine kadar teklif veremezsiniz.`, banned: true, banUntil });
+
       const domainRef = db.collection('domains').doc(domainName);
-      const domainSnap = await domainRef.get();
-      if (!domainSnap.exists) return res.status(404).json({ error: "Domain bulunamadı" });
-      const data = domainSnap.data();
-      if (data.auctionActive !== true) return res.status(400).json({ error: "Bu domain için aktif bir açık artırma yok" });
-      if (!data.auctionEndsAt || data.auctionEndsAt <= Date.now())
-        return res.status(400).json({ error: "Bu açık artırmanın süresi doldu" });
-      if (data.sellerUsername === realUsername) return res.status(400).json({ error: "Kendi ilanınıza teklif veremezsiniz" });
-      // DÜZELTME (kritik): İLK teklif için minimum, sadece başlangıç
-      // fiyatıydı — minimum artış tutarı hiç hesaba katılmıyordu. Örnek:
-      // başlangıç 2 Pi, minimum artış 1 Pi olan bir açık artırmada 2.5 Pi
-      // gibi bir teklif kabul ediliyordu, oysa ilk teklif de en az
-      // "başlangıç + minimum artış" (bu örnekte 3 Pi) olmalı.
-      const minAcceptable = data.auctionHighestBid
-        ? data.auctionHighestBid + (data.auctionMinIncrement || 1)
-        : data.auctionStartPrice + (data.auctionMinIncrement || 1);
-      if (bidNum < minAcceptable)
-        return res.status(400).json({ error: `Teklif en az ${minAcceptable} Pi olmalı` });
-      if (data.auctionHighestBidder === realUsername)
-        return res.status(400).json({ error: "Zaten en yüksek teklifi siz verdiniz" });
+      const bidRef = db.collection('auction_bids').doc();
+      // KRİTİK DÜZELTME: okuma → doğrulama → yazma artık tek bir transaction.
+      // Öncesinde iki kişi aynı anda teklif verince, düşük teklif yüksek
+      // olanın üstüne yazılabiliyordu (yarış durumu).
+      const out = await db.runTransaction(async (tx) => {
+        const snap = await tx.get(domainRef);
+        if (!snap.exists) return { err: [404, "Domain bulunamadı"] };
+        const data = snap.data();
+        const now = Date.now();
+        if (data.sold === true) return { err: [400, "Bu domain zaten satılmış"] };
+        if (data.auctionActive !== true) return { err: [400, "Bu domain için aktif bir açık artırma yok"] };
+        if (!data.auctionEndsAt || data.auctionEndsAt <= now) return { err: [400, "Bu açık artırmanın süresi doldu"] };
+        if (data.sellerUsername === realUsername) return { err: [400, "Kendi ilanınıza teklif veremezsiniz"] };
+        if (data.auctionHighestBidder === realUsername) return { err: [400, "Zaten en yüksek teklifi siz verdiniz"] };
+        // İlk teklif için de minimum = başlangıç + minimum artış. Tüm
+        // karşılaştırma tam sayı (1e7 birim) üzerinden → kayan nokta hatası yok.
+        const incUnits = toPiUnits(data.auctionMinIncrement || 1);
+        const baseUnits = (data.auctionHighestBid !== null && data.auctionHighestBid !== undefined)
+          ? toPiUnits(data.auctionHighestBid) : toPiUnits(data.auctionStartPrice);
+        const minUnits = baseUnits + incUnits;
+        if (toPiUnits(bidNum) < minUnits)
+          return { err: [400, `Teklif en az ${fromPiUnits(minUnits)} Pi olmalı`], minAcceptable: fromPiUnits(minUnits) };
 
-      const previousBidder = data.auctionHighestBidder;
-      await domainRef.set({
-        auctionHighestBid: bidNum,
-        auctionHighestBidder: realUsername,
-        auctionBidCount: (data.auctionBidCount || 0) + 1
-      }, { merge: true });
-
-      // Teklif geçmişi — ayrı bir koleksiyonda tutuluyor ki domain
-      // dokümanı büyümesin (bkz. codebase'in offers/history desenine
-      // benzer yaklaşımı).
-      await db.collection('auction_bids').add({
-        domainName, username: realUsername, bidAmount: bidNum, at: Date.now()
+        // Anti-sniping: son 5 dakikada gelen teklif süreyi yeniden 5 dakikaya çıkarır.
+        let newEndsAt = data.auctionEndsAt;
+        let extensions = data.auctionExtensions || 0;
+        let extended = false;
+        if (newEndsAt - now < AUCTION_SNIPE_WINDOW_MS && extensions < AUCTION_MAX_EXTENSIONS) {
+          newEndsAt = now + AUCTION_SNIPE_WINDOW_MS;
+          extensions += 1;
+          extended = true;
+        }
+        const bidCount = (data.auctionBidCount || 0) + 1;
+        tx.set(domainRef, {
+          auctionHighestBid: bidNum,
+          auctionHighestBidder: realUsername,
+          auctionBidCount: bidCount,
+          auctionEndsAt: newEndsAt,
+          auctionExtensions: extensions
+        }, { merge: true });
+        tx.set(bidRef, { domainName, username: realUsername, bidAmount: bidNum, at: now });
+        return { ok: true, previousBidder: data.auctionHighestBidder || null, seller: data.sellerUsername || null, newEndsAt, extended, bidCount };
       });
+      if (out.err) return res.status(out.err[0]).json({ error: out.err[1], minAcceptable: out.minAcceptable });
 
-      if (previousBidder && previousBidder !== realUsername) {
-        await sendNotification(previousBidder, {
+      if (out.previousBidder && out.previousBidder !== realUsername) {
+        await sendNotification(out.previousBidder, {
           type: 'auction_outbid',
           role: 'buyer',
           title: '⚠️ Teklifiniz Geçildi',
-          body: `"${domainName}" için verdiğiniz teklif @${realUsername} tarafından geçildi (yeni en yüksek teklif: ${bidNum} Pi).`,
+          body: `"${domainName}" için verdiğiniz teklif @${realUsername} tarafından geçildi (yeni en yüksek teklif: ${bidNum} Pi).${out.extended ? ` Son dakika teklifi nedeniyle süre uzatıldı — yeni bitiş: ${fmtTRDateTime(out.newEndsAt)}.` : ''}`,
           domainName
         });
       }
-      return res.status(200).json({ success: true, highestBid: bidNum });
+      if (out.seller) {
+        await sendNotification(out.seller, {
+          type: 'auction_new_bid_seller',
+          role: 'seller',
+          title: '🔨 Açık Artırmanıza Yeni Teklif',
+          body: `"${domainName}" için @${realUsername} ${bidNum} Pi teklif verdi (toplam ${out.bidCount} teklif).${out.extended ? ` Süre son dakika kuralıyla uzatıldı (yeni bitiş: ${fmtTRDateTime(out.newEndsAt)}).` : ''}`,
+          domainName
+        });
+      }
+      return res.status(200).json({ success: true, highestBid: bidNum, auctionEndsAt: out.newEndsAt, extended: out.extended });
     } catch (e) {
       console.error("place_auction_bid hatası:", e);
       return res.status(500).json({ error: e.message });
     }
   }
-
+  // Kazanan talep/yenileme: açık artırma bitti ama sunucu henüz sonuçlandırmadıysa
+  // burada (idempotent) sonuçlandırılır; sonra kazananın süresi ve fiyatı döner.
   if (action === 'claim_auction_win') {
     const { domainName } = req.body;
     const realUsername = await getRealUsername(accessToken);
@@ -1939,51 +2208,70 @@ async function handlerImpl(req, res) {
     try {
       const db = getDb();
       const domainRef = db.collection('domains').doc(domainName);
-      const domainSnap = await domainRef.get();
+      let domainSnap = await domainRef.get();
       if (!domainSnap.exists) return res.status(404).json({ error: "Domain bulunamadı" });
-      const data = domainSnap.data();
+      let data = domainSnap.data();
       if (data.sold === true) return res.status(400).json({ error: "Bu domain zaten satılmış" });
-      if (data.auctionActive !== true) return res.status(400).json({ error: "Bu domain için aktif bir açık artırma yok" });
-      if (!data.auctionEndsAt || data.auctionEndsAt > Date.now())
-        return res.status(400).json({ error: "Açık artırma henüz bitmedi" });
-      if (!data.auctionHighestBidder)
-        return res.status(400).json({ error: "Bu açık artırmaya hiç teklif verilmedi" });
-      if (data.auctionHighestBidder !== realUsername)
-        return res.status(403).json({ error: "Bu açık artırmayı sadece en yüksek teklifi veren kazanabilir" });
-
-      // Kabul edilmiş bir teklifle BİREBİR AYNI rezervasyon deseni —
-      // gerçek ödeme buradan sonra mevcut satın alma akışı üzerinden
-      // yürüyecek (bkz. dosya başındaki tasarım notu).
-      const reservedUntil = Date.now() + OFFER_RESERVATION_MS;
-      const preNegotiationPrice = data.price;
-      await domainRef.set({
-        price: data.auctionHighestBid,
-        reservedFor: realUsername,
-        reservedUntil,
-        preNegotiationPrice,
-        auctionActive: false
-      }, { merge: true });
-
-      const minutes = Math.round(OFFER_RESERVATION_MS / 60000);
-      await sendNotification(realUsername, {
-        type: 'auction_won',
-        role: 'buyer',
-        title: '🏆 Açık Artırmayı Kazandınız!',
-        body: `"${domainName}" açık artırmasını ${data.auctionHighestBid} Pi ile kazandınız. Satın alma işlemini ${minutes} dakika içinde tamamlamanız gerekiyor, aksi halde rezervasyon iptal olur.`,
-        domainName
-      });
-      if (data.sellerUsername) {
-        await sendNotification(data.sellerUsername, {
-          type: 'auction_won_seller',
-          role: 'seller',
-          title: '🏆 Açık Artırmanız Sona Erdi',
-          body: `"${domainName}" için açık artırma ${data.auctionHighestBid} Pi ile @${realUsername} tarafından kazanıldı. Alıcının ödemesini tamamlamasını bekleyin.`,
-          domainName
-        });
+      if (data.auctionActive === true) {
+        if (!data.auctionEndsAt || data.auctionEndsAt > Date.now())
+          return res.status(400).json({ error: "Açık artırma henüz bitmedi" });
+        if (!data.auctionHighestBidder)
+          return res.status(400).json({ error: "Bu açık artırmaya hiç teklif verilmedi" });
+        if (data.auctionHighestBidder !== realUsername)
+          return res.status(403).json({ error: "Bu açık artırmayı sadece en yüksek teklifi veren kazanabilir" });
+        await finalizeEndedAuction(db, domainName);
+        domainSnap = await domainRef.get();
+        data = domainSnap.data();
       }
-      return res.status(200).json({ success: true, price: data.auctionHighestBid, reservedUntil });
+      if (data.auctionWinPending === true && data.auctionWinner === realUsername) {
+        if (data.auctionWinDeadline <= Date.now()) {
+          await expireAuctionWin(db, domainName);
+          return res.status(400).json({ error: "Satın alma süreniz doldu, açık artırma iptal edildi." });
+        }
+        return res.status(200).json({ success: true, price: data.auctionWinPrice, reservedUntil: data.auctionWinDeadline });
+      }
+      return res.status(403).json({ error: "Bu açık artırmayı sadece en yüksek teklifi veren kazanabilir" });
     } catch (e) {
       console.error("claim_auction_win hatası:", e);
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  // Giriş yapan kullanıcının KAZANDIĞI ve satın almasını bekleyen açık
+  // artırmaları döner (istemci bunu ekranda pop-up + sayaçlı bant olarak
+  // gösterir). Tembel sonuçlandırma/iptal de burada yapılır: cron gecikse bile
+  // kazanan bitiş anında haberdar olur, süresi dolan hemen iptal edilir.
+  if (action === 'get_my_auction_wins') {
+    const realUsername = await getRealUsername(accessToken);
+    if (!realUsername) return res.status(403).json({ error: "Geçersiz oturum" });
+    if (!await checkRateLimit(clientIp, 'get_my_auction_wins', 60, 60000))
+      return res.status(429).json({ error: "Çok fazla istek, lütfen biraz bekleyin." });
+    try {
+      const db = getDb();
+      const now = Date.now();
+      const lead = await db.collection('domains').where('auctionHighestBidder', '==', realUsername).get();
+      for (const d of lead.docs) {
+        const v = d.data();
+        if (v.auctionActive === true && v.auctionEndsAt && v.auctionEndsAt <= now && v.sold !== true) await finalizeEndedAuction(db, d.id);
+      }
+      const won = await db.collection('domains').where('auctionWinner', '==', realUsername).get();
+      const wins = [];
+      for (const d of won.docs) {
+        let v = d.data();
+        if (v.auctionWinPending !== true || v.sold === true) continue;
+        if (v.auctionWinDeadline <= now) { await expireAuctionWin(db, d.id); continue; }
+        wins.push({ domainName: d.id, price: v.auctionWinPrice, wonAt: v.auctionWonAt || null, deadline: v.auctionWinDeadline });
+      }
+      wins.sort((a, b) => a.deadline - b.deadline);
+      const prof = await db.collection('user_profiles').doc(realUsername).get();
+      const pd = prof.exists ? prof.data() : {};
+      return res.status(200).json({
+        success: true, wins, windowMs: AUCTION_WIN_WINDOW_MS,
+        defaults: pd.auctionDefaults || 0,
+        banUntil: pd.auctionBidBanUntil && pd.auctionBidBanUntil > now ? pd.auctionBidBanUntil : null
+      });
+    } catch (e) {
+      console.error("get_my_auction_wins hatası:", e);
       return res.status(500).json({ error: e.message });
     }
   }
@@ -5814,6 +6102,10 @@ async function handlerImpl(req, res) {
         isMeHighestBidder: v.auctionHighestBidder === realUsername,
         sold: v.sold === true,
         reservedFor: v.reservedFor || null,
+        auctionWinPending: v.auctionWinPending === true,
+        auctionWinner: v.auctionWinner || null,
+        auctionWinDeadline: v.auctionWinDeadline || null,
+        iWonPending: v.auctionWinPending === true && v.auctionWinner === realUsername,
       }));
       // Aktif + bitişi en yakın olanlar üstte; bitmiş/sonuçlanmışlar altta.
       auctions.sort((a, b) => {
@@ -6135,6 +6427,10 @@ async function handlerImpl(req, res) {
           sold: v.sold === true,
           reservedFor: v.reservedFor || null,
           reservedUntil: v.reservedUntil || null,
+          auctionWinPending: v.auctionWinPending === true,
+          auctionWinner: v.auctionWinner || null,
+          auctionWinDeadline: v.auctionWinDeadline || null,
+          auctionExtensions: v.auctionExtensions || 0,
         });
       });
       return res.status(200).json({ success: true, auctions });
@@ -7628,7 +7924,8 @@ async function handlerImpl(req, res) {
             // gösterilir; satıcısı yoksa (sistem domaini) zaten beklemeye
             // gerek olmadığından direkt kesin "SATILDI" gösterilir.
             payoutStatus: payoutStatusForDomain,
-            reservedFor: FieldValue.delete(), reservedUntil: FieldValue.delete()
+            reservedFor: FieldValue.delete(), reservedUntil: FieldValue.delete(),
+            ...AUCTION_WIN_CLEAR_FIELDS()
           }, { merge: true });
 
           return { ok: true, realPrice, sellerUsername, previousBuyer, code };
