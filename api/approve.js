@@ -5939,6 +5939,8 @@ async function handlerImpl(req, res) {
       // dolmuş bir açık artırma artık teklif vermeyi engellemiyor.
       const auctionExpiredNoBids = data.auctionActive === true && data.auctionEndsAt && data.auctionEndsAt <= Date.now() && !data.auctionHighestBidder;
       if (data.auctionActive === true && !auctionExpiredNoBids) return res.status(400).json({ error: "Bu domain şu anda açık artırmada — teklif yerine açık artırmaya katılmalısınız." });
+      // Açık artırma bitti, kazanan ödemesini bekliyor: domain ona rezerve — yeni teklif alınamaz.
+      if (data.auctionWinPending === true) return res.status(400).json({ error: "Bu domain açık artırmayı kazanan alıcı için ayrılmış — şu anda teklif verilemez." });
       if (auctionExpiredNoBids) {
         // Fırsat bu fırsat: madem buraya kadar geldik, veritabanındaki
         // "hayalet" auctionActive:true bayrağını da hemen temizleyelim —
@@ -6178,8 +6180,8 @@ async function handlerImpl(req, res) {
         // YENİ (açık artırma bütünlüğü, savunma katmanı): start_auction
         // bu domain için bekleyen teklifleri zaten geçersiz kılıyor, ama
         // yine de burada bir kez daha kontrol ediyoruz.
-        if (domainSnap.data().auctionActive === true)
-          return res.status(400).json({ error: "Bu domain şu anda açık artırmada — teklif kabul edilemez." });
+        if (domainSnap.data().auctionActive === true || domainSnap.data().auctionWinPending === true)
+          return res.status(400).json({ error: "Bu domain şu anda açık artırmada ya da açık artırma kazananı için ayrılmış — teklif kabul edilemez." });
 
         const reservedUntil = Date.now() + OFFER_RESERVATION_MS;
         const preNegotiationPrice = domainSnap.data().price;
@@ -6320,8 +6322,8 @@ async function handlerImpl(req, res) {
         const domainSnap = await domainRef.get();
         if (!domainSnap.exists || domainSnap.data().sold === true)
           return res.status(400).json({ error: "Domain artık müsait değil" });
-        if (domainSnap.data().auctionActive === true)
-          return res.status(400).json({ error: "Bu domain şu anda açık artırmada — teklif kabul edilemez." });
+        if (domainSnap.data().auctionActive === true || domainSnap.data().auctionWinPending === true)
+          return res.status(400).json({ error: "Bu domain şu anda açık artırmada ya da açık artırma kazananı için ayrılmış — teklif kabul edilemez." });
 
         const reservedUntil = Date.now() + OFFER_RESERVATION_MS;
         const preNegotiationPrice = domainSnap.data().price;
