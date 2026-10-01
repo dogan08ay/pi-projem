@@ -384,21 +384,29 @@
         .my-domain-item{background:#0f172a;padding:6px;border-radius:9px;display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;border:1px solid #334155;gap:8px;}
         /* YENİ: Alıcının satın alma detayında escrow (emanet) sürecinin
            hangi aşamada olduğunu gösteren adım adım ilerleme çubuğu. */
-        .escrow-progress{display:flex;align-items:flex-start;margin:8px 0;padding:8px 4px;background:rgba(15,23,42,0.5);border:1px solid rgba(148,163,184,0.15);border-radius:10px;}
-        .escrow-step{display:flex;flex-direction:column;align-items:center;flex:0 0 auto;width:56px;text-align:center;}
-        .escrow-step-dot{width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:0.62em;font-weight:900;background:#1e293b;color:#64748b;border:1.5px solid #334155;flex-shrink:0;}
+        .escrow-progress{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));align-items:start;margin:8px 0;padding:10px 4px 8px;width:100%;box-sizing:border-box;background:rgba(15,23,42,0.5);border:1px solid rgba(148,163,184,0.15);border-radius:10px;}
+        .escrow-step{position:relative;display:flex;flex-direction:column;align-items:center;min-width:0;text-align:center;}
+        /* Bağlayıcı çizgi: bir önceki adımın noktasının ortasından bu adımın noktasının ortasına */
+        .escrow-step:not(:first-child)::before{content:'';position:absolute;top:9px;right:50%;width:100%;height:2px;background:#334155;z-index:0;}
+        .escrow-step-done:not(:first-child)::before,.escrow-step-current:not(:first-child)::before{background:#10b981;}
+        .escrow-step-dot{position:relative;z-index:1;width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:0.62em;font-weight:900;background:#1e293b;color:#64748b;border:1.5px solid #334155;flex-shrink:0;}
         .escrow-step-done .escrow-step-dot{background:#10b981;color:#052e21;border-color:#10b981;}
         .escrow-step-current .escrow-step-dot{background:#f59e0b;color:#452a04;border-color:#f59e0b;box-shadow:0 0 0 3px rgba(245,158,11,0.25);animation:escrow-pulse 1.6s ease-in-out infinite;}
         @keyframes escrow-pulse{0%,100%{box-shadow:0 0 0 3px rgba(245,158,11,0.25);}50%{box-shadow:0 0 0 5px rgba(245,158,11,0.1);}}
-        .escrow-step-label{font-size:0.56em;color:#64748b;margin-top:3px;line-height:1.2;font-weight:700;}
+        .escrow-step-label{font-size:0.56em;color:#64748b;margin-top:4px;line-height:1.25;font-weight:700;padding:0 2px;max-width:100%;word-break:break-word;overflow-wrap:anywhere;}
         .escrow-step-done .escrow-step-label{color:#6ee7b7;}
         .escrow-step-current .escrow-step-label{color:#fbbf24;}
-        .escrow-step-line{flex:1 1 auto;height:2px;background:#334155;margin:9px -2px 0 -2px;min-width:6px;}
-        .escrow-step-line-done{background:#10b981;}
         .escrow-progress-issue{margin:8px 0;padding:8px 10px;background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.4);border-radius:10px;font-size:0.68em;color:#fca5a5;font-weight:800;text-align:center;}
         .verify-btn{background:linear-gradient(135deg,#0ea5e9 0%,#0284c7 100%);color:#ffffff;border:none;padding:4px 8px;border-radius:6px;font-size:0.68em;cursor:pointer;font-weight:800;text-decoration:none;display:inline-flex;align-items:center;gap:5px;white-space:nowrap;flex-shrink:0;animation:verify-btn-glow 2s ease-in-out infinite;}
         @keyframes verify-btn-glow{0%,100%{box-shadow:0 0 0 0 rgba(14,165,233,0.6);transform:scale(1);}50%{box-shadow:0 0 0 6px rgba(14,165,233,0);transform:scale(1.06);}}
         @keyframes report-btn-glow{0%,100%{box-shadow:0 0 0 0 rgba(239,68,68,0.45);}50%{box-shadow:0 0 0 5px rgba(239,68,68,0);}}
+        /* Satın alım kartı: üç buton tek satırda, panelin dışına taşmadan eşit paylaşır */
+        .purchase-actions-row{display:flex;gap:6px;align-items:stretch;width:100%;box-sizing:border-box;}
+        .purchase-actions-row>*{flex:1 1 0;min-width:0;box-sizing:border-box;display:flex;align-items:center;justify-content:center;text-align:center;line-height:1.25;padding:8px 4px;border-radius:7px;font-size:0.65em;font-weight:800;cursor:pointer;white-space:normal;word-break:break-word;text-decoration:none;}
+        .purchase-actions-row.single{justify-content:center;}
+        .purchase-actions-row.single>*{flex:0 1 60%;}
+        .verify-btn-row{animation:none !important;transform:none !important;gap:0;}
+        .purchase-actions-row>.verify-btn-disabled{cursor:not-allowed;}
         .verify-btn-disabled{background:rgba(71,85,105,0.45);color:#475569;border:1.5px solid #334155;padding:4px 8px;border-radius:6px;font-size:0.68em;font-weight:700;display:inline-flex;align-items:center;gap:5px;cursor:not-allowed;white-space:nowrap;flex-shrink:0;opacity:0.6;}
         .info-badge-header{display:inline-flex;align-items:center;gap:5px;background:linear-gradient(135deg,#312e81 0%,#4c1d95 50%,#312e81 100%);color:#c4b5fd;font-weight:900;font-size:0.75em;padding:3px 10px;border-radius:7px;margin-bottom:8px;border:1.5px solid #7c3aed;position:relative;overflow:hidden;}
         .info-badge-icon{font-size:1.05em;}
@@ -11024,7 +11032,6 @@ function buildEscrowProgressHtml(data){
     labels.forEach((label,i)=>{
         const state = i<step ? 'done' : (i===step ? 'current' : 'upcoming');
         html+=`<div class="escrow-step escrow-step-${state}"><div class="escrow-step-dot">${i<step?'✓':(i+1)}</div><div class="escrow-step-label">${label}</div></div>`;
-        if(i<labels.length-1) html+=`<div class="escrow-step-line ${i<step?'escrow-step-line-done':''}"></div>`;
     });
     html+='</div>';
     return html;
@@ -11067,10 +11074,12 @@ function renderUserPanel(){
         const data=domainData[d.name];
         if(data?.sold&&data.buyer===currentUser){
             const date=data.at?new Date(data.at).toLocaleDateString(locale,{day:'2-digit',month:'2-digit',year:'numeric'})+' '+new Date(data.at).toLocaleTimeString(locale,{hour:'2-digit',minute:'2-digit'}):'-';
-            const dogrulaBtn=data.txid?`<a href="https://blockexplorer.minepi.com/testnet/tx/${data.txid}" target="_blank" class="verify-btn" style="align-self:center;">${t('verify')}</a>`:`<span class="verify-btn-disabled" style="align-self:center;">${t('verifyLocked')}</span>`;
+            // DOĞRULA: artık kartın sağında ayrı bir sütun değil, aksiyon satırının bir parçası (taşma yok).
+            const dogrulaRowBtn=data.txid?`<a href="https://blockexplorer.minepi.com/testnet/tx/${data.txid}" target="_blank" rel="noopener" class="verify-btn verify-btn-row">${t('verify')}</a>`:`<span class="verify-btn-disabled verify-btn-row">${t('verifyLocked')}</span>`;
             // Escrow devir onayı: gerçek bir satıcı varsa ve ödeme henüz
             // sonuçlanmadıysa, alıcıdan domaini teslim alıp almadığını sorar.
             const needsConfirm = data.sellerUsername && data.payoutStatus!=='released' && data.payoutStatus!=='refunded';
+            const awaitingConfirm = needsConfirm && data.buyerConfirmed!==true && data.buyerConfirmed!==false;
             let confirmHtml='';
             if(needsConfirm){
                 if(data.buyerConfirmed===true) confirmHtml=`<div style="margin-top:6px;font-size:0.65em;color:#6ee7b7;font-weight:700;">✅ ${t('transferConfirmedByYou')}</div>`;
@@ -11082,9 +11091,10 @@ function renderUserPanel(){
                     ${disputeMsg}${nudgeMsg}
                     ${buildTransferGuideHtml('buyer', data.sellerUsername)}
                     <div style="font-size:0.65em;color:#94a3b8;margin-bottom:5px;">${t('confirmTransferPrompt')}</div>
-                    <div style="display:flex;gap:6px;">
-                        <button onclick="handleConfirmTransfer('${d.name}','buyer',true)" style="flex:1;padding:7px;border:none;border-radius:6px;background:linear-gradient(135deg,#10b981,#34d399);color:#052e21;font-weight:800;font-size:0.65em;cursor:pointer;">✅ ${t('confirmReceivedBtn')}</button>
-                        <button onclick="handleConfirmTransfer('${d.name}','buyer',false)" style="flex:1;padding:7px;border:1px solid #ef4444;border-radius:6px;background:rgba(239,68,68,0.1);color:#f87171;font-weight:800;font-size:0.65em;cursor:pointer;">⚠️ ${t('reportIssueBtn')}</button>
+                    <div class="purchase-actions-row">
+                        <button onclick="handleConfirmTransfer('${d.name}','buyer',true)" style="border:none;background:linear-gradient(135deg,#10b981,#34d399);color:#052e21;">✅ ${t('confirmReceivedBtn')}</button>
+                        <button onclick="handleConfirmTransfer('${d.name}','buyer',false)" style="border:1px solid #ef4444;background:rgba(239,68,68,0.1);color:#f87171;">⚠️ ${t('reportIssueBtn')}</button>
+                        ${dogrulaRowBtn}
                     </div>
                 </div>`;
                 }
@@ -11101,7 +11111,7 @@ function renderUserPanel(){
                         ${[1,2,3,4,5].map(n=>`<button onclick="window.submitSellerRating('${d.name}',${n})" style="flex:1;padding:6px;border:1px solid #f59e0b;border-radius:6px;background:rgba(245,158,11,0.08);color:#fbbf24;font-size:0.85em;cursor:pointer;">${'★'.repeat(n)}</button>`).join('')}
                     </div>
                 </div>` : '') ) : '';
-            myHtml+=`<div class="my-domain-item" style="flex-wrap:wrap;align-items:flex-start;">
+            myHtml+=`<div class="my-domain-item" style="flex-wrap:wrap;align-items:flex-start;box-sizing:border-box;max-width:100%;overflow:hidden;">
                 <div style="flex:1;min-width:0;">
                     <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px;gap:8px;">
                         <b style="color:#f1f5f9;font-size:0.9em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${d.name}">${d.name}</b>
@@ -11115,10 +11125,12 @@ function renderUserPanel(){
                     </div>
                     ${buildEscrowProgressHtml(data)}
                     ${confirmHtml}
+                    ${awaitingConfirm?'':`<div class="purchase-actions-row single" style="margin-top:8px;">${dogrulaRowBtn}</div>`}
+                    <div style="text-align:center;margin-top:8px;">
+                        <button onclick="window.printReceipt('${d.name}')" style="padding:7px 14px;border-radius:8px;border:1px solid #6366f1;background:rgba(99,102,241,0.08);color:#a5b4fc;font-size:0.68em;font-weight:800;cursor:pointer;">🧾 ${t('downloadReceiptBtn')}</button>
+                    </div>
                     ${ratingHtml}
-                    <button onclick="window.printReceipt('${d.name}')" style="margin-top:8px;padding:6px 10px;border-radius:8px;border:1px solid #6366f1;background:rgba(99,102,241,0.08);color:#a5b4fc;font-size:0.68em;font-weight:800;cursor:pointer;">🧾 ${t('downloadReceiptBtn')}</button>
                 </div>
-                ${dogrulaBtn}
             </div>`;
         }
     });
