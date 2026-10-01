@@ -1987,8 +1987,8 @@
         <p id="offer-modal-domain-name" style="color:#94a3b8;font-size:0.75em;margin:0 0 14px 0;"></p>
         <label style="display:block;font-size:0.7em;color:#94a3b8;font-weight:700;margin-bottom:5px;" data-i18n="offerPriceLabel"></label>
         <div class="amount-input-wrap" style="background:#0f172a;border:2.5px solid #f59e0b;border-radius:10px;padding:14px 12px;color:#34d399;font-size:1.3em;margin-bottom:10px;">
-            <input type="text" inputmode="decimal" autocomplete="off" id="offer-price-input" oninput="sanitizeNumericInput(this);window.syncAmountDisplay(this,'offer-price-display', t('offerAmountPlaceholder'))" onfocus="window.onAmountInputFocus(this,'offer-price-display', t('offerAmountPlaceholder'))" onblur="window.onAmountInputBlur(this,'offer-price-display', t('offerAmountPlaceholder'))">
-            <div class="amount-display amount-placeholder" id="offer-price-display">Lütfen şartlara uygun teklifinizi giriniz</div>
+            <input type="text" inputmode="decimal" autocomplete="off" id="offer-price-input" oninput="sanitizeNumericInput(this);window.syncAmountDisplay(this,'offer-price-display',undefined,true)" onfocus="window.onAmountInputFocus(this,'offer-price-display')" onblur="window.onAmountInputBlur(this,'offer-price-display')">
+            <div class="amount-display amount-placeholder" id="offer-price-display" data-ph="Lütfen şartlara uygun teklifinizi giriniz">Lütfen şartlara uygun teklifinizi giriniz</div>
         </div>
         <label style="display:block;font-size:0.7em;color:#94a3b8;font-weight:700;margin-bottom:5px;" data-i18n="offerMessageLabel"></label>
         <textarea id="offer-message-input" maxlength="300" rows="2" style="width:100%;box-sizing:border-box;background:#0f172a;border:1.5px solid #334155;border-radius:9px;padding:10px;color:#e2e8f0;font-size:0.82em;margin-bottom:14px;resize:vertical;"></textarea>
@@ -5700,6 +5700,7 @@ const i18n = {
 };
 let currentLang = localStorage.getItem('w3dg_lang') || 'tr';
 function t(key) { return (i18n[currentLang]?.[key] ?? i18n['tr']?.[key]) ?? key; }
+window.t = t; // inline onclick/oninput içinde de kullanılabilsin
 function applyTranslations() {
     document.querySelectorAll('[data-i18n]').forEach(el => { const v=t(el.getAttribute('data-i18n')); if(typeof v==='string') el.innerHTML=v; });
     document.querySelectorAll('[data-i18n-placeholder]').forEach(el => { const v=t(el.getAttribute('data-i18n-placeholder')); if(typeof v==='string') el.placeholder=v; });
@@ -6748,6 +6749,12 @@ async function fetchNotifications(silent){
         if(result.success){
             cachedNotifications=result.notifications||[];
             renderNotifBadgeAndList();
+            // Yeni "kazandınız / hatırlatma / iptal" bildirimi geldiyse kazanan
+            // durumunu hemen tazele → pop-up ve bant gecikmeden çıksın.
+            try{
+                const sig=cachedNotifications.filter(n=>!n.read&&['auction_won','auction_win_reminder','auction_win_expired'].includes(n.type)).map(n=>n.id||n.ts).join(',');
+                if(sig!==window._awNotifSig){ window._awNotifSig=sig; if(window.refreshMyAuctionWins) window.refreshMyAuctionWins(); }
+            }catch(_){}
         } else {
             // FIX: Önceden başarısız yanıtlar tamamen sessizce yutuluyordu
             // ve ikon hiç görünür hale gelmiyordu (display='flex' sadece
@@ -6814,7 +6821,7 @@ function renderNotifBadgeAndList(){
     // açtığında hangi alt bölüme yeni veri geldiği net görülür.
     const myOffersTypes=['offer_accepted','offer_rejected','offer_countered'];
     const receivedOffersTypes=['offer_received','counter_offer_accepted','counter_offer_rejected'];
-    const myAuctionsTypes=['auction_outbid','auction_won'];
+    const myAuctionsTypes=['auction_outbid','auction_won','auction_win_reminder','auction_win_expired'];
     const unreadMyOffers=cachedNotifications.filter(n=>!n.read&&myOffersTypes.includes(n.type)&&n.role==='buyer').length;
     const unreadReceivedOffers=cachedNotifications.filter(n=>!n.read&&receivedOffersTypes.includes(n.type)&&n.role==='seller').length;
     const unreadMyAuctions=cachedNotifications.filter(n=>!n.read&&myAuctionsTypes.includes(n.type)&&n.role==='buyer').length;
@@ -6842,9 +6849,14 @@ function startNotifPolling(){
     // ama "bir yerde onaylanan işlem başka yerde hemen görünsün" beklentisini
     // karşılayacak kadar hızlı.
     notifPollInterval=setInterval(()=>fetchNotifications(true),4000);
+    // Açık artırma kazananı: girişte hemen, sonra 15 sn'de bir kontrol.
+    if(window.refreshMyAuctionWins){ window.refreshMyAuctionWins(); if(window._awPoll) clearInterval(window._awPoll); window._awPoll=setInterval(()=>window.refreshMyAuctionWins(),15000); }
 }
 function stopNotifPolling(){
     if(notifPollInterval){clearInterval(notifPollInterval);notifPollInterval=null;}
+    if(window._awPoll){ clearInterval(window._awPoll); window._awPoll=null; }
+    window.myAuctionWins=[]; window.myAuctionBanUntil=null;
+    try{ const bn=document.getElementById('auction-win-banner'); if(bn) bn.style.display='none'; }catch(_){}
 }
 let ticketBadgePollInterval=null;
 function startTicketBadgePolling(){
@@ -7222,6 +7234,7 @@ window.openDomainDetail=function(domainName){
     // bırakıldı — bunlar en önemli/son eylemler, öne çıkmaları gerekiyor.
     let primaryHtml='';
     let secondaryHtml='';
+    let winBannerHtml='';
     // Fonksiyon kapsamının en üstünde tanımlanıyor ki aşağıda hem açık
     // artırma bloğunda hem "Teklif Ver" butonu kontrolünde kullanılabilsin.
     const auctionExpiredNoBids = data.auctionActive===true && data.auctionEndsAt && data.auctionEndsAt<=Date.now() && !data.auctionHighestBidder;
@@ -7258,19 +7271,21 @@ window.openDomainDetail=function(domainName){
             // reddediyor, bu yüzden burada hiç göstermiyoruz).
             // DÜZELTME (backend'le aynı kritik hata): ilk teklif için de
             // minimum artış tutarı eklenmeli — sadece başlangıç fiyatı yetmez.
-            const minBid=data.auctionHighestBid ? data.auctionHighestBid+(data.auctionMinIncrement||1) : data.auctionStartPrice+(data.auctionMinIncrement||1);
+            const minBid=piRound((data.auctionHighestBid!=null ? data.auctionHighestBid : data.auctionStartPrice)+(data.auctionMinIncrement||1));
             const youAreHighest=data.auctionHighestBidder===currentUser;
             const safeDomainForJs=domainName.replace(/'/g,"\\'");
             primaryHtml+=`<div style="width:100%;">
                 <div style="text-align:center;font-size:0.74em;color:#94a3b8;margin-bottom:6px;">
-                    ${data.auctionHighestBid!==null?`${t('auctionHighestBidLabel')}: <b style="color:#fbbf24;">${data.auctionHighestBid} π</b>`:`${t('auctionNoBidsLabel')} ${data.auctionStartPrice} π`}
-                    · ${t('auctionTimeLeft')(Math.max(1,Math.ceil((data.auctionEndsAt-Date.now())/60000)))}
+                    ${data.auctionHighestBid!=null?`${t('auctionHighestBidLabel')}: <b style="color:#fbbf24;">${data.auctionHighestBid} π</b>`:`${t('auctionNoBidsLabel')} ${data.auctionStartPrice} π`}
+                    · ⏳ <b class="js-countdown" data-kind="auction" data-domain="${safeDomainForJs}" data-end="${data.auctionEndsAt}" style="color:#fbbf24;font-variant-numeric:tabular-nums;">${fmtCountdown(data.auctionEndsAt-Date.now())}</b>
                 </div>
+                ${(window.myAuctionBanUntil&&window.myAuctionBanUntil>Date.now())?`<div style="text-align:center;font-size:0.68em;font-weight:800;color:#fca5a5;background:rgba(239,68,68,0.12);border:1px solid #ef4444;border-radius:8px;padding:6px 8px;margin-bottom:6px;">⛔ ${AWL('Kazandığınız açık artırmayı süresinde ödemediğiniz için','You did not pay for an auction you won, so you cannot bid until')} ${new Date(window.myAuctionBanUntil).toLocaleString(currentLang==='en'?'en-GB':'tr-TR')} ${AWL('tarihine kadar teklif veremezsiniz.','.')}</div>`:''}
                 ${youAreHighest?`<div style="text-align:center;font-size:0.7em;font-weight:800;color:#6ee7b7;margin-bottom:6px;">${t('auctionYouAreHighest')}</div>`:''}
                 <div style="text-align:center;font-size:0.62em;color:#fca5a5;font-weight:700;margin-bottom:6px;">${t('auctionBidBindingWarning')}</div>
+                <div style="text-align:center;font-size:0.58em;color:#94a3b8;margin-bottom:6px;">⏱️ ${AWL('Son 5 dakikada gelen her teklif süreyi 5 dakikaya uzatır.','Any bid in the last 5 minutes extends the auction to 5 minutes.')}${data.auctionExtensions?` (${AWL('uzatma','extensions')}: ${data.auctionExtensions})`:''}</div>
                 <div class="amount-input-wrap" style="padding:14px 12px;border-radius:10px;border:2.5px solid #6366f1;background:#0f172a;color:#34d399;font-size:1.3em;margin-bottom:8px;">
-                    <input type="text" inputmode="decimal" autocomplete="off" id="auction-bid-input" data-minbid="${minBid}" oninput="sanitizeNumericInput(this);checkAuctionBidValidity(this);window.syncAmountDisplay(this,'auction-bid-display', t('auctionBidInputPlaceholder'))" onfocus="window.onAmountInputFocus(this,'auction-bid-display', t('auctionBidInputPlaceholder'))" onblur="window.onAmountInputBlur(this,'auction-bid-display', t('auctionBidInputPlaceholder'))">
-                    <div class="amount-display amount-placeholder" id="auction-bid-display">${t('auctionBidInputPlaceholder')}</div>
+                    <input type="text" inputmode="decimal" autocomplete="off" id="auction-bid-input" data-minbid="${minBid}" oninput="sanitizeNumericInput(this);checkAuctionBidValidity(this);window.syncAmountDisplay(this,'auction-bid-display',undefined,true)" onfocus="window.onAmountInputFocus(this,'auction-bid-display')" onblur="window.onAmountInputBlur(this,'auction-bid-display')">
+                    <div class="amount-display amount-placeholder" id="auction-bid-display" data-ph="${t('auctionBidInputPlaceholder')}">${t('auctionBidInputPlaceholder')}</div>
                 </div>
                 <div id="auction-bid-warning" class="blink-warn" style="display:none;font-size:0.65em;color:#f87171;font-weight:800;text-align:center;margin:-4px 0 8px 0;">⚠️ ${t('auctionMinBidLabel')(minBid)}</div>
                 <div id="auction-bid-hint" style="font-size:0.6em;color:#94a3b8;text-align:center;margin:-4px 0 8px 0;">${t('auctionMinBidLabel')(minBid)}</div>
@@ -7311,7 +7326,15 @@ window.openDomainDetail=function(domainName){
             </div>`;
         }
     }
-    if(!data.sold && data.reservedFor && data.reservedUntil && data.reservedUntil>Date.now() && data.reservedFor===currentUser){
+    if(!data.sold && data.auctionWinPending===true && data.auctionWinner===currentUser && data.auctionWinDeadline>Date.now()){
+        winBannerHtml=`<div style="margin-bottom:10px;padding:10px 12px;border-radius:12px;background:linear-gradient(135deg,rgba(245,158,11,0.18),rgba(234,88,12,0.18));border:2px solid #f59e0b;text-align:center;">
+            <div style="font-size:0.95em;font-weight:900;color:#fcd34d;">🏆 ${AWL('Açık artırmayı kazandınız!','You won the auction!')}</div>
+            <div style="font-size:0.72em;color:#fde68a;margin:4px 0;">${AWL('Satın alma işlemini belirtilen sürede tamamlayın:','Complete the purchase within the time limit:')}</div>
+            <div style="font-size:1.5em;font-weight:900;color:#fff;font-variant-numeric:tabular-nums;" class="js-countdown" data-kind="win" data-domain="${domainName.replace(/"/g,'&quot;')}" data-end="${data.auctionWinDeadline}">${fmtCountdown(data.auctionWinDeadline-Date.now())}</div>
+            <div style="font-size:0.64em;color:#fca5a5;font-weight:800;margin-top:4px;">⚠️ ${AWL('Süre içinde satın almazsanız açık artırma İPTAL edilir ve hesabınıza ceza uygulanır.','If you do not buy in time, the auction is CANCELLED and a penalty is applied to your account.')}</div>
+        </div>`;
+    }
+    if(!data.sold && data.reservedFor && data.reservedUntil && data.reservedUntil>Date.now() && data.reservedFor===currentUser && data.auctionWinPending!==true){
         // NOT: "başkası için rezerve" durumu artık yukarıdaki buy-button
         // bloğunda net bir engelleyici uyarıyla zaten gösteriliyor — burada
         // TEKRAR aynı şeyi söylememek için bu blok artık sadece rezervasyon
@@ -7371,7 +7394,16 @@ window.openDomainDetail=function(domainName){
         secondaryHtml+=`<button onclick="window.openConnectAppModal('${domainName}')" style="padding:9px 6px;border-radius:9px;border:1.5px solid #a855f7;background:rgba(168,85,247,0.12);color:#d8b4fe;font-weight:800;font-size:0.74em;cursor:pointer;">🔌 ${data.connectedAppUrl?t('editConnectedAppBtn'):t('addConnectedAppBtn')}</button>`;
     }
     const secondaryGridHtml = secondaryHtml ? `<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px;margin-top:8px;">${secondaryHtml}</div>` : '';
-    actionEl.innerHTML = buildMyOfferBlockHtml(domainName) + primaryHtml + secondaryGridHtml;
+    // Yeniden çizimde yazılmakta olan teklif metni/odak kaybolmasın.
+    const _prevBidEl=document.getElementById('auction-bid-input');
+    const _prevBidVal=(_prevBidEl && window._lastDetailRenderDomain===domainName)?_prevBidEl.value:'';
+    const _prevHadFocus=!!_prevBidEl && document.activeElement===_prevBidEl;
+    window._lastDetailRenderDomain=domainName;
+    actionEl.innerHTML = winBannerHtml + buildMyOfferBlockHtml(domainName) + primaryHtml + secondaryGridHtml;
+    if(_prevBidVal){
+        const nb=document.getElementById('auction-bid-input');
+        if(nb){ nb.value=_prevBidVal; window.checkAuctionBidValidity(nb); window.syncAmountDisplay(nb,'auction-bid-display',t('auctionBidInputPlaceholder')); if(_prevHadFocus) nb.focus(); }
+    }
     const detailModalEl = document.getElementById('domain-detail-modal');
     detailModalEl.style.display='flex';
     // YENİ: Modal her açıldığında en başa kaydırılır — önceki bir görüntülemeden
@@ -8240,7 +8272,7 @@ window.openOfferModal=function(domainName){
     const data=domainData[domainName]||{price:domain.price};
     document.getElementById('offer-modal-domain-name').textContent=`${domainName} — ${t('currentPriceLabel')}: ${data.price} Pi`;
     document.getElementById('offer-price-input').value='';
-    window.syncAmountDisplay(document.getElementById('offer-price-input'),'offer-price-display', t('offerAmountPlaceholder'));
+    window.syncAmountDisplay(document.getElementById('offer-price-input'),'offer-price-display', t('offerAmountPlaceholder'), false);
     document.getElementById('offer-price-input').dataset.domain=domainName;
     document.getElementById('offer-message-input').value='';
     document.getElementById('offer-modal').style.display='flex';
@@ -8303,14 +8335,23 @@ window.submitAuctionBid=async function(domainName, minBid){
     if(!isAuth){ showToast(t('loginRequired')); return; }
     const inputEl=document.getElementById('auction-bid-input');
     const bidAmount=parseFloat(inputEl ? inputEl.value : '');
-    if(!bidAmount || bidAmount<=0 || bidAmount<minBid){ showToast(t('auctionMinBidLabel')(minBid)); return; }
+    if(!bidAmount || bidAmount<=0 || toPiU(bidAmount)<toPiU(minBid)){ showToast(t('auctionMinBidLabel')(minBid)); return; }
+    if(Math.abs(bidAmount*1e7-Math.round(bidAmount*1e7))>1e-6){ showToast(AWL('Teklif en fazla 7 ondalık basamak içerebilir.','Bid can have at most 7 decimal places.')); return; }
     _auctionBidInFlight=true;
     if(inputEl) inputEl.disabled=true;
     try{
         const r=await fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'place_auction_bid',domainName,bidAmount,accessToken:piAccessToken})});
         const result=await r.json();
-        if(!result.success){ showToast(result.error||t('genericError')); return; }
-        showToast(t('auctionYouAreHighest'));
+        if(!result.success){
+            showToast(result.error||t('genericError'));
+            // Başkası araya girdiyse güncel minimum teklifi göster.
+            if(result.minAcceptable && domainData[domainName]){ domainData[domainName].auctionHighestBid=piRound(result.minAcceptable-(domainData[domainName].auctionMinIncrement||1)); window.openDomainDetail(domainName); }
+            return;
+        }
+        // Yerel önbelleği HEMEN güncelle (Firestore dinleyicisi gecikmeli geliyor).
+        const dd=domainData[domainName];
+        if(dd){ dd.auctionHighestBid=result.highestBid; dd.auctionHighestBidder=currentUser; if(result.auctionEndsAt) dd.auctionEndsAt=result.auctionEndsAt; dd.auctionBidCount=(dd.auctionBidCount||0)+1; if(result.extended) dd.auctionExtensions=(dd.auctionExtensions||0)+1; }
+        showToast(result.extended ? AWL('✅ En yüksek teklif sizin! ⏱️ Son dakika kuralı: süre 5 dakika uzatıldı.','✅ You are the highest bidder! ⏱️ Last-minute rule: time extended to 5 minutes.') : t('auctionYouAreHighest'));
         if(document.getElementById('domain-detail-modal').style.display!=='none') window.openDomainDetail(domainName);
     }catch(e){ showToast(t('genericError')); }
     finally{ _auctionBidInFlight=false; if(inputEl) inputEl.disabled=false; }
@@ -8329,6 +8370,130 @@ window.claimAuctionWin=async function(domainName){
         window.openPreBuyModal(domainName, result.price);
     }catch(e){ showToast(t('genericError')); }
 };
+// ═════════════════════════════════════════════════════════════════════════
+//  AÇIK ARTIRMA — yardımcılar, canlı sayaç, KAZANAN pop-up'ı ve sayaçlı bant
+// ═════════════════════════════════════════════════════════════════════════
+function AWL(tr,en){ return currentLang==='en'?en:tr; }
+function toPiU(x){ return Math.round(Number(x)*1e7); }   // kayan nokta hatasına karşı tam sayı birimi
+function piRound(x){ return Math.round(Number(x)*1e7)/1e7; }
+function fmtCountdown(ms){
+    const en=currentLang==='en';
+    const U=en?{d:'d',h:'h',m:'m',s:'s'}:{d:'g',h:'sa',m:'dk',s:'sn'};
+    if(!(ms>0)) return '00 '+U.h+' 00 '+U.m+' 00 '+U.s;
+    const sec=Math.floor(ms/1000), d=Math.floor(sec/86400), h=Math.floor((sec%86400)/3600), m=Math.floor((sec%3600)/60), ss=sec%60;
+    const p=n=>String(n).padStart(2,'0');
+    return (d>0?d+' '+U.d+' ':'')+p(h)+' '+U.h+' '+p(m)+' '+U.m+' '+p(ss)+' '+U.s;
+}
+window.piRound=piRound; window.toPiU=toPiU; window.fmtCountdown=fmtCountdown;
+
+window.myAuctionWins=[]; window.myAuctionBanUntil=null; window.auctionWinWindowMs=24*3600*1000;
+let _awInFlight=false;
+window.refreshMyAuctionWins=async function(){
+    if(!isAuth||!piAccessToken){ window.myAuctionWins=[]; renderAuctionWinBanner(); return; }
+    if(_awInFlight) return;
+    _awInFlight=true;
+    try{
+        const r=await fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'get_my_auction_wins',accessToken:piAccessToken})});
+        const result=await r.json();
+        if(result && result.success){
+            window.myAuctionWins=result.wins||[];
+            window.myAuctionBanUntil=result.banUntil||null;
+            if(result.windowMs) window.auctionWinWindowMs=result.windowMs;
+            renderAuctionWinBanner();
+            maybeShowAuctionWinModal();
+        }
+    }catch(e){ /* sessiz arka plan yenilemesi */ }
+    finally{ _awInFlight=false; }
+};
+function activeAuctionWins(){
+    const now=Date.now();
+    return (window.myAuctionWins||[]).filter(w=>w.deadline>now && !(domainData[w.domainName]&&domainData[w.domainName].sold));
+}
+window.buyAuctionWin=function(domainName,price){
+    const m=document.getElementById('auction-win-modal'); if(m) m.style.display='none';
+    const dm=document.getElementById('domain-detail-modal'); if(dm) dm.style.display='none';
+    window.openPreBuyModal(domainName, price);
+};
+// Ekranın üstünde, süre dolana / satın alma yapılana kadar duran sayaçlı bant.
+function renderAuctionWinBanner(){
+    let el=document.getElementById('auction-win-banner');
+    const wins=activeAuctionWins();
+    if(!wins.length){ if(el) el.style.display='none'; return; }
+    if(!el){
+        el=document.createElement('div'); el.id='auction-win-banner';
+        el.style.cssText='position:fixed;left:8px;right:8px;top:calc(env(safe-area-inset-top,0px) + 6px);z-index:9500;background:linear-gradient(135deg,#b45309,#ea580c);border:2px solid #fcd34d;border-radius:14px;padding:8px 10px;box-shadow:0 6px 24px rgba(0,0,0,0.55);display:flex;align-items:center;gap:8px;color:#fff;';
+        document.body.appendChild(el);
+    }
+    const w=wins[0];
+    el.innerHTML=`<div style="flex:1;min-width:0;">
+        <div style="font-size:0.72em;font-weight:900;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">🏆 ${escapeHtml(w.domainName)} ${AWL('kazanıldı','won')} · ${w.price} π${wins.length>1?` (+${wins.length-1})`:''}</div>
+        <div style="font-size:0.66em;font-weight:700;opacity:0.95;">⏳ ${AWL('Satın alma süresi','Time left to buy')}: <b class="js-countdown" data-kind="win" data-domain="${escapeHtml(w.domainName)}" data-end="${w.deadline}" style="font-variant-numeric:tabular-nums;">${fmtCountdown(w.deadline-Date.now())}</b></div>
+    </div>
+    <button id="auction-win-banner-btn" style="flex-shrink:0;background:#fff;color:#9a3412;border:none;border-radius:10px;padding:8px 12px;font-weight:900;font-size:0.72em;cursor:pointer;">${AWL('Satın Al','Buy Now')}</button>`;
+    el.style.display='flex';
+    document.getElementById('auction-win-banner-btn').onclick=()=>window.buyAuctionWin(w.domainName,w.price);
+}
+// Kazandığını öğrenen kullanıcının KARŞISINA bir kez çıkan tam ekran pop-up.
+function maybeShowAuctionWinModal(){
+    const wins=activeAuctionWins();
+    const open=document.getElementById('auction-win-modal');
+    if(open && open.style.display==='flex') return;
+    for(const w of wins){
+        const key='w3dg_aucwin_seen_'+w.domainName+'_'+w.deadline;
+        let seen=false; try{ seen=localStorage.getItem(key)==='1'; }catch(_){}
+        if(seen) continue;
+        try{ localStorage.setItem(key,'1'); }catch(_){}
+        showAuctionWinModal(w);
+        return;
+    }
+}
+function showAuctionWinModal(w){
+    let m=document.getElementById('auction-win-modal');
+    if(!m){ m=document.createElement('div'); m.id='auction-win-modal'; m.className='modal-overlay'; m.style.zIndex='10050'; document.body.appendChild(m); }
+    const hrs=Math.round((window.auctionWinWindowMs||86400000)/3600000);
+    m.innerHTML=`<div style="width:100%;max-width:420px;background:linear-gradient(160deg,#1e1b4b,#0f172a);border:2.5px solid #f59e0b;border-radius:20px;padding:20px 18px;text-align:center;box-shadow:0 10px 50px rgba(245,158,11,0.35);">
+        <div style="font-size:3em;line-height:1;">🏆</div>
+        <div style="font-size:1.25em;font-weight:900;color:#fcd34d;margin:6px 0;">${AWL('Tebrikler, kazandınız!','Congratulations, you won!')}</div>
+        <div style="font-size:0.95em;font-weight:800;color:#f1f5f9;">${escapeHtml(w.domainName)}</div>
+        <div style="font-size:1.4em;font-weight:900;color:#34d399;margin:2px 0 10px;">${w.price} π</div>
+        <div style="font-size:0.78em;color:#cbd5e1;line-height:1.5;">${AWL(`Açık artırmayı kazandınız. Satın alma işlemini <b>${hrs} saat</b> içinde gerçekleştirebilirsiniz.`,`You won the auction. You can complete the purchase within <b>${hrs} hours</b>.`)}</div>
+        <div style="margin:10px 0;padding:8px;border-radius:12px;background:rgba(0,0,0,0.35);">
+            <div style="font-size:0.66em;color:#94a3b8;">⏳ ${AWL('Kalan süre','Time left')}</div>
+            <div class="js-countdown" data-kind="win" data-domain="${escapeHtml(w.domainName)}" data-end="${w.deadline}" style="font-size:1.45em;font-weight:900;color:#fff;font-variant-numeric:tabular-nums;white-space:nowrap;">${fmtCountdown(w.deadline-Date.now())}</div>
+        </div>
+        <div style="font-size:0.68em;font-weight:800;color:#fca5a5;background:rgba(239,68,68,0.12);border:1px solid #ef4444;border-radius:10px;padding:8px;margin-bottom:12px;line-height:1.45;">⚠️ ${AWL('Belirtilen sürede satın alma işlemini gerçekleştirmezseniz açık artırma İPTAL edilir ve hesabınıza ceza uygulanır.','If you do not complete the purchase in time, the auction will be CANCELLED and a penalty will be applied to your account.')}</div>
+        <button id="auction-win-buy-btn" class="btn-buy" style="width:100%;padding:12px;font-size:0.95em;background:linear-gradient(135deg,#f59e0b,#ea580c);">${AWL('Şimdi Satın Al','Buy Now')}</button>
+        <button id="auction-win-later-btn" style="width:100%;margin-top:8px;padding:9px;border-radius:10px;border:1.5px solid #475569;background:transparent;color:#94a3b8;font-weight:800;font-size:0.8em;cursor:pointer;">${AWL('Daha Sonra (süre işlemeye devam eder)','Later (the timer keeps running)')}</button>
+    </div>`;
+    m.style.display='flex';
+    document.getElementById('auction-win-buy-btn').onclick=()=>window.buyAuctionWin(w.domainName,w.price);
+    document.getElementById('auction-win-later-btn').onclick=()=>{ m.style.display='none'; };
+}
+// Tek bir saniyelik zamanlayıcı: sayfadaki TÜM .js-countdown öğelerini canlı tutar.
+// Sayaç 0'a düştüğünde sunucudan güncel durumu çeker (bitiş → kazanan belirlenir,
+// kazanan süresi dolunca → iptal) ve açık detay penceresini yeniler.
+function onAuctionCountdownEnd(kind,dom){
+    setTimeout(async()=>{
+        try{ await window.refreshMyAuctionWins(); }catch(_){}
+        if(kind==='win'){ const m=document.getElementById('auction-win-modal'); if(m) m.style.display='none'; renderAuctionWinBanner(); }
+        const modal=document.getElementById('domain-detail-modal');
+        if(modal && modal.style.display==='flex' && window._detailDomainName===dom){
+            const ae=document.activeElement; const typing=ae&&(ae.tagName==='INPUT'||ae.tagName==='TEXTAREA');
+            if(!typing) window.openDomainDetail(dom);
+        }
+    },1800);
+}
+if(!window._auctionTicker){
+    window._auctionTicker=setInterval(()=>{
+        const now=Date.now();
+        document.querySelectorAll('.js-countdown').forEach(el=>{
+            const end=Number(el.dataset.end); if(!end) return;
+            const left=end-now;
+            el.textContent=fmtCountdown(left);
+            if(left<=0 && !el.dataset.fired){ el.dataset.fired='1'; onAuctionCountdownEnd(el.dataset.kind,el.dataset.domain); }
+        });
+    },1000);
+}
 // YENİ: Teklif geçmişini göster — şeffaflık için. Tıklanana kadar hiç
 // sorgu yapılmıyor; ikinci tıklamada tekrar sorgu atmadan sadece
 // aç/kapa yapıyor.
@@ -8598,7 +8763,7 @@ function sanitizeNumericInput(el, echoElId){
     // vermesin diye parametre olarak duruyor.
     let v = el.value.replace(/[^0-9.]/g,'');
     const firstDot = v.indexOf('.');
-    if(firstDot!==-1) v = v.slice(0,firstDot+1) + v.slice(firstDot+1).replace(/\./g,'');
+    if(firstDot!==-1) v = v.slice(0,firstDot+1) + v.slice(firstDot+1).replace(/\./g,'').slice(0,7); // Pi: en fazla 7 ondalık basamak
     if(v!==el.value) el.value = v;
     if(echoElId){ const echo=document.getElementById(echoElId); if(echo) echo.textContent = v ? (v+' π') : ''; }
     return v;
@@ -8608,25 +8773,26 @@ window.sanitizeNumericInput = sanitizeNumericInput;
 // teklifin ALTINDA bir tutar yazılırsa buton devre dışı kalır ve kırmızı
 // bir uyarı çıkar; kullanıcı "Gönder"e basıp backend'in reddetmesini
 // beklemek zorunda kalmaz, hatasını yazarken anında görür.
-window.syncAmountDisplay=function(inputEl, displayId, placeholderText){
+window.syncAmountDisplay=function(inputEl, displayId, placeholderText, focusedOverride){
     const disp=document.getElementById(displayId);
     if(!disp || !inputEl) return;
+    // Placeholder metni artık öncelikle öğenin kendi data-ph özniteliğinden okunur
+    // (inline handler'larda modül-kapsamlı t() çağrılamadığı için).
+    if(placeholderText) disp.dataset.ph=placeholderText;
+    const ph=disp.dataset.ph||'';
+    // Odak durumu: olay tipinden geliyorsa (focus/input=true, blur=false) ona güven;
+    // Android WebView'da focus olayı anında document.activeElement güncellenmeyebiliyor.
+    const focused=(focusedOverride!==undefined)?focusedOverride:(document.activeElement===inputEl);
     disp.classList.remove('amount-has-value','amount-placeholder');
     if(inputEl.value){ disp.textContent=inputEl.value; disp.classList.add('amount-has-value'); }
-    else if(document.activeElement===inputEl){ disp.textContent=''; }   // odakta: sadece yanıp sönen imleç
-    else { disp.textContent=placeholderText; disp.classList.add('amount-placeholder'); }
+    else if(focused){ disp.textContent=''; }   // odakta + boş: yazı kaybolur, ortada yanıp sönen imleç kalır
+    else { disp.textContent=ph; disp.classList.add('amount-placeholder'); }
 };
-// YENİ: "Oraya tıklayınca yazı [placeholder] kaybolsun, imleç yanıp
-// sönmeye başlasın" — önceden placeholder yalnızca YAZMAYA BAŞLAYINCA
-// kayboluyordu. Artık kutuya dokunulur dokunulmaz (henüz hiçbir rakam
-// girilmeden) placeholder hemen kayboluyor, boş ve yanıp sönen imleçli
-// bir kutu kalıyor; kutu boş bırakılıp çıkılırsa (blur) placeholder
-// geri geliyor.
 window.onAmountInputFocus=function(inputEl, displayId, placeholderText){
-    window.syncAmountDisplay(inputEl, displayId, placeholderText);
+    window.syncAmountDisplay(inputEl, displayId, placeholderText, true);
 };
 window.onAmountInputBlur=function(inputEl, displayId, placeholderText){
-    window.syncAmountDisplay(inputEl, displayId, placeholderText);
+    window.syncAmountDisplay(inputEl, displayId, placeholderText, false);
 };
 window.checkAuctionBidValidity=function(el){
     const minBid=parseFloat(el.dataset.minbid);
@@ -8634,7 +8800,7 @@ window.checkAuctionBidValidity=function(el){
     const hint=document.getElementById('auction-bid-hint');
     const btn=document.getElementById('auction-bid-submit-btn');
     const v=parseFloat(el.value);
-    const invalid = el.value!=='' && (isNaN(v) || v < minBid);
+    const invalid = el.value!=='' && (isNaN(v) || toPiU(v) < toPiU(minBid));
     if(warn) warn.style.display = invalid ? 'block' : 'none';
     if(hint) hint.style.display = invalid ? 'none' : 'block';
     if(btn){ btn.disabled = invalid; btn.style.opacity = invalid ? '0.5' : '1'; btn.style.cursor = invalid ? 'not-allowed' : 'pointer'; }
@@ -8678,6 +8844,7 @@ window.loadAdminAuctionsTable=async function(){
         const now=Date.now();
         const statusOf=(a)=>{
             if(a.auctionActive) return {icon:'⏳',label:'Aktif',color:'#fbbf24'};
+            if(a.auctionWinPending && !a.sold) return {icon:'⏱️',label:'Kazanan Ödemeyi Bekliyor (@'+(a.auctionWinner||'?')+')',color:'#fb923c'};
             if(a.sold || a.reservedFor) return {icon:'🏆',label:'Kazanıldı',color:'#34d399'};
             if(a.auctionEndsAt && a.auctionEndsAt<=now && !a.auctionHighestBidder) return {icon:'⌛',label:'Süresi Doldu (Teklif Yok)',color:'#94a3b8'};
             if(a.auctionEndsAt && a.auctionEndsAt<=now && a.auctionHighestBidder) return {icon:'✅',label:'Bitti — Kazanan Bekleniyor',color:'#60a5fa'};
@@ -9017,6 +9184,8 @@ function renderMyAuctionsBox(auctions){
             if(a.auctionEndsAt && a.auctionEndsAt<=now) return a.isMeHighestBidder?{txt:t('myAuctionWonPending'),color:'#34d399'}:{txt:t('myAuctionEndedOther'),color:'#94a3b8'};
             return a.isMeHighestBidder?{txt:t('myAuctionLeading'),color:'#34d399'}:{txt:t('myAuctionOutbid'),color:'#f87171'};
         }
+        if(a.iWonPending) return {txt:AWL('🏆 Kazandınız — satın almayı tamamlayın','🏆 Won — complete the purchase'),color:'#fbbf24'};
+        if(a.auctionWinPending) return {txt:AWL('Kazanan ödemeyi bekliyor','Awaiting winner payment'),color:'#94a3b8'};
         if(a.sold||a.reservedFor) return a.isMeHighestBidder?{txt:t('myAuctionWon'),color:'#34d399'}:{txt:t('myAuctionLost'),color:'#94a3b8'};
         return {txt:t('myAuctionCancelled'),color:'#94a3b8'};
     };
@@ -9032,6 +9201,7 @@ function renderMyAuctionsBox(auctions){
                 <div>💰 ${t('myBidLabel')}: <b style="color:#fbbf24;">${a.myHighestBid??'—'} π</b></div>
                 <div>🔥 ${t('auctionHighestBidLabel')}: <b style="color:#34d399;">${a.auctionHighestBid??'—'} π</b>${a.auctionHighestBidder?` — @${escapeHtml(a.auctionHighestBidder)}`:''}</div>
                 <div>🕐 ${endStr}</div>
+                ${a.iWonPending&&a.auctionWinDeadline?`<div style="color:#fbbf24;font-weight:800;">⏳ ${AWL('Satın alma süresi','Time left to buy')}: <b class="js-countdown" data-kind="win" data-domain="${escapeHtml(a.domainName)}" data-end="${a.auctionWinDeadline}">${fmtCountdown(a.auctionWinDeadline-Date.now())}</b></div>`:''}
             </div>
             <button onclick="window.openDomainDetail('${a.domainName.replace(/'/g,"\\'")}')" style="margin-top:7px;width:100%;background:rgba(245,158,11,0.12);border:1px solid #f59e0b;color:#fcd34d;font-size:0.64em;font-weight:800;padding:6px;border-radius:8px;cursor:pointer;">🔗 ${t('viewAuctionDomainBtn')}</button>
         </div>`;
@@ -11211,7 +11381,7 @@ function render(){
             const bid=data.auctionHighestBid;
             const label=bid!==null ? `${t('auctionHighestBidLabel')}: <b style="color:#fbbf24;">${bid} π</b>` : `${t('auctionNoBidsLabel')} ${data.auctionStartPrice} π`;
             const timeHtml=auctionIsLive
-                ? `<div style="font-size:0.6em;color:#a5b4fc;margin-top:2px;">${t('auctionTimeLeft')(Math.max(1,Math.ceil((data.auctionEndsAt-Date.now())/60000)))} · ${t('auctionBidCountLabel')(data.auctionBidCount||0)}</div>`
+                ? `<div style="font-size:0.6em;color:#a5b4fc;margin-top:2px;">⏳ <b class="js-countdown" data-kind="auction" data-domain="${escapeHtml(d.name)}" data-end="${data.auctionEndsAt}" style="font-variant-numeric:tabular-nums;">${fmtCountdown(data.auctionEndsAt-Date.now())}</b> · ${t('auctionBidCountLabel')(data.auctionBidCount||0)}</div>`
                 : `<div style="font-size:0.6em;color:#fca5a5;margin-top:2px;">${t('auctionEndedLabel')}</div>`;
             return `<div class="domain-price" style="font-size:0.78em;">${label}</div>${timeHtml}`;
         })();
@@ -12797,7 +12967,13 @@ onSnapshot(collection(db,"domains"),(snapshot)=>{
             auctionHighestBid:typeof docData.auctionHighestBid==='number'?docData.auctionHighestBid:null,
             auctionHighestBidder:docData.auctionHighestBidder||null,
             auctionBidCount:docData.auctionBidCount||0,
-            auctionEndsAt:docData.auctionEndsAt||null
+            auctionEndsAt:docData.auctionEndsAt||null,
+            // Kazanan süresi + anti-sniping alanları (listeye eklenmezse her snapshot'ta silinir).
+            auctionExtensions:docData.auctionExtensions||0,
+            auctionWinPending:docData.auctionWinPending===true,
+            auctionWinner:docData.auctionWinner||null,
+            auctionWinPrice:typeof docData.auctionWinPrice==='number'?docData.auctionWinPrice:null,
+            auctionWinDeadline:docData.auctionWinDeadline||null
         };
         if(!defaultDomain){
             domains.unshift({name,img:docData.img||'assets/default.jpeg',price:docData.price||0,type:docData.type||'genel',description:docData.description||''});
