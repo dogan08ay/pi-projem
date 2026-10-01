@@ -1,0 +1,115 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /domains/{domain} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    // ── GÜVENLİK FIX ─────────────────────────────────────────────────────
+    // global_sales: kim neyi ne zaman kaç Pi'ye aldı/sattı bilgisini (ve
+    // dolaylı olarak kullanıcıların finansal davranışını) içerir. Daha önce
+    // "allow read: if true" idi; Firebase config'i bilen herkes bu
+    // koleksiyonu doğrudan sorgulayabilirdi. Artık SADECE backend'den
+    // (approve.js → get_pending_payouts [admin] / get_user_profile [kendi
+    // satın alımların]) erişiliyor, ikisi de gerçek kimlik doğrulaması
+    // yapıyor. Bu yüzden read de false yapıldı.
+    match /global_sales/{sale} {
+      allow read: if false;
+      allow write: if false;
+    }
+
+    match /daily_stats/{date} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    // ── GÜVENLİK FIX ─────────────────────────────────────────────────────
+    // sell_requests: satıcı adayının Pi cüzdan adresi (sellerWallet) dahil
+    // bilgiler içerir. Artık SADECE backend'den (get_pending_sell_requests
+    // [admin] / get_user_profile [kendi ilanların]) erişiliyor.
+    match /sell_requests/{request} {
+      allow read: if false;
+      allow write: if false;
+    }
+
+    match /active_users/{user} {
+      allow read, write: if true;
+    }
+    match /daily_users/{date} {
+      allow read, write: if true;
+    }
+    // ── GÜVENLİK FIX ─────────────────────────────────────────────────────
+    // user_profiles: e-posta, Telegram sohbet kimliği, push abonelik anahtarları,
+    // favoriler ve açık artırma ceza bilgileri (auctionDefaults,
+    // auctionBidBanUntil) gibi özel alanlar içerir. Daha önce "allow read: if
+    // true" idi; Firebase config'ini bilen herkes bunları doğrudan okuyabilirdi.
+    // İstemci kodu bu koleksiyonu doğrudan HİÇ okumuyor (hepsi approve.js
+    // üzerinden, kimlik doğrulamalı) — bu yüzden false yapmak uygulamayı bozmaz.
+    match /user_profiles/{user} {
+      allow read: if false;
+      allow write: if false;
+    }
+
+    // ── AÇIK ARTIRMA — yalnızca sunucu (Admin SDK) erişir ──────────────────
+    // Eşleşen kural olmasa da varsayılan red uygulanır; niyet açıkça yazılsın
+    // ve ileride yanlışlıkla açılmasın diye ayrı ayrı belirtiliyor.
+    // auction_secret: GİZLİ rezerv fiyatı ve otomatik teklif üst limitleri.
+    match /auction_secret/{doc} {
+      allow read, write: if false;
+    }
+    match /auction_bids/{bid} {
+      allow read, write: if false;
+    }
+    match /auction_events/{ev} {
+      allow read, write: if false;
+    }
+    match /auction_defaults/{d} {
+      allow read, write: if false;
+    }
+
+    // ── GÜVENLİK FIX ─────────────────────────────────────────────────────
+    // trademark_claims: başvuranın adını, şirketini ve e-postasını içerir
+    // (KVKK/GDPR kapsamında kişisel veri). Daha önce "allow read: if true"
+    // idi — admin paneline hiç girmeden, Firebase config'i bilen HERKES bu
+    // bilgileri doğrudan Firestore sorgusuyla çekebilirdi. Artık SADECE
+    // backend'den (get_trademark_claims [admin] / get_my_trademark_claims
+    // [kendi taleplerin]) erişiliyor, ikisi de gerçek kimlik doğrulaması
+    // yapıyor. Frontend tarafında karşılık gelen değişiklik de yapıldı
+    // (doğrudan onSnapshot kaldırıldı, admin doğrulamalı polling'e
+    // çevrildi) — bu kuralı false yapmak artık admin panelini bozmaz.
+    match /trademark_claims/{claim} {
+      allow read: if false;
+      allow write: if false;
+    }
+
+    match /config/{doc} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    // ── GÜVENLİK NOTU ────────────────────────────────────────────────────
+    // rate_limits: sadece backend'in (approve.js, Admin SDK ile) yazdığı/
+    // okuduğu bir sayaç koleksiyonu. Admin SDK zaten bu kuralları by-pass
+    // ettiği için burada bir eşleşme olmasa da erişim zaten reddedilirdi
+    // (Firestore'da eşleşen kural yoksa varsayılan red uygulanır). Yine de
+    // ileride biri yanlışlıkla "allow read/write: if true" eklerse bunu
+    // fark etmesi için niyeti açıkça yazıyoruz: istemci tarafından hiçbir
+    // koşulda okunmamalı/yazılmamalı.
+    match /rate_limits/{entry} {
+      allow read: if false;
+      allow write: if false;
+    }
+
+    // ── GÜVENLİK NOTU ────────────────────────────────────────────────────
+    // offers: alıcının teklif tutarını, mesajını ve kullanıcı adını içerir.
+    // Sadece backend'den (submit_offer / get_my_offers / get_received_offers
+    // / respond_offer / counter_offer / respond_counter_offer / get_all_offers
+    // [admin]) erişiliyor, hepsi gerçek kimlik doğrulaması yapıyor. İstemci
+    // tarafından hiçbir koşulda doğrudan okunmamalı/yazılmamalı.
+    match /offers/{offer} {
+      allow read: if false;
+      allow write: if false;
+    }
+  }
+}
