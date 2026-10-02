@@ -171,6 +171,47 @@ const AUCTION_WIN_CLEAR_FIELDS = () => ({
   auctionSecondChance: FieldValue.delete(),
   auctionBoughtNow: FieldValue.delete()
 });
+// Satışsız kapanan (iptal / rezerv karşılanmadı / kazanan ödemedi / teklifsiz bitti)
+// açık artırmadan geriye kalan alanları temizler ve kapanış zamanını yazar.
+// Böylece domain belgesinde eski rezerv/Hemen Al/teklif sayısı gibi artık veriler
+// kalmaz; "Açık Artırmalarım" listesi kapanış zamanına göre eski kayıtları gizleyebilir.
+const AUCTION_LEFTOVER_CLEAR_FIELDS = () => ({
+  auctionBidCount: FieldValue.delete(),
+  auctionExtensions: FieldValue.delete(),
+  auctionHasReserve: FieldValue.delete(),
+  auctionReserveMet: FieldValue.delete(),
+  auctionBuyNowPrice: FieldValue.delete(),
+  auctionStartedAt: FieldValue.delete(),
+  auctionEndingWarnedFor: FieldValue.delete(),
+  auctionClosedAt: Date.now()
+});
+// Bir teklif kaydının KALICI silineceği zaman (ms) — kullanıcıya "kalan süre" göstermek
+// için API yanıtlarına eklenir. Süresiz kalan durumlar (bekleyen/kabul edilen) için null.
+function offerPurgeAt(x) {
+  if (!x) return null;
+  const t0 = (...c) => c.find(v => typeof v === 'number' && v > 0) || 0;
+  if (x.status === 'unpaid') return t0(x.unpaidAt, x.respondedAt, x.createdAt) + OFFER_UNPAID_RETENTION_MS;
+  if (x.status === 'expired') return t0(x.respondedAt, x.createdAt) + OFFER_EXPIRED_RETENTION_MS;
+  if (x.status === 'rejected') return t0(x.respondedAt, x.createdAt) + OFFER_REJECTED_RETENTION_MS;
+  if (x.status === 'withdrawn') return t0(x.withdrawnAt, x.respondedAt, x.createdAt) + OFFER_WITHDRAWN_RETENTION_MS;
+  return null;
+}
+const RETENTION_DAYS_INFO = () => ({
+  unpaid: Math.round(OFFER_UNPAID_RETENTION_MS / 86400000),
+  expired: Math.round(OFFER_EXPIRED_RETENTION_MS / 86400000),
+  rejected: Math.round(OFFER_REJECTED_RETENTION_MS / 86400000),
+  withdrawn: Math.round(OFFER_WITHDRAWN_RETENTION_MS / 86400000),
+  auctionList: Math.round(AUCTION_MY_LIST_VISIBLE_MS / 86400000)
+});
+// ── Veri saklama (retention) süreleri ─────────────────────────────────
+const OFFER_UNPAID_RETENTION_MS = 7 * 86400000;        // "Satın Alınmadı" teklifleri 7 gün sonra silinir
+const OFFER_EXPIRED_RETENTION_MS = 30 * 86400000;      // "Geçersiz Oldu" (başka teklif kabul edilince düşen) 30 gün
+const OFFER_REJECTED_RETENTION_MS = 30 * 86400000;      // reddedilen teklifler 30 gün
+const OFFER_WITHDRAWN_RETENTION_MS = 30 * 86400000;    // geri çekilen teklifler 30 gün
+const AUCTION_BIDS_RETENTION_MS = 30 * 86400000;       // kapanmış açık artırmaların teklif kayıtları 30 gün
+const AUCTION_MY_LIST_VISIBLE_MS = 7 * 86400000;       // "Açık Artırmalarım"da kapanmış kayıtlar 7 gün görünür
+const AUCTION_EVENTS_RETENTION_MS = 90 * 86400000;     // yönetici olay günlüğü 90 gün
+const AUCTION_DEFAULTS_RETENTION_MS = 180 * 86400000;  // ödemeyen kazanan kayıtları 180 gün
 
 // ── Yeni özellik sabitleri ────────────────────────────────────────────
 // Kazanan süresinde ödemezse, ikinci en yüksek teklif sahibine (varsa) BİR kez
@@ -258,7 +299,8 @@ async function finalizeEndedAuction(db, domainName) {
         tx.set(ref, {
           auctionActive: false, auctionEndsAt: null,
           auctionHighestBid: null, auctionHighestBidder: null,
-          price: revertTo
+          price: revertTo,
+          ...AUCTION_LEFTOVER_CLEAR_FIELDS()
         }, { merge: true });
         tx.delete(secRef);
         return { noReserve: true, topBidder: d.auctionHighestBidder, topBid: d.auctionHighestBid, seller: d.sellerUsername || null, revertTo };
@@ -403,7 +445,8 @@ async function expireAuctionWin(db, domainName) {
         auctionEndsAt: FieldValue.delete(),
         auctionHighestBid: null,
         auctionHighestBidder: null,
-        price: revertPrice
+        price: revertPrice,
+        ...AUCTION_LEFTOVER_CLEAR_FIELDS()
       }, { merge: true });
       tx.delete(secRef);
       return base;
@@ -463,6 +506,79 @@ async function expireAuctionWin(db, domainName) {
   return info;
 }
 
+// ══════════════════════════════════════════════════════════════════════
+//  GEÇMİŞ VERİ TEMİZLİĞİ (retention)
+// ══════════════════════════════════════════════════════════════════════
+// Sonuçlanıp artık işe yaramayan kayıtların sonsuza kadar birikmesini önler:
+//  • "Satın Alınmadı" (unpaid) teklifler  → 7 gün
+//  • "Geçersiz Oldu" (expired) teklifler  → 30 gün
+//  • Kapanmış açık artırmaların teklif kayıtları (auction_bids) → 30 gün
+//    (aktif ya da kazanan ödemesini bekleyen açık artırmalara ASLA dokunulmaz)
+//  • Yönetici olay günlüğü (auction_events) → 90 gün
+//  • Ödemeyen kazanan kayıtları (auction_defaults) → 180 gün
+// Ceza SAYACI (user_profiles.auctionDefaults) ve teklif yasağı bu temizlikten
+// etkilenmez; yalnızca ayrıntı kayıtları silinir.
+let _lastHistoryCleanupAt = 0;
+// force=true (yalnızca yönetici butonu): saklama sürelerine BAKMADAN tüm kapanmış kayıtları siler.
+// Her iki modda da silinmeyenler: bekleyen/karşı teklifli/kabul edilmiş teklifler, aktif ya da
+// kazananı ödeme bekleyen açık artırmalar, satış kayıtları, ceza sayacı ve teklif yasağı.
+async function cleanupClosedHistory(db, { rounds = 1, force = false } = {}) {
+  const counts = { unpaidOffers: 0, expiredOffers: 0, rejectedOffers: 0, withdrawnOffers: 0, auctionBids: 0, auctionEvents: 0, auctionDefaults: 0 };
+  const delDocs = async (docs) => {
+    for (let i = 0; i < docs.length; i += 400) {
+      const b = db.batch();
+      docs.slice(i, i + 400).forEach(d => b.delete(d.ref));
+      await b.commit();
+    }
+  };
+  const OFFER_RULES = [
+    ['unpaid', 'unpaidOffers', OFFER_UNPAID_RETENTION_MS],
+    ['expired', 'expiredOffers', OFFER_EXPIRED_RETENTION_MS],
+    ['rejected', 'rejectedOffers', OFFER_REJECTED_RETENTION_MS],
+    ['withdrawn', 'withdrawnOffers', OFFER_WITHDRAWN_RETENTION_MS]
+  ];
+  for (let r = 0; r < rounds; r++) {
+    const now = Date.now();
+    let didAny = 0;
+    for (const [status, key, retention] of OFFER_RULES) {
+      try {
+        const snap = await db.collection('offers').where('status', '==', status).limit(500).get();
+        const del = snap.docs.filter(d => {
+          if (force) return true;
+          const x = d.data();
+          return (x.unpaidAt || x.withdrawnAt || x.respondedAt || x.createdAt || 0) < now - retention;
+        });
+        await delDocs(del); counts[key] += del.length; didAny += del.length;
+      } catch (e) { console.error(`cleanup ${status} offers hatası:`, e); }
+    }
+    try {
+      const cutoff = force ? now + 1 : now - AUCTION_BIDS_RETENTION_MS;
+      const old = await db.collection('auction_bids').where('at', '<', cutoff).limit(500).get();
+      const cache = new Map();
+      const del = [];
+      for (const d of old.docs) {
+        const name = d.data().domainName;
+        if (!cache.has(name)) { const ds = await db.collection('domains').doc(name).get(); cache.set(name, ds.exists ? ds.data() : null); }
+        const dom = cache.get(name);
+        if (dom && (dom.auctionActive === true || dom.auctionWinPending === true)) continue; // canlı açık artırmaya dokunma
+        del.push(d);
+      }
+      await delDocs(del); counts.auctionBids += del.length; didAny += del.length;
+    } catch (e) { console.error('cleanup auction_bids hatası:', e); }
+    try {
+      const ev = await db.collection('auction_events').where('at', '<', force ? now + 1 : now - AUCTION_EVENTS_RETENTION_MS).limit(500).get();
+      await delDocs(ev.docs); counts.auctionEvents += ev.docs.length; didAny += ev.docs.length;
+    } catch (e) { console.error('cleanup auction_events hatası:', e); }
+    try {
+      const df = await db.collection('auction_defaults').where('at', '<', force ? now + 1 : now - AUCTION_DEFAULTS_RETENTION_MS).limit(500).get();
+      await delDocs(df.docs); counts.auctionDefaults += df.docs.length; didAny += df.docs.length;
+    } catch (e) { console.error('cleanup auction_defaults hatası:', e); }
+    if (didAny === 0) break;
+  }
+  if (Object.values(counts).some(v => v > 0)) console.log(`[Geçmiş temizliği${force ? ' — ZORLA' : ''}]`, JSON.stringify(counts));
+  return counts;
+}
+
 // ── Açık Artırma "Süre Az Kaldı" Uyarısı — throttle durumu ──────────────
 // Bu projede zamanlanmış görev (cron) yok, bu yüzden "bitmeden 1 saat
 // kala uyar" kontrolü, aşağıdaki checkEndingAuctions() fonksiyonu ile,
@@ -493,7 +609,7 @@ async function checkEndingAuctions(db) {
       if (remaining <= 0) {
         if (!data.auctionHighestBidder) {
           // Teklifsiz biten açık artırma: normal satışa geri dön.
-          await doc.ref.set({ auctionActive: false, auctionEndsAt: FieldValue.delete() }, { merge: true });
+          await doc.ref.set({ auctionActive: false, auctionEndsAt: FieldValue.delete(), ...AUCTION_LEFTOVER_CLEAR_FIELDS() }, { merge: true });
           if (data.sellerUsername) {
             await sendNotification(data.sellerUsername, {
               type: 'auction_ended_no_bids',
@@ -576,6 +692,11 @@ async function checkEndingAuctions(db) {
   }
   // ── C) Pazarlık (teklif/karşı teklif) rezervasyonları: süresi dolanı kapat, hatırlat ──
   await sweepOfferReservations(db);
+  // ── D) Saatte bir: eski, sonuçlanmış kayıtları temizle (retention) ──
+  if (Date.now() - _lastHistoryCleanupAt >= 60 * 60 * 1000) {
+    _lastHistoryCleanupAt = Date.now();
+    await cleanupClosedHistory(db);
+  }
 }
 
 // ── Süresi Dolmuş Rezervasyonu Eski Fiyata Döndür ───────────────────────
@@ -2304,6 +2425,7 @@ async function handlerImpl(req, res) {
         auctionHasReserve: reserveNum !== null,
         auctionReserveMet: reserveNum === null,
         auctionBuyNowPrice: buyNowNum,
+        auctionClosedAt: FieldValue.delete(),
         price: startNum,
         ...AUCTION_WIN_CLEAR_FIELDS()
       }, { merge: true });
@@ -2359,7 +2481,7 @@ async function handlerImpl(req, res) {
           return res.status(400).json({ error: "Bu domain için aktif bir açık artırma yok" });
         if (data.auctionHighestBidder || (data.auctionBidCount || 0) > 0)
           return res.status(403).json({ error: "Teklif gelmiş bir açık artırmayı yalnızca yönetici iptal edebilir. Lütfen destek ile iletişime geçin." });
-        await domainRef.set({ auctionActive: false, auctionEndsAt: null, price: data.auctionStartPrice || data.price }, { merge: true });
+        await domainRef.set({ auctionActive: false, auctionEndsAt: null, price: data.auctionStartPrice || data.price, ...AUCTION_LEFTOVER_CLEAR_FIELDS() }, { merge: true });
         await auctionSecretRef(db, domainName).delete().catch(() => {});
         await logAuctionEvent(db, 'cancelled_by_seller', domainName, { username: callerName });
         return res.status(200).json({ success: true });
@@ -2374,7 +2496,8 @@ async function handlerImpl(req, res) {
           preNegotiationPrice: FieldValue.delete(),
           auctionActive: false,
           auctionEndsAt: null,
-          price: data.auctionStartPrice || data.preNegotiationPrice || data.price
+          price: data.auctionStartPrice || data.preNegotiationPrice || data.price,
+          ...AUCTION_LEFTOVER_CLEAR_FIELDS()
         }, { merge: true });
         await sendNotification(data.auctionWinner, {
           type: 'auction_cancelled',
@@ -2394,7 +2517,8 @@ async function handlerImpl(req, res) {
       await domainRef.set({
         auctionActive: false,
         auctionEndsAt: null,
-        price: data.auctionStartPrice || data.price
+        price: data.auctionStartPrice || data.price,
+        ...AUCTION_LEFTOVER_CLEAR_FIELDS()
       }, { merge: true });
       // Hiçbir aşamada gerçek Pi tahsil edilmediği için (bkz. yukarıdaki
       // tasarım notu) iptalde İADE gerekmiyor — sadece bilgilendirme.
@@ -2638,6 +2762,23 @@ async function handlerImpl(req, res) {
       return res.status(200).json({ success: true, price: out.price, deadline: out.deadline });
     } catch (e) {
       console.error("auction_buy_now hatası:", e);
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  // Yönetici: eski/sonuçlanmış kayıtları ŞİMDİ temizle (saatlik otomatik temizlikle aynı kurallar).
+  if (action === 'cleanup_closed_auction_data') {
+    const isAdmin = await verifyAdmin(accessToken, req);
+    if (!isAdmin) return res.status(403).json({ error: "Yetki yok" });
+    try {
+      const db = getDb();
+      const force = req.body.force === true;
+      const counts = await cleanupClosedHistory(db, { rounds: force ? 30 : 8, force });
+      const adminUsername = await getRealUsername(accessToken);
+      await logAdminAction(adminUsername, force ? 'cleanup_closed_data_FORCE' : 'cleanup_closed_auction_data', JSON.stringify(counts));
+      return res.status(200).json({ success: true, counts });
+    } catch (e) {
+      console.error("cleanup_closed_auction_data hatası:", e);
       return res.status(500).json({ error: e.message });
     }
   }
@@ -5110,7 +5251,8 @@ async function handlerImpl(req, res) {
           counterPrice: x.counterPrice != null ? x.counterPrice : null,
           status: resolvedStatus,
           role, // 'buyer' | 'seller' — geçmişte hangi taraf olduğunu göstermek için
-          at: x.respondedAt || x.createdAt || 0
+          at: x.respondedAt || x.createdAt || 0,
+          purgeAt: offerPurgeAt(x) // kalıcı silinme zamanı (süresiz kalan durumlar için null)
         });
       };
       myOffersSnap.forEach(d => processOfferDoc(d, 'buyer'));
@@ -5123,7 +5265,7 @@ async function handlerImpl(req, res) {
       trademarkClaims.sort((a, b) => (b.at || 0) - (a.at || 0));
       offers.sort((a, b) => (b.at || 0) - (a.at || 0));
 
-      return res.status(200).json({ success: true, listings, purchases, reports, tickets, trademarkClaims, offers });
+      return res.status(200).json({ success: true, listings, purchases, reports, tickets, trademarkClaims, offers, retentionDays: RETENTION_DAYS_INFO() });
     } catch (e) {
       console.error("get_my_activity_history hatası:", e);
       return res.status(500).json({ error: e.message });
@@ -6508,7 +6650,7 @@ async function handlerImpl(req, res) {
       const db = getDb();
       const snap = await db.collection('offers').where('buyerUsername', '==', realUsername).get();
       const offers = [];
-      snap.forEach(d => offers.push({ id: d.id, ...d.data() }));
+      snap.forEach(d => offers.push({ id: d.id, ...d.data(), purgeAt: offerPurgeAt(d.data()) }));
       offers.sort((a, b) => b.createdAt - a.createdAt);
       return res.status(200).json({ success: true, offers });
     } catch (e) {
@@ -6539,11 +6681,13 @@ async function handlerImpl(req, res) {
       // bu fark yaratmaz ve hiçbir index kurulumuna ihtiyaç bırakmaz.
       const bidsSnap = await db.collection('auction_bids').where('username', '==', realUsername).limit(1000).get();
       const myHighestBidByDomain = {};
+      const myLastBidAtByDomain = {};
       const domainNamesInOrder = [];
       const bidDocsSorted = bidsSnap.docs.map(d => d.data()).sort((a, b) => (b.at || 0) - (a.at || 0));
       bidDocsSorted.forEach(v => {
         if (!(v.domainName in myHighestBidByDomain)) domainNamesInOrder.push(v.domainName);
         myHighestBidByDomain[v.domainName] = Math.max(myHighestBidByDomain[v.domainName] || 0, v.bidAmount);
+        myLastBidAtByDomain[v.domainName] = Math.max(myLastBidAtByDomain[v.domainName] || 0, v.at || 0);
       });
       if (!domainNamesInOrder.length) return res.status(200).json({ success: true, auctions: [] });
       // Firestore 'in' sorgusu en fazla 30 değer alabiliyor, bu yüzden
@@ -6570,13 +6714,21 @@ async function handlerImpl(req, res) {
         auctionWinner: v.auctionWinner || null,
         auctionWinDeadline: v.auctionWinDeadline || null,
         iWonPending: v.auctionWinPending === true && v.auctionWinner === realUsername,
+        closedAt: v.auctionClosedAt || null,
+        myLastBidAt: myLastBidAtByDomain[v.id] || 0,
+        // Kapanmış (aktif/ödeme bekleyen olmayan) kayıt listeden bu zamanda kalkar.
+        purgeAt: (v.auctionActive === true || v.auctionWinPending === true) ? null : ((v.auctionClosedAt || myLastBidAtByDomain[v.id] || 0) + AUCTION_MY_LIST_VISIBLE_MS),
       }));
       // Aktif + bitişi en yakın olanlar üstte; bitmiş/sonuçlanmışlar altta.
       auctions.sort((a, b) => {
         if (a.auctionActive !== b.auctionActive) return a.auctionActive ? -1 : 1;
         return (a.auctionEndsAt || 0) - (b.auctionEndsAt || 0);
       });
-      return res.status(200).json({ success: true, auctions });
+      // Sonuçlanmış (satışsız kapanmış / satılmış) açık artırmalar listede 7 gün kalır;
+      // aktif olanlar ve kazananın ödemesini bekleyenler ise her zaman görünür.
+      const visibleAuctions = auctions.filter(a =>
+        a.auctionActive || a.auctionWinPending || (a.closedAt || a.myLastBidAt || 0) > now - AUCTION_MY_LIST_VISIBLE_MS);
+      return res.status(200).json({ success: true, auctions: visibleAuctions });
     } catch (e) {
       console.error("get_my_auctions hatası:", e);
       return res.status(500).json({ error: e.message });
