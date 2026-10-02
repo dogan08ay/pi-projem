@@ -574,6 +574,8 @@ async function checkEndingAuctions(db) {
   } catch (e) {
     console.error("checkEndingAuctions (kazanan süresi) hatası:", e);
   }
+  // ── C) Pazarlık (teklif/karşı teklif) rezervasyonları: süresi dolanı kapat, hatırlat ──
+  await sweepOfferReservations(db);
 }
 
 // ── Süresi Dolmuş Rezervasyonu Eski Fiyata Döndür ───────────────────────
@@ -590,27 +592,129 @@ async function checkEndingAuctions(db) {
 async function revertExpiredReservation(db, domainName) {
   try {
     const domainRef = db.collection('domains').doc(domainName);
-    const snap = await domainRef.get();
-    if (!snap.exists) return null;
-    const data = snap.data();
-    if (data.sold === true) return null;
-    if (!data.reservedFor || !data.reservedUntil) return null;
-    if (data.reservedUntil > Date.now()) return null; // hâlâ geçerli, dokunma
+    const pre = await domainRef.get();
+    if (!pre.exists) return null;
+    const p0 = pre.data();
+    if (p0.sold === true) return null;
+    if (!p0.reservedFor || !p0.reservedUntil) return null;
+    if (p0.reservedUntil > Date.now()) return null; // hâlâ geçerli, dokunma
     // Açık artırma kazananının süresi dolduysa: iptal + ceza + bildirim akışı.
-    if (data.auctionWinPending === true) {
+    if (p0.auctionWinPending === true) {
       const r = await expireAuctionWin(db, domainName);
       return r ? r.revertPrice : null;
     }
-
-    const revertPrice = typeof data.preNegotiationPrice === 'number' ? data.preNegotiationPrice : null;
-    const update = { reservedFor: FieldValue.delete(), reservedUntil: FieldValue.delete(), preNegotiationPrice: FieldValue.delete() };
-    if (revertPrice !== null) update.price = revertPrice;
-    await domainRef.set(update, { merge: true });
-    console.log(`[Rezervasyon süresi doldu] ${domainName} eski fiyata döndürüldü: ${revertPrice}`);
-    return revertPrice;
+    // Pazarlık (teklif/karşı teklif) rezervasyonu: transaction ile temizle ki aynı anda
+    // çalışan birden fazla tetikleyici (cron + kullanıcı isteği) yalnızca BİR kez bildirim göndersin.
+    const info = await db.runTransaction(async (tx) => {
+      const snap = await tx.get(domainRef);
+      if (!snap.exists) return null;
+      const d = snap.data();
+      if (d.sold === true || d.auctionWinPending === true) return null;
+      if (!d.reservedFor || !d.reservedUntil || d.reservedUntil > Date.now()) return null;
+      const revertPrice = typeof d.preNegotiationPrice === 'number' ? d.preNegotiationPrice : null;
+      const update = { reservedFor: FieldValue.delete(), reservedUntil: FieldValue.delete(), preNegotiationPrice: FieldValue.delete(), reservationWarnedFor: FieldValue.delete() };
+      if (revertPrice !== null) update.price = revertPrice;
+      tx.set(domainRef, update, { merge: true });
+      return { buyer: d.reservedFor, agreedPrice: d.price, revertPrice, seller: d.sellerUsername || null };
+    });
+    if (!info) return null;
+    console.log(`[Rezervasyon süresi doldu] ${domainName} eski fiyata döndürüldü: ${info.revertPrice}`);
+    await closeUnpaidAcceptedOffers(db, domainName, info);
+    return info.revertPrice;
   } catch (e) {
     console.error(`revertExpiredReservation hatası (${domainName}):`, e);
     return null;
+  }
+}
+
+// Alıcı, kabul edilen teklifin öncelik süresi içinde satın almadıysa: teklif kaydı
+// "accepted" olarak SONSUZA KADAR beklemesin — durumu 'unpaid' (Satın Alınmadı) yapılır,
+// satıcının "Gelen Teklifler" listesinden düşer ve her iki tarafa bildirim gider.
+async function closeUnpaidAcceptedOffers(db, domainName, info) {
+  try {
+    const snap = await db.collection('offers').where('domainName', '==', domainName).get();
+    const stale = snap.docs.filter(d => { const x = d.data(); return x.status === 'accepted' && x.buyerUsername === info.buyer; });
+    if (!stale.length) return;
+    const batch = db.batch();
+    stale.forEach(d => batch.set(d.ref, { status: 'unpaid', unpaidAt: Date.now() }, { merge: true }));
+    await batch.commit();
+    const priceTxt = info.agreedPrice != null ? `${info.agreedPrice} Pi` : 'anlaşılan';
+    const backTxt = info.revertPrice != null ? ` İlan ${info.revertPrice} Pi fiyatıyla yeniden satışa açıldı.` : ' İlan yeniden satışa açıldı.';
+    await sendNotification(info.buyer, {
+      type: 'offer_unpaid_expired', role: 'buyer',
+      title: '⌛ Teklif Süreniz Doldu',
+      body: `"${domainName}" için kabul edilen ${priceTxt} teklifinizi süre içinde satın almadınız. Rezervasyon sona erdi, fiyat eski haline döndü ve teklif kapatıldı. Dilerseniz yeni bir teklif verebilirsiniz.`,
+      domainName
+    });
+    if (info.seller) {
+      await sendNotification(info.seller, {
+        type: 'offer_unpaid_expired_seller', role: 'seller',
+        title: '⌛ Alıcı Satın Almadı',
+        body: `@${info.buyer}, "${domainName}" için kabul ettiğiniz ${priceTxt} teklifi süre içinde satın almadı. Teklif kapatıldı.${backTxt}`,
+        domainName
+      });
+    }
+  } catch (e) {
+    console.error(`closeUnpaidAcceptedOffers hatası (${domainName}):`, e);
+  }
+}
+
+// Arka plan temizliği (cron + bildirim polling'i): sadece bir domaine bakılınca değil,
+// kimse bakmasa da süresi dolan pazarlık rezervasyonlarını kapatır, süresi bitmek üzere
+// olan alıcıya (bir kez) hatırlatma gönderir. Ayrıca eski sürümden kalma, domaini artık
+// rezerve OLMAYAN "accepted" teklifleri (saatte bir) temizler.
+const OFFER_RESERVATION_WARN_MS = 5 * 60 * 1000;
+let _lastLegacyOfferSweepAt = 0;
+async function sweepOfferReservations(db) {
+  try {
+    const now = Date.now();
+    const snap = await db.collection('domains').where('reservedUntil', '<=', now + OFFER_RESERVATION_WARN_MS).get();
+    for (const doc of snap.docs) {
+      const d = doc.data();
+      if (d.sold === true || !d.reservedFor || !d.reservedUntil) continue;
+      if (d.auctionWinPending === true) continue; // açık artırma kazananı ayrı akışta yönetiliyor
+      if (d.reservedUntil <= now) { await revertExpiredReservation(db, doc.id); continue; }
+      if (d.reservationWarnedFor === d.reservedUntil) continue;
+      await doc.ref.set({ reservationWarnedFor: d.reservedUntil }, { merge: true });
+      const minLeft = Math.max(1, Math.round((d.reservedUntil - now) / 60000));
+      await sendNotification(d.reservedFor, {
+        type: 'offer_reservation_reminder', role: 'buyer',
+        title: '⏳ Satın Alma Süreniz Bitiyor',
+        body: `"${doc.id}" için kabul edilen ${d.price} Pi fiyatı yaklaşık ${minLeft} dakika sonra geçerliliğini yitirecek. Satın almazsanız rezervasyon sona erer ve teklif kapatılır.`,
+        domainName: doc.id
+      });
+    }
+  } catch (e) {
+    console.error('sweepOfferReservations hatası:', e);
+  }
+  // Eski sürümden kalan takılı "accepted" teklifler (saatte bir, en fazla 500 kayıt).
+  if (Date.now() - _lastLegacyOfferSweepAt < 60 * 60 * 1000) return;
+  _lastLegacyOfferSweepAt = Date.now();
+  try {
+    const now = Date.now();
+    const snap = await db.collection('offers').where('status', '==', 'accepted').limit(500).get();
+    const domainCache = new Map();
+    for (const doc of snap.docs) {
+      const o = doc.data();
+      if (!o.domainName || (o.respondedAt || 0) > now - OFFER_RESERVATION_MS - 60000) continue; // henüz süresi dolmuş olamaz
+      if (!domainCache.has(o.domainName)) {
+        const ds = await db.collection('domains').doc(o.domainName).get();
+        domainCache.set(o.domainName, ds.exists ? ds.data() : null);
+      }
+      const d = domainCache.get(o.domainName);
+      if (d && d.sold === true) continue; // satış gerçekleşmiş (ya da başkasına satılmış): geçmiş kaydı olarak kalsın
+      const reservedForThis = d && d.reservedFor === o.buyerUsername && d.reservedUntil && d.reservedUntil > now;
+      if (reservedForThis) continue; // hâlâ geçerli rezervasyon
+      await doc.ref.set({ status: 'unpaid', unpaidAt: now }, { merge: true });
+      await sendNotification(o.buyerUsername, {
+        type: 'offer_unpaid_expired', role: 'buyer',
+        title: '⌛ Teklif Süreniz Doldu',
+        body: `"${o.domainName}" için kabul edilen teklifiniz süre içinde satın alınmadığı için kapatıldı. Dilerseniz yeni bir teklif verebilirsiniz.`,
+        domainName: o.domainName
+      });
+    }
+  } catch (e) {
+    console.error('legacy offer sweep hatası:', e);
   }
 }
 
@@ -1217,6 +1321,7 @@ const NOTIF_CATEGORY_MAP = {
     'refund_needs_login', 'purchase_reversed', 'referral_bonus', 'new_sell_request',
     'sell_request_approved', 'sell_request_rejected'],
   offers: ['offer_received', 'offer_accepted', 'offer_rejected', 'offer_countered',
+    'offer_unpaid_expired', 'offer_unpaid_expired_seller', 'offer_reservation_reminder',
     'counter_offer_accepted', 'counter_offer_rejected',
     'auction_outbid', 'auction_won', 'auction_won_seller', 'auction_cancelled',
     'auction_ending_soon', 'auction_ending_soon_seller',
