@@ -4317,7 +4317,7 @@ const i18n = {
     myAuctionWon:"✅ Kazandınız",myAuctionLost:"❌ Kaybettiniz",myAuctionCancelled:"🚫 İptal Edildi",
     withdrawOfferBtn:"Geri Çek",acceptOfferBtn:"Kabul Et",rejectOfferBtn:"Reddet",
     offerStatusPending:"Bekliyor",offerStatusAccepted:"Kabul Edildi",offerStatusRejected:"Reddedildi",
-    offerStatusWithdrawn:"Geri Çekildi",offerStatusExpired:"Geçersiz Oldu",offerStatusCountered:"Karşı Teklif Verildi",
+    offerStatusWithdrawn:"Geri Çekildi",offerStatusExpired:"Geçersiz Oldu",offerStatusUnpaid:"Satın Alınmadı",offerStatusCountered:"Karşı Teklif Verildi",
     counterOfferBtn:"Karşı Teklif",counterOfferPricePrompt:"Karşı teklif tutarını Pi olarak girin:",
     counterOfferMessagePrompt:"İsteğe bağlı bir not ekleyin (boş bırakabilirsiniz):",
     counterOfferSentSuccess:"Karşı teklifiniz gönderildi.",counterOfferReceivedLabel:"Karşı Teklif",
@@ -5298,7 +5298,7 @@ const i18n = {
     myAuctionWon:"✅ You Won",myAuctionLost:"❌ You Lost",myAuctionCancelled:"🚫 Cancelled",
     withdrawOfferBtn:"Withdraw",acceptOfferBtn:"Accept",rejectOfferBtn:"Reject",
     offerStatusPending:"Pending",offerStatusAccepted:"Accepted",offerStatusRejected:"Rejected",
-    offerStatusWithdrawn:"Withdrawn",offerStatusExpired:"Expired",offerStatusCountered:"Counter-Offered",
+    offerStatusWithdrawn:"Withdrawn",offerStatusExpired:"Expired",offerStatusUnpaid:"Not Purchased",offerStatusCountered:"Counter-Offered",
     counterOfferBtn:"Counter-Offer",counterOfferPricePrompt:"Enter your counter-offer amount in Pi:",
     counterOfferMessagePrompt:"Add an optional note (you can leave this blank):",
     counterOfferSentSuccess:"Your counter-offer has been sent.",counterOfferReceivedLabel:"Counter-Offer",
@@ -6876,9 +6876,9 @@ function renderNotifBadgeAndList(){
     // YENİ: 'rating_reminder' (satış sonrası değerlendirme hatırlatıcısı)
     // de artık ilgili sekme rozetine dahil — alıcı için Alımlarım,
     // satıcı için Gelirim sekmesinde küçük bir rozet olarak görünür.
-    const relevantTypes=['transfer_confirmation_reminder','dispute_response','offer_accepted','offer_rejected','offer_countered','rating_reminder'];
+    const relevantTypes=['transfer_confirmation_reminder','dispute_response','offer_accepted','offer_rejected','offer_countered','rating_reminder','offer_unpaid_expired','offer_reservation_reminder'];
     const relevantTypesSeller=['transfer_confirmation_reminder','dispute_response','rating_reminder'];
-    const listingsRelevantTypes=['offer_received','counter_offer_accepted','counter_offer_rejected'];
+    const listingsRelevantTypes=['offer_received','counter_offer_accepted','counter_offer_rejected','offer_unpaid_expired_seller'];
     const unreadBuyer=cachedNotifications.filter(n=>!n.read&&relevantTypes.includes(n.type)&&n.role==='buyer').length;
     const unreadSeller=cachedNotifications.filter(n=>!n.read&&relevantTypesSeller.includes(n.type)&&n.role==='seller').length;
     const unreadListings=cachedNotifications.filter(n=>!n.read&&listingsRelevantTypes.includes(n.type)&&n.role==='seller').length;
@@ -6895,8 +6895,8 @@ function renderNotifBadgeAndList(){
     // gösterilir. Panel gerçekten AÇILINCA kaybolur (bkz. toggleMyOffersList /
     // toggleReceivedOffersList). Böylece kullanıcı Alımlarım'ı/İlanlarım'ı
     // açtığında hangi alt bölüme yeni veri geldiği net görülür.
-    const myOffersTypes=['offer_accepted','offer_rejected','offer_countered'];
-    const receivedOffersTypes=['offer_received','counter_offer_accepted','counter_offer_rejected'];
+    const myOffersTypes=['offer_accepted','offer_rejected','offer_countered','offer_unpaid_expired','offer_reservation_reminder'];
+    const receivedOffersTypes=['offer_received','counter_offer_accepted','counter_offer_rejected','offer_unpaid_expired_seller'];
     const myAuctionsTypes=['auction_outbid','auction_won','auction_win_reminder','auction_win_expired','auction_reserve_not_met','auction_fav_started','auction_fav_ending'];
     const unreadMyOffers=cachedNotifications.filter(n=>!n.read&&myOffersTypes.includes(n.type)&&n.role==='buyer').length;
     const unreadReceivedOffers=cachedNotifications.filter(n=>!n.read&&receivedOffersTypes.includes(n.type)&&n.role==='seller').length;
@@ -8978,7 +8978,7 @@ window.loadAdminOffersTable=async function(){
         const offers=result.offers||[];
         if(!offers.length){ wrap.innerHTML=`${emptyState('💬',t('noOffersYet'))}`; return; }
         const statusColor={pending:'#fbbf24',countered:'#818cf8',accepted:'#34d399',rejected:'#f87171',withdrawn:'#94a3b8',expired:'#94a3b8'};
-        const statusLabel={pending:t('offerStatusPending'),countered:t('offerStatusCountered'),accepted:t('offerStatusAccepted'),rejected:t('offerStatusRejected'),withdrawn:t('offerStatusWithdrawn'),expired:t('offerStatusExpired')};
+        const statusLabel={pending:t('offerStatusPending'),countered:t('offerStatusCountered'),accepted:t('offerStatusAccepted'),rejected:t('offerStatusRejected'),withdrawn:t('offerStatusWithdrawn'),expired:t('offerStatusExpired'),unpaid:t('offerStatusUnpaid')};
         const statusIcon={pending:'⏳',countered:'🔄',accepted:'✅',rejected:'❌',withdrawn:'↩️',expired:'⌛'};
         const locale=currentLang==='en'?'en-GB':'tr-TR';
         const fmtDate=(ts)=>ts?new Date(ts).toLocaleDateString(locale,{day:'2-digit',month:'2-digit',year:'2-digit',hour:'2-digit',minute:'2-digit'}):'—';
@@ -9216,7 +9216,7 @@ window.toggleMyOffersList=function(){
     myOffersExpanded=!myOffersExpanded;
     if(myOffersExpanded){
         _myOffersOpenedAt=now;
-        markRoleNotificationsRead('buyer',['offer_accepted','offer_rejected','offer_countered']);
+        markRoleNotificationsRead('buyer',['offer_accepted','offer_rejected','offer_countered','offer_unpaid_expired','offer_reservation_reminder']);
     }
     window.loadMyOffers();
 };
@@ -9372,7 +9372,7 @@ window.myOffersByDomain=window.myOffersByDomain||{};
 let _offersCacheInFlight=false;
 function getMyOfferFor(domainName){ return (window.myOffersByDomain||{})[domainName]||null; }
 function offerStatusMeta(status){
-    const m={pending:{label:t('offerStatusPending'),color:'#fbbf24'},accepted:{label:t('offerStatusAccepted'),color:'#34d399'},rejected:{label:t('offerStatusRejected'),color:'#f87171'},countered:{label:t('offerStatusCountered'),color:'#818cf8'}};
+    const m={pending:{label:t('offerStatusPending'),color:'#fbbf24'},accepted:{label:t('offerStatusAccepted'),color:'#34d399'},rejected:{label:t('offerStatusRejected'),color:'#f87171'},countered:{label:t('offerStatusCountered'),color:'#818cf8'},unpaid:{label:t('offerStatusUnpaid'),color:'#fb923c'},expired:{label:t('offerStatusExpired'),color:'#94a3b8'},withdrawn:{label:t('offerStatusWithdrawn'),color:'#94a3b8'}};
     return m[status]||m.pending;
 }
 function offerSignature(map){
@@ -9508,7 +9508,7 @@ function renderMyOffersBox(forceRender){
     if(!box) return;
     if(!forceRender && (!myOffersExpanded || box.style.display==='none')) return;
     if(!lastMyOffersData.length){ box.innerHTML=`${emptyState('💬',t('noOffersYet'))}`; return; }
-    const statusMap={pending:{label:t('offerStatusPending'),color:'#fbbf24'},accepted:{label:t('offerStatusAccepted'),color:'#34d399'},rejected:{label:t('offerStatusRejected'),color:'#f87171'},withdrawn:{label:t('offerStatusWithdrawn'),color:'#94a3b8'},expired:{label:t('offerStatusExpired'),color:'#94a3b8'},countered:{label:t('offerStatusCountered'),color:'#818cf8'}};
+    const statusMap={pending:{label:t('offerStatusPending'),color:'#fbbf24'},accepted:{label:t('offerStatusAccepted'),color:'#34d399'},rejected:{label:t('offerStatusRejected'),color:'#f87171'},withdrawn:{label:t('offerStatusWithdrawn'),color:'#94a3b8'},expired:{label:t('offerStatusExpired'),color:'#94a3b8'},unpaid:{label:t('offerStatusUnpaid'),color:'#fb923c'},countered:{label:t('offerStatusCountered'),color:'#818cf8'}};
     // FIX (KÖK NEDEN — GERÇEK HATA BURADAYDI): Aşağıdaki .map() içindeki
     // her teklif kendi try/catch'iyle render ediliyor, hata olursa o kayıt
     // için '' (boş string) döndürüyordu. Tek teklifiniz olduğu için, O
@@ -9565,7 +9565,7 @@ window.toggleReceivedOffersList=function(){
     receivedOffersExpanded=!receivedOffersExpanded;
     if(receivedOffersExpanded){
         _receivedOffersOpenedAt=now;
-        markRoleNotificationsRead('seller',['offer_received','counter_offer_accepted','counter_offer_rejected']);
+        markRoleNotificationsRead('seller',['offer_received','counter_offer_accepted','counter_offer_rejected','offer_unpaid_expired_seller']);
     }
     window.loadReceivedOffers();
 };
