@@ -27,7 +27,15 @@
         #connect-overlay .co-orb::before{border-top-color:#818cf8;border-right-color:rgba(129,140,248,0.35);animation:bs-spin 1s linear infinite;}
         #connect-overlay .co-orb::after{inset:10px;border-bottom-color:#34d399;border-left-color:rgba(52,211,153,0.35);animation:bs-spin 1.4s linear infinite reverse;}
         #connect-overlay .co-title{color:#e0e7ff;font-weight:900;font-size:1.15em;}
-        #connect-overlay .co-sub{color:#94a3b8;font-size:.75em;font-weight:600;line-height:1.5;max-width:300px;}
+        #connect-overlay .co-sub{color:#94a3b8;font-size:.75em;font-weight:600;line-height:1.5;max-width:300px;min-height:2.4em;}
+        #connect-overlay .co-steps{list-style:none;margin:6px 0 0;padding:0;width:100%;max-width:290px;display:flex;flex-direction:column;gap:11px;text-align:left;}
+        #connect-overlay .co-step{display:flex;align-items:center;gap:11px;font-size:.88em;font-weight:700;color:#475569;transition:color .3s ease,opacity .3s ease;}
+        #connect-overlay .co-ico{position:relative;flex:0 0 22px;width:22px;height:22px;border-radius:50%;border:2px solid #334155;box-sizing:border-box;display:flex;align-items:center;justify-content:center;font-size:.72em;font-weight:900;color:#052e21;transition:all .3s ease;}
+        #connect-overlay .co-step.co-done{color:#6ee7b7;}
+        #connect-overlay .co-step.co-done .co-ico{background:#10b981;border-color:#10b981;}
+        #connect-overlay .co-step.co-done .co-ico::before{content:'✓';}
+        #connect-overlay .co-step.co-active{color:#f1f5f9;}
+        #connect-overlay .co-step.co-active .co-ico{border-color:rgba(129,140,248,0.3);border-top-color:#818cf8;animation:bs-spin .9s linear infinite;}
     </style>
     <noscript><style>html.app-booting body>*:not(#boot-splash){visibility:visible !important;}#boot-splash{display:none !important;}</style></noscript>
     <script>
@@ -12745,25 +12753,75 @@ async function handleIncompletePayment(payment){
 // parça parça değil TEK SEFERDE görünür. Hata/iptal durumunda hemen kapanır; 30 sn'lik
 // güvenlik zamanlayıcısı sayesinde ekran asla takılı kalmaz.
 let _connectOverlayTimer=null;
+// Her adım ekranda EN AZ bu kadar kalır: gerçek yükleme çok hızlı bitse bile kullanıcı adımı
+// okuyabilsin. Gerçek işler arka planda aralıksız sürer; ekran sadece okunabilir hızda ilerler.
+const CONNECT_STEP_MIN_MS=1000;
+let _coTarget=0,_coShown=0,_coSince=0,_coRunner=null,_coSession=0,_coAllDone=false;
+const coSleep=(ms)=>new Promise(r=>setTimeout(r,ms));
+function coSteps(){
+    return [
+        {label:AWL('Pi hesabı doğrulanıyor','Verifying your Pi account'),done:AWL('Pi hesabı doğrulandı','Pi account verified'),detail:AWL('Pi izin penceresi açılırsa onaylayın.','Approve the Pi permission window if it appears.')},
+        {label:AWL('Hesap bilgileri yükleniyor','Loading account details'),done:AWL('Hesap bilgileri yüklendi','Account details loaded'),detail:AWL('@'+(currentUser||'')+' hesabı doğrulandı. Profil ve bildirimler getiriliyor.','@'+(currentUser||'')+' verified. Fetching profile and notifications.')},
+        {label:AWL('Domain listesi hazırlanıyor','Preparing the domain list'),done:AWL('Domain listesi hazır','Domain list ready'),detail:AWL('Alan adları, fiyatlar ve açık artırmalar alınıyor.','Fetching domains, prices and auctions.')},
+        {label:AWL('Uygulama açılıyor','Opening the app'),done:AWL('Uygulama hazır','App ready'),detail:AWL('Her şey hazır, ekran açılıyor.','All set — opening the screen.')}
+    ];
+}
+function renderCoSteps(){
+    const ul=document.getElementById('co-steps'); if(!ul) return;
+    const steps=coSteps();
+    ul.innerHTML=steps.map((st,i)=>{
+        const cls=_coAllDone||i<_coShown?'co-done':(i===_coShown?'co-active':'');
+        return `<li class="co-step ${cls}"><span class="co-ico"></span><span>${cls==='co-done'?st.done:st.label}</span></li>`;
+    }).join('');
+    const sub=document.getElementById('co-sub');
+    if(sub) sub.textContent=_coAllDone?AWL('Hazır!','Ready!'):steps[Math.min(_coShown,steps.length-1)].detail;
+}
+// Gerçek ilerleme "hedef adım"ı ileri iter; ekran adımları minimum okuma süresiyle tek tek gösterir.
+function coTarget(n){ if(n>_coTarget) _coTarget=n; coRun(); }
+function coRun(){
+    if(_coRunner) return;
+    const session=_coSession;
+    _coRunner=(async()=>{
+        while(session===_coSession && _coShown<_coTarget){
+            const wait=Math.max(0,_coSince+CONNECT_STEP_MIN_MS-Date.now());
+            if(wait) await coSleep(wait);
+            if(session!==_coSession) break;
+            _coShown++; _coSince=Date.now(); renderCoSteps();
+        }
+        if(session===_coSession) _coRunner=null;
+    })();
+}
+// Tüm adımlar gösterilip son adım da okunabildikten sonra tüm adımları ✓ yapıp ekranı kapatır.
+async function coFinish(){
+    const session=_coSession;
+    coTarget(coSteps().length-1);
+    while(_coRunner && session===_coSession) await coSleep(60);
+    if(session!==_coSession) return;
+    const wait=Math.max(0,_coSince+CONNECT_STEP_MIN_MS-Date.now());
+    if(wait) await coSleep(wait);
+    if(session!==_coSession) return;
+    _coAllDone=true; renderCoSteps();
+    await coSleep(550);
+    if(session===_coSession) hideConnectOverlay();
+}
 function showConnectOverlay(){
+    _coSession++; _coTarget=0; _coShown=0; _coSince=Date.now(); _coRunner=null; _coAllDone=false;
     let el=document.getElementById('connect-overlay');
     if(!el){
         el=document.createElement('div'); el.id='connect-overlay'; el.setAttribute('role','status'); el.setAttribute('aria-live','polite');
-        el.innerHTML='<div class="co-orb"></div><div class="co-title" id="co-title"></div><div class="co-sub" id="co-sub"></div>';
+        el.innerHTML='<div class="co-orb"></div><div class="co-title" id="co-title"></div><ul class="co-steps" id="co-steps"></ul><div class="co-sub" id="co-sub"></div>';
         document.body.appendChild(el);
     }
-    setConnectOverlayText(AWL('Bağlanılıyor…','Connecting…'),AWL('Pi hesabınızla güvenli bağlantı kuruluyor.','Securely connecting with your Pi account.'));
+    document.getElementById('co-title').textContent=AWL('Bağlanılıyor…','Connecting…');
+    renderCoSteps();
     el.style.display='flex';
     void el.offsetWidth; el.classList.add('co-show');
     if(_connectOverlayTimer) clearTimeout(_connectOverlayTimer);
-    _connectOverlayTimer=setTimeout(hideConnectOverlay,30000);
-}
-function setConnectOverlayText(title,sub){
-    const a=document.getElementById('co-title'), b=document.getElementById('co-sub');
-    if(a) a.textContent=title; if(b) b.textContent=sub||'';
+    _connectOverlayTimer=setTimeout(hideConnectOverlay,40000);
 }
 function hideConnectOverlay(){
     if(_connectOverlayTimer){ clearTimeout(_connectOverlayTimer); _connectOverlayTimer=null; }
+    _coSession++; // bekleyen adım zamanlayıcılarını iptal et
     const el=document.getElementById('connect-overlay'); if(!el) return;
     el.classList.remove('co-show');
     setTimeout(()=>{ const e2=document.getElementById('connect-overlay'); if(e2 && !e2.classList.contains('co-show')) e2.style.display='none'; },300);
@@ -12830,7 +12888,7 @@ async function performPiConnect() {
             currentUser = auth.user.username;
             piAccessToken = auth.accessToken;
             isAuth = true;
-            setConnectOverlayText(AWL('Hoş geldiniz, @'+currentUser,'Welcome, @'+currentUser),AWL('Hesabınız ve domain listesi yükleniyor…','Loading your account and domain list…'));
+            coTarget(1); // 1. adım tamam → "Hesap bilgileri yükleniyor" (hoş geldin mesajı yalnızca açılış selamlamasında gösterilir)
             if (typeof updateMaintenanceOverlay === 'function') updateMaintenanceOverlay();
 
             // Escrow/A2U ödemeleri için satıcının Pi hesap UID'sini (kullanıcının
@@ -12934,9 +12992,12 @@ async function performPiConnect() {
             // yerine DOĞRUDAN render() çağrılıyor — 50ms'lik gecikme,
             // yukarıda açıklanan görsel "flaş" bug'ının ana sebebiydi.
             // Liste verisi (ilk Firestore anlık görüntüsü) gelmeden ekranı açma — en fazla 8 sn bekle.
-            setConnectOverlayText(AWL('Uygulama açılıyor…','Opening the app…'),'');
+            coTarget(2); // "Domain listesi hazırlanıyor"
             await waitForDomainsReady(8000);
+            coTarget(3); // "Uygulama açılıyor"
             if (typeof render === 'function') render(); else debouncedRender();
+            // Tüm adımlar okunabilir sürede gösterilip ✓ olunca bağlanıyor ekranı kapanır.
+            await coFinish();
 
             requestAnimationFrame(() => {
                 requestAnimationFrame(() => {
@@ -13014,7 +13075,7 @@ async function performPiConnect() {
                     userPanel.style.transition = 'opacity 0.4s ease, transform 0.4s ease';
 
                     setTimeout(() => {
-                        hideConnectOverlay(); // her şey hazır: bağlanıyor ekranı kapanır, uygulama tek seferde görünür
+                        hideConnectOverlay(); // (zaten kapalı; güvenlik için)
                         userPanel.style.opacity = '1';
                         userPanel.style.transform = 'translateY(0)';
                         // YENİ: Kişisel karşılama paneli (daktilo efekti) — oturum
