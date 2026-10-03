@@ -181,7 +181,6 @@ const AUCTION_LEFTOVER_CLEAR_FIELDS = () => ({
   auctionHasReserve: FieldValue.delete(),
   auctionReserveMet: FieldValue.delete(),
   auctionBuyNowPrice: FieldValue.delete(),
-  auctionStartedAt: FieldValue.delete(),
   auctionEndingWarnedFor: FieldValue.delete(),
   auctionClosedAt: Date.now()
 });
@@ -522,8 +521,11 @@ let _lastHistoryCleanupAt = 0;
 // force=true (yalnızca yönetici butonu): saklama sürelerine BAKMADAN tüm kapanmış kayıtları siler.
 // Her iki modda da silinmeyenler: bekleyen/karşı teklifli/kabul edilmiş teklifler, aktif ya da
 // kazananı ödeme bekleyen açık artırmalar, satış kayıtları, ceza sayacı ve teklif yasağı.
-async function cleanupClosedHistory(db, { rounds = 1, force = false } = {}) {
-  const counts = { unpaidOffers: 0, expiredOffers: 0, rejectedOffers: 0, withdrawnOffers: 0, auctionBids: 0, auctionEvents: 0, auctionDefaults: 0 };
+// scope: 'all' (varsayılan) | 'offers' (yalnızca teklif kayıtları) | 'auctions' (yalnızca açık artırma kayıtları)
+async function cleanupClosedHistory(db, { rounds = 1, force = false, scope = 'all' } = {}) {
+  const doOffers = scope === 'all' || scope === 'offers';
+  const doAuctions = scope === 'all' || scope === 'auctions';
+  const counts = { unpaidOffers: 0, expiredOffers: 0, rejectedOffers: 0, withdrawnOffers: 0, auctionBids: 0, auctionEvents: 0, auctionDefaults: 0, auctionRecords: 0 };
   const delDocs = async (docs) => {
     for (let i = 0; i < docs.length; i += 400) {
       const b = db.batch();
@@ -540,7 +542,7 @@ async function cleanupClosedHistory(db, { rounds = 1, force = false } = {}) {
   for (let r = 0; r < rounds; r++) {
     const now = Date.now();
     let didAny = 0;
-    for (const [status, key, retention] of OFFER_RULES) {
+    if (doOffers) for (const [status, key, retention] of OFFER_RULES) {
       try {
         const snap = await db.collection('offers').where('status', '==', status).limit(500).get();
         const del = snap.docs.filter(d => {
@@ -551,7 +553,7 @@ async function cleanupClosedHistory(db, { rounds = 1, force = false } = {}) {
         await delDocs(del); counts[key] += del.length; didAny += del.length;
       } catch (e) { console.error(`cleanup ${status} offers hatası:`, e); }
     }
-    try {
+    if (doAuctions) try {
       const cutoff = force ? now + 1 : now - AUCTION_BIDS_RETENTION_MS;
       const old = await db.collection('auction_bids').where('at', '<', cutoff).limit(500).get();
       const cache = new Map();
@@ -565,14 +567,30 @@ async function cleanupClosedHistory(db, { rounds = 1, force = false } = {}) {
       }
       await delDocs(del); counts.auctionBids += del.length; didAny += del.length;
     } catch (e) { console.error('cleanup auction_bids hatası:', e); }
-    try {
+    if (doAuctions) try {
       const ev = await db.collection('auction_events').where('at', '<', force ? now + 1 : now - AUCTION_EVENTS_RETENTION_MS).limit(500).get();
       await delDocs(ev.docs); counts.auctionEvents += ev.docs.length; didAny += ev.docs.length;
     } catch (e) { console.error('cleanup auction_events hatası:', e); }
-    try {
+    if (doAuctions) try {
       const df = await db.collection('auction_defaults').where('at', '<', force ? now + 1 : now - AUCTION_DEFAULTS_RETENTION_MS).limit(500).get();
       await delDocs(df.docs); counts.auctionDefaults += df.docs.length; didAny += df.docs.length;
     } catch (e) { console.error('cleanup auction_defaults hatası:', e); }
+    // Satışsız kapanmış açık artırmanın domain üzerindeki izi (yönetici "Açık Artırma Takip" kaydı):
+    // süre dolunca ya da zorla silmede kaldırılır. Aktif / ödeme bekleyen açık artırmalara dokunulmaz.
+    if (doAuctions) try {
+      const ds = await db.collection('domains').where('auctionClosedAt', '>', 0).limit(500).get();
+      const clr = ds.docs.filter(d => {
+        const x = d.data();
+        if (x.auctionActive === true || x.auctionWinPending === true) return false;
+        return force || (x.auctionClosedAt || 0) < now - AUCTION_BIDS_RETENTION_MS;
+      });
+      for (let i = 0; i < clr.length; i += 400) {
+        const b = db.batch();
+        clr.slice(i, i + 400).forEach(d => b.set(d.ref, { auctionStartedAt: FieldValue.delete(), auctionClosedAt: FieldValue.delete() }, { merge: true }));
+        await b.commit();
+      }
+      counts.auctionRecords += clr.length; didAny += clr.length;
+    } catch (e) { console.error('cleanup domain auction records hatası:', e); }
     if (didAny === 0) break;
   }
   if (Object.values(counts).some(v => v > 0)) console.log(`[Geçmiş temizliği${force ? ' — ZORLA' : ''}]`, JSON.stringify(counts));
@@ -2773,9 +2791,10 @@ async function handlerImpl(req, res) {
     try {
       const db = getDb();
       const force = req.body.force === true;
-      const counts = await cleanupClosedHistory(db, { rounds: force ? 30 : 8, force });
+      const scope = ['offers', 'auctions'].includes(req.body.scope) ? req.body.scope : 'all';
+      const counts = await cleanupClosedHistory(db, { rounds: force ? 30 : 8, force, scope });
       const adminUsername = await getRealUsername(accessToken);
-      await logAdminAction(adminUsername, force ? 'cleanup_closed_data_FORCE' : 'cleanup_closed_auction_data', JSON.stringify(counts));
+      await logAdminAction(adminUsername, force ? 'cleanup_closed_data_FORCE' : 'cleanup_closed_auction_data', `${scope}: ${JSON.stringify(counts)}`);
       return res.status(200).json({ success: true, counts });
     } catch (e) {
       console.error("cleanup_closed_auction_data hatası:", e);
@@ -7001,10 +7020,36 @@ async function handlerImpl(req, res) {
       // için en son 500 kayıt yeterli — daha fazlası pratikte okunamaz zaten.
       const snap = await db.collection('offers').orderBy('createdAt', 'desc').limit(500).get();
       const offers = [];
-      snap.forEach(d => offers.push({ id: d.id, ...d.data() }));
-      return res.status(200).json({ success: true, offers });
+      snap.forEach(d => offers.push({ id: d.id, ...d.data(), purgeAt: offerPurgeAt(d.data()) }));
+      return res.status(200).json({ success: true, offers, retentionDays: RETENTION_DAYS_INFO() });
     } catch (e) {
       console.error("get_all_offers hatası:", e);
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  // Yönetici: TEK bir kapanmış teklif kaydını kalıcı siler (saklama süresine bakmadan).
+  // Yalnızca sonuçlanmış durumlar silinebilir; bekleyen / karşı teklifli / kabul edilmiş
+  // (rezervasyon ya da satış bağlantısı olabilecek) teklifler korunur.
+  if (action === 'admin_delete_offer') {
+    const isAdmin = await verifyAdmin(accessToken, req);
+    if (!isAdmin) return res.status(403).json({ error: "Yetki yok" });
+    const { offerId } = req.body;
+    if (!offerId || typeof offerId !== 'string') return res.status(400).json({ error: "Geçersiz teklif" });
+    try {
+      const db = getDb();
+      const ref = db.collection('offers').doc(offerId);
+      const snap = await ref.get();
+      if (!snap.exists) return res.status(404).json({ error: "Teklif bulunamadı (zaten silinmiş olabilir)" });
+      const o = snap.data();
+      if (!['unpaid', 'expired', 'rejected', 'withdrawn'].includes(o.status))
+        return res.status(400).json({ error: "Yalnızca sonuçlanmış (reddedilen, geri çekilen, geçersiz, satın alınmayan) teklifler silinebilir." });
+      await ref.delete();
+      const adminUsername = await getRealUsername(accessToken);
+      await logAdminAction(adminUsername, 'admin_delete_offer', `${o.domainName} · @${o.buyerUsername} · ${o.status} · ${o.offerPrice} Pi`);
+      return res.status(200).json({ success: true });
+    } catch (e) {
+      console.error("admin_delete_offer hatası:", e);
       return res.status(500).json({ error: e.message });
     }
   }
