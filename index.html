@@ -48,7 +48,7 @@
             var sp=document.getElementById('boot-splash');
             if(sp){ sp.classList.add('boot-hide'); setTimeout(function(){ if(sp.parentNode) sp.parentNode.removeChild(sp); },380); }
         };
-        setTimeout(window.__revealApp,8000);                                   // güvenlik ağı
+        setTimeout(window.__revealApp,9000);                                   // güvenlik ağı (ilk render için 6 sn + marj)
         // Script yüklenemez (çevrimdışı/engelli CDN) ya da çalışırken hata verirse sayfa yine de açılsın.
         // capture=true: <script> yükleme hataları window'a kabarcıklanmadığı için yakalama aşamasında dinlenir.
         window.addEventListener('error',function(e){
@@ -3181,6 +3181,7 @@
                     <span style="font-size:0.62em;color:#64748b;line-height:1.4;flex:1 1 auto;" data-i18n="dateFilterHint"></span>
                     <a href="javascript:void(0)" onclick="document.getElementById('admin-messages-date-filter').value=todayYmd();window.renderAdminConversationsList();" style="flex:0 0 auto;white-space:nowrap;font-size:0.62em;color:#67e8f9;font-weight:800;text-decoration:none;background:rgba(6,182,212,0.12);border:1px solid rgba(6,182,212,0.4);border-radius:20px;padding:4px 10px;" data-i18n="dateFilterTodayBtn"></a>
                 </div>
+                <div id="admin-messages-date-chips"></div>
                 <div id="admin-messages-list">
                     <p style="font-size:0.75em;opacity:0.5;text-align:center;" data-i18n="clickToLoad"></p>
                 </div>
@@ -3216,6 +3217,7 @@
                     <span style="font-size:0.62em;color:#64748b;line-height:1.4;flex:1 1 auto;" data-i18n="dateFilterHint"></span>
                     <a href="javascript:void(0)" onclick="document.getElementById('admin-deleted-messages-date-filter').value=todayYmd();window.renderDeletedConversationsList();" style="flex:0 0 auto;white-space:nowrap;font-size:0.62em;color:#fca5a5;font-weight:800;text-decoration:none;background:rgba(239,68,68,0.12);border:1px solid rgba(239,68,68,0.4);border-radius:20px;padding:4px 10px;" data-i18n="dateFilterTodayBtn"></a>
                 </div>
+                <div id="admin-deleted-messages-date-chips"></div>
                 <div id="admin-deleted-messages-list">
                     <p style="font-size:0.75em;opacity:0.5;text-align:center;" data-i18n="clickToLoad"></p>
                 </div>
@@ -11624,6 +11626,7 @@ function render(){
         }
     }
     firstRenderDone=true;
+    window.__firstRenderDone=true; // açılış kapısı: "Pi ile Bağlan" barı dahil ilk çizim hazır
     const list=document.getElementById("domain-list");
     const lock=document.getElementById("premium-lock");
     if(!list) return;
@@ -13587,20 +13590,30 @@ function debouncedRender(){clearTimeout(renderTimeout);renderTimeout=setTimeout(
 // durumuyla (aşağıdaki "domain-list-loading" göstergesi).
 domains.forEach(d=>{if(!domainData[d.name]) domainData[d.name]={sold:false,price:d.price};});
 applyTranslations();
-// İLK EKRAN HAZIR: metinler çevrildi → yerleşim ölçülüp sıkıştırma seviyesi belirlendi →
-// font hazır olunca TÜM ekran tek karede açılır (açılış kapısı bkz. <head>).
+// İLK EKRAN HAZIR: metinler çevrildi → İLK render() çalıştı ("Pi ile Bağlan" barı gösterildi) →
+// yerleşim ölçülüp sıkıştırma seviyesi belirlendi → font hazır → TÜM ekran tek karede açılır.
+// KÖK NEDEN (arada bir "Pi ile Bağlan" sonradan geliyordu): ilk render() Firestore'un ilk
+// domain verisi gelene kadar ERTELENİYOR (bkz. yukarıdaki not), bar da render() içinde
+// görünür yapılıyor. Önceki kapı yalnızca metin+font hazırlığını bekleyip bu ilk render'ı
+// beklemediği için, Firestore yavaş geldiğinde ekran bar OLMADAN açılıyor, bar sonradan beliriyordu.
+// Güvenlik ağı: ilk render en geç 6 sn içinde gelmezse (çok yavaş ağ) ekran yine de açılır.
 (function(){
     const reveal=()=>{ if(window.__revealApp) window.__revealApp(); };
-    const go=()=>{
+    const settleAndReveal=()=>{
         try{ if(window.fitLoginHero) window.fitLoginHero(); }catch(_){}
         requestAnimationFrame(()=>{
             try{ if(window.fitLoginHero) window.fitLoginHero(); }catch(_){}
-            requestAnimationFrame(reveal);
+            requestAnimationFrame(()=>requestAnimationFrame(reveal));
         });
     };
-    if(document.fonts && document.fonts.ready){
-        Promise.race([document.fonts.ready,new Promise(r=>setTimeout(r,1200))]).then(go,go);
-    } else go();
+    const waitFirstRender=()=>new Promise(res=>{
+        const t0=Date.now();
+        (function chk(){ if(window.__firstRenderDone || Date.now()-t0>6000) return res(); setTimeout(chk,40); })();
+    });
+    const fontsReady=(document.fonts && document.fonts.ready)
+        ? Promise.race([document.fonts.ready,new Promise(r=>setTimeout(r,1200))])
+        : Promise.resolve();
+    Promise.all([fontsReady.catch(()=>{}),waitFirstRender()]).then(settleAndReveal,settleAndReveal);
 })();
 
 // ── GÜVEN / BİLGİLENDİRME EKRANI ──────────────────────────────────────
@@ -14898,6 +14911,70 @@ function ymdLocal(ts){
 }
 function todayYmd(){ return ymdLocal(Date.now()); }
 
+// ── ADMIN MESAJ FİLTRESİ: "Hangi günlerde veri var?" ──────────────────────
+// Tarih filtresi tek tek gün denemeyi gerektiriyordu. Artık, zaten yüklenmiş listeden
+// (yeni istek yok) veri bulunan günler sayılarıyla çip olarak gösteriliyor; dokununca o gün
+// seçilir. Mevcut filtre mantığı (tarih kutusu + arama) aynen çalışmaya devam eder.
+const _dateChipsExpanded={};
+function ymdLabel(ymd,withYear){
+    const [y,m,d]=ymd.split('-');
+    return d+'.'+m+(withYear?'.'+y:'');
+}
+function countByDay(timestamps){
+    const map={};
+    (timestamps||[]).forEach(ts=>{ if(ts){ const k=ymdLocal(ts); map[k]=(map[k]||0)+1; } });
+    return map;
+}
+window.pickDataDate=function(inputId,rerenderFn,ymd){
+    const el=document.getElementById(inputId); if(el) el.value=ymd;
+    if(typeof window[rerenderFn]==='function') window[rerenderFn]();
+};
+window.toggleDateChipsExpand=function(containerId,inputId,rerenderFn){
+    _dateChipsExpanded[containerId]=!_dateChipsExpanded[containerId];
+    if(typeof window[rerenderFn]==='function') window[rerenderFn]();
+};
+// Seçili günde veri yoksa: en yakın veri gününü tek dokunuşla seçtiren satır.
+window.nearestDataDateHtml=function(timestamps,selectedYmd,inputId,rerenderFn,noun){
+    const counts=countByDay(timestamps);
+    const days=Object.keys(counts);
+    if(!days.length) return '';
+    const base=new Date(selectedYmd+'T12:00:00').getTime();
+    days.sort((a,b)=>Math.abs(new Date(a+'T12:00:00')-base)-Math.abs(new Date(b+'T12:00:00')-base));
+    const k=days[0];
+    return `<div style="margin-top:6px;text-align:center;"><button type="button" onclick="window.pickDataDate('${inputId}','${rerenderFn}','${k}')" style="padding:8px 12px;border-radius:9px;border:1.5px solid #22d3ee;background:rgba(34,211,238,0.1);color:#67e8f9;font-weight:800;font-size:0.72em;cursor:pointer;">📅 ${AWL('En yakın veri günü','Nearest day with data')}: ${ymdLabel(k,true)} (${counts[k]} ${noun})</button></div>`;
+};
+window.renderDateChips=function(containerId,timestamps,inputId,rerenderFn,selectedYmd,noun,accent){
+    const box=document.getElementById(containerId); if(!box) return;
+    const counts=countByDay(timestamps);
+    const days=Object.keys(counts).sort().reverse(); // yeniden eskiye
+    const input=document.getElementById(inputId);
+    if(!days.length){
+        if(input){ input.removeAttribute('min'); input.removeAttribute('max'); }
+        box.innerHTML=`<div style="font-size:0.62em;color:#64748b;margin:0 0 8px;">📅 ${AWL('Henüz hiç kayıt yok.','No records yet.')}</div>`;
+        return;
+    }
+    // Tarih seçici artık veri olmayan çok eski/geleceğe ait günlere gitmeye izin vermesin.
+    if(input){ input.min=days[days.length-1]; input.max=todayYmd(); }
+    const thisYear=String(new Date().getFullYear());
+    const expanded=_dateChipsExpanded[containerId]===true;
+    const LIMIT=14;
+    const shown=expanded?days:days.slice(0,LIMIT);
+    const col=accent||'#22d3ee';
+    const chip=(k)=>{
+        const sel=k===selectedYmd;
+        const showYear=k.slice(0,4)!==thisYear;
+        return `<button type="button" onclick="window.pickDataDate('${inputId}','${rerenderFn}','${k}')" title="${ymdLabel(k,true)}" style="flex:0 0 auto;display:inline-flex;align-items:center;gap:5px;padding:6px 9px;border-radius:999px;border:1.5px solid ${sel?col:'#334155'};background:${sel?col+'33':'#0f172a'};color:${sel?'#fff':'#cbd5e1'};font-weight:800;font-size:0.66em;cursor:pointer;white-space:nowrap;">${ymdLabel(k,showYear)}<span style="background:${sel?col:'#334155'};color:${sel?'#04222b':'#e2e8f0'};border-radius:999px;padding:0 6px;font-size:0.92em;">${counts[k]}</span></button>`;
+    };
+    const oldest=days[days.length-1], newest=days[0];
+    const more=days.length>LIMIT;
+    box.innerHTML=`<div style="margin:0 0 9px;">
+        <div style="font-size:0.62em;color:#94a3b8;margin-bottom:5px;line-height:1.4;">📅 <b style="color:#e2e8f0;">${days.length}</b> ${AWL('günde kayıt var','days have records')} · ${AWL('en eski','oldest')}: <b style="color:#e2e8f0;">${ymdLabel(oldest,true)}</b> · ${AWL('en yeni','newest')}: <b style="color:#e2e8f0;">${ymdLabel(newest,true)}</b></div>
+        <div style="display:flex;gap:6px;${expanded?'flex-wrap:wrap;':'overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:4px;'}">${shown.map(chip).join('')}
+            ${more?`<button type="button" onclick="window.toggleDateChipsExpand('${containerId}','${inputId}','${rerenderFn}')" style="flex:0 0 auto;padding:6px 10px;border-radius:999px;border:1.5px dashed #64748b;background:transparent;color:#94a3b8;font-weight:800;font-size:0.66em;cursor:pointer;white-space:nowrap;">${expanded?AWL('Daha az ▴','Less ▴'):AWL('Tümü ('+days.length+') ▾','All ('+days.length+') ▾')}</button>`:''}
+        </div>
+    </div>`;
+};
+
 // ── KULLANICI: Yeni ticket formunu göster ────────────────────────────
 window.showCreateTicketForm = function() {
     document.getElementById('ticket-create-modal').style.display = 'flex';
@@ -15336,6 +15413,7 @@ window.renderAdminConversationsList=function(){
     // dönük bir tarih seçilirse o günün verisi (varsa) gösterilir.
     const dateEl=document.getElementById('admin-messages-date-filter');
     const selectedDate=(dateEl&&dateEl.value)?dateEl.value:todayYmd();
+    window.renderDateChips('admin-messages-date-chips',adminConversations.map(c=>c.lastMessageAt),'admin-messages-date-filter','renderAdminConversationsList',selectedDate,AWL('konuşma','chats'),'#22d3ee');
     let items=adminConversations.filter(c=>c.lastMessageAt&&ymdLocal(c.lastMessageAt)===selectedDate);
     if(q){
         items=items.filter(c=>{
@@ -15345,7 +15423,7 @@ window.renderAdminConversationsList=function(){
         });
     }
     if(!items.length){
-        listEl.innerHTML=emptyState('💬',t('adminNoConversations'));
+        listEl.innerHTML=emptyState('💬',t('adminNoConversations'))+window.nearestDataDateHtml(adminConversations.map(c=>c.lastMessageAt),selectedDate,'admin-messages-date-filter','renderAdminConversationsList',AWL('konuşma','chats'));
         return;
     }
     const locale=currentLang==='en'?'en-GB':'tr-TR';
@@ -15425,6 +15503,7 @@ window.renderDeletedConversationsList=function(){
     // silme olayları (varsa) gösterilir.
     const dateEl=document.getElementById('admin-deleted-messages-date-filter');
     const selectedDate=(dateEl&&dateEl.value)?dateEl.value:todayYmd();
+    window.renderDateChips('admin-deleted-messages-date-chips',deletedConversationsCache.map(it=>it.deletedAt),'admin-deleted-messages-date-filter','renderDeletedConversationsList',selectedDate,AWL('silme','deletions'),'#f87171');
     let items=deletedConversationsCache.filter(it=>it.deletedAt&&ymdLocal(it.deletedAt)===selectedDate);
     if(q){
         items=items.filter(it=>{
@@ -15434,7 +15513,7 @@ window.renderDeletedConversationsList=function(){
         });
     }
     if(!items.length){
-        listEl.innerHTML=emptyState('🗑️',t('deletedMessagesEmpty'));
+        listEl.innerHTML=emptyState('🗑️',t('deletedMessagesEmpty'))+window.nearestDataDateHtml(deletedConversationsCache.map(it=>it.deletedAt),selectedDate,'admin-deleted-messages-date-filter','renderDeletedConversationsList',AWL('silme','deletions'));
         return;
     }
     const locale=currentLang==='en'?'en-GB':'tr-TR';
