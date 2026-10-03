@@ -3,6 +3,52 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <!-- AÇILIŞ KAPISI: Sayfa 1,2 MB olduğu için tarayıcı HTML'i parça parça çiziyordu —
+         önce başlık ve boş "Güvenli Bağlantı" çerçevesi, çeviri metinleri ve "Pi ile Bağlan"
+         paneli ise script çalışınca sonradan doluyordu. Artık bu CSS sayfa içeriğini, ilk
+         ekran HAZIR olana kadar (metinler çevrilip yerleşim ölçülene kadar) gizli tutuyor;
+         yerine yalnızca hafif bir açılış ekranı gösteriliyor. Hazır olunca (window.__revealApp)
+         hepsi TEK SEFERDE açılıyor. Güvenlik ağı: script hata verirse ya da 8 sn geçerse
+         sayfa yine de açılır, kullanıcı hiçbir zaman boş ekranda kalmaz. -->
+    <style id="boot-gate-css">
+        html.app-booting body>*:not(#boot-splash){visibility:hidden !important;}
+        html.app-booting,html.app-booting body{background:#0a0f1e;}
+        #boot-splash{position:fixed;inset:0;z-index:2147483000;background:radial-gradient(ellipse at 50% 35%,#1e1b4b 0%,#0a0f1e 70%);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;transition:opacity .28s ease;font-family:system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;}
+        #boot-splash.boot-hide{opacity:0;pointer-events:none;}
+        #boot-splash .bs-ring{width:46px;height:46px;border-radius:50%;border:3px solid rgba(129,140,248,0.22);border-top-color:#818cf8;animation:bs-spin .9s linear infinite;}
+        @keyframes bs-spin{to{transform:rotate(360deg);}}
+        #boot-splash .bs-title{color:#c7d2fe;font-weight:900;font-size:1.05em;letter-spacing:.4px;}
+        #boot-splash .bs-sub{color:#94a3b8;font-size:.72em;font-weight:600;}
+        /* "Pi ile Bağlan" sonrası: uygulama arka planda yüklenirken tam ekran bağlanıyor ekranı */
+        #connect-overlay{position:fixed;inset:0;z-index:1000000;background:radial-gradient(ellipse at 50% 35%,#1e1b4b 0%,#0a0f1e 72%);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:24px;box-sizing:border-box;text-align:center;opacity:0;transition:opacity .25s ease;}
+        #connect-overlay.co-show{opacity:1;}
+        #connect-overlay .co-orb{position:relative;width:64px;height:64px;}
+        #connect-overlay .co-orb::before,#connect-overlay .co-orb::after{content:'';position:absolute;inset:0;border-radius:50%;border:3px solid transparent;}
+        #connect-overlay .co-orb::before{border-top-color:#818cf8;border-right-color:rgba(129,140,248,0.35);animation:bs-spin 1s linear infinite;}
+        #connect-overlay .co-orb::after{inset:10px;border-bottom-color:#34d399;border-left-color:rgba(52,211,153,0.35);animation:bs-spin 1.4s linear infinite reverse;}
+        #connect-overlay .co-title{color:#e0e7ff;font-weight:900;font-size:1.15em;}
+        #connect-overlay .co-sub{color:#94a3b8;font-size:.75em;font-weight:600;line-height:1.5;max-width:300px;}
+    </style>
+    <noscript><style>html.app-booting body>*:not(#boot-splash){visibility:visible !important;}#boot-splash{display:none !important;}</style></noscript>
+    <script>
+    (function(){
+        var d=document.documentElement; d.classList.add('app-booting');
+        var done=false;
+        window.__revealApp=function(){
+            if(done) return; done=true;
+            d.classList.remove('app-booting');
+            var sp=document.getElementById('boot-splash');
+            if(sp){ sp.classList.add('boot-hide'); setTimeout(function(){ if(sp.parentNode) sp.parentNode.removeChild(sp); },380); }
+        };
+        setTimeout(window.__revealApp,8000);                                   // güvenlik ağı
+        // Script yüklenemez (çevrimdışı/engelli CDN) ya da çalışırken hata verirse sayfa yine de açılsın.
+        // capture=true: <script> yükleme hataları window'a kabarcıklanmadığı için yakalama aşamasında dinlenir.
+        window.addEventListener('error',function(e){
+            var t=e&&e.target;
+            if(!t || t===window || (t.tagName==='SCRIPT')) setTimeout(window.__revealApp,1500);
+        },true);
+    })();
+    </script>
     <title>Web3 Domain Gateway — .pi Domain Pazar Yeri</title>
     <meta name="description" content="Pi Network üzerinde .pi domain al ve sat. Escrow (emanet) korumalı, güvenli ve şeffaf alışveriş.">
 
@@ -1516,6 +1562,8 @@
 </style>
 </head>
 <body style="margin:0;padding:0;width:100%;min-width:320px;overflow-x:hidden;position:relative;box-sizing:border-box;">
+<div id="boot-splash" role="status" aria-live="polite"><div class="bs-ring"></div><div class="bs-title">Web3 Domain Gateway</div><div class="bs-sub" id="boot-splash-sub">Yükleniyor…</div></div>
+<script>try{if(localStorage.getItem('w3dg_lang')==='en'){document.getElementById('boot-splash-sub').textContent='Loading…';}}catch(e){}</script>
 <div id="toast-container" aria-live="polite"></div>
 
 <!-- ═══════════════════════════════════════════════════════════════
@@ -12692,7 +12740,40 @@ async function handleIncompletePayment(payment){
 //  - "Bağlanıyor..." spinner'ı buton üzerinde göster, sayfa
 //    genelinde değil.
 // ═══════════════════════════════════════════════════════════════════════
+// ── "Bağlanılıyor…" TAM EKRAN: kullanıcı "Pi ile Bağlan"a basınca hemen açılır; hesap,
+// profil ve domain listesi arka planda yüklenir, her şey hazır olunca kapanır ve uygulama
+// parça parça değil TEK SEFERDE görünür. Hata/iptal durumunda hemen kapanır; 30 sn'lik
+// güvenlik zamanlayıcısı sayesinde ekran asla takılı kalmaz.
+let _connectOverlayTimer=null;
+function showConnectOverlay(){
+    let el=document.getElementById('connect-overlay');
+    if(!el){
+        el=document.createElement('div'); el.id='connect-overlay'; el.setAttribute('role','status'); el.setAttribute('aria-live','polite');
+        el.innerHTML='<div class="co-orb"></div><div class="co-title" id="co-title"></div><div class="co-sub" id="co-sub"></div>';
+        document.body.appendChild(el);
+    }
+    setConnectOverlayText(AWL('Bağlanılıyor…','Connecting…'),AWL('Pi hesabınızla güvenli bağlantı kuruluyor.','Securely connecting with your Pi account.'));
+    el.style.display='flex';
+    void el.offsetWidth; el.classList.add('co-show');
+    if(_connectOverlayTimer) clearTimeout(_connectOverlayTimer);
+    _connectOverlayTimer=setTimeout(hideConnectOverlay,30000);
+}
+function setConnectOverlayText(title,sub){
+    const a=document.getElementById('co-title'), b=document.getElementById('co-sub');
+    if(a) a.textContent=title; if(b) b.textContent=sub||'';
+}
+function hideConnectOverlay(){
+    if(_connectOverlayTimer){ clearTimeout(_connectOverlayTimer); _connectOverlayTimer=null; }
+    const el=document.getElementById('connect-overlay'); if(!el) return;
+    el.classList.remove('co-show');
+    setTimeout(()=>{ const e2=document.getElementById('connect-overlay'); if(e2 && !e2.classList.contains('co-show')) e2.style.display='none'; },300);
+}
+window.hideConnectOverlay=hideConnectOverlay;
+function waitForDomainsReady(maxMs){
+    return new Promise(res=>{ const t0=Date.now(); (function chk(){ if(window.__domainsFirstSnapshot||Date.now()-t0>maxMs) return res(); setTimeout(chk,100); })(); });
+}
 async function performPiConnect() {
+    showConnectOverlay();
     await waitForPi();
     await new Promise(r => setTimeout(r, 300));
 
@@ -12749,6 +12830,7 @@ async function performPiConnect() {
             currentUser = auth.user.username;
             piAccessToken = auth.accessToken;
             isAuth = true;
+            setConnectOverlayText(AWL('Hoş geldiniz, @'+currentUser,'Welcome, @'+currentUser),AWL('Hesabınız ve domain listesi yükleniyor…','Loading your account and domain list…'));
             if (typeof updateMaintenanceOverlay === 'function') updateMaintenanceOverlay();
 
             // Escrow/A2U ödemeleri için satıcının Pi hesap UID'sini (kullanıcının
@@ -12851,6 +12933,9 @@ async function performPiConnect() {
             // hâlâ display:none olduğu için görünmez). debouncedRender()
             // yerine DOĞRUDAN render() çağrılıyor — 50ms'lik gecikme,
             // yukarıda açıklanan görsel "flaş" bug'ının ana sebebiydi.
+            // Liste verisi (ilk Firestore anlık görüntüsü) gelmeden ekranı açma — en fazla 8 sn bekle.
+            setConnectOverlayText(AWL('Uygulama açılıyor…','Opening the app…'),'');
+            await waitForDomainsReady(8000);
             if (typeof render === 'function') render(); else debouncedRender();
 
             requestAnimationFrame(() => {
@@ -12929,6 +13014,7 @@ async function performPiConnect() {
                     userPanel.style.transition = 'opacity 0.4s ease, transform 0.4s ease';
 
                     setTimeout(() => {
+                        hideConnectOverlay(); // her şey hazır: bağlanıyor ekranı kapanır, uygulama tek seferde görünür
                         userPanel.style.opacity = '1';
                         userPanel.style.transform = 'translateY(0)';
                         // YENİ: Kişisel karşılama paneli (daktilo efekti) — oturum
@@ -12942,6 +13028,7 @@ async function performPiConnect() {
             return true;
 
         } catch (e) {
+            hideConnectOverlay(); // hata/iptal: bağlanıyor ekranını kaldır ki uyarı ve buton görünsün
             console.error("Login error:", e);
             // Hata durumunda butonu mutlaka normale döndür
             if (connectBtn && originalBtnText) {
@@ -12985,7 +13072,7 @@ async function performPiConnect() {
     }
 
     const success = await attemptLogin(false);
-    if (!success) showToast(t('loginError'));
+    if (!success){ hideConnectOverlay(); showToast(t('loginError')); }
 }
 
 // ── GERÇEK "PI İLE BAĞLAN" TETİKLEYİCİSİ ──────────────────────────────
@@ -13261,6 +13348,7 @@ function emptyState(icon,title,sub){
 fetchPiUsdRate().then(()=>{ if(typeof render==='function') render(); });
 
 onSnapshot(collection(db,"domains"),(snapshot)=>{
+    window.__domainsFirstSnapshot=true; // "Pi ile Bağlan" sonrası ekran, liste verisi gelene kadar bekleyebilsin
     // FIX: 'added' dahil her değişiklik tipi profil yenilemesini tetikler.
     // Çünkü bir satış önerisi onaylandığında domains koleksiyonuna yeni
     // bir doküman 'added' olarak gelir — bu da kullanıcının "İlanlarım"
@@ -13438,6 +13526,21 @@ function debouncedRender(){clearTimeout(renderTimeout);renderTimeout=setTimeout(
 // durumuyla (aşağıdaki "domain-list-loading" göstergesi).
 domains.forEach(d=>{if(!domainData[d.name]) domainData[d.name]={sold:false,price:d.price};});
 applyTranslations();
+// İLK EKRAN HAZIR: metinler çevrildi → yerleşim ölçülüp sıkıştırma seviyesi belirlendi →
+// font hazır olunca TÜM ekran tek karede açılır (açılış kapısı bkz. <head>).
+(function(){
+    const reveal=()=>{ if(window.__revealApp) window.__revealApp(); };
+    const go=()=>{
+        try{ if(window.fitLoginHero) window.fitLoginHero(); }catch(_){}
+        requestAnimationFrame(()=>{
+            try{ if(window.fitLoginHero) window.fitLoginHero(); }catch(_){}
+            requestAnimationFrame(reveal);
+        });
+    };
+    if(document.fonts && document.fonts.ready){
+        Promise.race([document.fonts.ready,new Promise(r=>setTimeout(r,1200))]).then(go,go);
+    } else go();
+})();
 
 // ── GÜVEN / BİLGİLENDİRME EKRANI ──────────────────────────────────────
 // Kimseyi sayfa açılışında zorla karşılamıyoruz. İki gösterim yolu var:
