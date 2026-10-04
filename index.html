@@ -3179,7 +3179,7 @@
                      rozet/buton görünümüyle SAĞDA, dikeyde ortalanmış. -->
                 <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin:0 0 9px 0;">
                     <span style="font-size:0.62em;color:#64748b;line-height:1.4;flex:1 1 auto;" data-i18n="dateFilterHint"></span>
-                    <a href="javascript:void(0)" onclick="document.getElementById('admin-messages-date-filter').value=todayYmd();window.renderAdminConversationsList();" style="flex:0 0 auto;white-space:nowrap;font-size:0.62em;color:#67e8f9;font-weight:800;text-decoration:none;background:rgba(6,182,212,0.12);border:1px solid rgba(6,182,212,0.4);border-radius:20px;padding:4px 10px;" data-i18n="dateFilterTodayBtn"></a>
+                    <a href="javascript:void(0)" onclick="window.resetDateFilterToToday('admin-messages-date-filter','renderAdminConversationsList')" style="flex:0 0 auto;white-space:nowrap;font-size:0.62em;color:#67e8f9;font-weight:800;text-decoration:none;background:rgba(6,182,212,0.12);border:1px solid rgba(6,182,212,0.4);border-radius:20px;padding:4px 10px;" data-i18n="dateFilterTodayBtn"></a>
                 </div>
                 <div id="admin-messages-date-chips"></div>
                 <div id="admin-messages-list">
@@ -3215,7 +3215,7 @@
                      sağda, dikeyde hizalı yerleşim. -->
                 <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin:0 0 9px 0;">
                     <span style="font-size:0.62em;color:#64748b;line-height:1.4;flex:1 1 auto;" data-i18n="dateFilterHint"></span>
-                    <a href="javascript:void(0)" onclick="document.getElementById('admin-deleted-messages-date-filter').value=todayYmd();window.renderDeletedConversationsList();" style="flex:0 0 auto;white-space:nowrap;font-size:0.62em;color:#fca5a5;font-weight:800;text-decoration:none;background:rgba(239,68,68,0.12);border:1px solid rgba(239,68,68,0.4);border-radius:20px;padding:4px 10px;" data-i18n="dateFilterTodayBtn"></a>
+                    <a href="javascript:void(0)" onclick="window.resetDateFilterToToday('admin-deleted-messages-date-filter','renderDeletedConversationsList')" style="flex:0 0 auto;white-space:nowrap;font-size:0.62em;color:#fca5a5;font-weight:800;text-decoration:none;background:rgba(239,68,68,0.12);border:1px solid rgba(239,68,68,0.4);border-radius:20px;padding:4px 10px;" data-i18n="dateFilterTodayBtn"></a>
                 </div>
                 <div id="admin-deleted-messages-date-chips"></div>
                 <div id="admin-deleted-messages-list">
@@ -3350,7 +3350,7 @@
                  olamaz — çünkü artık "rezerve edilen" diye bir şey yok,
                  içerik olduğu yerde akıyor. Görünürlüğü hâlâ render()
                  içinde isAuth durumuna göre JS ile kontrol ediliyor. -->
-            <div id="global-connect-bar" style="display:none;width:100%;box-sizing:border-box;padding:10px 2px 2px 2px;text-align:center;">
+            <div id="global-connect-bar" style="display:block;width:100%;box-sizing:border-box;padding:10px 2px 2px 2px;text-align:center;">
                 <div style="background:linear-gradient(165deg,#1e1b4b 0%,#0f172a 100%);border:2px solid rgba(96,165,250,0.5);border-radius:14px;padding:10px 12px;box-shadow:0 0 16px rgba(59,130,246,0.2);">
                     <p id="connect-prompt-text" style="font-size:0.72em;color:#cbd5e1;font-weight:600;line-height:1.4;margin:0 0 6px 0;" data-i18n="connectPrompt"></p>
                     <div id="connect-use-btn-text" style="color:#fbbf24;font-weight:700;margin-bottom:6px;font-size:0.7em;" data-i18n="useButton"></div>
@@ -12759,7 +12759,7 @@ let _connectOverlayTimer=null;
 // Her adım ekranda EN AZ bu kadar kalır: gerçek yükleme çok hızlı bitse bile kullanıcı adımı
 // okuyabilsin. Gerçek işler arka planda aralıksız sürer; ekran sadece okunabilir hızda ilerler.
 const CONNECT_STEP_MIN_MS=1000;
-let _coTarget=0,_coShown=0,_coSince=0,_coRunner=null,_coSession=0,_coAllDone=false;
+let _coTarget=0,_coShown=0,_coSince=0,_coRunning=false,_coSession=0,_coAllDone=false;
 const coSleep=(ms)=>new Promise(r=>setTimeout(r,ms));
 function coSteps(){
     return [
@@ -12782,33 +12782,52 @@ function renderCoSteps(){
 // Gerçek ilerleme "hedef adım"ı ileri iter; ekran adımları minimum okuma süresiyle tek tek gösterir.
 function coTarget(n){ if(n>_coTarget) _coTarget=n; coRun(); }
 function coRun(){
-    if(_coRunner) return;
+    // KÖK NEDEN DÜZELTMESİ ("bazen 3. adımda takılı kalıyor"): önceden çalışan görev bir Promise olarak
+    // saklanıyordu; bekleme gerekmediğinde (ör. yavaş bir adımdan sonra) görev SENKRON bitip kendini
+    // temizliyor, ardından Promise atanıyordu → "çalışıyor" işareti sonsuza kadar kalıp sonraki
+    // adımların hiç gösterilmemesine yol açıyordu. Artık basit bir bayrak + finally kullanılıyor.
+    if(_coRunning) return;
+    _coRunning=true;
     const session=_coSession;
-    _coRunner=(async()=>{
-        while(session===_coSession && _coShown<_coTarget){
-            const wait=Math.max(0,_coSince+CONNECT_STEP_MIN_MS-Date.now());
-            if(wait) await coSleep(wait);
-            if(session!==_coSession) break;
-            _coShown++; _coSince=Date.now(); renderCoSteps();
-        }
-        if(session===_coSession) _coRunner=null;
+    (async()=>{
+        try{
+            while(session===_coSession && _coShown<_coTarget){
+                const wait=Math.max(0,_coSince+CONNECT_STEP_MIN_MS-Date.now());
+                if(wait) await coSleep(wait);
+                if(session!==_coSession) break;
+                _coShown++; _coSince=Date.now(); renderCoSteps();
+            }
+        } finally { if(session===_coSession) _coRunning=false; }
     })();
 }
 // Tüm adımlar gösterilip son adım da okunabildikten sonra tüm adımları ✓ yapıp ekranı kapatır.
 async function coFinish(){
     const session=_coSession;
     coTarget(coSteps().length-1);
-    while(_coRunner && session===_coSession) await coSleep(60);
+    while(_coRunning && session===_coSession) await coSleep(60);
     if(session!==_coSession) return;
     const wait=Math.max(0,_coSince+CONNECT_STEP_MIN_MS-Date.now());
     if(wait) await coSleep(wait);
     if(session!==_coSession) return;
     _coAllDone=true; renderCoSteps();
-    await coSleep(550);
-    if(session===_coSession) hideConnectOverlay();
+    await coSleep(700); // son ✓ görünsün
+    // Ekranı BURADA KAPATMIYORUZ: önce hoş geldin mesajı gösterilir, o kapanınca uygulama açılır.
+}
+// İlk deneme hata verip otomatik yeniden denenirken ekran KAPANMAZ; adımlar baştan başlar.
+function coRestart(msg){
+    _coSession++; _coTarget=0; _coShown=0; _coSince=Date.now(); _coRunning=false; _coAllDone=false;
+    renderCoSteps();
+    const sub=document.getElementById('co-sub'); if(sub && msg) sub.textContent=msg;
+}
+// Yavaş ağ/sunucuda bir adım sonsuza kadar beklemesin: işi arka planda sürdürüp en fazla ms kadar bekler.
+function coBounded(promise,ms){
+    return new Promise(res=>{
+        let done=false; const t=setTimeout(()=>{ if(!done){ done=true; res(undefined); } },ms);
+        Promise.resolve(promise).then(v=>{ if(!done){ done=true; clearTimeout(t); res(v); } },e=>{ console.error('adım hatası (devam ediliyor):',e); if(!done){ done=true; clearTimeout(t); res(undefined); } });
+    });
 }
 function showConnectOverlay(){
-    _coSession++; _coTarget=0; _coShown=0; _coSince=Date.now(); _coRunner=null; _coAllDone=false;
+    _coSession++; _coTarget=0; _coShown=0; _coSince=Date.now(); _coRunning=false; _coAllDone=false;
     let el=document.getElementById('connect-overlay');
     if(!el){
         el=document.createElement('div'); el.id='connect-overlay'; el.setAttribute('role','status'); el.setAttribute('aria-live','polite');
@@ -12820,11 +12839,11 @@ function showConnectOverlay(){
     el.style.display='flex';
     void el.offsetWidth; el.classList.add('co-show');
     if(_connectOverlayTimer) clearTimeout(_connectOverlayTimer);
-    _connectOverlayTimer=setTimeout(hideConnectOverlay,40000);
+    _connectOverlayTimer=setTimeout(hideConnectOverlay,90000); // yalnızca en kötü durum güvenlik ağı
 }
 function hideConnectOverlay(){
     if(_connectOverlayTimer){ clearTimeout(_connectOverlayTimer); _connectOverlayTimer=null; }
-    _coSession++; // bekleyen adım zamanlayıcılarını iptal et
+    _coSession++; _coRunning=false; // bekleyen adım zamanlayıcılarını iptal et
     const el=document.getElementById('connect-overlay'); if(!el) return;
     el.classList.remove('co-show');
     setTimeout(()=>{ const e2=document.getElementById('connect-overlay'); if(e2 && !e2.classList.contains('co-show')) e2.style.display='none'; },300);
@@ -12947,11 +12966,14 @@ async function performPiConnect() {
 
             // Login log'u async olarak yap (UI'ı bekleme)
             try {
+                const _ac = new AbortController(); const _acT = setTimeout(()=>_ac.abort(), 8000);
                 const r = await fetch('/api/approve', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ action: 'log_login', accessToken: piAccessToken })
+                    body: JSON.stringify({ action: 'log_login', accessToken: piAccessToken }),
+                    signal: _ac.signal
                 });
+                clearTimeout(_acT);
                 const logResult = await r.json();
                 if (logResult.success) userFirstSeen = logResult.firstSeen;
             } catch (e) { console.error("Login log hatası:", e); }
@@ -12959,8 +12981,9 @@ async function performPiConnect() {
             updateActiveStatus();
 
             // ── 3. Profil verilerini yükle ─────────────────────────────
-            await loadUserProfile();
-            listenToMyOwnSellRequests(currentUser);
+            // Profil yüklemesi en fazla 10 sn beklenir (yavaşsa arka planda sürer); hata girişi YARIDA KESMEZ.
+            await coBounded(loadUserProfile(), 10000);
+            try{ listenToMyOwnSellRequests(currentUser); }catch(e){ console.error(e); }
 
             // ── 4. Kullanıcı durum metni (bağlı göstergesi) ────────────
             const userStatusBox = document.getElementById("user-status-box");
@@ -12996,7 +13019,7 @@ async function performPiConnect() {
             // yukarıda açıklanan görsel "flaş" bug'ının ana sebebiydi.
             // Liste verisi (ilk Firestore anlık görüntüsü) gelmeden ekranı açma — en fazla 8 sn bekle.
             coTarget(2); // "Domain listesi hazırlanıyor"
-            await waitForDomainsReady(8000);
+            await waitForDomainsReady(5000);
             coTarget(3); // "Uygulama açılıyor"
             if (typeof render === 'function') render(); else debouncedRender();
             // Tüm adımlar okunabilir sürede gösterilip ✓ olunca bağlanıyor ekranı kapanır.
@@ -13078,13 +13101,22 @@ async function performPiConnect() {
                     userPanel.style.transition = 'opacity 0.4s ease, transform 0.4s ease';
 
                     setTimeout(() => {
-                        hideConnectOverlay(); // (zaten kapalı; güvenlik için)
                         userPanel.style.opacity = '1';
                         userPanel.style.transform = 'translateY(0)';
                         // YENİ: Kişisel karşılama paneli (daktilo efekti) — oturum
                         // başına bir kez, kullanıcı adıyla. Tur ile üst üste
                         // binmemesi için tur, karşılama kapandıktan SONRA başlar.
-                        showWelcomeGreeting(currentUser, maybeStartOnboardingTour);
+                        // SIRA: adımlar tek tek ✓ → hoş geldin mesajı (bağlanıyor ekranının ÜSTÜNDE) → mesaj kapanınca
+                        // ekran kalkar, menüler/uygulama açılır → ardından uygulama turu.
+                        const _gm=document.getElementById('welcome-greeting-modal');
+                        const _gmPrevZ=_gm?(_gm.style.zIndex||'100000'):'';
+                        if(_gm) _gm.style.zIndex='1000010';
+                        const _afterGreeting=()=>{
+                            hideConnectOverlay();
+                            if(_gm) _gm.style.zIndex=_gmPrevZ;
+                            setTimeout(()=>{ try{ maybeStartOnboardingTour(); }catch(e){ console.error(e); } },350);
+                        };
+                        try{ showWelcomeGreeting(currentUser, _afterGreeting); }catch(e){ console.error(e); _afterGreeting(); }
                     }, isAdmin ? 200 : 80);
                 });
             });
@@ -13092,8 +13124,13 @@ async function performPiConnect() {
             return true;
 
         } catch (e) {
-            hideConnectOverlay(); // hata/iptal: bağlanıyor ekranını kaldır ki uyarı ve buton görünsün
             console.error("Login error:", e);
+            const _msg0 = (e && e.message) || '';
+            const _cancelled0 = _msg0.includes('cancel') || _msg0.includes('user_cancelled') || _msg0.includes('User cancelled');
+            // İptal ya da son deneme: ekranı kaldır ki uyarı/buton görünsün. Otomatik yeniden denemede ise
+            // ekran AÇIK kalır (önceden burada kapanıp menü adımlar gösterilmeden açılıyordu).
+            if (_cancelled0 || isRetry) hideConnectOverlay();
+            else coRestart(AWL('Bağlantı yeniden deneniyor…','Retrying the connection…'));
             // Hata durumunda butonu mutlaka normale döndür
             if (connectBtn && originalBtnText) {
                 connectBtn.innerHTML = originalBtnText;
@@ -14910,6 +14947,13 @@ function ymdLocal(ts){
     return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
 }
 function todayYmd(){ return ymdLocal(Date.now()); }
+// Inline onclick/onchange yalnızca GLOBAL adları görür; bu dosya type=module olduğu için
+// todayYmd/ymdLocal bugüne kadar inline'dan erişilemiyordu → "Bugüne Dön" ReferenceError verip sessizce çalışmıyordu.
+window.todayYmd=todayYmd; window.ymdLocal=ymdLocal;
+window.resetDateFilterToToday=function(inputId,rerenderFn){
+    const el=document.getElementById(inputId); if(el) el.value=todayYmd();
+    if(typeof window[rerenderFn]==='function') window[rerenderFn]();
+};
 
 // ── ADMIN MESAJ FİLTRESİ: "Hangi günlerde veri var?" ──────────────────────
 // Tarih filtresi tek tek gün denemeyi gerektiriyordu. Artık, zaten yüklenmiş listeden
