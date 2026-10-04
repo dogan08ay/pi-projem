@@ -3120,8 +3120,8 @@
                 <div id="offers-subtab-offer">
                     <div style="font-size:0.65em;color:#94a3b8;margin-bottom:8px;line-height:1.5;" data-i18n="offersTabExplainer"></div>
                     <div style="display:flex;gap:6px;margin-bottom:10px;">
-                        <button type="button" onclick="window.cleanupClosedAuctionData(false,'offers')" style="flex:1;min-width:0;padding:8px 4px;border-radius:9px;border:1.5px solid #f59e0b;background:rgba(245,158,11,0.1);color:#fcd34d;font-weight:800;font-size:0.66em;cursor:pointer;line-height:1.3;">🧹 Süresi Dolan Teklifleri Temizle</button>
-                        <button type="button" onclick="window.cleanupClosedAuctionData(true,'offers')" style="flex:1;min-width:0;padding:8px 4px;border-radius:9px;border:1.5px solid #ef4444;background:rgba(239,68,68,0.1);color:#fca5a5;font-weight:800;font-size:0.66em;cursor:pointer;line-height:1.3;">🗑️ Tüm Kapanmış Teklifleri Sil</button>
+                        <button type="button" onclick="window.cleanupClosedAuctionData(false,'offers')" style="flex:1;min-width:0;padding:8px 4px;border-radius:9px;border:1.5px solid #f59e0b;background:rgba(245,158,11,0.1);color:#fcd34d;font-weight:800;font-size:0.66em;cursor:pointer;line-height:1.3;" data-i18n="adminCleanExpiredOffersBtn"></button>
+                        <button type="button" onclick="window.cleanupClosedAuctionData(true,'offers')" style="flex:1;min-width:0;padding:8px 4px;border-radius:9px;border:1.5px solid #ef4444;background:rgba(239,68,68,0.1);color:#fca5a5;font-weight:800;font-size:0.66em;cursor:pointer;line-height:1.3;" data-i18n="adminDeleteAllOffersBtn"></button>
                     </div>
                     <div id="admin-offers-table-wrap" style="width:100%;box-sizing:border-box;overflow-x:auto;">
                         <p style="font-size:0.75em;opacity:0.5;text-align:center;" data-i18n="clickToLoad"></p>
@@ -3132,9 +3132,9 @@
                     <div id="admin-auctions-table-wrap" style="width:100%;box-sizing:border-box;overflow-x:auto;">
                         <p style="font-size:0.75em;opacity:0.5;text-align:center;" data-i18n="clickToLoad"></p>
                     </div>
-                    <button type="button" onclick="window.loadAdminAuctionEvents()" style="width:100%;margin-top:10px;padding:9px;border-radius:9px;border:1.5px solid #6366f1;background:rgba(99,102,241,0.12);color:#c7d2fe;font-weight:800;font-size:0.76em;cursor:pointer;">📜 Açık Artırma Olay Günlüğü (son 150)</button>
-                    <button type="button" onclick="window.cleanupClosedAuctionData(false,'auctions')" style="width:100%;margin-top:8px;padding:9px;border-radius:9px;border:1.5px solid #f59e0b;background:rgba(245,158,11,0.1);color:#fcd34d;font-weight:800;font-size:0.76em;cursor:pointer;">🧹 Süresi Dolan Açık Artırma Kayıtlarını Temizle</button>
-                    <button type="button" onclick="window.cleanupClosedAuctionData(true,'auctions')" style="width:100%;margin-top:8px;padding:9px;border-radius:9px;border:1.5px solid #ef4444;background:rgba(239,68,68,0.1);color:#fca5a5;font-weight:800;font-size:0.76em;cursor:pointer;">🗑️ TÜM Kapanmış Açık Artırma Kayıtlarını Sil (süre gözetmeden)</button>
+                    <button type="button" onclick="window.loadAdminAuctionEvents()" style="width:100%;margin-top:10px;padding:9px;border-radius:9px;border:1.5px solid #6366f1;background:rgba(99,102,241,0.12);color:#c7d2fe;font-weight:800;font-size:0.76em;cursor:pointer;" data-i18n="adminAuctionEventsBtn"></button>
+                    <button type="button" onclick="window.cleanupClosedAuctionData(false,'auctions')" style="width:100%;margin-top:8px;padding:9px;border-radius:9px;border:1.5px solid #f59e0b;background:rgba(245,158,11,0.1);color:#fcd34d;font-weight:800;font-size:0.76em;cursor:pointer;" data-i18n="adminCleanExpiredAuctionBtn"></button>
+                    <button type="button" onclick="window.cleanupClosedAuctionData(true,'auctions')" style="width:100%;margin-top:8px;padding:9px;border-radius:9px;border:1.5px solid #ef4444;background:rgba(239,68,68,0.1);color:#fca5a5;font-weight:800;font-size:0.76em;cursor:pointer;" data-i18n="adminDeleteAllAuctionBtn"></button>
                     <div id="admin-auction-events-wrap" style="width:100%;box-sizing:border-box;overflow-x:auto;margin-top:8px;"></div>
                 </div>
             </div>
@@ -4595,6 +4595,20 @@ const i18n = {
     changelogV1_6Item4:"Kullanıcılar kendi taleplerini, admin ise herhangi bir talebi kalıcı olarak silebiliyor",
     changelogV1_6Item5:"Talep listesi kullanıcı/konu/tarih/durum bilgilerini net çizgilerle ayrılmış tablo düzeninde gösteriyor",
 
+    adminCleanExpiredOffersBtn:"🧹 Süresi Dolan Teklifleri Temizle",adminDeleteAllOffersBtn:"🗑️ Tüm Kapanmış Teklifleri Sil",
+    adminAuctionEventsBtn:"📜 Açık Artırma Olay Günlüğü (son 150)",adminCleanExpiredAuctionBtn:"🧹 Süresi Dolan Açık Artırma Kayıtlarını Temizle",adminDeleteAllAuctionBtn:"🗑️ TÜM Kapanmış Açık Artırma Kayıtlarını Sil (süre gözetmeden)",
+    changelogNewBadge:"🆕 YENİ",
+    changelogV2_5:"v2.5 - Açık Artırma Güncellemesi",
+    changelogV2_5Item1:"🔨 Açık artırmalar baştan yenilendi: canlı geri sayım artık saat-dakika-saniye olarak akıyor, son 5 dakikada kırmızı yanıp sönüyor ve kartlarda 🔥 Son dakika rozeti çıkıyor",
+    changelogV2_5Item2:"🤖 Otomatik teklif eklendi — gizli bir üst limit belirle, biri seni geçmeye çalıştıkça sistem yalnızca gerektiği kadar (minimum artışla) senin adına teklif versin. Üst limitini kimse göremez",
+    changelogV2_5Item3:"⏱️ Son dakika koruması: bitmesine 5 dakikadan az kalan her teklif süreyi 5 dakikaya uzatıyor — son saniye teklifleriyle kimse haksız avantaj sağlayamıyor",
+    changelogV2_5Item4:"🔒 Rezerv fiyatı ve ⚡ 'Hemen Al' seçeneği: rezerv karşılanmazsa satış yapılmıyor (kimseye ceza yok), 'Hemen Al' fiyatıyla açık artırma anında bitiyor",
+    changelogV2_5Item5:"⚡ Hızlı teklif butonları, teklif öncesi onay penceresi, teklif geçildiğinde titreşim + kırmızı uyarı ve detayda son 3 teklifin görünmesi eklendi",
+    changelogV2_5Item6:"🏆 Kazanan akışı: açık artırma bitince kazananın satın alma süresi hemen başlıyor (24 saat). 'Kazandınız' bildirimi, ekranda pop-up ve sayaçlı hatırlatma bandı çıkıyor. Süre içinde satın alınmazsa açık artırma iptal oluyor; ikinci en yüksek teklif sahibine fırsat veriliyor, ödemeyen kazanana kademeli uyarı ve teklif yasağı uygulanıyor",
+    changelogV2_5Item7:"🔎 Ana sayfaya ⏰ Açık Artırmalar ve 🔥 Yakında Bitenler filtresi, 'bitişe en yakın' sıralaması eklendi. Favorilediğin domainin açık artırması başlayınca ve bitmek üzereyken bildirim alıyorsun",
+    changelogV2_5Item8:"🛑 Satıcılar, henüz teklif gelmemiş açık artırmalarını kendileri iptal edebiliyor",
+    changelogV2_5Item9:"🧹 Kabul edilen teklifi süre içinde satın almayan alıcının teklifi artık otomatik olarak 'Satın Alınmadı' durumuna geçiyor ve iki tarafa bildirim gidiyor. Geçmiş sekmesinde her kaydın ne zaman kalıcı silineceği kalan süreyle gösteriliyor",
+    changelogV2_5Item10:"🛡️ Güvenlik: aynı anda gelen tekliflerin birbirini ezmesi (yarış durumu) giderildi, gizli rezerv ve üst limit bilgileri herkese açık veriden ayrıldı, hiç satın alması olmayan yeni hesaplara geçici teklif limiti getirildi",
     changelogV2_4:"v2.4 - Uygulama Turu Güncellemesi",
     changelogV2_4Item1:"👤 Uygulama turuna 'Profil Ayarları' tanıtım adımı eklendi — profilinizdeki hesap özeti, başlangıç adımları ve bildirim tercihleri artık tur sırasında gösteriliyor",
     changelogV2_4Item2:"🔔 Tur, e-posta veya Telegram bağlamanın önemini artık ayrı bir kartla anlatıyor — böylece önemli bildirimleri (onay, satış, destek talebi) kaçırma riski azalıyor",
@@ -5576,6 +5590,20 @@ const i18n = {
     changelogV1_6Item4:"Users can delete their own tickets, and admin can permanently delete any ticket",
     changelogV1_6Item5:"Ticket list now shows user/subject/date/status in a clearly divided table layout",
 
+    adminCleanExpiredOffersBtn:"🧹 Clean Up Expired Offers",adminDeleteAllOffersBtn:"🗑️ Delete All Closed Offers",
+    adminAuctionEventsBtn:"📜 Auction Event Log (last 150)",adminCleanExpiredAuctionBtn:"🧹 Clean Up Expired Auction Records",adminDeleteAllAuctionBtn:"🗑️ Delete ALL Closed Auction Records (ignore retention)",
+    changelogNewBadge:"🆕 NEW",
+    changelogV2_5:"v2.5 - Auction Update",
+    changelogV2_5Item1:"🔨 Auctions were rebuilt: the live countdown now ticks in hours-minutes-seconds, turns red and pulses in the last 5 minutes, and cards show a 🔥 Final minutes badge",
+    changelogV2_5Item2:"🤖 Added auto-bidding — set a hidden maximum and, whenever someone tries to outbid you, the system bids for you only as much as needed (minimum increment). Nobody can see your maximum",
+    changelogV2_5Item3:"⏱️ Last-minute protection: any bid placed with less than 5 minutes left extends the auction to 5 minutes — nobody can win with an unfair last-second bid",
+    changelogV2_5Item4:"🔒 Reserve price and ⚡ 'Buy Now': if the reserve isn't met there is no sale (and no penalty for anyone); the 'Buy Now' price ends the auction instantly",
+    changelogV2_5Item5:"⚡ Added quick-bid buttons, a confirmation window before bidding, vibration + red alert when you're outbid, and the 3 latest bids shown in the detail view",
+    changelogV2_5Item6:"🏆 Winner flow: when an auction ends, the winner's purchase timer starts immediately (24 hours). A 'You won' notification, an on-screen pop-up and a countdown reminder bar appear. If it isn't bought in time the auction is cancelled; the runner-up gets a chance, and a winner who doesn't pay receives escalating warnings and a bidding ban",
+    changelogV2_5Item7:"🔎 Added ⏰ Auctions and 🔥 Ending Soon filters and an 'ending soonest' sort to the home page. You get notified when an auction starts or is about to end for a domain you favorited",
+    changelogV2_5Item8:"🛑 Sellers can now cancel their own auction themselves while it has no bids yet",
+    changelogV2_5Item9:"🧹 If a buyer doesn't purchase an accepted offer in time, the offer now closes automatically as 'Not Purchased' and both sides are notified. The History tab shows how long each record will be kept before it is permanently deleted",
+    changelogV2_5Item10:"🛡️ Security: fixed simultaneous bids overwriting each other (race condition), hidden reserve and maximum values are now separated from public data, and brand-new accounts with no purchases get a temporary bid limit",
     changelogV2_4:"v2.4 - App Tour Update",
     changelogV2_4Item1:"👤 Added a 'Profile Settings' step to the app tour — your account summary, getting-started checklist, and notification preferences are now shown during the tour",
     changelogV2_4Item2:"🔔 The tour now has a dedicated card explaining why connecting email or Telegram matters — so you're less likely to miss important notifications (approvals, sales, support tickets)",
@@ -7043,6 +7071,7 @@ window.openChangelogModal=function(){
     const list=document.getElementById('changelog-list');
     if(!list) return;
     const versions=[
+        {v:t('changelogV2_5'),items:[t('changelogV2_5Item1'),t('changelogV2_5Item2'),t('changelogV2_5Item3'),t('changelogV2_5Item4'),t('changelogV2_5Item5'),t('changelogV2_5Item6'),t('changelogV2_5Item7'),t('changelogV2_5Item8'),t('changelogV2_5Item9'),t('changelogV2_5Item10')],date:'2026-10-04',icon:'🔨',color:'#f59e0b',badge:t('changelogNewBadge')},
         {v:t('changelogV2_4'),items:[t('changelogV2_4Item1'),t('changelogV2_4Item2'),t('changelogV2_4Item3')],date:'2026-08-04',icon:'🧭',color:'#a78bfa'},
         {v:t('changelogV2_3'),items:[t('changelogV2_3Item1'),t('changelogV2_3Item2'),t('changelogV2_3Item3'),t('changelogV2_3Item4'),t('changelogV2_3Item5'),t('changelogV2_3Item6'),t('changelogV2_3Item7')],date:'2026-07-25',icon:'🤝',color:'#34d399'},
         {v:t('changelogV2_2'),items:[t('changelogV2_2Item1'),t('changelogV2_2Item2'),t('changelogV2_2Item3'),t('changelogV2_2Item4'),t('changelogV2_2Item5'),t('changelogV2_2Item6'),t('changelogV2_2Item7'),t('changelogV2_2Item8')],date:'2026-07-16',icon:'✨',color:'#fbbf24'},
@@ -7065,7 +7094,7 @@ window.openChangelogModal=function(){
             <div style="font-size:${item.featured?'1.9em':'1.6em'};flex-shrink:0;display:flex;align-items:flex-start;padding-top:2px;min-width:36px;justify-content:center;">${item.icon}</div>
             <div style="flex:1;min-width:0;overflow:hidden;">
                 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;flex-wrap:wrap;gap:4px;">
-                    <b style="color:${item.color};font-size:${item.featured?'0.96em':'0.88em'};letter-spacing:0.3px;min-width:0;overflow-wrap:break-word;word-break:break-word;flex:1 1 auto;">${item.v}</b>
+                    <b style="color:${item.color};font-size:${item.featured?'0.96em':'0.88em'};letter-spacing:0.3px;min-width:0;overflow-wrap:break-word;word-break:break-word;flex:1 1 auto;">${item.v}${item.badge?` <span style="display:inline-block;vertical-align:middle;background:linear-gradient(135deg,#f59e0b,#ea580c);color:#fff;font-size:0.68em;font-weight:900;padding:2px 8px;border-radius:7px;letter-spacing:0.5px;margin-left:4px;">${item.badge}</span>`:''}</b>
                     <span style="font-size:0.62em;color:#64748b;background:#1e293b;padding:2px 8px;border-radius:6px;font-weight:700;flex-shrink:0;">${item.date}</span>
                 </div>
                 <div style="display:flex;flex-direction:column;gap:6px;">
@@ -8673,25 +8702,25 @@ window.loadRecentAuctionBids=async function(domainName){
 // Yönetici: eski, sonuçlanmış kayıtları (Satın Alınmadı teklifleri, kapanmış açık artırma teklifleri, eski günlükler) temizle
 window.cleanupClosedAuctionData=async function(force,scope){
     force=force===true; scope=(scope==='offers'||scope==='auctions')?scope:'all';
-    const offerLines=['• Tüm "Satın Alınmadı", "Geçersiz Oldu", reddedilen ve geri çekilen teklifler'];
-    const auctionLines=['• Kapanmış açık artırmaların tüm teklif kayıtları ve yönetici takip izi','• Tüm açık artırma olay günlüğü ve ödemeyen kazanan kayıtları'];
+    const offerLines=[AWL('• Tüm "Satın Alınmadı", "Geçersiz Oldu", reddedilen ve geri çekilen teklifler','• All "Not Purchased", "Invalid", rejected and withdrawn offers')];
+    const auctionLines=[AWL('• Kapanmış açık artırmaların tüm teklif kayıtları ve yönetici takip izi','• All bid records of closed auctions and their admin tracking trace'),AWL('• Tüm açık artırma olay günlüğü ve ödemeyen kazanan kayıtları','• The whole auction event log and non-paying winner records')];
     const forceLines=(scope==='offers'?offerLines:(scope==='auctions'?auctionLines:offerLines.concat(auctionLines)));
     const keep=scope==='offers'
-        ?'Silinmeyenler: bekleyen / karşı teklifli / kabul edilmiş teklifler.'
-        :'Silinmeyenler: bekleyen / karşı teklifli / kabul edilmiş teklifler, aktif ve kazananı ödeme bekleyen açık artırmalar, satış kayıtları, ceza sayaçları ve teklif yasakları.';
+        ?AWL('Silinmeyenler: bekleyen / karşı teklifli / kabul edilmiş teklifler.','Not deleted: pending / countered / accepted offers.')
+        :AWL('Silinmeyenler: bekleyen / karşı teklifli / kabul edilmiş teklifler, aktif ve kazananı ödeme bekleyen açık artırmalar, satış kayıtları, ceza sayaçları ve teklif yasakları.','Not deleted: pending / countered / accepted offers, active auctions and auctions awaiting the winner\'s payment, sales records, penalty counters and bidding bans.');
     const normalLines=scope==='offers'
-        ?['• "Satın Alınmadı" teklifleri: 7 gün','• Reddedilen / geri çekilen / geçersiz teklifler: 30 gün']
+        ?[AWL('• "Satın Alınmadı" teklifleri: 7 gün','• "Not Purchased" offers: 7 days'),AWL('• Reddedilen / geri çekilen / geçersiz teklifler: 30 gün','• Rejected / withdrawn / invalid offers: 30 days')]
         :(scope==='auctions'
-            ?['• Kapanmış açık artırma teklif kayıtları ve takip izi: 30 gün','• Olay günlüğü: 90 gün, ödemeyen kazanan kayıtları: 180 gün']
-            :['• "Satın Alınmadı" teklifleri: 7 gün','• Reddedilen / geri çekilen / geçersiz teklifler: 30 gün','• Kapanmış açık artırma kayıtları: 30 gün','• Olay günlüğü: 90 gün, ödemeyen kazanan kayıtları: 180 gün']);
+            ?[AWL('• Kapanmış açık artırma teklif kayıtları ve takip izi: 30 gün','• Closed auction bid records and tracking trace: 30 days'),AWL('• Olay günlüğü: 90 gün, ödemeyen kazanan kayıtları: 180 gün','• Event log: 90 days, non-paying winner records: 180 days')]
+            :[AWL('• "Satın Alınmadı" teklifleri: 7 gün','• "Not Purchased" offers: 7 days'),AWL('• Reddedilen / geri çekilen / geçersiz teklifler: 30 gün','• Rejected / withdrawn / invalid offers: 30 days'),AWL('• Kapanmış açık artırma kayıtları: 30 gün','• Closed auction records: 30 days'),AWL('• Olay günlüğü: 90 gün, ödemeyen kazanan kayıtları: 180 gün','• Event log: 90 days, non-paying winner records: 180 days')]);
     const ok=await window.confirmAuctionAction(force?{
-        title:'🗑️ TÜM Kapanmış Kayıtları Sil',
-        lines:['<b style="color:#fca5a5;">Saklama süreleri DİKKATE ALINMAZ.</b> Şunlar hemen ve kalıcı olarak silinir:'].concat(forceLines,[`<span style="color:#6ee7b7;">${keep}</span>`,'<b>Bu işlem geri alınamaz.</b>']),
-        okText:'Evet, Hepsini Sil',cancelText:'Vazgeç',danger:true
+        title:AWL('🗑️ TÜM Kapanmış Kayıtları Sil','🗑️ Delete ALL Closed Records'),
+        lines:[AWL('<b style="color:#fca5a5;">Saklama süreleri DİKKATE ALINMAZ.</b> Şunlar hemen ve kalıcı olarak silinir:','<b style="color:#fca5a5;">Retention periods are IGNORED.</b> The following are deleted immediately and permanently:')].concat(forceLines,[`<span style="color:#6ee7b7;">${keep}</span>`,AWL('<b>Bu işlem geri alınamaz.</b>','<b>This cannot be undone.</b>')]),
+        okText:AWL('Evet, Hepsini Sil','Yes, Delete All'),cancelText:AWL('Vazgeç','Cancel'),danger:true
     }:{
-        title:'🧹 Süresi Dolan Kayıtları Temizle',
-        lines:['Saklama süresini doldurmuş kayıtlar silinir (otomatik temizlik de saatte bir bunu yapar):'].concat(normalLines,[`<span style="color:#6ee7b7;">${keep}</span>`]),
-        okText:'Temizle',cancelText:'Vazgeç'});
+        title:AWL('🧹 Süresi Dolan Kayıtları Temizle','🧹 Clean Up Expired Records'),
+        lines:[AWL('Saklama süresini doldurmuş kayıtlar silinir (otomatik temizlik de saatte bir bunu yapar):','Records past their retention period are deleted (the automatic cleanup also does this hourly):')].concat(normalLines,[`<span style="color:#6ee7b7;">${keep}</span>`]),
+        okText:AWL('Temizle','Clean Up'),cancelText:AWL('Vazgeç','Cancel')});
     if(!ok) return;
     try{
         const r=await fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'cleanup_closed_auction_data',force,scope,accessToken:piAccessToken})});
@@ -8700,9 +8729,9 @@ window.cleanupClosedAuctionData=async function(force,scope){
         const c=result.counts||{};
         const offersN=(c.unpaidOffers||0)+(c.expiredOffers||0)+(c.rejectedOffers||0)+(c.withdrawnOffers||0);
         const parts=[];
-        if(scope!=='auctions') parts.push(`${offersN} teklif`);
-        if(scope!=='offers') parts.push(`${c.auctionBids||0} açık artırma teklifi`,`${(c.auctionEvents||0)+(c.auctionDefaults||0)} günlük kaydı`,`${c.auctionRecords||0} takip izi`);
-        showToast('🧹 Silindi: '+parts.join(', '));
+        if(scope!=='auctions') parts.push(offersN+AWL(' teklif',' offers'));
+        if(scope!=='offers') parts.push((c.auctionBids||0)+AWL(' açık artırma teklifi',' auction bids'),((c.auctionEvents||0)+(c.auctionDefaults||0))+AWL(' günlük kaydı',' log records'),(c.auctionRecords||0)+AWL(' takip izi',' tracking traces'));
+        showToast(AWL('🧹 Silindi: ','🧹 Deleted: ')+parts.join(', '));
         if(scope!=='auctions' && document.getElementById('admin-offers-table-wrap')) window.loadAdminOffersTable();
         if(scope!=='offers' && document.getElementById('admin-auction-events-wrap') && document.getElementById('admin-auction-events-wrap').innerHTML) window.loadAdminAuctionEvents();
         if(scope!=='offers' && window.loadAdminAuctionsTable && document.getElementById('admin-auctions-table-wrap') && document.getElementById('admin-auctions-table-wrap').innerHTML.indexOf('clickToLoad')===-1) window.loadAdminAuctionsTable();
@@ -8711,15 +8740,15 @@ window.cleanupClosedAuctionData=async function(force,scope){
 // Yönetici: tek bir kapanmış teklif kaydını kalıcı sil
 window.adminDeleteOffer=async function(offerId,domainName){
     const ok=await window.confirmAuctionAction({
-        title:'🗑️ Teklifi Kalıcı Sil',
-        lines:[`<b>${escapeHtml(domainName||'')}</b> için bu teklif kaydı saklama süresine bakılmadan kalıcı olarak silinecek.`,'<b>Bu işlem geri alınamaz.</b>'],
-        okText:'Evet, Sil',cancelText:'Vazgeç',danger:true});
+        title:AWL('🗑️ Teklifi Kalıcı Sil','🗑️ Delete Offer Permanently'),
+        lines:[`<b>${escapeHtml(domainName||'')}</b> ${AWL('için bu teklif kaydı saklama süresine bakılmadan kalıcı olarak silinecek.','— this offer record will be permanently deleted regardless of its retention period.')}`,AWL('<b>Bu işlem geri alınamaz.</b>','<b>This cannot be undone.</b>')],
+        okText:AWL('Evet, Sil','Yes, Delete'),cancelText:AWL('Vazgeç','Cancel'),danger:true});
     if(!ok) return;
     try{
         const r=await fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'admin_delete_offer',offerId,accessToken:piAccessToken})});
         const result=await r.json();
         if(!result.success){ showToast(result.error||t('genericError')); return; }
-        showToast('🗑️ Teklif silindi');
+        showToast(AWL('🗑️ Teklif silindi','🗑️ Offer deleted'));
         window.loadAdminOffersTable();
     }catch(e){ showToast(t('genericError')); }
 };
@@ -8732,12 +8761,12 @@ window.loadAdminAuctionEvents=async function(){
         const result=await r.json();
         if(!result.success){ wrap.innerHTML=`<p style="font-size:0.75em;color:#f87171;text-align:center;">${escapeHtml(result.error||t('genericError'))}</p>`; return; }
         if(!result.events.length){ wrap.innerHTML=`<p style="font-size:0.75em;opacity:0.6;text-align:center;">${AWL('Henüz olay yok.','No events yet.')}</p>`; return; }
-        const LBL={started:['▶️','Başlatıldı','#a5b4fc'],won:['🏆','Kazanan belirlendi','#fbbf24'],win_expired:['❌','Kazanan ödemedi (ceza)','#f87171'],second_chance:['🎁','İkinci şans verildi','#34d399'],reserve_not_met:['🔒','Rezerv karşılanmadı','#fcd34d'],buy_now:['⚡','Hemen Al','#fdba74'],cancelled_by_seller:['🛑','Satıcı iptal etti','#fca5a5'],cancelled_by_admin:['🛑','Yönetici iptal etti','#fca5a5']};
+        const LBL={started:['▶️',AWL('Başlatıldı','Started'),'#a5b4fc'],won:['🏆',AWL('Kazanan belirlendi','Winner decided'),'#fbbf24'],win_expired:['❌',AWL('Kazanan ödemedi (ceza)','Winner did not pay (penalty)'),'#f87171'],second_chance:['🎁',AWL('İkinci şans verildi','Second chance offered'),'#34d399'],reserve_not_met:['🔒',AWL('Rezerv karşılanmadı','Reserve not met'),'#fcd34d'],buy_now:['⚡',AWL('Hemen Al','Buy Now'),'#fdba74'],cancelled_by_seller:['🛑',AWL('Satıcı iptal etti','Cancelled by seller'),'#fca5a5'],cancelled_by_admin:['🛑',AWL('Yönetici iptal etti','Cancelled by admin'),'#fca5a5']};
         wrap.innerHTML=result.events.map(e=>{
             const l=LBL[e.type]||['•',e.type,'#94a3b8'];
-            const extra=[e.username?'@'+escapeHtml(e.username):'', e.price!=null?e.price+' π':'', e.defaultCount?('ihlal #'+e.defaultCount):'', e.banUntil?('yasak: '+new Date(e.banUntil).toLocaleDateString('tr-TR')):'', e.secondChanceTo?('→ @'+escapeHtml(e.secondChanceTo)):'', e.details?escapeHtml(e.details):''].filter(Boolean).join(' · ');
+            const extra=[e.username?'@'+escapeHtml(e.username):'', e.price!=null?e.price+' π':'', e.defaultCount?(AWL('ihlal #','violation #')+e.defaultCount):'', e.banUntil?(AWL('yasak: ','ban: ')+new Date(e.banUntil).toLocaleDateString(currentLang==='en'?'en-GB':'tr-TR')):'', e.secondChanceTo?('→ @'+escapeHtml(e.secondChanceTo)):'', e.details?escapeHtml(e.details):''].filter(Boolean).join(' · ');
             return `<div style="padding:6px 8px;margin-bottom:5px;border-radius:8px;background:#0f172a;border-left:3px solid ${l[2]};font-size:0.68em;line-height:1.5;">
-                <div style="display:flex;justify-content:space-between;gap:6px;"><b style="color:${l[2]};">${l[0]} ${l[1]}</b><span style="color:#64748b;">${new Date(e.at).toLocaleString('tr-TR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})}</span></div>
+                <div style="display:flex;justify-content:space-between;gap:6px;"><b style="color:${l[2]};">${l[0]} ${l[1]}</b><span style="color:#64748b;">${new Date(e.at).toLocaleString(currentLang==='en'?'en-GB':'tr-TR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})}</span></div>
                 <div style="color:#e2e8f0;font-weight:700;">${escapeHtml(e.domainName||'')}</div>
                 <div style="color:#94a3b8;">${extra}</div>
             </div>`;
@@ -9157,7 +9186,7 @@ window.loadAdminOffersTable=async function(){
                 // Teklif kabul edilmişti ama alıcı rezervasyon süresi içinde satın almadı.
                 const acceptedBy = o.counterPrice!=null ? buyer : seller;
                 steps+=conversationStep('✅', acceptedBy, t('convAccepted'), fmtDate(o.respondedAt), '#34d399');
-                steps+=conversationStep('⌛', buyer, 'kabul edilen teklifi süre içinde satın almadı — rezervasyon sona erdi, teklif kapandı.', fmtDate(o.unpaidAt), '#fb923c');
+                steps+=conversationStep('⌛', buyer, AWL('kabul edilen teklifi süre içinde satın almadı — rezervasyon sona erdi, teklif kapandı.','did not purchase the accepted offer in time — the reservation ended and the offer was closed.'), fmtDate(o.unpaidAt), '#fb923c');
             }
             const deletable=['unpaid','expired','rejected','withdrawn'].includes(o.status);
             const purgeInfo=deletable?purgeLineHtml(o.purgeAt):`<div style="font-size:0.6em;margin-top:3px;color:#64748b;font-weight:700;">🗄️ ${AWL('Bu durumdaki kayıtlar otomatik silinmez.','Records in this state are not deleted automatically.')}</div>`;
@@ -9276,7 +9305,7 @@ window.loadAdminAuctionsTable=async function(){
         const now=Date.now();
         const statusOf=(a)=>{
             if(a.auctionActive) return {icon:'⏳',label:'Aktif',color:'#fbbf24'};
-            if(a.auctionWinPending && !a.sold) return {icon:'⏱️',label:'Kazanan Ödemeyi Bekliyor (@'+(a.auctionWinner||'?')+')',color:'#fb923c'};
+            if(a.auctionWinPending && !a.sold) return {icon:'⏱️',label:AWL('Kazanan Ödemeyi Bekliyor (@','Awaiting Winner Payment (@')+(a.auctionWinner||'?')+')',color:'#fb923c'};
             if(a.sold || a.reservedFor) return {icon:'🏆',label:'Kazanıldı',color:'#34d399'};
             if(a.auctionEndsAt && a.auctionEndsAt<=now && !a.auctionHighestBidder) return {icon:'⌛',label:'Süresi Doldu (Teklif Yok)',color:'#94a3b8'};
             if(a.auctionEndsAt && a.auctionEndsAt<=now && a.auctionHighestBidder) return {icon:'✅',label:'Bitti — Kazanan Bekleniyor',color:'#60a5fa'};
