@@ -156,6 +156,13 @@ function auctionBanDaysFor(defaultCount) {
 const fmtTRDateTime = (ms) => new Date(ms).toLocaleString('tr-TR', {
   timeZone: 'Europe/Istanbul', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit'
 });
+const fmtENDateTime = (ms) => new Date(ms).toLocaleString('en-GB', {
+  timeZone: 'Europe/Istanbul', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit'
+}) + ' (Istanbul time)';
+const fmtHoursLabelEn = (ms) => {
+  const h = ms / 3600000;
+  return Number.isInteger(h) ? `${h} hour${h === 1 ? '' : 's'}` : `${Math.round(h * 10) / 10} hours`;
+};
 const fmtHoursLabel = (ms) => {
   const h = ms / 3600000;
   return Number.isInteger(h) ? `${h} saat` : `${Math.round(h * 10) / 10} saat`;
@@ -251,20 +258,28 @@ async function getBidderCap(db, username) {
 async function notifyAuctionWon(domainName, info, opts = {}) {
   const { buyNow = false, secondChance = false } = opts;
   const windowText = fmtHoursLabel(AUCTION_WIN_WINDOW_MS);
-  let title, body;
+  const windowTextEn = fmtHoursLabelEn(AUCTION_WIN_WINDOW_MS);
+  let title, body, titleEn, bodyEn;
   if (secondChance) {
+    titleEn = '🎁 A Second Chance in the Auction!';
+    bodyEn = `The previous winner did not pay for "${domainName}" in time. As the runner-up, you now have the right to buy it at ${info.price} Pi. You can complete the purchase within ${windowTextEn} (deadline: ${fmtENDateTime(info.deadline)}). ⚠️ If you don't complete it, the auction is cancelled and a penalty is applied to your account.`;
     title = '🎁 Açık Artırmada Size İkinci Şans!';
     body = `"${domainName}" için önceki kazanan süresinde ödeme yapmadı. İkinci en yüksek teklif sahibi olarak ${info.price} Pi ile satın alma hakkı size geçti. Satın alma işlemini ${windowText} içinde (son tarih: ${fmtTRDateTime(info.deadline)}) tamamlayabilirsiniz. ⚠️ Tamamlamazsanız açık artırma iptal edilir ve hesabınıza ceza uygulanır.`;
   } else if (buyNow) {
+    titleEn = '⚡ You Won with "Buy Now"!';
+    bodyEn = `You used the "Buy Now" price (${info.price} Pi) for "${domainName}" and the auction has ended. You can complete the purchase within ${windowTextEn} (deadline: ${fmtENDateTime(info.deadline)}). ⚠️ If you don't buy within this time the auction is CANCELLED, the domain goes back on sale and a penalty is applied to your account.`;
     title = '⚡ "Hemen Al" ile Kazandınız!';
     body = `"${domainName}" için "Hemen Al" fiyatını (${info.price} Pi) kullandınız, açık artırma sona erdi. Satın alma işlemini ${windowText} içinde (son tarih: ${fmtTRDateTime(info.deadline)}) tamamlayabilirsiniz. ⚠️ Bu süre içinde satın almazsanız açık artırma İPTAL EDİLİR, domain yeniden satışa açılır ve hesabınıza ceza uygulanır.`;
   } else {
+    titleEn = '🏆 You Won the Auction!';
+    bodyEn = `You won the auction for "${domainName}" at ${info.price} Pi. You can complete the purchase within ${windowTextEn} (deadline: ${fmtENDateTime(info.deadline)}). ⚠️ If you don't buy within this time the auction is CANCELLED, the domain goes back on sale and a penalty is applied to your account.`;
     title = '🏆 Açık Artırmayı Kazandınız!';
     body = `"${domainName}" açık artırmasını ${info.price} Pi ile kazandınız. Satın alma işlemini ${windowText} içinde (son tarih: ${fmtTRDateTime(info.deadline)}) tamamlayabilirsiniz. ⚠️ Bu süre içinde satın almazsanız açık artırma İPTAL EDİLİR, domain yeniden satışa açılır ve hesabınıza ceza uygulanır.`;
   }
-  await sendNotification(info.winner, { type: 'auction_won', role: 'buyer', title, body, domainName, price: info.price, deadline: info.deadline });
+  await sendNotification(info.winner, { type: 'auction_won', role: 'buyer', title, body, en: { title: titleEn, body: bodyEn }, domainName, price: info.price, deadline: info.deadline });
   if (info.seller && !secondChance) {
-    await sendNotification(info.seller, {
+    await sendNotification(info.seller, { en: { title: buyNow ? '⚡ Your Auction Ended with "Buy Now"' : '🏆 Your Auction Has Ended',
+      body: `The auction for "${domainName}" was won by @${info.winner} for ${info.price} Pi${buyNow ? ' with the "Buy Now" price' : ''}. The buyer is expected to complete payment within ${windowTextEn}; otherwise the auction will be cancelled and your listing put back on sale.` },
       type: 'auction_won_seller', role: 'seller',
       title: buyNow ? '⚡ Açık Artırmanız "Hemen Al" ile Sona Erdi' : '🏆 Açık Artırmanız Sona Erdi',
       body: `"${domainName}" için açık artırma ${info.price} Pi ile @${info.winner} tarafından ${buyNow ? '"Hemen Al" fiyatıyla ' : ''}kazanıldı. Alıcının ${windowText} içinde ödemesini tamamlaması bekleniyor; tamamlamazsa açık artırma iptal edilip ilanınız tekrar satışa açılacak.`,
@@ -328,14 +343,16 @@ async function finalizeEndedAuction(db, domainName) {
   if (!info) return null;
   if (info.noReserve) {
     await logAuctionEvent(db, 'reserve_not_met', domainName, { username: info.topBidder, price: info.topBid });
-    await sendNotification(info.topBidder, {
+    await sendNotification(info.topBidder, { en: { title: '🔒 Reserve Price Not Met',
+      body: `The auction for "${domainName}" ended without a sale because your highest bid (${info.topBid} Pi) did not reach the seller's hidden reserve price. No payment was taken and no penalty was applied to your account.` },
       type: 'auction_reserve_not_met', role: 'buyer',
       title: '🔒 Rezerv Fiyatı Karşılanmadı',
       body: `"${domainName}" açık artırması, en yüksek teklifiniz (${info.topBid} Pi) satıcının belirlediği gizli rezerv fiyatına ulaşmadığı için satışsız sona erdi. Herhangi bir ödeme alınmadı ve hesabınıza ceza uygulanmadı.`,
       domainName
     });
     if (info.seller) {
-      await sendNotification(info.seller, {
+      await sendNotification(info.seller, { en: { title: '🔒 Auction Did Not Reach Its Reserve',
+        body: `The highest bid for "${domainName}" was ${info.topBid} Pi but the reserve price was not reached; no sale was made and the listing is back on sale at ${info.revertTo} Pi.` },
         type: 'auction_reserve_not_met', role: 'seller',
         title: '🔒 Açık Artırma Rezerve Ulaşmadı',
         body: `"${domainName}" için en yüksek teklif ${info.topBid} Pi oldu ancak rezerv fiyatına ulaşılamadı; satış yapılmadı ve ilan ${info.revertTo} Pi fiyatıyla yeniden satışa açıldı.`,
@@ -476,7 +493,11 @@ async function expireAuctionWin(db, domainName) {
   const penaltyText = banUntil
     ? `Bu ${defaultCount}. ihlaliniz olduğu için ${fmtTRDateTime(banUntil)} tarihine kadar açık artırmalara teklif veremezsiniz.`
     : `Bu ilk ihlaliniz — uyarı olarak kaydedildi. Tekrarında açık artırmalara teklif verme yasağı uygulanacak.`;
-  await sendNotification(info.winner, {
+  const penaltyTextEn = banUntil
+    ? `Because this is your violation #${defaultCount}, you cannot bid in auctions until ${fmtENDateTime(banUntil)}.`
+    : `This is your first violation — it was recorded as a warning. A repeat will result in a bidding ban.`;
+  await sendNotification(info.winner, { en: { title: '❌ Auction Cancelled',
+    body: `You won the auction for "${domainName}" at ${info.price} Pi but did not complete the purchase within ${fmtHoursLabelEn(AUCTION_WIN_WINDOW_MS)}. The auction has been cancelled for you. ${penaltyTextEn}` },
     type: 'auction_win_expired', role: 'buyer',
     title: '❌ Açık Artırma İptal Edildi',
     body: `"${domainName}" açık artırmasını ${info.price} Pi ile kazanmıştınız ancak ${fmtHoursLabel(AUCTION_WIN_WINDOW_MS)} içinde satın alma işlemini tamamlamadınız. Açık artırma sizin için iptal edildi. ${penaltyText}`,
@@ -485,7 +506,8 @@ async function expireAuctionWin(db, domainName) {
   if (info.second) {
     await notifyAuctionWon(domainName, { winner: info.second.username, price: info.second.price, deadline: info.second.deadline, seller: info.seller }, { secondChance: true });
     if (info.seller) {
-      await sendNotification(info.seller, {
+      await sendNotification(info.seller, { en: { title: '🎁 Runner-Up Given a Chance',
+        body: `The winner @${info.winner} did not complete payment for "${domainName}" in time. The runner-up @${info.second.username} was offered the chance to buy at ${info.second.price} Pi (${fmtHoursLabelEn(AUCTION_WIN_WINDOW_MS)}).` },
         type: 'auction_win_expired_seller', role: 'seller',
         title: '🎁 İkinci Teklif Sahibine Fırsat Verildi',
         body: `"${domainName}" için kazanan @${info.winner} süre içinde ödemeyi tamamlamadı. İkinci en yüksek teklif sahibi @${info.second.username}'e ${info.second.price} Pi ile satın alma fırsatı verildi (${fmtHoursLabel(AUCTION_WIN_WINDOW_MS)}).`,
@@ -494,7 +516,8 @@ async function expireAuctionWin(db, domainName) {
     }
     await logAuctionEvent(db, 'second_chance', domainName, { username: info.second.username, price: info.second.price });
   } else if (info.seller) {
-    await sendNotification(info.seller, {
+    await sendNotification(info.seller, { en: { title: '⚠️ Auction Cancelled',
+      body: `The winner @${info.winner} did not complete payment for "${domainName}" in time. The auction was cancelled; your listing is back on sale at ${info.revertPrice} Pi.` },
       type: 'auction_win_expired_seller', role: 'seller',
       title: '⚠️ Açık Artırma İptal Oldu',
       body: `"${domainName}" için kazanan @${info.winner} süre içinde ödemeyi tamamlamadı. Açık artırma iptal edildi; ilanınız ${info.revertPrice} Pi fiyatıyla yeniden satışa açıldı.`,
@@ -629,7 +652,8 @@ async function checkEndingAuctions(db) {
           // Teklifsiz biten açık artırma: normal satışa geri dön.
           await doc.ref.set({ auctionActive: false, auctionEndsAt: FieldValue.delete(), ...AUCTION_LEFTOVER_CLEAR_FIELDS() }, { merge: true });
           if (data.sellerUsername) {
-            await sendNotification(data.sellerUsername, {
+            await sendNotification(data.sellerUsername, { en: { title: '⏳ Auction Ended With No Bids',
+              body: `The auction for "${doc.id}" ended and received no bids. The listing is back in the normal sales list.` },
               type: 'auction_ended_no_bids',
               role: 'seller',
               title: '⏳ Açık Artırma Teklifsiz Sona Erdi',
@@ -650,7 +674,8 @@ async function checkEndingAuctions(db) {
       await doc.ref.set({ auctionEndingWarnedFor: data.auctionEndsAt }, { merge: true });
       const minutesLeft = Math.max(1, Math.round(remaining / 60000));
       if (data.auctionHighestBidder) {
-        await sendNotification(data.auctionHighestBidder, {
+        await sendNotification(data.auctionHighestBidder, { en: { title: '⏰ Auction Ending Soon!',
+          body: `Your bid on "${doc.id}" is still the highest — the auction ends in about ${minutesLeft} minutes. Check the latest status so you aren't outbid.` },
           type: 'auction_ending_soon',
           role: 'buyer',
           title: '⏰ Açık Artırma Bitmek Üzere!',
@@ -661,11 +686,13 @@ async function checkEndingAuctions(db) {
       await notifyFavoriters(db, doc.id, {
         excludeUsername: data.auctionHighestBidder || data.sellerUsername || null,
         type: 'auction_fav_ending',
+        en: { title: '⏰ An Auction You Follow Is Ending Soon', body: `For your favorite "${doc.id}" the auction ends in about ${minutesLeft} minutes (current: ${data.auctionHighestBid != null ? data.auctionHighestBid : data.auctionStartPrice} Pi).` },
         title: '⏰ Takip Ettiğiniz Açık Artırma Bitmek Üzere',
         body: `Favorinizdeki "${doc.id}" için açık artırma yaklaşık ${minutesLeft} dakika içinde bitiyor (güncel: ${data.auctionHighestBid != null ? data.auctionHighestBid : data.auctionStartPrice} Pi).`
       });
       if (data.sellerUsername) {
-        await sendNotification(data.sellerUsername, {
+        await sendNotification(data.sellerUsername, { en: { title: '⏰ Your Auction Is Ending Soon',
+          body: `The auction for "${doc.id}" ends in about ${minutesLeft} minutes.` },
           type: 'auction_ending_soon_seller',
           role: 'seller',
           title: '⏰ Açık Artırmanız Bitmek Üzere',
@@ -695,7 +722,9 @@ async function checkEndingAuctions(db) {
       await doc.ref.set({ auctionWinWarnStage: newStage }, { merge: true });
       const minLeft = Math.max(1, Math.round(remaining / 60000));
       const leftText = minLeft >= 60 ? `yaklaşık ${Math.round(minLeft / 60)} saat` : `${minLeft} dakika`;
-      await sendNotification(d.auctionWinner, {
+      const leftTextEn = minLeft >= 60 ? `about ${Math.round(minLeft / 60)} hours` : `${minLeft} minutes`;
+      await sendNotification(d.auctionWinner, { en: { title: '⏳ Your Purchase Time Is Running Out!',
+        body: `You won the auction for "${doc.id}" and have ${leftTextEn} left to buy it (deadline: ${fmtENDateTime(d.auctionWinDeadline)}). If you don't complete the purchase, the auction will be cancelled and a penalty will be applied to your account.` },
         type: 'auction_win_reminder',
         role: 'buyer',
         title: '⏳ Satın Alma Süreniz Bitiyor!',
@@ -778,15 +807,19 @@ async function closeUnpaidAcceptedOffers(db, domainName, info) {
     stale.forEach(d => batch.set(d.ref, { status: 'unpaid', unpaidAt: Date.now() }, { merge: true }));
     await batch.commit();
     const priceTxt = info.agreedPrice != null ? `${info.agreedPrice} Pi` : 'anlaşılan';
+    const priceTxtEn = info.agreedPrice != null ? `${info.agreedPrice} Pi` : 'agreed';
+    const backTxtEn = info.revertPrice != null ? ` The listing is back on sale at ${info.revertPrice} Pi.` : ' The listing is back on sale.';
     const backTxt = info.revertPrice != null ? ` İlan ${info.revertPrice} Pi fiyatıyla yeniden satışa açıldı.` : ' İlan yeniden satışa açıldı.';
-    await sendNotification(info.buyer, {
+    await sendNotification(info.buyer, { en: { title: '⌛ Your Offer Time Has Expired',
+      body: `You did not purchase your accepted ${priceTxtEn} offer for "${domainName}" in time. The reservation has ended, the price returned to normal and the offer was closed. You can make a new offer if you wish.` },
       type: 'offer_unpaid_expired', role: 'buyer',
       title: '⌛ Teklif Süreniz Doldu',
       body: `"${domainName}" için kabul edilen ${priceTxt} teklifinizi süre içinde satın almadınız. Rezervasyon sona erdi, fiyat eski haline döndü ve teklif kapatıldı. Dilerseniz yeni bir teklif verebilirsiniz.`,
       domainName
     });
     if (info.seller) {
-      await sendNotification(info.seller, {
+      await sendNotification(info.seller, { en: { title: '⌛ Buyer Did Not Purchase',
+        body: `@${info.buyer} did not purchase your accepted ${priceTxtEn} offer for "${domainName}" in time. The offer was closed.${backTxtEn}` },
         type: 'offer_unpaid_expired_seller', role: 'seller',
         title: '⌛ Alıcı Satın Almadı',
         body: `@${info.buyer}, "${domainName}" için kabul ettiğiniz ${priceTxt} teklifi süre içinde satın almadı. Teklif kapatıldı.${backTxt}`,
@@ -816,7 +849,8 @@ async function sweepOfferReservations(db) {
       if (d.reservationWarnedFor === d.reservedUntil) continue;
       await doc.ref.set({ reservationWarnedFor: d.reservedUntil }, { merge: true });
       const minLeft = Math.max(1, Math.round((d.reservedUntil - now) / 60000));
-      await sendNotification(d.reservedFor, {
+      await sendNotification(d.reservedFor, { en: { title: '⏳ Your Purchase Time Is Running Out',
+        body: `The accepted price of ${d.price} Pi for "${doc.id}" will expire in about ${minLeft} minutes. If you don't buy, the reservation ends and the offer is closed.` },
         type: 'offer_reservation_reminder', role: 'buyer',
         title: '⏳ Satın Alma Süreniz Bitiyor',
         body: `"${doc.id}" için kabul edilen ${d.price} Pi fiyatı yaklaşık ${minLeft} dakika sonra geçerliliğini yitirecek. Satın almazsanız rezervasyon sona erer ve teklif kapatılır.`,
@@ -845,7 +879,8 @@ async function sweepOfferReservations(db) {
       const reservedForThis = d && d.reservedFor === o.buyerUsername && d.reservedUntil && d.reservedUntil > now;
       if (reservedForThis) continue; // hâlâ geçerli rezervasyon
       await doc.ref.set({ status: 'unpaid', unpaidAt: now }, { merge: true });
-      await sendNotification(o.buyerUsername, {
+      await sendNotification(o.buyerUsername, { en: { title: '⌛ Your Offer Time Has Expired',
+        body: `Your accepted offer for "${o.domainName}" was closed because it was not purchased in time. You can make a new offer if you wish.` },
         type: 'offer_unpaid_expired', role: 'buyer',
         title: '⌛ Teklif Süreniz Doldu',
         body: `"${o.domainName}" için kabul edilen teklifiniz süre içinde satın alınmadığı için kapatıldı. Dilerseniz yeni bir teklif verebilirsiniz.`,
@@ -908,7 +943,7 @@ async function deleteListingReportsForDomain(db, domainName) {
 // veya satıldığında bildirim gönderir. Öncesinde favoriler tamamen pasif bir
 // listeydi — kullanıcı favorilediği bir domain satılsa/ucuzlasa bile
 // bundan hiç haberdar olmuyordu, uygulamayı açıp kontrol etmesi gerekiyordu.
-async function notifyFavoriters(db, domainName, { excludeUsername, type, title, body } = {}) {
+async function notifyFavoriters(db, domainName, { excludeUsername, type, title, body, en } = {}) {
   try {
     // BUG DÜZELTMESİ: favoriler 'toggle_favorite' action'ında
     // 'user_profiles' koleksiyonuna yazılıyor (bkz. aşağıdaki toggle_favorite
@@ -921,7 +956,7 @@ async function notifyFavoriters(db, domainName, { excludeUsername, type, title, 
     for (const doc of snap.docs) {
       const username = doc.id;
       if (excludeUsername && username === excludeUsername) continue;
-      await sendNotification(username, { type, role: 'buyer', title, body, domainName });
+      await sendNotification(username, { type, role: 'buyer', title, body, en, domainName });
     }
   } catch (e) {
     console.error(`notifyFavoriters hatası (${domainName}):`, e);
@@ -964,7 +999,10 @@ async function notifySavedSearches(db, domainName, domainData, reason = 'new_lis
       // aksi halde fiyatı düşen ESKİ bir domain için yanlışlıkla "yeni
       // domain eklendi" mesajı gönderilirdi.
       const isPriceDrop = reason === 'price_drop';
-      await sendNotification(s.username, {
+      await sendNotification(s.username, { en: { title: isPriceDrop ? '📉 Price Drop Matching Your Saved Search!' : '🔎 New Domain Matching Your Saved Search!',
+          body: isPriceDrop
+            ? `The price of "${domainName}" dropped to ${domainData.price} Pi, matching your saved search criteria.`
+            : `"${domainName}" matches your saved search criteria (${domainData.price} Pi).` },
         type: 'saved_search_match',
         title: isPriceDrop ? '📉 Kayıtlı Aramanıza Uygun Fiyat Düşüşü!' : '🔎 Kayıtlı Aramanıza Uygun Yeni Domain!',
         body: isPriceDrop
@@ -993,7 +1031,8 @@ async function awardReferralBonusIfEligible(db, username) {
     await profileRef.set({ referralBonusGiven: true }, { merge: true });
     await updateUserPoints(data.referredBy, REFERRAL_BONUS_REFERRER, `referral_bonus_for_${username}`);
     await updateUserPoints(username, REFERRAL_BONUS_REFERRED, 'referral_welcome_bonus');
-    await sendNotification(data.referredBy, {
+    await sendNotification(data.referredBy, { en: { title: '🎉 You Have a Referral Reward!',
+      body: `The user you invited, @${username}, completed their first purchase — you earned ${REFERRAL_BONUS_REFERRER} bonus points!` },
       type: 'referral_bonus',
       title: '🎉 Referans Ödülünüz Var!',
       body: `Davet ettiğiniz @${username} ilk alışverişini tamamladı — ${REFERRAL_BONUS_REFERRER} bonus puan kazandınız!`
@@ -1485,8 +1524,14 @@ function isNotifCategoryEnabled(prof, category) {
   return prefs[category] !== false;
 }
 
+// Kullanıcı dili: 'tr' (varsayılan) | 'en'. Girişte ve dil değiştirilince user_profiles.lang'a yazılır.
+const normLang = (l) => (l === 'en' ? 'en' : 'tr');
 async function sendNotification(targetUsername, notification) {
   if (!targetUsername) return;
+  // notification.en = { title, body } → İngilizce metin. Uygulama içi kayıtta titleEn/bodyEn olarak saklanır
+  // (istemci kullanıcının O ANKİ diline göre seçer); Telegram/e-posta/push ise profildeki dile göre seçilir.
+  const { en, ...baseNotification } = notification || {};
+  const hasEn = !!(en && (en.title || en.body));
   try {
     const rtdb = getRtdb();
     if (!rtdb) {
@@ -1495,7 +1540,8 @@ async function sendNotification(targetUsername, notification) {
     }
     const ref = rtdb.ref(`notifications/${targetUsername}`);
     await ref.push({
-      ...notification,
+      ...baseNotification,
+      ...(hasEn ? { titleEn: en.title || null, bodyEn: en.body || null } : {}),
       read: false,
       ts: Date.now()
     });
@@ -1517,23 +1563,29 @@ async function sendNotification(targetUsername, notification) {
       // YENİ: Bu bildirim türü kullanıcının kapattığı bir kategorideyse,
       // dış kanalları (Telegram/e-posta/push) ATLA — uygulama içi
       // bildirim zaten yukarıda yazıldı, o hiçbir zaman engellenmiyor.
-      const category = notificationCategoryFor(notification.type);
+      const category = notificationCategoryFor(baseNotification.type);
       if (!isNotifCategoryEnabled(prof, category)) {
         return;
       }
-      const text = `${notification.title ? notification.title + '\n\n' : ''}${notification.body || ''}`;
+      // Dış kanallar (Telegram / e-posta / push) kullanıcının profildeki diline göre gider.
+      const lang = normLang(prof.lang);
+      const useEn = lang === 'en' && hasEn;
+      const outTitle = useEn ? (en.title || baseNotification.title) : baseNotification.title;
+      const outBody = useEn ? (en.body || baseNotification.body) : baseNotification.body;
+      const text = `${outTitle ? outTitle + '\n\n' : ''}${outBody || ''}`;
       if (prof.telegramChatId) {
         await sendTG(prof.telegramChatId, text);
       }
       if (prof.email && prof.emailVerified) {
         await sendEmail(
           prof.email,
-          notification.title || 'Yeni Bildirim',
-          `<p style="font-family:sans-serif;font-size:15px;color:#111;">${(notification.body || '').replace(/\n/g, '<br>')}</p>`
+          outTitle || (lang === 'en' ? 'New Notification' : 'Yeni Bildirim'),
+          `<p style="font-family:sans-serif;font-size:15px;color:#111;">${(outBody || '').replace(/\n/g, '<br>')}</p>`,
+          lang
         );
       }
       // YENİ: Tarayıcı push bildirimi (varsa kayıtlı abonelikler).
-      await sendWebPush(db, targetUsername, prof, notification);
+      await sendWebPush(db, targetUsername, prof, { ...baseNotification, title: outTitle, body: outBody }, lang);
     }
   } catch (e) {
     console.error(`[Dış Bildirim] @${targetUsername} için Telegram/e-posta gönderilemedi:`, e.message || e);
@@ -1546,12 +1598,12 @@ async function sendNotification(targetUsername, notification) {
 // bildirim iznini kaldırmış, tarayıcıyı kaldırmış vb.) push servisi 404/410
 // döner — bu durumda o aboneliği veritabanından sessizce siliyoruz, aksi
 // halde her bildiride aynı hatayı almaya devam ederiz.
-async function sendWebPush(db, targetUsername, prof, notification) {
+async function sendWebPush(db, targetUsername, prof, notification, lang = 'tr') {
   if (!WEB_PUSH_ENABLED) return;
   const subs = Array.isArray(prof.pushSubscriptions) ? prof.pushSubscriptions : [];
   if (!subs.length) return;
   const payload = JSON.stringify({
-    title: notification.title || 'Yeni Bildirim',
+    title: notification.title || (lang === 'en' ? 'New Notification' : 'Yeni Bildirim'),
     body: notification.body || '',
     url: notification.domainName ? `/?domain=${encodeURIComponent(notification.domainName)}` : '/'
   });
@@ -1628,13 +1680,13 @@ async function getCachedBotUsername() {
 const RESEND_API_KEY = process.env.RESEND_API_KEY;
 const MAIL_FROM = process.env.MAIL_FROM || 'info@dofiay.com';
 
-async function sendEmail(to, subject, htmlBody) {
+async function sendEmail(to, subject, htmlBody, lang = 'tr') {
   if (!RESEND_API_KEY || !to) return;
   try {
     const resp = await fetch('https://api.resend.com/emails', {
       method: 'POST',
       headers: { 'Authorization': `Bearer ${RESEND_API_KEY}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ from: MAIL_FROM, to: [to], subject, html: wrapEmailHtml(htmlBody) })
+      body: JSON.stringify({ from: MAIL_FROM, to: [to], subject, html: wrapEmailHtml(htmlBody, lang) })
     });
     if (!resp.ok) {
       const errText = await resp.text().catch(() => '');
@@ -1648,11 +1700,14 @@ async function sendEmail(to, subject, htmlBody) {
 // Her giden e-postanın altına aynı, sabit marka/footer'ı ekler — böylece
 // alıcı hangi akıştan (doğrulama, bildirim, admin mesajı) geldiğine
 // bakmaksızın e-postayı hep aynı, tanıdık kaynaktan gelmiş gibi görür.
-function wrapEmailHtml(innerHtml) {
+function wrapEmailHtml(innerHtml, lang = 'tr') {
+  const footer = lang === 'en'
+    ? 'This email was sent by Web3 Domain Gateway (dofiay.com). You can manage your notification preferences from the "My Panel" screen in the app.'
+    : 'Bu e-posta Web3 Domain Gateway (dofiay.com) tarafından gönderildi. Bildirim tercihlerinizi uygulamadaki "Panelim" ekranından yönetebilirsiniz.';
   return `<div style="max-width:480px;margin:0 auto;font-family:sans-serif;">
     ${innerHtml}
     <hr style="border:none;border-top:1px solid #e5e7eb;margin:24px 0 12px 0;">
-    <p style="color:#9ca3af;font-size:11px;">Bu e-posta Web3 Domain Gateway (dofiay.com) tarafından gönderildi. Bildirim tercihlerinizi uygulamadaki "Panelim" ekranından yönetebilirsiniz.</p>
+    <p style="color:#9ca3af;font-size:11px;">${footer}</p>
   </div>`;
 }
 
@@ -1830,7 +1885,8 @@ async function reverseSaleAndPoints(db, domainName, buyerUsername, soldPrice, so
     }
 
     // 4. Alıcıya bildirim gönder
-    await sendNotification(buyerUsername, {
+    await sendNotification(buyerUsername, { en: { title: 'ℹ️ Purchase Cancelled',
+      body: `"${domainName}" was put back on sale or deleted by an admin. Your ${soldPrice} Pi spending has been reversed.` },
       type: 'purchase_reversed',
       title: 'ℹ️ Satın Alma İptal Edildi',
       body: `"${domainName}" domaini yönetici tarafından tekrar satışa çıkarıldı veya silindi. ${soldPrice} Pi harcamanız geri alındı.`,
@@ -1846,7 +1902,261 @@ async function reverseSaleAndPoints(db, domainName, buyerUsername, soldPrice, so
 // ══════════════════════════════════════════════════════════════════════════
 //  ANA HANDLER
 // ══════════════════════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════════════════════
+//  SUNUCU HATA/UYARI MESAJLARI — İNGİLİZCE ÇEVİRİ
+// ══════════════════════════════════════════════════════════════════════
+// İstemci her isteğe kullanıcının arayüz dilini ('lang') ekler. lang === 'en' ise yanıttaki
+// `error` metni burada İngilizceye çevrilir (tek noktada; her action'a tek tek dokunmaya gerek yok).
+// Tabloda olmayan (ör. dış servisten gelen ham hata) metin olduğu gibi döner.
+const ERR_EN = {
+  "Beklenmeyen bir sunucu hatası oluştu.": "An unexpected server error occurred.",
+  "Bildirim göndermek için giriş yapmalısınız.": "You must log in to send a notification.",
+  "Bir veya daha fazla alan çok uzun.": "One or more fields are too long.",
+  "Bot bilgisi alınamadı, lütfen daha sonra tekrar deneyin": "Could not get bot info, please try again later",
+  "Bu aramayı silme yetkiniz yok": "You are not allowed to delete this search",
+  "Bu domain artık satışta değil": "This domain is no longer for sale",
+  "Bu domain az önce başka biri tarafından satın alındı.": "This domain was just bought by someone else.",
+  "Bu domain için bağlı bir URL girilmemiş": "No URL has been set for this domain",
+  "Bu domain için zaten aktif bir açık artırma var": "There is already an active auction for this domain",
+  "Bu domain için zaten bekleyen bir öneriniz var": "You already have a pending suggestion for this domain",
+  "Bu domain silinmiş durumda değil": "This domain is not in a deleted state",
+  "Bu domain zaten satılık durumda": "This domain is already for sale",
+  "Bu domain şu anda açık artırmada — normal satın alma ile alınamaz, teklif vermeniz gerekiyor.": "This domain is currently in an auction — it cannot be bought normally, you need to place a bid.",
+  "Bu domain şu anda açık artırmada — normal satın alma ile alınamaz. Paranız alındığı için otomatik olarak destek ekibine bildirildi, en kısa sürede sizinle iletişime geçip iadenizi yapacaklar.": "This domain is currently in an auction — it cannot be bought normally. Because your payment was taken, our support team was notified automatically and will contact you shortly to refund you.",
+  "Bu domain şu anda açık artırmada — teklif yerine açık artırmaya katılmalısınız.": "This domain is currently in an auction — you must join the auction instead of making an offer.",
+  "Bu domain şu anda bir alıcı için rezerve — açık artırma başlatılamaz": "This domain is currently reserved for a buyer — an auction cannot be started",
+  "Bu domain'in satıcısı siz değilsiniz": "You are not the seller of this domain",
+  "Bu domain, ödemeniz tamamlanırken anlaşma sağlanan başka bir alıcı için rezerve edilmiş. Paranız alındığı için otomatik olarak destek ekibine bildirildi, en kısa sürede sizinle iletişime geçip iadenizi yapacaklar.": "This domain was reserved for another buyer with an agreed deal while your payment was being completed. Because your payment was taken, our support team was notified automatically and will contact you shortly to refund you.",
+  "Bu domain, ödemeniz tamamlanırken çok kısa bir süre önce başka biri tarafından satın alınmış. Paranız alındığı için otomatik olarak destek ekibine bildirildi, en kısa sürede sizinle iletişime geçip iadenizi yapacaklar.": "This domain was bought by someone else just moments before your payment completed. Because your payment was taken, our support team was notified automatically and will contact you shortly to refund you.",
+  "Bu domainin bir satıcısı yok, mesaj gönderilemez": "This domain has no seller, so a message cannot be sent",
+  "Bu domainin satıcısı sizsiniz — kendi ilanınızı satın alamazsınız.": "You are the seller of this domain — you cannot buy your own listing.",
+  "Bu domainin satıcısı sizsiniz, kendi ilanınızı satın alamazsınız. Paranız alındığı için otomatik olarak destek ekibine bildirildi, en kısa sürede sizinle iletişime geçip iadenizi yapacaklar.": "You are the seller of this domain, so you cannot buy your own listing. Because your payment was taken, our support team was notified automatically and will contact you shortly to refund you.",
+  "Bu domainin ödemesi satıcıya zaten gönderildi, tekrar satışa çıkarılamaz. Domain otomatik olarak pasife alındı. Gerçek bir iptal gerekiyorsa önce alıcıya gerçek bir Pi iadesi yapılmalı (bu, mevcut sistemde otomatikleştirilmemiştir, elle değerlendirilmelidir).": "The payment for this domain was already sent to the seller, so it cannot be relisted. The domain was automatically deactivated. If a real cancellation is needed, a real Pi refund must be made to the buyer first (this is not automated in the current system and must be handled manually).",
+  "Bu ilan size ait değil": "This listing does not belong to you",
+  "Bu ilanı geri çekme yetkiniz yok": "You are not allowed to withdraw this listing",
+  "Bu ilanı zaten bildirdiniz, inceleme sürüyor.": "You have already reported this listing, the review is in progress.",
+  "Bu ilanın kayıtlı bir satıcısı yok, ödeme serbest bırakılamaz.": "This listing has no registered seller, so the payment cannot be released.",
+  "Bu işlem zaten sonuçlanmış, onay artık değiştirilemez": "This transaction is already concluded, the confirmation can no longer be changed",
+  "Bu kalıcı bir işlemdir. confirmReset:true parametresi olmadan çalıştırılamaz.": "This is a permanent operation. It cannot run without the confirmReset:true parameter.",
+  "Bu kaydı silme yetkiniz yok": "You are not allowed to delete this record",
+  "Bu konuşmaya mesaj gönderme yetkiniz yok": "You are not allowed to send messages in this conversation",
+  "Bu kullanıcının doğrulanmış bir e-posta adresi yok": "This user has no verified email address",
+  "Bu satış için zaten bir değerlendirme yaptınız": "You have already rated this sale",
+  "Bu satışın alıcısı siz değilsiniz": "You are not the buyer of this sale",
+  "Bu satışın kayıtlı bir alıcısı yok": "This sale has no registered buyer",
+  "Bu satışın kayıtlı bir alıcısı yok.": "This sale has no registered buyer.",
+  "Bu satışın kayıtlı bir satıcısı yok": "This sale has no registered seller",
+  "Bu satışın satıcısı siz değilsiniz": "You are not the seller of this sale",
+  "Bu talebe yanıt verme yetkiniz yok": "You are not allowed to reply to this request",
+  "Bu talebi düzenleme yetkiniz yok": "You are not allowed to edit this request",
+  "Bu talebi geri çekme yetkiniz yok": "You are not allowed to withdraw this request",
+  "Bu talebi silme yetkiniz yok": "You are not allowed to delete this request",
+  "Bu talep artık geri çekilemez (sonuçlanmış).": "This request can no longer be withdrawn (it is concluded).",
+  "Bu talep size ait değil.": "This request does not belong to you.",
+  "Bu teklif için bekleyen bir karşı teklif yok": "There is no pending counter offer for this offer",
+  "Bu teklif size ait değil": "This offer does not belong to you",
+  "Bu teklif zaten yanıtlanmış": "This offer has already been answered",
+  "Bu teklife yanıt verme yetkiniz yok": "You are not allowed to respond to this offer",
+  "Bu ödeme zaten alıcıya iade edilmiş.": "This payment has already been refunded to the buyer.",
+  "Bu ödeme zaten satıcıya gönderilmiş, artık iade edilemez.": "This payment has already been sent to the seller and can no longer be refunded.",
+  "Bu ödeme zaten satıcıya gönderilmiş.": "This payment has already been sent to the seller.",
+  "Bu öneri zaten işlenmiş": "This suggestion has already been processed",
+  "Bulunamadı": "Not found",
+  "Desteklenmeyen görsel formatı": "Unsupported image format",
+  "Domain adı ve geçerli bir sebep zorunludur.": "A domain name and a valid reason are required.",
+  "Domain artık müsait değil": "This domain is no longer available",
+  "Düzenlenecek ilan talebi bulunamadı": "The listing request to edit was not found",
+  "E-posta bildirimleri şu anda kullanılamıyor": "Email notifications are currently unavailable",
+  "E-posta gönderimi şu anda kullanılamıyor": "Email sending is currently unavailable",
+  "Eksik bilgi": "Missing information",
+  "En az bir arama kriteri (kategori, anahtar kelime veya azami fiyat) girmelisiniz": "You must enter at least one search criterion (category, keyword or maximum price)",
+  "En az bir istek seçilmelidir": "At least one request must be selected",
+  "En fazla 10 kayıtlı arama oluşturabilirsiniz. Yeni eklemek için önce birini silin.": "You can create at most 10 saved searches. Delete one first to add a new one.",
+  "Geçerli Pi oturumu bulunamadı": "No valid Pi session was found",
+  "Geçerli bir e-posta adresi girin": "Enter a valid email address",
+  "Geçerli bir e-posta adresi girin.": "Enter a valid email address.",
+  "Geçersiz ID": "Invalid ID",
+  "Geçersiz abonelik verisi": "Invalid subscription data",
+  "Geçersiz action": "Invalid action",
+  "Geçersiz başlangıç fiyatı": "Invalid starting price",
+  "Geçersiz dil": "Invalid language",
+  "Geçersiz domain": "Invalid domain",
+  "Geçersiz domain adı formatı": "Invalid domain name format",
+  "Geçersiz domain adı formatı. Örnek: example.com": "Invalid domain name format. Example: example.com",
+  "Geçersiz isim veya fiyat": "Invalid name or price",
+  "Geçersiz istek ID": "Invalid request ID",
+  "Geçersiz karşı teklif tutarı": "Invalid counter offer amount",
+  "Geçersiz kategori": "Invalid category",
+  "Geçersiz kullanıcı adı": "Invalid username",
+  "Geçersiz minimum artış tutarı": "Invalid minimum increment",
+  "Geçersiz mod (testnet veya mainnet olmalı)": "Invalid mode (must be testnet or mainnet)",
+  "Geçersiz parametre": "Invalid parameter",
+  "Geçersiz puan": "Invalid rating",
+  "Geçersiz role": "Invalid role",
+  "Geçersiz satıcı adı": "Invalid seller name",
+  "Geçersiz talep": "Invalid request",
+  "Geçersiz teklif tutarı": "Invalid offer amount",
+  "Geçersiz tip listesi": "Invalid type list",
+  "Geçersiz veya boş liste": "Invalid or empty list",
+  "Görsel 2MB'dan büyük olamaz": "The image cannot be larger than 2MB",
+  "Görsel verisi eksik": "Image data is missing",
+  "Hedef kullanıcı bulunamadı": "Target user not found",
+  "Kapatılmış talebe yanıt verilemez": "A closed request cannot be replied to",
+  "Kayıt bulunamadı": "Record not found",
+  "Kayıtlı arama bulunamadı": "Saved search not found",
+  "Kendi domaininize teklif veremezsiniz": "You cannot make an offer on your own domain",
+  "Kendi ilanınıza mesaj gönderemezsiniz": "You cannot send a message to your own listing",
+  "Kendinizi takip edemezsiniz": "You cannot follow yourself",
+  "Kimliğiniz doğrulanamadı. Paranız alındıysa destek ekibine otomatik bildirim gitti, en kısa sürede sizinle iletişime geçilecek.": "Your identity could not be verified. If your payment was taken, our support team was notified automatically and will contact you shortly.",
+  "Kod gerekli": "A code is required",
+  "Kod hatalı": "The code is incorrect",
+  "Kodun süresi doldu, lütfen tekrar isteyin": "The code has expired, please request a new one",
+  "Konu ve mesaj zorunludur": "A subject and a message are required",
+  "Konuşma bulunamadı": "Conversation not found",
+  "Kullanıcı adı gerekli": "A username is required",
+  "Kullanıcı adı, konu ve mesaj gerekli": "A username, subject and message are required",
+  "Mainnet'e geçilemiyor: Vercel'de APP_SECRET_MAINNET ve/veya PI_WALLET_PRIVATE_SEED_MAINNET tanımlı değil. Önce bu değerleri ekleyip yeniden deploy edin.": "Cannot switch to Mainnet: APP_SECRET_MAINNET and/or PI_WALLET_PRIVATE_SEED_MAINNET are not defined on Vercel. Add them first and redeploy.",
+  "Mesaj boş olamaz": "The message cannot be empty",
+  "Pi API hatası": "Pi API error",
+  "Reklam doğrulama şu anda kullanılamıyor": "Ad verification is currently unavailable",
+  "Reklam doğrulanamadı (Pi sunucusuna ulaşılamadı)": "The ad could not be verified (the Pi server could not be reached)",
+  "Reklam izleme Pi tarafından onaylanmadı, ödül verilemiyor": "The ad view was not confirmed by Pi, so the reward cannot be given",
+  "Sadece POST kabul edilir": "Only POST is accepted",
+  "Sadece bekleyen teklifler geri çekilebilir": "Only pending offers can be withdrawn",
+  "Sadece onay bekleyen talepler geri çekilebilir": "Only requests awaiting approval can be withdrawn",
+  "Sadece reddedilmiş talepler düzenlenebilir": "Only rejected requests can be edited",
+  "Sadece reddedilmiş veya geri çekilmiş talepler silinebilir": "Only rejected or withdrawn requests can be deleted",
+  "Sadece reddedilmiş veya çözülmüş talepler silinebilir.": "Only rejected or resolved requests can be deleted.",
+  "Sadece soft-delete edilmiş domainler kalıcı silinebilir": "Only soft-deleted domains can be permanently deleted",
+  "Sadece sonuçlanmış (çözüldü/kapatıldı) başvurular silinebilir": "Only concluded (resolved/closed) applications can be deleted",
+  "Sadece çözülmüş talepler silinebilir.": "Only resolved requests can be deleted.",
+  "Sahiplik kanıtı zorunludur. Bu domainin size ait olduğunu doğrulayacak bilgiyi girmelisiniz.": "Proof of ownership is required. You must enter information that verifies this domain belongs to you.",
+  "Satılmış bir ilanı öne çıkaramazsınız": "You cannot feature a sold listing",
+  "Satılmış domain fiyatı değiştirilemez": "The price of a sold domain cannot be changed",
+  "Satılmış domain geri çekilemez": "A sold domain cannot be withdrawn",
+  "Satılmış domain önce 'Tekrar Satılık Yap' ile satıştan kaldırılmalı": "A sold domain must first be removed from sold status with 'Relist for Sale'",
+  "Satış kaydı bulunamadı": "Sale record not found",
+  "Sunucuda escrow ödeme istemcisi yapılandırılmamış (PI_WALLET_PRIVATE_SEED / pi-backend paketi eksik).": "The escrow payment client is not configured on the server (PI_WALLET_PRIVATE_SEED / pi-backend package missing).",
+  "Sunucuda escrow ödeme istemcisi yapılandırılmamış (PI_WALLET_PRIVATE_SEED / pi-backend paketi eksik). Lütfen ortam değişkenlerini kontrol edin.": "The escrow payment client is not configured on the server (PI_WALLET_PRIVATE_SEED / pi-backend package missing). Please check the environment variables.",
+  "Talep bulunamadı": "Request not found",
+  "Tek seferde en fazla 200 domain eklenebilir. Lütfen dosyayı bölün.": "At most 200 domains can be added at once. Please split the file.",
+  "Tek seferde en fazla 50 istek onaylanabilir": "At most 50 requests can be approved at once",
+  "Teklif bulunamadı": "Offer not found",
+  "Telegram bildirimleri şu anda kullanılamıyor": "Telegram notifications are currently unavailable",
+  "URL çok uzun": "The URL is too long",
+  "Uygulama URL'i çok uzun": "The app URL is too long",
+  "Yetkiniz yok": "You are not authorized",
+  "Yetkisiz": "Unauthorized",
+  "Yorum çok uzun.": "The comment is too long.",
+  "Zaten bekleyen bir talebiniz var.": "You already have a pending request.",
+  "Zaten işlenmiş": "Already processed",
+  "Zaten kayıtlı": "Already registered",
+  "Zorunlu alanlar eksik: ad, domain adı, açıklama ve e-posta gereklidir.": "Required fields are missing: name, domain name, description and email are required.",
+  "\"Hemen Al\" fiyatı başlangıç + minimum artıştan ve rezerv fiyatından büyük olmalı": "The \"Buy Now\" price must be higher than the start price + minimum increment and the reserve price",
+  "action zorunludur": "action is required",
+  "cancel işlemi için username gerekli": "A username is required for the cancel operation",
+  "claimId zorunludur": "claimId is required",
+  "domainName zorunlu": "domainName is required",
+  "domainName zorunludur": "domainName is required",
+  "domainType zorunlu": "domainType is required",
+  "paymentId zorunludur": "paymentId is required",
+  "reportId ve geçerli bir newStatus (reviewing/resolved/closed) zorunludur.": "reportId and a valid newStatus (reviewing/resolved/closed) are required.",
+  "saleId zorunludur": "saleId is required",
+  "ticketId ve mesaj zorunludur": "ticketId and a message are required",
+  "ticketId zorunludur": "ticketId is required",
+  "uid zorunludur": "uid is required",
+  "Çok fazla bildirim gönderildi. Lütfen daha sonra tekrar deneyin.": "Too many notifications were sent. Please try again later.",
+  "Çok fazla istek": "Too many requests",
+  "Çok fazla istek, lütfen bekleyin.": "Too many requests, please wait.",
+  "Çok fazla istek, lütfen biraz bekleyin": "Too many requests, please wait a moment",
+  "Çok fazla istek. 1 dakika bekleyin.": "Too many requests. Please wait 1 minute.",
+  "Çok fazla istek. Lütfen bekleyin.": "Too many requests. Please wait.",
+  "Çok fazla istek. Lütfen biraz bekleyin.": "Too many requests. Please wait a moment.",
+  "Çok fazla istek. Lütfen daha sonra tekrar deneyin.": "Too many requests. Please try again later.",
+  "Çok fazla mesaj gönderildi. Lütfen biraz bekleyip tekrar deneyin.": "Too many messages were sent. Please wait a bit and try again.",
+  "Çok fazla teklif gönderdiniz, lütfen biraz bekleyin.": "You have sent too many offers, please wait a moment.",
+  "Çok fazla ödeme isteği. Lütfen biraz bekleyip tekrar deneyin.": "Too many payment requests. Please wait a bit and try again.",
+  "Ödeme henüz serbest bırakılmadı, satış tamamlanmadan değerlendirme yapılamaz": "The payment has not been released yet; a rating cannot be made before the sale is completed",
+  "Ödemeniz şu anda doğrulanamadı, lütfen birkaç saniye sonra tekrar deneyin. Sorun devam ederse destek ekibiyle iletişime geçin.": "Your payment could not be verified right now, please try again in a few seconds. If the problem continues, contact the support team.",
+  "Ödemeniz, bu domainin güncel fiyatıyla eşleşmiyor. Bu işlem güvenlik nedeniyle tamamlanamadı ve destek ekibine otomatik olarak bildirildi; en kısa sürede sizinle iletişime geçilecek.": "Your payment does not match this domain's current price. This transaction could not be completed for security reasons and the support team was notified automatically; they will contact you shortly.",
+  "Önce bir e-posta adresi ekleyin": "Add an email address first",
+  "Öneri bulunamadı": "Suggestion not found",
+  "İlan talebi bulunamadı": "Listing request not found",
+  "Şikayet bulunamadı.": "Report not found.",
+  "Rezerv fiyatı başlangıç fiyatından küçük olamaz": "The reserve price cannot be lower than the starting price",
+  "Fiyatlar en fazla 7 ondalık basamak içerebilir": "Prices can have at most 7 decimal places",
+  "Bu domainin açık artırma kazananı ödemesini bekliyor": "This domain's auction winner has not paid yet",
+  "Geçersiz oturum": "Invalid session",
+  "Yetki yok": "Not authorized",
+  "Bu domain için aktif bir açık artırma yok": "There is no active auction for this domain",
+  "Teklif gelmiş bir açık artırmayı yalnızca yönetici iptal edebilir. Lütfen destek ile iletişime geçin.": "An auction that has received bids can only be cancelled by an admin. Please contact support.",
+  "Teklif en fazla 7 ondalık basamak içerebilir": "A bid can have at most 7 decimal places",
+  "Otomatik teklif üst limiti, teklifinizden küçük olamaz": "The auto-bid maximum cannot be lower than your bid",
+  "Domain bulunamadı": "Domain not found",
+  "Bu domain zaten satılmış": "This domain has already been sold",
+  "Bu açık artırmanın süresi doldu": "This auction has ended",
+  "Kendi ilanınıza teklif veremezsiniz": "You cannot bid on your own listing",
+  "Geçersiz domain adı": "Invalid domain name",
+  "Çok fazla istek, lütfen biraz bekleyin.": "Too many requests, please wait a moment.",
+  "Çok fazla teklif verdiniz, lütfen biraz bekleyin.": "You are bidding too fast, please wait a moment.",
+  "Aktif bir açık artırma yok ya da süresi doldu": "There is no active auction, or it has ended",
+  "Bu açık artırmada \"Hemen Al\" seçeneği yok": "This auction has no \"Buy Now\" option",
+  "Kendi ilanınızı satın alamazsınız": "You cannot buy your own listing",
+  "Açık artırma henüz bitmedi": "The auction has not ended yet",
+  "Bu açık artırmaya hiç teklif verilmedi": "No bids were placed in this auction",
+  "Bu açık artırmayı sadece en yüksek teklifi veren kazanabilir": "Only the highest bidder can claim this auction",
+  "Açık artırma, rezerv fiyatına ulaşılmadığı için satışsız sona erdi. Herhangi bir ödeme alınmadı.": "The auction ended without a sale because the reserve price was not reached. No payment was taken.",
+  "Satın alma süreniz doldu, açık artırma iptal edildi.": "Your purchase time has expired and the auction was cancelled.",
+  "Bu domain açık artırmayı kazanan alıcı için ayrılmış — şu anda teklif verilemez.": "This domain is reserved for the auction winner — offers cannot be made right now.",
+  "Bu domain şu anda açık artırmada ya da açık artırma kazananı için ayrılmış — teklif kabul edilemez.": "This domain is currently in an auction or reserved for an auction winner — the offer cannot be accepted.",
+  "Geçersiz teklif": "Invalid offer",
+  "Teklif bulunamadı (zaten silinmiş olabilir)": "Offer not found (it may already be deleted)",
+  "Yalnızca sonuçlanmış (reddedilen, geri çekilen, geçersiz, satın alınmayan) teklifler silinebilir.": "Only closed offers (rejected, withdrawn, invalid, not purchased) can be deleted.",
+  "Teklifler \"Hemen Al\" fiyatına ulaştı, bu seçenek artık geçerli değil": "Bids have reached the \"Buy Now\" price, so this option is no longer available",
+  "Süre 1-168 saat arasında olmalı": "Duration must be between 1 and 168 hours",
+  "Satılmış domain için açık artırma başlatılamaz": "An auction cannot be started for a sold domain",
+  "Zaten en yüksek teklifi siz verdiniz": "You are already the highest bidder"
+};
+const ERR_EN_PREFIX = [
+  ["Bilinmeyen action: ", "Unknown action: "],
+  ["Geçersiz veya izin verilmeyen URL: ", "Invalid or disallowed URL: "],
+  ["Geçersiz veya izin verilmeyen uygulama URL'i: ", "Invalid or disallowed app URL: "],
+  ["Mutabakat raporu alınamadı: ", "The reconciliation report could not be retrieved: "],
+  ["Ödeme gönderilemedi: ", "The payment could not be sent: "],
+  ["İade gönderilemedi: ", "The refund could not be sent: "]
+];
+const ERR_EN_REGEX = [
+  [new RegExp("^Kazandığınız açık artırmayı süresinde ödemediğiniz için (.+) tarihine kadar teklif veremezsiniz\\.$"), "Because you did not pay for an auction you won in time, you cannot bid until $1."],
+  [new RegExp("^Teklif yasağınız (.+) tarihine kadar sürüyor\\.$"), "Your bidding ban lasts until $1."],
+  [new RegExp("^Henüz tamamlanmış bir satın alma işleminiz olmadığı için teklif ve otomatik teklif üst limitiniz en fazla (.+) Pi olabilir\\. İlk satın alımınızı tamamladıktan sonra bu sınır kalkar\\.$"), "Because you have no completed purchase yet, your bid and auto-bid maximum can be at most $1 Pi. This limit is lifted after your first purchase."],
+  [new RegExp("^Henüz tamamlanmış bir satın alma işleminiz olmadığı için en fazla (.+) Pi'lik işlem yapabilirsiniz\\.$"), "Because you have no completed purchase yet, you can transact up to $1 Pi."],
+  [new RegExp("^Zaten en yüksek teklifi siz verdiniz\\. Otomatik teklif üst limitinizi artırmak için mevcut limitinizden \\((.+) Pi\\) yüksek bir değer girin\\.$"), "You are already the highest bidder. To raise your auto-bid maximum, enter a value above your current limit ($1 Pi)."],
+  [new RegExp("^Teklif en az (.+) Pi olmalı$"), "The bid must be at least $1 Pi"],
+  [new RegExp("^@(.+) henüz Pi hesabını uygulamaya bağlamamış \\(giriş yapmamış\\)\\. Kendisine giriş yapması gerektiğine dair bildirim gönderildi\\. Ödeme, satıcı giriş yapana kadar sistem cüzdanında bekleyecek\\.$"), "@$1 has not connected their Pi account to the app yet (never logged in). They were notified that they need to log in. The payment will wait in the system wallet until the seller logs in."],
+  [new RegExp("^@(.+) henüz Pi hesabını uygulamaya bağlamamış \\(giriş yapmamış\\)\\. Kendisine giriş yapması gerektiğine dair bildirim gönderildi\\. İade, alıcı giriş yapana kadar sistem cüzdanında bekleyecek\\.$"), "@$1 has not connected their Pi account to the app yet (never logged in). They were notified that they need to log in. The refund will wait in the system wallet until the buyer logs in."],
+  [new RegExp("^Bu domain şu anda anlaşma sağlanan bir alıcı için ayrılmış\\. (\\d+) dakika sonra herkese açılacak\\.$"), "This domain is currently reserved for a buyer with an agreed deal. It will open to everyone in $1 minutes."],
+  [new RegExp("^Ödeme tamamlanamadı ama Pi'ler kaybolmadı, güvenli havuzda bekliyor: (.+)\\. Aynı butona tekrar basarak kaldığı yerden devam ettirebilirsiniz\\.$"), "The payment could not be completed but your Pi are not lost — they are waiting in the secure pool: $1. You can press the same button again to continue where it left off."],
+  [new RegExp("^İade tamamlanamadı ama Pi'ler kaybolmadı, güvenli havuzda bekliyor: (.+)\\. Aynı butona tekrar basarak kaldığı yerden devam ettirebilirsiniz\\.$"), "The refund could not be completed but your Pi are not lost — they are waiting in the secure pool: $1. You can press the same button again to continue where it left off."]
+];
+function translateErrEn(msg) {
+  if (typeof msg !== 'string') return msg;
+  if (Object.prototype.hasOwnProperty.call(ERR_EN, msg)) return ERR_EN[msg];
+  for (const [pre, en] of ERR_EN_PREFIX) if (msg.startsWith(pre)) return en + msg.slice(pre.length);
+  for (const [re, en] of ERR_EN_REGEX) if (re.test(msg)) return msg.replace(re, en);
+  return msg;
+}
+
 export default async function handler(req, res) {
+  // İngilizce arayüz kullanan kullanıcıya dönen hata metinleri İngilizce olsun.
+  try {
+    if (req && req.body && typeof req.body === 'object' && req.body.lang === 'en') {
+      const _origJson = res.json.bind(res);
+      res.json = (obj) => {
+        try { if (obj && typeof obj === 'object' && typeof obj.error === 'string') obj = { ...obj, error: translateErrEn(obj.error) }; } catch (_) {}
+        return _origJson(obj);
+      };
+    }
+  } catch (_) {}
   // FIX: Sistem Kontrolü'nün "arka planda hata" taramasını beslemek için
   // tüm handler'ı bir güvenlik ağıyla sarmaladık. Mevcut ~50 action bloğunun
   // kendi try/catch'lerine DOKUNMADIK — bu sadece onların dışında, hiçbir
@@ -2073,11 +2383,29 @@ async function handlerImpl(req, res) {
   }
 
   // ── Giriş Bildirimi ────────────────────────────────────────────────────
+  // Kullanıcı dili değiştirince: Telegram / e-posta / push bildirimleri de yeni dilde gelsin.
+  if (action === 'set_language') {
+    const realUsername = await getRealUsername(accessToken);
+    if (!realUsername) return res.status(403).json({ error: "Geçersiz oturum" });
+    const lang = req.body.lang;
+    if (lang !== 'en' && lang !== 'tr') return res.status(400).json({ error: "Geçersiz dil" });
+    try {
+      await getDb().collection('user_profiles').doc(realUsername).set({ lang }, { merge: true });
+      return res.status(200).json({ success: true });
+    } catch (e) {
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
   if (action === 'log_login') {
     const realUsername = await getRealUsername(accessToken);
     if (!realUsername) return res.status(403).json({ error: "Geçersiz oturum" });
     try {
       const db = getDb();
+      // Kullanıcının arayüz dili (bildirim/e-posta/push dili için). Başarısız olsa girişi engellemez.
+      if (req.body.lang === 'en' || req.body.lang === 'tr') {
+        try { await db.collection('user_profiles').doc(realUsername).set({ lang: req.body.lang }, { merge: true }); } catch (_) {}
+      }
       const today = new Date().toISOString().split('T')[0];
       const userDocRef = db.collection('daily_users').doc(today);
       const userSnap = await userDocRef.get();
@@ -2150,7 +2478,8 @@ async function handlerImpl(req, res) {
       await domainRef.set({ sold: false, txid: null, buyer: null, at: null }, { merge: true });
 
       if (prevBuyer) {
-        await sendNotification(prevBuyer, {
+        await sendNotification(prevBuyer, { en: { title: 'Domain Back on Sale',
+          body: `"${domainName}" was put back on sale by an admin.` },
           type: 'domain_relisted',
           title: 'Domain Tekrar Satışa Çıkarıldı',
           body: `"${domainName}" domaini admin tarafından tekrar satışa çıkarıldı.`,
@@ -2165,6 +2494,7 @@ async function handlerImpl(req, res) {
       await notifyFavoriters(db, domainName, {
         excludeUsername: prevBuyer,
         type: 'favorite_relisted',
+        en: { title: '🔄 Your Favorite Domain Is Back on Sale', body: `Your favorite "${domainName}" is back on sale.` },
         title: '🔄 Favori Domaininiz Tekrar Satışta',
         body: `Favorilediğiniz "${domainName}" domaini tekrar satışa çıktı.`
       });
@@ -2347,8 +2677,10 @@ async function handlerImpl(req, res) {
       // özellikle fiyat düştüyse bu, alıcı için değerli bir "fırsat" sinyali.
       if (priceNum !== oldPrice) {
         const direction = priceNum < oldPrice ? '📉 düştü' : '📈 arttı';
+        const directionEn = priceNum < oldPrice ? '📉 dropped' : '📈 rose';
         await notifyFavoriters(db, dName, {
           type: 'favorite_price_changed',
+          en: { title: `${priceNum < oldPrice ? '🎉' : 'ℹ️'} Your Favorite Domain's Price ${priceNum < oldPrice ? 'Dropped' : 'Changed'}`, body: `The price of your favorite "${dName}" ${directionEn} from ${oldPrice} Pi to ${priceNum} Pi.` },
           title: `${priceNum < oldPrice ? '🎉' : 'ℹ️'} Favori Domaininizin Fiyatı ${priceNum < oldPrice ? 'Düştü' : 'Değişti'}`,
           body: `Favorilediğiniz "${dName}" domaininin fiyatı ${oldPrice} Pi'den ${priceNum} Pi'ye ${direction}.`
         });
@@ -2468,6 +2800,7 @@ async function handlerImpl(req, res) {
       await notifyFavoriters(db, domainName, {
         excludeUsername: data.sellerUsername || null,
         type: 'auction_fav_started',
+        en: { title: '⏰ Auction Started for Your Favorite Domain', body: `An auction for "${domainName}" started at ${startNum} Pi (it will run for ${hoursNum} hours, ends: ${fmtENDateTime(auctionEndsAt)}).${buyNowNum !== null ? ` "Buy Now" price: ${buyNowNum} Pi.` : ''}` },
         title: '⏰ Favori Domaininiz İçin Açık Artırma Başladı',
         body: `"${domainName}" için açık artırma ${startNum} Pi'den başladı (${hoursNum} saat sürecek, bitiş: ${fmtTRDateTime(auctionEndsAt)}).${buyNowNum !== null ? ` "Hemen Al" fiyatı: ${buyNowNum} Pi.` : ''}`
       });
@@ -2517,7 +2850,8 @@ async function handlerImpl(req, res) {
           price: data.auctionStartPrice || data.preNegotiationPrice || data.price,
           ...AUCTION_LEFTOVER_CLEAR_FIELDS()
         }, { merge: true });
-        await sendNotification(data.auctionWinner, {
+        await sendNotification(data.auctionWinner, { en: { title: '⚠️ Auction Cancelled',
+          body: `The auction you won for "${domainName}" was cancelled by an admin. No payment was taken so no refund is needed, and no penalty was applied to your account.` },
           type: 'auction_cancelled',
           role: 'buyer',
           title: '⚠️ Açık Artırma İptal Edildi',
@@ -2541,7 +2875,8 @@ async function handlerImpl(req, res) {
       // Hiçbir aşamada gerçek Pi tahsil edilmediği için (bkz. yukarıdaki
       // tasarım notu) iptalde İADE gerekmiyor — sadece bilgilendirme.
       if (highestBidder) {
-        await sendNotification(highestBidder, {
+        await sendNotification(highestBidder, { en: { title: '⚠️ Auction Cancelled',
+          body: `The auction for "${domainName}" was cancelled by the seller. No payment was taken so no refund is needed.` },
           type: 'auction_cancelled',
           role: 'buyer',
           title: '⚠️ Açık Artırma İptal Edildi',
@@ -2678,7 +3013,8 @@ async function handlerImpl(req, res) {
       if (out.err) return res.status(out.err[0]).json({ error: out.err[1], minAcceptable: out.minAcceptable });
 
       if (out.outbidPrev) {
-        await sendNotification(out.outbidPrev, {
+        await sendNotification(out.outbidPrev, { en: { title: '⚠️ You Were Outbid',
+          body: `Your bid on "${domainName}" was outbid by @${realUsername} (new highest bid: ${out.price} Pi).${out.extended ? ` Because of a last-minute bid the time was extended — new end: ${fmtENDateTime(out.newEndsAt)}.` : ''}` },
           type: 'auction_outbid', role: 'buyer',
           title: '⚠️ Teklifiniz Geçildi',
           body: `"${domainName}" için verdiğiniz teklif @${realUsername} tarafından geçildi (yeni en yüksek teklif: ${out.price} Pi).${out.extended ? ` Son dakika teklifi nedeniyle süre uzatıldı — yeni bitiş: ${fmtTRDateTime(out.newEndsAt)}.` : ''}`,
@@ -2686,7 +3022,8 @@ async function handlerImpl(req, res) {
         });
       } else if (out.proxyOutbid && out.newLeader) {
         // Lider, otomatik teklifiyle korundu → gerçek bir "geçildi" yok ama haberdar edelim (düşük öncelik).
-        await sendNotification(out.newLeader, {
+        await sendNotification(out.newLeader, { en: { title: '🤖 Your Auto-Bid Kicked In',
+          body: `@${realUsername} tried to outbid you on "${domainName}"; your auto-bid kicked in and you remain the leader (current bid: ${out.price} Pi).` },
           type: 'auction_new_bid_seller', role: 'buyer',
           title: '🤖 Otomatik Teklifiniz Devreye Girdi',
           body: `"${domainName}" için @${realUsername} sizi geçmeye çalıştı; otomatik teklifiniz devreye girdi ve liderliğiniz korundu (güncel teklif: ${out.price} Pi).`,
@@ -2694,7 +3031,8 @@ async function handlerImpl(req, res) {
         });
       }
       if (out.seller && !out.proxyRaised) {
-        await sendNotification(out.seller, {
+        await sendNotification(out.seller, { en: { title: '🔨 New Bid on Your Auction',
+          body: `The current highest bid for "${domainName}" is ${out.price} Pi (${out.bidCount} bids in total).${out.hasReserve ? (out.reserveMet ? ' Reserve price met ✅' : ' Reserve price not met yet.') : ''}${out.extended ? ` The time was extended by the last-minute rule (new end: ${fmtENDateTime(out.newEndsAt)}).` : ''}` },
           type: 'auction_new_bid_seller', role: 'seller',
           title: '🔨 Açık Artırmanıza Yeni Teklif',
           body: `"${domainName}" için güncel en yüksek teklif ${out.price} Pi oldu (toplam ${out.bidCount} teklif).${out.hasReserve ? (out.reserveMet ? ' Rezerv fiyatı karşılandı ✅' : ' Rezerv fiyatı henüz karşılanmadı.') : ''}${out.extended ? ` Süre son dakika kuralıyla uzatıldı (yeni bitiş: ${fmtTRDateTime(out.newEndsAt)}).` : ''}`,
@@ -2770,7 +3108,8 @@ async function handlerImpl(req, res) {
       await logAuctionEvent(db, 'buy_now', domainName, { username: realUsername, price: out.price });
       await notifyAuctionWon(domainName, { winner: realUsername, price: out.price, deadline: out.deadline, seller: out.seller }, { buyNow: true });
       if (out.previousLeader && out.previousLeader !== realUsername) {
-        await sendNotification(out.previousLeader, {
+        await sendNotification(out.previousLeader, { en: { title: '⚡ Auction Ended with "Buy Now"',
+          body: `The auction for "${domainName}" ended because another user used the "Buy Now" price (${out.price} Pi). No payment was taken.` },
           type: 'auction_outbid', role: 'buyer',
           title: '⚡ Açık Artırma "Hemen Al" ile Bitti',
           body: `"${domainName}" için açık artırma, başka bir kullanıcı "Hemen Al" fiyatını (${out.price} Pi) kullandığı için sona erdi. Herhangi bir ödeme alınmadı.`,
@@ -4200,7 +4539,8 @@ async function handlerImpl(req, res) {
         });
         await requestRef.set({ status: 'approved', resolvedAt: Date.now() }, { merge: true });
 
-        await sendNotification(reqData.submittedBy, {
+        await sendNotification(reqData.submittedBy, { en: { title: '✅ Your Domain Suggestion Was Approved!',
+          body: `Your domain "${reqData.domainName}" was added to the market. Ready for sale!` },
           type: 'sell_request_approved',
           title: '✅ Domain Öneriniz Onaylandı!',
           body: `"${reqData.domainName}" domaininiz markete eklendi. Satışa hazır!`,
@@ -4257,7 +4597,8 @@ async function handlerImpl(req, res) {
       // YENİ: Kayıtlı arama kriterlerine uyan kullanıcılara bildirim.
       await notifySavedSearches(db, reqData.domainName, { type: reqData.domainType, price: reqData.price, description: reqData.description || '', sellerUsername: reqData.submittedBy });
 
-      await sendNotification(reqData.submittedBy, {
+      await sendNotification(reqData.submittedBy, { en: { title: '✅ Your Domain Suggestion Was Approved!',
+          body: `Your domain "${reqData.domainName}" was added to the market. Ready for sale!` },
         type: 'sell_request_approved',
         title: '✅ Domain Öneriniz Onaylandı!',
         body: `"${reqData.domainName}" domaininiz markete eklendi. Satışa hazır!`,
@@ -4287,7 +4628,8 @@ async function handlerImpl(req, res) {
       await requestRef.set({ status: 'rejected', resolvedAt: Date.now(), rejectReason: rejectReason || '' }, { merge: true });
 
       if (reqData?.submittedBy) {
-        await sendNotification(reqData.submittedBy, {
+        await sendNotification(reqData.submittedBy, { en: { title: '❌ Your Domain Suggestion Was Rejected',
+          body: `Your suggestion "${reqData.domainName}" was rejected.${rejectReason ? ' Reason: ' + rejectReason : ''}` },
           type: 'sell_request_rejected',
           title: '❌ Domain Öneriniz Reddedildi',
           body: `"${reqData.domainName}" öneriniz reddedildi.${rejectReason ? ' Neden: ' + rejectReason : ''}`,
@@ -4383,7 +4725,8 @@ async function handlerImpl(req, res) {
         messages: [{ from: realUsername, text: message, timestamp: now }]
       });
 
-      await sendNotification(realUsername, {
+      await sendNotification(realUsername, { en: { title: '📬 Your Request Was Received',
+        body: `Your request "${subject}" has been created. It will be answered as soon as possible.` },
         type: 'ticket_created',
         title: '📬 Talebiniz Alındı',
         body: `"${subject}" konulu talebiniz oluşturuldu. En kısa sürede yanıtlanacaktır.`,
@@ -4743,14 +5086,30 @@ async function handlerImpl(req, res) {
         emailVerifyCodeAt: Date.now()
       }, { merge: true });
 
-      await sendEmail(cleanEmail, 'Doğrulama Kodunuz',
-        `<div style="font-family:sans-serif;">
-          <p>Merhaba,</p>
-          <p><b>Web3 Domain Gateway</b> hesabınıza (<b>@${realUsername}</b>) bu e-posta adresini bağlamak için doğrulama kodunuz:</p>
-          <h2 style="letter-spacing:6px;">${code}</h2>
-          <p style="color:#666;font-size:13px;">Bu kod 15 dakika geçerlidir. Bu isteği siz yapmadıysanız bu e-postayı görmezden gelebilirsiniz.</p>
-        </div>`
-      );
+      const mailLang = (req.body.lang === 'en' || req.body.lang === 'tr') ? req.body.lang : 'tr';
+      if (mailLang === 'en') {
+        await sendEmail(cleanEmail, 'Your Verification Code',
+          `<div style="font-family:sans-serif;">
+            <p>Hello,</p>
+            <p>Your verification code to link this email address to your <b>Web3 Domain Gateway</b> account (<b>@${realUsername}</b>):</p>
+            <h2 style="letter-spacing:6px;">${code}</h2>
+            <p style="color:#666;font-size:13px;">This code is valid for 15 minutes. If you did not make this request, you can ignore this email.</p>
+          </div>`, 'en'
+        );
+      } else {
+        await sendEmail(cleanEmail, 'Doğrulama Kodunuz',
+          `<div style="font-family:sans-serif;">
+            <p>Merhaba,</p>
+            <p><b>Web3 Domain Gateway</b> hesabınıza (<b>@${realUsername}</b>) bu e-posta adresini bağlamak için doğrulama kodunuz:</p>
+            <h2 style="letter-spacing:6px;">${code}</h2>
+            <p style="color:#666;font-size:13px;">Bu kod 15 dakika geçerlidir. Bu isteği siz yapmadıysanız bu e-postayı görmezden gelebilirsiniz.</p>
+          </div>`, 'tr'
+        );
+      }
+      // Dil tercihini de kaydet (sonraki bildirimler bu dilde gelsin).
+      if (req.body.lang === 'en' || req.body.lang === 'tr') {
+        try { await db.collection('user_profiles').doc(realUsername).set({ lang: req.body.lang }, { merge: true }); } catch (_) {}
+      }
 
       return res.status(200).json({ success: true });
     } catch (e) {
@@ -4873,7 +5232,8 @@ async function handlerImpl(req, res) {
         return res.status(400).json({ error: "Bu kullanıcının doğrulanmış bir e-posta adresi yok" });
       }
       await sendEmail(profile.email, subject,
-        `<div style="font-family:sans-serif;white-space:pre-wrap;">${String(message).replace(/</g, '&lt;')}</div>`
+        `<div style="font-family:sans-serif;white-space:pre-wrap;">${String(message).replace(/</g, '&lt;')}</div>`,
+        normLang(profile.lang)
       );
       const adminUsername = await getRealUsername(accessToken);
       await logAdminAction(adminUsername, 'admin_send_email_to_user', `@${targetUsername} (${profile.email}) — konu: "${subject}"`);
@@ -5052,7 +5412,9 @@ async function handlerImpl(req, res) {
       }, { merge: true });
 
       const statusLabel = { reviewing: 'İnceleniyor', resolved: 'Çözüldü', closed: 'Kapatıldı' }[newStatus];
-      await sendNotification(rep.reportedBy, {
+      const statusLabelEn = { reviewing: 'Under Review', resolved: 'Resolved', closed: 'Closed' }[newStatus];
+      await sendNotification(rep.reportedBy, { en: { title: `🚩 Your Report Was Updated: ${statusLabelEn}`,
+        body: `The status of your report about "${rep.domainName}" was updated to "${statusLabelEn}".${cleanNote ? ' Note: ' + cleanNote : ''}` },
         type: 'report_status_update',
         title: `🚩 Şikayetiniz Güncellendi: ${statusLabel}`,
         body: `"${rep.domainName}" için bildirdiğiniz şikayetin durumu "${statusLabel}" olarak güncellendi.${cleanNote ? ' Not: ' + cleanNote : ''}`,
@@ -5406,7 +5768,8 @@ async function handlerImpl(req, res) {
         const claimSnap = await claimRef.get();
         const claim = claimSnap.data();
         if (claim && claim.submittedByUsername) {
-          await sendNotification(claim.submittedByUsername, {
+          await sendNotification(claim.submittedByUsername, { en: { title: '❌ Your Trademark Claim Was Rejected',
+            body: `Your trademark claim regarding "${claim.domainName}" was reviewed and rejected.` },
             type: 'trademark_claim_rejected',
             title: '❌ Marka Hakkı Talebiniz Reddedildi',
             body: `"${claim.domainName}" domaini hakkındaki marka hakkı talebiniz incelendi ve reddedildi.`,
@@ -5454,7 +5817,8 @@ async function handlerImpl(req, res) {
           const domainData = domainSnap.data();
           // Domain satılmışsa ilgili tarafları bilgilendir.
           if (domainData.buyer) {
-            await sendNotification(domainData.buyer, {
+            await sendNotification(domainData.buyer, { en: { title: '⚠️ Domain Removed Due to Trademark Violation',
+              body: `"${domainName}" was removed from the platform due to a valid trademark claim. You can contact us by opening a support request.` },
               type: 'domain_removed_trademark',
               title: '⚠️ Domain Marka Hakkı İhlali Nedeniyle Kaldırıldı',
               body: `"${domainName}" domaini, geçerli bir marka hakkı talebi nedeniyle platformdan kaldırıldı. Destek talebi açarak durumunuzu iletebilirsiniz.`,
@@ -5462,7 +5826,8 @@ async function handlerImpl(req, res) {
             });
           }
           if (domainData.sellerUsername) {
-            await sendNotification(domainData.sellerUsername, {
+            await sendNotification(domainData.sellerUsername, { en: { title: '⚠️ Your Listing Was Removed Due to Trademark Violation',
+              body: `Your listing "${domainName}" was removed from the platform due to a valid trademark claim.` },
               type: 'domain_removed_trademark',
               title: '⚠️ İlanınız Marka Hakkı İhlali Nedeniyle Kaldırıldı',
               body: `"${domainName}" isimli ilanınız, geçerli bulunan bir marka hakkı talebi nedeniyle platformdan kaldırıldı.`,
@@ -5479,7 +5844,8 @@ async function handlerImpl(req, res) {
       await claimRef.set({ status: 'resolved', updatedAt: Date.now(), domainRemoved }, { merge: true });
 
       if (claim.submittedByUsername) {
-        await sendNotification(claim.submittedByUsername, {
+        await sendNotification(claim.submittedByUsername, { en: { title: '✅ Your Trademark Claim Was Upheld',
+          body: `Your claim regarding "${domainName}" was reviewed and upheld. The domain was removed from the platform.` },
           type: 'trademark_claim_resolved',
           title: '✅ Marka Hakkı Talebiniz Haklı Bulundu',
           body: `"${domainName}" domaini hakkındaki talebiniz incelendi ve haklı bulundu. Domain platformdan kaldırıldı.`,
@@ -5762,7 +6128,8 @@ async function handlerImpl(req, res) {
         await db.collection('domains').doc(sale.domain).set(domainUpdate, { merge: true });
       }
 
-      await sendNotification(targetUsername, {
+      await sendNotification(targetUsername, { en: { title: '💬 Reply About the Issue You Reported',
+        body: `The admin replied to the issue you reported about "${sale.domain}": "${message}". To continue, please confirm again from "My Panel".` },
         type: 'dispute_response',
         title: '💬 Bildirdiğiniz Sorunla İlgili Yanıt',
         body: `"${sale.domain}" ile ilgili bildirdiğiniz soruna admin şu yanıtı verdi: "${message}". Devam etmek için lütfen "Panelim" içinden tekrar onay verin.`,
@@ -5801,7 +6168,10 @@ async function handlerImpl(req, res) {
         await db.collection('domains').doc(sale.domain).set({ [countField]: newCount }, { merge: true });
       }
 
-      await sendNotification(targetUsername, {
+      await sendNotification(targetUsername, { en: { title: '🔔 Your Confirmation Is Awaited',
+        body: role === 'buyer'
+          ? `Did you receive "${sale.domain}" from the seller? Please confirm from "My Panel" so the payment can be processed.`
+          : `Did you transfer "${sale.domain}" to the buyer? Please confirm from "My Panel" so your payment can be sent.` },
         type: 'transfer_confirmation_reminder',
         title: '🔔 Onayınız Bekleniyor',
         body: role === 'buyer'
@@ -5840,7 +6210,8 @@ async function handlerImpl(req, res) {
       if (!sellerUid) {
         // Satıcıyı sessizce beklemek yerine, ödemesini alabilmesi için
         // tekrar giriş yapması gerektiğini otomatik olarak bildiriyoruz.
-        await sendNotification(sale.sellerUsername, {
+        await sendNotification(sale.sellerUsername, { en: { title: '💰 Log In to Receive Your Payout',
+          body: `Your domain "${sale.domain}" was sold and your payout is ready! Please log in with Pi once more so the payout can be sent to your Pi account.` },
           type: 'payout_needs_login',
           title: '💰 Ödemenizi Almak İçin Giriş Yapın',
           body: `"${sale.domain}" domaininiz satıldı ve ödemeniz hazır! Ödemenin Pi hesabınıza gönderilebilmesi için lütfen uygulamaya bir kez daha Pi ile giriş yapın.`,
@@ -5932,7 +6303,8 @@ async function handlerImpl(req, res) {
           await db.collection('domains').doc(sale.domain).set({ payoutStatus: 'released', hidden: true }, { merge: true });
         }
 
-        await sendNotification(sale.sellerUsername, {
+        await sendNotification(sale.sellerUsername, { en: { title: '💸 Your Payout Was Sent!',
+          body: `The ${payoutAmount} Pi (after commission) from the sale of "${sale.domain}" was sent to your Pi account.` },
           type: 'payout_released',
           title: '💸 Ödemeniz Gönderildi!',
           body: `"${sale.domain}" domain satışınıza ait ${payoutAmount} Pi (komisyon düşülmüş), Pi hesabınıza gönderildi.`,
@@ -5946,7 +6318,8 @@ async function handlerImpl(req, res) {
         // kendiliğinden "Panelim"e girip değerlendirirse puan oluşuyordu
         // — bu yüzden platformda neredeyse hiç değerlendirme birikmiyordu.
         if (sale.user) {
-          await sendNotification(sale.user, {
+          await sendNotification(sale.user, { en: { title: '⭐ Rate the Seller',
+            body: `Your purchase of "${sale.domain}" is complete! Don't forget to rate seller @${sale.sellerUsername} from "My Panel → My Purchases" — it helps other buyers on the platform.` },
             type: 'rating_reminder',
             role: 'buyer',
             title: '⭐ Satıcıyı Değerlendirin',
@@ -5955,7 +6328,8 @@ async function handlerImpl(req, res) {
           });
         }
         if (sale.sellerUsername && sale.user) {
-          await sendNotification(sale.sellerUsername, {
+          await sendNotification(sale.sellerUsername, { en: { title: '⭐ Rate the Buyer',
+            body: `Your sale of "${sale.domain}" is complete! Don't forget to rate buyer @${sale.user} from "My Panel → Income".` },
             type: 'rating_reminder',
             role: 'seller',
             title: '⭐ Alıcıyı Değerlendirin',
@@ -6021,7 +6395,8 @@ async function handlerImpl(req, res) {
       const buyerDoc = await db.collection('users').doc(sale.user).get();
       const buyerUid = buyerDoc.exists ? buyerDoc.data().piUid : null;
       if (!buyerUid) {
-        await sendNotification(sale.user, {
+        await sendNotification(sale.user, { en: { title: '💰 Log In to Receive Your Refund',
+          body: `Your payment for "${sale.domain}" will be refunded! Please log in with Pi once more so the refund can be sent to your Pi account.` },
           type: 'refund_needs_login',
           title: '💰 İadenizi Almak İçin Giriş Yapın',
           body: `"${sale.domain}" domaini için ödemeniz iade edilecek! İadenin Pi hesabınıza gönderilebilmesi için lütfen uygulamaya bir kez daha Pi ile giriş yapın.`,
@@ -6079,7 +6454,8 @@ async function handlerImpl(req, res) {
           try { await updateUserPoints(sale.user, -sale.price, `refund_${sale.domain}`); } catch (_) {}
         }
 
-        await sendNotification(sale.user, {
+        await sendNotification(sale.user, { en: { title: '💸 Your Payment Was Refunded',
+          body: `The ${refundAmount} Pi you paid for "${sale.domain}" was refunded to your Pi account.` },
           type: 'refund_issued',
           title: '💸 Ödemeniz İade Edildi',
           body: `"${sale.domain}" domaini için ödediğiniz ${refundAmount} Pi, Pi hesabınıza iade edildi.`,
@@ -6126,10 +6502,10 @@ async function handlerImpl(req, res) {
       await ticketRef.update({ status, lastUpdate: Date.now() });
 
       const statusMsgs = {
-        reviewing: { title: '🔍 Talebiniz İnceleniyor', body: `"${data.subject}" konulu talebiniz incelenmeye başlandı.` },
-        answered: { title: '💬 Talebiniz Yanıtlandı', body: `"${data.subject}" konulu talebinize yanıt verildi.` },
-        resolved: { title: '✅ Talep Çözüldü', body: `"${data.subject}" konulu talebiniz çözüldü.` },
-        closed: { title: '📪 Talep Kapatıldı', body: `"${data.subject}" konulu talep kapatıldı.` }
+        reviewing: { title: '🔍 Talebiniz İnceleniyor', body: `"${data.subject}" konulu talebiniz incelenmeye başlandı.`, en: { title: '🔍 Your Request Is Under Review', body: `Your request "${data.subject}" is now being reviewed.` } },
+        answered: { title: '💬 Talebiniz Yanıtlandı', body: `"${data.subject}" konulu talebinize yanıt verildi.`, en: { title: '💬 Your Request Was Answered', body: `Your request "${data.subject}" has been answered.` } },
+        resolved: { title: '✅ Talep Çözüldü', body: `"${data.subject}" konulu talebiniz çözüldü.`, en: { title: '✅ Request Resolved', body: `Your request "${data.subject}" has been resolved.` } },
+        closed: { title: '📪 Talep Kapatıldı', body: `"${data.subject}" konulu talep kapatıldı.`, en: { title: '📪 Request Closed', body: `Your request "${data.subject}" has been closed.` } }
       };
       const msg = statusMsgs[status];
       if (msg) await sendNotification(data.createdBy, { type: 'ticket_status_update', ...msg, ticketId, status });
@@ -6161,7 +6537,8 @@ async function handlerImpl(req, res) {
         lastUpdate: now
       });
 
-      await sendNotification(data.createdBy, {
+      await sendNotification(data.createdBy, { en: { title: '💬 Reply From the Admin',
+        body: `The admin replied to your request "${data.subject}".` },
         type: 'ticket_admin_reply',
         title: '💬 Yöneticiden Yanıt',
         body: `"${data.subject}" talebinize yönetici yanıt verdi.`,
@@ -6220,7 +6597,8 @@ async function handlerImpl(req, res) {
 
       // Admin başkasının talebini sildiyse kullanıcıya bilgi ver
       if (isAdmin && data.createdBy && data.createdBy !== realUsername) {
-        await sendNotification(data.createdBy, {
+        await sendNotification(data.createdBy, { en: { title: '🗑️ Your Support Request Was Deleted',
+          body: `Your request "${data.subject}" was deleted by an admin.` },
           type: 'ticket_deleted',
           title: '🗑️ Destek Talebiniz Silindi',
           body: `"${data.subject}" konulu talebiniz yönetici tarafından silindi.`
@@ -6616,7 +6994,8 @@ async function handlerImpl(req, res) {
         }, { merge: true });
 
         const notifyTarget2 = data.sellerUsername || ADMIN_USERNAME;
-        await sendNotification(notifyTarget2, {
+        await sendNotification(notifyTarget2, { en: { title: '💬 You Received a New Offer',
+          body: `@${realUsername} made a new offer of ${priceNum} Pi for "${domainName}" (your previous offer: ${prevData.counterPrice || prevData.offerPrice} Pi).` },
           type: 'offer_received',
           role: 'seller',
           title: '💬 Yeni Teklif Aldınız',
@@ -6642,7 +7021,8 @@ async function handlerImpl(req, res) {
       });
 
       const notifyTarget = data.sellerUsername || ADMIN_USERNAME;
-      await sendNotification(notifyTarget, {
+      await sendNotification(notifyTarget, { en: { title: '💬 You Received a New Offer',
+        body: `@${realUsername} offered ${priceNum} Pi for "${domainName}" (list price: ${data.price} Pi).` },
         type: 'offer_received',
         role: 'seller',
         title: '💬 Yeni Teklif Aldınız',
@@ -6842,7 +7222,8 @@ async function handlerImpl(req, res) {
         await batch.commit();
 
         const minutes = Math.round(OFFER_RESERVATION_MS / 60000);
-        await sendNotification(offer.buyerUsername, {
+        await sendNotification(offer.buyerUsername, { en: { title: '✅ Your Offer Was Accepted!',
+          body: `Your ${offer.offerPrice} Pi offer for "${offer.domainName}" was accepted. For ${minutes} minutes the price is ${offer.offerPrice} Pi for YOU and the domain is reserved ONLY for you. If you don't buy within this time, your offer expires and the domain returns to everyone at its original price.` },
           type: 'offer_accepted',
           role: 'buyer',
           title: '✅ Teklifiniz Kabul Edildi!',
@@ -6851,7 +7232,8 @@ async function handlerImpl(req, res) {
         });
       } else {
         await offerRef.set({ status: 'rejected', respondedAt: Date.now() }, { merge: true });
-        await sendNotification(offer.buyerUsername, {
+        await sendNotification(offer.buyerUsername, { en: { title: '❌ Your Offer Was Rejected',
+          body: `Your ${offer.offerPrice} Pi offer for "${offer.domainName}" was rejected by the seller.` },
           type: 'offer_rejected',
           role: 'buyer',
           title: '❌ Teklifiniz Reddedildi',
@@ -6919,7 +7301,8 @@ async function handlerImpl(req, res) {
         counteredAt: Date.now()
       }, { merge: true });
 
-      await sendNotification(offer.buyerUsername, {
+      await sendNotification(offer.buyerUsername, { en: { title: '🔄 You Received a Counter Offer',
+        body: `For "${offer.domainName}" the seller made a counter offer of ${priceNum} Pi (your offer: ${offer.offerPrice} Pi).` },
         type: 'offer_countered',
         role: 'buyer',
         title: '🔄 Karşı Teklif Aldınız',
@@ -6973,7 +7356,8 @@ async function handlerImpl(req, res) {
         await batch.commit();
 
         const minutes = Math.round(OFFER_RESERVATION_MS / 60000);
-        await sendNotification(offer.sellerUsername || ADMIN_USERNAME, {
+        await sendNotification(offer.sellerUsername || ADMIN_USERNAME, { en: { title: '✅ Your Counter Offer Was Accepted!',
+          body: `Your ${offer.counterPrice} Pi counter offer for "${offer.domainName}" was accepted by @${realUsername}. The buyer has a ${minutes}-minute priority purchase window — if they don't buy within this time, the domain returns to everyone at its original price.` },
           type: 'counter_offer_accepted',
           role: 'seller',
           title: '✅ Karşı Teklifiniz Kabul Edildi!',
@@ -6984,7 +7368,8 @@ async function handlerImpl(req, res) {
         // rezervasyon penceresini ve süresi dolarsa ne olacağını açıkça
         // teyit eden bir bildirim gönderiliyor — önceden bu bilgi sadece
         // satıcıya gidiyordu, alıcı ekranda görmeden bilmiyordu.
-        await sendNotification(realUsername, {
+        await sendNotification(realUsername, { en: { title: '✅ Deal Reached!',
+          body: `You accepted the ${offer.counterPrice} Pi counter offer for "${offer.domainName}". For ${minutes} minutes the price is ${offer.counterPrice} Pi for YOU and the domain is reserved ONLY for you. If you don't buy within this time, your offer expires and the domain returns to everyone at its original price.` },
           type: 'offer_accepted',
           role: 'buyer',
           title: '✅ Anlaşma Sağlandı!',
@@ -6993,7 +7378,8 @@ async function handlerImpl(req, res) {
         });
       } else {
         await offerRef.set({ status: 'rejected', respondedAt: Date.now() }, { merge: true });
-        await sendNotification(offer.sellerUsername || ADMIN_USERNAME, {
+        await sendNotification(offer.sellerUsername || ADMIN_USERNAME, { en: { title: '❌ Your Counter Offer Was Rejected',
+          body: `Your ${offer.counterPrice} Pi counter offer for "${offer.domainName}" was rejected by @${realUsername}.` },
           type: 'counter_offer_rejected',
           role: 'seller',
           title: '❌ Karşı Teklifiniz Reddedildi',
@@ -7496,7 +7882,8 @@ async function handlerImpl(req, res) {
         });
       }
 
-      await sendNotification(otherUsername, {
+      await sendNotification(otherUsername, { en: { title: '💬 New Message',
+        body: `@${realUsername} sent you a message about "${convDomainName}": "${text.length > 80 ? text.slice(0, 80) + '…' : text}"` },
         type: 'new_message',
         title: '💬 Yeni Mesaj',
         body: `@${realUsername} size "${convDomainName}" hakkında mesaj gönderdi: "${text.length > 80 ? text.slice(0, 80) + '…' : text}"`,
@@ -7782,7 +8169,8 @@ async function handlerImpl(req, res) {
       // Karşı tarafa bilgi verelim — sessizce kaybolması kafa karıştırıcı olabilir.
       const otherUsername = (data.participants || []).find(u => u !== realUsername);
       if (otherUsername) {
-        await sendNotification(otherUsername, {
+        await sendNotification(otherUsername, { en: { title: '🗑️ A Conversation Was Deleted',
+          body: `@${realUsername} deleted your conversation about "${data.domainName || ''}" for everyone.` },
           type: 'conversation_deleted',
           title: '🗑️ Bir Mesajlaşma Silindi',
           body: `@${realUsername}, "${data.domainName || ''}" hakkındaki mesajlaşmanızı herkesten sildi.`,
@@ -8765,7 +9153,8 @@ async function handlerImpl(req, res) {
           // davet eden + kendisi bonus puan kazanır.
           await awardReferralBonusIfEligible(db, username);
 
-          await sendNotification(username, {
+          await sendNotification(username, { en: { title: '🎉 Purchase Successful!',
+            body: `You bought "${domainName}" for ${realPrice} Pi! To coordinate the transfer/delivery with the seller, contact us via "My Panel → Support Tickets" — once you confirm you received the domain, the payment is released to the seller.` },
             type: 'purchase_success',
             title: '🎉 Satın Alma Başarılı!',
             // YENİ: Eskiden "satıcıyla devri tamamladıktan sonra onayla"
@@ -8792,12 +9181,14 @@ async function handlerImpl(req, res) {
           await notifyFavoriters(db, domainName, {
             excludeUsername: username,
             type: 'favorite_sold',
+            en: { title: '😢 Your Favorite Domain Was Sold', body: `Your favorite "${domainName}" was bought by another buyer.` },
             title: '😢 Favori Domaininiz Satıldı',
             body: `Favorilediğiniz "${domainName}" domaini başka bir alıcı tarafından satın alındı.`
           });
 
           if (sellerUsername && sellerUsername !== username) {
-            await sendNotification(sellerUsername, {
+            await sendNotification(sellerUsername, { en: { title: '🏆 Your Domain Was Sold!',
+              body: `Your domain "${domainName}" was bought by @${username} for ${realPrice} Pi! To coordinate the transfer/delivery, contact us via "My Panel → Support Tickets". Once the buyer confirms receipt, your payout is released (after a ${Math.round(PLATFORM_COMMISSION_RATE * 100)}% commission).` },
               type: 'your_domain_sold',
               title: '🏆 Domaininiz Satıldı!',
               // YENİ: Aynı netlik satıcı tarafında da — "devrettikten sonra
@@ -8809,7 +9200,8 @@ async function handlerImpl(req, res) {
           }
 
           if (previousBuyer && previousBuyer !== username) {
-            await sendNotification(previousBuyer, {
+            await sendNotification(previousBuyer, { en: { title: 'ℹ️ Domain Sold Again',
+              body: `"${domainName}", which you previously owned, was bought by @${username} after being relisted.` },
               type: 'domain_resold',
               title: 'ℹ️ Domain Yeniden Satıldı',
               body: `Daha önce sahip olduğunuz "${domainName}" domaini, tekrar satışa çıkarıldıktan sonra @${username} tarafından satın alındı.`,
@@ -8824,7 +9216,11 @@ async function handlerImpl(req, res) {
           const groupMsg = sellerUsername
             ? `🎉 *YENİ SATIŞ!*\n\n👤 @${username}, *${domainName}* domainini satın aldı!\n⏳ Ödeme şu anda escrow'da — satıcı ve alıcının devri onaylamasının ardından serbest bırakılacak.`
             : `🎉 *YENİ SATIŞ!*\n\n👤 @${username}, *${domainName}* domainini satın aldı! 🚀`;
-          await sendTG(TG_GROUP_ID, groupMsg);
+          // Grup karışık dilli olabileceğinden duyuru Türkçe + İngilizce birlikte gönderilir.
+          const groupMsgEn = sellerUsername
+            ? `🎉 *NEW SALE!*\n\n👤 @${username} bought the domain *${domainName}*!\n⏳ The payment is now in escrow — it will be released after the seller and the buyer confirm the transfer.`
+            : `🎉 *NEW SALE!*\n\n👤 @${username} bought the domain *${domainName}*! 🚀`;
+          await sendTG(TG_GROUP_ID, `${groupMsg}\n\n—————\n\n${groupMsgEn}`);
           // FIX: Üçüncü taraf bir satıcı varsa ödeme henüz escrow'da bekliyor
           // demektir (satıcıya serbest bırakılana kadar "tamamlandı" değil) —
           // bu yüzden mesaj artık gerçek duruma göre değişiyor. Satıcısız
