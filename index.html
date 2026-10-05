@@ -1623,13 +1623,13 @@
         <button onclick="event.stopPropagation();window.skipWelcomeGreeting();" style="margin-top:16px;padding:9px 22px;border:1.5px solid rgba(165,180,252,0.5);border-radius:20px;background:rgba(99,102,241,0.15);color:#c7d2fe;font-size:0.72em;font-weight:800;cursor:pointer;display:inline-flex;align-items:center;gap:5px;" data-i18n="welcomeGreetingSkipHint"></button>
     </div>
 </div>
-<button id="trust-fab" onclick="window.openTrustInfo()" title="Güvenlik ve Gizlilik Bilgisi" style="position:fixed;bottom:16px;left:14px;z-index:900;width:46px;height:46px;border-radius:50%;background:linear-gradient(135deg,#f59e0b,#fbbf24);border:2px solid rgba(255,255,255,0.25);box-shadow:0 6px 18px rgba(245,158,11,0.55);color:#1e1b4b;cursor:pointer;display:flex;align-items:center;justify-content:center;animation:tour-fab-pulse 2.4s ease-in-out infinite;">
+<button id="trust-fab" onclick="window.openTrustInfo()" title="Güvenlik ve Gizlilik Bilgisi" data-i18n-title="trustFabTitle" style="position:fixed;bottom:16px;left:14px;z-index:900;width:46px;height:46px;border-radius:50%;background:linear-gradient(135deg,#f59e0b,#fbbf24);border:2px solid rgba(255,255,255,0.25);box-shadow:0 6px 18px rgba(245,158,11,0.55);color:#1e1b4b;cursor:pointer;display:flex;align-items:center;justify-content:center;animation:tour-fab-pulse 2.4s ease-in-out infinite;">
     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
         <path d="M12 2L4 5.5V11c0 5.25 3.4 10.15 8 11 4.6-0.85 8-5.75 8-11V5.5L12 2z" fill="#1e1b4b"/>
         <path d="M10 12.5l1.5 1.5L15 10.5" stroke="#fbbf24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
     </svg>
 </button>
-<button id="tour-fab" onclick="window.startOnboardingTour()" title="Uygulama Turu" aria-label="Uygulama turunu başlat" style="display:none;position:fixed;bottom:16px;right:14px;z-index:900;width:46px;height:46px;border-radius:50%;background:linear-gradient(135deg,#6366f1,#818cf8);border:2px solid rgba(255,255,255,0.25);box-shadow:0 6px 18px rgba(99,102,241,0.55);color:#fff;font-size:1.15em;font-weight:900;cursor:pointer;align-items:center;justify-content:center;animation:tour-fab-pulse 2.4s ease-in-out infinite;">?</button>
+<button id="tour-fab" onclick="window.startOnboardingTour()" title="Uygulama Turu" aria-label="Uygulama turunu başlat" data-i18n-title="tourFabTitle" data-i18n-aria="tourFabAria" style="display:none;position:fixed;bottom:16px;right:14px;z-index:900;width:46px;height:46px;border-radius:50%;background:linear-gradient(135deg,#6366f1,#818cf8);border:2px solid rgba(255,255,255,0.25);box-shadow:0 6px 18px rgba(99,102,241,0.55);color:#fff;font-size:1.15em;font-weight:900;cursor:pointer;align-items:center;justify-content:center;animation:tour-fab-pulse 2.4s ease-in-out infinite;">?</button>
 <!-- YENİ: Admin için hızlı erişim butonu (Öneri #3 — "adminin paneline
      ulaşmak için çok kaydırması gerekiyor" sorununa çözüm). Sadece admin
      giriş yaptığında (syncAdminQuickJumpFab ile) gösteriliyor; tıklayınca
@@ -1645,7 +1645,7 @@
 <div class="side-menu" id="side-menu">
     <div class="side-menu-header">
         <div style="font-weight:900;color:#c7d2fe;font-size:1.05em;">☰ <span data-i18n="menu"></span></div>
-        <button class="side-menu-close" onclick="toggleSideMenu()" aria-label="Menüyü kapat">✕</button>
+        <button class="side-menu-close" onclick="toggleSideMenu()" aria-label="Menüyü kapat" data-i18n-aria="closeMenuAria">✕</button>
     </div>
     <div class="side-menu-scroll">
     <div id="side-menu-profile-box" style="display:none;background:rgba(99,102,241,0.12);border:1.5px solid #6366f1;border-radius:9px;padding:6px;margin-bottom:4px;text-align:left;">
@@ -1718,7 +1718,7 @@
          Uygulamanın geri kalanı (kartlar, modallar, ana arka plan) etkilenmez. -->
     <div class="theme-toggle-row">
         <span style="display:flex;align-items:center;gap:8px;color:#e2e8f0;font-weight:700;font-size:0.82em;" id="theme-toggle-label">🌙 <span data-i18n="menuThemeLabel"></span></span>
-        <div class="theme-toggle-switch" id="theme-toggle-switch" onclick="window.toggleAppTheme()" role="button" aria-label="Tema değiştir"></div>
+        <div class="theme-toggle-switch" id="theme-toggle-switch" onclick="window.toggleAppTheme()" role="button" aria-label="Tema değiştir" data-i18n-aria="themeToggleAria"></div>
     </div>
     <div class="side-menu-divider"></div>
     <div class="side-menu-section-label" data-i18n="whatsNewSection"></div>
@@ -1829,7 +1829,7 @@
                  içi bildirim hiçbir zaman kapanmaz (bkz. approve.js'deki
                  açıklama). Varsayılan: hepsi açık. -->
             <div style="border-top:1px solid #1e293b;margin-top:2px;padding-top:10px;display:flex;flex-direction:column;gap:8px;">
-                <span style="font-size:0.72em;color:#94a3b8;font-weight:700;">Hangi bildirimleri almak istersiniz? (uygulama içi bildirimler her zaman gösterilir, bu sadece Telegram/e-posta/push'u etkiler)</span>
+                <span style="font-size:0.72em;color:#94a3b8;font-weight:700;" data-i18n="notifPrefsIntro">Hangi bildirimleri almak istersiniz? (uygulama içi bildirimler her zaman gösterilir, bu sadece Telegram/e-posta/push'u etkiler)</span>
                 <div id="notif-category-toggles" style="display:flex;flex-direction:column;gap:6px;"></div>
             </div>
         </div>
@@ -1923,7 +1923,7 @@
         <div id="receipt-print-area"></div>
         <div class="receipt-no-print" style="display:flex;gap:8px;margin-top:16px;">
             <button onclick="window.print()" style="flex:1;padding:10px;border-radius:9px;border:none;background:#6366f1;color:#fff;font-weight:800;cursor:pointer;font-size:0.8em;" data-i18n="receiptPrintBtn"></button>
-            <button onclick="window.downloadReceiptFile()" style="flex:1;padding:10px;border-radius:9px;border:1.5px solid #10b981;background:rgba(16,185,129,0.1);color:#6ee7b7;font-weight:800;cursor:pointer;font-size:0.8em;">⬇️ İndir</button>
+            <button onclick="window.downloadReceiptFile()" style="flex:1;padding:10px;border-radius:9px;border:1.5px solid #10b981;background:rgba(16,185,129,0.1);color:#6ee7b7;font-weight:800;cursor:pointer;font-size:0.8em;" data-i18n="downloadShortBtn">⬇️ İndir</button>
             <button onclick="document.getElementById('receipt-modal').style.display='none'" style="flex-shrink:0;padding:10px 16px;border-radius:9px;border:1px solid #475569;background:transparent;color:#94a3b8;font-weight:800;cursor:pointer;font-size:0.8em;" data-i18n="close"></button>
         </div>
     </div>
@@ -1996,7 +1996,7 @@
 
 <div id="checkup-modal" class="modal-overlay" style="display:none;">
     <div class="modal-content" style="border-color:#14b8a6;text-align:left;max-height:80vh;display:flex;flex-direction:column;">
-        <h2 style="color:#5eead4;margin:0 0 10px 0;font-size:1em;font-weight:900;display:flex;align-items:center;gap:6px;">🩺 Sistem Kontrolü Raporu</h2>
+        <h2 style="color:#5eead4;margin:0 0 10px 0;font-size:1em;font-weight:900;display:flex;align-items:center;gap:6px;" data-i18n="sysCheckTitle">🩺 Sistem Kontrolü Raporu</h2>
         <div id="checkup-summary" style="font-size:0.68em;color:#64748b;margin-bottom:10px;"></div>
         <div id="checkup-results" style="flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:8px;"></div>
         <button class="pi-btn" style="background:#475569;animation:none;padding:10px;margin:12px 0 0 0;width:100%;flex-shrink:0;" onclick="document.getElementById('checkup-modal').style.display='none'" data-i18n="close"></button>
@@ -2047,7 +2047,7 @@
 <div id="deletion-requests-modal" class="modal-overlay" style="display:none;">
     <div class="modal-content" style="border-color:#ef4444;text-align:left;max-height:82vh;display:flex;flex-direction:column;">
         <h2 style="color:#f87171;margin:0 0 10px 0;font-size:1em;font-weight:900;display:flex;align-items:center;gap:6px;">🗑️ <span data-i18n="deletionRequestsBtn"></span></h2>
-        <div style="font-size:0.65em;color:#64748b;margin-bottom:10px;">Bekleyen talepler. İncelemeyi kendiniz yapıp gerekli işlemi (veri anonimleştirme vb.) tamamladıktan sonra "Sonuçlandır"a basın.</div>
+        <div style="font-size:0.65em;color:#64748b;margin-bottom:10px;" data-i18n="deletionReqNote">Bekleyen talepler. İncelemeyi kendiniz yapıp gerekli işlemi (veri anonimleştirme vb.) tamamladıktan sonra "Sonuçlandır"a basın.</div>
         <div id="deletion-requests-results" style="flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:8px;"></div>
         <button class="pi-btn" style="background:#475569;animation:none;padding:10px;margin:12px 0 0 0;width:100%;flex-shrink:0;" onclick="document.getElementById('deletion-requests-modal').style.display='none'" data-i18n="close"></button>
     </div>
@@ -2422,11 +2422,11 @@
             <div id="user-menu-dropdown" style="display:none;position:absolute;top:38px;right:0;background:#0f172a;border:1.5px solid #10b981;border-radius:10px;padding:10px;min-width:200px;box-shadow:0 8px 24px rgba(0,0,0,0.5);z-index:100;">
                 <div style="display:flex;align-items:center;justify-content:center;gap:6px;padding-bottom:8px;border-bottom:1px solid #1e293b;margin-bottom:8px;">
                     <div style="width:8px;height:8px;border-radius:50%;background:#10b981;box-shadow:0 0 8px #10b981,0 0 16px rgba(16,185,129,0.4);animation:connected-pulse 1.2s ease-in-out infinite;"></div>
-                    <span style="font-size:0.65em;color:#10b981;font-weight:800;">BAĞLI</span>
+                    <span style="font-size:0.65em;color:#10b981;font-weight:800;" data-i18n="connectedBadge">BAĞLI</span>
                     <span style="font-size:0.75em;color:#6ee7b7;font-weight:800;" id="user-menu-name">@user</span>
                 </div>
                 <div style="background:rgba(30,41,59,0.8);border:1px solid #334155;border-radius:6px;padding:8px;text-align:center;">
-                    <div style="font-size:0.6em;color:#94a3b8;margin-bottom:2px;">🕐 Bağlanma Zamanı</div>
+                    <div style="font-size:0.6em;color:#94a3b8;margin-bottom:2px;" data-i18n="connectedAtLabel">🕐 Bağlanma Zamanı</div>
                     <div style="font-size:0.75em;color:#fbbf24;font-weight:800;" id="user-menu-time">--.--.---- --:--</div>
                 </div>
             </div>
@@ -2873,9 +2873,9 @@
              tekrar kullanıyor (bkz. get_admin_todo_summary). -->
         <div id="admin-todo-summary" style="background:#0f172a;border:1.5px solid rgba(99,102,241,0.35);border-radius:14px;padding:10px;margin-bottom:10px;">
             <div style="display:flex;align-items:center;gap:6px;margin-bottom:9px;padding-bottom:7px;border-bottom:1px solid rgba(99,102,241,0.25);">
-                <span style="font-size:0.78em;color:#a5b4fc;font-weight:900;text-transform:uppercase;letter-spacing:0.5px;">📌 Bugün Yapılacaklar</span>
+                <span style="font-size:0.78em;color:#a5b4fc;font-weight:900;text-transform:uppercase;letter-spacing:0.5px;" data-i18n="adminTodoTitle">📌 Bugün Yapılacaklar</span>
             </div>
-            <div id="admin-todo-summary-body" style="font-size:0.72em;color:#64748b;text-align:center;padding:8px;">Yükleniyor…</div>
+            <div id="admin-todo-summary-body" style="font-size:0.72em;color:#64748b;text-align:center;padding:8px;" data-i18n="loadingLabel">Yükleniyor…</div>
         </div>
         <!-- YENİ: Yönetim sekmeleri (kullanıcılar, istatistikler, onaylar vb.)
              artık ayrı, kendi başlıklı çerçevesi içinde — sistem
@@ -3130,8 +3130,8 @@
                      artırmalara dair TÜM geçmişi (aktif/bitmiş/iptal/
                      kazanılmış) ayrı bir üst menü açmadan burada görür. -->
                 <div style="display:flex;gap:6px;margin-bottom:10px;">
-                    <button id="offers-subtab-btn-offer" onclick="window.switchOffersSubTab('offer')" style="flex:1;background:rgba(129,140,248,0.18);border:1.5px solid #818cf8;color:#c7d2fe;font-weight:800;font-size:0.68em;padding:7px 6px;border-radius:9px;cursor:pointer;">🔄 Teklifler</button>
-                    <button id="offers-subtab-btn-auction" onclick="window.switchOffersSubTab('auction')" style="flex:1;background:transparent;border:1.5px solid #334155;color:#94a3b8;font-weight:800;font-size:0.68em;padding:7px 6px;border-radius:9px;cursor:pointer;">⏰ Açık Artırma Takip</button>
+                    <button id="offers-subtab-btn-offer" onclick="window.switchOffersSubTab('offer')" style="flex:1;background:rgba(129,140,248,0.18);border:1.5px solid #818cf8;color:#c7d2fe;font-weight:800;font-size:0.68em;padding:7px 6px;border-radius:9px;cursor:pointer;" data-i18n="offersSubTabOffers">🔄 Teklifler</button>
+                    <button id="offers-subtab-btn-auction" onclick="window.switchOffersSubTab('auction')" style="flex:1;background:transparent;border:1.5px solid #334155;color:#94a3b8;font-weight:800;font-size:0.68em;padding:7px 6px;border-radius:9px;cursor:pointer;" data-i18n="offersSubTabAuctions">⏰ Açık Artırma Takip</button>
                 </div>
                 <div id="offers-subtab-offer">
                     <div style="font-size:0.65em;color:#94a3b8;margin-bottom:8px;line-height:1.5;" data-i18n="offersTabExplainer"></div>
@@ -3144,7 +3144,7 @@
                     </div>
                 </div>
                 <div id="offers-subtab-auction" style="display:none;">
-                    <div style="font-size:0.65em;color:#94a3b8;margin-bottom:8px;line-height:1.5;">Platformda şu ana kadar başlatılmış TÜM açık artırmalar — aktif olanlar, bitip kazananı belli olanlar, süresi dolup teklif almayanlar ve satıcı tarafından iptal edilenler dahil.</div>
+                    <div style="font-size:0.65em;color:#94a3b8;margin-bottom:8px;line-height:1.5;" data-i18n="auctionTrackNote">Platformda şu ana kadar başlatılmış TÜM açık artırmalar — aktif olanlar, bitip kazananı belli olanlar, süresi dolup teklif almayanlar ve satıcı tarafından iptal edilenler dahil.</div>
                     <div id="admin-auctions-table-wrap" style="width:100%;box-sizing:border-box;overflow-x:auto;">
                         <p style="font-size:0.75em;opacity:0.5;text-align:center;" data-i18n="clickToLoad"></p>
                     </div>
@@ -3248,7 +3248,7 @@
         <div class="filter-section" id="filter-section" style="display:none;">
             <div style="display:flex;gap:6px;margin-bottom:6px;">
                 <input type="text" id="domain-search-input" oninput="window.onDomainSearchInput(this.value)" data-i18n-placeholder="searchPlaceholder" style="flex:1;min-width:0;background:#0f172a;border:1.5px solid #334155;border-radius:9px;padding:9px 10px;color:#e2e8f0;font-size:0.78em;">
-                <button type="button" id="favorites-filter-toggle" onclick="window.toggleFavoritesFilter()" aria-label="Sadece favorileri göster" style="flex-shrink:0;padding:0 12px;border-radius:9px;border:1.5px solid #f59e0b;background:rgba(245,158,11,0.1);color:#fbbf24;font-size:1em;cursor:pointer;">☆</button>
+                <button type="button" id="favorites-filter-toggle" onclick="window.toggleFavoritesFilter()" aria-label="Sadece favorileri göster" data-i18n-aria="favFilterAria" style="flex-shrink:0;padding:0 12px;border-radius:9px;border:1.5px solid #f59e0b;background:rgba(245,158,11,0.1);color:#fbbf24;font-size:1em;cursor:pointer;">☆</button>
             </div>
             <!-- DÜZENLENDİ (kullanıcı geri bildirimi — "yeni kullanıcı için
                  filtre alanı çok kalabalık"): Fiyat aralığı, sıralama,
@@ -4665,6 +4665,13 @@ const i18n = {
 
     adminCleanExpiredOffersBtn:"🧹 Süresi Dolan Teklifleri Temizle",adminDeleteAllOffersBtn:"🗑️ Tüm Kapanmış Teklifleri Sil",
     adminAuctionEventsBtn:"📜 Açık Artırma Olay Günlüğü (son 150)",adminCleanExpiredAuctionBtn:"🧹 Süresi Dolan Açık Artırma Kayıtlarını Temizle",adminDeleteAllAuctionBtn:"🗑️ TÜM Kapanmış Açık Artırma Kayıtlarını Sil (süre gözetmeden)",
+    trustFabTitle:"Güvenlik ve Gizlilik Bilgisi",tourFabTitle:"Uygulama Turu",tourFabAria:"Uygulama turunu başlat",closeMenuAria:"Menüyü kapat",themeToggleAria:"Tema değiştir",favFilterAria:"Sadece favorileri göster",
+    notifPrefsIntro:"Hangi bildirimleri almak istersiniz? (uygulama içi bildirimler her zaman gösterilir, bu sadece Telegram/e-posta/push'u etkiler)",
+    downloadShortBtn:"⬇️ İndir",sysCheckTitle:"🩺 Sistem Kontrolü Raporu",
+    deletionReqNote:"Bekleyen talepler. İncelemeyi kendiniz yapıp gerekli işlemi (veri anonimleştirme vb.) tamamladıktan sonra \"Sonuçlandır\"a basın.",
+    connectedBadge:"BAĞLI",connectedAtLabel:"🕐 Bağlanma Zamanı",adminTodoTitle:"📌 Bugün Yapılacaklar",
+    offersSubTabOffers:"🔄 Teklifler",offersSubTabAuctions:"⏰ Açık Artırma Takip",
+    auctionTrackNote:"Platformda şu ana kadar başlatılmış TÜM açık artırmalar — aktif olanlar, bitip kazananı belli olanlar, süresi dolup teklif almayanlar ve satıcı tarafından iptal edilenler dahil.",
     changelogNewBadge:"🆕 YENİ",
     changelogV2_5:"v2.5 - Açık Artırma Güncellemesi",
     changelogV2_5Item1:"🔨 Açık artırmalar baştan yenilendi: canlı geri sayım artık saat-dakika-saniye olarak akıyor, son 5 dakikada kırmızı yanıp sönüyor ve kartlarda 🔥 Son dakika rozeti çıkıyor",
@@ -5660,6 +5667,13 @@ const i18n = {
 
     adminCleanExpiredOffersBtn:"🧹 Clean Up Expired Offers",adminDeleteAllOffersBtn:"🗑️ Delete All Closed Offers",
     adminAuctionEventsBtn:"📜 Auction Event Log (last 150)",adminCleanExpiredAuctionBtn:"🧹 Clean Up Expired Auction Records",adminDeleteAllAuctionBtn:"🗑️ Delete ALL Closed Auction Records (ignore retention)",
+    trustFabTitle:"Security & Privacy Info",tourFabTitle:"App Tour",tourFabAria:"Start the app tour",closeMenuAria:"Close menu",themeToggleAria:"Toggle theme",favFilterAria:"Show favorites only",
+    notifPrefsIntro:"Which notifications would you like to receive? (in-app notifications are always shown; this only affects Telegram/email/push)",
+    downloadShortBtn:"⬇️ Download",sysCheckTitle:"🩺 System Check Report",
+    deletionReqNote:"Pending requests. Do the review yourself, complete the required action (data anonymization, etc.), then press \"Finalize\".",
+    connectedBadge:"CONNECTED",connectedAtLabel:"🕐 Connected At",adminTodoTitle:"📌 To-Do Today",
+    offersSubTabOffers:"🔄 Offers",offersSubTabAuctions:"⏰ Auction Tracking",
+    auctionTrackNote:"ALL auctions ever started on the platform — active ones, ended ones with a decided winner, ones that expired without bids, and ones cancelled by the seller.",
     changelogNewBadge:"🆕 NEW",
     changelogV2_5:"v2.5 - Auction Update",
     changelogV2_5Item1:"🔨 Auctions were rebuilt: the live countdown now ticks in hours-minutes-seconds, turns red and pulses in the last 5 minutes, and cards show a 🔥 Final minutes badge",
@@ -5901,6 +5915,7 @@ function applyTranslations() {
     // butonu) kullanılıyordu ama applyTranslations bunu HİÇ işlemiyordu —
     // title tooltip'i hep sabit kalıyordu. Artık gerçekten çevriliyor.
     document.querySelectorAll('[data-i18n-title]').forEach(el => { const v=t(el.getAttribute('data-i18n-title')); if(typeof v==='string') el.title=v; });
+    document.querySelectorAll('[data-i18n-aria]').forEach(el => { const v=t(el.getAttribute('data-i18n-aria')); if(typeof v==='string') el.setAttribute('aria-label',v); });
     document.querySelectorAll('select option[data-i18n]').forEach(el => { const v=t(el.getAttribute('data-i18n')); if(typeof v==='string') el.textContent=v; });
     const pill=document.getElementById('current-lang-pill'); if(pill) pill.textContent=currentLang.toUpperCase();
     document.getElementById('lang-btn-tr')?.classList.toggle('active',currentLang==='tr');
@@ -6199,12 +6214,12 @@ async function loadNotificationPrefs(){
 // bastığında hemen kaydedilip görsel olarak yansımalı, "Kaydet" butonu
 // beklemek gereksiz sürtünme olurdu.
 const NOTIF_CATEGORY_LABELS = {
-    sales: '💰 Satış & Ödemeler',
-    offers: '🔄 Teklifler',
-    tickets: '🎫 Destek Talepleri',
-    favorites: '⭐ Favoriler & Kayıtlı Aramalar',
-    messages: '💬 Mesajlar',
-    legal: '⚖️ Marka Hakkı & Şikayetler'
+    get sales(){ return AWL('💰 Satış & Ödemeler','💰 Sales & Payments'); },
+    get offers(){ return AWL('🔄 Teklifler','🔄 Offers'); },
+    get tickets(){ return AWL('🎫 Destek Talepleri','🎫 Support Tickets'); },
+    get favorites(){ return AWL('⭐ Favoriler & Kayıtlı Aramalar','⭐ Favorites & Saved Searches'); },
+    get messages(){ return AWL('💬 Mesajlar','💬 Messages'); },
+    get legal(){ return AWL('⚖️ Marka Hakkı & Şikayetler','⚖️ Trademark Claims & Reports'); }
 };
 function renderNotifCategoryToggles(prefs){
     const container=document.getElementById('notif-category-toggles');
@@ -7241,7 +7256,7 @@ window.shareDomainListing = function(domainName, price) {
     // 2) Clipboard API (modern tarayıcılar)
     if (navigator.clipboard && navigator.clipboard.writeText) {
         navigator.clipboard.writeText(text).then(() => {
-            showToast('🔗 Link panoya kopyalandı');
+            showToast(AWL('🔗 Link panoya kopyalandı','🔗 Link copied to clipboard'));
         }).catch(() => legacyCopyToClipboard(text));
         return;
     }
@@ -7259,9 +7274,9 @@ function legacyCopyToClipboard(text) {
         ta.select();
         const ok = document.execCommand('copy');
         document.body.removeChild(ta);
-        showToast(ok ? '🔗 Link panoya kopyalandı' : 'Kopyalanamadı, linki elle seçip kopyalayın: ' + text);
+        showToast(ok ? AWL('🔗 Link panoya kopyalandı','🔗 Link copied to clipboard') : AWL('Kopyalanamadı, linki elle seçip kopyalayın: ','Could not copy — select and copy the link manually: ') + text);
     } catch (e) {
-        showToast('Kopyalanamadı, linki elle seçip kopyalayın: ' + text);
+        showToast(AWL('Kopyalanamadı, linki elle seçip kopyalayın: ','Could not copy — select and copy the link manually: ') + text);
     }
 }
 
@@ -7489,7 +7504,7 @@ window.openDomainDetail=function(domainName){
     // kişinin en azından METİN olarak domain adını/fiyatını ilettiği
     // pratik bir ara çözüm; WhatsApp/Telegram'da paylaşılan mesaj kendi
     // içinde bu bilgiyi taşıyor, tıklayan kişi önizlemeye bağımlı kalmıyor.
-    secondaryHtml+=`<button onclick="window.shareDomainListing('${domainName.replace(/'/g,"\\'")}', ${data.price||0})" style="padding:9px 6px;border-radius:9px;border:1.5px solid #38bdf8;background:rgba(56,189,248,0.1);color:#7dd3fc;font-weight:800;font-size:0.74em;cursor:pointer;">🔗 Paylaş</button>`;
+    secondaryHtml+=`<button onclick="window.shareDomainListing('${domainName.replace(/'/g,"\\'")}', ${data.price||0})" style="padding:9px 6px;border-radius:9px;border:1.5px solid #38bdf8;background:rgba(56,189,248,0.1);color:#7dd3fc;font-weight:800;font-size:0.74em;cursor:pointer;">🔗 ${AWL('Paylaş','Share')}</button>`;
     if(isAuth){
         const isFav=userFavorites.has(domainName);
         secondaryHtml+=`<button id="detail-fav-btn" onclick="window.toggleFavorite('${domainName}')" style="padding:9px 6px;border-radius:9px;border:1.5px solid #f59e0b;background:${isFav?'rgba(245,158,11,0.9)':'rgba(245,158,11,0.1)'};color:${isFav?'#1e1b4b':'#fbbf24'};font-weight:800;font-size:0.74em;cursor:pointer;">${isFav?'★ '+t('favoriteRemoveBtn'):'☆ '+t('favoriteAddBtn')}</button>`;
@@ -8297,7 +8312,7 @@ function renderAdminPriceList(){
         // tutarlı (bkz. handleRejectSellRequest).
         const auctionCtrlHtml=isSold?'':(data.auctionActive===true
             ? `<button onclick="window.handleCancelAuction('${d.name}')" style="background:#ef4444;color:#fff;border:none;padding:5px 8px;border-radius:6px;font-size:0.65em;font-weight:bold;cursor:pointer;white-space:nowrap;">⏰🛑 ${data.auctionHighestBid?data.auctionHighestBid+' π':'0 teklif'}</button>`
-            : `<button onclick="window.handleStartAuction('${d.name}')" style="background:#8b5cf6;color:#fff;border:none;padding:5px 8px;border-radius:6px;font-size:0.65em;font-weight:bold;cursor:pointer;white-space:nowrap;">⏰ Açık Art.</button>`);
+            : `<button onclick="window.handleStartAuction('${d.name}')" style="background:#8b5cf6;color:#fff;border:none;padding:5px 8px;border-radius:6px;font-size:0.65em;font-weight:bold;cursor:pointer;white-space:nowrap;">⏰ ${AWL('Açık Art.','Auction')}</button>`);
         return `<div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;background:#0f172a;padding:6px 8px;border-radius:8px;flex-wrap:wrap;">
             <span style="flex:1;font-size:0.8em;font-weight:bold;color:#e2e8f0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${d.name}${isSold?' 🔒':''}</span>
             <input type="number" id="price-input-${d.name}" value="${data.price}" ${isSold?'disabled':''} style="width:70px;background:#1e293b;border:1px solid #6366f1;color:#fff;border-radius:6px;padding:4px 6px;font-size:0.8em;">
@@ -8325,7 +8340,7 @@ function renderAdminPriceList(){
                         <div style="font-size:0.62em;color:#94a3b8;">${t('deletedAtLabel')} ${delDate}</div>
                     </div>
                     <button onclick="handleRestoreDomain('${d.name}')" style="background:#10b981;color:#fff;border:none;padding:5px 8px;border-radius:6px;font-size:0.7em;font-weight:bold;cursor:pointer;flex-shrink:0;">${t('restoreBtn')}</button>
-                    <button onclick="handlePermanentDelete('${d.name}')" style="background:#7f1d1d;color:#fca5a5;border:1px solid #ef4444;padding:5px 8px;border-radius:6px;font-size:0.7em;font-weight:bold;cursor:pointer;flex-shrink:0;" data-i18n-title="permanentDeleteBtn" aria-label="Kalıcı sil">🗑</button>
+                    <button onclick="handlePermanentDelete('${d.name}')" style="background:#7f1d1d;color:#fca5a5;border:1px solid #ef4444;padding:5px 8px;border-radius:6px;font-size:0.7em;font-weight:bold;cursor:pointer;flex-shrink:0;" data-i18n-title="permanentDeleteBtn" aria-label="${t('permanentDeleteBtn')}">🗑</button>
                 </div>`;
             }).join('');
         }
@@ -8338,7 +8353,7 @@ function renderAdminPriceList(){
 // eylem gerektiriyor. Mevcut prompt() kullanım deseniyle tutarlı
 // (kodda zaten reddetme sebebi, teklif fiyatı gibi yerlerde kullanılıyor).
 function confirmByTyping(expectedText, warningMessage) {
-    const typed = prompt(`${warningMessage}\n\nOnaylamak için tam olarak şunu yazın:\n"${expectedText}"`);
+    const typed = prompt(AWL(`${warningMessage}\n\nOnaylamak için tam olarak şunu yazın:\n"${expectedText}"`,`${warningMessage}\n\nTo confirm, type exactly:\n\"${expectedText}\"`));
     if (typed === null) return false; // İptal
     return typed.trim() === expectedText;
 }
@@ -8354,8 +8369,8 @@ window.handlePermanentDelete=async function(domainName){
     if(!confirm(t('permanentDeleteConfirm')(domainName))) return;
     // YENİ: Kalıcı silme geri alınamaz olduğu için ikinci bir onay katmanı
     // eklendi — admin domain adını tam olarak yazmadan işlem gerçekleşmez.
-    if(!confirmByTyping(domainName, 'Bu domain KALICI olarak silinecek, GERİ ALINAMAZ.')) {
-        showToast('İptal edildi — yazılan metin domain adıyla eşleşmedi.');
+    if(!confirmByTyping(domainName, AWL('Bu domain KALICI olarak silinecek, GERİ ALINAMAZ.','This domain will be PERMANENTLY deleted and CANNOT BE UNDONE.'))) {
+        showToast(AWL('İptal edildi — yazılan metin domain adıyla eşleşmedi.','Cancelled — the typed text did not match the domain name.'));
         return;
     }
     const r=await fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'permanent_delete_domain',domainName,accessToken:piAccessToken})});
@@ -9372,17 +9387,17 @@ window.loadAdminAuctionsTable=async function(){
         const result=await r.json();
         if(!result.success){ wrap.innerHTML=`<p style="color:#f87171;font-size:0.75em;text-align:center;">${escapeHtml(result.error||t('genericError'))}</p>`; return; }
         const auctions=result.auctions||[];
-        if(!auctions.length){ wrap.innerHTML=`${emptyState('⏰','Henüz hiç açık artırma başlatılmamış.')}`; return; }
+        if(!auctions.length){ wrap.innerHTML=AWL(`${emptyState('⏰','Henüz hiç açık artırma başlatılmamış.')}`,`${emptyState('⏰','No auction has been started yet.')}`); return; }
         const locale=currentLang==='en'?'en-GB':'tr-TR';
         const fmtDate=(ts)=>ts?new Date(ts).toLocaleDateString(locale,{day:'2-digit',month:'2-digit',year:'2-digit',hour:'2-digit',minute:'2-digit'}):'—';
         const now=Date.now();
         const statusOf=(a)=>{
             if(a.auctionActive) return {icon:'⏳',label:'Aktif',color:'#fbbf24'};
             if(a.auctionWinPending && !a.sold) return {icon:'⏱️',label:AWL('Kazanan Ödemeyi Bekliyor (@','Awaiting Winner Payment (@')+(a.auctionWinner||'?')+')',color:'#fb923c'};
-            if(a.sold || a.reservedFor) return {icon:'🏆',label:'Kazanıldı',color:'#34d399'};
-            if(a.auctionEndsAt && a.auctionEndsAt<=now && !a.auctionHighestBidder) return {icon:'⌛',label:'Süresi Doldu (Teklif Yok)',color:'#94a3b8'};
+            if(a.sold || a.reservedFor) return {icon:'🏆',label:AWL('Kazanıldı','Won'),color:'#34d399'};
+            if(a.auctionEndsAt && a.auctionEndsAt<=now && !a.auctionHighestBidder) return {icon:'⌛',label:AWL('Süresi Doldu (Teklif Yok)','Expired (No Bids)'),color:'#94a3b8'};
             if(a.auctionEndsAt && a.auctionEndsAt<=now && a.auctionHighestBidder) return {icon:'✅',label:'Bitti — Kazanan Bekleniyor',color:'#60a5fa'};
-            return {icon:'🚫',label:'İptal Edildi',color:'#f87171'};
+            return {icon:'🚫',label:AWL('İptal Edildi','Cancelled'),color:'#f87171'};
         };
         const cards=auctions.map(a=>{
             const st=statusOf(a);
@@ -9393,13 +9408,13 @@ window.loadAdminAuctionsTable=async function(){
                     <span style="font-size:0.62em;font-weight:800;color:${st.color};background:${st.color}1a;border:1px solid ${st.color}55;border-radius:6px;padding:2px 8px;">${st.icon} ${st.label}</span>
                 </div>
                 <div style="font-size:0.68em;color:#cbd5e1;line-height:1.75;">
-                    <div>👤 Satıcı: <b style="color:#e2e8f0;">@${escapeHtml(a.sellerUsername||'—')}</b></div>
-                    <div>💰 Başlangıç: <b>${a.auctionStartPrice??'—'} Pi</b> · Min. artış: <b>${a.auctionMinIncrement??'—'} Pi</b></div>
-                    <div>🔥 En yüksek teklif: <b style="color:#34d399;">${a.auctionHighestBid??'— (henüz teklif yok)'}${a.auctionHighestBid!=null?' Pi':''}</b>${a.auctionHighestBidder?` — @${escapeHtml(a.auctionHighestBidder)}`:''}</div>
-                    <div>📊 Toplam teklif sayısı: <b>${a.auctionBidCount||0}</b></div>
-                    <div>🕐 Başladı: ${fmtDate(a.auctionStartedAt)} · Bitiş: ${fmtDate(a.auctionEndsAt)}</div>
+                    <div>${AWL('👤 Satıcı: ','👤 Seller: ')}<b style="color:#e2e8f0;">@${escapeHtml(a.sellerUsername||'—')}</b></div>
+                    <div>${AWL('💰 Başlangıç: ','💰 Start: ')}<b>${a.auctionStartPrice??'—'} Pi</b>${AWL(' · Min. artış: ',' · Min. increment: ')}<b>${a.auctionMinIncrement??'—'} Pi</b></div>
+                    <div>${AWL('🔥 En yüksek teklif: ','🔥 Highest bid: ')}<b style="color:#34d399;">${a.auctionHighestBid??AWL('— (henüz teklif yok)','— (no bids yet)')}${a.auctionHighestBid!=null?' Pi':''}</b>${a.auctionHighestBidder?` — @${escapeHtml(a.auctionHighestBidder)}`:''}</div>
+                    <div>${AWL('📊 Toplam teklif sayısı: ','📊 Total bids: ')}<b>${a.auctionBidCount||0}</b></div>
+                    <div>${AWL(`🕐 Başladı: ${fmtDate(a.auctionStartedAt)} · Bitiş: ${fmtDate(a.auctionEndsAt)}`,`🕐 Started: ${fmtDate(a.auctionStartedAt)} · Ends: ${fmtDate(a.auctionEndsAt)}`)}</div>
                 </div>
-                <button onclick="window.toggleAdminAuctionDetail('${a.domainName.replace(/'/g,"\\'")}','${detailId}')" style="margin-top:8px;width:100%;background:rgba(99,102,241,0.12);border:1px solid #6366f1;color:#a5b4fc;font-size:0.65em;font-weight:800;padding:6px;border-radius:8px;cursor:pointer;">📜 Tüm Teklif Geçmişini Göster</button>
+                <button onclick="window.toggleAdminAuctionDetail('${a.domainName.replace(/'/g,"\\'")}','${detailId}')" style="margin-top:8px;width:100%;background:rgba(99,102,241,0.12);border:1px solid #6366f1;color:#a5b4fc;font-size:0.65em;font-weight:800;padding:6px;border-radius:8px;cursor:pointer;">📜 ${AWL('Tüm Teklif Geçmişini Göster','Show Full Bid History')}</button>
                 <div id="${detailId}" style="display:none;margin-top:8px;padding-top:8px;border-top:1px dashed #1e293b;"></div>
             </div>`;
         }).join('');
@@ -9419,7 +9434,7 @@ window.toggleAdminAuctionDetail=async function(domainName,detailId){
         const r=await fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'get_auction_bids',domainName})});
         const result=await r.json();
         const bids=(result&&result.bids)||[];
-        if(!bids.length){ box.innerHTML=`<p style="font-size:0.68em;color:#64748b;text-align:center;">Henüz teklif verilmemiş.</p>`; return; }
+        if(!bids.length){ box.innerHTML=AWL(`<p style="font-size:0.68em;color:#64748b;text-align:center;">Henüz teklif verilmemiş.</p>`,`<p style="font-size:0.68em;color:#64748b;text-align:center;">No bids yet.</p>`); return; }
         const locale=currentLang==='en'?'en-GB':'tr-TR';
         box.innerHTML=bids.map(b=>`<div style="display:flex;justify-content:space-between;font-size:0.66em;color:#cbd5e1;padding:4px 0;border-bottom:1px solid #1e293b;"><span>@${escapeHtml(b.username||'—')}</span><span style="color:#34d399;font-weight:700;">${b.bidAmount} Pi</span><span style="color:#64748b;">${b.at?new Date(b.at).toLocaleString(locale,{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}):'—'}</span></div>`).join('');
     }catch(e){ box.innerHTML=`<p style="font-size:0.68em;color:#f87171;text-align:center;">${t('genericError')}</p>`; }
@@ -9795,7 +9810,7 @@ function renderMyOffersBox(forceRender){
             // görünür olduğu için ileride benzer bir sorun anında teşhis
             // edilebiliyor (konsola bakmaya gerek kalmadan).
             console.error('Teklif kaydı çizilemedi:', o && o.id, renderErr);
-            return `<div style="background:#450a0a;border-radius:9px;padding:8px;margin-bottom:8px;font-size:0.65em;color:#fecaca;">⚠️ Bir teklif gösterilemedi (${escapeHtml(o&&o.domainName||'?')}): ${escapeHtml(renderErr.message)}</div>`;
+            return `<div style="background:#450a0a;border-radius:9px;padding:8px;margin-bottom:8px;font-size:0.65em;color:#fecaca;">⚠️ ${AWL('Bir teklif gösterilemedi','An offer could not be displayed')} (${escapeHtml(o&&o.domainName||'?')}): ${escapeHtml(renderErr.message)}</div>`;
         }
     }).join('');
     // YENİ: Yukarıdaki .map() sonucu (teorik olarak) yine de boş çıkarsa
@@ -9888,7 +9903,7 @@ function renderReceivedOffersBox(forceRender){
         // düzeltmenin gerekçesi — tek kayıt varken sessiz '' dönmek
         // panelin tamamen boş/kapalı görünmesine yol açıyordu).
         console.error('Teklif kaydı çizilemedi:', o && o.id, renderErr);
-        return `<div style="background:#450a0a;border-radius:9px;padding:8px;margin-bottom:8px;font-size:0.65em;color:#fecaca;">⚠️ Bir teklif gösterilemedi (${escapeHtml(o&&o.domainName||'?')}): ${escapeHtml(renderErr.message)}</div>`;
+        return `<div style="background:#450a0a;border-radius:9px;padding:8px;margin-bottom:8px;font-size:0.65em;color:#fecaca;">⚠️ ${AWL('Bir teklif gösterilemedi','An offer could not be displayed')} (${escapeHtml(o&&o.domainName||'?')}): ${escapeHtml(renderErr.message)}</div>`;
       }
     }).join('');
     box.innerHTML = renderedHtml || emptyState('💬', t('noOffersYet'));
@@ -10186,13 +10201,13 @@ window.openDeletionRequestsModal=async function(){
             <div style="background:#0f172a;border-radius:9px;padding:10px;border-left:3px solid #ef4444;">
                 <div style="display:flex;justify-content:space-between;gap:8px;margin-bottom:4px;"><b style="color:#fca5a5;font-size:0.8em;">@${rq.username}</b><span style="color:#64748b;font-size:0.62em;">${new Date(rq.createdAt).toLocaleString('tr-TR')}</span></div>
                 ${rq.reason?`<div style="color:#94a3b8;font-size:0.72em;margin-bottom:8px;font-style:italic;">"${escapeHtml(rq.reason)}"</div>`:''}
-                <button onclick="window.resolveDeletionRequest('${rq.id}')" style="width:100%;padding:6px;border-radius:6px;border:1px solid #10b981;background:rgba(16,185,129,0.1);color:#6ee7b7;font-size:0.68em;font-weight:800;cursor:pointer;">✅ Sonuçlandır</button>
+                <button onclick="window.resolveDeletionRequest('${rq.id}')" style="width:100%;padding:6px;border-radius:6px;border:1px solid #10b981;background:rgba(16,185,129,0.1);color:#6ee7b7;font-size:0.68em;font-weight:800;cursor:pointer;">${AWL('✅ Sonuçlandır','✅ Finalize')}</button>
             </div>`).join('');
     }catch(e){ resultsEl.innerHTML=`<div style="color:#f87171;font-size:0.75em;text-align:center;">${t('genericError')}</div>`; }
 };
 window.resolveDeletionRequest=async function(requestId){
-    const note=prompt('İsteğe bağlı not (ne yapıldığı, örn: "veriler anonimleştirildi"):')||'';
-    if(!confirm('Bu talebi sonuçlandırılmış olarak işaretlemek istediğinize emin misiniz?')) return;
+    const note=prompt(AWL('İsteğe bağlı not (ne yapıldığı, örn: "veriler anonimleştirildi"):','Optional note (what was done, e.g. "data anonymized"):'))||'';
+    if(!confirm(AWL('Bu talebi sonuçlandırılmış olarak işaretlemek istediğinize emin misiniz?','Are you sure you want to mark this request as finalized?'))) return;
     try{
         const r=await fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'resolve_deletion_request',requestId,note,accessToken:piAccessToken})});
         const result=await r.json();
@@ -10231,6 +10246,9 @@ function auditCategoryFor(actionName) {
 // anahtarı olduğu gibi gösterip sessizce devam ediyoruz — hiçbir kayıt
 // kaybolmuyor veya hata vermiyor.
 const AUDIT_ACTION_LABELS_TR = {
+    cleanup_closed_auction_data: 'Kapanmış Kayıtlar Temizlendi',
+    cleanup_closed_data_FORCE: 'TÜM Kapanmış Kayıtlar Silindi (süre gözetmeden)',
+    admin_delete_offer: 'Teklif Kaydı Kalıcı Silindi',
     release_seller_payment: 'Satıcıya Ödeme Serbest Bırakıldı',
     refund_buyer: 'Alıcıya İade Yapıldı',
     export_sales_data: 'Satış Verisi Dışa Aktarıldı',
@@ -10262,6 +10280,9 @@ const AUDIT_ACTION_LABELS_TR = {
 // Şimdi aynı anahtarların İngilizce karşılığı da tanımlı; auditActionLabel
 // artık aktif dile göre doğru sözlükten okuyor.
 const AUDIT_ACTION_LABELS_EN = {
+    cleanup_closed_auction_data: 'Closed Records Cleaned Up',
+    cleanup_closed_data_FORCE: 'ALL Closed Records Deleted (ignoring retention)',
+    admin_delete_offer: 'Offer Record Permanently Deleted',
     release_seller_payment: 'Seller Payment Released',
     refund_buyer: 'Buyer Refunded',
     export_sales_data: 'Sales Data Exported',
@@ -10311,8 +10332,8 @@ function translateAuditDetailsEN(text) {
         (_, a, b, c, d) => `${a}: @${b}'s ${c} Pi offer ${d === 'kabul edildi' ? 'accepted' : 'rejected'}`);
     s = s.replace(/^(.+): ([\d.]+) Pi karşı teklif (kabul edildi|reddedildi)$/,
         (_, a, b, c) => `${a}: ${b} Pi counter offer ${c === 'kabul edildi' ? 'accepted' : 'rejected'}`);
-    s = s.replace(/^(.+): başlangıç ([\d.]+) Pi, min artış ([\d.]+) Pi, ([\d.]+) saat$/,
-        (_, a, b, c, d) => `${a}: start ${b} Pi, min increase ${c} Pi, ${d} hours`);
+    s = s.replace(/^(.+): başlangıç ([\d.]+) Pi, min artış ([\d.]+) Pi, ([\d.]+) saat(.*)$/,
+        (_, a, b, c, d, e) => `${a}: start ${b} Pi, min increase ${c} Pi, ${d} hours${e}`);
     // 2) Tüm metin birebir sabit bir cümleyse doğrudan karşılığı.
     const wholeMap = { 'TÜM satış geçmişi ve puanlar sıfırlandı': 'ALL sales history and ratings reset' };
     if (wholeMap[s]) return wholeMap[s];
@@ -10332,6 +10353,9 @@ function translateAuditDetailsEN(text) {
         [/\bbaşarısız\b/g, 'failed'],
         [/\bkaldırıldı\b/g, 'removed'],
         [/konu:/g, 'subject:'],
+        [/, rezerv ([\d.]+) Pi/g, ', reserve $1 Pi'],
+        [/, hemen al ([\d.]+) Pi/g, ', buy now $1 Pi'],
+        [/\(kazanan bekleniyordu\)/g, '(awaiting winner payment)'],
         [/\bAÇILDI\b/g, 'ENABLED'],
         [/\bKAPATILDI\b/g, 'DISABLED'],
         [/\bsatır\b/g, 'rows'],
@@ -10372,9 +10396,9 @@ window.filterAuditLog = function(query) {
 // ekleniyor (sales export'ta da kullanılan aynı desen).
 window.exportAuditLogCSV = function() {
     const entries = getFilteredAuditEntries();
-    if (!entries.length) { showToast('İndirilecek kayıt yok'); return; }
+    if (!entries.length) { showToast(AWL('İndirilecek kayıt yok','No records to download')); return; }
     const escCsv = (v) => `"${String(v ?? '').replace(/"/g, '""')}"`;
-    const header = ['Tarih', 'Admin', 'İşlem', 'Detay'].map(escCsv).join(',');
+    const header = [AWL('Tarih','Date'), 'Admin', AWL('İşlem','Action'), AWL('Detay','Details')].map(escCsv).join(',');
     const rows = entries.map(e => [
         new Date(e.ts).toLocaleString('tr-TR'),
         e.admin || '',
@@ -10412,20 +10436,20 @@ async function loadAdminTodoSummary() {
     try {
         const r = await fetch('/api/approve', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'get_admin_todo_summary', accessToken: piAccessToken }) });
         const result = await r.json();
-        if (!result.success) { body.innerHTML = `<span style="color:#f87171;">Yüklenemedi</span>`; return; }
+        if (!result.success) { body.innerHTML = AWL(`<span style="color:#f87171;">Yüklenemedi</span>`,`<span style="color:#f87171;">Failed to load</span>`); return; }
         const s = result.summary;
         // Her kart: {sayı, etiket, ikon, hedef sekme}. Sayı 0 ise kart hiç gösterilmiyor.
         const items = [
-            { n: s.pendingApprovals, label: 'Bekleyen Onay', icon: '🏷️', tab: 'tab-pending' },
-            { n: s.openTickets, label: 'Destek Talebi', icon: '🎫', tab: 'tab-tickets' },
-            { n: s.pendingTrademark, label: 'Marka Hakkı', icon: '🔖', tab: 'tab-trademark' },
-            { n: s.pendingPayouts, label: 'Bekleyen Ödeme', icon: '💸', tab: 'tab-payouts' },
-            { n: s.pendingOffers, label: 'Teklif', icon: '🔄', tab: 'tab-offers' },
-            { n: s.unseenReports, label: 'Şikayet', icon: '🚩', tab: 'tab-reports' },
-            { n: s.unseenMessages, label: 'Mesaj', icon: '💬', tab: 'tab-messages' }
+            { n: s.pendingApprovals, label: AWL('Bekleyen Onay','Pending Approval'), icon: '🏷️', tab: 'tab-pending' },
+            { n: s.openTickets, label: AWL('Destek Talebi','Support Ticket'), icon: '🎫', tab: 'tab-tickets' },
+            { n: s.pendingTrademark, label: AWL('Marka Hakkı','Trademark Claim'), icon: '🔖', tab: 'tab-trademark' },
+            { n: s.pendingPayouts, label: AWL('Bekleyen Ödeme','Pending Payout'), icon: '💸', tab: 'tab-payouts' },
+            { n: s.pendingOffers, label: AWL('Teklif','Offer'), icon: '🔄', tab: 'tab-offers' },
+            { n: s.unseenReports, label: AWL('Şikayet','Report'), icon: '🚩', tab: 'tab-reports' },
+            { n: s.unseenMessages, label: AWL('Mesaj','Message'), icon: '💬', tab: 'tab-messages' }
         ].filter(i => i.n > 0);
         if (!items.length) {
-            body.innerHTML = `<span style="color:#6ee7b7;">✅ Bugün için bekleyen işiniz yok</span>`;
+            body.innerHTML = AWL(`<span style="color:#6ee7b7;">✅ Bugün için bekleyen işiniz yok</span>`,`<span style="color:#6ee7b7;">✅ Nothing pending for today</span>`);
             return;
         }
         body.style.textAlign = 'left';
@@ -10436,7 +10460,7 @@ async function loadAdminTodoSummary() {
             </button>`).join('')}</div>`;
     } catch (e) {
         console.error('[TodoSummary] yüklenemedi:', e);
-        body.innerHTML = `<span style="color:#f87171;">Yüklenemedi</span>`;
+        body.innerHTML = AWL(`<span style="color:#f87171;">Yüklenemedi</span>`,`<span style="color:#f87171;">Failed to load</span>`);
     }
 }
 function startAdminTodoSummaryPolling() {
@@ -10457,13 +10481,13 @@ window.openAuditLogModal=async function(){
     try{
         const r=await fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'get_admin_audit_log',accessToken:piAccessToken})});
         const result=await r.json();
-        if(!result.success){ resultsEl.innerHTML=`<div style="color:#f87171;font-size:0.75em;text-align:center;">${result.error||'Yüklenemedi'}</div>`; return; }
+        if(!result.success){ resultsEl.innerHTML=AWL(`<div style="color:#f87171;font-size:0.75em;text-align:center;">${result.error||'Yüklenemedi'}</div>`,`<div style="color:#f87171;font-size:0.75em;text-align:center;">${result.error||'Failed to load'}</div>`); return; }
         _auditLogEntries=result.entries||[];
         _auditLogOpenCategory=null;
         _auditLogOpenEntryId=null;
         if (_auditLogViewMode === 'timeline') renderAuditLogTimeline(); else renderAuditLogGrouped();
     }catch(e){
-        resultsEl.innerHTML=`<div style="color:#f87171;font-size:0.75em;text-align:center;">Bir hata oluştu.</div>`;
+        resultsEl.innerHTML=AWL(`<div style="color:#f87171;font-size:0.75em;text-align:center;">Bir hata oluştu.</div>`,`<div style="color:#f87171;font-size:0.75em;text-align:center;">Something went wrong.</div>`);
     }
 };
 window.toggleAuditCategory=function(catKey){
@@ -10478,9 +10502,9 @@ window.toggleAuditEntry=function(entryId){
 function renderAuditLogGrouped(){
     const resultsEl=document.getElementById('audit-log-results');
     if(!resultsEl) return;
-    if(!_auditLogEntries.length){ resultsEl.innerHTML=`<div style="color:#64748b;font-size:0.75em;text-align:center;padding:20px;">Henüz kayıt yok.</div>`; return; }
+    if(!_auditLogEntries.length){ resultsEl.innerHTML=AWL(`<div style="color:#64748b;font-size:0.75em;text-align:center;padding:20px;">Henüz kayıt yok.</div>`,`<div style="color:#64748b;font-size:0.75em;text-align:center;padding:20px;">No records yet.</div>`); return; }
     const filtered = getFilteredAuditEntries();
-    if(!filtered.length){ resultsEl.innerHTML=`<div style="color:#64748b;font-size:0.75em;text-align:center;padding:20px;">"${escapeHtml(_auditLogSearchQuery)}" ile eşleşen kayıt yok.</div>`; return; }
+    if(!filtered.length){ resultsEl.innerHTML=AWL(`<div style="color:#64748b;font-size:0.75em;text-align:center;padding:20px;">"${escapeHtml(_auditLogSearchQuery)}" ile eşleşen kayıt yok.</div>`,`<div style="color:#64748b;font-size:0.75em;text-align:center;padding:20px;">"${escapeHtml(_auditLogSearchQuery)}" — no matching records.</div>`); return; }
     const locale=currentLang==='en'?'en-GB':'tr-TR';
     // Kayıtları kategoriye göre grupla, her grup içinde zaten en yeni-en
     // eski sırayla geliyor (backend orderBy('ts','desc') ile veriyor).
@@ -10559,9 +10583,9 @@ function dayLabelFor(ts, locale) {
 function renderAuditLogTimeline(){
     const resultsEl=document.getElementById('audit-log-results');
     if(!resultsEl) return;
-    if(!_auditLogEntries.length){ resultsEl.innerHTML=`<div style="color:#64748b;font-size:0.75em;text-align:center;padding:20px;">Henüz kayıt yok.</div>`; return; }
+    if(!_auditLogEntries.length){ resultsEl.innerHTML=AWL(`<div style="color:#64748b;font-size:0.75em;text-align:center;padding:20px;">Henüz kayıt yok.</div>`,`<div style="color:#64748b;font-size:0.75em;text-align:center;padding:20px;">No records yet.</div>`); return; }
     const filtered = getFilteredAuditEntries();
-    if(!filtered.length){ resultsEl.innerHTML=`<div style="color:#64748b;font-size:0.75em;text-align:center;padding:20px;">"${escapeHtml(_auditLogSearchQuery)}" ile eşleşen kayıt yok.</div>`; return; }
+    if(!filtered.length){ resultsEl.innerHTML=AWL(`<div style="color:#64748b;font-size:0.75em;text-align:center;padding:20px;">"${escapeHtml(_auditLogSearchQuery)}" ile eşleşen kayıt yok.</div>`,`<div style="color:#64748b;font-size:0.75em;text-align:center;padding:20px;">"${escapeHtml(_auditLogSearchQuery)}" — no matching records.</div>`); return; }
     const locale=currentLang==='en'?'en-GB':'tr-TR';
     // Zaten backend ts-desc sıralı geliyor; sadece gün başlıklarına göre
     // ard arda gelen kayıtları grupluyoruz (ekstra sort GEREKMİYOR, mevcut
@@ -10614,9 +10638,9 @@ function renderAuditLogTimeline(){
         }
     });
     if (skippedCount > 0) {
-        parts.push(`<div style="color:#fbbf24;font-size:0.65em;text-align:center;padding:8px;">⚠️ ${skippedCount} kayıt bozuk veri nedeniyle gösterilemedi (konsola bakın).</div>`);
+        parts.push(AWL(`<div style="color:#fbbf24;font-size:0.65em;text-align:center;padding:8px;">⚠️ ${skippedCount} kayıt bozuk veri nedeniyle gösterilemedi (konsola bakın).</div>`,`<div style="color:#fbbf24;font-size:0.65em;text-align:center;padding:8px;">⚠️ ${skippedCount} records could not be displayed due to corrupted data (see the console).</div>`));
     }
-    resultsEl.innerHTML = parts.length ? parts.join('') : `<div style="color:#f87171;font-size:0.75em;text-align:center;padding:20px;">Hiçbir kayıt işlenemedi — kayıt formatında bir sorun olabilir.</div>`;
+    resultsEl.innerHTML = parts.length ? parts.join('') : AWL(`<div style="color:#f87171;font-size:0.75em;text-align:center;padding:20px;">Hiçbir kayıt işlenemedi — kayıt formatında bir sorun olabilir.</div>`,`<div style="color:#f87171;font-size:0.75em;text-align:center;padding:20px;">No records could be processed — there may be a problem with the record format.</div>`);
 }
 
 window.runSystemCheckup=async function(){
@@ -10660,29 +10684,29 @@ window.runSystemCheckup=async function(){
     }
 };
 window.handleFixDeletedRatings=async function(){
-    if(!confirm('Silinmiş domainlerde hâlâ duran (kullanıcıların toplam puanına dahil edilmeye devam eden) yıldız puanları geri alınacak. Devam edilsin mi?')) return;
+    if(!confirm(AWL('Silinmiş domainlerde hâlâ duran (kullanıcıların toplam puanına dahil edilmeye devam eden) yıldız puanları geri alınacak. Devam edilsin mi?','Star ratings that still remain on deleted domains (and are still counted in users\' total scores) will be reverted. Continue?'))) return;
     try{
         const r=await fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'backfill_reverse_deleted_ratings',accessToken:piAccessToken})});
         const result=await r.json();
         if(!result.success){ showToast('Hata: '+(result.error||'')); return; }
-        showToast(`✅ ${result.fixedCount} domain'deki puan geri alındı.`+(result.fixedNames&&result.fixedNames.length?'\n'+result.fixedNames.join(', '):''));
-    }catch(e){ showToast('Bir hata oluştu.'); }
+        showToast(AWL(`✅ ${result.fixedCount} domain'deki puan geri alındı.`,`✅ Ratings reverted for ${result.fixedCount} domains.`)+(result.fixedNames&&result.fixedNames.length?'\n'+result.fixedNames.join(', '):''));
+    }catch(e){ showToast(AWL('Bir hata oluştu.','Something went wrong.')); }
 };
 window.handleRecomputeAllRatings=async function(){
-    if(!confirm('TÜM kullanıcıların satıcı/alıcı yıldız puanları, şu an Firestore\'da var olan domain kayıtları taranarak SIFIRDAN yeniden hesaplanacak ve mevcut (muhtemelen şişmiş) değerlerin üzerine yazılacak. Kalıcı silinmiş domainler zaten Firestore\'da hiç yok, bu yüzden onlara ait puanlar otomatik olarak sıfırlanacak. Bu işlem güvenlidir ve tekrar tekrar çalıştırılabilir. Devam edilsin mi?')) return;
+    if(!confirm(AWL('TÜM kullanıcıların satıcı/alıcı yıldız puanları, şu an Firestore\'da var olan domain kayıtları taranarak SIFIRDAN yeniden hesaplanacak ve mevcut (muhtemelen şişmiş) değerlerin üzerine yazılacak. Kalıcı silinmiş domainler zaten Firestore\'da hiç yok, bu yüzden onlara ait puanlar otomatik olarak sıfırlanacak. Bu işlem güvenlidir ve tekrar tekrar çalıştırılabilir. Devam edilsin mi?','ALL users\' seller/buyer star ratings will be recalculated FROM SCRATCH by scanning the domain records that currently exist in Firestore, overwriting the current (possibly inflated) values. Permanently deleted domains no longer exist in Firestore, so their ratings are reset automatically. This operation is safe and can be run repeatedly. Continue?'))) return;
     try{
         const r=await fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'recompute_all_ratings',accessToken:piAccessToken})});
         const result=await r.json();
         if(!r.ok||!result.success){ showToast('Hata: '+(result.error||'')); return; }
-        showToast(`✅ ${result.updatedCount} kullanıcı profili güncellendi.\n${result.sellersAffected||0} satıcı, ${result.buyersAffected||0} alıcı için puanlar güncel domain kayıtlarına göre yeniden yazıldı.`);
-    }catch(e){ showToast('Bir hata oluştu.'); }
+        showToast(AWL(`✅ ${result.updatedCount} kullanıcı profili güncellendi.\n${result.sellersAffected||0} satıcı, ${result.buyersAffected||0} alıcı için puanlar güncel domain kayıtlarına göre yeniden yazıldı.`,`✅ ${result.updatedCount} user profiles updated.\n${result.sellersAffected||0} sellers and ${result.buyersAffected||0} buyers had their ratings rewritten from the current domain records.`));
+    }catch(e){ showToast(t('genericError')); }
 };
 window.handleBackfillSellerUsername=async function(){
-    if(!confirm('Henüz satılmamış ve satıcı bilgisi eksik olan domainlere, satıcı olarak sizin kullanıcı adınız yazılacak. Ayrıca zaten satılmış olup domain kaydında satıcı bilgisi olan ama satış kaydında (global_sales) eksik olan kayıtlar da tamamlanacak (böylece "Devrettim" onayı çalışabilsin). Zaten doğru olan hiçbir kayda dokunulmayacak. Devam edilsin mi?')) return;
+    if(!confirm(AWL('Henüz satılmamış ve satıcı bilgisi eksik olan domainlere, satıcı olarak sizin kullanıcı adınız yazılacak. Ayrıca zaten satılmış olup domain kaydında satıcı bilgisi olan ama satış kaydında (global_sales) eksik olan kayıtlar da tamamlanacak (böylece "Devrettim" onayı çalışabilsin). Zaten doğru olan hiçbir kayda dokunulmayacak. Devam edilsin mi?','Your username will be written as the seller on unsold domains that are missing seller info. Also, records for already-sold domains that have a seller on the domain but are missing from the sales record (global_sales) will be completed (so the "I transferred it" confirmation can work). Nothing that is already correct will be touched. Continue?'))) return;
     const r=await fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'backfill_seller_username',accessToken:piAccessToken})});
     const result=await r.json();
     if(!r.ok||!result.success) showToast('Hata: '+(result.error||''));
-    else showToast(`✅ ${result.updatedCount} domain güncellendi.`+(result.updatedNames&&result.updatedNames.length?'\n'+result.updatedNames.join(', '):'')+`\n\n✅ ${result.salesUpdated||0} satış kaydı (global_sales) tamamlandı.`+(result.salesUpdatedNames&&result.salesUpdatedNames.length?'\n'+result.salesUpdatedNames.join(', '):''));
+    else showToast(AWL(`✅ ${result.updatedCount} domain güncellendi.`,`✅ ${result.updatedCount} domains updated.`)+(result.updatedNames&&result.updatedNames.length?'\n'+result.updatedNames.join(', '):'')+AWL(`\n\n✅ ${result.salesUpdated||0} satış kaydı (global_sales) tamamlandı.`,`\n\n✅ ${result.salesUpdated||0} sales records (global_sales) completed.`)+(result.salesUpdatedNames&&result.salesUpdatedNames.length?'\n'+result.salesUpdatedNames.join(', '):''));
 };
 // YENİ: "🧹 Yetim Verileri Temizle" — artık var olmayan veya silinmiş
 // domainlere ait, geçmişte (bu düzeltmeden önce) biriken "offers" (teklif
@@ -10692,7 +10716,7 @@ window.handleBackfillSellerUsername=async function(){
 // kullanılır. Güvenlidir: temiz bir veritabanında tekrar çalıştırılırsa
 // "silinecek kayıt yok" der, hiçbir şeye dokunmaz.
 window.handleCleanupOrphanedOffers=async function(){
-    if(!confirm('Artık var olmayan veya silinmiş domainlere ait TÜM teklif geçmişi kayıtları (offers) kalıcı olarak silinecek. Bu işlem geri alınamaz. Hâlâ aktif/satışta olan domainlerin tekliflerine dokunulmaz. Devam edilsin mi?')) return;
+    if(!confirm(AWL('Artık var olmayan veya silinmiş domainlere ait TÜM teklif geçmişi kayıtları (offers) kalıcı olarak silinecek. Bu işlem geri alınamaz. Hâlâ aktif/satışta olan domainlerin tekliflerine dokunulmaz. Devam edilsin mi?','ALL offer history records (offers) belonging to domains that no longer exist or were deleted will be permanently deleted. This cannot be undone. Offers on domains that are still active/for sale are not touched. Continue?'))) return;
     const btn=document.getElementById('cleanup-orphaned-btn');
     const originalHTML=btn?btn.innerHTML:null;
     if(btn){ btn.innerHTML='🧹 '+t('scanningLabel'); btn.disabled=true; }
@@ -10700,10 +10724,10 @@ window.handleCleanupOrphanedOffers=async function(){
         const r=await fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'cleanup_orphaned_offers',accessToken:piAccessToken})});
         const result=await r.json();
         if(!r.ok||!result.success){ showToast('Hata: '+(result.error||'')); return; }
-        if(result.deletedCount===0){ showToast('✅ Temizlenecek yetim teklif kaydı bulunamadı, her şey zaten temiz.'); return; }
+        if(result.deletedCount===0){ showToast(AWL('✅ Temizlenecek yetim teklif kaydı bulunamadı, her şey zaten temiz.','✅ No orphaned offer records to clean up — everything is already clean.')); return; }
         const domainList=(result.affectedDomains||[]).map(d=>`${d.domainName} (${d.count})`).join(', ');
-        showToast(`✅ ${result.deletedCount} yetim teklif kaydı silindi.\nEtkilenen domainler: ${domainList}`);
-    }catch(e){ showToast('Bir hata oluştu.'); }
+        showToast(AWL(`✅ ${result.deletedCount} yetim teklif kaydı silindi.\nEtkilenen domainler: ${domainList}`,`✅ ${result.deletedCount} orphaned offer records deleted.\nAffected domains: ${domainList}`));
+    }catch(e){ showToast(AWL('Bir hata oluştu.','Something went wrong.')); }
     finally{ if(btn){ btn.innerHTML=originalHTML; btn.disabled=false; } }
 };
 window.handleRelist=async function(domainName){
@@ -11936,7 +11960,7 @@ function render(){
             return `<div class="domain-price" style="font-size:0.78em;">${label}</div>${timeHtml}${badges?`<div class="auc-badges">${badges}</div>`:''}`;
         })();
         const imgSrc=data.img||d.img;
-        const favBtn=isAuth?`<button onclick="window.toggleFavorite('${d.name}',event)" aria-label="${userFavorites.has(d.name)?'Favorilerden çıkar':'Favorilere ekle'}" style="position:absolute;top:6px;right:6px;z-index:3;width:26px;height:26px;border-radius:50%;border:none;background:rgba(15,23,42,0.7);color:${userFavorites.has(d.name)?'#fbbf24':'#94a3b8'};font-size:0.95em;display:flex;align-items:center;justify-content:center;cursor:pointer;backdrop-filter:blur(4px);">${userFavorites.has(d.name)?'★':'☆'}</button>`:'';
+        const favBtn=isAuth?`<button onclick="window.toggleFavorite('${d.name}',event)" aria-label="${userFavorites.has(d.name)?AWL('Favorilerden çıkar','Remove from favorites'):AWL('Favorilere ekle','Add to favorites')}" style="position:absolute;top:6px;right:6px;z-index:3;width:26px;height:26px;border-radius:50%;border:none;background:rgba(15,23,42,0.7);color:${userFavorites.has(d.name)?'#fbbf24':'#94a3b8'};font-size:0.95em;display:flex;align-items:center;justify-content:center;cursor:pointer;backdrop-filter:blur(4px);">${userFavorites.has(d.name)?'★':'☆'}</button>`:'';
         card.style.position='relative';
         // GÜNCELLEME: Açık artırma/teklif sürecinin GÜNCEL fiyat ve durumu
         // artık domain adının HEMEN YANINDA (aynı satırda, parantez içinde)
@@ -12723,7 +12747,7 @@ window.toggleMaintenanceMode = async function(){
         // burada ekstra bir şey yapmaya gerek yok.
     }catch(e){
         console.error('Bakım modu değiştirilemedi:', e);
-        showToast('Bakım modu değiştirilemedi.');
+        showToast(AWL('Bakım modu değiştirilemedi.','Could not change maintenance mode.'));
     }
 };
 onSnapshot(doc(db,"config","app_status"),(snap)=>{
@@ -13453,7 +13477,7 @@ window.loadPriceGuidance = async function(domainType) {
     const box = document.getElementById('price-guidance-box');
     if (!box || !domainType) return;
     box.style.display = 'block';
-    box.textContent = '📊 Fiyat rehberi yükleniyor…';
+    box.textContent = AWL('📊 Fiyat rehberi yükleniyor…','📊 Loading price guide…');
     try {
         const r = await fetch('/api/approve', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'get_price_guidance', domainType }) });
         const d = await r.json();
@@ -13461,7 +13485,7 @@ window.loadPriceGuidance = async function(domainType) {
             box.style.display = 'none';
             return;
         }
-        box.innerHTML = `📊 Bu kategoride satılmış <b>${d.count}</b> domain — ortalama <b>${d.avg} Pi</b> (${d.min}–${d.max} Pi arası)`;
+        box.innerHTML = AWL(`📊 Bu kategoride satılmış <b>${d.count}</b> domain — ortalama <b>${d.avg} Pi</b> (${d.min}–${d.max} Pi arası)`,`📊 <b>${d.count}</b> domains sold in this category — average <b>${d.avg} Pi</b> (range ${d.min}–${d.max} Pi)`);
     } catch (e) {
         console.error('[PriceGuidance] yüklenemedi:', e);
         box.style.display = 'none';
@@ -13947,7 +13971,7 @@ window.openLegalModal = async function openLegalModal(type) {
     } catch (e) {
         console.error('Legal modal yükleme hatası:', e);
         // Fetch başarısız olursa (ör. CORS), yeni sekmede aç — en azından SPA'yı bozmaz
-        bodyEl.innerHTML = '<div style="text-align:center;padding:20px 0;color:#f87171;">Yüklenemedi. Yeni sekmede açılıyor...</div>';
+        bodyEl.innerHTML = AWL('<div style="text-align:center;padding:20px 0;color:#f87171;">Yüklenemedi. Yeni sekmede açılıyor...</div>','<div style="text-align:center;padding:20px 0;color:#f87171;">Failed to load. Opening in a new tab...</div>');
         window.openLink(url, true);
     }
 }
@@ -16475,7 +16499,7 @@ window.adminReleasePayout = async function(saleId, domainName, sellerUsername) {
         });
         const result = await r.json();
         if (result.success) {
-            showToast(`✅ ${result.payoutAmount} Pi @${sellerUsername} kullanıcısına gönderildi.`);
+            showToast(AWL(`✅ ${result.payoutAmount} Pi @${sellerUsername} kullanıcısına gönderildi.`,`✅ ${result.payoutAmount} Pi sent to @${sellerUsername}.`));
         } else {
             showToast(result.error || t('trademarkError'));
         }
@@ -16490,8 +16514,8 @@ window.adminRefundPayout = async function(saleId, domainName, buyerUsername) {
     if (!confirm(`"${domainName}" ${t('payoutConfirmRefund')}`)) return;
     // YENİ: Gerçek Pi parası geri gönderiliyor ve bu geri alınamaz — ikinci
     // onay katmanı olarak admin domain adını tam yazmak zorunda.
-    if (!confirmByTyping(domainName, 'Bu işlemle GERÇEK Pi parası alıcıya iade edilecek, GERİ ALINAMAZ.')) {
-        showToast('İptal edildi — yazılan metin domain adıyla eşleşmedi.');
+    if (!confirmByTyping(domainName, AWL('Bu işlemle GERÇEK Pi parası alıcıya iade edilecek, GERİ ALINAMAZ.','With this action REAL Pi will be refunded to the buyer and it CANNOT BE UNDONE.'))) {
+        showToast(AWL('İptal edildi — yazılan metin domain adıyla eşleşmedi.','Cancelled — the typed text did not match the domain name.'));
         return;
     }
 
@@ -16503,7 +16527,7 @@ window.adminRefundPayout = async function(saleId, domainName, buyerUsername) {
         });
         const result = await r.json();
         if (result.success) {
-            showToast(`✅ ${result.refundAmount} Pi @${buyerUsername} kullanıcısına iade edildi.`);
+            showToast(AWL(`✅ ${result.refundAmount} Pi @${buyerUsername} kullanıcısına iade edildi.`,`✅ ${result.refundAmount} Pi refunded to @${buyerUsername}.`));
         } else {
             showToast(result.error || t('trademarkError'));
         }
