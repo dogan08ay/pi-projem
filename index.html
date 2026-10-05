@@ -42,6 +42,22 @@
     (function(){
         var d=document.documentElement; d.classList.add('app-booting');
         var done=false;
+        // Her /api/approve isteğine arayüz dilini ekle → sunucu hata mesajlarını ve bildirimleri o dilde döndürsün.
+        try{
+            var _f=window.fetch;
+            window.fetch=function(u,o){
+                try{
+                    if(typeof u==='string' && u.indexOf('/api/approve')!==-1 && o && typeof o.body==='string'){
+                        var b=JSON.parse(o.body);
+                        if(b && typeof b==='object' && !Array.isArray(b) && !b.lang){
+                            b.lang=(localStorage.getItem('w3dg_lang')==='en')?'en':'tr';
+                            o=Object.assign({},o,{body:JSON.stringify(b)});
+                        }
+                    }
+                }catch(e){}
+                return _f.call(this,u,o);
+            };
+        }catch(e){}
         window.__revealApp=function(){
             if(done) return; done=true;
             d.classList.remove('app-booting');
@@ -3501,9 +3517,61 @@
 //  Mesaj içeriğine bakarak (✅/⚠️/❌/Hata gibi işaretler) otomatik
 //  success/error/info renklendirmesi yapar.
 // ═══════════════════════════════════════════════════════════════════════
+// ── Sunucudan gelen Türkçe uyarı/hata metinlerini İngilizce arayüzde İngilizce göster ──
+// (Açık artırma / teklif / temizlik akışlarının tüm mesajları. Bilinmeyen metin olduğu gibi gösterilir.)
+const SRV_MSG_EN={
+ "Rezerv fiyatı başlangıç fiyatından küçük olamaz":"The reserve price cannot be lower than the starting price",
+ "Fiyatlar en fazla 7 ondalık basamak içerebilir":"Prices can have at most 7 decimal places",
+ "Bu domainin açık artırma kazananı ödemesini bekliyor":"This domain's auction winner has not paid yet",
+ "Geçersiz oturum":"Invalid session","Yetki yok":"Not authorized",
+ "Bu domain için aktif bir açık artırma yok":"There is no active auction for this domain",
+ "Teklif gelmiş bir açık artırmayı yalnızca yönetici iptal edebilir. Lütfen destek ile iletişime geçin.":"An auction that has received bids can only be cancelled by an admin. Please contact support.",
+ "Teklif en fazla 7 ondalık basamak içerebilir":"A bid can have at most 7 decimal places",
+ "Otomatik teklif üst limiti, teklifinizden küçük olamaz":"The auto-bid maximum cannot be lower than your bid",
+ "Domain bulunamadı":"Domain not found","Bu domain zaten satılmış":"This domain has already been sold",
+ "Bu açık artırmanın süresi doldu":"This auction has ended",
+ "Kendi ilanınıza teklif veremezsiniz":"You cannot bid on your own listing",
+ "Geçersiz domain adı":"Invalid domain name",
+ "Çok fazla istek, lütfen biraz bekleyin.":"Too many requests, please wait a moment.",
+ "Çok fazla teklif verdiniz, lütfen biraz bekleyin.":"You are bidding too fast, please wait a moment.",
+ "Aktif bir açık artırma yok ya da süresi doldu":"There is no active auction, or it has ended",
+ "Bu açık artırmada \"Hemen Al\" seçeneği yok":"This auction has no \"Buy Now\" option",
+ "Teklifler \"Hemen Al\" fiyatına ulaştı, bu seçenek artık geçerli değil":"Bids have reached the \"Buy Now\" price, so this option is no longer available",
+ "Kendi ilanınızı satın alamazsınız":"You cannot buy your own listing",
+ "Açık artırma henüz bitmedi":"The auction has not ended yet",
+ "Bu açık artırmaya hiç teklif verilmedi":"No bids were placed in this auction",
+ "Bu açık artırmayı sadece en yüksek teklifi veren kazanabilir":"Only the highest bidder can claim this auction",
+ "Açık artırma, rezerv fiyatına ulaşılmadığı için satışsız sona erdi. Herhangi bir ödeme alınmadı.":"The auction ended without a sale because the reserve price was not reached. No payment was taken.",
+ "Satın alma süreniz doldu, açık artırma iptal edildi.":"Your purchase time has expired and the auction was cancelled.",
+ "Bu domain açık artırmayı kazanan alıcı için ayrılmış — şu anda teklif verilemez.":"This domain is reserved for the auction winner — offers cannot be made right now.",
+ "Bu domain şu anda açık artırmada ya da açık artırma kazananı için ayrılmış — teklif kabul edilemez.":"This domain is currently in an auction or reserved for an auction winner — the offer cannot be accepted.",
+ "Geçersiz teklif":"Invalid offer","Geçersiz teklif tutarı":"Invalid bid amount","Geçersiz dil":"Invalid language",
+ "Teklif bulunamadı (zaten silinmiş olabilir)":"Offer not found (it may already be deleted)",
+ "Yalnızca sonuçlanmış (reddedilen, geri çekilen, geçersiz, satın alınmayan) teklifler silinebilir.":"Only closed offers (rejected, withdrawn, invalid, not purchased) can be deleted.",
+ "Süre 1-168 saat arasında olmalı":"Duration must be between 1 and 168 hours",
+ "Satılmış domain için açık artırma başlatılamaz":"An auction cannot be started for a sold domain",
+ "Zaten en yüksek teklifi siz verdiniz":"You are already the highest bidder"
+};
+const SRV_MSG_EN_RE=[
+ [/^Kazandığınız açık artırmayı süresinde ödemediğiniz için (.+) tarihine kadar teklif veremezsiniz\.$/,"Because you did not pay for an auction you won in time, you cannot bid until $1."],
+ [/^Teklif yasağınız (.+) tarihine kadar sürüyor\.$/,"Your bidding ban lasts until $1."],
+ [/^Henüz tamamlanmış bir satın alma işleminiz olmadığı için teklif ve otomatik teklif üst limitiniz en fazla (.+) Pi olabilir\. İlk satın alımınızı tamamladıktan sonra bu sınır kalkar\.$/,"Because you have no completed purchase yet, your bid and auto-bid maximum can be at most $1 Pi. This limit is lifted after your first purchase."],
+ [/^Henüz tamamlanmış bir satın alma işleminiz olmadığı için en fazla (.+) Pi'lik işlem yapabilirsiniz\.$/,"Because you have no completed purchase yet, you can transact up to $1 Pi."],
+ [/^Zaten en yüksek teklifi siz verdiniz\. Otomatik teklif üst limitinizi artırmak için mevcut limitinizden \((.+) Pi\) yüksek bir değer girin\.$/,"You are already the highest bidder. To raise your auto-bid maximum, enter a value above your current limit ($1 Pi)."],
+ [/^Teklif en az (.+) Pi olmalı$/,"The bid must be at least $1 Pi"]
+];
+function srvMsgEn(text){
+    try{
+        if(currentLang!=='en') return text;
+        if(Object.prototype.hasOwnProperty.call(SRV_MSG_EN,text)) return SRV_MSG_EN[text];
+        for(const [re,rep] of SRV_MSG_EN_RE){ if(re.test(text)) return text.replace(re,rep); }
+    }catch(_){ /* currentLang henüz tanımlı değilse metni olduğu gibi göster */ }
+    return text;
+}
+window.srvMsgEn=srvMsgEn;
 function showToast(message, forceType) {
     try {
-        const text = String(message ?? '');
+        const text = srvMsgEn(String(message ?? ''));
         let type = 'info', icon = 'ℹ️';
         if (forceType === 'success' || forceType === 'error' || forceType === 'info') {
             // Çağıran taraf tipi zaten biliyorsa (ör. tur bitiş bildirimi), metne
@@ -5851,7 +5919,12 @@ function applyTranslations() {
         if(statusTextEl) statusTextEl.textContent=t('connectedPrefix')+currentUser;
     }
 }
-window.setLang=function(lang){ currentLang=lang; localStorage.setItem('w3dg_lang',lang); applyTranslations(); debouncedRender(); if(typeof adminTickets!=='undefined'&&adminTickets.length) renderAdminTicketList(); if(typeof myTickets!=='undefined'&&myTickets.length) renderTicketList(); document.getElementById('lang-picker').style.display='none'; };
+// Bildirim metni: sunucu iki dilli kaydettiyse (titleEn/bodyEn) kullanıcının o anki dilinde göster;
+// eski kayıtlar (yalnızca Türkçe) olduğu gibi görünür.
+function notifTitle(n){ return (currentLang==='en' && n.titleEn) ? n.titleEn : (n.title||''); }
+function notifBody(n){ return (currentLang==='en' && n.bodyEn) ? n.bodyEn : (n.body||''); }
+window.notifTitle=notifTitle; window.notifBody=notifBody;
+window.setLang=function(lang){ currentLang=lang; localStorage.setItem('w3dg_lang',lang); applyTranslations(); debouncedRender(); try{ if(isAuth&&piAccessToken){ fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'set_language',lang,accessToken:piAccessToken})}).catch(()=>{}); } }catch(_){} if(typeof adminTickets!=='undefined'&&adminTickets.length) renderAdminTicketList(); if(typeof myTickets!=='undefined'&&myTickets.length) renderTicketList(); document.getElementById('lang-picker').style.display='none'; };
 // STATE
 let currentUser=null,piAccessToken=null,isAuth=false;
 
@@ -6217,7 +6290,7 @@ window.handleSetProfileEmail=async function(){
     const email=(input.value||'').trim();
     if(!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){ showToast(t('emailInvalid')); return; }
     try{
-        const r=await fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'set_profile_email',email,accessToken:piAccessToken})});
+        const r=await fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'set_profile_email',email,lang:currentLang,accessToken:piAccessToken})});
         const d=await r.json();
         if(d.success){
             showToast(t('emailCodeSent'));
@@ -6525,7 +6598,7 @@ function renderSavedSearchesList(){
         html+=matchNotifs.map(n=>{
             const timeStr=n.ts?new Date(n.ts).toLocaleDateString(locale,{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}):'';
             return `<div style="background:${n.read?'#0f172a':'rgba(99,102,241,0.12)'};border:1.5px solid ${n.read?'#334155':'#6366f1'};border-radius:10px;padding:8px 10px;margin-bottom:6px;">
-                <div style="font-size:0.74em;color:#e2e8f0;line-height:1.4;">${escapeHtml(n.body||n.title||'')}</div>
+                <div style="font-size:0.74em;color:#e2e8f0;line-height:1.4;">${escapeHtml(notifBody(n)||notifTitle(n)||'')}</div>
                 <div style="font-size:0.6em;color:#64748b;margin-top:3px;">🕓 ${timeStr}</div>
             </div>`;
         }).join('');
@@ -6914,7 +6987,7 @@ async function fetchNotifications(silent){
                     if(fresh.length){
                         fresh.forEach(n=>window._seenOutbidKeys.add(keyOf(n)));
                         window.hapticOutbid();
-                        showToast(fresh[0].title||AWL('Teklifiniz geçildi','You were outbid'));
+                        showToast(notifTitle(fresh[0])||AWL('Teklifiniz geçildi','You were outbid'));
                         const dn=fresh[0].domainName;
                         const dm=document.getElementById('domain-detail-modal');
                         if(dn && domainData[dn] && dm && dm.style.display==='flex' && window._detailDomainName===dn){
@@ -7006,7 +7079,7 @@ function renderNotifList(notifs){
     const locale=currentLang==='en'?'en-GB':'tr-TR';
     list.innerHTML=notifs.length===0
         ?emptyState('🔔',t('noNotifications'))
-        :notifs.map(n=>`<div class="notif-item ${n.read?'':'unread'}"><div class="notif-dot ${n.read?'read':''}"></div><div style="flex:1;"><div style="font-size:0.82em;font-weight:800;color:#f1f5f9;margin-bottom:2px;">${n.title||''}</div><div style="font-size:0.72em;color:#94a3b8;line-height:1.4;">${n.body||''}</div><div style="font-size:0.62em;color:#475569;margin-top:4px;">${new Date(n.ts).toLocaleString(locale,{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})}</div></div></div>`).join('');
+        :notifs.map(n=>`<div class="notif-item ${n.read?'':'unread'}"><div class="notif-dot ${n.read?'read':''}"></div><div style="flex:1;"><div style="font-size:0.82em;font-weight:800;color:#f1f5f9;margin-bottom:2px;">${escapeHtml(notifTitle(n))}</div><div style="font-size:0.72em;color:#94a3b8;line-height:1.4;">${escapeHtml(notifBody(n))}</div><div style="font-size:0.62em;color:#475569;margin-top:4px;">${new Date(n.ts).toLocaleString(locale,{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})}</div></div></div>`).join('');
 }
 function startNotifPolling(){
     stopNotifPolling();
@@ -12999,7 +13072,7 @@ async function performPiConnect() {
                 const r = await fetch('/api/approve', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ action: 'log_login', accessToken: piAccessToken }),
+                    body: JSON.stringify({ action: 'log_login', accessToken: piAccessToken, lang: currentLang }),
                     signal: _ac.signal
                 });
                 clearTimeout(_acT);
