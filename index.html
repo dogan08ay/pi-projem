@@ -5939,7 +5939,54 @@ function applyTranslations() {
 function notifTitle(n){ return (currentLang==='en' && n.titleEn) ? n.titleEn : (n.title||''); }
 function notifBody(n){ return (currentLang==='en' && n.bodyEn) ? n.bodyEn : (n.body||''); }
 window.notifTitle=notifTitle; window.notifBody=notifBody;
-window.setLang=function(lang){ currentLang=lang; localStorage.setItem('w3dg_lang',lang); applyTranslations(); debouncedRender(); try{ if(isAuth&&piAccessToken){ fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'set_language',lang,accessToken:piAccessToken})}).catch(()=>{}); } }catch(_){} if(typeof adminTickets!=='undefined'&&adminTickets.length) renderAdminTicketList(); if(typeof myTickets!=='undefined'&&myTickets.length) renderTicketList(); document.getElementById('lang-picker').style.display='none'; };
+// Dil değişince: (1) statik metinler ANINDA çevrilir, (2) o an GÖRÜNEN, sunucudan/JS ile üretilmiş içerikler
+// (açık sekme, açık pencere, bildirim listesi, bant…) hemen yeniden çizilir. Önceden bunlar yalnızca bir sonraki
+// yenilemede (sekmeyi yeniden açınca ya da 4-30 sn'lik otomatik yoklamada) güncellendiği için "bazı yerler geç
+// değişiyor" gibi görünüyordu. Yükleyiciler "silent" modda çağrıldığından yükleniyor yanıp sönmesi olmaz.
+function refreshLanguageSensitiveUI(){
+    const safe=(fn)=>{ try{ const r=fn(); if(r && typeof r.catch==='function') r.catch(()=>{}); }catch(_){} };
+    const visible=(id)=>{ const el=document.getElementById(id); return !!el && el.getClientRects().length>0; }; // fixed öğelerde offsetParent null olduğundan getClientRects kullanılır
+    // Açık pencereler
+    safe(()=>{ const dm=document.getElementById('domain-detail-modal'); if(dm && dm.style.display==='flex' && window._detailDomainName && domainData[window._detailDomainName]) window.openDomainDetail(window._detailDomainName); });
+    safe(()=>{ if(visible('changelog-modal')) window.openChangelogModal(); });
+    // Bildirim listesi/rozet (önbellekten, ağ yok) + açık artırma kazanan bandı
+    safe(()=>renderNotifBadgeAndList());
+    safe(()=>renderAuctionWinBanner());
+    // Kullanıcı paneli: görünen sekmenin içeriği
+    if(isAuth){
+        const ut=document.querySelector('.user-tab-panel.active'); const uid=ut?ut.id:'';
+        if(uid==='utab-tickets') safe(()=>renderTicketList());
+        if(uid==='utab-messages') safe(()=>window.loadMyConversations());
+        if(uid==='utab-trademark') safe(()=>loadMyTrademarkClaims());
+        if(uid==='utab-myreports') safe(()=>loadMyReports());
+        if(uid==='utab-history') safe(()=>loadMyActivityHistory());
+        // Açık alt listeler (Tekliflerim / Açık Artırmalarım): silent → yükleniyor yanıp sönmez
+        if(visible('my-offers-content')) safe(()=>window.loadMyOffers(true));
+        if(visible('my-auctions-content')) safe(()=>window.loadMyAuctions(true));
+        if(visible('received-offers-content')) safe(()=>window.loadReceivedOffers(true));
+        // Yönetici paneli: görünen sekme
+        const at=document.querySelector('.admin-tab-panel.active'); const aid=at?at.id:'';
+        if(aid==='tab-tickets'){ safe(()=>renderAdminTicketList()); }
+        if(aid==='tab-offers'){ safe(()=> (window.currentOffersSubTab==='auction') ? window.loadAdminAuctionsTable() : window.loadAdminOffersTable()); }
+        if(aid==='tab-messages'){ safe(()=>window.renderAdminConversationsList()); safe(()=>window.renderDeletedConversationsList()); }
+        if(aid==='tab-reports') safe(()=>window.loadListingReports());
+        if(aid==='tab-earnings') safe(()=>loadAdminEarnings());
+        if(aid==='tab-stats') safe(()=>loadAllSalesDetail());
+        if(visible('admin-todo-summary-body')) safe(()=>loadAdminTodoSummary());
+    }
+}
+window.refreshLanguageSensitiveUI=refreshLanguageSensitiveUI;
+window.setLang=function(lang){
+    currentLang=lang; localStorage.setItem('w3dg_lang',lang);
+    // Önce seçici kapanır ve statik metinler anında çevrilir: kullanıcı değişimi HEMEN görür.
+    try{ document.getElementById('lang-picker').style.display='none'; }catch(_){}
+    try{ document.documentElement.lang=lang; }catch(_){}
+    applyTranslations();
+    // Ağır/dinamik yenilemeler bir sonraki çizim karesinde (arayüz donmadan).
+    requestAnimationFrame(()=>{ debouncedRender(); refreshLanguageSensitiveUI(); });
+    // Telegram / e-posta / push dili de sunucuda güncellensin (beklemeden, arka planda).
+    try{ if(isAuth&&piAccessToken){ fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'set_language',lang,accessToken:piAccessToken})}).catch(()=>{}); } }catch(_){}
+};
 // STATE
 let currentUser=null,piAccessToken=null,isAuth=false;
 
