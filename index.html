@@ -2875,7 +2875,7 @@
             <div style="display:flex;align-items:center;gap:6px;margin-bottom:9px;padding-bottom:7px;border-bottom:1px solid rgba(99,102,241,0.25);">
                 <span style="font-size:0.78em;color:#a5b4fc;font-weight:900;text-transform:uppercase;letter-spacing:0.5px;" data-i18n="adminTodoTitle">📌 Bugün Yapılacaklar</span>
             </div>
-            <div id="admin-todo-summary-body" style="font-size:0.72em;color:#64748b;text-align:center;padding:8px;" data-i18n="loadingLabel">Yükleniyor…</div>
+            <div id="admin-todo-summary-body" style="font-size:0.72em;color:#64748b;text-align:center;padding:8px;">…</div>
         </div>
         <!-- YENİ: Yönetim sekmeleri (kullanıcılar, istatistikler, onaylar vb.)
              artık ayrı, kendi başlıklı çerçevesi içinde — sistem
@@ -10433,6 +10433,9 @@ let adminTodoPollTimer = null;
 async function loadAdminTodoSummary() {
     const body = document.getElementById('admin-todo-summary-body');
     if (!body) return;
+    // Henüz hiç veri yazılmadıysa dil duyarlı "Yükleniyor…" göster (sonrasında içerik elle yönetilir;
+    // data-i18n KULLANILMIYOR çünkü applyTranslations() her çizimde bu kutuyu ezip içeriği siliyordu).
+    if (!body.dataset.loadedOnce && body.textContent.trim() === '…') body.textContent = AWL('Yükleniyor…','Loading…');
     try {
         const r = await fetch('/api/approve', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'get_admin_todo_summary', accessToken: piAccessToken }) });
         const result = await r.json();
@@ -10461,6 +10464,8 @@ async function loadAdminTodoSummary() {
     } catch (e) {
         console.error('[TodoSummary] yüklenemedi:', e);
         body.innerHTML = AWL(`<span style="color:#f87171;">Yüklenemedi</span>`,`<span style="color:#f87171;">Failed to load</span>`);
+    } finally {
+        body.dataset.loadedOnce = '1';
     }
 }
 function startAdminTodoSummaryPolling() {
