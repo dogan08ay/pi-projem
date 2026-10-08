@@ -245,7 +245,7 @@
         body{font-family:'Segoe UI',sans-serif;background:var(--bg);color:var(--text);margin:0;padding:0;width:100%;min-height:100vh;overflow-x:hidden;box-sizing:border-box;line-height:1.25;}
         .container{max-width:600px;width:100%;min-width:320px;text-align:center;display:flex;flex-direction:column;min-height:100vh;min-height:100dvh;padding:0;gap:2px;box-sizing:border-box;margin-left:auto;margin-right:auto;justify-content:space-between;}
         .card{background:var(--card);padding:5px;border-radius:12px;box-shadow:0 5px 8px -3px rgba(0,0,0,0.3);margin-bottom:3px;position:relative;overflow:visible;box-sizing:border-box;width:100%;min-width:0;max-width:100%;}
-        .app-logo{width:130px;height:130px;margin:22px auto 4px auto;display:block;border-radius:50%;box-shadow:0 0 40px rgba(99,102,241,0.9);border:3px solid #818cf8;object-fit:cover;animation:logo-pulse 3s ease-in-out infinite;}
+        .app-logo{width:96px;height:96px;margin:18px auto 4px auto;display:block;border-radius:50%;box-shadow:0 0 40px rgba(99,102,241,0.9);border:3px solid #818cf8;object-fit:cover;animation:logo-pulse 3s ease-in-out infinite;}
         @keyframes logo-pulse{0%,100%{transform:scale(1);}50%{transform:scale(1.05);}}
         .app-title{font-size:1.45em;font-weight:900;margin:0 0 2px 0;text-align:center;background:linear-gradient(to right,#60a5fa,#a855f7,#60a5fa);background-size:200% auto;-webkit-background-clip:text;-webkit-text-fill-color:transparent;animation:title-shine 4s linear infinite;filter:drop-shadow(0 0 18px rgba(139,92,246,0.7));letter-spacing:0.3px;}
         @keyframes title-shine{to{background-position:200% center;}}
@@ -651,7 +651,19 @@
         #log-list::-webkit-scrollbar{width:5px;}
         #log-list::-webkit-scrollbar-thumb{background:#6366f1;border-radius:10px;}
         .log-item{display:flex;justify-content:space-between;background:#0f172a;padding:4px 8px;border-radius:6px;margin-bottom:5px;font-size:0.8em;}
-        .user-info-note{background:rgba(245,158,11,0.1);border:1.5px solid #f59e0b;color:#fde68a;padding:9px 8px;border-radius:10px;font-size:0.78em;line-height:1.65;margin-bottom:10px;text-align:left;box-sizing:border-box;width:100%;max-width:100%;overflow-wrap:break-word;word-break:break-word;hyphens:auto;box-shadow:0 0 10px rgba(245,158,11,0.15);}
+        /* Açılır paneller (Panelim / Admin Panel) ve rozet koşulları */
+        .panel-collapsible-head{cursor:pointer;-webkit-tap-highlight-color:transparent;user-select:none;}
+        .pc-chevron{display:inline-block;margin-left:6px;font-size:0.9em;transition:transform .2s;opacity:.85;}
+        .card.pc-collapsed > .panel-collapsible-head .pc-chevron{transform:rotate(-90deg);}
+        .card.pc-collapsed > :not(h3):not(span){display:none !important;}
+        .pc-summary{display:none;margin-left:8px;background:#ef4444;color:#fff;border-radius:999px;font-size:0.78em;font-weight:900;padding:1px 7px;}
+        .card.pc-collapsed .pc-summary.has{display:inline-block;}
+        .badge-rules-box .badge-rules-title{cursor:pointer;display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;-webkit-tap-highlight-color:transparent;}
+        .badge-rules-box.collapsed > :not(.badge-rules-title){display:none !important;}
+        .badge-rules-box.collapsed .badge-rules-title{margin-bottom:0 !important;}
+        .badge-rules-box .brt-chev{transition:transform .2s;}
+        .badge-rules-box.collapsed .brt-chev{transform:rotate(-90deg);}
+        .user-info-note{position:relative;background:rgba(245,158,11,0.1);border:1.5px solid #f59e0b;color:#fde68a;padding:9px 8px;border-radius:10px;font-size:0.78em;line-height:1.65;margin-bottom:10px;text-align:left;box-sizing:border-box;width:100%;max-width:100%;overflow-wrap:break-word;word-break:break-word;hyphens:auto;box-shadow:0 0 10px rgba(245,158,11,0.15);}
         .user-info-note-text{display:block;white-space:normal;text-align:left;word-break:break-word;overflow-wrap:break-word;hyphens:none;font-size:0.88em;line-height:1.7;}
         .btn-fake-buy{background:var(--accent);color:white;padding:1px 4px;border-radius:3px;font-weight:900;font-size:0.85em;}
         .income-box{background:linear-gradient(135deg,#064e3b 0%,#065f46 100%);border:2px solid #10b981;border-radius:9px;padding:7px;margin-bottom:8px;text-align:center;}
@@ -2483,7 +2495,7 @@
              kaymasına yol açtığı için 110px'e düşürüldü).
              İlk açılışta hâlâ kaydırma gerektirmeyecek şekilde ölçülüp
              ayarlandı. -->
-        <img src="assets/logo.jpeg" alt="Logo" class="app-logo" fetchpriority="high" style="width:110px;height:110px;margin:4px auto 2px auto;">
+        <img src="assets/logo.jpeg" alt="Logo" class="app-logo" fetchpriority="high" style="width:84px;height:84px;margin:4px auto 2px auto;">
         <h1 class="app-title" style="margin:0 0 2px 0;font-size:1.4em;">Web3 Domain Gateway</h1>
         <!-- DEĞİŞTİ: İlk açılışta (giriş yapılmadan önce) ham rakamlar
              (0 domain, 0 hacim, 0-1 kullanıcı) yeni bir ziyaretçiye "burası
@@ -2530,8 +2542,8 @@
 
     <!-- Kullanıcı Paneli -->
     <div class="card" id="user-panel" style="display:none;border:2px solid #10b981;box-shadow:0 0 12px rgba(16,185,129,0.2);padding:5px;box-sizing:border-box;width:calc(100% - 16px);margin-left:auto;margin-right:auto;">
-        <h3 style="color:#10b981;margin:-4px -4px 6px -4px;padding:6px 4px;font-size:0.9em;display:flex;align-items:center;justify-content:center;position:relative;background:linear-gradient(135deg,rgba(16,185,129,0.18) 0%,rgba(5,150,105,0.1) 100%);border-bottom:1.5px solid rgba(16,185,129,0.35);border-radius:12px 12px 0 0;font-weight:900;">
-            <span style="display:flex;align-items:center;gap:5px;">👤 <span data-i18n="myPanel"></span></span>
+        <h3 class="panel-collapsible-head" data-pc="user" onclick="window.togglePanelCollapse('user-panel',event)" style="color:#10b981;margin:-4px -4px 6px -4px;padding:6px 4px;font-size:0.9em;display:flex;align-items:center;justify-content:center;position:relative;background:linear-gradient(135deg,rgba(16,185,129,0.18) 0%,rgba(5,150,105,0.1) 100%);border-bottom:1.5px solid rgba(16,185,129,0.35);border-radius:12px 12px 0 0;font-weight:900;">
+            <span style="display:flex;align-items:center;gap:5px;">👤 <span data-i18n="myPanel"></span><span class="pc-chevron">▾</span><span class="pc-summary" id="user-panel-summary"></span></span>
             <button id="user-panel-refresh-btn" class="panel-refresh-btn" onclick="window.refreshUserPanel()" title="Yenile">
                 <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
             </button>
@@ -2584,7 +2596,8 @@
 
         </div>
         <div class="user-tab-panel active" id="utab-overview">
-            <div class="user-info-note">
+            <div class="user-info-note" id="user-info-note">
+                <button type="button" onclick="window.dismissInfoNote()" aria-label="Kapat" style="position:absolute;top:4px;right:6px;width:28px;height:28px;border:none;background:transparent;color:#fde68a;font-size:1.3em;font-weight:900;line-height:1;cursor:pointer;">×</button>
                 <div class="info-badge-header"><span class="info-badge-icon">ℹ️</span><span data-i18n="info"></span></div>
                 <div class="user-info-note-text" data-i18n="testNetNote"></div>
             </div>
@@ -2601,8 +2614,8 @@
                 <div style="font-size:0.76em;color:#6ee7b7;font-weight:800;" data-i18n="referralStatLabel"></div>
                 <div style="display:flex;align-items:center;gap:6px;"><span id="up-referral-count" style="font-size:1.1em;font-weight:900;color:#34d399;">0</span><span style="font-size:0.8em;">📤</span></div>
             </button>
-            <div style="background:#0f172a;border:1px dashed #334155;border-radius:10px;padding:8px;margin-top:4px;">
-                <div style="font-size:0.72em;color:#64748b;font-weight:800;text-transform:uppercase;margin-bottom:6px;letter-spacing:0.5px;" data-i18n="badgeInfoTitle"></div>
+            <div id="badge-rules-box" class="badge-rules-box collapsed" style="background:#0f172a;border:1px dashed #334155;border-radius:10px;padding:8px;margin-top:4px;">
+                <div class="badge-rules-title" onclick="window.toggleBadgeRules()" style="font-size:0.72em;color:#64748b;font-weight:800;text-transform:uppercase;letter-spacing:0.5px;"><span data-i18n="badgeInfoTitle"></span><span class="brt-chev">▾</span></div>
                 <!-- YENİ: Sıfır puanlı yeni bir kullanıcı bu bölümü ilk
                      gördüğünde "boş/anlamsız" hissetmesin diye, puanların
                      NASIL kazanıldığını kısaca açıklayan bir satır eklendi. -->
@@ -2870,7 +2883,7 @@
     </div>
     <div class="card" id="admin-panel" style="display:none;background:linear-gradient(165deg,#241209 0%,#1a0f08 55%,#20120a 100%);border:2px solid #f59e0b;box-shadow:0 0 16px rgba(245,158,11,0.3);padding:5px;box-sizing:border-box;width:calc(100% - 16px);margin-left:auto;margin-right:auto;position:relative;">
         <span style="position:absolute;top:-10px;left:12px;z-index:5;background:linear-gradient(135deg,#f59e0b,#ef4444);color:#1e1b4b;font-size:0.72em;font-weight:900;padding:4px 11px;border-radius:8px;letter-spacing:0.5px;text-transform:uppercase;box-shadow:0 3px 10px rgba(0,0,0,0.4),0 0 0 2px #1a0f08;white-space:nowrap;" data-i18n="adminOnlyBadge"></span>
-        <h3 style="color:#fbbf24;margin:-5px -5px 8px -5px;padding:8px 5px;font-size:0.95em;display:flex;align-items:center;justify-content:center;gap:6px;background:linear-gradient(135deg,rgba(245,158,11,0.22) 0%,rgba(153,27,27,0.16) 100%);border-bottom:1.5px solid rgba(245,158,11,0.45);border-radius:14px 14px 0 0;font-weight:900;position:relative;">🛠 Admin Panel
+        <h3 class="panel-collapsible-head" data-pc="admin" onclick="window.togglePanelCollapse('admin-panel',event)" style="color:#fbbf24;margin:-5px -5px 8px -5px;padding:8px 5px;font-size:0.95em;display:flex;align-items:center;justify-content:center;gap:6px;background:linear-gradient(135deg,rgba(245,158,11,0.22) 0%,rgba(153,27,27,0.16) 100%);border-bottom:1.5px solid rgba(245,158,11,0.45);border-radius:14px 14px 0 0;font-weight:900;position:relative;">🛠 Admin Panel<span class="pc-chevron">▾</span>
             <button id="admin-panel-refresh-btn" class="panel-refresh-btn" onclick="window.refreshAdminPanel()" title="Yenile">
                 <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
             </button>
@@ -9887,6 +9900,59 @@ document.addEventListener('visibilitychange',()=>{
     _lastVisRefresh=Date.now();
     if(typeof isAuth!=='undefined' && isAuth) window.refreshAllData();
 });
+
+// ── Açılır paneller (Panelim / Admin Panel), Bilgi kutusu, Rozet koşulları ──
+// Durumlar tarayıcıda hatırlanır; varsayılan: paneller ve rozet koşulları KAPALI,
+// böylece domain listesi ilk ekranda görünür.
+const _pcGet=(k,def)=>{ try{ const v=localStorage.getItem(k); return v===null?def:v; }catch(e){ return def; } };
+const _pcSet=(k,v)=>{ try{ localStorage.setItem(k,v); }catch(e){} };
+function _pcApply(){
+    ['user-panel','admin-panel'].forEach(id=>{
+        const el=document.getElementById(id); if(!el) return;
+        el.classList.toggle('pc-collapsed', _pcGet('dofiay_pc_'+id,'1')==='1');
+    });
+    const br=document.getElementById('badge-rules-box');
+    if(br) br.classList.toggle('collapsed', _pcGet('dofiay_badge_rules_open','0')!=='1');
+    const note=document.getElementById('user-info-note');
+    if(note) note.style.display=_pcGet('dofiay_info_note_hidden','0')==='1'?'none':'';
+}
+window.togglePanelCollapse=function(id,ev){
+    if(ev && ev.target && ev.target.closest && ev.target.closest('button')) return; // yenile düğmesi
+    const el=document.getElementById(id); if(!el) return;
+    const collapsed=el.classList.toggle('pc-collapsed');
+    _pcSet('dofiay_pc_'+id,collapsed?'1':'0');
+};
+window.expandPanel=function(id){
+    const el=document.getElementById(id);
+    if(el && el.classList.contains('pc-collapsed')){ el.classList.remove('pc-collapsed'); _pcSet('dofiay_pc_'+id,'0'); }
+};
+window.toggleBadgeRules=function(){
+    const br=document.getElementById('badge-rules-box'); if(!br) return;
+    const collapsed=br.classList.toggle('collapsed');
+    _pcSet('dofiay_badge_rules_open',collapsed?'0':'1');
+};
+window.dismissInfoNote=function(){
+    const note=document.getElementById('user-info-note'); if(note) note.style.display='none';
+    _pcSet('dofiay_info_note_hidden','1');
+};
+// Sekme açan her işlem (bildirimden gitme, tur, destek talebi) ilgili paneli otomatik açar.
+(function(){
+    const swU=window.switchUserTab, swA=window.switchAdminTab;
+    if(typeof swU==='function') window.switchUserTab=function(){ window.expandPanel('user-panel'); return swU.apply(this,arguments); };
+    if(typeof swA==='function') window.switchAdminTab=function(){ window.expandPanel('admin-panel'); return swA.apply(this,arguments); };
+})();
+// Kapalıyken bekleyen işlem sayısı başlıkta görünsün (sekme rozetlerinin toplamı).
+setInterval(()=>{
+    try{
+        const sum=document.getElementById('user-panel-summary'); if(!sum) return;
+        let n=0;
+        document.querySelectorAll('#user-panel .pending-badge').forEach(b=>{
+            if(getComputedStyle(b).display!=='none'){ const v=parseInt(b.textContent,10); if(v>0) n+=v; }
+        });
+        sum.textContent=n>99?'99+':String(n); sum.classList.toggle('has',n>0);
+    }catch(e){}
+},2000);
+_pcApply();
 window.toggleMyOffersList=function(){
     if(_myOffersLoadInFlight) return;
     const now=Date.now();
