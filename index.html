@@ -5997,6 +5997,7 @@ function skeletonRows(n){
 window.skeletonRows=skeletonRows;
 // ── Yukarıdan çekerek yenile ──
 window.refreshAllVisibleData=async function(){
+    try{ if(typeof window.refreshAllData==='function') window.refreshAllData(); }catch(_){}
     const safe=(fn)=>{ try{ const r=fn(); if(r&&typeof r.catch==='function') r.catch(()=>{}); return r; }catch(_){} };
     safe(()=>fetchNotifications(true));
     safe(()=>window.refreshMyAuctionWins&&window.refreshMyAuctionWins());
@@ -6006,6 +6007,16 @@ window.refreshAllVisibleData=async function(){
 (function(){
     let startY=0, dy=0, pulling=false;
     const ind=()=>{ let e=document.getElementById('ptr-indicator'); if(!e){ e=document.createElement('div'); e.id='ptr-indicator'; e.innerHTML='<span>↻</span>'; document.body.appendChild(e); } return e; };
+    // Gerçekten en üstte miyiz? Bu uygulamada kaydıran öğe window değil body/html ya da
+    // iç kaydırma alanı olabildiği için window.scrollY tek başına yanlış "en üst" diyordu;
+    // sayfa ortasında yukarı kaydırırken (parmak aşağı) yenileme tetikleniyordu.
+    const atTop=(target)=>{
+        if((window.scrollY||0)>0) return false;
+        if((document.body.scrollTop||0)>0 || (document.documentElement.scrollTop||0)>0) return false;
+        const ms=document.querySelector('.main-scroll'); if(ms && ms.scrollTop>0) return false;
+        for(let el=target; el && el!==document.body; el=el.parentElement){ if(el.scrollTop>0) return false; }
+        return true;
+    };
     const blocked=()=>{
         // Açık pencere/menü varken devre dışı
         return [...document.querySelectorAll('.modal-overlay')].some(m=>m.style.display==='flex'||(m.style.display&&m.style.display!=='none'&&m.getClientRects().length>0))
@@ -6013,14 +6024,14 @@ window.refreshAllVisibleData=async function(){
     };
     document.addEventListener('touchstart',(e)=>{
         pulling=false; dy=0;
-        if((window.scrollY||0)>0 || e.touches.length!==1 || blocked()) return;
+        if(!atTop(e.target) || e.touches.length!==1 || blocked()) return;
         if(e.target.closest('input,textarea,select,[contenteditable],.admin-tabs,#notif-list')) return;
         startY=e.touches[0].clientY; pulling=true;
     },{passive:true});
     document.addEventListener('touchmove',(e)=>{
         if(!pulling) return;
         dy=e.touches[0].clientY-startY;
-        if(dy<=0 || (window.scrollY||0)>0){ ind().style.opacity=0; return; }
+        if(dy<=0 || !atTop(e.target)){ pulling=false; dy=0; ind().style.opacity=0; return; }
         const i=ind(); const pos=Math.min(dy*0.5,80);
         i.style.opacity=Math.min(1,dy/90); i.style.transform='translateY('+(pos-48+(window.visualViewport?0:0))+'px) rotate('+(dy*2)+'deg)';
         i.classList.remove('spin');
@@ -9817,10 +9828,10 @@ let _myAuctionsOpenedAt=0;
 
 
 // ════════════════════════════════════════════════════════════════════════
-// MANUEL YENİLEME (yukarıdan çek + menüde "Yenile") + BOŞTA OTOMATİK KAPANMA
+// MANUEL YENİLEME (uygulamanın mevcut "yukarıdan çek" özelliği + menüde "Yenile") + BOŞTA OTOMATİK KAPANMA
 // 1) Açık panelleri her 8 sn'de baştan çizen otomatik tazeleme kaldırıldı
-//    (kaydırmayı bozuyordu). Yerine: sayfanın en üstündeyken aşağı çekince
-//    yenileme, yan menüde "Yenile" düğmesi ve uygulamaya geri dönünce tazeleme.
+//    (kaydırmayı bozuyordu). Yerine: mevcut yukarıdan-çek yenileme
+//    (window.refreshAllVisibleData), yan menüde "Yenile" düğmesi ve uygulamaya geri dönünce tazeleme.
 // 2) Açılır paneller (Tekliflerim, Açık Artırmalarım, Gelen Teklifler) ve yan
 //    menü, belirli süre etkileşim olmazsa kendiliğinden kapanır.
 // ════════════════════════════════════════════════════════════════════════
@@ -9876,53 +9887,6 @@ document.addEventListener('visibilitychange',()=>{
     _lastVisRefresh=Date.now();
     if(typeof isAuth!=='undefined' && isAuth) window.refreshAllData();
 });
-// Sayfanın en üstündeyken aşağı çekince yenile (yalnızca dokunmatik; kaydırmayı engellemez).
-(function setupPullToRefresh(){
-    const sc=document.querySelector('.main-scroll'); if(!sc) return;
-    sc.style.overscrollBehaviorY='contain';
-    const ind=document.createElement('div');
-    ind.id='ptr-indicator';
-    ind.style.cssText='position:fixed;left:50%;top:0;z-index:9999;transform:translate(-50%,-60px);padding:8px 16px;border-radius:999px;background:rgba(15,23,42,0.96);border:1.5px solid #6366f1;color:#c7d2fe;font-weight:800;font-size:0.8em;box-shadow:0 6px 18px rgba(0,0,0,0.45);pointer-events:none;opacity:0;transition:opacity .15s;display:flex;align-items:center;gap:8px;margin-top:calc(env(safe-area-inset-top,0px) + 8px);';
-    document.body.appendChild(ind);
-    const setInd=(txt,y,op)=>{ ind.textContent=txt; ind.style.transform='translate(-50%,'+y+'px)'; ind.style.opacity=op; };
-    const hide=()=>{ ind.style.transition='opacity .2s, transform .2s'; setInd('',-60,0); setTimeout(()=>{ ind.style.transition='opacity .15s'; },250); };
-    let startY=0,startX=0,tracking=false,ready=false;
-    const inScrolledChild=(el)=>{
-        while(el && el!==sc){
-            const st=getComputedStyle(el);
-            if((st.overflowY==='auto'||st.overflowY==='scroll') && el.scrollHeight>el.clientHeight && el.scrollTop>0) return true;
-            el=el.parentElement;
-        }
-        return false;
-    };
-    sc.addEventListener('touchstart',(e)=>{
-        tracking=false; ready=false;
-        if(window._refreshing || sc.scrollTop>0 || e.touches.length!==1) return;
-        const tg=e.target;
-        if(tg && tg.closest && tg.closest('input,textarea,select')) return;
-        if(inScrolledChild(tg)) return;
-        startY=e.touches[0].clientY; startX=e.touches[0].clientX; tracking=true;
-    },{passive:true});
-    sc.addEventListener('touchmove',(e)=>{
-        if(!tracking) return;
-        const dy=e.touches[0].clientY-startY, dx=e.touches[0].clientX-startX;
-        if(dy<=0 || sc.scrollTop>0 || Math.abs(dx)>Math.abs(dy)){ tracking=false; ready=false; hide(); return; }
-        const pull=Math.min(dy*0.5,80);
-        ready=pull>=55;
-        setInd((ready?'↻ ':'↓ ')+t(ready?'releaseToRefresh':'pullToRefresh'),pull-40,1);
-    },{passive:true});
-    const end=async()=>{
-        if(!tracking) return; tracking=false;
-        if(!ready){ hide(); return; }
-        ready=false;
-        setInd('⟳ '+t('refreshing'),16,1);
-        try{ await window.refreshAllData(); }catch(e){}
-        setInd('✓ '+t('refreshedDone'),16,1);
-        setTimeout(hide,700);
-    };
-    sc.addEventListener('touchend',end,{passive:true});
-    sc.addEventListener('touchcancel',()=>{ tracking=false; ready=false; hide(); },{passive:true});
-})();
 window.toggleMyOffersList=function(){
     if(_myOffersLoadInFlight) return;
     const now=Date.now();
