@@ -255,6 +255,8 @@ const auctionSecretRef = (db, domainName) => db.collection('auction_secret').doc
 
 // Yeni/ihlalli hesaplar için teklif tavanı. null = sınırsız.
 async function getBidderCap(db, username) {
+  // Test muafiyeti: admin / SELF_TRADE_TEST_USERS hesapları yeni hesap tavanına takılmaz.
+  if (canTradeOwnListing(username)) return null;
   try {
     const [prof, sale] = await Promise.all([
       db.collection('user_profiles').doc(username).get(),
@@ -3266,8 +3268,14 @@ async function handlerImpl(req, res) {
       return res.status(429).json({ error: "Çok fazla istek, lütfen biraz bekleyin." });
     try {
       const db = getDb();
-      const snap = await db.collection('auction_bids').where('domainName', '==', domainName).get();
-      const bids = snap.docs.map(d => d.data()).sort((a, b) => b.at - a.at).slice(0, 50);
+      const [snap, domSnap] = await Promise.all([
+        db.collection('auction_bids').where('domainName', '==', domainName).get(),
+        db.collection('domains').doc(domainName).get()
+      ]);
+      // İptal edilip yeniden açılan açık artırmada ESKİ turun teklifleri görünmesin:
+      // yalnızca güncel turun başlangıcından (auctionStartedAt) sonraki teklifler.
+      const since = domSnap.exists ? (domSnap.data().auctionStartedAt || 0) : 0;
+      const bids = snap.docs.map(d => d.data()).filter(b => (b.at || 0) >= since).sort((a, b) => b.at - a.at).slice(0, 50);
       return res.status(200).json({ success: true, bids });
     } catch (e) {
       console.error("get_auction_bids hatası:", e);
@@ -7113,14 +7121,27 @@ async function handlerImpl(req, res) {
         snap.forEach(d => domainDocs.push({ id: d.id, ...d.data() }));
       }
       const now = Date.now();
-      const auctions = domainDocs.map(v => ({
+      // Teklifleri domain + güncel tur (auctionStartedAt) bazında süz: iptal edilip yeniden
+      // açılan açık artırmada eski turdaki tekliflerim "benim teklifim" olarak görünmesin.
+      const bidsByDomain = {};
+      bidDocsSorted.forEach(b => { (bidsByDomain[b.domainName] = bidsByDomain[b.domainName] || []).push(b); });
+      const curHigh = {}, curLast = {};
+      domainDocs.forEach(v => {
+        const since = v.auctionStartedAt || 0;
+        (bidsByDomain[v.id] || []).forEach(b => {
+          if ((b.at || 0) < since) return;
+          curHigh[v.id] = Math.max(curHigh[v.id] || 0, b.bidAmount || 0);
+          curLast[v.id] = Math.max(curLast[v.id] || 0, b.at || 0);
+        });
+      });
+      const auctions = domainDocs.filter(v => curLast[v.id] !== undefined).map(v => ({
         domainName: v.id,
         sellerUsername: v.sellerUsername || null,
         auctionActive: v.auctionActive === true,
         auctionHighestBid: v.auctionHighestBid ?? null,
         auctionHighestBidder: v.auctionHighestBidder || null,
         auctionEndsAt: v.auctionEndsAt || null,
-        myHighestBid: myHighestBidByDomain[v.id] || null,
+        myHighestBid: curHigh[v.id] || null,
         isMeHighestBidder: v.auctionHighestBidder === realUsername,
         sold: v.sold === true,
         reservedFor: v.reservedFor || null,
@@ -7129,9 +7150,9 @@ async function handlerImpl(req, res) {
         auctionWinDeadline: v.auctionWinDeadline || null,
         iWonPending: v.auctionWinPending === true && v.auctionWinner === realUsername,
         closedAt: v.auctionClosedAt || null,
-        myLastBidAt: myLastBidAtByDomain[v.id] || 0,
+        myLastBidAt: curLast[v.id] || 0,
         // Kapanmış (aktif/ödeme bekleyen olmayan) kayıt listeden bu zamanda kalkar.
-        purgeAt: (v.auctionActive === true || v.auctionWinPending === true) ? null : ((v.auctionClosedAt || myLastBidAtByDomain[v.id] || 0) + AUCTION_MY_LIST_VISIBLE_MS),
+        purgeAt: (v.auctionActive === true || v.auctionWinPending === true) ? null : ((v.auctionClosedAt || curLast[v.id] || 0) + AUCTION_MY_LIST_VISIBLE_MS),
       }));
       // Aktif + bitişi en yakın olanlar üstte; bitmiş/sonuçlanmışlar altta.
       auctions.sort((a, b) => {
