@@ -7758,18 +7758,25 @@ window.openDomainDetail=function(domainName){
                 <div style="text-align:center;font-size:0.72em;color:#94a3b8;margin-bottom:6px;">⏱️ ${AWL('Son 5 dakikada gelen her teklif süreyi 5 dakikaya uzatır.','Any bid in the last 5 minutes extends the auction to 5 minutes.')}${data.auctionExtensions?` (${AWL('uzatma','extensions')}: ${data.auctionExtensions})`:''}</div>
                 ${leaderMode?'':`<div style="display:flex;gap:6px;margin-bottom:8px;">${quickAmts.map(a=>`<button type="button" class="auc-chip" onclick="window.setQuickBid(${a})">${a} π</button>`).join('')}</div>
                 <div class="amount-input-wrap" style="padding:14px 12px;border-radius:10px;border:2.5px solid #6366f1;background:#0f172a;color:#34d399;font-size:1.3em;margin-bottom:8px;">
-                    <input type="text" inputmode="decimal" autocomplete="off" id="auction-bid-input" data-minbid="${minBid}" oninput="sanitizeNumericInput(this);checkAuctionBidValidity(this);window.syncAmountDisplay(this,'auction-bid-display',undefined,true)" onfocus="window.onAmountInputFocus(this,'auction-bid-display')" onblur="window.onAmountInputBlur(this,'auction-bid-display')">
+                    <input type="text" inputmode="decimal" autocomplete="off" id="auction-bid-input" data-minbid="${minBid}" oninput="sanitizeNumericInput(this);checkAuctionBidValidity(this);window.syncAmountDisplay(this,'auction-bid-display',undefined,true);window.clearBidError();window.updateProxyPreview(${minBid})" onfocus="window.onAmountInputFocus(this,'auction-bid-display')" onblur="window.onAmountInputBlur(this,'auction-bid-display')">
                     <div class="amount-display amount-placeholder" id="auction-bid-display" data-ph="${t('auctionBidInputPlaceholder')}">${t('auctionBidInputPlaceholder')}</div>
                 </div>
                 <div id="auction-bid-warning" class="blink-warn" style="display:none;font-size:0.74em;color:#f87171;font-weight:800;text-align:center;margin:-4px 0 8px 0;">⚠️ ${t('auctionMinBidLabel')(minBid)}</div>
                 <div id="auction-bid-hint" style="font-size:0.72em;color:#94a3b8;text-align:center;margin:-4px 0 8px 0;">${t('auctionMinBidLabel')(minBid)}</div>`}
                 ${leaderMode?'':`<label style="display:flex;align-items:center;justify-content:center;gap:6px;font-size:0.76em;font-weight:800;color:#a5b4fc;margin-bottom:6px;cursor:pointer;"><input type="checkbox" id="auction-proxy-toggle" onchange="window.toggleAuctionProxy(this.checked)" style="width:16px;height:16px;accent-color:#6366f1;"> 🤖 ${AWL('Otomatik teklif (üst limit belirle)','Auto-bid (set a maximum)')}</label>`}
-                <div id="auction-proxy-box" style="display:${leaderMode?'block':'none'};margin-bottom:8px;padding:8px;border-radius:10px;border:1.5px dashed #6366f1;background:rgba(99,102,241,0.08);">
-                    <div style="font-size:0.74em;font-weight:800;color:#c7d2fe;text-align:center;margin-bottom:5px;">${leaderMode?AWL('Otomatik teklif üst limitinizi yükseltin','Raise your auto-bid maximum'):AWL('Üst limitiniz (π)','Your maximum (π)')}</div>
-                    <input type="text" inputmode="decimal" autocomplete="off" id="auction-max-input" oninput="sanitizeNumericInput(this)" placeholder="${AWL('örn. 25','e.g. 25')}" style="width:100%;box-sizing:border-box;text-align:center;font-size:1.1em;font-weight:900;padding:9px 8px;border-radius:9px;border:1.5px solid #6366f1;">
-                    <div style="font-size:0.72em;color:#94a3b8;text-align:center;margin-top:5px;line-height:1.45;">🔒 ${AWL('Üst limitinizi kimse göremez. Başkası sizi geçmeye çalıştıkça sistem, yalnızca gerektiği kadar (minimum artışla) otomatik teklif verir.','Nobody can see your maximum. When someone tries to outbid you, the system bids for you only as much as needed (minimum increment).')}</div>
+                <div id="auction-proxy-box" style="display:${leaderMode?'block':'none'};margin-bottom:8px;padding:10px;border-radius:10px;border:1.5px dashed #6366f1;background:rgba(99,102,241,0.08);">
+                    <div style="font-size:0.78em;font-weight:900;color:#c7d2fe;text-align:center;margin-bottom:6px;">🤖 ${leaderMode?AWL('Üst limitinizi yükseltin','Raise your maximum'):AWL('Otomatik teklif — nasıl çalışır?','Auto-bid — how it works')}</div>
+                    ${leaderMode?'':`<ol style="margin:0 0 8px;padding-left:18px;font-size:0.74em;color:#cbd5e1;line-height:1.55;">
+                        <li>${AWL('<b>Üst limit</b> = vermeye razı olduğunuz EN YÜKSEK tutar.','<b>Maximum</b> = the HIGHEST amount you are willing to pay.')}</li>
+                        <li>${AWL(`Sistem hemen yalnızca <b>${minBid} π</b> ile (ya da yukarıya yazdığınız teklifle) başlar.`,`The system starts right away with only <b>${minBid} π</b> (or the bid you typed above).`)}</li>
+                        <li>${AWL('Biri sizi geçerse, limitinize kadar sizin yerinize <b>otomatik</b> artırır. Limitinizi kimse göremez.','If someone outbids you, it raises your bid <b>automatically</b> up to your maximum. Nobody can see your maximum.')}</li>
+                    </ol>`}
+                    <input type="text" inputmode="decimal" autocomplete="off" id="auction-max-input" oninput="sanitizeNumericInput(this);window.updateProxyPreview(${minBid})" placeholder="${AWL('Üst limitiniz (π) — örn. '+piRound(minBid+incStep*10),'Your maximum (π) — e.g. '+piRound(minBid+incStep*10))}" style="width:100%;box-sizing:border-box;text-align:center;font-size:1.1em;font-weight:900;padding:10px 8px;border-radius:9px;border:1.5px solid #6366f1;">
+                    <div style="display:flex;gap:6px;margin-top:6px;">${[5,10,20].map(k=>`<button type="button" class="auc-chip" onclick="window.setQuickMax(${piRound(minBid+incStep*k)},${minBid})">${piRound(minBid+incStep*k)} π</button>`).join('')}</div>
+                    <div id="auction-proxy-preview" style="font-size:0.74em;color:#a5b4fc;text-align:center;margin-top:7px;line-height:1.5;min-height:1.5em;"></div>
                 </div>
-                <button id="auction-bid-submit-btn" class="btn-buy" style="width:100%;background:linear-gradient(135deg,#6366f1,#8b5cf6);padding:11px 12px;font-size:0.9em;" onclick="window.submitAuctionBid('${safeDomainForJs}',${minBid})">${leaderMode?AWL('🤖 Üst Limiti Güncelle','🤖 Update Maximum'):t('auctionBidSubmitBtn')}</button>
+                <div id="auction-bid-error" role="alert" style="display:none;font-size:0.8em;font-weight:800;color:#fecaca;background:rgba(239,68,68,0.15);border:1.5px solid #ef4444;border-radius:9px;padding:8px 10px;margin-bottom:8px;text-align:center;line-height:1.45;"></div>
+                <button id="auction-bid-submit-btn" class="btn-buy" style="width:100%;background:linear-gradient(135deg,#6366f1,#8b5cf6);padding:11px 12px;font-size:0.9em;" data-label-normal="${leaderMode?AWL('🤖 Üst Limiti Güncelle','🤖 Update Maximum'):t('auctionBidSubmitBtn')}" data-label-auto="${AWL('🤖 Otomatik Teklifi Başlat','🤖 Start Auto-Bid')}" onclick="window.submitAuctionBid('${safeDomainForJs}',${minBid})">${leaderMode?AWL('🤖 Üst Limiti Güncelle','🤖 Update Maximum'):t('auctionBidSubmitBtn')}</button>
                 ${buyNowP!==null?`<button class="btn-buy" style="width:100%;margin-top:8px;background:linear-gradient(135deg,#f59e0b,#ea580c);padding:10px 12px;font-size:0.86em;" onclick="window.auctionBuyNow('${safeDomainForJs}',${buyNowP})">⚡ ${AWL('Hemen Al','Buy Now')} — ${buyNowP} π</button>`:''}
             </div>`;
         } else if(auctionIsEnded){
@@ -8460,6 +8467,21 @@ window.handleStartAuction=async function(domainName){
     const isTr=currentLang==='tr';
     const curPrice=(domainData[domainName]&&typeof domainData[domainName].price==='number')?domainData[domainName].price:null;
     const CANCEL=Symbol('cancel');
+    // Pasif (gizli) domain: açık artırma başlasa bile kullanıcılar göremez → önce satışa çıkarmayı öner.
+    if(domainData[domainName] && domainData[domainName].hidden===true){
+        const makeVisible=confirm(isTr
+            ?`🔒 "${domainName}" şu anda PASİF (gizli). Bu haliyle açık artırma başlarsa kullanıcılar onu göremez.\n\nTamam: Önce satışa çıkar (görünür yap) ve devam et\nİptal: Pasif kalsın`
+            :`🔒 "${domainName}" is currently HIDDEN. If an auction starts now, users cannot see it.\n\nOK: put it on sale (make visible) first and continue\nCancel: keep it hidden`);
+        if(makeVisible){
+            try{
+                const r0=await fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'toggle_hide_domain',domainName,hide:false,accessToken:piAccessToken})});
+                const res0=await r0.json();
+                if(!r0.ok||!res0.success){ showToast(t('hideToggleFail')+(res0.error||'')); return; }
+                if(domainData[domainName]) domainData[domainName].hidden=false;
+                showToast(isTr?'✅ Domain satışa çıkarıldı (görünür).':'✅ Domain is now on sale (visible).');
+            }catch(e){ showToast(t('genericError')); return; }
+        } else if(!confirm(isTr?'Pasif kalarak devam edilsin mi? (Kullanıcılar açık artırmayı göremez.)':'Continue while hidden? (Users will not be able to see the auction.)')){ return; }
+    }
     // Geçersiz değer girilince adımlar KAPANMAZ: uyarı gösterilir ve aynı soru, girilen değer korunarak yeniden sorulur.
     // optional=true: boş bırakılabilir (null döner). İptal'e basılırsa tüm işlem iptal edilir (CANCEL).
     function askNum(question,def,validate,optional){
@@ -8555,9 +8577,10 @@ function renderAdminPriceList(){
             ? `<button onclick="window.handleCancelAuction('${d.name}')" style="background:#ef4444;color:#fff;border:none;padding:5px 8px;border-radius:6px;font-size:0.74em;font-weight:bold;cursor:pointer;white-space:nowrap;">⏰🛑 ${data.auctionHighestBid?data.auctionHighestBid+' π':'0 teklif'}</button>`
             : `<button onclick="window.handleStartAuction('${d.name}')" style="background:#8b5cf6;color:#fff;border:none;padding:5px 8px;border-radius:6px;font-size:0.74em;font-weight:bold;cursor:pointer;white-space:nowrap;">⏰ ${AWL('Açık Art.','Auction')}</button>`);
         return `<div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;background:#0f172a;padding:6px 8px;border-radius:8px;flex-wrap:wrap;">
-            <span style="flex:1;font-size:0.8em;font-weight:bold;color:#e2e8f0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${d.name}${isSold?' 🔒':''}</span>
+            <span style="flex:1;font-size:0.8em;font-weight:bold;color:#e2e8f0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${d.name}${isSold?' 🔒':''}${(data.hidden&&!isSold)?` <span style="color:#fbbf24;font-weight:800;">· 🔒 ${AWL('Pasif','Hidden')}</span>`:''}</span>
             <input type="number" id="price-input-${d.name}" value="${data.price}" ${isSold?'disabled':''} style="width:70px;background:#1e293b;border:1px solid #6366f1;color:#fff;border-radius:6px;padding:4px 6px;font-size:0.8em;">
             <button onclick="handlePriceUpdate('${d.name}')" ${isSold?'disabled':''} style="background:#6366f1;color:#fff;border:none;padding:5px 8px;border-radius:6px;font-size:0.76em;font-weight:bold;cursor:pointer;opacity:${isSold?'0.4':'1'};">${t('updateBtn')}</button>
+            ${(data.hidden&&!isSold)?`<button onclick="window.handleToggleHideDomain('${d.name}',false)" style="background:#10b981;color:#fff;border:none;padding:5px 8px;border-radius:6px;font-size:0.76em;font-weight:bold;cursor:pointer;white-space:nowrap;">${t('unhideBtn')}</button>`:''}
             ${auctionCtrlHtml}
             ${canDelete?`<button onclick="handleDeleteDomain('${d.name}')" style="background:#ef4444;color:#fff;border:none;padding:5px 8px;border-radius:6px;font-size:0.76em;font-weight:bold;cursor:pointer;">${t('deleteBtn')}</button>`:''}
         </div>`;}).join('');
@@ -8896,11 +8919,43 @@ window.setQuickBid=function(amount){
 };
 window.toggleAuctionProxy=function(on){
     const box=document.getElementById('auction-proxy-box'); if(box) box.style.display=on?'block':'none';
-    if(on){ const mx=document.getElementById('auction-max-input'); if(mx) setTimeout(()=>mx.focus(),50); }
+    const btn=document.getElementById('auction-bid-submit-btn');
+    if(btn && btn.dataset.labelNormal) btn.textContent=on?btn.dataset.labelAuto:btn.dataset.labelNormal;
+    const hint=document.getElementById('auction-bid-hint');
+    if(hint && on) hint.textContent=AWL('Teklif kutusunu boş bırakırsanız minimum teklifle başlanır.','Leave the bid box empty to start with the minimum bid.');
+    window.clearBidError();
+    if(on){ const mx=document.getElementById('auction-max-input'); if(mx) setTimeout(()=>mx.focus(),60); window.updateProxyPreview(Number(document.getElementById('auction-bid-input')?.dataset.minbid)||0); }
+};
+window.setQuickMax=function(amount,minBid){
+    const mx=document.getElementById('auction-max-input'); if(!mx) return;
+    mx.value=String(amount); window.clearBidError(); window.updateProxyPreview(minBid);
+};
+// Satır içi hata (toast kaçırılabildiği için "teklifi gönder" sessiz kalmış gibi görünüyordu)
+window.showBidError=function(msg){
+    const el=document.getElementById('auction-bid-error');
+    if(el){ el.textContent='⚠️ '+msg; el.style.display='block'; try{ el.scrollIntoView({block:'nearest',behavior:'smooth'}); }catch(_){} }
+    try{ if(navigator.vibrate) navigator.vibrate(80); }catch(_){}
+    showToast(msg);
+};
+window.clearBidError=function(){ const el=document.getElementById('auction-bid-error'); if(el){ el.style.display='none'; el.textContent=''; } };
+// Üst limit yazıldıkça: sistemin NE yapacağını açık cümleyle göster
+window.updateProxyPreview=function(minBid){
+    const pv=document.getElementById('auction-proxy-preview'); if(!pv) return;
+    window.clearBidError();
+    const mx=parseFloat((document.getElementById('auction-max-input')||{}).value);
+    const bidRaw=parseFloat((document.getElementById('auction-bid-input')||{}).value);
+    const start=(bidRaw>0)?bidRaw:minBid;
+    if(!(mx>0)){ pv.textContent=''; return; }
+    if(minBid && mx<start){ pv.style.color='#fca5a5'; pv.textContent=AWL(`Üst limit en az ${start} π olmalı.`,`The maximum must be at least ${start} π.`); return; }
+    pv.style.color='#86efac';
+    pv.textContent=minBid
+        ? AWL(`✅ Şimdi ${start} π ile başlar; sizi geçen olursa en fazla ${mx} π'ye kadar otomatik artırır.`,`✅ Starts now at ${start} π; if someone outbids you it raises automatically up to ${mx} π.`)
+        : AWL(`✅ Yeni üst limitiniz: ${mx} π`,`✅ Your new maximum: ${mx} π`);
 };
 window.submitAuctionBid=async function(domainName, minBid){
     if(_auctionBidInFlight) return;
     if(!isAuth){ showToast(t('loginRequired')); return; }
+    window.clearBidError();
     const dd=domainData[domainName]||{};
     const leaderMode=dd.auctionHighestBidder===currentUser;
     const bidEl=document.getElementById('auction-bid-input');
@@ -8910,13 +8965,16 @@ window.submitAuctionBid=async function(domainName, minBid){
     const maxVal=maxEl?parseFloat(maxEl.value):NaN;
     let bidAmount, maxBid;
     if(leaderMode){
-        if(!(maxVal>0)){ showToast(AWL('Yeni üst limitinizi girin.','Enter your new maximum.')); return; }
+        if(!(maxVal>0)){ window.showBidError(AWL('Yeni üst limitinizi girin.','Enter your new maximum.')); if(maxEl) maxEl.focus(); return; }
         bidAmount=maxVal; maxBid=maxVal;
     } else {
         bidAmount=parseFloat(bidEl?bidEl.value:'');
-        if(!bidAmount || bidAmount<=0 || toPiU(bidAmount)<toPiU(minBid)){ showToast(t('auctionMinBidLabel')(minBid)); return; }
-        if(proxyOn && maxEl && maxEl.value!==''){
-            if(!(maxVal>0) || toPiU(maxVal)<toPiU(bidAmount)){ showToast(AWL('Üst limit, teklifinizden küçük olamaz.','Your maximum cannot be lower than your bid.')); return; }
+        // OTOMATİK TEKLİF açıkken teklif kutusu boş bırakılabilir: sistem minimum teklifle başlar.
+        if(proxyOn && (!bidAmount || bidAmount<=0)) bidAmount=minBid;
+        if(!bidAmount || bidAmount<=0 || toPiU(bidAmount)<toPiU(minBid)){ window.showBidError(t('auctionMinBidLabel')(minBid)); if(bidEl) bidEl.focus(); return; }
+        if(proxyOn){
+            if(!(maxVal>0)){ window.showBidError(AWL('Otomatik teklif için bir ÜST LİMİT girin (en fazla ne kadar verebilirsiniz?). İstemiyorsanız "Otomatik teklif" kutusunun işaretini kaldırın.','Enter a MAXIMUM for auto-bid (the most you are willing to pay). If you do not want it, untick "Auto-bid".')); if(maxEl) maxEl.focus(); return; }
+            if(toPiU(maxVal)<toPiU(bidAmount)){ window.showBidError(AWL(`Üst limit en az ${bidAmount} π olmalı (teklifinizden küçük olamaz).`,`The maximum must be at least ${bidAmount} π (it cannot be lower than your bid).`)); if(maxEl) maxEl.focus(); return; }
             maxBid=maxVal;
         }
     }
@@ -12297,6 +12355,21 @@ function render(){
             auctionStatusTag.style.cssText='background:rgba(129,140,248,0.15);border:1.5px solid #818cf8;color:#c7d2fe;cursor:default;text-align:center;';
             auctionStatusTag.innerText = auctionIsLive ? '⏰ '+t('auctionInProgressTag') : '🏆 '+t('auctionAwaitingWinnerTag');
             card.appendChild(auctionStatusTag);
+            // Yönetici: açık artırma sürerken de gizle / "Satışa Çıkar" butonu görünür kalsın.
+            // Pasif (gizli) bir domainde açık artırma başlatılırsa kullanıcılar onu göremez — bu yüzden net bir uyarı da çıkar.
+            if(isAdminViewing){
+                if(data.hidden){
+                    const hw=document.createElement('div');
+                    hw.style.cssText='margin-top:6px;padding:7px 9px;border-radius:9px;border:1.5px solid #f59e0b;background:rgba(245,158,11,0.12);color:#fcd34d;font-size:0.76em;font-weight:800;line-height:1.4;text-align:center;';
+                    hw.innerText='🔒 '+AWL('Bu domain PASİF (gizli): kullanıcılar bu açık artırmayı göremez. Görünür yapmak için aşağıdaki butona basın.','This domain is HIDDEN: users cannot see this auction. Press the button below to make it visible.');
+                    card.appendChild(hw);
+                }
+                const hideBtnA=document.createElement('button');
+                hideBtnA.className='btn-buy';hideBtnA.style.background=data.hidden?'#10b981':'#64748b';hideBtnA.style.marginTop='4px';
+                hideBtnA.innerText=data.hidden?t('unhideBtn'):t('hideBtn');
+                hideBtnA.onclick=(e)=>{e.stopPropagation();handleToggleHideDomain(d.name,!data.hidden);};
+                card.appendChild(hideBtnA);
+            }
         } else {
             // FIX: Satıcının kendi ilanına "Satın Al" butonu gösteriliyordu.
             // Satıcı bir teklif anlaşması sonrası (ya da sırf merakla) kendi
