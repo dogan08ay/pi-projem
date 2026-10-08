@@ -38,6 +38,21 @@ const PiNetwork = resolvePiNetworkCtor();
 const ADMIN_USERNAME = process.env.ADMIN_USERNAME || 'doganay0808';
 const PLATFORM_COMMISSION_RATE = 0.05; // %5 komisyon
 
+// ─── Test Muafiyeti: Kendi ilanıyla işlem yapabilme ─────────────────────
+// Admin (ve istenirse SELF_TRADE_TEST_USERS env değişkeninde virgülle
+// listelenen test hesapları) kendi ilanına teklif / açık artırma teklifi /
+// Hemen Al / mesaj gibi akışları ikinci bir hesaba ihtiyaç duymadan
+// deneyebilsin diye "kendi ilanına işlem yapamazsın" kontrollerinden
+// muaf tutulur. Normal kullanıcılar için kısıtlama AYNEN geçerlidir.
+// Canlıda kapatmak için: SELF_TRADE_TEST_USERS boş kalır ve bu fonksiyon
+// yalnızca admin için true döner (satın alma muafiyeti zaten böyleydi).
+const SELF_TRADE_TEST_USERS = new Set(
+  String(process.env.SELF_TRADE_TEST_USERS || '').split(',').map(s => s.trim()).filter(Boolean)
+);
+function canTradeOwnListing(username) {
+  return !!username && (username === ADMIN_USERNAME || SELF_TRADE_TEST_USERS.has(username));
+}
+
 // ─── Satıcı Ödeme (Payout) Tutarı Hesaplama ─────────────────────────────
 // Bu formül (fiyat - komisyon) daha önce dosya içinde 7 farklı yerde
 // aynı şekilde kopyalanmıştı. Tek bir fonksiyonda topluyoruz ki: (1) biri
@@ -2938,7 +2953,7 @@ async function handlerImpl(req, res) {
         if (data.sold === true) return { err: [400, "Bu domain zaten satılmış"] };
         if (data.auctionActive !== true) return { err: [400, "Bu domain için aktif bir açık artırma yok"] };
         if (!data.auctionEndsAt || data.auctionEndsAt <= now) return { err: [400, "Bu açık artırmanın süresi doldu"] };
-        if (data.sellerUsername === realUsername) return { err: [400, "Kendi ilanınıza teklif veremezsiniz"] };
+        if (data.sellerUsername === realUsername && !canTradeOwnListing(realUsername)) return { err: [400, "Kendi ilanınıza teklif veremezsiniz"] };
 
         const incU = toPiUnits(data.auctionMinIncrement || 1);
         const startU = toPiUnits(data.auctionStartPrice);
@@ -3076,7 +3091,7 @@ async function handlerImpl(req, res) {
         if (d.sold === true) return { err: [400, "Bu domain zaten satılmış"] };
         if (d.auctionActive !== true || !d.auctionEndsAt || d.auctionEndsAt <= now) return { err: [400, "Aktif bir açık artırma yok ya da süresi doldu"] };
         if (!(typeof d.auctionBuyNowPrice === 'number' && d.auctionBuyNowPrice > 0)) return { err: [400, "Bu açık artırmada \"Hemen Al\" seçeneği yok"] };
-        if (d.sellerUsername === realUsername) return { err: [400, "Kendi ilanınızı satın alamazsınız"] };
+        if (d.sellerUsername === realUsername && !canTradeOwnListing(realUsername)) return { err: [400, "Kendi ilanınızı satın alamazsınız"] };
         const price = d.auctionBuyNowPrice;
         if (d.auctionHighestBid != null && toPiUnits(d.auctionHighestBid) >= toPiUnits(price))
           return { err: [400, "Teklifler \"Hemen Al\" fiyatına ulaştı, bu seçenek artık geçerli değil"] };
@@ -6920,7 +6935,7 @@ async function handlerImpl(req, res) {
       const data = domainSnap.data();
       if (data.sold === true) return res.status(400).json({ error: "Bu domain zaten satılmış" });
       if (data.deleted === true || data.hidden === true) return res.status(400).json({ error: "Bu domain artık satışta değil" });
-      if (data.sellerUsername === realUsername) return res.status(400).json({ error: "Kendi domaininize teklif veremezsiniz" });
+      if (data.sellerUsername === realUsername && !canTradeOwnListing(realUsername)) return res.status(400).json({ error: "Kendi domaininize teklif veremezsiniz" });
       // YENİ (açık artırma bütünlüğü): Aktif açık artırma süren bir domain
       // için normal "Teklif Ver" kapalı — aksi halde satıcı/admin bu
       // teklifi kabul edip (respond_offer) reservedFor'ı doğrudan
@@ -7851,7 +7866,7 @@ async function handlerImpl(req, res) {
         if (!domainSnap.exists) return res.status(404).json({ error: "Domain bulunamadı" });
         const sellerUsername = domainSnap.data().sellerUsername;
         if (!sellerUsername) return res.status(400).json({ error: "Bu domainin bir satıcısı yok, mesaj gönderilemez" });
-        if (sellerUsername === realUsername) return res.status(400).json({ error: "Kendi ilanınıza mesaj gönderemezsiniz" });
+        if (sellerUsername === realUsername && !canTradeOwnListing(realUsername)) return res.status(400).json({ error: "Kendi ilanınıza mesaj gönderemezsiniz" });
         otherUsername = sellerUsername;
         const pair = [realUsername, sellerUsername].sort();
         // FIX: domain adındaki '/' Firestore doküman ID'sini bozar; domain
@@ -8787,7 +8802,7 @@ async function handlerImpl(req, res) {
         // yapabilsin diye bu kontrolden BİLEREK muaf tutuluyor — normal
         // kullanıcılar için engel aynen geçerli.
         const requesterUsername = await getRealUsername(accessToken);
-        if (dData.sellerUsername && requesterUsername && dData.sellerUsername === requesterUsername && requesterUsername !== ADMIN_USERNAME) {
+        if (dData.sellerUsername && requesterUsername && dData.sellerUsername === requesterUsername && !canTradeOwnListing(requesterUsername)) {
           return res.status(403).json({ error: "Bu domainin satıcısı sizsiniz — kendi ilanınızı satın alamazsınız.", ownListing: true });
         }
         // Anlaşılan teklif sonrası öncelik penceresi: bu süre boyunca domain
@@ -8931,7 +8946,7 @@ async function handlerImpl(req, res) {
           // değişmiş olabilir ya da approve adımı bir şekilde atlanmış olabilir.
           // İSTİSNA: admin için burada da aynı muafiyet geçerli (bkz. yukarı,
           // 'approve' aşamasındaki aynı istisna).
-          if (domainSnap.data().sellerUsername && domainSnap.data().sellerUsername === username && username !== ADMIN_USERNAME) {
+          if (domainSnap.data().sellerUsername && domainSnap.data().sellerUsername === username && !canTradeOwnListing(username)) {
             return { ok: false, reason: 'own_listing' };
           }
           // Rezervasyon kontrolü BURADA (transaction içinde) da tekrarlanıyor
