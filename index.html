@@ -4425,6 +4425,7 @@ const i18n = {
     sellerProfileJoinedLabel:"Üyelik",
     recentReviewsLabel:"Son Değerlendirmeler",
     detailMoreInfoToggle:"Daha Fazla Detay (Fiyat Geçmişi, Değerlendirmeler)",
+    detailLessInfoToggle:"Daha Az Detay",
     sortNewest:"🆕 En Yeni Eklenenler",sortPriceAsc:"💰 Fiyat: Düşükten Yükseğe",sortPriceDesc:"💰 Fiyat: Yüksekten Düşüğe",sortAz:"🔤 İsim (A-Z)",
     favoriteAddBtn:"Favorilere Ekle",favoriteRemoveBtn:"Favorilerden Çıkar",
     howItWorksMenuItem:"Nasıl Çalışır?",howItWorksTitle:"Nasıl Çalışır ve Nasıl Korunuyorsunuz?",
@@ -5428,6 +5429,7 @@ const i18n = {
     sellerProfileJoinedLabel:"Member Since",
     recentReviewsLabel:"Recent Reviews",
     detailMoreInfoToggle:"More Details (Price History, Reviews)",
+    detailLessInfoToggle:"Fewer Details",
     sortNewest:"🆕 Newest First",sortPriceAsc:"💰 Price: Low to High",sortPriceDesc:"💰 Price: High to Low",sortAz:"🔤 Name (A-Z)",
     favoriteAddBtn:"Add to Favorites",favoriteRemoveBtn:"Remove from Favorites",
     howItWorksMenuItem:"How It Works",howItWorksTitle:"How It Works & How You're Protected",
@@ -6034,6 +6036,7 @@ window.toggleDetailMore=function(btn,domainName){
     const open=body.style.display==='none';
     body.style.display=open?'grid':'none';
     btn.setAttribute('aria-expanded',open?'true':'false');
+    btn.textContent='⋯ '+(open?AWL('Daha az','Less'):AWL('Daha fazla','More'));
     window._detailMoreOpenFor=open?domainName:null;
 };
 // ── Yüzen menü davranışı ──
@@ -7449,6 +7452,8 @@ window.toggleDetailMoreInfo=function(){
     const isOpen=wrap.style.display!=='none';
     wrap.style.display=isOpen?'none':'flex';
     if(arrow) arrow.textContent=isOpen?'▾':'▴';
+    const lbl=document.getElementById('detail-more-toggle-label');
+    if(lbl) lbl.textContent=isOpen?t('detailMoreInfoToggle'):t('detailLessInfoToggle');
 };
 // Fiyat geçmişi VEYA yorumlardan en az biri gelince toggle butonunu
 // gösterir — ikisi de boşsa (hiç geçmiş satış/yorum yoksa) buton hiç
@@ -7913,7 +7918,7 @@ window.openDomainDetail=function(domainName){
     const _moreOpen=window._detailMoreOpenFor===domainName;
     const iconRowBlock = iconRowHtml ? `<div class="detail-icon-row">${iconRowHtml}</div>` : '';
     const mainSecondaryBlock = mainSecondaryHtml ? `<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px;margin-top:8px;">${mainSecondaryHtml}</div>` : '';
-    const moreBlock = `<div class="detail-more"><button type="button" class="detail-more-toggle" aria-expanded="${_moreOpen?'true':'false'}" onclick="window.toggleDetailMore(this,'${domainName.replace(/'/g,"\\'")}')">⋯ ${AWL('Daha fazla','More')}</button><div class="detail-more-body" style="display:${_moreOpen?'grid':'none'};">${moreHtml}</div></div>`;
+    const moreBlock = `<div class="detail-more"><button type="button" class="detail-more-toggle" aria-expanded="${_moreOpen?'true':'false'}" onclick="window.toggleDetailMore(this,'${domainName.replace(/'/g,"\\'")}')">⋯ ${_moreOpen?AWL('Daha az','Less'):AWL('Daha fazla','More')}</button><div class="detail-more-body" style="display:${_moreOpen?'grid':'none'};">${moreHtml}</div></div>`;
     const secondaryGridHtml = mainSecondaryBlock + moreBlock;
     // Yeniden çizimde yazılmakta olan teklif metni/odak kaybolmasın.
     const _prevBidEl=document.getElementById('auction-bid-input');
