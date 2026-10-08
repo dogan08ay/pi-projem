@@ -15833,7 +15833,7 @@ function renderConversationsList(){
     }
     const locale=currentLang==='en'?'en-GB':'tr-TR';
     container.innerHTML=myConversations.map(c=>{
-        const otherUser=(c.participants||[]).find(u=>u!==currentUser)||'?';
+        const otherUser=(c.participants||[]).find(u=>u!==currentUser)||currentUser||'?';
         const lastMsg=(c.messages&&c.messages.length)?c.messages[c.messages.length-1]:null;
         const preview=lastMsg?escapeHtml(lastMsg.text.length>60?lastMsg.text.slice(0,60)+'…':lastMsg.text):'';
         const timeStr=c.lastMessageAt?new Date(c.lastMessageAt).toLocaleDateString(locale,{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}):'';
@@ -15856,7 +15856,7 @@ function renderConversationsList(){
 window.renderChatDetail=function(conversationId){
     const conv=myConversations.find(c=>c.id===conversationId);
     if(!conv) return;
-    const otherUser=(conv.participants||[]).find(u=>u!==currentUser)||'?';
+    const otherUser=(conv.participants||[]).find(u=>u!==currentUser)||currentUser||'?';
     const locale=currentLang==='en'?'en-GB':'tr-TR';
     document.getElementById('chat-detail-header').innerHTML=`<div class="ticket-detail-header"><h4>💬 @${otherUser} — ${escapeHtml(conv.domainName||'')}</h4></div>`;
     const messagesContainer=document.getElementById('chat-detail-messages');
