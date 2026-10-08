@@ -1938,7 +1938,7 @@
         </div>
         <div id="notif-chips" style="display:flex;gap:6px;overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:6px;margin-bottom:6px;"></div>
         <div id="notif-list" style="max-height:60vh;overflow-y:auto;text-align:left;margin-bottom:12px;"></div>
-        <button class="pi-btn" style="background:#6366f1;animation:none;padding:10px;margin:0 0 8px 0;width:100%;" onclick="document.getElementById('notif-modal').style.display='none'" data-i18n="close"></button>
+        <button class="pi-btn" style="background:#6366f1;animation:none;padding:10px;margin:0 0 8px 0;width:100%;" onclick="window.closeNotifModal()" data-i18n="close"></button>
         <button style="width:100%;padding:9px;border:1px solid #ef4444;background:rgba(239,68,68,0.1);color:#f87171;border-radius:10px;font-size:0.75em;font-weight:800;cursor:pointer;" onclick="clearAllNotifications()" data-i18n="clearAllNotifs"></button>
     </div>
 </div>
@@ -7159,6 +7159,7 @@ async function fetchNotifications(silent){
         if(result.success){
             cachedNotifications=result.notifications||[];
             renderNotifBadgeAndList();
+            autoMarkNotifsReadIfOpen();
             // Yeni "kazandınız / hatırlatma / iptal" bildirimi geldiyse kazanan
             // durumunu hemen tazele → pop-up ve bant gecikmeden çıksın.
             try{
@@ -7289,7 +7290,7 @@ function renderNotifList(allNotifs){
     const locale=currentLang==='en'?'en-GB':'tr-TR';
     list.innerHTML=notifs.length===0
         ?emptyState('🔔',t('noNotifications'))
-        :notifs.map(n=>`<div class="notif-item ${n.read?'':'unread'}"><div class="notif-dot ${n.read?'read':''}"></div><div style="flex:1;"><div style="font-size:0.82em;font-weight:800;color:#f1f5f9;margin-bottom:2px;">${escapeHtml(notifTitle(n))}</div><div style="font-size:0.78em;color:#94a3b8;line-height:1.4;">${escapeHtml(notifBody(n))}</div><div style="font-size:0.72em;color:#475569;margin-top:4px;">${new Date(n.ts).toLocaleString(locale,{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})}</div></div></div>`).join('');
+        :notifs.map(n=>`<div class="notif-item ${(n.read && !(window._notifSeenInModal&&window._notifSeenInModal.has(n.id||n.ts)))?'':'unread'}"><div class="notif-dot ${n.read?'read':''}"></div><div style="flex:1;"><div style="font-size:0.82em;font-weight:800;color:#f1f5f9;margin-bottom:2px;">${escapeHtml(notifTitle(n))}</div><div style="font-size:0.78em;color:#94a3b8;line-height:1.4;">${escapeHtml(notifBody(n))}</div><div style="font-size:0.72em;color:#475569;margin-top:4px;">${new Date(n.ts).toLocaleString(locale,{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})}</div></div></div>`).join('');
 }
 function startNotifPolling(){
     stopNotifPolling();
@@ -7345,9 +7346,35 @@ window.toggleUserMenu=function(){
         },3000);
     }
 };
-window.openNotifModal=function(){
+// Modal açıkken görülen (okunmamış) bildirimlerin vurgusu, rozet sıfırlansa
+// bile liste içinde kalsın diye bu kümede tutulur; modal kapanınca temizlenir.
+window._notifSeenInModal=new Set();
+function isNotifModalOpen(){ const m=document.getElementById('notif-modal'); return !!m && m.style.display==='flex'; }
+let _notifAutoMarkBusy=false;
+async function autoMarkNotifsReadIfOpen(){
+    if(!isNotifModalOpen() || _notifAutoMarkBusy || !piAccessToken) return;
+    const unread=cachedNotifications.filter(n=>!n.read);
+    if(!unread.length) return;
+    _notifAutoMarkBusy=true;
+    try{
+        unread.forEach(n=>window._notifSeenInModal.add(n.id||n.ts));
+        await fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'mark_notifications_read',accessToken:piAccessToken})});
+        const ids=new Set(unread.map(n=>n.id||n.ts));
+        cachedNotifications=cachedNotifications.map(n=>ids.has(n.id||n.ts)?{...n,read:true}:n);
+        renderNotifBadgeAndList();
+    }catch(e){}
+    finally{ _notifAutoMarkBusy=false; }
+}
+window.closeNotifModal=function(){
+    const m=document.getElementById('notif-modal'); if(m) m.style.display='none';
+    window._notifSeenInModal=new Set();
+    renderNotifList(cachedNotifications);
+};
+window.openNotifModal=async function(){
+    window._notifSeenInModal=new Set();
     document.getElementById('notif-modal').style.display='flex';
-    fetchNotifications(); // modal açılınca anında tazele
+    await fetchNotifications(); // modal açılınca anında tazele
+    autoMarkNotifsReadIfOpen(); // açıldı → rozet kaybolur; yeni veri gelirse tekrar sayılır
 };
 
 window.openChangelogModal=function(){
@@ -7840,7 +7867,7 @@ window.openDomainDetail=function(domainName){
     // YENİ: Alıcı-satıcı doğrudan mesajlaşma — sadece satıcısı olan ve
     // kendi ilanımız olmayan domainlerde gösterilir (satış durumundan
     // bağımsız — devir sonrası sorular için de kullanılabilsin diye).
-    if(isAuth && data.sellerUsername && data.sellerUsername!==currentUser){
+    if(isAuth && data.sellerUsername && (data.sellerUsername!==currentUser || currentUser===APP_CONFIG.adminUsername)){
         mainSecondaryHtml+=`<button onclick="window.openOrStartConversation('${domainName}','${data.sellerUsername}')" style="padding:9px 6px;border-radius:9px;border:1.5px solid #06b6d4;background:rgba(6,182,212,0.1);color:#67e8f9;font-weight:800;font-size:0.78em;cursor:pointer;">✉️ ${t('messageSellerBtn')}</button>`;
     }
     // YENİ (admin-only): satıcının domain sahipliğini kanıtlayan belgeyi
@@ -8846,7 +8873,7 @@ window.openOfferModal=function(domainName){
 window.handleOfferButtonClick=function(domainName){
     if(!isAuth){ showToast(t('loginRequired')); return; }
     const d=domainData[domainName];
-    if(d && d.sellerUsername && d.sellerUsername===currentUser){ showToast(t('cannotOfferOwnDomain')); return; }
+    if(d && d.sellerUsername && d.sellerUsername===currentUser && currentUser!==APP_CONFIG.adminUsername){ showToast(t('cannotOfferOwnDomain')); return; }
     document.getElementById('domain-detail-modal').style.display='none';
     window.openOfferModal(domainName);
 };
@@ -9774,6 +9801,72 @@ let _myAuctionsLoadInFlight=false;
 let _lastMyAuctionsToggleAt=0;
 let _myAuctionsOpenedAt=0;
 
+
+// ════════════════════════════════════════════════════════════════════════
+// KAYDIRMA / YENİLEME DÜZELTMESİ + BOŞTA OTOMATİK KAPANMA
+// 1) Arka plan tazelemeleri (8sn panel, 4sn bildirim, 7sn profil) listeyi her
+//    seferinde baştan çiziyordu; kullanıcı parmakla kaydırırken DOM değişince
+//    kaydırma kesiliyor/titriyordu. Artık: (a) içerik gerçekten değişmediyse
+//    hiç yeniden çizilmez (geri sayım metinleri karşılaştırmaya katılmaz),
+//    (b) kullanıcı o an kaydırıyorsa çizim, kaydırma bitene kadar ertelenir.
+// 2) Açılır paneller (Tekliflerim, Açık Artırmalarım, Gelen Teklifler) ve yan
+//    menü, belirli süre etkileşim olmazsa kendiliğinden kapanır.
+// ════════════════════════════════════════════════════════════════════════
+window._userScrollAt=0;
+['scroll','touchmove','wheel'].forEach(ev=>document.addEventListener(ev,()=>{ window._userScrollAt=Date.now(); },{capture:true,passive:true}));
+window._lastUserActionAt=Date.now();
+['touchstart','pointerdown','keydown','click','scroll'].forEach(ev=>document.addEventListener(ev,()=>{ window._lastUserActionAt=Date.now(); },{capture:true,passive:true}));
+(function installSmartInnerHTML(){
+    const desc=Object.getOwnPropertyDescriptor(Element.prototype,'innerHTML');
+    if(!desc||!desc.set) return;
+    const keyOf=(h)=>String(h).replace(/(js-countdown[^>]*>)[^<]*/g,'$1');
+    ['my-offers-content','received-offers-content','my-auctions-content','notif-list','ticket-list-container'].forEach(id=>{
+        const el=document.getElementById(id); if(!el||el._smartHtml) return;
+        el._smartHtml=true;
+        Object.defineProperty(el,'innerHTML',{configurable:true,
+            get(){ return desc.get.call(this); },
+            set(v){
+                const key=keyOf(v);
+                if(this._shKey===key) return;                       // değişiklik yok → dokunma
+                const apply=()=>{ this._shPend=null; this._shKey=keyOf(v); desc.set.call(this,v); };
+                if(this._shKey!==undefined && Date.now()-window._userScrollAt<700){
+                    // Kullanıcı kaydırıyor: çizimi ertele (en son değer kazanır).
+                    this._shPend=v;
+                    if(!this._shTimer){
+                        const tick=()=>{
+                            if(Date.now()-window._userScrollAt<700){ this._shTimer=setTimeout(tick,350); return; }
+                            this._shTimer=null;
+                            if(this._shPend!=null){ const pv=this._shPend; this._shPend=null; this._shKey=keyOf(pv); desc.set.call(this,pv); }
+                        };
+                        this._shTimer=setTimeout(tick,350);
+                    }
+                    return;
+                }
+                if(this._shTimer){ clearTimeout(this._shTimer); this._shTimer=null; }
+                apply();
+            }
+        });
+    });
+})();
+// Boşta otomatik kapanma (ms). Kullanıcı etkileşimde olduğu sürece kapanmaz.
+window.PANEL_IDLE_CLOSE_MS=60000;
+window.SIDE_MENU_IDLE_CLOSE_MS=45000;
+setInterval(()=>{
+    const idle=Date.now()-window._lastUserActionAt;
+    try{
+        if(idle>=window.PANEL_IDLE_CLOSE_MS){
+            // Toggle fonksiyonlarındaki 1.5sn koruması, süre çok önce dolduğu için devreye girmez.
+            if(typeof myOffersExpanded!=='undefined' && myOffersExpanded) window.toggleMyOffersList();
+            if(typeof myAuctionsExpanded!=='undefined' && myAuctionsExpanded) window.toggleMyAuctionsList();
+            if(typeof receivedOffersExpanded!=='undefined' && receivedOffersExpanded) window.toggleReceivedOffersList();
+            if(typeof myActiveListingsExpanded!=='undefined' && myActiveListingsExpanded){ myActiveListingsExpanded=false; renderUserPanel(); }
+        }
+        if(idle>=window.SIDE_MENU_IDLE_CLOSE_MS){
+            const m=document.getElementById('side-menu');
+            if(m && m.classList.contains('open')) window.toggleSideMenu();
+        }
+    }catch(e){}
+},5000);
 window.toggleMyOffersList=function(){
     if(_myOffersLoadInFlight) return;
     const now=Date.now();
@@ -12459,7 +12552,7 @@ function render(){
                 offerBtn.onclick=(e)=>{
                     e.stopPropagation();
                     if(!isAuth){ showToast(t('loginRequired')); return; }
-                    if(data.sellerUsername && data.sellerUsername===currentUser){ showToast(t('cannotOfferOwnDomain')); return; }
+                    if(data.sellerUsername && data.sellerUsername===currentUser && currentUser!==APP_CONFIG.adminUsername){ showToast(t('cannotOfferOwnDomain')); return; }
                     window.openOfferModal(d.name);
                 };
                 card.appendChild(offerBtn);
@@ -13758,8 +13851,14 @@ function debouncedProfileRefresh(){
     if(!isAuth||!piAccessToken) return;
     clearTimeout(profileRefreshTimeout);
     profileRefreshTimeout=setTimeout(async()=>{
+        const sigOf=()=>JSON.stringify([userProfile,[...userFavorites],userSellRequests,userSoldDomains,userActiveListings,userTotalSpent,userTotalEarned]);
+        const before=sigOf();
         await loadUserProfile();
-        debouncedRender();
+        // Veri değişmediyse tüm listeyi baştan çizme (kaydırmayı bozuyordu).
+        if(sigOf()===before) return;
+        // Kullanıcı kaydırıyorsa kısa süre bekle, sonra çiz.
+        const go=()=>{ if(Date.now()-(window._userScrollAt||0)<700) setTimeout(go,400); else debouncedRender(); };
+        go();
     },1200);
 }
 
@@ -15786,7 +15885,7 @@ window.openConversationDetail=async function(conversationId){
 window.openOrStartConversation=function(domainName,sellerUsername){
     if(!isAuth){ showToast(t('loginRequired')); return; }
     if(!sellerUsername){ showToast(t('sendMessageError')); return; }
-    if(sellerUsername===currentUser){ showToast(t('cannotMessageOwnDomain')); return; }
+    if(sellerUsername===currentUser && currentUser!==APP_CONFIG.adminUsername){ showToast(t('cannotMessageOwnDomain')); return; }
     document.getElementById('domain-detail-modal').style.display='none';
     const existing=myConversations.find(c=>c.domainName===domainName && (c.participants||[]).includes(sellerUsername));
     if(existing){
