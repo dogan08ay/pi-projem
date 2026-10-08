@@ -8458,27 +8458,65 @@ window.handleRejectSellRequest=async function(requestId){
 // aynı hızlı-admin-aksiyonu deseninde.
 window.handleStartAuction=async function(domainName){
     const isTr=currentLang==='tr';
-    const startPriceStr=prompt(isTr?`"${domainName}" için başlangıç fiyatı (π):`:`Starting price for "${domainName}" (π):`);
-    if(startPriceStr===null) return;
-    const startPrice=Number(startPriceStr);
-    if(!startPrice||startPrice<=0){ showToast(isTr?'Geçersiz başlangıç fiyatı.':'Invalid starting price.'); return; }
-    const minIncStr=prompt(isTr?'Minimum teklif artışı (π):':'Minimum bid increment (π):', '1');
-    if(minIncStr===null) return;
-    const minIncrement=Number(minIncStr);
-    if(!minIncrement||minIncrement<=0){ showToast(isTr?'Geçersiz minimum artış.':'Invalid minimum increment.'); return; }
-    const durationStr=prompt(isTr?'Süre (saat, 1-168 arası):':'Duration (hours, 1-168):', '24');
-    if(durationStr===null) return;
-    const durationHours=Number(durationStr);
-    if(!durationHours||durationHours<=0||durationHours>168){ showToast(isTr?'Süre 1-168 saat arasında olmalı.':'Duration must be 1-168 hours.'); return; }
-    // İsteğe bağlı: gizli rezerv fiyatı ve "Hemen Al" fiyatı (boş bırakılırsa yok).
-    const reserveStr=prompt(isTr?'Gizli REZERV fiyatı (π) — bu fiyata ulaşılmazsa satış yapılmaz. Boş bırakırsanız rezerv yok:':'Hidden RESERVE price (π) — no sale if not reached. Leave empty for none:','');
-    if(reserveStr===null) return;
-    const reservePrice=reserveStr.trim()===''?null:Number(reserveStr);
-    if(reservePrice!==null && (!(reservePrice>=startPrice))){ showToast(isTr?'Rezerv fiyatı başlangıç fiyatından küçük olamaz.':'Reserve cannot be below the starting price.'); return; }
-    const buyNowStr=prompt(isTr?'"Hemen Al" fiyatı (π) — alıcı bu fiyatla açık artırmayı anında bitirebilir. Boş bırakırsanız yok:':'"Buy Now" price (π) — ends the auction instantly. Leave empty for none:','');
-    if(buyNowStr===null) return;
-    const buyNowPrice=buyNowStr.trim()===''?null:Number(buyNowStr);
-    if(buyNowPrice!==null && (!(buyNowPrice>startPrice+minIncrement-1e-9) || (reservePrice!==null && buyNowPrice<reservePrice))){ showToast(isTr?'"Hemen Al" fiyatı başlangıç+artıştan ve rezervden büyük olmalı.':'Buy Now must exceed start+increment and the reserve.'); return; }
+    const curPrice=(domainData[domainName]&&typeof domainData[domainName].price==='number')?domainData[domainName].price:null;
+    const CANCEL=Symbol('cancel');
+    // Geçersiz değer girilince adımlar KAPANMAZ: uyarı gösterilir ve aynı soru, girilen değer korunarak yeniden sorulur.
+    // optional=true: boş bırakılabilir (null döner). İptal'e basılırsa tüm işlem iptal edilir (CANCEL).
+    function askNum(question,def,validate,optional){
+        let warn='';
+        while(true){
+            const raw=prompt((warn?('⚠️ '+warn+'\n\n'):'')+question,def===null||def===undefined?'':String(def));
+            if(raw===null) return CANCEL;
+            const txt=raw.trim().replace(',','.');
+            if(txt===''){ if(optional) return null; warn=isTr?'Bu alan boş bırakılamaz.':'This field cannot be left empty.'; continue; }
+            const v=Number(txt);
+            if(!Number.isFinite(v)){ warn=isTr?'Lütfen geçerli bir sayı girin.':'Please enter a valid number.'; def=raw; continue; }
+            const err=validate?validate(v):'';
+            if(err){ warn=err; def=txt; continue; }
+            return v;
+        }
+    }
+    const priceLine=curPrice!==null?(isTr?`Mevcut satış fiyatı: ${curPrice} π\n`:`Current sale price: ${curPrice} π\n`):'';
+    // 1) Başlangıç fiyatı — mevcut satış fiyatı hem yazılır hem varsayılan değer olur
+    const startPrice=askNum(
+        (isTr?`"${domainName}" için başlangıç fiyatı (π):\n${priceLine}`:`Starting price for "${domainName}" (π):\n${priceLine}`).trim(),
+        curPrice, v=>v>0?'':(isTr?'Başlangıç fiyatı 0\'dan büyük olmalı.':'The starting price must be greater than 0.'));
+    if(startPrice===CANCEL) return;
+    // 2) Minimum artış
+    const minIncrement=askNum(isTr?'Minimum teklif artışı (π):':'Minimum bid increment (π):',1,v=>v>0?'':(isTr?'Minimum artış 0\'dan büyük olmalı.':'The increment must be greater than 0.'));
+    if(minIncrement===CANCEL) return;
+    // 3) Süre
+    const durationHours=askNum(isTr?'Süre (saat, 1-168 arası):':'Duration (hours, 1-168):',24,v=>(v>0&&v<=168)?'':(isTr?'Süre 1-168 saat arasında olmalı.':'Duration must be between 1 and 168 hours.'));
+    if(durationHours===CANCEL) return;
+    // 4) Rezerv + 5) Hemen Al — birbirine bağlı: çelişki olursa yalnızca ilgili adım yeniden sorulur
+    const ctx=isTr?`(Başlangıç: ${startPrice} π · Min. artış: ${minIncrement} π${curPrice!==null?` · Mevcut satış: ${curPrice} π`:''})\n`:`(Start: ${startPrice} π · Min. increment: ${minIncrement} π${curPrice!==null?` · Current sale price: ${curPrice} π`:''})\n`;
+    let reservePrice=null, buyNowPrice=null;
+    reserveLoop: while(true){
+        const rv=askNum(ctx+(isTr?'Gizli REZERV fiyatı (π) — bu fiyata ulaşılmazsa satış yapılmaz. Boş bırakırsanız rezerv yok:':'Hidden RESERVE price (π) — no sale if not reached. Leave empty for none:'),
+            reservePrice,v=>v>=startPrice?'':(isTr?`Rezerv fiyatı başlangıç fiyatından (${startPrice} π) küçük olamaz.`:`The reserve cannot be below the starting price (${startPrice} π).`),true);
+        if(rv===CANCEL) return;
+        reservePrice=rv;
+        const minBuyNow=Math.max(startPrice+minIncrement, reservePrice!==null?reservePrice:0);
+        while(true){
+            const bn=askNum(ctx+(reservePrice!==null?(isTr?`Rezerv: ${reservePrice} π\n`:`Reserve: ${reservePrice} π\n`):'')+(isTr?'"Hemen Al" fiyatı (π) — alıcı bu fiyatla açık artırmayı anında bitirebilir. Boş bırakırsanız yok:':'"Buy Now" price (π) — ends the auction instantly. Leave empty for none:'),
+                buyNowPrice,v=>{
+                    if(!(v>startPrice+minIncrement-1e-9)) return isTr?`"Hemen Al" fiyatı başlangıç + minimum artıştan (${startPrice+minIncrement} π) büyük olmalı.`:`"Buy Now" must be above start + increment (${startPrice+minIncrement} π).`;
+                    return '';
+                },true);
+            if(bn===CANCEL) return;
+            if(bn===null){ buyNowPrice=null; break reserveLoop; }
+            if(reservePrice!==null && bn<reservePrice){
+                // Çelişki: hangisini düzelteceğini sor — işlem başa dönmez.
+                const fixBuyNow=confirm(isTr
+                    ?`⚠️ "Hemen Al" fiyatı (${bn} π) rezerv fiyatının (${reservePrice} π) altında olamaz.\n\nTamam: "Hemen Al" fiyatını yeniden gir (en az ${reservePrice} π)\nİptal: Rezerv fiyatını değiştir`
+                    :`⚠️ The "Buy Now" price (${bn} π) cannot be below the reserve (${reservePrice} π).\n\nOK: re-enter the "Buy Now" price (at least ${reservePrice} π)\nCancel: change the reserve price`);
+                buyNowPrice=bn;
+                if(fixBuyNow) continue;      // yalnızca Hemen Al yeniden sorulur
+                continue reserveLoop;        // yalnızca Rezerv yeniden sorulur (Hemen Al adımı sonrasında kaldığı yerden)
+            }
+            buyNowPrice=bn; break reserveLoop;
+        }
+    }
     if(!confirm(isTr?`"${domainName}" için ${startPrice} π'den başlayan, ${durationHours} saat sürecek bir açık artırma başlatılsın mı?${reservePrice!==null?`\nGizli rezerv: ${reservePrice} π`:''}${buyNowPrice!==null?`\nHemen Al: ${buyNowPrice} π`:''}`:`Start a ${durationHours}-hour auction for "${domainName}" starting at ${startPrice} π?${reservePrice!==null?`\nReserve: ${reservePrice} π`:''}${buyNowPrice!==null?`\nBuy Now: ${buyNowPrice} π`:''}`)) return;
     try{
         const r=await fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'start_auction',domainName,startPrice,minIncrement,durationHours,reservePrice,buyNowPrice,accessToken:piAccessToken})});
