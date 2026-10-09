@@ -618,7 +618,7 @@
            diye çerçevesi hafifçe açık tutulur. Aktif olduğunda bu kural
            artık eşleşmez ve üstteki .active kuralı (yeşil) normal şekilde
            devreye girer — tıpkı diğer tüm sekmeler gibi. -->
-        .user-tab-btn[data-utab="utab-history"]:not(.active){border-color:#475569;box-shadow:0 2px 8px rgba(0,0,0,0.35);}
+        .user-tab-btn[data-utab="utab-history"]:not(.active){border-color:#38bdf8;box-shadow:0 2px 8px rgba(0,0,0,0.35),0 0 8px rgba(56,189,248,0.25);}
         /* YENİ: "Yardım & Şikayetler" birleşik sekmesi içindeki alt seçim
            (pill) butonları — bkz. Destek Taleplerim/Marka Hakkı/Şikayetlerim
            birleştirmesi. */
@@ -676,8 +676,8 @@
         .acc-card:not(.acc-open) .pc-chip .pc-lbl-close{display:none;}
         .acc-card > button{-webkit-tap-highlight-color:transparent;}
         /* Geçmişim paneli */
-        #utab-history{background:linear-gradient(165deg,#0f172a 0%,#131a33 55%,#1a1633 100%);border:2px solid #475569;border-radius:16px;padding:12px 10px 8px;box-shadow:0 8px 24px rgba(0,0,0,0.4),inset 0 0 0 1px rgba(148,163,184,0.10);}
-        #utab-history .hist-head{display:flex;align-items:center;justify-content:center;gap:8px;margin:-2px -2px 10px;padding:8px 10px;border-radius:11px;background:linear-gradient(135deg,rgba(99,102,241,0.22),rgba(148,163,184,0.12));border:1px solid rgba(148,163,184,0.35);color:#e2e8f0;font-weight:900;font-size:0.85em;letter-spacing:.3px;text-transform:uppercase;}
+        #utab-history{background:linear-gradient(160deg,#0b2a52 0%,#0e3a66 45%,#0b4a5a 100%) !important;border:2.5px solid #38bdf8 !important;border-radius:18px !important;padding:12px 10px 8px !important;box-shadow:0 0 0 1px rgba(56,189,248,0.25),0 0 22px rgba(56,189,248,0.30),0 8px 24px rgba(0,0,0,0.45) !important;}
+        #utab-history .hist-head{display:flex;align-items:center;justify-content:center;gap:8px;margin:-2px -2px 10px;padding:9px 10px;border-radius:12px;background:linear-gradient(135deg,rgba(56,189,248,0.32),rgba(99,102,241,0.28));border:1.5px solid #7dd3fc;color:#f0f9ff;font-weight:900;font-size:0.88em;letter-spacing:.4px;text-transform:uppercase;text-shadow:0 1px 2px rgba(0,0,0,0.4);}
         #utab-history [id^="history-section-"]{border-width:1.5px !important;border-radius:14px !important;box-shadow:0 3px 12px rgba(0,0,0,0.28);}
         .pc-chip.pc-pop{animation:pc-pop .45s ease-out;}
         @keyframes pc-pulse{0%{box-shadow:0 0 0 0 rgba(255,255,255,0.40);}70%{box-shadow:0 0 0 9px rgba(255,255,255,0);}100%{box-shadow:0 0 0 0 rgba(255,255,255,0);}}
