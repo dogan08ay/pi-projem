@@ -669,6 +669,16 @@
         .card.pc-collapsed > .panel-collapsible-head .pc-lbl-close,
         .badge-rules-box.collapsed .badge-rules-title .pc-lbl-close,
         .user-info-note.collapsed .note-head .pc-lbl-close{display:none;}
+        /* Tekliflerim / Açık Artırmalarım / Gelen Tekliflerim: KAPALI = .acc-open yok */
+        .acc-card:not(.acc-open) .pc-chip{background:rgba(255,255,255,0.04);animation:pc-pulse 2.2s ease-out infinite;}
+        .acc-card:not(.acc-open) .pc-chip .pc-ico{transform:rotate(0deg);}
+        .acc-card:not(.acc-open) .pc-chip .pc-lbl-open{display:inline;}
+        .acc-card:not(.acc-open) .pc-chip .pc-lbl-close{display:none;}
+        .acc-card > button{-webkit-tap-highlight-color:transparent;}
+        /* Geçmişim paneli */
+        #utab-history{background:linear-gradient(165deg,#0f172a 0%,#131a33 55%,#1a1633 100%);border:2px solid #475569;border-radius:16px;padding:12px 10px 8px;box-shadow:0 8px 24px rgba(0,0,0,0.4),inset 0 0 0 1px rgba(148,163,184,0.10);}
+        #utab-history .hist-head{display:flex;align-items:center;justify-content:center;gap:8px;margin:-2px -2px 10px;padding:8px 10px;border-radius:11px;background:linear-gradient(135deg,rgba(99,102,241,0.22),rgba(148,163,184,0.12));border:1px solid rgba(148,163,184,0.35);color:#e2e8f0;font-weight:900;font-size:0.85em;letter-spacing:.3px;text-transform:uppercase;}
+        #utab-history [id^="history-section-"]{border-width:1.5px !important;border-radius:14px !important;box-shadow:0 3px 12px rgba(0,0,0,0.28);}
         .pc-chip.pc-pop{animation:pc-pop .45s ease-out;}
         @keyframes pc-pulse{0%{box-shadow:0 0 0 0 rgba(255,255,255,0.40);}70%{box-shadow:0 0 0 9px rgba(255,255,255,0);}100%{box-shadow:0 0 0 0 rgba(255,255,255,0);}}
         @keyframes pc-pop{0%{transform:scale(1);}40%{transform:scale(1.18);}100%{transform:scale(1);}}
@@ -2676,8 +2686,8 @@
                 <div style="display:flex;align-items:center;justify-content:center;gap:6px;margin-bottom:8px;padding-bottom:7px;border-bottom:1px solid #064e3b;"><span style="animation:icon-pulse-green 2s ease-in-out infinite;">🛒</span><span style="font-size:0.78em;color:#34d399;font-weight:800;text-transform:uppercase;" data-i18n="purchasedDomains"></span></div>
                 <div id="my-domains-list" style="text-align:left;"></div>
             </div>
-            <div style="background:#161329;border:2px solid #818cf8;border-radius:12px;padding:10px;margin-top:18px;box-shadow:0 4px 14px rgba(0,0,0,0.25);">
-                <button onclick="window.toggleMyOffersList()" style="width:100%;display:flex;align-items:center;justify-content:center;gap:6px;background:none;border:none;color:#a5b4fc;font-size:0.78em;font-weight:800;text-transform:uppercase;cursor:pointer;padding:0;position:relative;">💬 <span data-i18n="myOffersTitle"></span> <span style="font-size:0.8em;">▾</span><span class="pending-badge" id="my-offers-title-badge" style="display:none;position:static;margin-left:2px;">0</span></button>
+            <div class="acc-card" style="background:#161329;border:2px solid #818cf8;border-radius:12px;padding:10px;margin-top:18px;box-shadow:0 4px 14px rgba(0,0,0,0.25);">
+                <button onclick="window.toggleMyOffersList()" style="width:100%;display:flex;align-items:center;justify-content:center;gap:6px;background:none;border:none;color:#a5b4fc;font-size:0.78em;font-weight:800;text-transform:uppercase;cursor:pointer;padding:0;position:relative;">💬 <span data-i18n="myOffersTitle"></span> <span class="pc-chip" aria-hidden="true"><span class="pc-lbl-open" data-i18n="panelExpand"></span><span class="pc-lbl-close" data-i18n="panelCollapse"></span><svg class="pc-ico" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></span><span class="pending-badge" id="my-offers-title-badge" style="display:none;position:static;margin-left:2px;">0</span></button>
                 <div id="my-offers-content" style="display:none;margin-top:8px;"></div>
             </div>
             <!-- YENİ: "Açık Artırmalarım" — teklif verdiğim TÜM açık artırmaları
@@ -2687,8 +2697,8 @@
                  takip menüsü yoktu. "Tekliflerim" ile birebir aynı desen,
                  sadece rengi mor yerine turuncu-sarı (⏰) ki iki panel
                  karışmasın. -->
-            <div style="background:#1e1608;border:2px solid #f59e0b;border-radius:12px;padding:10px;margin-top:18px;box-shadow:0 4px 14px rgba(0,0,0,0.25);">
-                <button onclick="window.toggleMyAuctionsList()" style="width:100%;display:flex;align-items:center;justify-content:center;gap:6px;background:none;border:none;color:#fcd34d;font-size:0.78em;font-weight:800;text-transform:uppercase;cursor:pointer;padding:0;position:relative;">⏰ <span data-i18n="myAuctionsTitle"></span> <span style="font-size:0.8em;">▾</span><span class="pending-badge" id="my-auctions-title-badge" style="display:none;position:static;margin-left:2px;">0</span></button>
+            <div class="acc-card" style="background:#1e1608;border:2px solid #f59e0b;border-radius:12px;padding:10px;margin-top:18px;box-shadow:0 4px 14px rgba(0,0,0,0.25);">
+                <button onclick="window.toggleMyAuctionsList()" style="width:100%;display:flex;align-items:center;justify-content:center;gap:6px;background:none;border:none;color:#fcd34d;font-size:0.78em;font-weight:800;text-transform:uppercase;cursor:pointer;padding:0;position:relative;">⏰ <span data-i18n="myAuctionsTitle"></span> <span class="pc-chip" aria-hidden="true"><span class="pc-lbl-open" data-i18n="panelExpand"></span><span class="pc-lbl-close" data-i18n="panelCollapse"></span><svg class="pc-ico" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></span><span class="pending-badge" id="my-auctions-title-badge" style="display:none;position:static;margin-left:2px;">0</span></button>
                 <div id="my-auctions-content" style="display:none;margin-top:8px;"></div>
             </div>
         </div>
@@ -2698,8 +2708,8 @@
                  ikisi de border:#f59e0b) — bu yüzden iki panel neredeyse
                  kaynaşmış gibi görünüyordu. Artık teklifler indigo, ilanlar
                  amber temada, net ayrışıyor. Panel arası boşluk da artırıldı. -->
-            <div style="background:#161329;border:2px solid #818cf8;border-radius:12px;padding:10px;margin-bottom:18px;box-shadow:0 4px 14px rgba(0,0,0,0.25);">
-                <button onclick="window.toggleReceivedOffersList()" style="width:100%;display:flex;align-items:center;justify-content:center;gap:6px;background:none;border:none;color:#a5b4fc;font-size:0.78em;font-weight:800;text-transform:uppercase;cursor:pointer;padding:0;position:relative;">📥 <span data-i18n="receivedOffersTitle"></span> <span style="font-size:0.8em;">▾</span><span class="pending-badge" id="received-offers-title-badge" style="display:none;position:static;margin-left:2px;">0</span></button>
+            <div class="acc-card" style="background:#161329;border:2px solid #818cf8;border-radius:12px;padding:10px;margin-bottom:18px;box-shadow:0 4px 14px rgba(0,0,0,0.25);">
+                <button onclick="window.toggleReceivedOffersList()" style="width:100%;display:flex;align-items:center;justify-content:center;gap:6px;background:none;border:none;color:#a5b4fc;font-size:0.78em;font-weight:800;text-transform:uppercase;cursor:pointer;padding:0;position:relative;">📥 <span data-i18n="receivedOffersTitle"></span> <span class="pc-chip" aria-hidden="true"><span class="pc-lbl-open" data-i18n="panelExpand"></span><span class="pc-lbl-close" data-i18n="panelCollapse"></span><svg class="pc-ico" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></span><span class="pending-badge" id="received-offers-title-badge" style="display:none;position:static;margin-left:2px;">0</span></button>
                 <div id="received-offers-content" style="display:none;margin-top:8px;"></div>
             </div>
             <div style="background:#1c1917;border:2px solid #f59e0b;border-radius:12px;padding:10px;box-shadow:0 4px 14px rgba(0,0,0,0.25);">
@@ -2833,6 +2843,7 @@
              mevcut verileri canlı sorguluyor — bu yüzden bir domain/talep
              silinirse buradan da otomatik kayboluyor. -->
         <div class="user-tab-panel" id="utab-history">
+            <div class="hist-head">🕓 <span data-i18n="myHistoryTab"></span></div>
             <div style="font-size:0.74em;color:#94a3b8;margin-bottom:8px;line-height:1.5;padding:0 2px;" data-i18n="myHistoryNote"></div>
             <div id="history-retention-note" style="display:none;font-size:0.72em;color:#fcd34d;background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.35);border-radius:9px;padding:7px 9px;margin:0 3px 8px;line-height:1.55;"></div>
 
@@ -9876,16 +9887,40 @@ window._userScrollAt=0;
 window._lastUserActionAt=Date.now();
 ['touchstart','pointerdown','keydown','click','scroll'].forEach(ev=>document.addEventListener(ev,()=>{ window._lastUserActionAt=Date.now(); },{capture:true,passive:true}));
 // Boşta otomatik kapanma (ms). Kullanıcı etkileşimde olduğu sürece kapanmaz.
-window.PANEL_IDLE_CLOSE_MS=60000;
+window.PANEL_IDLE_CLOSE_MS=45000;
 window.SIDE_MENU_IDLE_CLOSE_MS=45000;
+// Tekliflerim / Açık Artırmalarım / Gelen Tekliflerim: ikon durumu + panel bazlı boşta kapanma.
+// Durum, içerik alanının görünürlüğünden okunur (hangi yoldan açılıp kapanırsa kapansın ikon doğru döner).
+const _accPanels=[
+    {id:'my-offers-content', close:()=>window.toggleMyOffersList()},
+    {id:'my-auctions-content', close:()=>window.toggleMyAuctionsList()},
+    {id:'received-offers-content', close:()=>window.toggleReceivedOffersList()}
+].map(d=>({...d, el:document.getElementById(d.id), last:Date.now(), open:false}));
+function _accSync(pn,initial){
+    if(!pn.el) return;
+    const card=pn.el.closest('.acc-card'); if(!card) return;
+    const open=pn.el.style.display!=='none';
+    if(open===pn.open && !initial) return;
+    pn.open=open; pn.last=Date.now();
+    card.classList.toggle('acc-open',open);
+    const btn=card.querySelector(':scope > button'); if(btn){ btn.setAttribute('aria-expanded',open?'true':'false'); if(!initial) _pcPop(btn); }
+}
+_accPanels.forEach(pn=>{
+    if(!pn.el) return;
+    _accSync(pn,true);
+    new MutationObserver(()=>_accSync(pn,false)).observe(pn.el,{attributes:true,attributeFilter:['style']});
+    // Panelin içindeki dokunma/tıklama/kaydırma/klavye hareketi süreyi sıfırlar.
+    const card=pn.el.closest('.acc-card');
+    ['touchstart','pointerdown','click','keydown','scroll','input'].forEach(ev=>card.addEventListener(ev,()=>{ pn.last=Date.now(); },{capture:true,passive:true}));
+});
 setInterval(()=>{
-    const idle=Date.now()-window._lastUserActionAt;
+    const now=Date.now();
     try{
-        if(idle>=window.PANEL_IDLE_CLOSE_MS){
-            // Toggle fonksiyonlarındaki 1.5sn koruması, süre çok önce dolduğu için devreye girmez.
-            if(typeof myOffersExpanded!=='undefined' && myOffersExpanded) window.toggleMyOffersList();
-            if(typeof myAuctionsExpanded!=='undefined' && myAuctionsExpanded) window.toggleMyAuctionsList();
-            if(typeof receivedOffersExpanded!=='undefined' && receivedOffersExpanded) window.toggleReceivedOffersList();
+        _accPanels.forEach(pn=>{
+            if(pn.open && now-pn.last>=window.PANEL_IDLE_CLOSE_MS) pn.close();
+        });
+        const idle=now-window._lastUserActionAt;
+        if(idle>=window.PANEL_IDLE_CLOSE_MS*1.3){
             if(typeof myActiveListingsExpanded!=='undefined' && myActiveListingsExpanded){ myActiveListingsExpanded=false; renderUserPanel(); }
         }
         if(idle>=window.SIDE_MENU_IDLE_CLOSE_MS){
