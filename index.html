@@ -653,16 +653,37 @@
         .log-item{display:flex;justify-content:space-between;background:#0f172a;padding:4px 8px;border-radius:6px;margin-bottom:5px;font-size:0.8em;}
         /* Açılır paneller (Panelim / Admin Panel) ve rozet koşulları */
         .panel-collapsible-head{cursor:pointer;-webkit-tap-highlight-color:transparent;user-select:none;}
-        .pc-chevron{display:inline-block;margin-left:6px;font-size:0.9em;transition:transform .2s;opacity:.85;}
-        .card.pc-collapsed > .panel-collapsible-head .pc-chevron{transform:rotate(-90deg);}
+        .pc-chip{display:inline-flex;align-items:center;gap:5px;margin-left:8px;padding:3px 9px 3px 10px;border-radius:999px;border:1.5px solid currentColor;font-size:0.72em;font-weight:900;line-height:1.3;letter-spacing:.2px;background:rgba(255,255,255,0.14);white-space:nowrap;transition:background .25s,transform .25s;}
+        .pc-chip .pc-ico{transition:transform .35s cubic-bezier(.34,1.56,.64,1);transform:rotate(180deg);flex:0 0 auto;}
+        .pc-chip .pc-lbl-open{display:none;} .pc-chip .pc-lbl-close{display:inline;}
+        /* KAPALI durum: oku aşağı, "Aç" yazısı, dikkat çekici nabız halkası */
+        .card.pc-collapsed > .panel-collapsible-head .pc-chip,
+        .badge-rules-box.collapsed .badge-rules-title .pc-chip,
+        .user-info-note.collapsed .note-head .pc-chip{background:rgba(255,255,255,0.04);animation:pc-pulse 2.2s ease-out infinite;}
+        .card.pc-collapsed > .panel-collapsible-head .pc-chip .pc-ico,
+        .badge-rules-box.collapsed .badge-rules-title .pc-chip .pc-ico,
+        .user-info-note.collapsed .note-head .pc-chip .pc-ico{transform:rotate(0deg);}
+        .card.pc-collapsed > .panel-collapsible-head .pc-lbl-open,
+        .badge-rules-box.collapsed .badge-rules-title .pc-lbl-open,
+        .user-info-note.collapsed .note-head .pc-lbl-open{display:inline;}
+        .card.pc-collapsed > .panel-collapsible-head .pc-lbl-close,
+        .badge-rules-box.collapsed .badge-rules-title .pc-lbl-close,
+        .user-info-note.collapsed .note-head .pc-lbl-close{display:none;}
+        .pc-chip.pc-pop{animation:pc-pop .45s ease-out;}
+        @keyframes pc-pulse{0%{box-shadow:0 0 0 0 rgba(255,255,255,0.40);}70%{box-shadow:0 0 0 9px rgba(255,255,255,0);}100%{box-shadow:0 0 0 0 rgba(255,255,255,0);}}
+        @keyframes pc-pop{0%{transform:scale(1);}40%{transform:scale(1.18);}100%{transform:scale(1);}}
+        @media (prefers-reduced-motion: reduce){.pc-chip,.pc-chip .pc-ico{animation:none !important;transition:none !important;}}
+        .panel-collapsible-head{cursor:pointer;-webkit-tap-highlight-color:transparent;user-select:none;}
         .card.pc-collapsed > :not(h3):not(span){display:none !important;}
         .pc-summary{display:none;margin-left:8px;background:#ef4444;color:#fff;border-radius:999px;font-size:0.78em;font-weight:900;padding:1px 7px;}
         .card.pc-collapsed .pc-summary.has{display:inline-block;}
         .badge-rules-box .badge-rules-title{cursor:pointer;display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;-webkit-tap-highlight-color:transparent;}
         .badge-rules-box.collapsed > :not(.badge-rules-title){display:none !important;}
         .badge-rules-box.collapsed .badge-rules-title{margin-bottom:0 !important;}
-        .badge-rules-box .brt-chev{transition:transform .2s;}
-        .badge-rules-box.collapsed .brt-chev{transform:rotate(-90deg);}
+        .user-info-note .note-head{display:flex;align-items:center;justify-content:space-between;gap:8px;cursor:pointer;-webkit-tap-highlight-color:transparent;user-select:none;}
+        .user-info-note .note-head .info-badge-header{margin-bottom:0;}
+        .user-info-note:not(.collapsed) .note-head{margin-bottom:8px;}
+        .user-info-note.collapsed .user-info-note-text{display:none;}
         .user-info-note{position:relative;background:rgba(245,158,11,0.1);border:1.5px solid #f59e0b;color:#fde68a;padding:9px 8px;border-radius:10px;font-size:0.78em;line-height:1.65;margin-bottom:10px;text-align:left;box-sizing:border-box;width:100%;max-width:100%;overflow-wrap:break-word;word-break:break-word;hyphens:auto;box-shadow:0 0 10px rgba(245,158,11,0.15);}
         .user-info-note-text{display:block;white-space:normal;text-align:left;word-break:break-word;overflow-wrap:break-word;hyphens:none;font-size:0.88em;line-height:1.7;}
         .btn-fake-buy{background:var(--accent);color:white;padding:1px 4px;border-radius:3px;font-weight:900;font-size:0.85em;}
@@ -2543,7 +2564,7 @@
     <!-- Kullanıcı Paneli -->
     <div class="card" id="user-panel" style="display:none;border:2px solid #10b981;box-shadow:0 0 12px rgba(16,185,129,0.2);padding:5px;box-sizing:border-box;width:calc(100% - 16px);margin-left:auto;margin-right:auto;">
         <h3 class="panel-collapsible-head" data-pc="user" onclick="window.togglePanelCollapse('user-panel',event)" style="color:#10b981;margin:-4px -4px 6px -4px;padding:6px 4px;font-size:0.9em;display:flex;align-items:center;justify-content:center;position:relative;background:linear-gradient(135deg,rgba(16,185,129,0.18) 0%,rgba(5,150,105,0.1) 100%);border-bottom:1.5px solid rgba(16,185,129,0.35);border-radius:12px 12px 0 0;font-weight:900;">
-            <span style="display:flex;align-items:center;gap:5px;">👤 <span data-i18n="myPanel"></span><span class="pc-chevron">▾</span><span class="pc-summary" id="user-panel-summary"></span></span>
+            <span style="display:flex;align-items:center;gap:5px;">👤 <span data-i18n="myPanel"></span><span class="pc-chip" aria-hidden="true"><span class="pc-lbl-open" data-i18n="panelExpand"></span><span class="pc-lbl-close" data-i18n="panelCollapse"></span><svg class="pc-ico" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></span><span class="pc-summary" id="user-panel-summary"></span></span>
             <button id="user-panel-refresh-btn" class="panel-refresh-btn" onclick="window.refreshUserPanel()" title="Yenile">
                 <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
             </button>
@@ -2597,8 +2618,10 @@
         </div>
         <div class="user-tab-panel active" id="utab-overview">
             <div class="user-info-note" id="user-info-note">
-                <button type="button" onclick="window.dismissInfoNote()" aria-label="Kapat" style="position:absolute;top:4px;right:6px;width:28px;height:28px;border:none;background:transparent;color:#fde68a;font-size:1.3em;font-weight:900;line-height:1;cursor:pointer;">×</button>
-                <div class="info-badge-header"><span class="info-badge-icon">ℹ️</span><span data-i18n="info"></span></div>
+                <div class="note-head" onclick="window.toggleInfoNote()" role="button" tabindex="0">
+                    <div class="info-badge-header"><span class="info-badge-icon">ℹ️</span><span data-i18n="info"></span></div>
+                    <span class="pc-chip" aria-hidden="true"><span class="pc-lbl-open" data-i18n="panelExpand"></span><span class="pc-lbl-close" data-i18n="panelCollapse"></span><svg class="pc-ico" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></span>
+                </div>
                 <div class="user-info-note-text" data-i18n="testNetNote"></div>
             </div>
             <div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:6px;margin-bottom:8px;min-width:0;">
@@ -2615,7 +2638,7 @@
                 <div style="display:flex;align-items:center;gap:6px;"><span id="up-referral-count" style="font-size:1.1em;font-weight:900;color:#34d399;">0</span><span style="font-size:0.8em;">📤</span></div>
             </button>
             <div id="badge-rules-box" class="badge-rules-box collapsed" style="background:#0f172a;border:1px dashed #334155;border-radius:10px;padding:8px;margin-top:4px;">
-                <div class="badge-rules-title" onclick="window.toggleBadgeRules()" style="font-size:0.72em;color:#64748b;font-weight:800;text-transform:uppercase;letter-spacing:0.5px;"><span data-i18n="badgeInfoTitle"></span><span class="brt-chev">▾</span></div>
+                <div class="badge-rules-title" onclick="window.toggleBadgeRules()" style="font-size:0.72em;color:#64748b;font-weight:800;text-transform:uppercase;letter-spacing:0.5px;"><span data-i18n="badgeInfoTitle"></span><span class="pc-chip" aria-hidden="true"><span class="pc-lbl-open" data-i18n="panelExpand"></span><span class="pc-lbl-close" data-i18n="panelCollapse"></span><svg class="pc-ico" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></span></div>
                 <!-- YENİ: Sıfır puanlı yeni bir kullanıcı bu bölümü ilk
                      gördüğünde "boş/anlamsız" hissetmesin diye, puanların
                      NASIL kazanıldığını kısaca açıklayan bir satır eklendi. -->
@@ -2883,7 +2906,7 @@
     </div>
     <div class="card" id="admin-panel" style="display:none;background:linear-gradient(165deg,#241209 0%,#1a0f08 55%,#20120a 100%);border:2px solid #f59e0b;box-shadow:0 0 16px rgba(245,158,11,0.3);padding:5px;box-sizing:border-box;width:calc(100% - 16px);margin-left:auto;margin-right:auto;position:relative;">
         <span style="position:absolute;top:-10px;left:12px;z-index:5;background:linear-gradient(135deg,#f59e0b,#ef4444);color:#1e1b4b;font-size:0.72em;font-weight:900;padding:4px 11px;border-radius:8px;letter-spacing:0.5px;text-transform:uppercase;box-shadow:0 3px 10px rgba(0,0,0,0.4),0 0 0 2px #1a0f08;white-space:nowrap;" data-i18n="adminOnlyBadge"></span>
-        <h3 class="panel-collapsible-head" data-pc="admin" onclick="window.togglePanelCollapse('admin-panel',event)" style="color:#fbbf24;margin:-5px -5px 8px -5px;padding:8px 5px;font-size:0.95em;display:flex;align-items:center;justify-content:center;gap:6px;background:linear-gradient(135deg,rgba(245,158,11,0.22) 0%,rgba(153,27,27,0.16) 100%);border-bottom:1.5px solid rgba(245,158,11,0.45);border-radius:14px 14px 0 0;font-weight:900;position:relative;">🛠 Admin Panel<span class="pc-chevron">▾</span>
+        <h3 class="panel-collapsible-head" data-pc="admin" onclick="window.togglePanelCollapse('admin-panel',event)" style="color:#fbbf24;margin:-5px -5px 8px -5px;padding:8px 5px;font-size:0.95em;display:flex;align-items:center;justify-content:center;gap:6px;background:linear-gradient(135deg,rgba(245,158,11,0.22) 0%,rgba(153,27,27,0.16) 100%);border-bottom:1.5px solid rgba(245,158,11,0.45);border-radius:14px 14px 0 0;font-weight:900;position:relative;">🛠 Admin Panel<span class="pc-chip" aria-hidden="true"><span class="pc-lbl-open" data-i18n="panelExpand"></span><span class="pc-lbl-close" data-i18n="panelCollapse"></span><svg class="pc-ico" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></span>
             <button id="admin-panel-refresh-btn" class="panel-refresh-btn" onclick="window.refreshAdminPanel()" title="Yenile">
                 <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
             </button>
@@ -4443,7 +4466,7 @@ const i18n = {
     recentReviewsLabel:"Son Değerlendirmeler",
     detailMoreInfoToggle:"Daha Fazla Detay (Fiyat Geçmişi, Değerlendirmeler)",
     detailLessInfoToggle:"Daha Az Detay",
-    refreshApp:"Yenile", pullToRefresh:"Yenilemek için aşağı çekin", releaseToRefresh:"Yenilemek için bırakın", refreshing:"Yenileniyor…", refreshedDone:"Güncellendi",
+    refreshApp:"Yenile", panelExpand:"Aç", panelCollapse:"Kapat", pullToRefresh:"Yenilemek için aşağı çekin", releaseToRefresh:"Yenilemek için bırakın", refreshing:"Yenileniyor…", refreshedDone:"Güncellendi",
     sortNewest:"🆕 En Yeni Eklenenler",sortPriceAsc:"💰 Fiyat: Düşükten Yükseğe",sortPriceDesc:"💰 Fiyat: Yüksekten Düşüğe",sortAz:"🔤 İsim (A-Z)",
     favoriteAddBtn:"Favorilere Ekle",favoriteRemoveBtn:"Favorilerden Çıkar",
     howItWorksMenuItem:"Nasıl Çalışır?",howItWorksTitle:"Nasıl Çalışır ve Nasıl Korunuyorsunuz?",
@@ -5448,7 +5471,7 @@ const i18n = {
     recentReviewsLabel:"Recent Reviews",
     detailMoreInfoToggle:"More Details (Price History, Reviews)",
     detailLessInfoToggle:"Fewer Details",
-    refreshApp:"Refresh", pullToRefresh:"Pull down to refresh", releaseToRefresh:"Release to refresh", refreshing:"Refreshing…", refreshedDone:"Updated",
+    refreshApp:"Refresh", panelExpand:"Open", panelCollapse:"Close", pullToRefresh:"Pull down to refresh", releaseToRefresh:"Release to refresh", refreshing:"Refreshing…", refreshedDone:"Updated",
     sortNewest:"🆕 Newest First",sortPriceAsc:"💰 Price: Low to High",sortPriceDesc:"💰 Price: High to Low",sortAz:"🔤 Name (A-Z)",
     favoriteAddBtn:"Add to Favorites",favoriteRemoveBtn:"Remove from Favorites",
     howItWorksMenuItem:"How It Works",howItWorksTitle:"How It Works & How You're Protected",
@@ -9914,13 +9937,36 @@ function _pcApply(){
     const br=document.getElementById('badge-rules-box');
     if(br) br.classList.toggle('collapsed', _pcGet('dofiay_badge_rules_open','0')!=='1');
     const note=document.getElementById('user-info-note');
-    if(note) note.style.display=_pcGet('dofiay_info_note_hidden','0')==='1'?'none':'';
+    if(note){
+        note.style.display='';
+        // Eski sürümde "kapat" bilgiyi tamamen gizliyordu; o kullanıcılar için kapalı başlat.
+        let open=_pcGet('dofiay_info_note_open',null);
+        if(open===null) open=(_pcGet('dofiay_info_note_hidden','0')==='1')?'0':'1';
+        note.classList.toggle('collapsed',open!=='1');
+    }
+    _pcAria();
+}
+function _pcAria(){
+    document.querySelectorAll('.panel-collapsible-head').forEach(h=>{
+        const c=h.closest('.card'); h.setAttribute('role','button'); h.setAttribute('tabindex','0');
+        h.setAttribute('aria-expanded',c&&c.classList.contains('pc-collapsed')?'false':'true');
+    });
+    const br=document.querySelector('.badge-rules-title'), bb=document.getElementById('badge-rules-box');
+    if(br&&bb){ br.setAttribute('role','button'); br.setAttribute('tabindex','0'); br.setAttribute('aria-expanded',bb.classList.contains('collapsed')?'false':'true'); }
+    const nh=document.querySelector('#user-info-note .note-head'), nb=document.getElementById('user-info-note');
+    if(nh&&nb) nh.setAttribute('aria-expanded',nb.classList.contains('collapsed')?'false':'true');
+}
+function _pcPop(scope){
+    const chip=scope&&scope.querySelector('.pc-chip'); if(!chip) return;
+    chip.classList.remove('pc-pop'); void chip.offsetWidth; chip.classList.add('pc-pop');
+    setTimeout(()=>chip.classList.remove('pc-pop'),500);
 }
 window.togglePanelCollapse=function(id,ev){
     if(ev && ev.target && ev.target.closest && ev.target.closest('button')) return; // yenile düğmesi
     const el=document.getElementById(id); if(!el) return;
     const collapsed=el.classList.toggle('pc-collapsed');
     _pcSet('dofiay_pc_'+id,collapsed?'1':'0');
+    _pcPop(el.querySelector(':scope > .panel-collapsible-head')); _pcAria();
 };
 window.expandPanel=function(id){
     const el=document.getElementById(id);
@@ -9930,11 +9976,21 @@ window.toggleBadgeRules=function(){
     const br=document.getElementById('badge-rules-box'); if(!br) return;
     const collapsed=br.classList.toggle('collapsed');
     _pcSet('dofiay_badge_rules_open',collapsed?'0':'1');
+    _pcPop(br.querySelector('.badge-rules-title')); _pcAria();
 };
-window.dismissInfoNote=function(){
-    const note=document.getElementById('user-info-note'); if(note) note.style.display='none';
-    _pcSet('dofiay_info_note_hidden','1');
+window.toggleInfoNote=function(){
+    const note=document.getElementById('user-info-note'); if(!note) return;
+    const collapsed=note.classList.toggle('collapsed');
+    _pcSet('dofiay_info_note_open',collapsed?'0':'1');
+    _pcPop(note.querySelector('.note-head')); _pcAria();
 };
+// Klavye erişimi: Enter/Boşluk ile aç-kapat
+document.addEventListener('keydown',(e)=>{
+    if(e.key!=='Enter' && e.key!==' ') return;
+    const h=e.target&&e.target.closest&&e.target.closest('.panel-collapsible-head,.badge-rules-title,.note-head');
+    if(!h || e.target.closest('button')) return;
+    e.preventDefault(); h.click();
+});
 // Sekme açan her işlem (bildirimden gitme, tur, destek talebi) ilgili paneli otomatik açar.
 (function(){
     const swU=window.switchUserTab, swA=window.switchAdminTab;
