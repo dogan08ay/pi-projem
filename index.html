@@ -6180,6 +6180,46 @@ window.setLang=function(lang){
     // Telegram / e-posta / push dili de sunucuda güncellensin (beklemeden, arka planda).
     try{ if(isAuth&&piAccessToken){ fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'set_language',lang,accessToken:piAccessToken})}).catch(()=>{}); } }catch(_){}
 };
+
+// ── İLK AÇILIŞ DİL SORUSU (bir defaya mahsus) ───────────────────────────
+// Kullanıcı daha önce dil seçmediyse (localStorage'da w3dg_lang yok) uygulama
+// açılır açılmaz TEK SEFER sorulur. Seçim kaydedilir; sonrasında dil yalnızca
+// yan menüdeki "Dil" bölümünden değiştirilirse değişir.
+let _langAskedThisSession=false;
+function _hasChosenLang(){ try{ return localStorage.getItem('w3dg_lang')!==null; }catch(e){ return _langAskedThisSession; } }
+function showFirstLangPrompt(){
+    if(_hasChosenLang() || _langAskedThisSession || document.getElementById('first-lang-overlay')) return;
+    _langAskedThisSession=true;
+    const browserTr=/^tr\b/i.test(navigator.language||'');
+    const ov=document.createElement('div');
+    ov.id='first-lang-overlay';
+    ov.setAttribute('role','dialog'); ov.setAttribute('aria-modal','true');
+    ov.style.cssText='position:fixed;inset:0;z-index:2147483200;display:flex;align-items:center;justify-content:center;padding:20px;background:rgba(5,8,20,0.88);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);';
+    const btn=(code,flag,name,rec)=>`<button type="button" data-lang="${code}" style="display:flex;align-items:center;justify-content:center;gap:12px;width:100%;padding:16px 14px;margin-top:12px;border-radius:14px;border:2px solid ${rec?'#818cf8':'#334155'};background:${rec?'linear-gradient(135deg,#4338ca,#6366f1)':'linear-gradient(135deg,#1e293b,#0f172a)'};color:#fff;font-weight:900;font-size:1.05em;cursor:pointer;box-shadow:${rec?'0 0 18px rgba(99,102,241,0.55)':'none'};"><span style="font-size:1.5em;">${flag}</span><span>${name}</span>${rec?'<span style="font-size:0.7em;font-weight:800;background:rgba(255,255,255,0.18);border-radius:999px;padding:2px 8px;">'+(code==='tr'?'Önerilen':'Suggested')+'</span>':''}</button>`;
+    ov.innerHTML=`<div style="width:100%;max-width:340px;background:linear-gradient(160deg,#111827,#0f172a);border:2px solid #6366f1;border-radius:20px;padding:22px 18px 20px;text-align:center;box-shadow:0 12px 40px rgba(0,0,0,0.6);">
+        <div style="font-size:2.2em;">🌐</div>
+        <div style="color:#e0e7ff;font-weight:900;font-size:1.15em;margin-top:6px;">Dil Seçin / Choose Language</div>
+        <div style="color:#94a3b8;font-size:0.8em;margin-top:6px;line-height:1.5;">Bunu daha sonra yan menüden değiştirebilirsiniz.<br>You can change this later from the side menu.</div>
+        ${btn('tr','🇹🇷','Türkçe',browserTr)}${btn('en','🇬🇧','English',!browserTr)}
+    </div>`;
+    ov.addEventListener('click',(e)=>{
+        const b=e.target.closest&&e.target.closest('button[data-lang]'); if(!b) return;
+        const lang=b.getAttribute('data-lang')==='en'?'en':'tr';
+        window.setLang(lang);              // kaydeder, arayüzü çevirir, giriş yapılmışsa sunucuya bildirir
+        ov.remove();
+    });
+    document.body.appendChild(ov);
+}
+// Açılış ekranı (boot splash) bitince sor; en geç ~25 sn denenir.
+(function waitAndAskLang(){
+    if(_hasChosenLang()) return;
+    let tries=0;
+    const iv=setInterval(()=>{
+        tries++;
+        if(_hasChosenLang() || tries>100){ clearInterval(iv); return; }
+        if(!document.documentElement.classList.contains('app-booting')){ clearInterval(iv); showFirstLangPrompt(); }
+    },250);
+})();
 // STATE
 let currentUser=null,piAccessToken=null,isAuth=false;
 
