@@ -6182,20 +6182,26 @@ window.setLang=function(lang){
 };
 
 // ── İLK AÇILIŞ DİL SORUSU (bir defaya mahsus) ───────────────────────────
-// Kullanıcı daha önce dil seçmediyse (localStorage'da w3dg_lang yok) uygulama
-// açılır açılmaz TEK SEFER sorulur. Seçim kaydedilir; sonrasında dil yalnızca
-// yan menüdeki "Dil" bölümünden değiştirilirse değişir.
+// HERKESE (daha önce dil seçmiş olanlar dahil) bu güncellemeden sonra açılışta
+// TEK SEFER sorulur. "Soruldu" bilgisi, dilin kendisinden bağımsız ayrı bir
+// anahtarda (w3dg_lang_prompted) tutulur. Seçim yapılınca kaydedilir; sonrasında
+// dil yalnızca yan menüdeki "Dil" bölümünden değiştirilirse değişir.
+// Yeniden herkese sormak gerekirse sadece PROMPT_KEY sürüm numarasını artırın.
+const LANG_PROMPT_KEY='w3dg_lang_prompted_v1';
 let _langAskedThisSession=false;
-function _hasChosenLang(){ try{ return localStorage.getItem('w3dg_lang')!==null; }catch(e){ return _langAskedThisSession; } }
+function _hasChosenLang(){ try{ return localStorage.getItem(LANG_PROMPT_KEY)!==null; }catch(e){ return _langAskedThisSession; } }
 function showFirstLangPrompt(){
     if(_hasChosenLang() || _langAskedThisSession || document.getElementById('first-lang-overlay')) return;
     _langAskedThisSession=true;
-    const browserTr=/^tr\b/i.test(navigator.language||'');
+    // Önerilen: kullanıcının mevcut kayıtlı dili; yoksa tarayıcı dili.
+    let savedLang=null; try{ savedLang=localStorage.getItem('w3dg_lang'); }catch(e){}
+    const browserTr=(savedLang==='tr'||savedLang==='en') ? savedLang==='tr' : /^tr\b/i.test(navigator.language||'');
+    const recLabel=(code)=>savedLang? (code==='tr'?'Mevcut':'Current') : (code==='tr'?'Önerilen':'Suggested');
     const ov=document.createElement('div');
     ov.id='first-lang-overlay';
     ov.setAttribute('role','dialog'); ov.setAttribute('aria-modal','true');
     ov.style.cssText='position:fixed;inset:0;z-index:2147483200;display:flex;align-items:center;justify-content:center;padding:20px;background:rgba(5,8,20,0.88);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);';
-    const btn=(code,flag,name,rec)=>`<button type="button" data-lang="${code}" style="display:flex;align-items:center;justify-content:center;gap:12px;width:100%;padding:16px 14px;margin-top:12px;border-radius:14px;border:2px solid ${rec?'#818cf8':'#334155'};background:${rec?'linear-gradient(135deg,#4338ca,#6366f1)':'linear-gradient(135deg,#1e293b,#0f172a)'};color:#fff;font-weight:900;font-size:1.05em;cursor:pointer;box-shadow:${rec?'0 0 18px rgba(99,102,241,0.55)':'none'};"><span style="font-size:1.5em;">${flag}</span><span>${name}</span>${rec?'<span style="font-size:0.7em;font-weight:800;background:rgba(255,255,255,0.18);border-radius:999px;padding:2px 8px;">'+(code==='tr'?'Önerilen':'Suggested')+'</span>':''}</button>`;
+    const btn=(code,flag,name,rec)=>`<button type="button" data-lang="${code}" style="display:flex;align-items:center;justify-content:center;gap:12px;width:100%;padding:16px 14px;margin-top:12px;border-radius:14px;border:2px solid ${rec?'#818cf8':'#334155'};background:${rec?'linear-gradient(135deg,#4338ca,#6366f1)':'linear-gradient(135deg,#1e293b,#0f172a)'};color:#fff;font-weight:900;font-size:1.05em;cursor:pointer;box-shadow:${rec?'0 0 18px rgba(99,102,241,0.55)':'none'};"><span style="font-size:1.5em;">${flag}</span><span>${name}</span>${rec?'<span style="font-size:0.7em;font-weight:800;background:rgba(255,255,255,0.18);border-radius:999px;padding:2px 8px;">'+recLabel(code)+'</span>':''}</button>`;
     ov.innerHTML=`<div style="width:100%;max-width:340px;background:linear-gradient(160deg,#111827,#0f172a);border:2px solid #6366f1;border-radius:20px;padding:22px 18px 20px;text-align:center;box-shadow:0 12px 40px rgba(0,0,0,0.6);">
         <div style="font-size:2.2em;">🌐</div>
         <div style="color:#e0e7ff;font-weight:900;font-size:1.15em;margin-top:6px;">Dil Seçin / Choose Language</div>
@@ -6205,6 +6211,7 @@ function showFirstLangPrompt(){
     ov.addEventListener('click',(e)=>{
         const b=e.target.closest&&e.target.closest('button[data-lang]'); if(!b) return;
         const lang=b.getAttribute('data-lang')==='en'?'en':'tr';
+        try{ localStorage.setItem(LANG_PROMPT_KEY,'1'); }catch(e){}   // bir daha sorma
         window.setLang(lang);              // kaydeder, arayüzü çevirir, giriş yapılmışsa sunucuya bildirir
         ov.remove();
     });
