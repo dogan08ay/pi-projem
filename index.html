@@ -9410,12 +9410,12 @@ function renderAuctionWinBanner(){
     // Yan boşlukları domain kartıyla aynı yap (kartlardan taşmasın).
     let mL='0px',mR='0px';
     try{ const mcs=getComputedStyle(document.getElementById('market-card')); mL=mcs.marginLeft; mR=mcs.marginRight; }catch(_){}
-    el.style.cssText='display:flex;align-items:center;gap:8px;margin:10px '+mR+' 12px '+mL+';padding:10px 12px;border-radius:14px;background:linear-gradient(135deg,#b45309,#ea580c);border:2px solid #fcd34d;color:#fff;box-shadow:0 6px 18px rgba(0,0,0,0.4);box-sizing:border-box;';
-    el.innerHTML=`<div style="flex:1;min-width:0;">
-        <div style="font-size:0.82em;font-weight:900;word-break:break-word;">🏆 ${escapeHtml(w.domainName)} ${AWL('kazanıldı','won')} · ${w.price} π${wins.length>1?` (+${wins.length-1})`:''}</div>
-        <div style="font-size:0.76em;font-weight:700;opacity:0.95;margin-top:2px;">⏳ ${AWL('Satın alma süresi','Time left to buy')}: <b class="js-countdown" data-kind="win" data-domain="${escapeHtml(w.domainName)}" data-end="${w.deadline}" style="font-variant-numeric:tabular-nums;">${fmtCountdown(w.deadline-Date.now())}</b></div>
+    el.style.cssText='display:flex;align-items:center;gap:8px;margin:10px '+mR+' 12px '+mL+';padding:10px 12px;border-radius:14px;background:linear-gradient(135deg,#b45309,#ea580c);border:2px solid #fcd34d;color:#fff;box-shadow:0 6px 18px rgba(0,0,0,0.4);box-sizing:border-box;flex:0 0 auto;height:66px;overflow:hidden;overflow-anchor:none;';
+    el.innerHTML=`<div style="flex:1;min-width:0;line-height:1.45;">
+        <div style="font-size:0.82em;font-weight:900;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">🏆 ${escapeHtml(w.domainName)} ${AWL('kazanıldı','won')} · ${w.price} π${wins.length>1?` (+${wins.length-1})`:''}</div>
+        <div style="font-size:0.76em;font-weight:700;opacity:0.95;white-space:nowrap;overflow:hidden;text-overflow:clip;">⏳ ${AWL('Kalan süre','Time left')}: <b class="js-countdown" data-kind="win" data-domain="${escapeHtml(w.domainName)}" data-end="${w.deadline}" style="font-variant-numeric:tabular-nums;">${fmtCountdown(w.deadline-Date.now())}</b></div>
     </div>
-    <button id="auction-win-banner-btn" style="flex-shrink:0;background:#fff;color:#9a3412;border:none;border-radius:10px;padding:10px 14px;font-weight:900;font-size:0.82em;cursor:pointer;">${AWL('Satın Al','Buy Now')}</button>`;
+    <button id="auction-win-banner-btn" style="flex-shrink:0;background:#fff;color:#9a3412;border:none;border-radius:10px;padding:10px 14px;font-weight:900;font-size:0.82em;cursor:pointer;white-space:nowrap;">${AWL('Satın Al','Buy Now')}</button>`;
     el.style.display='flex';
     document.getElementById('auction-win-banner-btn').onclick=()=>window.buyAuctionWin(w.domainName,w.price);
     // Kaydırınca çıkan küçük hap
@@ -12927,29 +12927,39 @@ if(window.ResizeObserver){
         });
     }
 
+    // Seviye seçimi tek yönlü (histerezis): ilk 6 sn "yerleşme" süresinde serbest; sonrasında
+    // ekran boyutu (yükseklik ≥60px ya da genişlik) değişmedikçe daha az sıkıştırılmış seviyeye
+    // GERİ DÖNÜLMEZ. Böylece bir şey (çeviri aracı, adres çubuğu, animasyon, geç gelen içerik)
+    // ölçümü sürekli tetiklese bile ekran sıkışık ↔ geniş arasında gidip gelmez.
+    let fitCurLevel=-1, fitDecisionVh=0, fitDecisionW=0;
+    const fitStartedAt=Date.now();
     function fitLoginHero(){
         if(typeof isAuth!=='undefined' && isAuth){
             // Giriş yapılmışsa bu ekran zaten gösterilmiyor —
             // sıkıştırma sınıflarını kaldırıp normale dön.
             applyLevel(-1);
+            fitCurLevel=-1; fitDecisionVh=0; fitDecisionW=0;
             return;
         }
         const lock=document.getElementById('premium-lock');
         if(!lock || !lock.offsetParent){ return; } // ekranda değilse dokunma
 
         applyLevel(-1); // önce tam boy ile ölç
-        if(contentFits()) return;
-
-        for(let i=0;i<FIT_LEVELS.length;i++){
-            applyLevel(i);
-            // Tarayıcının stilleri uygulayıp layout'u güncellemesi için
-            // bir sonraki adımda ölçüyoruz (senkron reflow yerine).
-            if(contentFits()) return;
+        let target=-1;
+        if(!contentFits()){
+            target=FIT_LEVELS.length-1; // hiçbiri sığmazsa en agresif seviye
+            for(let i=0;i<FIT_LEVELS.length;i++){
+                applyLevel(i);
+                if(contentFits()){ target=i; break; }
+            }
         }
-        // En agresif seviyede bile sığmazsa (çok kısa bir ekran veya çok
-        // büyük yazı tipi ölçeklemesi), kullanıcı normal şekilde
-        // kaydırarak butona ulaşabilir — bu son çare, veri kaybı ya da
-        // erişilemezlik yaratmaz.
+        const vhNow=currentViewportHeight(), wNow=window.innerWidth;
+        const settling=(Date.now()-fitStartedAt)<6000;
+        const sizeChanged=Math.abs(vhNow-fitDecisionVh)>=60 || wNow!==fitDecisionW;
+        if(!settling && !sizeChanged && target<fitCurLevel) target=fitCurLevel; // ters yöne dönme
+        applyLevel(target); // ölçüm ve son uygulama aynı karede: araya çizim girmez
+        if(settling || sizeChanged || target>fitCurLevel){ fitDecisionVh=vhNow; fitDecisionW=wNow; }
+        fitCurLevel=target;
     }
     window.fitLoginHero=fitLoginHero;
 
