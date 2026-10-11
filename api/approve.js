@@ -49,6 +49,10 @@ const PLATFORM_COMMISSION_RATE = 0.05; // %5 komisyon
 const SELF_TRADE_TEST_USERS = new Set(
   String(process.env.SELF_TRADE_TEST_USERS || '').split(',').map(s => s.trim()).filter(Boolean)
 );
+// Herkese açık "Güven ve Şeffaflık" istatistikleri 10 dk önbelleğe alınır (Firestore okuma maliyeti).
+const TRANSPARENCY_CACHE_MS = 10 * 60 * 1000;
+let _transparencyCache = { at: 0, data: null };
+
 function canTradeOwnListing(username) {
   return !!username && (username === ADMIN_USERNAME || SELF_TRADE_TEST_USERS.has(username));
 }
@@ -8338,6 +8342,88 @@ async function handlerImpl(req, res) {
   // çalışıyordu ama bunu gösteren hiçbir ekran yoktu; changelog'da bile
   // "leaderboard yakında geliyor" yazıyordu ama hiç yapılmamıştı. Veri
   // zaten toplandığı için burada sadece sıralayıp döndürüyoruz.
+  // ── Herkese açık Güven ve Şeffaflık istatistikleri ──────────────────────
+  // Yalnızca TOPLU sayılar döner (kullanıcı adı / domain adı / tek tek satış yok).
+  // Giriş gerektirmez; 10 dk önbelleğe alınır ve IP başına hız sınırı vardır.
+  if (action === 'get_transparency_stats') {
+    try {
+      if (!await checkRateLimit(clientIp, 'get_transparency_stats', 20, 60000))
+        return res.status(429).json({ error: "Çok fazla istek, lütfen bekleyin." });
+      const nowTs = Date.now();
+      if (_transparencyCache.data && nowTs - _transparencyCache.at < TRANSPARENCY_CACHE_MS) {
+        return res.status(200).json({ success: true, cached: true, ..._transparencyCache.data });
+      }
+      const db = getDb();
+      const [salesSnap, domSnap, tmSnap] = await Promise.all([
+        db.collection('global_sales').orderBy('at', 'desc').limit(5000).get(),
+        db.collection('domains').get(),
+        db.collection('trademark_claims').get()
+      ]);
+
+      const r1 = (n) => Math.round(n * 10) / 10;
+      let total = 0, released = 0, escrowOpen = 0, refunded = 0, failedPayouts = 0;
+      let escrowSales = 0, escrowVolume = 0;
+      let disputesOpened = 0, disputesResolved = 0;
+      const hours = [];
+      salesSnap.forEach(d => {
+        const x = d.data();
+        const st = x.payoutStatus || null;
+        const price = Number(x.price) || 0;
+        total++;
+        if (st === 'released') released++;
+        else if (st === 'pending' || st === 'processing') escrowOpen++;
+        else if (st === 'refunded') refunded++;
+        else if (st === 'failed' || st === 'refund_failed') failedPayouts++;
+        if (x.sellerUsername) {
+          escrowSales++;
+          if (st !== 'refunded') escrowVolume += price;
+          if (st === 'released' && x.payoutAt && x.at && x.payoutAt > x.at) hours.push((x.payoutAt - x.at) / 3600000);
+        }
+        if (x.buyerConfirmed === false || x.sellerConfirmed === false) {
+          disputesOpened++;
+          if (st === 'released' || st === 'refunded') disputesResolved++;
+        }
+      });
+      hours.sort((a, b) => a - b);
+      const median = hours.length ? (hours.length % 2 ? hours[(hours.length - 1) / 2] : (hours[hours.length / 2 - 1] + hours[hours.length / 2]) / 2) : null;
+      const avg = hours.length ? hours.reduce((a, b) => a + b, 0) / hours.length : null;
+
+      let listingsActive = 0, verifiedActive = 0, ratingSum = 0, ratingCount = 0;
+      domSnap.forEach(d => {
+        const x = d.data();
+        const visible = x.deleted !== true && x.sold !== true && x.hidden !== true;
+        if (visible) { listingsActive++; if (x.ownershipVerified === true) verifiedActive++; }
+        const rt = Number(x.buyerRating);
+        if (isFinite(rt) && rt >= 1 && rt <= 5) { ratingSum += rt; ratingCount++; }
+      });
+
+      let tmTotal = 0, tmOpen = 0, tmResolved = 0, tmRemoved = 0;
+      tmSnap.forEach(d => {
+        const x = d.data();
+        tmTotal++;
+        if (x.status === 'new' || x.status === 'reviewing') tmOpen++;
+        if (x.status === 'resolved') tmResolved++;
+        if (x.domainRemoved === true) tmRemoved++;
+      });
+
+      const data = {
+        updatedAt: nowTs,
+        sales: { total, released, escrowOpen, refunded, failedPayouts, escrowSales, escrowVolume: Math.round(escrowVolume * 100) / 100, sampleLimited: salesSnap.size >= 5000 },
+        transfer: { count: hours.length, avgHours: avg === null ? null : r1(avg), medianHours: median === null ? null : r1(median) },
+        disputes: { opened: disputesOpened, resolved: disputesResolved },
+        listings: { active: listingsActive, ownershipVerified: verifiedActive },
+        ratings: { average: ratingCount ? r1(ratingSum / ratingCount * 10) / 10 : null, count: ratingCount },
+        trademark: { total: tmTotal, open: tmOpen, resolved: tmResolved, removed: tmRemoved },
+        commissionRate: PLATFORM_COMMISSION_RATE
+      };
+      _transparencyCache = { at: nowTs, data };
+      return res.status(200).json({ success: true, cached: false, ...data });
+    } catch (e) {
+      console.error('get_transparency_stats hatası:', e);
+      return res.status(500).json({ error: "İstatistikler şu anda alınamadı." });
+    }
+  }
+
   if (action === 'get_leaderboard') {
     try {
       const db = getDb();
