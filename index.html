@@ -9294,7 +9294,7 @@ window.loadAdminAuctionEvents=async function(){
         const result=await r.json();
         if(!result.success){ wrap.innerHTML=`<p style="font-size:0.75em;color:#f87171;text-align:center;">${escapeHtml(result.error||t('genericError'))}</p>`; return; }
         if(!result.events.length){ wrap.innerHTML=`<p style="font-size:0.75em;opacity:0.6;text-align:center;">${AWL('Henüz olay yok.','No events yet.')}</p>`; return; }
-        const LBL={started:['▶️',AWL('Başlatıldı','Started'),'#a5b4fc'],won:['🏆',AWL('Kazanan belirlendi','Winner decided'),'#fbbf24'],win_expired:['❌',AWL('Kazanan ödemedi (ceza)','Winner did not pay (penalty)'),'#f87171'],second_chance:['🎁',AWL('İkinci şans verildi','Second chance offered'),'#34d399'],reserve_not_met:['🔒',AWL('Rezerv karşılanmadı','Reserve not met'),'#fcd34d'],buy_now:['⚡',AWL('Hemen Al','Buy Now'),'#fdba74'],cancelled_by_seller:['🛑',AWL('Satıcı iptal etti','Cancelled by seller'),'#fca5a5'],cancelled_by_admin:['🛑',AWL('Yönetici iptal etti','Cancelled by admin'),'#fca5a5']};
+        const LBL={started:['▶️',AWL('Başlatıldı','Started'),'#a5b4fc'],won:['🏆',AWL('Kazanan belirlendi','Winner decided'),'#fbbf24'],win_expired:['❌',AWL('Kazanan ödemedi (ceza)','Winner did not pay (penalty)'),'#f87171'],second_chance:['🎁',AWL('İkinci şans verildi','Second chance offered'),'#34d399'],reserve_not_met:['🔒',AWL('Rezerv karşılanmadı','Reserve not met'),'#fcd34d'],buy_now:['⚡',AWL('Hemen Al','Buy Now'),'#fdba74'],cancelled_by_seller:['🛑',AWL('Satıcı iptal etti','Cancelled by seller'),'#fca5a5'],cancelled_by_admin:['🛑',AWL('Yönetici iptal etti','Cancelled by admin'),'#fca5a5'],withdrawn_by_seller:['↩️',AWL('Satıcı ilanı geri çekti','Seller withdrew the listing'),'#fca5a5']};
         wrap.innerHTML=result.events.map(e=>{
             const l=LBL[e.type]||['•',e.type,'#94a3b8'];
             const extra=[e.username?'@'+escapeHtml(e.username):'', e.price!=null?e.price+' π':'', e.defaultCount?(AWL('ihlal #','violation #')+e.defaultCount):'', e.banUntil?(AWL('yasak: ','ban: ')+new Date(e.banUntil).toLocaleDateString(currentLang==='en'?'en-GB':'tr-TR')):'', e.secondChanceTo?('→ @'+escapeHtml(e.secondChanceTo)):'', e.details?escapeHtml(e.details):''].filter(Boolean).join(' · ');
@@ -9859,17 +9859,111 @@ window.loadAdminAuctionsTable=async function(){
         const locale=currentLang==='en'?'en-GB':'tr-TR';
         const fmtDate=(ts)=>ts?new Date(ts).toLocaleDateString(locale,{day:'2-digit',month:'2-digit',year:'2-digit',hour:'2-digit',minute:'2-digit'}):'—';
         const now=Date.now();
-        const statusOf=(a)=>{
-            if(a.auctionActive) return {icon:'⏳',label:'Aktif',color:'#fbbf24'};
-            if(a.auctionWinPending && !a.sold) return {icon:'⏱️',label:AWL('Kazanan Ödemeyi Bekliyor (@','Awaiting Winner Payment (@')+(a.auctionWinner||'?')+')',color:'#fb923c'};
-            if(a.sold || a.reservedFor) return {icon:'🏆',label:AWL('Kazanıldı','Won'),color:'#34d399'};
-            if(a.auctionEndsAt && a.auctionEndsAt<=now && !a.auctionHighestBidder) return {icon:'⌛',label:AWL('Süresi Doldu (Teklif Yok)','Expired (No Bids)'),color:'#94a3b8'};
-            if(a.auctionEndsAt && a.auctionEndsAt<=now && a.auctionHighestBidder) return {icon:'✅',label:'Bitti — Kazanan Bekleniyor',color:'#60a5fa'};
-            return {icon:'🚫',label:AWL('İptal Edildi','Cancelled'),color:'#f87171'};
+        const PC_CHIP='<span class="pc-chip" aria-hidden="true"><span class="pc-lbl-open">'+AWL('Aç','Open')+'</span><span class="pc-lbl-close">'+AWL('Kapat','Close')+'</span><svg class="pc-ico" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></span>';
+        const U=(u)=>u?('@'+escapeHtml(u)):'—';
+        const TERM_TYPES=['cancelled_by_seller','cancelled_by_admin','reserve_not_met','win_expired','buy_now','withdrawn_by_seller'];
+        const EV_LBL={started:['▶️',AWL('Başlatıldı','Started')],won:['🏆',AWL('Kazanan belirlendi','Winner decided')],win_expired:['❌',AWL('Kazanan zamanında almadı (ceza)','Winner did not buy in time (penalty)')],second_chance:['🎁',AWL('İkinci şans verildi','Second chance offered')],reserve_not_met:['🔒',AWL('Rezerv karşılanmadı','Reserve not met')],buy_now:['⚡',AWL('Hemen Al','Buy Now')],cancelled_by_seller:['🛑',AWL('Satıcı iptal etti','Cancelled by seller')],cancelled_by_admin:['🛑',AWL('Yönetici iptal etti','Cancelled by admin')],withdrawn_by_seller:['↩️',AWL('Satıcı ilanı geri çekti','Seller withdrew the listing')]};
+        const evText=(e)=>{
+            const parts=[];
+            if(e.username) parts.push('@'+escapeHtml(e.username));
+            if(e.price!=null) parts.push(e.price+' Pi');
+            if(e.type==='win_expired'){
+                if(e.defaultCount!=null) parts.push(AWL(`${e.defaultCount}. ihlal`,`violation #${e.defaultCount}`));
+                if(e.banUntil) parts.push(AWL('teklif yasağı bitişi ','bid ban until ')+fmtDate(e.banUntil));
+                if(e.secondChanceTo) parts.push(AWL('ikinci şans: @','second chance: @')+escapeHtml(e.secondChanceTo));
+            }
+            if(e.details) parts.push(escapeHtml(e.details));
+            return parts.join(' · ');
+        };
+        // Bir açık artırmanın durumunu ve (kapandıysa) NEDENİNİ çözer.
+        const resolveAuction=(a)=>{
+            const evs=a.events||[];
+            const lastTerm=[...evs].reverse().find(e=>TERM_TYPES.includes(e.type));
+            // En yüksek teklifi yansıtan olay (ikinci şans teklifi en yüksek teklif değildir; yalnızca başka kayıt yoksa kullan).
+            const topEv=[...evs].reverse().find(e=>e.price!=null && ['won','reserve_not_met','win_expired','buy_now','withdrawn_by_seller'].includes(e.type))
+                      || [...evs].reverse().find(e=>e.price!=null && e.type==='second_chance');
+            const R=(icon,label,color,reason)=>({icon,label,color,reason:reason||null,lastTerm,topEv});
+            if(a.deleted && !a.sold){
+                const ev=evs.find(e=>e.type==='withdrawn_by_seller');
+                return R('↩️',AWL('İlan Geri Çekildi','Listing Withdrawn'),'#f87171',AWL(
+                    `Satıcı (${U(a.deletedBy||a.sellerUsername)}) ilanı ${fmtDate(a.deletedAt)} tarihinde geri çekti; açık artırma bu nedenle sonlandı.${ev&&ev.details?` (${escapeHtml(ev.details)})`:''}`,
+                    `The seller (${U(a.deletedBy||a.sellerUsername)}) withdrew the listing on ${fmtDate(a.deletedAt)}; the auction ended because of this.${ev&&ev.details?` (${escapeHtml(ev.details)})`:''}`));
+            }
+            if(a.auctionActive && a.auctionEndsAt && a.auctionEndsAt>now) return R('⏳',AWL('Aktif','Active'),'#fbbf24',null);
+            if(a.auctionActive) return R('⏳',AWL('Süresi Doldu — Sonuçlanıyor','Ended — Being Finalized'),'#60a5fa',AWL('Süre doldu; sistem sonucu (kazanan/rezerv/teklifsiz) belirliyor.','Time is up; the system is determining the outcome (winner / reserve / no bids).'));
+            if(a.auctionWinPending && !a.sold) return R('⏱️',AWL('Kazanan Ödemeyi Bekliyor (@','Awaiting Winner Payment (@')+(a.auctionWinner||'?')+')','#fb923c',AWL(
+                `Kazanan ${U(a.auctionWinner)} açık artırmayı ${a.auctionWinPrice!=null?a.auctionWinPrice+' Pi ile ':''}kazandı. Satın alma son tarihi: ${fmtDate(a.auctionWinDeadline)}. Bu süre içinde alınmazsa açık artırma iptal edilir.`,
+                `The winner ${U(a.auctionWinner)} won${a.auctionWinPrice!=null?' at '+a.auctionWinPrice+' Pi':''}. Purchase deadline: ${fmtDate(a.auctionWinDeadline)}. If not bought in time, the auction is cancelled.`));
+            if(a.reservedFor && !a.sold && evs.some(e=>e.type==='second_chance')) return R('🎁',AWL('İkinci Şans (@','Second Chance (@')+a.reservedFor+')','#34d399',AWL(
+                `İlk kazanan zamanında almadığı için hak ${U(a.reservedFor)} kullanıcısına geçti${a.reservedUntil?` (son tarih: ${fmtDate(a.reservedUntil)})`:''}.`,
+                `The first winner did not buy in time, so the right passed to ${U(a.reservedFor)}${a.reservedUntil?` (deadline: ${fmtDate(a.reservedUntil)})`:''}.`));
+            if(a.sold || a.reservedFor){
+                if(lastTerm && lastTerm.type==='buy_now') return R('⚡',AWL('Hemen Al ile Satıldı','Sold via Buy Now'),'#fdba74',AWL(
+                    `${U(lastTerm.username)} "Hemen Al" ile ${lastTerm.price!=null?lastTerm.price+' Pi ödeyerek ':''}satın aldı; açık artırma erken sonlandı.`,
+                    `${U(lastTerm.username)} bought it via "Buy Now"${lastTerm.price!=null?' for '+lastTerm.price+' Pi':''}; the auction ended early.`));
+                return R('🏆',AWL('Kazanıldı','Won'),'#34d399',AWL(
+                    `Açık artırma ${U(a.buyer||a.reservedFor||a.auctionWinner)} tarafından${a.auctionWinPrice!=null?' '+a.auctionWinPrice+' Pi ile':''} kazanıldı${a.sold?' ve domain satıldı.':'.'}`,
+                    `The auction was won by ${U(a.buyer||a.reservedFor||a.auctionWinner)}${a.auctionWinPrice!=null?' at '+a.auctionWinPrice+' Pi':''}${a.sold?' and the domain was sold.':'.'}`));
+            }
+            if(lastTerm){
+                const e=lastTerm, when=fmtDate(e.at);
+                if(e.type==='cancelled_by_seller') return R('🛑',AWL('Satıcı İptal Etti','Cancelled by Seller'),'#f87171',AWL(
+                    `Satıcı (${U(e.username)}) açık artırmayı ${when} tarihinde iptal etti.`,`The seller (${U(e.username)}) cancelled the auction on ${when}.`));
+                if(e.type==='cancelled_by_admin') return R('🛑',AWL('Yönetici İptal Etti','Cancelled by Admin'),'#f87171',AWL(
+                    `Yönetici (${U(e.username)}) açık artırmayı ${when} tarihinde iptal etti${e.details?' — '+escapeHtml(e.details):''}.`,
+                    `The admin (${U(e.username)}) cancelled the auction on ${when}${e.details?' — '+escapeHtml(e.details):''}.`));
+                if(e.type==='reserve_not_met') return R('🔒',AWL('Rezerv Karşılanmadı','Reserve Not Met'),'#fcd34d',AWL(
+                    `Süre doldu; en yüksek teklif (${U(e.username)}${e.price!=null?', '+e.price+' Pi':''}) satıcının belirlediği rezerv fiyatın altında kaldığı için satış gerçekleşmedi. İlan başlangıç fiyatına döndü.`,
+                    `Time is up; the highest bid (${U(e.username)}${e.price!=null?', '+e.price+' Pi':''}) stayed below the seller's reserve price, so no sale happened. The listing returned to its start price.`));
+                if(e.type==='win_expired') return R('❌',AWL('Kazanan Zamanında Almadı','Winner Did Not Buy in Time'),'#f87171',AWL(
+                    `Kazanan (${U(e.username)}${e.price!=null?', '+e.price+' Pi':''}) belirlenen sürede satın almadığı için açık artırma iptal edildi. Kazanana ceza uygulandı${e.defaultCount!=null?` (${e.defaultCount}. ihlal)`:''}${e.banUntil?`; teklif yasağı bitişi: ${fmtDate(e.banUntil)}`:''}${e.secondChanceTo?`; hak ikinci sıradaki ${U(e.secondChanceTo)} kullanıcısına verildi`:''}.`,
+                    `The winner (${U(e.username)}${e.price!=null?', '+e.price+' Pi':''}) did not buy within the allowed time, so the auction was cancelled. A penalty was applied${e.defaultCount!=null?` (violation #${e.defaultCount})`:''}${e.banUntil?`; bid ban until ${fmtDate(e.banUntil)}`:''}${e.secondChanceTo?`; the right was offered to runner-up ${U(e.secondChanceTo)}`:''}.`));
+                if(e.type==='withdrawn_by_seller') return R('↩️',AWL('İlan Geri Çekildi','Listing Withdrawn'),'#f87171',AWL(
+                    `Satıcı (${U(e.username)}) ilanı ${when} tarihinde geri çekti${e.details?' ('+escapeHtml(e.details)+')':''}; açık artırma bu nedenle sonlandı.`,
+                    `The seller (${U(e.username)}) withdrew the listing on ${when}${e.details?' ('+escapeHtml(e.details)+')':''}; the auction ended because of this.`));
+                if(e.type==='buy_now') return R('⚡',AWL('Hemen Al ile Satıldı','Sold via Buy Now'),'#fdba74',null);
+            }
+            if(!a.auctionHighestBidder && !(a.auctionBidCount>0) && (a.closedAt || (a.scheduledEndsAt && a.scheduledEndsAt<=now)))
+                return R('⌛',AWL('Süresi Doldu (Teklif Yok)','Expired (No Bids)'),'#94a3b8',AWL(
+                    'Süre dolana kadar hiç teklif verilmedi; ilan başlangıç fiyatına döndü.','No bids were placed before time ran out; the listing returned to its start price.'));
+            return R('🚫',AWL('Sonlandı','Ended'),'#94a3b8',AWL(
+                'Kapanış nedeni kayıtlı değil (olay günlüğü 90 gün saklanır ya da bu açık artırma kayıt özelliğinden önce sonlanmış olabilir).',
+                'The reason was not recorded (the event log is kept for 90 days, or this auction ended before logging existed).'));
         };
         const cards=auctions.map(a=>{
-            const st=statusOf(a);
+            const st=resolveAuction(a);
             const detailId='auc-detail-'+a.domainName.replace(/[^a-zA-Z0-9]/g,'_');
+            const isActive=a.auctionActive===true && a.auctionEndsAt && a.auctionEndsAt>now && !a.deleted;
+            const scheduled=a.auctionEndsAt||a.scheduledEndsAt||null;
+            const closed=a.closedAt||(st.lastTerm?st.lastTerm.at:null);
+            const endTxt=scheduled?fmtDate(scheduled):AWL('bilinmiyor (eski kayıt)','unknown (old record)');
+            const closedTxt=(closed && (!scheduled || Math.abs(closed-scheduled)>120000) && !isActive)?AWL(` · Kapandı: ${fmtDate(closed)}`,` · Closed: ${fmtDate(closed)}`):'';
+            // En yüksek teklif: kapanınca alan temizlendiği için olay günlüğündeki son kayıtlı fiyata bak.
+            let hiTxt, hiWho='';
+            if(a.auctionHighestBid!=null){ hiTxt=a.auctionHighestBid+' Pi'; hiWho=a.auctionHighestBidder?` — @${escapeHtml(a.auctionHighestBidder)}`:''; }
+            else if(!isActive && st.topEv){ hiTxt=st.topEv.price+' Pi'; hiWho=st.topEv.username?` — @${escapeHtml(st.topEv.username)}`:''; }
+            else hiTxt=isActive?AWL('— (henüz teklif yok)','— (no bids yet)'):'—';
+            const hiLbl=(a.auctionHighestBid==null && !isActive && st.topEv)?AWL('🔥 Son kayıtlı fiyat: ','🔥 Last recorded price: '):AWL('🔥 En yüksek teklif: ','🔥 Highest bid: ');
+            const reasonBox=st.reason?`<div style="margin-top:8px;padding:7px 9px;border-radius:8px;background:${st.color}14;border:1px solid ${st.color}40;border-left:3px solid ${st.color};font-size:0.74em;line-height:1.55;color:#e2e8f0;">📝 <b style="color:${st.color};">${AWL('Neden / Not','Reason / Note')}:</b> ${st.reason}</div>`:'';
+            const row=(k,v)=>`<div style="display:flex;justify-content:space-between;gap:10px;padding:2px 0;border-bottom:1px solid #1e293b66;"><span style="color:#94a3b8;">${k}</span><b style="color:#e2e8f0;text-align:right;">${v}</b></div>`;
+            const infoRows=[
+                row(AWL('Başladı','Started'),fmtDate(a.auctionStartedAt)),
+                row(AWL('Planlanan bitiş','Scheduled end'),scheduled?fmtDate(scheduled):'—'),
+                (closed&&!isActive)?row(AWL('Kapandı','Closed'),fmtDate(closed)):'',
+                (a.auctionExtensions>0)?row(AWL('Uzatma (son dakika teklifi)','Extensions (late bids)'),a.auctionExtensions+'×'):'',
+                row(AWL('Başlangıç fiyatı','Start price'),a.auctionStartPrice!=null?a.auctionStartPrice+' Pi':'—'),
+                (a.auctionMinIncrement!=null)?row(AWL('Min. artış','Min. increment'),a.auctionMinIncrement+' Pi'):'',
+                (a.auctionBuyNowPrice)?row(AWL('Hemen Al fiyatı','Buy Now price'),a.auctionBuyNowPrice+' Pi'):'',
+                (a.auctionHasReserve)?row(AWL('Rezerv fiyat','Reserve'),a.auctionReserveMet?AWL('karşılandı','met'):AWL('karşılanmadı','not met')):'',
+                (a.auctionWinner)?row(AWL('Kazanan','Winner'),U(a.auctionWinner)+(a.auctionWinPrice!=null?` · ${a.auctionWinPrice} Pi`:'')):'',
+                (a.auctionWinPending&&a.auctionWinDeadline)?row(AWL('Satın alma son tarihi','Purchase deadline'),fmtDate(a.auctionWinDeadline)):'',
+                (a.auctionSecondChance)?row(AWL('İkinci şans','Second chance'),AWL('verildi','offered')):''
+            ].join('');
+            const evRows=(a.events||[]).map(e=>{
+                const l=EV_LBL[e.type]||['•',escapeHtml(e.type||'?')];
+                const tx=evText(e);
+                return `<div style="padding:3px 0;border-bottom:1px solid #1e293b66;"><span style="color:#64748b;">${fmtDate(e.at)}</span> · ${l[0]} <b style="color:#e2e8f0;">${l[1]}</b>${tx?`<div style="color:#94a3b8;margin-left:14px;">${tx}</div>`:''}</div>`;
+            }).join('')||`<div style="color:#64748b;">${AWL('Bu açık artırma için kayıtlı olay yok.','No recorded events for this auction.')}</div>`;
             return `<div style="background:#0f172a;border:1px solid #1e293b;border-radius:10px;padding:10px 12px;margin-bottom:10px;">
                 <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px;margin-bottom:6px;padding-bottom:6px;border-bottom:1px solid #1e293b;">
                     <b style="color:#f1f5f9;font-size:0.75em;">🌐 ${escapeHtml(a.domainName)}</b>
@@ -9878,9 +9972,18 @@ window.loadAdminAuctionsTable=async function(){
                 <div style="font-size:0.76em;color:#cbd5e1;line-height:1.75;">
                     <div>${AWL('👤 Satıcı: ','👤 Seller: ')}<b style="color:#e2e8f0;">@${escapeHtml(a.sellerUsername||'—')}</b></div>
                     <div>${AWL('💰 Başlangıç: ','💰 Start: ')}<b>${a.auctionStartPrice??'—'} Pi</b>${AWL(' · Min. artış: ',' · Min. increment: ')}<b>${a.auctionMinIncrement??'—'} Pi</b></div>
-                    <div>${AWL('🔥 En yüksek teklif: ','🔥 Highest bid: ')}<b style="color:#34d399;">${a.auctionHighestBid??AWL('— (henüz teklif yok)','— (no bids yet)')}${a.auctionHighestBid!=null?' Pi':''}</b>${a.auctionHighestBidder?` — @${escapeHtml(a.auctionHighestBidder)}`:''}</div>
-                    <div>${AWL('📊 Toplam teklif sayısı: ','📊 Total bids: ')}<b>${a.auctionBidCount||0}</b></div>
-                    <div>${AWL(`🕐 Başladı: ${fmtDate(a.auctionStartedAt)} · Bitiş: ${fmtDate(a.auctionEndsAt)}`,`🕐 Started: ${fmtDate(a.auctionStartedAt)} · Ends: ${fmtDate(a.auctionEndsAt)}`)}</div>
+                    <div>${hiLbl}<b style="color:#34d399;">${hiTxt}</b>${hiWho}</div>
+                    <div>${AWL('📊 Toplam teklif sayısı: ','📊 Total bids: ')}<b>${isActive||a.auctionBidCount>0?(a.auctionBidCount||0):'—'}</b></div>
+                    <div>${AWL('🕐 Başladı: ','🕐 Started: ')}${fmtDate(a.auctionStartedAt)}${AWL(' · Bitiş: ',' · Ends: ')}${endTxt}${closedTxt}</div>
+                </div>
+                ${reasonBox}
+                <div class="acc-card" style="margin-top:8px;">
+                    <button type="button" onclick="window.toggleAucInfo(this)" aria-expanded="false" style="width:100%;display:flex;align-items:center;justify-content:center;gap:4px;background:rgba(56,189,248,0.10);border:1px solid #38bdf8;color:#7dd3fc;font-size:0.74em;font-weight:800;padding:6px;border-radius:8px;cursor:pointer;">ℹ️ ${AWL('Bilgi / Detay','Info / Details')}${PC_CHIP}</button>
+                    <div class="auc-info" style="display:none;margin-top:6px;padding:8px 10px;border-radius:8px;background:#0b1220;border:1px dashed #334155;font-size:0.72em;line-height:1.6;">
+                        ${infoRows}
+                        <div style="margin-top:8px;font-weight:800;color:#7dd3fc;">🕘 ${AWL('Olay geçmişi','Event history')}</div>
+                        ${evRows}
+                    </div>
                 </div>
                 <button onclick="window.toggleAdminAuctionDetail('${a.domainName.replace(/'/g,"\\'")}','${detailId}')" style="margin-top:8px;width:100%;background:rgba(99,102,241,0.12);border:1px solid #6366f1;color:#a5b4fc;font-size:0.74em;font-weight:800;padding:6px;border-radius:8px;cursor:pointer;">📜 ${AWL('Tüm Teklif Geçmişini Göster','Show Full Bid History')}</button>
                 <div id="${detailId}" style="display:none;margin-top:8px;padding-top:8px;border-top:1px dashed #1e293b;"></div>
@@ -9892,6 +9995,15 @@ window.loadAdminAuctionsTable=async function(){
 // Bir açık artırma kartındaki "Tüm Teklif Geçmişini Göster" — zaten var olan,
 // herkese açık get_auction_bids action'ını tekrar kullanıyor (giriş bilgisi
 // gerektirmiyor, sadece IP bazlı hız sınırı var).
+window.toggleAucInfo=function(btn){
+    const card=btn.closest('.acc-card'); if(!card) return;
+    const box=card.querySelector('.auc-info'); if(!box) return;
+    const open=box.style.display==='none';
+    box.style.display=open?'block':'none';
+    card.classList.toggle('acc-open',open);
+    btn.setAttribute('aria-expanded',open?'true':'false');
+    try{ _pcPop(btn); }catch(_){}
+};
 window.toggleAdminAuctionDetail=async function(domainName,detailId){
     const box=document.getElementById(detailId);
     if(!box) return;
