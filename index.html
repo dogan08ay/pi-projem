@@ -1751,6 +1751,10 @@
         </div>
     </div>
     <div class="side-menu-section-label" data-i18n="account"></div>
+    <button class="side-menu-item" onclick="toggleSideMenu();window.openCompare();">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#a78bfa" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v18M5 7h14M7 7l-3 7a3 3 0 0 0 6 0L7 7zM17 7l-3 7a3 3 0 0 0 6 0l-3-7z"/></svg>
+        <span><span data-i18n="compareTitle"></span> <span id="side-compare-count" style="opacity:.8;"></span></span>
+    </button>
     <button class="side-menu-item" onclick="toggleSideMenu();window.refreshAllData();">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-3-6.7"/><path d="M21 3v6h-6"/></svg>
         <span data-i18n="refreshApp"></span>
@@ -1826,6 +1830,15 @@
         <span style="color:#4ade80;" data-i18n="systemStatusMenuItem"></span>
     </button>
     <div class="side-menu-divider"></div>
+    <div class="side-menu-section-label" data-i18n="trustSection"></div>
+    <button class="side-menu-item" onclick="toggleSideMenu();window.openTransparency();">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#34d399" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l8 3v6c0 4.5-3.2 8.3-8 9-4.8-.7-8-4.5-8-9V6l8-3z"/><path d="M9 12l2 2 4-4"/></svg>
+        <span data-i18n="transparencyTitle"></span>
+    </button>
+    <button class="side-menu-item" onclick="toggleSideMenu();window.openReviewGuide();">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fbbf24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+        <span data-i18n="reviewGuideTitle"></span>
+    </button>
     <div class="side-menu-section-label" data-i18n="contactSection"></div>
     <a href="mailto:doganay08@hotmail.com" class="side-menu-item" style="text-decoration:none;color:#38bdf8;display:flex;align-items:center;gap:6px;padding:5px 8px;border-radius:7px;font-weight:700;font-size:0.76em;cursor:pointer;margin-bottom:2px;text-align:left;background:transparent;border:none;width:100%;box-sizing:border-box;transition:background 0.15s;">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg><span style="color:#38bdf8;" data-i18n="contactUs">BİZE ULAŞIN</span>
@@ -2048,6 +2061,7 @@
         <img id="detail-modal-img" class="detail-img" src="" alt="">
         <h2 id="detail-modal-name" style="color:#f1f5f9;margin:8px 0 10px 0;font-size:1.1em;font-weight:900;"></h2>
         <div id="detail-modal-fields" style="display:flex;flex-direction:column;gap:8px;font-size:0.78em;color:#cbd5e1;line-height:1.4;margin-bottom:12px;background:#0f172a;padding:12px;border-radius:10px;"></div>
+        <div id="detail-extras"></div>
         <div id="detail-modal-action"></div>
         <!-- GÜNCELLEME: "İlan Bildir" ve "Kapat" ikisi de kısa metinli,
              artık yan yana (iki sütun) — öncesinde alt alta iki tam
@@ -4477,7 +4491,7 @@ const i18n = {
     recentReviewsLabel:"Son Değerlendirmeler",
     detailMoreInfoToggle:"Daha Fazla Detay (Fiyat Geçmişi, Değerlendirmeler)",
     detailLessInfoToggle:"Daha Az Detay",
-    refreshApp:"Yenile", panelExpand:"Aç", panelCollapse:"Kapat", pullToRefresh:"Yenilemek için aşağı çekin", releaseToRefresh:"Yenilemek için bırakın", refreshing:"Yenileniyor…", refreshedDone:"Güncellendi",
+    refreshApp:"Yenile", trustSection:"Güven ve Bilgi", transparencyTitle:"Güven ve Şeffaflık", reviewGuideTitle:"Pi Ekibi İnceleme Rehberi", compareTitle:"Domain Karşılaştır", panelExpand:"Aç", panelCollapse:"Kapat", pullToRefresh:"Yenilemek için aşağı çekin", releaseToRefresh:"Yenilemek için bırakın", refreshing:"Yenileniyor…", refreshedDone:"Güncellendi",
     sortNewest:"🆕 En Yeni Eklenenler",sortPriceAsc:"💰 Fiyat: Düşükten Yükseğe",sortPriceDesc:"💰 Fiyat: Yüksekten Düşüğe",sortAz:"🔤 İsim (A-Z)",
     favoriteAddBtn:"Favorilere Ekle",favoriteRemoveBtn:"Favorilerden Çıkar",
     howItWorksMenuItem:"Nasıl Çalışır?",howItWorksTitle:"Nasıl Çalışır ve Nasıl Korunuyorsunuz?",
@@ -5482,7 +5496,7 @@ const i18n = {
     recentReviewsLabel:"Recent Reviews",
     detailMoreInfoToggle:"More Details (Price History, Reviews)",
     detailLessInfoToggle:"Fewer Details",
-    refreshApp:"Refresh", panelExpand:"Open", panelCollapse:"Close", pullToRefresh:"Pull down to refresh", releaseToRefresh:"Release to refresh", refreshing:"Refreshing…", refreshedDone:"Updated",
+    refreshApp:"Refresh", trustSection:"Trust & Info", transparencyTitle:"Trust & Transparency", reviewGuideTitle:"Pi Team Review Guide", compareTitle:"Compare Domains", panelExpand:"Open", panelCollapse:"Close", pullToRefresh:"Pull down to refresh", releaseToRefresh:"Release to refresh", refreshing:"Refreshing…", refreshedDone:"Updated",
     sortNewest:"🆕 Newest First",sortPriceAsc:"💰 Price: Low to High",sortPriceDesc:"💰 Price: High to Low",sortAz:"🔤 Name (A-Z)",
     favoriteAddBtn:"Add to Favorites",favoriteRemoveBtn:"Remove from Favorites",
     howItWorksMenuItem:"How It Works",howItWorksTitle:"How It Works & How You're Protected",
@@ -7817,6 +7831,7 @@ window.openDomainDetail=function(domainName){
     rows+=`<div style="display:flex;gap:6px;align-items:flex-start;"><span style="color:#64748b;flex-shrink:0;font-weight:700;min-width:100px;">📝 ${t('detailFieldDesc')}:</span><span style="color:#94a3b8;word-break:break-word;flex:1;">${(data.description||domain.description)?escapeHtml(data.description||domain.description):t('descriptionEmpty')}</span></div>`;
 
     document.getElementById('detail-modal-fields').innerHTML=rows;
+    try{ window.renderDetailExtras(domainName); }catch(_e){}
 
     const actionEl=document.getElementById('detail-modal-action');
     // GÜNCELLEME (kullanıcı geri bildirimi — "tıklanır buton listesi çok
@@ -10220,6 +10235,253 @@ setInterval(()=>{
     }catch(e){}
 },2000);
 _pcApply();
+
+// ══════════════════════════════════════════════════════════════════════
+// DOMAIN KARŞILAŞTIRMA + BENZER DOMAİNLER
+// • Detay penceresinde "Karşılaştırmaya ekle" (en fazla 3) ve kapalı gelen
+//   "Benzer domainler" bölümü. Yan menüdeki "Domain Karşılaştır" de açar.
+// • Yalnızca ekrandaki mevcut veriyi (domains / domainData) kullanır — yeni
+//   sunucu isteği yok. Seçim bu oturumda (sessionStorage) hatırlanır.
+// ══════════════════════════════════════════════════════════════════════
+const CMP_MAX=3;
+let _cmp=[];
+try{ const raw=sessionStorage.getItem('w3dg_compare'); if(raw){ const a=JSON.parse(raw); if(Array.isArray(a)) _cmp=a.filter(x=>typeof x==='string').slice(0,CMP_MAX); } }catch(_e){}
+function _cmpSave(){ try{ sessionStorage.setItem('w3dg_compare',JSON.stringify(_cmp)); }catch(_e){} }
+function _cmpJs(n){ return String(n).replace(/\\/g,'\\\\').replace(/'/g,"\\'"); }
+function _chipHtml(){ return '<span class="pc-chip" aria-hidden="true"><span class="pc-lbl-open">'+AWL('Aç','Open')+'</span><span class="pc-lbl-close">'+AWL('Kapat','Close')+'</span><svg class="pc-ico" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></span>'; }
+function _cmpDate(ts,full){ try{ const o=full?{day:'2-digit',month:'2-digit',year:'2-digit',hour:'2-digit',minute:'2-digit'}:{day:'2-digit',month:'2-digit',year:'2-digit'}; return new Date(ts).toLocaleString(currentLang==='en'?'en-GB':'tr-TR',o); }catch(_e){ return '—'; } }
+function _cmpUpdateMenu(){ const el=document.getElementById('side-compare-count'); if(el) el.textContent=_cmp.length?'('+_cmp.length+')':''; }
+function _cmpPrune(){ // satılmış/silinmiş/artık listede olmayanları ayıkla
+    _cmp=_cmp.filter(n=>domains.some(d=>d.name===n) && domainData[n] && !domainData[n].deleted);
+}
+function getSimilarDomains(name,limit){
+    const base=domainData[name]; const bp=Number(base&&base.price)||0; const bl=name.replace(/\.pi$/i,'').length;
+    return domains.filter(d=>d.name!==name).map(d=>{
+        const x=domainData[d.name]||{};
+        if(x.sold||x.hidden||x.deleted) return null;
+        let sc=0;
+        if(base && x.type && x.type===base.type) sc+=3;
+        const pr=Number(x.price)||0;
+        if(bp>0 && pr>0){ const r=pr/bp; if(r>=0.5&&r<=2) sc+=2; if(r>=0.75&&r<=1.34) sc+=1; }
+        if(Math.abs(d.name.replace(/\.pi$/i,'').length-bl)<=2) sc+=1;
+        return {d,x,sc,pd:Math.abs(pr-bp)};
+    }).filter(o=>o && o.sc>=3).sort((a,b)=>b.sc-a.sc||a.pd-b.pd).slice(0,limit);
+}
+window.renderDetailExtras=function(name){
+    const box=document.getElementById('detail-extras'); if(!box) return;
+    _cmpPrune(); _cmpUpdateMenu();
+    const inList=_cmp.includes(name), n=_cmp.length;
+    const sims=getSimilarDomains(name,4);
+    const btn='flex:1;min-width:120px;padding:8px 6px;border-radius:9px;font-size:0.76em;font-weight:800;cursor:pointer;';
+    const simRows=sims.map(o=>`<div onclick="window.openDomainDetail('${_cmpJs(o.d.name)}')" style="display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:8px;background:#0f172a;border:1px solid #1e293b;cursor:pointer;">
+            <img src="${escapeHtml(o.x.img||o.d.img||'assets/default.jpeg')}" loading="lazy" decoding="async" alt="" style="width:34px;height:22px;object-fit:contain;border-radius:4px;background:#1e293b;flex:0 0 auto;" onerror="this.style.visibility='hidden'">
+            <b style="flex:1;min-width:0;color:#e2e8f0;font-size:0.78em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(o.d.name)}</b>
+            <span style="color:#fbbf24;font-weight:900;font-size:0.78em;white-space:nowrap;">${o.x.price} π</span></div>`).join('');
+    box.innerHTML=`<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;">
+            <button type="button" onclick="window.toggleCompare('${_cmpJs(name)}')" style="${btn}background:${inList?'rgba(167,139,250,0.22)':'rgba(167,139,250,0.10)'};border:1.5px solid #a78bfa;color:#ddd6fe;">⚖️ ${inList?AWL('Karşılaştırmadan çıkar','Remove from compare'):AWL('Karşılaştırmaya ekle','Add to compare')} (${n}/${CMP_MAX})</button>
+            ${n>=2?`<button type="button" onclick="window.openCompare()" style="${btn}background:#6d28d9;border:1.5px solid #a78bfa;color:#fff;">📊 ${AWL('Karşılaştır','Compare')} (${n})</button>`:''}
+        </div>
+        ${sims.length?`<div class="acc-card" style="margin-bottom:8px;">
+            <button type="button" onclick="window.toggleSimilar(this)" aria-expanded="false" style="width:100%;display:flex;align-items:center;justify-content:center;gap:4px;background:rgba(56,189,248,0.10);border:1px solid #38bdf8;color:#7dd3fc;font-size:0.76em;font-weight:800;padding:7px;border-radius:9px;cursor:pointer;">🔎 ${AWL('Benzer domainler','Similar domains')} (${sims.length})${_chipHtml()}</button>
+            <div class="sim-list" style="display:none;flex-direction:column;gap:5px;margin-top:6px;">${simRows}</div>
+        </div>`:''}`;
+};
+window.toggleSimilar=function(btn){
+    const card=btn.closest('.acc-card'); if(!card) return;
+    const list=card.querySelector('.sim-list'); if(!list) return;
+    const open=list.style.display==='none';
+    list.style.display=open?'flex':'none';
+    card.classList.toggle('acc-open',open);
+    btn.setAttribute('aria-expanded',open?'true':'false');
+    try{ _pcPop(btn); }catch(_e){}
+};
+window.toggleCompare=function(name){
+    const i=_cmp.indexOf(name);
+    if(i>=0) _cmp.splice(i,1);
+    else{
+        if(_cmp.length>=CMP_MAX){ showToast(AWL(`En fazla ${CMP_MAX} domain karşılaştırılabilir. Önce birini çıkarın.`,`You can compare at most ${CMP_MAX} domains. Remove one first.`),'info'); return; }
+        _cmp.push(name);
+    }
+    _cmpSave(); window.renderDetailExtras(name);
+};
+window.openCompare=function(){
+    _cmpPrune(); _cmpSave(); _cmpUpdateMenu();
+    if(_cmp.length<2){ showToast(AWL('Karşılaştırmak için en az 2 domain ekleyin (domain detayında "Karşılaştırmaya ekle").','Add at least 2 domains to compare (use "Add to compare" in a domain\'s details).'),'info'); return; }
+    const now2=Date.now();
+    const cols=_cmp.map(n=>({n,d:domainData[n]||{}}));
+    const prices=cols.filter(c=>!c.d.sold).map(c=>Number(c.d.price)).filter(x=>x>0);
+    const minP=prices.length?Math.min(...prices):null;
+    const yes='<span style="color:#34d399;font-weight:900;">✓</span>', no='<span style="color:#64748b;">—</span>';
+    const status=(d)=>{
+        if(d.sold) return `<span style="color:#f87171;">${AWL('Satıldı','Sold')}</span>`;
+        if(d.auctionActive && d.auctionEndsAt && d.auctionEndsAt>now2) return `<span style="color:#fbbf24;">⏳ ${AWL('Açık artırma','Auction')}</span><div style="font-size:0.85em;color:#94a3b8;font-weight:600;">${AWL('Bitiş','Ends')}: ${_cmpDate(d.auctionEndsAt,true)}</div>`;
+        if(d.reservedFor) return `<span style="color:#fb923c;">${AWL('Rezerve','Reserved')}</span>`;
+        return `<span style="color:#34d399;">${AWL('Satışta','On sale')}</span>`;
+    };
+    const rowDefs=[
+        [AWL('Fiyat','Price'),c=>{ const p=Number(c.d.price); const best=(!c.d.sold && minP!==null && p===minP && cols.length>1); return `<b style="color:${best?'#34d399':'#fbbf24'};font-size:1.05em;">${c.d.price} π</b>${best?`<div style="font-size:0.78em;color:#34d399;">${AWL('en düşük','lowest')}</div>`:''}`; }],
+        [AWL('Durum','Status'),c=>status(c.d)],
+        [AWL('Açık art. teklifi','Auction bid'),c=>(c.d.auctionActive&&c.d.auctionHighestBid!=null)?`${c.d.auctionHighestBid} π`:no],
+        [AWL('Hemen Al','Buy Now'),c=>(c.d.auctionActive&&c.d.auctionBuyNowPrice)?`${c.d.auctionBuyNowPrice} π`:no],
+        [AWL('Tür','Type'),c=>escapeHtml(typeLabel(c.d.type))],
+        [AWL('Uzunluk','Length'),c=>AWL(`${c.n.replace(/\.pi$/i,'').length} karakter`,`${c.n.replace(/\.pi$/i,'').length} chars`)],
+        [AWL('Satıcı','Seller'),c=>c.d.sellerUsername?'@'+escapeHtml(c.d.sellerUsername):no],
+        [AWL('Sahiplik onayı','Ownership'),c=>c.d.ownershipVerified?yes:no],
+        [AWL('Aktif uygulama','Active app'),c=>c.d.hasActiveApp?yes:no],
+        [AWL('İlan tarihi','Listed on'),c=>c.d.createdAt?_cmpDate(c.d.createdAt,false):no]
+    ];
+    const th=cols.map(c=>`<th style="padding:8px 3px;vertical-align:top;">
+        <img src="${escapeHtml(c.d.img||'assets/default.jpeg')}" loading="lazy" decoding="async" alt="" style="width:100%;height:40px;object-fit:contain;border-radius:6px;background:#1e293b;" onerror="this.style.visibility='hidden'">
+        <div style="margin-top:4px;color:#f1f5f9;font-size:0.8em;font-weight:900;word-break:break-all;">${escapeHtml(c.n)}</div></th>`).join('');
+    const trs=rowDefs.map(([k,fn])=>`<tr><td style="padding:7px 6px;color:#94a3b8;font-weight:700;font-size:0.68em;border-top:1px solid #1e293b;vertical-align:top;width:58px;word-break:break-word;">${k}</td>${cols.map(c=>`<td style="padding:7px 3px;border-top:1px solid #1e293b;color:#e2e8f0;font-size:0.72em;text-align:center;vertical-align:top;word-break:break-word;">${fn(c)}</td>`).join('')}</tr>`).join('');
+    const acts=cols.map(c=>`<td style="padding:8px 4px;border-top:1px solid #1e293b;text-align:center;vertical-align:top;">
+        <button type="button" onclick="window.cmpOpenDetail('${_cmpJs(c.n)}')" style="width:100%;padding:6px 2px;border-radius:7px;border:1px solid #818cf8;background:rgba(129,140,248,0.14);color:#c7d2fe;font-size:0.72em;font-weight:800;cursor:pointer;">${AWL('Detay','Details')}</button>
+        <button type="button" onclick="window.cmpRemove('${_cmpJs(c.n)}')" style="margin-top:4px;width:100%;padding:5px 2px;border-radius:7px;border:1px solid #475569;background:none;color:#94a3b8;font-size:0.7em;font-weight:700;cursor:pointer;">✕ ${AWL('Çıkar','Remove')}</button></td>`).join('');
+    let m=document.getElementById('compare-modal');
+    if(!m){ m=document.createElement('div'); m.id='compare-modal'; m.className='modal-overlay'; m.addEventListener('click',(e)=>{ if(e.target===m) m.style.display='none'; }); document.body.appendChild(m); }
+    m.style.display='flex';
+    m.innerHTML=`<div class="modal-content" style="border-color:#a78bfa;text-align:left;max-width:520px;">
+        <div style="text-align:center;font-weight:900;color:#ddd6fe;font-size:1em;margin-bottom:8px;">⚖️ ${AWL('Domain Karşılaştırma','Domain Comparison')}</div>
+        <div style="overflow-x:auto;border-radius:10px;background:#0f172a;border:1px solid #1e293b;">
+            <table style="width:100%;border-collapse:collapse;table-layout:fixed;"><thead><tr><th style="width:58px;"></th>${th}</tr></thead><tbody>${trs}<tr><td style="border-top:1px solid #1e293b;"></td>${acts}</tr></tbody></table>
+        </div>
+        <button type="button" class="pi-btn" style="background:#475569;animation:none;padding:11px 6px;margin:10px 0 0;width:100%;" onclick="document.getElementById('compare-modal').style.display='none'">${AWL('Kapat','Close')}</button>
+    </div>`;
+};
+window.cmpRemove=function(name){
+    const i=_cmp.indexOf(name); if(i>=0) _cmp.splice(i,1);
+    _cmpSave(); _cmpUpdateMenu();
+    const m=document.getElementById('compare-modal');
+    if(_cmp.length<2){ if(m) m.style.display='none'; }
+    else window.openCompare();
+    const dm=document.getElementById('domain-detail-modal');
+    if(dm && dm.style.display==='flex' && window._detailDomainName) window.renderDetailExtras(window._detailDomainName);
+};
+window.cmpOpenDetail=function(name){
+    const m=document.getElementById('compare-modal'); if(m) m.style.display='none';
+    window.openDomainDetail(name);
+};
+_cmpUpdateMenu();
+
+// ══════════════════════════════════════════════════════════════════════
+// GÜVEN VE ŞEFFAFLIK SAYFASI + Pİ EKİBİ İNCELEME REHBERİ
+// • Her ikisi de GİRİŞ GEREKTİRMEZ (yan menü ya da doğrudan bağlantı):
+//     ?transparency=1   ve   ?guide=1
+// • Şeffaflık rakamları sunucudan (get_transparency_stats) gelir; yalnızca toplu
+//   sayılardır, kişisel bilgi/domain adı içermez. Sunucu 10 dk önbelleğe alır.
+// ══════════════════════════════════════════════════════════════════════
+function _infoModal(id,borderColor){
+    let m=document.getElementById(id);
+    if(!m){
+        m=document.createElement('div'); m.id=id; m.className='modal-overlay';
+        m.addEventListener('click',(e)=>{ if(e.target===m) m.style.display='none'; });
+        document.body.appendChild(m);
+    }
+    m.style.display='flex';
+    return m;
+}
+function _infoClose(id){ return `<button type="button" class="pi-btn" style="background:#475569;animation:none;padding:11px 6px;margin:12px 0 0;width:100%;" onclick="document.getElementById('${id}').style.display='none'">${AWL('Kapat','Close')}</button>`; }
+const _secH=(txt)=>`<div style="margin:12px 0 5px;font-weight:900;color:#fcd34d;font-size:0.82em;">${txt}</div>`;
+const _para=(txt)=>`<div style="font-size:0.76em;color:#cbd5e1;line-height:1.6;">${txt}</div>`;
+const _li=(arr)=>`<ol style="margin:0;padding-left:18px;font-size:0.76em;color:#cbd5e1;line-height:1.65;">${arr.map(x=>`<li style="margin-bottom:3px;">${x}</li>`).join('')}</ol>`;
+
+window.openTransparency=async function(){
+    const m=_infoModal('transparency-modal');
+    const flow=[
+        AWL('Ödemeniz satıcıya doğrudan gitmez; uygulamanın emanet (escrow) cüzdanında bekler.','Your payment does not go to the seller directly; it waits in the app\'s escrow wallet.'),
+        AWL('Satıcı domaini devrettiğini bildirir, alıcı devri onaylar.','The seller reports the transfer and the buyer confirms it.'),
+        AWL('Onaydan sonra yönetici ödemeyi satıcıya serbest bırakır (platform komisyonu düşülür).','After confirmation the admin releases the payment to the seller (platform commission deducted).'),
+        AWL('Sorun olursa uyuşmazlık açılır; yönetici inceler ve gerekirse ödeme alıcıya iade edilir.','If something goes wrong a dispute is opened; the admin reviews it and, if needed, the payment is refunded to the buyer.')
+    ];
+    const head=`<div style="text-align:center;font-weight:900;color:#6ee7b7;font-size:1.02em;">🛡️ ${AWL('Güven ve Şeffaflık','Trust & Transparency')}</div>
+        <div style="text-align:center;font-size:0.72em;color:#94a3b8;margin:4px 0 2px;line-height:1.5;">${AWL('Rakamlar canlı verilerden hesaplanır; kişisel bilgi içermez.','Figures are computed from live data and contain no personal information.')}</div>
+        ${_secH('🔒 '+AWL('Ödemeniz nasıl korunur?','How is your payment protected?'))}${_li(flow)}`;
+    m.innerHTML=`<div class="modal-content" style="border-color:#34d399;text-align:left;max-width:480px;">${head}
+        <div id="transparency-body" style="margin-top:6px;">${_para('⏳ '+AWL('İstatistikler yükleniyor…','Loading statistics…'))}</div>${_infoClose('transparency-modal')}</div>`;
+    const body=()=>document.getElementById('transparency-body');
+    try{
+        const r=await fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'get_transparency_stats'})});
+        const d=await r.json();
+        if(!r.ok||!d.success) throw new Error(d.error||'err');
+        const nf=(n)=>(n==null?'—':new Intl.NumberFormat(currentLang==='en'?'en-GB':'tr-TR',{maximumFractionDigits:2}).format(n));
+        const pct=(a,b)=>b>0?` · %${Math.round(a/b*100)}`:'';
+        const hrs=(h)=>h==null?'—':(h<1?AWL(`${Math.round(h*60)} dk`,`${Math.round(h*60)} min`):AWL(`${nf(h)} sa`,`${nf(h)} h`));
+        const card=(icon,label,value,sub)=>`<div style="background:#0f172a;border:1px solid #1e293b;border-radius:10px;padding:9px 8px;text-align:center;">
+            <div style="font-size:1.25em;">${icon}</div>
+            <div style="font-size:0.66em;color:#94a3b8;font-weight:700;margin-top:2px;">${label}</div>
+            <div style="font-size:1.08em;font-weight:900;color:#f1f5f9;margin-top:2px;">${value}</div>
+            <div style="font-size:0.62em;color:#64748b;margin-top:2px;min-height:1.2em;">${sub||''}</div></div>`;
+        const noData=AWL('henüz yeterli veri yok','not enough data yet');
+        const cards=[
+            card('🔒',AWL('Emanetle korunan satış','Escrow-protected sales'),nf(d.sales.escrowSales),AWL(`hacim: ${nf(d.sales.escrowVolume)} π`,`volume: ${nf(d.sales.escrowVolume)} π`)),
+            card('✅',AWL('Satıcıya serbest bırakılan','Released to sellers'),nf(d.sales.released),AWL(`beklemede: ${nf(d.sales.escrowOpen)}`,`pending: ${nf(d.sales.escrowOpen)}`)),
+            card('⏱️',AWL('Ortalama devir süresi','Avg. transfer time'),hrs(d.transfer.avgHours),d.transfer.count?AWL(`medyan: ${hrs(d.transfer.medianHours)} · ${d.transfer.count} satış`,`median: ${hrs(d.transfer.medianHours)} · ${d.transfer.count} sales`):noData),
+            card('↩️',AWL('İade edilen satış','Refunded sales'),nf(d.sales.refunded),d.sales.total?AWL(`satışların %${Math.round(d.sales.refunded/d.sales.total*100)}'i`,`${Math.round(d.sales.refunded/d.sales.total*100)}% of sales`):noData),
+            card('⚖️',AWL('Açılan uyuşmazlık','Disputes opened'),nf(d.disputes.opened),AWL(`çözülen: ${nf(d.disputes.resolved)}${pct(d.disputes.resolved,d.disputes.opened)}`,`resolved: ${nf(d.disputes.resolved)}${pct(d.disputes.resolved,d.disputes.opened)}`)),
+            card('🔎',AWL('Doğrulanmış sahiplik','Verified ownership'),`${nf(d.listings.ownershipVerified)} / ${nf(d.listings.active)}`,AWL('aktif ilanlar içinde','among active listings')),
+            card('⭐',AWL('Ortalama değerlendirme','Average rating'),d.ratings.count?nf(d.ratings.average):'—',d.ratings.count?AWL(`${d.ratings.count} değerlendirme`,`${d.ratings.count} ratings`):noData),
+            card('™️',AWL('Marka itirazı','Trademark claims'),nf(d.trademark.total),AWL(`çözülen: ${nf(d.trademark.resolved)} · kaldırılan ilan: ${nf(d.trademark.removed)}`,`resolved: ${nf(d.trademark.resolved)} · listings removed: ${nf(d.trademark.removed)}`))
+        ].join('');
+        const when=new Date(d.updatedAt).toLocaleString(currentLang==='en'?'en-GB':'tr-TR',{day:'2-digit',month:'2-digit',year:'2-digit',hour:'2-digit',minute:'2-digit'});
+        const comm=d.commissionRate!=null?AWL(` · platform komisyonu: %${Math.round(d.commissionRate*1000)/10}`,` · platform commission: ${Math.round(d.commissionRate*1000)/10}%`):'';
+        const note=d.sales.sampleLimited?AWL(' · son 5000 satış esas alınmıştır',' · based on the latest 5000 sales'):'';
+        if(body()) body().innerHTML=`${_secH('📊 '+AWL('Canlı rakamlar','Live figures'))}<div style="display:grid;grid-template-columns:1fr 1fr;gap:7px;">${cards}</div>
+            <div style="margin-top:8px;font-size:0.64em;color:#64748b;text-align:center;line-height:1.5;">${AWL('Güncelleme','Updated')}: ${when}${comm}${note}</div>`;
+    }catch(e){
+        if(body()) body().innerHTML=`${_para('⚠️ '+AWL('İstatistikler şu anda alınamadı.','Statistics could not be loaded right now.'))}
+            <button type="button" onclick="window.openTransparency()" style="margin-top:8px;width:100%;padding:8px;border-radius:9px;border:1.5px solid #34d399;background:rgba(52,211,153,0.12);color:#6ee7b7;font-weight:800;cursor:pointer;">🔄 ${AWL('Tekrar dene','Try again')}</button>`;
+    }
+};
+
+window.openReviewGuide=function(){
+    const m=_infoModal('review-guide-modal');
+    let mail='';
+    try{ const a=document.querySelector('.footer-row a[href^="mailto:"]'); if(a) mail=a.getAttribute('href').replace(/^mailto:/,''); }catch(_e){}
+    const steps=[
+        AWL('Pi Browser\'da açıp <b>"Pi ile Bağlan"</b> ile giriş yapın (ek bilgi istenmez).','Open the app in Pi Browser and sign in with <b>"Connect with Pi"</b> (no extra info is requested).'),
+        AWL('Ana listeden bir domain kartına dokunun: detay penceresinde <b>"Karşılaştırmaya ekle" ve "Benzer domainler"</b> ile, <b>"Daha Fazla Detay"</b> altında fiyat geçmişi ve satıcı güven skoru görünür.','Tap a domain card: the detail window shows <b>"Add to compare" and "Similar domains"</b>, and <b>"More Details"</b> reveals price history and the seller trust score.'),
+        AWL('<b>SATIN AL</b> ile Pi ödeme penceresini açın. Ödeme satıcıya doğrudan gitmez; uygulamanın <b>emanet (escrow) cüzdanında</b> bekler.','Use <b>BUY NOW</b> to open the Pi payment window. The payment does not go to the seller directly; it waits in the app\'s <b>escrow wallet</b>.'),
+        AWL('<b>Panelim → Alımlarım</b>: devir durumu izlenir. Satıcı devri bildirir, alıcı onaylar; sorun varsa uyuşmazlık açılır ve yönetici inceler.','<b>My Panel → Purchases</b>: track the transfer. The seller reports the transfer, the buyer confirms; if there is a problem a dispute is opened and the admin reviews it.'),
+        AWL('<b>Teklif Ver</b> ve <b>Açık Artırma</b> (otomatik teklif / üst limit dahil) ile pazarlık akışını deneyin.','Try negotiation with <b>Make an Offer</b> and <b>Auctions</b> (including auto-bid / maximum limit).'),
+        AWL('<b>Mesajlarım</b> ve <b>Yardım & Şikayetler</b>: satıcıyla yazışma, destek talebi, ilan bildirme ve marka itirazı.','<b>My Messages</b> and <b>Help & Complaints</b>: chat with the seller, support tickets, listing reports and trademark claims.'),
+        AWL('Yan menüden dil (TR/EN), bildirim tercihleri, veri dışa aktarma ve hesap silme bulunur.','The side menu has language (TR/EN), notification preferences, data export and account deletion.')
+    ];
+    const payments=[
+        AWL('<b>Kullanıcı → uygulama:</b> domain satın alma ve açık artırmayı kazanan kullanıcının satın alması. Ödeme onayı ve tamamlama sunucu tarafında yapılır.','<b>User → app:</b> buying a domain and the auction winner\'s purchase. Payment approval and completion are done on the server side.'),
+        AWL('<b>Uygulama → kullanıcı:</b> devir onaylanınca satıcıya ödeme (platform komisyonu düşülmüş tutar); sorun olursa alıcıya iade. Her ikisi de yönetici onayıyla yapılır.','<b>App → user:</b> payment to the seller after the transfer is confirmed (platform commission deducted); refund to the buyer if there is a problem. Both are triggered by the admin.'),
+        AWL('<b>Pi Ad Network (ödüllü reklam):</b> yalnızca satıcıların kendi ilanlarını öne çıkarması için, isteğe bağlı.','<b>Pi Ad Network (rewarded ad):</b> optional, only for sellers to boost their own listings.')
+    ];
+    m.innerHTML=`<div class="modal-content" style="border-color:#fbbf24;text-align:left;max-width:480px;">
+        <div style="text-align:center;font-weight:900;color:#fde68a;font-size:1.02em;">📋 ${AWL('Pi Ekibi İnceleme Rehberi','Pi Team Review Guide')}</div>
+        <div style="margin-top:8px;padding:8px 10px;border-radius:9px;background:rgba(251,191,36,0.08);border:1px solid rgba(251,191,36,0.35);">${_para(AWL('<b>Web3 Domain Gateway</b>, <b>.pi domainlerinin</b> Pi ile alınıp satıldığı, emanet (escrow) korumalı bir pazar yeridir. Uygulama <b>Test-Pi ağında</b> çalışır; gerçek Pi bakiyesi kullanılmaz.','<b>Web3 Domain Gateway</b> is a marketplace for buying and selling <b>.pi domains</b> with Pi, protected by escrow. The app runs on the <b>Test-Pi network</b>; no real Pi balance is used.'))}</div>
+        ${_secH('🧪 '+AWL('Hızlı test adımları','Quick test steps'))}${_li(steps)}
+        ${_secH('💱 '+AWL('Pi ödemeleri nerede kullanılıyor?','Where are Pi payments used?'))}${_li(payments)}
+        ${_secH('🗂️ '+AWL('Toplanan veriler','Data we collect'))}
+        ${_para(AWL('Pi kullanıcı adı (Pi ile giriş), arayüz dili, satın alma/satış ve mesajlaşma kayıtları. <b>İsteğe bağlı:</b> e-posta (bildirim için), Telegram bağlantısı, tarayıcı bildirim aboneliği. Veri dışa aktarma ve hesap silme yan menüdedir.','Pi username (Sign in with Pi), interface language, purchase/sale and message records. <b>Optional:</b> email (for notifications), Telegram link, browser push subscription. Data export and account deletion are in the side menu.'))}
+        ${_secH('🔗 '+AWL('Politikalar ve iletişim','Policies and contact'))}
+        <div style="display:flex;flex-wrap:wrap;gap:6px;">
+            <button type="button" onclick="document.getElementById('review-guide-modal').style.display='none';openLegalModal('privacy')" style="flex:1;min-width:120px;padding:8px 6px;border-radius:9px;border:1.5px solid #f87171;background:rgba(248,113,113,0.10);color:#fca5a5;font-size:0.74em;font-weight:800;cursor:pointer;">${AWL('Gizlilik Politikası','Privacy Policy')}</button>
+            <button type="button" onclick="document.getElementById('review-guide-modal').style.display='none';openLegalModal('terms')" style="flex:1;min-width:120px;padding:8px 6px;border-radius:9px;border:1.5px solid #f87171;background:rgba(248,113,113,0.10);color:#fca5a5;font-size:0.74em;font-weight:800;cursor:pointer;">${AWL('Kullanım Şartları','Terms of Use')}</button>
+            <button type="button" onclick="document.getElementById('review-guide-modal').style.display='none';window.openTransparency()" style="flex:1 1 100%;padding:8px 6px;border-radius:9px;border:1.5px solid #34d399;background:rgba(52,211,153,0.10);color:#6ee7b7;font-size:0.74em;font-weight:800;cursor:pointer;">🛡️ ${AWL('Güven ve Şeffaflık','Trust & Transparency')}</button>
+        </div>
+        ${mail?`<div style="margin-top:8px;font-size:0.72em;color:#94a3b8;text-align:center;">📩 ${AWL('İletişim','Contact')}: <a href="mailto:${escapeHtml(mail)}" style="color:#38bdf8;">${escapeHtml(mail)}</a></div>`:''}
+        ${_infoClose('review-guide-modal')}</div>`;
+};
+// Doğrudan bağlantılar: ?guide=1 / ?transparency=1 (açılış ekranı bitince açılır)
+(function openInfoDeepLinks(){
+    let qp; try{ qp=new URLSearchParams(window.location.search); }catch(_e){ return; }
+    const which=qp.get('guide')==='1'?'guide':(qp.get('transparency')==='1'?'transparency':null);
+    if(!which) return;
+    let tries=0;
+    const iv=setInterval(()=>{
+        tries++;
+        if(tries>100){ clearInterval(iv); return; }
+        if(!document.documentElement.classList.contains('app-booting')){
+            clearInterval(iv);
+            setTimeout(()=>{ which==='guide'?window.openReviewGuide():window.openTransparency(); },400);
+        }
+    },250);
+})();
 window.toggleMyOffersList=function(){
     if(_myOffersLoadInFlight) return;
     const now=Date.now();
@@ -12743,7 +13005,7 @@ function render(){
         const cardNameLineHtml=(auctionIsLive||auctionIsEnded)
             ? `<div class="domain-name" style="white-space:normal;overflow:visible;text-overflow:clip;line-height:1.35;">${d.name} ${auctionInlineStatusHtml}</div>${auctionPriceBlockHtml}`
             : `<div class="domain-name">${d.name} <span style="color:#fbbf24;font-weight:800;">(${data.price} π)</span></div><div class="domain-price">${data.price} PI</div>${usdEstimateHtml(data.price)}`;
-        card.innerHTML=`${favBtn}<img src="${imgSrc}" class="domain-img" onerror="this.src='data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMDAiIGhlaWdodD0iMTAwIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjNDc1NTY5Ii8+PC9zdmc+'">${boostTag}${auctionTag}${newTag}${tTag}${hiddenTag}${cardNameLineHtml}${buildMyOfferChipHtml(d.name)}<div class="card-tap-hint">👆 ${t('tapForDetailHint')}</div>`;
+        card.innerHTML=`${favBtn}<img src="${imgSrc}" class="domain-img" loading="lazy" decoding="async" onerror="this.src='data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMDAiIGhlaWdodD0iMTAwIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjNDc1NTY5Ii8+PC9zdmc+'">${boostTag}${auctionTag}${newTag}${tTag}${hiddenTag}${cardNameLineHtml}${buildMyOfferChipHtml(d.name)}<div class="card-tap-hint">👆 ${t('tapForDetailHint')}</div>`;
 
         if(data.sold){
             // Satıcılı bir satışta, escrow ödemesi admin tarafından serbest
