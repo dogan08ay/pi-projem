@@ -2812,7 +2812,7 @@ async function handlerImpl(req, res) {
       await offerBatch.commit();
       const adminUsername = await getRealUsername(accessToken);
       await logAdminAction(adminUsername, 'start_auction', `${domainName}: başlangıç ${startNum} Pi, min artış ${incNum} Pi, ${hoursNum} saat${reserveNum !== null ? `, rezerv ${reserveNum} Pi` : ''}${buyNowNum !== null ? `, hemen al ${buyNowNum} Pi` : ''}`);
-      await logAuctionEvent(db, 'started', domainName, { username: adminUsername, price: startNum, details: `${hoursNum} saat${reserveNum !== null ? ', rezervli' : ''}${buyNowNum !== null ? ', hemen al ' + buyNowNum : ''}` });
+      await logAuctionEvent(db, 'started', domainName, { username: adminUsername, price: startNum, endsAt: auctionEndsAt, details: `${hoursNum} saat${reserveNum !== null ? ', rezervli' : ''}${buyNowNum !== null ? ', hemen al ' + buyNowNum : ''}` });
       // Domaini favorileyen herkese: "açık artırma başladı" (satıcı hariç).
       await notifyFavoriters(db, domainName, {
         excludeUsername: data.sellerUsername || null,
@@ -3604,6 +3604,16 @@ async function handlerImpl(req, res) {
         deletedAt: Date.now(),
         deletedBy: realUsername
       }, { merge: true });
+
+      // Açık artırma sürerken / kazanan ödeme beklerken ilan geri çekildiyse, "açık artırma
+      // takip" ekranında nedeni görünsün diye olay günlüğüne yaz.
+      if (domainData.auctionActive === true || domainData.auctionWinPending === true) {
+        await logAuctionEvent(db, 'withdrawn_by_seller', domainName, {
+          username: realUsername,
+          price: domainData.auctionHighestBid ?? domainData.auctionWinPrice ?? null,
+          details: domainData.auctionWinPending === true ? 'kazanan ödemesi beklenirken' : (domainData.auctionHighestBidder ? `en yüksek teklif sahibi @${domainData.auctionHighestBidder}` : 'teklifsiz')
+        });
+      }
 
       const reqSnap = await db.collection('sell_requests')
         .where('domainName', '==', domainName)
@@ -7493,10 +7503,44 @@ async function handlerImpl(req, res) {
         .orderBy('auctionStartedAt', 'desc')
         .limit(300)
         .get();
+      // Kapanmış açık artırmalarda en yüksek teklif/sayaç alanları temizlendiği için, neden ve
+      // süre bilgisini auction_events günlüğünden (90 gün saklanır) birleştiriyoruz.
+      const evByDomain = {};
+      try {
+        const evSnap = await db.collection('auction_events').orderBy('at', 'desc').limit(3000).get();
+        evSnap.forEach(e => {
+          const x = e.data();
+          if (!x.domainName) return;
+          (evByDomain[x.domainName] = evByDomain[x.domainName] || []).push({
+            type: x.type, username: x.username || null, price: x.price ?? null, details: x.details || null,
+            at: x.at || 0, endsAt: x.endsAt || null, defaultCount: x.defaultCount ?? null,
+            banUntil: x.banUntil || null, secondChanceTo: x.secondChanceTo || null
+          });
+        });
+      } catch (e) { console.error('get_all_auctions olay günlüğü okunamadı:', e); }
       const auctions = [];
       snap.forEach(d => {
         const v = d.data();
+        const startedAt = v.auctionStartedAt || 0;
+        // Yalnızca BU açık artırma turuna ait olaylar, eskiden yeniye.
+        const events = (evByDomain[d.id] || []).filter(x => x.at >= startedAt - 2000).sort((a, b) => a.at - b.at).slice(-15);
+        // Planlanan bitiş: alan silinmişse 'started' olayındaki kesin değer ya da "N saat" metninden türet.
+        let scheduledEndsAt = v.auctionEndsAt || null;
+        if (!scheduledEndsAt) {
+          const st = events.find(x => x.type === 'started');
+          if (st && st.endsAt) scheduledEndsAt = st.endsAt;
+          else if (st && st.details) { const m = /^(\d+)\s*saat/.exec(st.details); if (m) scheduledEndsAt = st.at + Number(m[1]) * 3600 * 1000; }
+        }
         auctions.push({
+          events,
+          scheduledEndsAt,
+          closedAt: v.auctionClosedAt || null,
+          deleted: v.deleted === true,
+          deletedAt: v.deletedAt || null,
+          deletedBy: v.deletedBy || null,
+          auctionWinPrice: v.auctionWinPrice ?? null,
+          auctionWonAt: v.auctionWonAt || null,
+          buyer: v.buyer || null,
           domainName: d.id,
           sellerUsername: v.sellerUsername || null,
           auctionActive: v.auctionActive === true,
