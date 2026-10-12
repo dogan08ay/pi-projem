@@ -2249,18 +2249,6 @@
                 </div>
             </div>
 
-            <div style="background:#0f172a;border-radius:12px;padding:12px;border:1px solid rgba(52,211,153,0.35);">
-                <div style="color:#6ee7b7;font-weight:900;font-size:0.95em;margin-bottom:8px;">✨ <span data-i18n="hiwNewTitle"></span></div>
-                <div style="display:flex;flex-direction:column;gap:8px;">
-                    <div style="display:flex;gap:8px;"><span style="color:#34d399;font-weight:900;flex-shrink:0;">•</span><span data-i18n="hiwNew1"></span></div>
-                    <div style="display:flex;gap:8px;"><span style="color:#34d399;font-weight:900;flex-shrink:0;">•</span><span data-i18n="hiwNew2"></span></div>
-                    <div style="display:flex;gap:8px;"><span style="color:#34d399;font-weight:900;flex-shrink:0;">•</span><span data-i18n="hiwNew3"></span></div>
-                    <div style="display:flex;gap:8px;"><span style="color:#34d399;font-weight:900;flex-shrink:0;">•</span><span data-i18n="hiwNew4"></span></div>
-                    <div style="display:flex;gap:8px;"><span style="color:#34d399;font-weight:900;flex-shrink:0;">•</span><span data-i18n="hiwNew5"></span></div>
-                    <div style="display:flex;gap:8px;"><span style="color:#34d399;font-weight:900;flex-shrink:0;">•</span><span data-i18n="hiwNew6"></span></div>
-                </div>
-            </div>
-
             <div>
                 <div style="color:#a5b4fc;font-weight:900;font-size:0.95em;margin-bottom:4px;">⚠️ <span data-i18n="hiwSection3Title"></span></div>
                 <div data-i18n="hiwSection3Body"></div>
@@ -4728,13 +4716,6 @@ const i18n = {
     hiwAuc7:"<b>Ödeme yapılmazsa:</b> Açık artırma iptal edilir ve domain eski fiyatıyla yeniden satışa açılır. Kazanana kademeli yaptırım uygulanır: 1. ihlalde uyarı, 2. ihlalde 7 gün, 3. ve sonrasında 30 gün açık artırmalara teklif yasağı. Varsa ikinci en yüksek teklif sahibine bir kez aynı süreyle satın alma fırsatı verilir.",
     hiwAuc8:"<b>Yeni hesap limiti:</b> İlk satın alımını henüz tamamlamamış hesaplarda tek teklif / üst limit en fazla 50 π’dir (ödeme ihlali olup henüz satın alma yapmamış hesaplarda 25 π). İlk satın alma tamamlanınca sınır kalkar.",
     hiwAuc9:"<b>Takip ve bildirimler:</b> Bitmesine 1 saatten az kaldığında, takip ettiğiniz domainin açık artırması başladığında ve kazanma süreniz dolmadan önce bildirim gelir. Kapanan açık artırmalar “Açık Artırmalarım” bölümünde 7 gün görünür; teklif kayıtları 30 gün saklanır.",
-    hiwNewTitle:"Yeni Özellikler",
-    hiwNew1:"<b>Domain karşılaştırma:</b> Domain detayında “Karşılaştırmaya ekle” ile en fazla 3 domaini fiyat, durum, tür, uzunluk, satıcı ve sahiplik doğrulamasıyla yan yana inceleyin (yan menüde de bulunur).",
-    hiwNew2:"<b>Benzer domainler:</b> Detay penceresinde aynı türde ve benzer fiyat/uzunlukta domainler önerilir.",
-    hiwNew3:"<b>Güven ve Şeffaflık:</b> Yan menüdeki sayfada emanetle korunan satışlar, ortalama devir süresi, uyuşmazlık çözüm oranı gibi canlı platform rakamları yer alır.",
-    hiwNew4:"<b>Kazandığınız açık artırma uyarısı:</b> Satın alma süreniz, domain listesinin üstünde geri sayımla gösterilir; aşağı kaydırırsanız küçük bir geri sayım rozeti ekranda kalır.",
-    hiwNew5:"<b>Düzenli panel:</b> Panelim’deki Tekliflerim, Açık Artırmalarım ve Gelen Tekliflerim bölümleri tek dokunuşla açılıp kapanır; işlem yapılmazsa bir süre sonra kendiliğinden kapanır.",
-    hiwNew6:"<b>Yenileme ve dil:</b> Sayfanın en üstündeyken aşağı çekerek ya da yan menüden “Yenile” ile verileri güncelleyebilir, dili yan menüden istediğiniz zaman değiştirebilirsiniz.",
     hiwSection2Title:"Escrow (Emanet) Koruması Nasıl İşliyor?",
     hiwStep1:"Bir domain satın aldığınızda, ödediğiniz Pi tutarı satıcıya değil, sistemin emanet hesabına gider.",
     hiwStep2:"Satıcı domaini size devretmesinin ardından \"Devrettim\" der, siz de devri teslim aldığınızda \"Domaini Aldım\" dersiniz.",
@@ -4882,6 +4863,17 @@ const i18n = {
     auctionTrackNote:"Platformda şu ana kadar başlatılmış TÜM açık artırmalar — aktif olanlar, bitip kazananı belli olanlar, süresi dolup teklif almayanlar ve satıcı tarafından iptal edilenler dahil.",
     fabDialAria:"Hızlı menü",adminJumpTitle:"Admin Paneline Git",
     changelogNewBadge:"🆕 YENİ",
+    changelogV2_6:"v2.6 - Şeffaflık ve Kullanım Kolaylığı Güncellemesi",
+    changelogV2_6Item1:"🛡️ Yan menüye Güven ve Şeffaflık sayfası eklendi — emanetle korunan satışlar, ortalama devir süresi, uyuşmazlık çözüm oranı gibi canlı platform rakamları herkese açık. Yanında Pi ekibi için İnceleme Rehberi de var",
+    changelogV2_6Item2:"⚖️ Domain karşılaştırma eklendi — detayda “Karşılaştırmaya ekle” ile en fazla 3 domaini fiyat, durum, tür, uzunluk, satıcı ve sahiplik doğrulamasıyla yan yana görün. Detayda 🔎 Benzer domainler önerisi de çıkıyor",
+    changelogV2_6Item3:"🏆 Kazandığınız açık artırma uyarısı artık domain kartlarının üstüne binmiyor: listenin üstünde geri sayımla gösteriliyor, aşağı kaydırınca küçük bir geri sayım rozeti ekranda kalıyor",
+    changelogV2_6Item4:"🧩 Panelim, Tekliflerim, Açık Artırmalarım, Gelen Tekliflerim, Bilgi kutusu ve Rozet koşulları “Aç / Kapat” ikonlu açılır bölümler oldu; işlem yapılmazsa paneller bir süre sonra kendiliğinden kapanıyor",
+    changelogV2_6Item5:"🔄 Yenileme düzeni değişti: yukarıdan çekerek yenileme artık yalnızca sayfanın gerçekten en üstündeyken çalışıyor, yan menüye “Yenile” eklendi. Kaydırırken listeleri bozan arka plan yenilemeleri kaldırıldı",
+    changelogV2_6Item6:"🌐 İlk açılışta dil seçimi (Türkçe / English) bir kez soruluyor; sonrasında dil yalnızca yan menüden değişiyor",
+    changelogV2_6Item7:"📱 Giriş ekranında yerleşimin yukarı aşağı gidip gelmesi giderildi; domain resimleri artık kaydırdıkça yükleniyor, açılış daha hızlı",
+    changelogV2_6Item8:"📖 Nasıl Çalışır, Sıkça Sorulan Sorular ve Hakkımızda güncellendi — açık artırma kuralları ve 10 yeni soru-cevap eklendi",
+    changelogV2_6Item9:"🔔 Bildirimler menüsü açılınca üstteki sayı sıfırlanıyor, yeni bildirim gelince yeniden sayıyor",
+    changelogV2_6Item10:"🛠️ Admin: Açık Artırma Takip kartlarında kapanış nedeni (iptal, rezerv karşılanmadı, kazanan zamanında almadı, ilan geri çekildi vb.), doğru bitiş/kapanış zamanı ve olay geçmişi görünüyor",
     changelogV2_5:"v2.5 - Açık Artırma Güncellemesi",
     changelogV2_5Item1:"🔨 Açık artırmalar baştan yenilendi: canlı geri sayım artık saat-dakika-saniye olarak akıyor, son 5 dakikada kırmızı yanıp sönüyor ve kartlarda 🔥 Son dakika rozeti çıkıyor",
     changelogV2_5Item2:"🤖 Otomatik teklif eklendi — gizli bir üst limit belirle, biri seni geçmeye çalıştıkça sistem yalnızca gerektiği kadar (minimum artışla) senin adına teklif versin. Üst limitini kimse göremez",
@@ -5785,13 +5777,6 @@ const i18n = {
     hiwAuc7:"<b>If the winner doesn't pay:</b> The auction is cancelled and the domain goes back on sale at its previous price. Graduated penalties apply to the winner: a warning for the 1st violation, a 7-day auction bidding ban for the 2nd, and a 30-day ban from the 3rd onward. If there is a runner-up, they get a one-time chance to buy within the same period.",
     hiwAuc8:"<b>New-account limit:</b> Accounts that haven't completed their first purchase can place a single bid / auto-bid limit of at most 50 π (25 π for accounts with a payment violation and no purchase yet). The limit is lifted once the first purchase is completed.",
     hiwAuc9:"<b>Tracking and notifications:</b> You are notified when less than 1 hour remains, when an auction for a domain you follow starts, and before your winner purchase window runs out. Closed auctions stay visible in “My Auctions” for 7 days; bid records are kept for 30 days.",
-    hiwNewTitle:"What’s New",
-    hiwNew1:"<b>Domain comparison:</b> Use “Add to compare” in a domain’s details to view up to 3 domains side by side — price, status, type, length, seller and ownership verification (also available in the side menu).",
-    hiwNew2:"<b>Similar domains:</b> The detail window suggests domains of the same type with similar price and length.",
-    hiwNew3:"<b>Trust & Transparency:</b> The page in the side menu shows live platform figures such as escrow-protected sales, average transfer time and dispute resolution rate.",
-    hiwNew4:"<b>Auction-won alert:</b> Your purchase deadline is shown with a countdown above the domain list; if you scroll down, a small countdown badge stays on screen.",
-    hiwNew5:"<b>Tidier panel:</b> The My Offers, My Auctions and Received Offers sections in My Panel open and close with one tap, and close themselves after a while if unused.",
-    hiwNew6:"<b>Refresh and language:</b> Pull down at the top of the page or use “Refresh” in the side menu to update data, and change the language from the side menu at any time.",
     hiwSection2Title:"How Escrow Protection Works",
     hiwStep1:"When you buy a domain, the Pi you pay goes to the system's escrow account, not directly to the seller.",
     hiwStep2:"After the seller transfers the domain to you, they mark it as \"Transferred\"; once you receive it, you mark it as \"I Received It\".",
@@ -5939,6 +5924,17 @@ const i18n = {
     auctionTrackNote:"ALL auctions ever started on the platform — active ones, ended ones with a decided winner, ones that expired without bids, and ones cancelled by the seller.",
     fabDialAria:"Quick menu",adminJumpTitle:"Go to Admin Panel",
     changelogNewBadge:"🆕 NEW",
+    changelogV2_6:"v2.6 - Transparency & Usability Update",
+    changelogV2_6Item1:"🛡️ Added a Trust & Transparency page to the side menu — live platform figures such as escrow-protected sales, average transfer time and dispute resolution rate are public. A Review Guide for the Pi team is included too",
+    changelogV2_6Item2:"⚖️ Added domain comparison — use “Add to compare” in a domain’s details to view up to 3 domains side by side (price, status, type, length, seller, ownership verification). The detail view also suggests 🔎 Similar domains",
+    changelogV2_6Item3:"🏆 The auction-won alert no longer overlaps domain cards: it now sits above the list with a countdown, and a small countdown badge stays on screen when you scroll down",
+    changelogV2_6Item4:"🧩 My Panel, My Offers, My Auctions, Received Offers, the Info box and Badge requirements are now collapsible sections with an “Open / Close” icon; unused panels close themselves after a while",
+    changelogV2_6Item5:"🔄 Refresh reworked: pull-to-refresh now works only when you are really at the top of the page, and a “Refresh” item was added to the side menu. Background refreshes that disrupted scrolling were removed",
+    changelogV2_6Item6:"🌐 The language (Türkçe / English) is asked once on first open; after that it only changes from the side menu",
+    changelogV2_6Item7:"📱 Fixed the login screen layout jumping up and down; domain images now load as you scroll, so the app opens faster",
+    changelogV2_6Item8:"📖 Updated How It Works, FAQ and About — added auction rules and 10 new questions and answers",
+    changelogV2_6Item9:"🔔 Opening the notifications menu now resets the count at the top, and it counts again when a new notification arrives",
+    changelogV2_6Item10:"🛠️ Admin: Auction Tracking cards now show the closing reason (cancelled, reserve not met, winner did not buy in time, listing withdrawn, etc.), the correct end/closing time and the event history",
     changelogV2_5:"v2.5 - Auction Update",
     changelogV2_5Item1:"🔨 Auctions were rebuilt: the live countdown now ticks in hours-minutes-seconds, turns red and pulses in the last 5 minutes, and cards show a 🔥 Final minutes badge",
     changelogV2_5Item2:"🤖 Added auto-bidding — set a hidden maximum and, whenever someone tries to outbid you, the system bids for you only as much as needed (minimum increment). Nobody can see your maximum",
@@ -7666,7 +7662,8 @@ window.openChangelogModal=function(){
     const list=document.getElementById('changelog-list');
     if(!list) return;
     const versions=[
-        {v:t('changelogV2_5'),items:[t('changelogV2_5Item1'),t('changelogV2_5Item2'),t('changelogV2_5Item3'),t('changelogV2_5Item4'),t('changelogV2_5Item5'),t('changelogV2_5Item6'),t('changelogV2_5Item7'),t('changelogV2_5Item8'),t('changelogV2_5Item9'),t('changelogV2_5Item10')],date:'2026-10-04',icon:'🔨',color:'#f59e0b',badge:t('changelogNewBadge')},
+        {v:t('changelogV2_6'),items:[t('changelogV2_6Item1'),t('changelogV2_6Item2'),t('changelogV2_6Item3'),t('changelogV2_6Item4'),t('changelogV2_6Item5'),t('changelogV2_6Item6'),t('changelogV2_6Item7'),t('changelogV2_6Item8'),t('changelogV2_6Item9'),t('changelogV2_6Item10')],date:'2026-10-12',icon:'🛡️',color:'#34d399',badge:t('changelogNewBadge')},
+        {v:t('changelogV2_5'),items:[t('changelogV2_5Item1'),t('changelogV2_5Item2'),t('changelogV2_5Item3'),t('changelogV2_5Item4'),t('changelogV2_5Item5'),t('changelogV2_5Item6'),t('changelogV2_5Item7'),t('changelogV2_5Item8'),t('changelogV2_5Item9'),t('changelogV2_5Item10')],date:'2026-10-04',icon:'🔨',color:'#f59e0b'},
         {v:t('changelogV2_4'),items:[t('changelogV2_4Item1'),t('changelogV2_4Item2'),t('changelogV2_4Item3')],date:'2026-08-04',icon:'🧭',color:'#a78bfa'},
         {v:t('changelogV2_3'),items:[t('changelogV2_3Item1'),t('changelogV2_3Item2'),t('changelogV2_3Item3'),t('changelogV2_3Item4'),t('changelogV2_3Item5'),t('changelogV2_3Item6'),t('changelogV2_3Item7')],date:'2026-07-25',icon:'🤝',color:'#34d399'},
         {v:t('changelogV2_2'),items:[t('changelogV2_2Item1'),t('changelogV2_2Item2'),t('changelogV2_2Item3'),t('changelogV2_2Item4'),t('changelogV2_2Item5'),t('changelogV2_2Item6'),t('changelogV2_2Item7'),t('changelogV2_2Item8')],date:'2026-07-16',icon:'✨',color:'#fbbf24'},
