@@ -2834,6 +2834,8 @@ async function handlerImpl(req, res) {
 
   if (action === 'cancel_auction') {
     const { domainName } = req.body;
+    // İsteğe bağlı iptal gerekçesi (en fazla 200 karakter): olay günlüğüne ve teklif verenlere gider.
+    const cancelReason = typeof req.body.reason === 'string' ? req.body.reason.replace(/\s+/g, ' ').trim().slice(0, 200) : '';
     const isAdmin = await verifyAdmin(accessToken, req);
     if (!domainName) return res.status(400).json({ error: "Geçersiz domain adı" });
     try {
@@ -2855,7 +2857,7 @@ async function handlerImpl(req, res) {
           return res.status(403).json({ error: "Teklif gelmiş bir açık artırmayı yalnızca yönetici iptal edebilir. Lütfen destek ile iletişime geçin." });
         await domainRef.set({ auctionActive: false, auctionEndsAt: null, price: data.auctionStartPrice || data.price, ...AUCTION_LEFTOVER_CLEAR_FIELDS() }, { merge: true });
         await auctionSecretRef(db, domainName).delete().catch(() => {});
-        await logAuctionEvent(db, 'cancelled_by_seller', domainName, { username: callerName });
+        await logAuctionEvent(db, 'cancelled_by_seller', domainName, { username: callerName, ...(cancelReason ? { details: 'Gerekçe: ' + cancelReason } : {}) });
         return res.status(200).json({ success: true });
       }
       // Kazananı belirlenmiş ve satın almasını bekleyen açık artırma da iptal
@@ -2872,17 +2874,17 @@ async function handlerImpl(req, res) {
           ...AUCTION_LEFTOVER_CLEAR_FIELDS()
         }, { merge: true });
         await sendNotification(data.auctionWinner, { en: { title: '⚠️ Auction Cancelled',
-          body: `The auction you won for "${domainName}" was cancelled by an admin. No payment was taken so no refund is needed, and no penalty was applied to your account.` },
+          body: `The auction you won for "${domainName}" was cancelled by an admin. No payment was taken so no refund is needed, and no penalty was applied to your account.${cancelReason ? ' Reason: ' + cancelReason : ''}` },
           type: 'auction_cancelled',
           role: 'buyer',
           title: '⚠️ Açık Artırma İptal Edildi',
-          body: `"${domainName}" için kazandığınız açık artırma yönetici tarafından iptal edildi. Herhangi bir ödeme alınmadığı için iade gerekmiyor ve hesabınıza ceza uygulanmadı.`,
+          body: `"${domainName}" için kazandığınız açık artırma yönetici tarafından iptal edildi. Herhangi bir ödeme alınmadığı için iade gerekmiyor ve hesabınıza ceza uygulanmadı.${cancelReason ? ' Gerekçe: ' + cancelReason : ''}`,
           domainName
         });
         const adminUsernameW = await getRealUsername(accessToken);
         await auctionSecretRef(db, domainName).delete().catch(() => {});
-        await logAuctionEvent(db, 'cancelled_by_admin', domainName, { username: adminUsernameW, details: 'kazanan ödemesi beklenirken' });
-        await logAdminAction(adminUsernameW, 'cancel_auction', `${domainName} (kazanan bekleniyordu)`);
+        await logAuctionEvent(db, 'cancelled_by_admin', domainName, { username: adminUsernameW, details: 'kazanan ödemesi beklenirken' + (cancelReason ? ' — Gerekçe: ' + cancelReason : '') });
+        await logAdminAction(adminUsernameW, 'cancel_auction', `${domainName} (kazanan bekleniyordu)${cancelReason ? ' — ' + cancelReason : ''}`);
         return res.status(200).json({ success: true });
       }
       if (data.auctionActive !== true) return res.status(400).json({ error: "Bu domain için aktif bir açık artırma yok" });
@@ -2895,20 +2897,33 @@ async function handlerImpl(req, res) {
       }, { merge: true });
       // Hiçbir aşamada gerçek Pi tahsil edilmediği için (bkz. yukarıdaki
       // tasarım notu) iptalde İADE gerekmiyor — sadece bilgilendirme.
-      if (highestBidder) {
-        await sendNotification(highestBidder, { en: { title: '⚠️ Auction Cancelled',
-          body: `The auction for "${domainName}" was cancelled by the seller. No payment was taken so no refund is needed.` },
-          type: 'auction_cancelled',
-          role: 'buyer',
-          title: '⚠️ Açık Artırma İptal Edildi',
-          body: `"${domainName}" için açık artırma satıcı tarafından iptal edildi. Herhangi bir ödeme alınmadığı için iade gerekmiyor.`,
-          domainName
+      // Teklif veren HERKESE bildirim (yalnızca en yükseğe değil); gerekçe varsa mesaja eklenir.
+      const cancelNotif = {
+        en: { title: '⚠️ Auction Cancelled',
+          body: `The auction for "${domainName}" was cancelled by the seller. No payment was taken so no refund is needed.${cancelReason ? ' Reason: ' + cancelReason : ''}` },
+        type: 'auction_cancelled',
+        role: 'buyer',
+        title: '⚠️ Açık Artırma İptal Edildi',
+        body: `"${domainName}" için açık artırma satıcı tarafından iptal edildi. Herhangi bir ödeme alınmadığı için iade gerekmiyor.${cancelReason ? ' Gerekçe: ' + cancelReason : ''}`,
+        domainName
+      };
+      const toNotify = new Set();
+      if (highestBidder) toNotify.add(highestBidder);
+      try {
+        const startedAtMs = data.auctionStartedAt || 0;
+        const bidsSnap = await db.collection('auction_bids').where('domainName', '==', domainName).get();
+        bidsSnap.forEach(b => {
+          const x = b.data();
+          if ((x.at || 0) >= startedAtMs && x.username && x.username !== data.sellerUsername) toNotify.add(x.username);
         });
+      } catch (e) { console.error('cancel_auction teklif verenler okunamadı:', e); }
+      for (const u of [...toNotify].slice(0, 50)) {
+        try { await sendNotification(u, cancelNotif); } catch (e) { console.error('cancel_auction bildirim hatası:', e); }
       }
       const adminUsername = await getRealUsername(accessToken);
       await auctionSecretRef(db, domainName).delete().catch(() => {});
-      await logAuctionEvent(db, 'cancelled_by_admin', domainName, { username: adminUsername, details: highestBidder ? `en yüksek teklif sahibi @${highestBidder}` : 'teklifsiz' });
-      await logAdminAction(adminUsername, 'cancel_auction', `${domainName}`);
+      await logAuctionEvent(db, 'cancelled_by_admin', domainName, { username: adminUsername, details: (highestBidder ? `en yüksek teklif sahibi @${highestBidder}` : 'teklifsiz') + (cancelReason ? ' — Gerekçe: ' + cancelReason : '') });
+      await logAdminAction(adminUsername, 'cancel_auction', `${domainName}${cancelReason ? ' — ' + cancelReason : ''}`);
       return res.status(200).json({ success: true });
     } catch (e) {
       console.error("cancel_auction hatası:", e);
@@ -3874,7 +3889,8 @@ async function handlerImpl(req, res) {
         sellReqSnap, ticketsSnap, ticketSeenSnap,
         tmSnap, payoutsSnap, offersSnap,
         reportsSnap, reportSeenSnap,
-        convSnap, msgSeenSnap
+        convSnap, msgSeenSnap,
+        failedSnap, deletionSnap, activeAucSnap, winPendingSnap
       ] = await Promise.all([
         db.collection('sell_requests').where('status', '==', 'pending').get(),
         db.collection('tickets').get(),
@@ -3885,7 +3901,12 @@ async function handlerImpl(req, res) {
         db.collection('listing_reports').where('status', 'in', ['new', 'reviewing', 'resolved']).get(),
         db.collection('system_config').doc('admin_report_seen').get(),
         db.collection('conversations').get(),
-        db.collection('system_config').doc('admin_messages_seen').get()
+        db.collection('system_config').doc('admin_messages_seen').get(),
+        // Yeni kalemler: başarısız ödeme/iade, hesap silme talepleri, açık artırma durumları
+        db.collection('global_sales').where('payoutStatus', 'in', ['failed', 'refund_failed']).get(),
+        db.collection('account_deletion_requests').where('status', '==', 'pending').get(),
+        db.collection('domains').where('auctionActive', '==', true).get(),
+        db.collection('domains').where('auctionWinPending', '==', true).get()
       ]);
 
       // Tickets: get_all_tickets ile BİREBİR AYNI mantık (status!=='closed' + lastUpdate>seenAt)
@@ -3912,16 +3933,56 @@ async function handlerImpl(req, res) {
         if ((c.lastMessageAt || 0) > msgSeenAt) unseenMessages++;
       });
 
+      // Bekleyen ödemeleri 3'e böl (toplamları eski 'pendingPayouts' ile aynıdır):
+      //  • uyuşmazlık: alıcı/satıcı "Sorun Var" demiş (Gelirim'deki 'Sorun Bildirildi' ile aynı tanım)
+      //  • serbest bırakmaya hazır: iki taraf da devri onaylamış
+      //  • onay bekleyen: henüz iki onay tamamlanmamış, itiraz da yok
+      let readyPayouts = 0, waitingConfirm = 0, pendingDisputes = 0;
+      payoutsSnap.forEach(d => {
+        const x = d.data();
+        if (x.buyerConfirmed === false || x.sellerConfirmed === false) pendingDisputes++;
+        else if (x.buyerConfirmed === true && x.sellerConfirmed === true) readyPayouts++;
+        else waitingConfirm++;
+      });
+
+      // Açık artırma durumları
+      const nowTs = Date.now();
+      const STUCK_GRACE_MS = 30 * 60 * 1000;      // süresi bitip 30 dk geçmesine rağmen sonuçlanmadı
+      const WIN_SOON_MS = 6 * 60 * 60 * 1000;      // kazananın satın alma süresi 6 saatten az kaldı
+      let stuckAuctions = 0, withdrawnActiveAuctions = 0, winExpiring = 0;
+      const withdrawnSeen = new Set();
+      activeAucSnap.forEach(d => {
+        const x = d.data();
+        if (x.deleted === true) { withdrawnActiveAuctions++; withdrawnSeen.add(d.id); return; } // ilan geri çekilmiş ama açık artırma aktif kalmış
+        if (x.auctionEndsAt && x.auctionEndsAt < nowTs - STUCK_GRACE_MS) stuckAuctions++;
+      });
+      winPendingSnap.forEach(d => {
+        const x = d.data();
+        if (x.deleted === true) { if (!withdrawnSeen.has(d.id)) withdrawnActiveAuctions++; return; }
+        if (x.sold !== true && x.auctionWinDeadline && x.auctionWinDeadline > nowTs && x.auctionWinDeadline - nowTs < WIN_SOON_MS) winExpiring++;
+      });
+
       const summary = {
         pendingApprovals: sellReqSnap.size,
         openTickets,
         pendingTrademark: tmSnap.size,
-        pendingPayouts: payoutsSnap.size,
+        pendingPayouts: payoutsSnap.size,      // geriye dönük uyumluluk (eski önbellekli arayüz için)
         pendingOffers: offersSnap.size,
         unseenReports,
-        unseenMessages
+        unseenMessages,
+        readyPayouts,
+        waitingConfirm,
+        pendingDisputes,
+        failedPayouts: failedSnap.size,
+        deletionRequests: deletionSnap.size,
+        stuckAuctions,
+        withdrawnActiveAuctions,
+        winExpiring
       };
-      summary.total = Object.values(summary).reduce((a, b) => a + b, 0);
+      // total: kartlarda gösterilen kalemlerin toplamı (pendingPayouts, bölünmüş halleriyle çift sayılmasın diye hariç)
+      summary.total = summary.pendingApprovals + summary.openTickets + summary.pendingTrademark + summary.pendingOffers +
+        summary.unseenReports + summary.unseenMessages + readyPayouts + waitingConfirm + pendingDisputes +
+        summary.failedPayouts + summary.deletionRequests + stuckAuctions + withdrawnActiveAuctions + winExpiring;
 
       return res.status(200).json({ success: true, summary });
     } catch (e) {
