@@ -4873,7 +4873,7 @@ const i18n = {
     changelogV2_6Item7:"📱 Giriş ekranında yerleşimin yukarı aşağı gidip gelmesi giderildi; domain resimleri artık kaydırdıkça yükleniyor, açılış daha hızlı",
     changelogV2_6Item8:"📖 Nasıl Çalışır, Sıkça Sorulan Sorular ve Hakkımızda güncellendi — açık artırma kuralları ve 10 yeni soru-cevap eklendi",
     changelogV2_6Item9:"🔔 Bildirimler menüsü açılınca üstteki sayı sıfırlanıyor, yeni bildirim gelince yeniden sayıyor",
-    changelogV2_6Item10:"🛠️ Admin: Açık Artırma Takip kartlarında kapanış nedeni (iptal, rezerv karşılanmadı, kazanan zamanında almadı, ilan geri çekildi vb.), doğru bitiş/kapanış zamanı ve olay geçmişi görünüyor",
+    changelogV2_6Item10:"🛠️ Admin: Açık Artırma Takip kartlarında kapanış nedeni, doğru bitiş/kapanış zamanı ve olay geçmişi görünüyor; açık artırma iptalinde isteğe bağlı gerekçe yazılabiliyor ve teklif veren herkese bildirim gidiyor. “Bugün Yapılacaklar” artık başarısız ödeme/iade, uyuşmazlık, devir onayı bekleyenler, hesap silme talepleri ve sorunlu açık artırmaları da hatırlatıyor",
     changelogV2_5:"v2.5 - Açık Artırma Güncellemesi",
     changelogV2_5Item1:"🔨 Açık artırmalar baştan yenilendi: canlı geri sayım artık saat-dakika-saniye olarak akıyor, son 5 dakikada kırmızı yanıp sönüyor ve kartlarda 🔥 Son dakika rozeti çıkıyor",
     changelogV2_5Item2:"🤖 Otomatik teklif eklendi — gizli bir üst limit belirle, biri seni geçmeye çalıştıkça sistem yalnızca gerektiği kadar (minimum artışla) senin adına teklif versin. Üst limitini kimse göremez",
@@ -5934,7 +5934,7 @@ const i18n = {
     changelogV2_6Item7:"📱 Fixed the login screen layout jumping up and down; domain images now load as you scroll, so the app opens faster",
     changelogV2_6Item8:"📖 Updated How It Works, FAQ and About — added auction rules and 10 new questions and answers",
     changelogV2_6Item9:"🔔 Opening the notifications menu now resets the count at the top, and it counts again when a new notification arrives",
-    changelogV2_6Item10:"🛠️ Admin: Auction Tracking cards now show the closing reason (cancelled, reserve not met, winner did not buy in time, listing withdrawn, etc.), the correct end/closing time and the event history",
+    changelogV2_6Item10:"🛠️ Admin: Auction Tracking cards now show the closing reason, the correct end/closing time and the event history; an optional reason can be entered when cancelling an auction and every bidder is notified. “To-Do Today” now also reminds about failed payouts/refunds, disputes, transfers awaiting confirmation, account deletion requests and problem auctions",
     changelogV2_5:"v2.5 - Auction Update",
     changelogV2_5Item1:"🔨 Auctions were rebuilt: the live countdown now ticks in hours-minutes-seconds, turns red and pulses in the last 5 minutes, and cards show a 🔥 Final minutes badge",
     changelogV2_5Item2:"🤖 Added auto-bidding — set a hidden maximum and, whenever someone tries to outbid you, the system bids for you only as much as needed (minimum increment). Nobody can see your maximum",
@@ -8862,8 +8862,11 @@ window.handleStartAuction=async function(domainName){
 window.handleCancelAuction=async function(domainName){
     const isTr=currentLang==='tr';
     if(!confirm(isTr?`"${domainName}" için açık artırma iptal edilsin mi? (Hiçbir ödeme alınmadığı için iade gerekmez.)`:`Cancel the auction for "${domainName}"? (No refund needed — no payment was ever collected.)`)) return;
+    // İsteğe bağlı gerekçe: olay günlüğüne ve teklif verenlere gönderilen bildirime eklenir. Boş bırakılabilir.
+    let reason='';
+    try{ const rr=prompt(isTr?'İptal gerekçesi (isteğe bağlı — teklif verenlere bildirimle gönderilir):':'Cancellation reason (optional — sent to bidders in the notification):',''); reason=(rr||'').trim().slice(0,200); }catch(_e){ reason=''; }
     try{
-        const r=await fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'cancel_auction',domainName,accessToken:piAccessToken})});
+        const r=await fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'cancel_auction',domainName,reason,accessToken:piAccessToken})});
         const result=await r.json();
         if(!result.success){ showToast(result.error||t('genericError')); return; }
         showToast(isTr?'Açık artırma iptal edildi.':'Auction cancelled.');
@@ -11604,12 +11607,22 @@ async function loadAdminTodoSummary() {
         if (!result.success) { body.innerHTML = AWL(`<span style="color:#f87171;">Yüklenemedi</span>`,`<span style="color:#f87171;">Failed to load</span>`); return; }
         const s = result.summary;
         // Her kart: {sayı, etiket, ikon, hedef sekme}. Sayı 0 ise kart hiç gösterilmiyor.
+        // Her kart: {sayı, etiket, ikon, hedef sekme (ya da fn), warn}. Sayı 0 ise kart hiç gösterilmiyor.
+        // warn=true: acil/dikkat gerektiren kalem (kırmızı vurgu), listenin başında gösterilir.
+        const hasSplit = s.readyPayouts !== undefined; // eski sunucuyla uyumluluk
         const items = [
+            { n: s.failedPayouts, label: AWL('Başarısız Ödeme/İade','Failed Payout/Refund'), icon: '💥', tab: 'tab-payouts', warn: true },
+            { n: s.pendingDisputes, label: AWL('Uyuşmazlık','Dispute'), icon: '⚖️', tab: 'tab-payouts', warn: true },
+            { n: s.stuckAuctions, label: AWL('Sonuçlanmayan Açık Artırma','Unfinalized Auction'), icon: '🔨', tab: 'tab-offers', warn: true },
+            { n: s.withdrawnActiveAuctions, label: AWL('Geri Çekilmiş Ama Açık Artırması Aktif','Withdrawn Listing With Live Auction'), icon: '⚠️', tab: 'tab-offers', warn: true },
+            { n: s.winExpiring, label: AWL('Kazanan Süresi Azalıyor (<6sa)','Winner Deadline Soon (<6h)'), icon: '⏳', tab: 'tab-offers' },
             { n: s.pendingApprovals, label: AWL('Bekleyen Onay','Pending Approval'), icon: '🏷️', tab: 'tab-pending' },
+            { n: hasSplit ? s.readyPayouts : s.pendingPayouts, label: hasSplit ? AWL('Serbest Bırakılacak Ödeme','Payout Ready to Release') : AWL('Bekleyen Ödeme','Pending Payout'), icon: '💸', tab: 'tab-payouts' },
+            { n: hasSplit ? s.waitingConfirm : 0, label: AWL('Devir Onayı Bekleyen','Awaiting Transfer Confirmation'), icon: '🤝', tab: 'tab-payouts' },
             { n: s.openTickets, label: AWL('Destek Talebi','Support Ticket'), icon: '🎫', tab: 'tab-tickets' },
             { n: s.pendingTrademark, label: AWL('Marka Hakkı','Trademark Claim'), icon: '🔖', tab: 'tab-trademark' },
-            { n: s.pendingPayouts, label: AWL('Bekleyen Ödeme','Pending Payout'), icon: '💸', tab: 'tab-payouts' },
             { n: s.pendingOffers, label: AWL('Teklif','Offer'), icon: '🔄', tab: 'tab-offers' },
+            { n: s.deletionRequests, label: AWL('Hesap Silme Talebi','Account Deletion Request'), icon: '🗑️', fn: 'window.openDeletionRequestsModal()' },
             { n: s.unseenReports, label: AWL('Şikayet','Report'), icon: '🚩', tab: 'tab-reports' },
             { n: s.unseenMessages, label: AWL('Mesaj','Message'), icon: '💬', tab: 'tab-messages' }
         ].filter(i => i.n > 0);
@@ -11620,7 +11633,7 @@ async function loadAdminTodoSummary() {
         body.style.textAlign = 'left';
         body.style.padding = '0';
         body.innerHTML = `<div style="display:flex;flex-wrap:wrap;gap:6px;">${items.map(i => `
-            <button onclick="window.switchAdminTab('${i.tab}');document.getElementById('${i.tab}')?.scrollIntoView({behavior:'smooth',block:'start'});" style="display:flex;align-items:center;gap:5px;background:rgba(99,102,241,0.12);border:1.5px solid #6366f1;border-radius:20px;padding:5px 11px;color:#e0e7ff;font-size:0.78em;font-weight:800;cursor:pointer;white-space:nowrap;">
+            <button onclick="${i.fn ? i.fn : `window.switchAdminTab('${i.tab}');document.getElementById('${i.tab}')?.scrollIntoView({behavior:'smooth',block:'start'});`}" style="display:flex;align-items:center;gap:5px;background:${i.warn?'rgba(239,68,68,0.14)':'rgba(99,102,241,0.12)'};border:1.5px solid ${i.warn?'#ef4444':'#6366f1'};border-radius:20px;padding:5px 11px;color:${i.warn?'#fecaca':'#e0e7ff'};font-size:0.78em;font-weight:800;cursor:pointer;white-space:nowrap;">
                 <span>${i.icon}</span><span>${i.n} ${i.label}</span>
             </button>`).join('')}</div>`;
     } catch (e) {
