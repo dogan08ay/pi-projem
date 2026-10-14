@@ -33,11 +33,28 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    // ── GÜVENLİK FIX (KRİTİK) ─────────────────────────────────────────────
+    // active_users / daily_users daha önce "allow read, write: if true" idi:
+    //  • Firebase config'i (sayfada açık) bilen herkes bu koleksiyonlara İSTEDİĞİ içeriği
+    //    yazabiliyordu. Yönetici panelindeki "Aktif Kullanıcılar" ve "Giriş Kaydı" listeleri
+    //    bu adları HTML'e basıyordu → yöneticiyi hedefleyen kalıcı XSS (admin token'ı çalma).
+    //  • Ayrıca sunucu "yeni kullanıcı mı?" kararını daily_users'a bakarak veriyor; herkes
+    //    yazabildiği için bu kayıtlar zehirlenebilirdi, ve tüm kullanıcı adları + son görülme
+    //    zamanları herkese açıktı (gizlilik).
+    // Artık istemci bu koleksiyonlara hiç dokunmuyor: nabız yazma ve okuma yalnızca approve.js
+    // üzerinden (presence_ping / presence_leave / get_online_count / get_daily_users /
+    // get_unique_users). Bu yüzden ikisi de false.
+    // !! SIRA ÖNEMLİ: önce yeni index.html + approve.js yayınlanmalı, SONRA bu kural yayınlanmalı.
     match /active_users/{user} {
-      allow read, write: if true;
+      allow read, write: if false;
     }
     match /daily_users/{date} {
-      allow read, write: if true;
+      allow read, write: if false;
+    }
+
+    // used_payments: aynı Pi ödemesinin ikinci kez kullanılmasını engelleyen kayıt (sadece sunucu).
+    match /used_payments/{payment} {
+      allow read, write: if false;
     }
     // ── GÜVENLİK FIX ─────────────────────────────────────────────────────
     // user_profiles: e-posta, Telegram sohbet kimliği, push abonelik anahtarları,
@@ -110,6 +127,13 @@ service cloud.firestore {
     match /offers/{offer} {
       allow read: if false;
       allow write: if false;
+    }
+
+    // Güvenlik ağı: yukarıda açıkça izin verilmeyen HER koleksiyon (conversations, tickets,
+    // user_notifications, listing_reports vb.) reddedilir. Firestore zaten varsayılan olarak
+    // reddeder; bu satır, ileride eklenecek yeni koleksiyonlarda yanlışlıkla açık kalmasın diye.
+    match /{document=**} {
+      allow read, write: if false;
     }
   }
 }
