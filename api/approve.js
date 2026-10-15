@@ -52,8 +52,25 @@ const SELF_TRADE_TEST_USERS = new Set(
 // Herkese açık "Güven ve Şeffaflık" istatistikleri 10 dk önbelleğe alınır (Firestore okuma maliyeti).
 const TRANSPARENCY_CACHE_MS = 10 * 60 * 1000;
 let _transparencyCache = { at: 0, data: null };
+// Pi kullanıcı adı karakter kümesi: yalnızca bunlar kimlik/ID olarak kabul edilir (HTML/özel karakter içeremez).
+const SAFE_USERNAME_RE = /^[A-Za-z0-9_.-]{1,64}$/;
+// Teklif/karşı teklif tutarı: pozitif, makul üst sınır, Pi'nin 7 ondalık hassasiyeti. Geçersizse null.
+const MAX_OFFER_PI = 1e9;
+function normalizeOfferPrice(x) {
+  const n = Number(x);
+  if (!Number.isFinite(n) || n <= 0 || n > MAX_OFFER_PI) return null;
+  const r = Math.round(n * 1e7) / 1e7;
+  return r > 0 ? r : null; // 7 ondalığa yuvarlanınca 0 kalan (ör. 1e-9) tutar geçersizdir
+}
+const ONLINE_CACHE_MS = 15000;
+let _onlineCache = { at: 0, data: null };
 
 function canTradeOwnListing(username) {
+  // GÜVENLİK: Bu muafiyet yalnızca TEST amaçlıdır. Gerçek ağda (mainnet) kendi ilanına teklif /
+  // satın alma, fiyat manipülasyonu (shill bidding / wash trading) anlamına gelir; bu yüzden
+  // mainnet'te otomatik kapanır. Ayrıca DISABLE_SELF_TRADE_EXEMPTION=true ile her ortamda kapatılabilir.
+  if (process.env.DISABLE_SELF_TRADE_EXEMPTION === 'true') return false;
+  if (_networkModeCache && _networkModeCache.mode === 'mainnet') return false;
   return !!username && (username === ADMIN_USERNAME || SELF_TRADE_TEST_USERS.has(username));
 }
 
@@ -1444,12 +1461,29 @@ async function getRealUsername(accessToken) {
     if (!response.ok) return null;
     const userDto = await response.json();
     const username = userDto.username || null;
-    userCache.set(accessToken, { username, ts: Date.now() });
+    // Bellek şişmesini önle: önbellek 2000 kaydı aşarsa en eskileri at.
+    if (userCache.size >= 2000) {
+      const cutoff = Date.now() - USER_CACHE_TTL;
+      for (const [k, v] of userCache) { if (v.ts < cutoff) userCache.delete(k); }
+      if (userCache.size >= 2000) userCache.clear();
+    }
+    userCache.set(accessToken, { username, uid: userDto.uid || null, ts: Date.now() });
     return username;
   } catch (e) {
     console.error("Pi /v2/me kullanıcı doğrulama hatası:", e);
     return null;
   }
+}
+
+// Doğrulanmış kullanıcının Pi uid'si (ödeme sahibi eşleştirmesi için). getRealUsername aynı önbelleği doldurur.
+async function getRealUid(accessToken) {
+  if (!accessToken) return null;
+  let cached = userCache.get(accessToken);
+  if (!cached || Date.now() - cached.ts >= USER_CACHE_TTL) {
+    await getRealUsername(accessToken);
+    cached = userCache.get(accessToken);
+  }
+  return cached ? (cached.uid || null) : null;
 }
 
 // ─── Rate Limiter (IP bazlı, Firestore-tabanlı — serverless instance'lar
@@ -1619,6 +1653,23 @@ async function sendNotification(targetUsername, notification) {
 // bildirim iznini kaldırmış, tarayıcıyı kaldırmış vb.) push servisi 404/410
 // döner — bu durumda o aboneliği veritabanından sessizce siliyoruz, aksi
 // halde her bildiride aynı hatayı almaya devam ederiz.
+// GÜVENLİK (SSRF): abonelik endpoint'i istemciden geliyor ve sunucu o adrese istek atıyor. Yalnızca
+// bilinen tarayıcı push servislerine (https, 443) izin veriliyor; iç ağ / rastgele adresler reddedilir.
+const PUSH_HOST_SUFFIXES = ['fcm.googleapis.com', 'android.googleapis.com', 'push.services.mozilla.com', 'notify.windows.com', 'push.apple.com'];
+function isAllowedPushEndpoint(u) {
+  try {
+    if (typeof u !== 'string' || u.length > 2048) return false;
+    const x = new URL(u);
+    if (x.protocol !== 'https:' || (x.port && x.port !== '443') || x.username || x.password) return false;
+    const h = x.hostname.toLowerCase();
+    return PUSH_HOST_SUFFIXES.some(suf => h === suf || h.endsWith('.' + suf));
+  } catch (_) { return false; }
+}
+function isValidPushSubscription(sub) {
+  return !!sub && isAllowedPushEndpoint(sub.endpoint) && sub.keys &&
+    typeof sub.keys.p256dh === 'string' && /^[A-Za-z0-9_-]{16,200}$/.test(sub.keys.p256dh) &&
+    typeof sub.keys.auth === 'string' && /^[A-Za-z0-9_-]{8,100}$/.test(sub.keys.auth);
+}
 async function sendWebPush(db, targetUsername, prof, notification, lang = 'tr') {
   if (!WEB_PUSH_ENABLED) return;
   const subs = Array.isArray(prof.pushSubscriptions) ? prof.pushSubscriptions : [];
@@ -1631,8 +1682,10 @@ async function sendWebPush(db, targetUsername, prof, notification, lang = 'tr') 
   const stillValid = [];
   let changed = false;
   for (const sub of subs) {
+    // Eskiden kaydedilmiş geçersiz/zararlı abonelikler artık hiç çağrılmaz ve listeden düşer.
+    if (!isValidPushSubscription(sub)) { changed = true; continue; }
     try {
-      await webpush.sendNotification(sub, payload);
+      await webpush.sendNotification(sub, payload, { timeout: 10000, TTL: 3600 });
       stillValid.push(sub);
     } catch (e) {
       if (e.statusCode === 404 || e.statusCode === 410) {
@@ -1658,14 +1711,24 @@ const TG_BOT_TOKEN = process.env.TG_BOT_TOKEN;
 const TG_CHAT_ID   = process.env.TG_CHAT_ID;
 const TG_GROUP_ID  = process.env.TG_GROUP_ID;
 
+// Kullanıcıdan gelen serbest metin Markdown'a konmadan önce kaçışlanmalı: aksi halde dengesiz '*' '_' '`' '['
+// Telegram'ın mesajı REDDETMESİNE (uyarı sessizce kaybolur) ya da yöneticiye sahte bağlantı/biçim
+// enjekte edilmesine yol açar.
+const tgEsc = (v) => String(v ?? '').replace(/([_*`\[])/g, '\\$1');
 async function sendTG(chatId, text) {
   if (!TG_BOT_TOKEN || !chatId) return;
+  const url = `https://api.telegram.org/bot${TG_BOT_TOKEN}/sendMessage`;
+  const body = String(text).slice(0, 4000); // Telegram sınırı 4096
   try {
-    await fetch(`https://api.telegram.org/bot${TG_BOT_TOKEN}/sendMessage`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ chat_id: chatId, text, parse_mode: 'Markdown' })
-    });
+    let resp = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ chat_id: chatId, text: body, parse_mode: 'Markdown' }) });
+    if (!resp.ok) {
+      // Çoğunlukla "can't parse entities": biçimlendirmeyi kaldırıp DÜZ METİN olarak yeniden gönder.
+      console.error('[Telegram] Markdown reddedildi, düz metinle yeniden deneniyor:', resp.status);
+      resp = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ chat_id: chatId, text: body }) }); // parse_mode yok: biçim işaretleri olduğu gibi görünür, hiçbir şey silinmez
+      if (!resp.ok) console.error('[Telegram] Düz metin de gönderilemedi:', resp.status);
+    }
   } catch (e) { console.error("TG Error:", e); }
 }
 
@@ -2213,6 +2276,20 @@ async function handlerImpl(req, res) {
 
   if (!action) return res.status(400).json({ error: "action zorunludur" });
 
+  // GÜVENLİK: domainName Firestore doküman ID'si olarak kullanılıyor. Geçersiz değerler ('/' içeren
+  // iç içe yol, HTML vb.) daha en başta reddedilir (isValidDomainName: yalnızca harf/rakam/tire/nokta).
+  const DOMAIN_ID_ACTIONS = new Set(['relist','toggle_hide_domain','toggle_ownership_verified','set_connected_app_url','check_app_link','toggle_active_app_verified','start_auction','cancel_auction','place_auction_bid','auction_buy_now','claim_auction_win','get_auction_bids','withdraw_listing','submit_buyer_rating','submit_seller_rating','submit_offer','toggle_favorite','increment_domain_view','send_message','verify_rewarded_ad','approve','complete','get_domain_price_history','check_expired_reservation']);
+  if (DOMAIN_ID_ACTIONS.has(action)) {
+    const dn = req.body.domainName;
+    if (dn !== undefined && dn !== null && dn !== '' && !isValidDomainName(dn)) {
+      return res.status(400).json({ error: "Geçersiz domain adı" });
+    }
+  }
+  // Kendi ilanıyla işlem muafiyetinin (test) mainnet'te kapanabilmesi için ağ modunu önbelleğe al.
+  if (['approve','complete','place_auction_bid','auction_buy_now','submit_offer','send_message'].includes(action)) {
+    try { await getNetworkMode(getDb()); } catch (_) {}
+  }
+
   // ── Görsel Yükleme ─────────────────────────────────────────────────────
   if (action === 'upload_image') {
     if (!await checkRateLimit(clientIp, 'upload_image', 5, 60000))
@@ -2226,6 +2303,8 @@ async function handlerImpl(req, res) {
 
     const allowed = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
     if (!allowed.includes(mimeType)) return res.status(400).json({ error: "Desteklenmeyen görsel formatı" });
+    // 2MB görsel ≈ 2.8MB base64: çözmeden önce uzunluğa bak (bellek tüketimini sınırla).
+    if (typeof imageBase64 !== 'string' || imageBase64.length > 3 * 1024 * 1024) return res.status(400).json({ error: "Görsel 2MB'dan büyük olamaz" });
 
     try {
       const bucket = getBucket();
@@ -2239,12 +2318,26 @@ async function handlerImpl(req, res) {
       // davranışla (domain-images) birebir aynı kalır — geriye dönük
       // uyumluluk bozulmadı.
       const folder = context === 'dispute_evidence' ? 'dispute-evidence' : 'domain-images';
-      const filePath = `${folder}/${realUsername}/${Date.now()}_${safeName}.${ext}`;
-      const file = bucket.file(filePath);
       const buffer = Buffer.from(imageBase64, 'base64');
 
       if (buffer.length > 2 * 1024 * 1024)
         return res.status(400).json({ error: "Görsel 2MB'dan büyük olamaz" });
+
+      // İçerik, beyan edilen türle uyuşuyor mu? (sihirli baytlar) — .png diye HTML/script yüklenmesini engeller.
+      const b = buffer;
+      const isJpeg = b.length > 3 && b[0] === 0xFF && b[1] === 0xD8 && b[2] === 0xFF;
+      const isPng  = b.length > 8 && b[0] === 0x89 && b[1] === 0x50 && b[2] === 0x4E && b[3] === 0x47;
+      const isGif  = b.length > 6 && b.slice(0, 3).toString('ascii') === 'GIF';
+      const isWebp = b.length > 12 && b.slice(0, 4).toString('ascii') === 'RIFF' && b.slice(8, 12).toString('ascii') === 'WEBP';
+      const okMagic = (mimeType === 'image/jpeg' && isJpeg) || (mimeType === 'image/png' && isPng) ||
+                      (mimeType === 'image/gif' && isGif) || (mimeType === 'image/webp' && isWebp);
+      if (!okMagic) return res.status(400).json({ error: "Dosya içeriği görsel formatıyla uyuşmuyor" });
+
+      // İhtilaf kanıtları herkese açık URL'lerle sunuluyor; adres TAHMİN EDİLEMEZ olsun diye
+      // rastgele (128 bit) bir ad kullanılıyor. Domain görselleri eski düzende kalır.
+      const uniq = context === 'dispute_evidence' ? crypto.randomBytes(16).toString('hex') : `${Date.now()}_${safeName}`;
+      const filePath = `${folder}/${realUsername}/${uniq}.${ext}`;
+      const file = bucket.file(filePath);
 
       await file.save(buffer, {
         metadata: { contentType: mimeType },
@@ -2266,7 +2359,10 @@ async function handlerImpl(req, res) {
   // sırdır — böylece bu endpoint'i sadece cron-job.org (veya sırrı bilen biri)
   // tetikleyebilir, rastgele biri tetikleyemez.
   if (action === 'check_auctions') {
-    if (!process.env.CRON_SECRET || accessToken !== process.env.CRON_SECRET) {
+    const cronOk = !!process.env.CRON_SECRET && typeof accessToken === 'string' &&
+      accessToken.length === process.env.CRON_SECRET.length &&
+      crypto.timingSafeEqual(Buffer.from(accessToken), Buffer.from(process.env.CRON_SECRET));
+    if (!cronOk) {
       return res.status(403).json({ error: "Yetkisiz" });
     }
     try {
@@ -2381,6 +2477,8 @@ async function handlerImpl(req, res) {
     const { notifId } = req.body;
     const realUsername = await getRealUsername(accessToken);
     if (!realUsername) return res.status(403).json({ error: "Geçersiz oturum" });
+    // notifId bir veritabanı yoluna giriyor: boş/'/' içeren değerler üst düğümü (tüm bildirimleri) silebilirdi.
+    if (typeof notifId !== 'string' || !/^[A-Za-z0-9_-]{1,128}$/.test(notifId)) return res.status(400).json({ error: "Geçersiz bildirim kimliği" });
     try {
       const rtdb = getRtdb();
       await rtdb.ref(`notifications/${realUsername}/${notifId}`).remove();
@@ -3848,7 +3946,7 @@ async function handlerImpl(req, res) {
       const active = [];
       snap.forEach(d => {
         const lastSeen = d.data().lastSeen;
-        if (lastSeen && (now - lastSeen) < 30000) active.push({ username: d.id, lastSeen });
+        if (lastSeen && (now - lastSeen) < 30000 && SAFE_USERNAME_RE.test(d.id)) active.push({ username: d.id, lastSeen });
       });
       active.sort((a, b) => b.lastSeen - a.lastSeen);
       return res.status(200).json({ success: true, active });
@@ -4581,7 +4679,7 @@ async function handlerImpl(req, res) {
         requestId: requestRef.id
       });
 
-      await sendTG(TG_CHAT_ID, `📬 *YENİ DOMAIN ÖNERİSİ*\n\n👤 @${realUsername}\n🌐 ${reqDomainName}\n💰 ${priceNum} Pi\n📋 ${description || '—'}`);
+      await sendTG(TG_CHAT_ID, `📬 *YENİ DOMAIN ÖNERİSİ*\n\n👤 @${realUsername}\n🌐 ${reqDomainName}\n💰 ${priceNum} Pi\n📋 ${tgEsc(description || '—')}`);
 
       return res.status(200).json({ success: true });
     } catch (e) {
@@ -4838,7 +4936,7 @@ async function handlerImpl(req, res) {
         ticketId: ticketRef.id
       });
 
-      await sendTG(TG_CHAT_ID, `🎫 *YENİ DESTEK TALEBİ*\n\n👤 @${realUsername}\n📌 ${subject}\n🏷️ ${category || 'general'}`);
+      await sendTG(TG_CHAT_ID, `🎫 *YENİ DESTEK TALEBİ*\n\n👤 @${realUsername}\n📌 ${tgEsc(subject)}\n🏷️ ${tgEsc(category || 'general')}`);
 
       return res.status(200).json({ success: true, ticketId: ticketRef.id });
     } catch (e) {
@@ -5176,12 +5274,25 @@ async function handlerImpl(req, res) {
     const cleanEmail = email.trim().toLowerCase();
     try {
       const db = getDb();
-      const code = Math.floor(100000 + Math.random() * 900000).toString();
-      await db.collection('user_profiles').doc(realUsername).set({
+      // GÜVENLİK: (1) kriptografik rastgele kod, (2) 60 sn bekleme + günde 5 gönderim sınırı
+      // (başkasının adresine e-posta yağdırmayı / alan adınızı spam için kullanmayı zorlaştırır).
+      const profRef0 = db.collection('user_profiles').doc(realUsername);
+      const pd0 = (await profRef0.get()).data() || {};
+      const nowMs = Date.now();
+      if (pd0.emailVerifyCodeAt && nowMs - pd0.emailVerifyCodeAt < 60000)
+        return res.status(429).json({ error: "Yeni kod istemek için lütfen 60 saniye bekleyin" });
+      const dayKey = new Date().toISOString().slice(0, 10);
+      const sentToday = pd0.emailVerifySendDay === dayKey ? (Number(pd0.emailVerifySendCount) || 0) : 0;
+      if (sentToday >= 5) return res.status(429).json({ error: "Bugün için doğrulama kodu sınırına ulaşıldı, yarın tekrar deneyin" });
+      const code = crypto.randomInt(100000, 1000000).toString();
+      await profRef0.set({
         email: cleanEmail,
         emailVerified: false,
         emailVerifyCode: code,
-        emailVerifyCodeAt: Date.now()
+        emailVerifyCodeAt: nowMs,
+        emailVerifyAttempts: 0,
+        emailVerifySendDay: dayKey,
+        emailVerifySendCount: sentToday + 1
       }, { merge: true });
 
       const mailLang = (req.body.lang === 'en' || req.body.lang === 'tr') ? req.body.lang : 'tr';
@@ -5222,6 +5333,8 @@ async function handlerImpl(req, res) {
     const realUsername = await getRealUsername(accessToken);
     if (!realUsername) return res.status(401).json({ error: "Geçersiz oturum" });
     if (!code) return res.status(400).json({ error: "Kod gerekli" });
+    if (!await checkRateLimit(clientIp, 'verify_profile_email', 10, 60000))
+      return res.status(429).json({ error: "Çok fazla deneme. Lütfen bekleyin." });
     try {
       const db = getDb();
       const ref = db.collection('user_profiles').doc(realUsername);
@@ -5233,13 +5346,22 @@ async function handlerImpl(req, res) {
       if (!d.emailVerifyCodeAt || Date.now() - d.emailVerifyCodeAt > 15 * 60000) {
         return res.status(400).json({ error: "Kodun süresi doldu, lütfen tekrar isteyin" });
       }
-      if (String(code).trim() !== d.emailVerifyCode) {
+      // 6 haneli kodun kaba kuvvetle bulunmasını engelle: en fazla 5 yanlış deneme, sonra kod geçersiz olur.
+      const attempts = Number(d.emailVerifyAttempts) || 0;
+      if (attempts >= 5) {
+        await ref.set({ emailVerifyCode: FieldValue.delete(), emailVerifyCodeAt: FieldValue.delete() }, { merge: true });
+        return res.status(429).json({ error: "Çok fazla hatalı deneme. Lütfen yeni bir kod isteyin." });
+      }
+      const a1 = Buffer.from(String(code).trim()), b1 = Buffer.from(String(d.emailVerifyCode));
+      if (a1.length !== b1.length || !crypto.timingSafeEqual(a1, b1)) {
+        await ref.set({ emailVerifyAttempts: attempts + 1 }, { merge: true });
         return res.status(400).json({ error: "Kod hatalı" });
       }
       await ref.set({
         emailVerified: true,
         emailVerifyCode: FieldValue.delete(),
-        emailVerifyCodeAt: FieldValue.delete()
+        emailVerifyCodeAt: FieldValue.delete(),
+        emailVerifyAttempts: FieldValue.delete()
       }, { merge: true });
       return res.status(200).json({ success: true });
     } catch (e) {
@@ -5416,7 +5538,7 @@ async function handlerImpl(req, res) {
         body: `@${realUsername}, "${reportDomain}" ilanını "${reason}" sebebiyle bildirdi.`,
         domainName: reportDomain, reportId: reportRef.id
       });
-      await sendTG(TG_CHAT_ID, `🚩 *İlan Şikayeti*\nDomain: ${reportDomain}\nSebep: ${reason}\nBildiren: @${realUsername}${comment ? '\nYorum: ' + comment : ''}`);
+      await sendTG(TG_CHAT_ID, `🚩 *İlan Şikayeti*\nDomain: ${tgEsc(reportDomain)}\nSebep: ${tgEsc(reason)}\nBildiren: @${realUsername}${comment ? '\nYorum: ' + tgEsc(comment) : ''}`);
 
       return res.status(200).json({ success: true });
     } catch (e) {
@@ -7007,8 +7129,8 @@ async function handlerImpl(req, res) {
     if (!realUsername) return res.status(403).json({ error: "Geçersiz oturum" });
     if (!await checkRateLimit(clientIp, 'submit_offer', 10, 60000))
       return res.status(429).json({ error: "Çok fazla teklif gönderdiniz, lütfen biraz bekleyin." });
-    const priceNum = Number(offerPrice);
-    if (!domainName || !Number.isFinite(priceNum) || priceNum <= 0)
+    const priceNum = normalizeOfferPrice(offerPrice);
+    if (!domainName || priceNum === null)
       return res.status(400).json({ error: "Geçersiz teklif tutarı" });
     try {
       const db = getDb();
@@ -7391,8 +7513,8 @@ async function handlerImpl(req, res) {
     const { offerId, counterPrice, counterMessage } = req.body;
     const realUsername = await getRealUsername(accessToken);
     if (!realUsername) return res.status(403).json({ error: "Geçersiz oturum" });
-    const priceNum = Number(counterPrice);
-    if (!offerId || !Number.isFinite(priceNum) || priceNum <= 0)
+    const priceNum = normalizeOfferPrice(counterPrice);
+    if (!offerId || priceNum === null)
       return res.status(400).json({ error: "Geçersiz karşı teklif tutarı" });
     try {
       const db = getDb();
@@ -7745,7 +7867,7 @@ async function handlerImpl(req, res) {
         createdAt: Date.now()
       });
 
-      await sendTG(TG_CHAT_ID, `🗑️ *HESAP SİLME TALEBİ*\n\n👤 @${realUsername}${reason ? `\n📝 ${reason}` : ''}\n\nAdmin panelinden inceleyip sonuçlandırın.`);
+      await sendTG(TG_CHAT_ID, `🗑️ *HESAP SİLME TALEBİ*\n\n👤 @${realUsername}${reason ? `\n📝 ${tgEsc(reason)}` : ''}\n\nAdmin panelinden inceleyip sonuçlandırın.`);
 
       return res.status(200).json({ success: true });
     } catch (e) {
@@ -7879,8 +8001,10 @@ async function handlerImpl(req, res) {
     if (!await checkRateLimit(clientIp, 'increment_domain_view', 60, 60000))
       return res.status(200).json({ success: true });
     try {
+      if (!isValidDomainName(domainName)) return res.status(200).json({ success: false });
       const db = getDb();
-      await db.collection('domains').doc(domainName).set({ viewCount: FieldValue.increment(1) }, { merge: true });
+      // update() belge yoksa hata verir → daha önce set(merge) ile rastgele isimli çöp belgeler oluşturulabiliyordu.
+      await db.collection('domains').doc(domainName).update({ viewCount: FieldValue.increment(1) });
       return res.status(200).json({ success: true });
     } catch (e) {
       return res.status(200).json({ success: false });
@@ -7970,7 +8094,7 @@ async function handlerImpl(req, res) {
     const { domainName, conversationId: existingConvId, text: rawText } = req.body;
     const realUsername = await getRealUsername(accessToken);
     if (!realUsername) return res.status(403).json({ error: "Geçersiz oturum" });
-    if (!await checkRateLimit(clientIp, 'send_message', 20, 60000))
+    if (!await checkRateLimit(clientIp, 'send_message', 20, 60000) || !await checkRateLimit('u:' + realUsername, 'send_message', 20, 60000))
       return res.status(429).json({ error: "Çok fazla mesaj gönderildi. Lütfen biraz bekleyip tekrar deneyin." });
     const text = String(rawText || '').trim().slice(0, 1000);
     if (!text) return res.status(400).json({ error: "Mesaj boş olamaz" });
@@ -8019,6 +8143,9 @@ async function handlerImpl(req, res) {
           readBy: { [realUsername]: now }
         });
       } else {
+        // Tek dokümanda biriken mesaj dizisi sınırsız büyümesin (1MB doküman sınırı + okuma maliyeti + taciz).
+        if ((existing.data().messages || []).length >= 500)
+          return res.status(400).json({ error: "Bu konuşma mesaj sınırına ulaştı. Lütfen yeni bir konuşma başlatın veya destekle iletişime geçin." });
         await convRef.update({
           messages: FieldValue.arrayUnion({ from: realUsername, text, timestamp: now }),
           lastMessageAt: now,
@@ -8363,7 +8490,7 @@ async function handlerImpl(req, res) {
     const { subscription } = req.body;
     const realUsername = await getRealUsername(accessToken);
     if (!realUsername) return res.status(403).json({ error: "Geçersiz oturum" });
-    if (!subscription || !subscription.endpoint || !subscription.keys)
+    if (!subscription || !subscription.endpoint || !subscription.keys || !isValidPushSubscription(subscription))
       return res.status(400).json({ error: "Geçersiz abonelik verisi" });
     try {
       const db = getDb();
@@ -8373,7 +8500,7 @@ async function handlerImpl(req, res) {
       // FIX: aynı endpoint zaten kayıtlıysa çoğaltma — üzerine yaz.
       const filtered = existing.filter(s => s.endpoint !== subscription.endpoint);
       // Kötüye kullanımı önlemek için kullanıcı başına makul bir cihaz sınırı.
-      filtered.push({ endpoint: subscription.endpoint, keys: subscription.keys, addedAt: Date.now() });
+      filtered.push({ endpoint: subscription.endpoint, keys: { p256dh: subscription.keys.p256dh, auth: subscription.keys.auth }, addedAt: Date.now() });
       const trimmed = filtered.slice(-10);
       await ref.set({ pushSubscriptions: trimmed }, { merge: true });
       return res.status(200).json({ success: true });
@@ -8483,6 +8610,83 @@ async function handlerImpl(req, res) {
       console.error('get_transparency_stats hatası:', e);
       return res.status(500).json({ error: "İstatistikler şu anda alınamadı." });
     }
+  }
+
+  // ── Çevrimiçi durumu (presence): istemci artık Firestore'a doğrudan YAZMIYOR ─────────
+  // Eskiden active_users / daily_users koleksiyonları herkese yazılabilir/okunabilirdi: biri kendi
+  // adına sahte "çevrimiçi" kayıt ya da zararlı bir ad yazıp yönetici panelinde çalıştırabilirdi (XSS).
+  // Artık yazma yalnızca bu kimlik doğrulamalı uç noktalardan, okuma ise sunucu üzerinden yapılıyor.
+  if (action === 'presence_ping') {
+    if (!await checkRateLimit(clientIp, 'presence_ping', 12, 60000))
+      return res.status(429).json({ error: "Çok fazla istek" });
+    const pu = await getRealUsername(accessToken);
+    if (!pu || !SAFE_USERNAME_RE.test(pu)) return res.status(403).json({ error: "Geçersiz oturum" });
+    try {
+      await getDb().collection('active_users').doc(pu).set({ lastSeen: Date.now() }, { merge: true });
+      return res.status(200).json({ success: true });
+    } catch (e) { return res.status(200).json({ success: false }); }
+  }
+  if (action === 'presence_leave') {
+    if (!await checkRateLimit(clientIp, 'presence_leave', 12, 60000))
+      return res.status(429).json({ error: "Çok fazla istek" });
+    const pu = await getRealUsername(accessToken);
+    if (!pu || !SAFE_USERNAME_RE.test(pu)) return res.status(403).json({ error: "Geçersiz oturum" });
+    try {
+      await getDb().collection('active_users').doc(pu).delete();
+      return res.status(200).json({ success: true });
+    } catch (e) { return res.status(200).json({ success: false }); }
+  }
+  // Herkese açık, yalnızca SAYI döner (kullanıcı adı yok); 15 sn önbellekli.
+  if (action === 'get_online_count') {
+    if (!await checkRateLimit(clientIp, 'get_online_count', 30, 60000))
+      return res.status(429).json({ error: "Çok fazla istek" });
+    try {
+      const nowTs = Date.now();
+      if (_onlineCache.data && nowTs - _onlineCache.at < ONLINE_CACHE_MS) return res.status(200).json({ success: true, ..._onlineCache.data });
+      const snap = await getDb().collection('active_users').get();
+      let strict = 0, recent = 0;
+      snap.forEach(d => {
+        const ls = Number(d.data().lastSeen);
+        if (!SAFE_USERNAME_RE.test(d.id) || !Number.isFinite(ls) || ls > nowTs + 60000) return;
+        const diff = nowTs - ls;
+        if (diff < 30000) strict++;
+        if (diff < 900000) recent++;
+      });
+      _onlineCache = { at: nowTs, data: { strict, recent } };
+      return res.status(200).json({ success: true, strict, recent });
+    } catch (e) { return res.status(500).json({ error: "Alınamadı" }); }
+  }
+  // Admin: seçilen günün giriş kaydı
+  if (action === 'get_daily_users') {
+    const isAdmin = await verifyAdmin(accessToken, req);
+    if (!isAdmin) return res.status(403).json({ error: "Yetki yok" });
+    try {
+      const date = (typeof req.body.date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(req.body.date)) ? req.body.date : new Date().toISOString().split('T')[0];
+      const snap = await getDb().collection('daily_users').doc(date).get();
+      const raw = snap.exists ? (snap.data().users || {}) : {};
+      const users = {};
+      for (const [k, v] of Object.entries(raw)) { if (SAFE_USERNAME_RE.test(k) && Number.isFinite(Number(v))) users[k] = Number(v); }
+      return res.status(200).json({ success: true, date, users });
+    } catch (e) { return res.status(500).json({ error: "Alınamadı" }); }
+  }
+  // Admin: tüm zamanların benzersiz kullanıcıları (son görülme ile)
+  if (action === 'get_unique_users') {
+    const isAdmin = await verifyAdmin(accessToken, req);
+    if (!isAdmin) return res.status(403).json({ error: "Yetki yok" });
+    try {
+      const snap = await getDb().collection('daily_users').get();
+      const all = {};
+      snap.forEach(d => {
+        const users = d.data().users || {};
+        for (const [k, v] of Object.entries(users)) {
+          const n = Number(v);
+          if (!SAFE_USERNAME_RE.test(k) || !Number.isFinite(n)) continue;
+          if (!all[k] || n > all[k]) all[k] = n;
+        }
+      });
+      const users = Object.entries(all).map(([username, lastSeen]) => ({ username, lastSeen })).sort((a, b) => b.lastSeen - a.lastSeen);
+      return res.status(200).json({ success: true, users });
+    } catch (e) { return res.status(500).json({ error: "Alınamadı" }); }
   }
 
   if (action === 'get_leaderboard') {
@@ -9130,10 +9334,25 @@ async function handlerImpl(req, res) {
         // tek bir Firestore transaction içinde, atomik. Kaybeden taraf
         // (parası zaten gitmiş) net bir hata alıyor VE admin'e aynı anda
         // acil bir uyarı gidiyor ki elle iade sürecini başlatabilsin.
+        // Ödemeyi yapan kullanıcının Pi uid'si (token'dan doğrulanan) — ödeme sahibiyle eşleştirmek için.
+        const verifiedUid = await getRealUid(accessToken);
+        const usedPayRef = db.collection('used_payments').doc(String(paymentId));
         const txResult = await db.runTransaction(async (tx) => {
           const domainSnap = await tx.get(domainRef);
+          const usedPaySnap = await tx.get(usedPayRef);
           const realPrice = domainSnap.exists ? domainSnap.data().price : null;
           if (typeof realPrice !== 'number') return { ok: false, reason: 'invalid_domain' };
+          // ── GÜVENLİK: bu ödeme (paymentId) daha önce BAŞKA bir domain / kullanıcı için kullanıldıysa reddet.
+          // (Tek ödemeyle birden çok domain almayı — tekrar saldırısını — engeller.)
+          if (usedPaySnap.exists) {
+            const up = usedPaySnap.data();
+            if (up.domainName !== domainName || up.username !== username) return { ok: false, reason: 'payment_reused', usedFor: up.domainName || null };
+          }
+          // ── GÜVENLİK: ödeme, istemcinin oluşturduğu metadata'daki domain ile aynı domain için mi yapıldı?
+          const metaDomain = paymentDetails.metadata && paymentDetails.metadata.domain;
+          if (metaDomain && metaDomain !== domainName) return { ok: false, reason: 'payment_domain_mismatch', metaDomain };
+          // ── GÜVENLİK: ödemeyi yapan Pi hesabı, isteği doğrulanmış kimlikle yapan hesapla aynı mı?
+          if (verifiedUid && paymentDetails.user_uid && paymentDetails.user_uid !== verifiedUid) return { ok: false, reason: 'payment_user_mismatch' };
           if (domainSnap.data().sold === true) {
             // YENİ: Bu isteği yapan kullanıcı zaten bu domainin kayıtlı
             // alıcısıysa (ya da aynı txid tekrar geldiyse), bu bir yarış
@@ -9207,6 +9426,8 @@ async function handlerImpl(req, res) {
             reservedFor: FieldValue.delete(), reservedUntil: FieldValue.delete(),
             ...AUCTION_WIN_CLEAR_FIELDS()
           }, { merge: true });
+          // Bu ödeme artık "kullanıldı": aynı paymentId ile ikinci bir tamamlama reddedilecek.
+          tx.set(usedPayRef, { domainName, username, txid: txid || null, amount: Number(paymentDetails.amount), at: Date.now() });
 
           return { ok: true, realPrice, sellerUsername, previousBuyer, code };
         });
@@ -9297,6 +9518,23 @@ async function handlerImpl(req, res) {
             return res.status(403).json({
               error: "Bu domainin satıcısı sizsiniz, kendi ilanınızı satın alamazsınız. Paranız alındığı için otomatik olarak destek ekibine bildirildi, en kısa sürede sizinle iletişime geçip iadenizi yapacaklar.",
               ownListing: true
+            });
+          }
+          if (txResult.reason === 'payment_reused' || txResult.reason === 'payment_domain_mismatch' || txResult.reason === 'payment_user_mismatch') {
+            // Ödeme bu domain / kullanıcıyla eşleşmiyor ya da zaten başka bir alım için kullanılmış.
+            // Domain ATANMADI; para hareketi varsa yönetici elle inceler.
+            console.error(`[GÜVENLİK] Ödeme eşleşmedi (${txResult.reason}) — @${username} "${domainName}" paymentId:${paymentId} txid:${txid}`);
+            await logSystemError('complete_' + txResult.reason, new Error('Payment binding check failed'), `Alıcı:@${username} Domain:${domainName} PaymentId:${paymentId} Txid:${txid} Detay:${txResult.usedFor || txResult.metaDomain || ''}`);
+            await sendTG(TG_CHAT_ID, `🚨 *ÖDEME EŞLEŞMEDİ (${tgEsc(txResult.reason)})*\n\n@${tgEsc(username)} → ${tgEsc(domainName)}\npaymentId: ${tgEsc(paymentId)}\ntxid: ${tgEsc(txid)}`);
+            await sendNotificationToAdmin({
+              type: 'payment_binding_review_needed',
+              title: '🚨 Acil: Ödeme Eşleşmedi (Elle İnceleme)',
+              body: `@${username}, "${domainName}" için gönderdiği ödeme doğrulanamadı (${txResult.reason}). Domain atanmadı. paymentId: ${paymentId}`,
+              domainName, buyer: username, txid
+            });
+            return res.status(409).json({
+              error: "Bu ödeme, istenen domain için kullanılamıyor. Ödeme alındıysa destek ekibine otomatik bildirim gitti, en kısa sürede sizinle iletişime geçilecek.",
+              paymentBindingFailed: true
             });
           }
           // 'already_sold': yarışı kaybetti. Ödeme Pi blockchain'inde zaten
