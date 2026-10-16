@@ -53,6 +53,9 @@ const SELF_TRADE_TEST_USERS = new Set(
 const TRANSPARENCY_CACHE_MS = 10 * 60 * 1000;
 let _transparencyCache = { at: 0, data: null };
 // Pi kullanıcı adı karakter kümesi: yalnızca bunlar kimlik/ID olarak kabul edilir (HTML/özel karakter içeremez).
+// Arayüz (index.html) ile sunucunun (approve.js) AYNI sürümde yayınlandığını doğrulamak için.
+// index.html içindeki CLIENT_BUILD ile aynı olmalı; farklıysa yönetici panelinde uyarı gösterilir.
+const API_BUILD = '2026-10-15-sec3';
 const SAFE_USERNAME_RE = /^[A-Za-z0-9_.-]{1,64}$/;
 // Teklif/karşı teklif tutarı: pozitif, makul üst sınır, Pi'nin 7 ondalık hassasiyeti. Geçersizse null.
 const MAX_OFFER_PI = 1e9;
@@ -6927,13 +6930,14 @@ async function handlerImpl(req, res) {
         success: true,
         operational: d.operational !== false,
         message: d.message || '',
-        updatedAt: d.updatedAt || null
+        updatedAt: d.updatedAt || null,
+        build: API_BUILD
       });
     } catch (e) {
       // Durum servisinin kendisi başarısız olsa bile kullanıcıya hata
       // göstermek yerine "normal" varsayımıyla düşsün (fail-open) — bir
       // durum sayfası hatası paniğe yol açmamalı.
-      return res.status(200).json({ success: true, operational: true, message: '' });
+      return res.status(200).json({ success: true, operational: true, message: '', build: API_BUILD });
     }
   }
 
