@@ -13914,11 +13914,25 @@ async function refreshOnlineCount(){
         const badgeEl=document.getElementById("active-users-badge"); if(badgeEl) badgeEl.textContent=d.strict; // son 30 sn (admin rozeti)
     }catch(e){}
 }
+// Yenileme sıklığı: yönetici oturumunda 8 sn, diğerlerinde 20 sn (sunucu sonucu en fazla 5 sn önbellekler).
+// Sekme gizliyken istek atılmaz; sekmeye dönünce hem kendi nabzımız hem sayaç hemen yenilenir.
+let _onlineTimer=null;
+function scheduleOnlineRefresh(){
+    clearTimeout(_onlineTimer);
+    const isAdminSession=!!currentUser && currentUser===APP_CONFIG.adminUsername;
+    _onlineTimer=setTimeout(async()=>{
+        if(document.visibilityState==='visible') await refreshOnlineCount();
+        scheduleOnlineRefresh();
+    },isAdminSession?8000:20000);
+}
 refreshOnlineCount();
-setInterval(()=>{ if(document.visibilityState==='visible') refreshOnlineCount(); },30000);
+scheduleOnlineRefresh();
+document.addEventListener('visibilitychange',()=>{
+    if(document.visibilityState==='visible'){ updateActiveStatus(); refreshOnlineCount(); }
+});
 async function updateActiveStatus(){
     if(!currentUser||!piAccessToken) return;
-    try{ await fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'presence_ping',accessToken:piAccessToken})}); }catch(e){}
+    try{ await fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'presence_ping',accessToken:piAccessToken})}); if(currentUser===APP_CONFIG.adminUsername) refreshOnlineCount(); }catch(e){}
 }
 function presenceLeave(){
     if(!currentUser||!piAccessToken) return Promise.resolve();
