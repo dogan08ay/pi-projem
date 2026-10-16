@@ -65,8 +65,9 @@ function normalizeOfferPrice(x) {
   const r = Math.round(n * 1e7) / 1e7;
   return r > 0 ? r : null; // 7 ondalığa yuvarlanınca 0 kalan (ör. 1e-9) tutar geçersizdir
 }
-const ONLINE_CACHE_MS = 15000;
+const ONLINE_CACHE_MS = 5000;   // sayaç en fazla 5 sn eski olabilir
 let _onlineCache = { at: 0, data: null };
+let _activeUsersCleanupAt = 0;   // eski nabız kayıtlarının temizliği için son çalışma zamanı
 
 function canTradeOwnListing(username) {
   // GÜVENLİK: Bu muafiyet yalnızca TEST amaçlıdır. Gerçek ağda (mainnet) kendi ilanına teklif /
@@ -3944,8 +3945,8 @@ async function handlerImpl(req, res) {
     if (!isAdmin) return res.status(403).json({ error: "Yetki yok" });
     try {
       const db = getDb();
-      const snap = await db.collection('active_users').get();
       const now = Date.now();
+      const snap = await db.collection('active_users').where('lastSeen', '>', now - 60000).get();
       const active = [];
       snap.forEach(d => {
         const lastSeen = d.data().lastSeen;
@@ -8647,7 +8648,10 @@ async function handlerImpl(req, res) {
     try {
       const nowTs = Date.now();
       if (_onlineCache.data && nowTs - _onlineCache.at < ONLINE_CACHE_MS) return res.status(200).json({ success: true, ..._onlineCache.data });
-      const snap = await getDb().collection('active_users').get();
+      // Yalnızca son 15 dk içinde görülenler okunur (eskiden tüm koleksiyon okunuyordu; çıkışta silinmeyen
+      // kayıtlar biriktikçe her sayımda okuma maliyeti büyüyordu).
+      const dbo = getDb();
+      const snap = await dbo.collection('active_users').where('lastSeen', '>', nowTs - 900000).get();
       let strict = 0, recent = 0;
       snap.forEach(d => {
         const ls = Number(d.data().lastSeen);
@@ -8657,6 +8661,14 @@ async function handlerImpl(req, res) {
         if (diff < 900000) recent++;
       });
       _onlineCache = { at: nowTs, data: { strict, recent } };
+      // Çıkışta silinmeyen (sekme kapanması/bağlantı kopması) 24 saatten eski kayıtları 10 dk'da bir temizle.
+      if (nowTs - _activeUsersCleanupAt > 600000) {
+        _activeUsersCleanupAt = nowTs;
+        try {
+          const stale = await dbo.collection('active_users').where('lastSeen', '<', nowTs - 86400000).limit(200).get();
+          if (!stale.empty) { const batch = dbo.batch(); stale.forEach(d => batch.delete(d.ref)); await batch.commit(); }
+        } catch (e) { console.error('active_users temizlik hatası:', e); }
+      }
       return res.status(200).json({ success: true, strict, recent });
     } catch (e) { return res.status(500).json({ error: "Alınamadı" }); }
   }
