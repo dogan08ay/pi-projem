@@ -6815,7 +6815,7 @@ function renderOnboardingChecklist(){
 
 // LOGOUT
 window.handleLogout=async function(){
-    if(currentUser) try{await deleteDoc(doc(db,"active_users",currentUser));}catch(e){}
+    if(currentUser) try{await presenceLeave();}catch(e){}
     stopNotifPolling();
     stopTicketBadgePolling();
     stopUserTicketPolling();
@@ -11348,7 +11348,7 @@ window.loadActiveUsers=async function(){
         const locale=currentLang==='en'?'en-GB':'tr-TR';
         listEl.innerHTML = active.length===0
             ? `${emptyState('👥',t('noActiveUsers'))}`
-            : active.map(u=>`<div class="log-item" style="display:flex;align-items:center;gap:8px;"><span style="width:8px;height:8px;border-radius:50%;background:#10b981;box-shadow:0 0 6px #10b981;flex-shrink:0;animation:icon-pulse-btn 1.8s ease-in-out infinite;"></span><b>@${u.username}</b><span style="color:#94a3b8;font-size:0.78em;margin-left:auto;">${new Date(u.lastSeen).toLocaleTimeString(locale,{hour:'2-digit',minute:'2-digit',second:'2-digit'})}</span></div>`).join('');
+            : active.map(u=>`<div class="log-item" style="display:flex;align-items:center;gap:8px;"><span style="width:8px;height:8px;border-radius:50%;background:#10b981;box-shadow:0 0 6px #10b981;flex-shrink:0;animation:icon-pulse-btn 1.8s ease-in-out infinite;"></span><b>@${escapeHtml(u.username)}</b><span style="color:#94a3b8;font-size:0.78em;margin-left:auto;">${new Date(u.lastSeen).toLocaleTimeString(locale,{hour:'2-digit',minute:'2-digit',second:'2-digit'})}</span></div>`).join('');
     }catch(e){
         listEl.innerHTML=`<p style="color:#f87171;font-size:0.8em;text-align:center;">${t('genericError')}</p>`;
     }
@@ -11364,7 +11364,7 @@ window.openDeletionRequestsModal=async function(){
         if(!result.requests||!result.requests.length){ resultsEl.innerHTML=`<div style="color:#64748b;font-size:0.75em;text-align:center;padding:20px;">Bekleyen talep yok.</div>`; return; }
         resultsEl.innerHTML=result.requests.map(rq=>`
             <div style="background:#0f172a;border-radius:9px;padding:10px;border-left:3px solid #ef4444;">
-                <div style="display:flex;justify-content:space-between;gap:8px;margin-bottom:4px;"><b style="color:#fca5a5;font-size:0.8em;">@${rq.username}</b><span style="color:#64748b;font-size:0.72em;">${new Date(rq.createdAt).toLocaleString('tr-TR')}</span></div>
+                <div style="display:flex;justify-content:space-between;gap:8px;margin-bottom:4px;"><b style="color:#fca5a5;font-size:0.8em;">@${escapeHtml(rq.username)}</b><span style="color:#64748b;font-size:0.72em;">${new Date(rq.createdAt).toLocaleString('tr-TR')}</span></div>
                 ${rq.reason?`<div style="color:#94a3b8;font-size:0.78em;margin-bottom:8px;font-style:italic;">"${escapeHtml(rq.reason)}"</div>`:''}
                 <button onclick="window.resolveDeletionRequest('${rq.id}')" style="width:100%;padding:6px;border-radius:6px;border:1px solid #10b981;background:rgba(16,185,129,0.1);color:#6ee7b7;font-size:0.76em;font-weight:800;cursor:pointer;">${AWL('✅ Sonuçlandır','✅ Finalize')}</button>
             </div>`).join('');
@@ -11643,7 +11643,25 @@ async function loadAdminTodoSummary() {
         body.dataset.loadedOnce = '1';
     }
 }
+// Arayüz sürümü: sunucudaki API_BUILD ile aynı olmalı. Farklıysa (ör. yalnızca index.html ya da yalnızca
+// approve.js yayınlandıysa) yönetici panelinde sebep belirtilerek uyarı gösterilir.
+const CLIENT_BUILD = '2026-10-15-sec3';
+async function checkBuildSync() {
+    try {
+        const r = await fetch('/api/approve', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'get_system_status' }) });
+        const d = await r.json();
+        const host = document.getElementById('admin-todo-summary');
+        if (!host) return;
+        let bar = document.getElementById('admin-build-warning');
+        if (d && d.build === CLIENT_BUILD) { if (bar) bar.remove(); return; }
+        if (!bar) { bar = document.createElement('div'); bar.id = 'admin-build-warning'; bar.style.cssText = 'margin-bottom:8px;padding:8px 10px;border-radius:10px;background:rgba(239,68,68,0.14);border:1.5px solid #ef4444;color:#fecaca;font-size:0.76em;font-weight:700;line-height:1.5;'; host.insertBefore(bar, host.firstChild); }
+        bar.textContent = (d && d.build)
+            ? AWL(`⚠️ Sürüm uyuşmuyor: sunucu ${d.build}, arayüz ${CLIENT_BUILD}. İki dosyayı (index.html ve approve.js) da yayınlayın; sayfayı yenileyin.`, `⚠️ Version mismatch: server ${d.build}, UI ${CLIENT_BUILD}. Deploy both files (index.html and approve.js) and reload.`)
+            : AWL('⚠️ Sunucu (approve.js) eski sürümde. Yeni index.html ile birlikte approve.js de yayınlanmalı; aksi halde Günlük Giriş Kaydı, Aktif Kullanıcılar ve Toplam Farklı Kullanıcı bölümleri veri çekemez.', '⚠️ The server (approve.js) is outdated. Deploy approve.js together with the new index.html; otherwise Daily Login Log, Active Users and Unique Users cannot load data.');
+    } catch (_) {}
+}
 function startAdminTodoSummaryPolling() {
+    checkBuildSync();
     if (adminTodoPollTimer) clearInterval(adminTodoPollTimer);
     loadAdminTodoSummary();
     adminTodoPollTimer = setInterval(loadAdminTodoSummary, 30000);
@@ -13683,20 +13701,28 @@ function listenToLogs(date){
     if(errBox){errBox.style.display='none';errBox.innerText='';}
 
     if(adminLogUnsubscribe) adminLogUnsubscribe();
-    adminLogUnsubscribe=onSnapshot(doc(db,"daily_users",date),(snap)=>{
-        const users=(snap.data()||{}).users||{};
-        const sorted=Object.keys(users).sort((a,b)=>users[b]-users[a]);
-        const logList=document.getElementById("log-list");
-        if(logList) logList.innerHTML=sorted.length===0
-            ?`<p style="font-style:italic;opacity:0.6;font-size:0.8em;">${t('noRecord')}</p>`
-            :sorted.map(u=>`<div class="log-item"><b>@${u}</b><span>${new Date(users[u]).toLocaleTimeString()}</span></div>`).join('');
-    },(err)=>{
-        // FIX: Önceden bir hata (örn. Firestore izin hatası) sessizce
-        // yutuluyordu ve ekranda hep "0" görünüyordu — kullanıcı verinin
-        // hiç gelmediğini fark edemiyordu. Artık hata açıkça gösteriliyor.
-        console.error("daily_users dinleme hatası:",err);
-        if(errBox){errBox.style.display='block';errBox.innerText=t('statsPermissionError');}
-    });
+    // GÜVENLİK: daily_users artık istemciden doğrudan okunmuyor; admin işlemiyle sunucudan gelir
+    // (sunucu geçersiz/zararlı adları ayıklar) ve çıktı ayrıca HTML-kaçışlanır.
+    const loadDailyLog=async()=>{
+        try{
+            const r=await fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'get_daily_users',date,accessToken:piAccessToken})});
+            const d=await r.json();
+            if(!d.success) throw new Error(d.error||'err');
+            const users=d.users||{};
+            const sorted=Object.keys(users).sort((a,b)=>users[b]-users[a]);
+            const logList=document.getElementById("log-list");
+            if(logList) logList.innerHTML=sorted.length===0
+                ?`<p style="font-style:italic;opacity:0.6;font-size:0.8em;">${t('noRecord')}</p>`
+                :sorted.map(u=>`<div class="log-item"><b>@${escapeHtml(u)}</b><span>${new Date(users[u]).toLocaleTimeString()}</span></div>`).join('');
+            if(errBox){errBox.style.display='none';errBox.innerText='';}
+        }catch(err){
+            console.error("daily_users okuma hatası:",err);
+            if(errBox){errBox.style.display='block';errBox.innerText=t('statsPermissionError')+' ('+(err&&err.message?err.message:'?')+')';}
+        }
+    };
+    loadDailyLog();
+    const dailyLogTimer=setInterval(loadDailyLog,15000);
+    adminLogUnsubscribe=()=>clearInterval(dailyLogTimer);
     if(adminStatsUnsubscribe) adminStatsUnsubscribe();
     adminStatsUnsubscribe=onSnapshot(doc(db,"daily_stats",date),(snap)=>{
         const data=snap.data()||{};
@@ -13850,13 +13876,11 @@ function stopListeningToMyOwnSellRequests(){
 // UNIQUE USERS
 let cachedUniqueUsers=null;
 async function fetchUniqueUsers(){
-    const snapshot=await getDocs(collection(db,"daily_users"));
-    const allUsers={};
-    snapshot.forEach(docSnap=>{
-        const users=docSnap.data().users||{};
-        Object.keys(users).forEach(u=>{if(!allUsers[u]||users[u]>allUsers[u].lastSeen) allUsers[u]={lastSeen:users[u]};});
-    });
-    cachedUniqueUsers=Object.entries(allUsers).sort((a,b)=>b[1].lastSeen-a[1].lastSeen);
+    // GÜVENLİK: daily_users doğrudan okunmuyor; sunucu (admin) süzülmüş listeyi döner.
+    const r=await fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'get_unique_users',accessToken:piAccessToken})});
+    const d=await r.json();
+    if(!d.success) throw new Error(d.error||'err');
+    cachedUniqueUsers=(d.users||[]).map(u=>[u.username,{lastSeen:u.lastSeen}]);
     return cachedUniqueUsers;
 }
 function renderUniqueUsersList(sorted){
@@ -13866,46 +13890,41 @@ function renderUniqueUsersList(sorted){
     const badge=document.getElementById("unique-users-badge"); if(badge) badge.innerText=sorted.length;
     const locale=currentLang==='en'?'en-GB':'tr-TR';
     listEl.innerHTML=sorted.length===0?`${emptyState('👥',t('noUsers'))}`
-        :sorted.map(([username,info])=>`<div class="log-item"><b>@${username}</b><span style="color:#94a3b8;font-size:0.85em;">${t('lastSeenPrefix')}${new Date(info.lastSeen).toLocaleDateString(locale,{day:'2-digit',month:'2-digit',year:'numeric'})}</span></div>`).join('');
+        :sorted.map(([username,info])=>`<div class="log-item"><b>@${escapeHtml(username)}</b><span style="color:#94a3b8;font-size:0.85em;">${t('lastSeenPrefix')}${new Date(info.lastSeen).toLocaleDateString(locale,{day:'2-digit',month:'2-digit',year:'numeric'})}</span></div>`).join('');
 }
 window.openUniqueUsersModal=async function(){
     document.getElementById('unique-users-modal').style.display='flex';
     if(cachedUniqueUsers){renderUniqueUsersList(cachedUniqueUsers);return;}
     try{renderUniqueUsersList(await fetchUniqueUsers());}
-    catch(e){const l=document.getElementById("unique-user-list");if(l)l.innerHTML=`<p style="color:#ef4444;text-align:center;font-size:0.8em;">${t('usersError')}</p>`;}
+    catch(e){const l=document.getElementById("unique-user-list");if(l)l.innerHTML=`<p style="color:#ef4444;text-align:center;font-size:0.8em;">${t('usersError')} (${escapeHtml(e&&e.message?e.message:'?')})</p>`;}
 };
 async function loadUniqueBadgeCount(){
     try{const s=await fetchUniqueUsers();const b=document.getElementById("unique-users-badge");if(b)b.innerText=s.length;}catch(e){}
 }
 
 // AKTİF KULLANICI
-onSnapshot(collection(db,"active_users"),(snap)=>{
-    const now=Date.now();
-    let strictCount=0; // Admin'in "Anlık Aktif" panelinde kalan HASSAS pencere (30sn) — değişmedi
-    // YENİ: Ana sayfadaki halka açık "Aktif Kullanıcı" istatistiği için
-    // AYRI, daha geniş bir pencere (15 dakika). Sebep: 30 saniyelik pencere
-    // teknik olarak doğru ama düşük trafikli anlarda neredeyse HER ZAMAN
-    // "0" gösteriyordu — bu da yeni bir ziyaretçiye "kimse kullanmıyor"
-    // izlenimi veriyordu (sosyal kanıt açısından zararlı). 15 dakika hâlâ
-    // dürüst/doğru bir rakam (gerçekten son 15 dakikada aktif olanlar) ama
-    // "0" görünme ihtimalini büyük ölçüde azaltıyor.
-    let recentCount=0;
-    snap.forEach(d=>{
-        const lastSeen=d.data().lastSeen;
-        if(!lastSeen) return;
-        const diff=now-lastSeen;
-        if(diff<30000) strictCount++;
-        if(diff<900000) recentCount++;
-    });
-    const el=document.getElementById("online-count"); if(el) el.innerText=recentCount;
-    // FIX: Admin panelindeki "Anlık Aktif Kullanıcılar" butonunun rozeti de
-    // modalı hiç açmadan, bu zaten var olan canlı dinleyiciden anında
-    // güncellensin (önceden sadece modal açılınca dolduruluyordu, o ana
-    // kadar "—" görünüyordu).
-    const badgeEl=document.getElementById("active-users-badge"); if(badgeEl) badgeEl.textContent=strictCount;
-});
-async function updateActiveStatus(){if(currentUser) await setDoc(doc(db,"active_users",currentUser),{lastSeen:Date.now()},{merge:true});}
-window.addEventListener('beforeunload',async()=>{if(currentUser) await deleteDoc(doc(db,"active_users",currentUser));});
+// ÇEVRİMİÇİ SAYACI — GÜVENLİK: active_users artık istemciden doğrudan okunmuyor/yazılmıyor.
+// Herkese açık "Aktif Kullanıcı" rakamı ve admin rozeti, yalnızca SAYI döndüren sunucu uç noktasından gelir.
+async function refreshOnlineCount(){
+    try{
+        const r=await fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'get_online_count'})});
+        const d=await r.json();
+        if(!d||!d.success) return;
+        const el=document.getElementById("online-count"); if(el) el.innerText=d.recent;      // son 15 dk (herkese açık istatistik)
+        const badgeEl=document.getElementById("active-users-badge"); if(badgeEl) badgeEl.textContent=d.strict; // son 30 sn (admin rozeti)
+    }catch(e){}
+}
+refreshOnlineCount();
+setInterval(()=>{ if(document.visibilityState==='visible') refreshOnlineCount(); },30000);
+async function updateActiveStatus(){
+    if(!currentUser||!piAccessToken) return;
+    try{ await fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'presence_ping',accessToken:piAccessToken})}); }catch(e){}
+}
+function presenceLeave(){
+    if(!currentUser||!piAccessToken) return Promise.resolve();
+    return fetch('/api/approve',{method:'POST',keepalive:true,headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'presence_leave',accessToken:piAccessToken})}).catch(()=>{});
+}
+window.addEventListener('beforeunload',()=>{ presenceLeave(); });
 
 // ══════════════════════════════════════════════════════════════════════
 //  BAKIM MODU (MAINTENANCE MODE) — Canlı Dinleyici
@@ -16692,7 +16711,7 @@ window.openOrStartConversation=function(domainName,sellerUsername){
         currentChatConversationId=null;
         currentChatDomainName=domainName;
         currentChatTargetUser=sellerUsername;
-        document.getElementById('chat-detail-header').innerHTML=`<div class="ticket-detail-header"><h4>💬 @${sellerUsername} — ${escapeHtml(domainName)}</h4></div>`;
+        document.getElementById('chat-detail-header').innerHTML=`<div class="ticket-detail-header"><h4>💬 @${escapeHtml(sellerUsername)} — ${escapeHtml(domainName)}</h4></div>`;
         document.getElementById('chat-detail-messages').innerHTML=`<p style="font-size:0.75em;opacity:0.5;text-align:center;padding:14px 0;">${t('chatStartHint')}</p>`;
         document.getElementById('chat-reply-text').value='';
         // YENİ: Henüz kaydedilmiş bir konuşma yok (ilk mesaj gönderilmedi),
