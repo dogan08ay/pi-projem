@@ -113,14 +113,23 @@ async function checkWebhookRateLimit(db, chatId) {
   }
 }
 
+// Markdown'da '_' '*' '`' '[' özel karakterdir. Kullanıcı adları '_' içerebilir (ör. john_doe_1): kaçışlanmazsa
+// Telegram "can't parse entities" ile mesajı REDDEDER ve kullanıcı "✅ Bağlandı" mesajını hiç görmez.
+const tgEsc = (v) => String(v ?? '').replace(/([_*`\[])/g, '\\$1');
 async function sendTG(chatId, text) {
   if (!TG_BOT_TOKEN || !chatId) return;
+  const url = `https://api.telegram.org/bot${TG_BOT_TOKEN}/sendMessage`;
+  const body = String(text).slice(0, 4000);
   try {
-    await fetch(`https://api.telegram.org/bot${TG_BOT_TOKEN}/sendMessage`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ chat_id: chatId, text, parse_mode: 'Markdown' })
-    });
+    let resp = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ chat_id: chatId, text: body, parse_mode: 'Markdown' }) });
+    if (!resp.ok) {
+      // Biçimlendirme reddedildiyse düz metin olarak yeniden dene (hiçbir şey silinmez).
+      console.error('[telegram-webhook] Markdown reddedildi, düz metinle yeniden deneniyor:', resp.status);
+      resp = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ chat_id: chatId, text: body }) });
+      if (!resp.ok) console.error('[telegram-webhook] Düz metin de gönderilemedi:', resp.status);
+    }
   } catch (e) {
     console.error('[telegram-webhook] sendTG hatası:', e.message || e);
   }
@@ -153,6 +162,12 @@ export default async function handler(req, res) {
       return;
     }
 
+    // Yalnızca BOTLA ÖZEL SOHBET: grup/kanalda "/start KOD" gönderilirse bildirimler (satış, mesaj vb.)
+    // o gruptaki herkese giderdi. Özel olmayan sohbetler sessizce yok sayılır.
+    if (message.chat.type !== 'private') {
+      res.status(200).json({ ok: true });
+      return;
+    }
     const chatId = message.chat.id;
     const text = String(message.text).trim();
     const db = getDb();
@@ -188,42 +203,38 @@ export default async function handler(req, res) {
       return;
     }
 
-    const codeRef = db.collection('telegram_link_codes').doc(code.toUpperCase());
-    const codeSnap = await codeRef.get();
-
-    if (!codeSnap.exists) {
+    // Kod biçimi approve.js'in ürettiğiyle aynı olmalı (10 hex karakter). Başka biçimler veritabanına HİÇ
+    // gitmez (rastgele doküman yolu/çok uzun metin denemesini engeller).
+    if (!/^[A-Fa-f0-9]{10}$/.test(code)) {
       await sendTG(chatId, '⚠️ Bu bağlantı kodu geçersiz veya daha önce kullanılmış. Lütfen uygulamada "Telegram Bağla" butonuna tekrar basıp yeni bir bağlantı açın.');
       res.status(200).json({ ok: true });
       return;
     }
 
-    const codeData = codeSnap.data();
-    const age = Date.now() - (codeData.createdAt || 0);
-    if (age > CODE_TTL_MS) {
-      await codeRef.delete();
+    const codeRef = db.collection('telegram_link_codes').doc(code.toUpperCase());
+    // Okuma + hesaba yazma + kodu silme TEK İŞLEMDE: aynı kodla art arda gelen iki istek ikisi de başarılı
+    // olamaz (kod gerçekten tek kullanımlık).
+    const outcome = await db.runTransaction(async (tx) => {
+      const codeSnap = await tx.get(codeRef);
+      if (!codeSnap.exists) return { status: 'invalid' };
+      const codeData = codeSnap.data();
+      const age = Date.now() - (codeData.createdAt || 0);
+      if (age > CODE_TTL_MS) { tx.delete(codeRef); return { status: 'expired' }; }
+      const username = codeData.username;
+      if (!username) { tx.delete(codeRef); return { status: 'broken' }; }
+      // approve.js içindeki get_notification_prefs ve sendNotification TAM OLARAK bu alanı (telegramChatId) okuyor.
+      tx.set(db.collection('user_profiles').doc(username), { telegramChatId: chatId, telegramLinkedAt: Date.now() }, { merge: true });
+      tx.delete(codeRef);
+      return { status: 'linked', username };
+    });
+
+    if (outcome.status === 'invalid') {
+      await sendTG(chatId, '⚠️ Bu bağlantı kodu geçersiz veya daha önce kullanılmış. Lütfen uygulamada "Telegram Bağla" butonuna tekrar basıp yeni bir bağlantı açın.');
+    } else if (outcome.status === 'expired') {
       await sendTG(chatId, '⚠️ Bu bağlantı kodunun süresi dolmuş (15 dakikadan eski). Lütfen uygulamada "Telegram Bağla" butonuna tekrar basıp yeni bir bağlantı açın.');
-      res.status(200).json({ ok: true });
-      return;
+    } else if (outcome.status === 'linked') {
+      await sendTG(chatId, `✅ *Bağlandı!* @${tgEsc(outcome.username)} hesabınız artık bu Telegram'a bağlı. Domain onayı, satış, mesaj gibi bildirimleri buradan da alacaksınız.`);
     }
-
-    const username = codeData.username;
-    if (!username) {
-      await codeRef.delete();
-      res.status(200).json({ ok: true });
-      return;
-    }
-
-    // Hesaba bağla — approve.js içindeki get_notification_prefs ve
-    // sendNotification, TAM OLARAK bu alanı (telegramChatId) okuyor.
-    await db.collection('user_profiles').doc(username).set({
-      telegramChatId: chatId,
-      telegramLinkedAt: Date.now()
-    }, { merge: true });
-
-    // Kod tek kullanımlık — tekrar kullanılmasın diye hemen sil.
-    await codeRef.delete();
-
-    await sendTG(chatId, `✅ *Bağlandı!* @${username} hesabınız artık bu Telegram'a bağlı. Domain onayı, satış, mesaj gibi bildirimleri buradan da alacaksınız.`);
 
     res.status(200).json({ ok: true });
   } catch (e) {
