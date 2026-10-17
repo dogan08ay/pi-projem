@@ -26,43 +26,58 @@
       "schedule": "0 6 * * *"
     }
   ],
-  "routes": [
+  "rewrites": [
     {
-      "src": "/api/approve",
-      "dest": "/api/approve.js"
-    },
-    {
-      "src": "/api/config",
-      "dest": "/api/config.js"
-    },
-    {
-      "src": "/api/telegram-webhook",
-      "dest": "/api/telegram-webhook.js"
-    },
-    {
-      "src": "/api/cron-daily-digest",
-      "dest": "/api/cron-daily-digest.js"
-    },
-    {
-      "src": "/privacy.html",
-      "dest": "/privacy.html"
-    },
-    {
-      "src": "/terms.html",
-      "dest": "/terms.html"
-    },
-    {
-      "src": "/assets/(.*)",
-      "dest": "/assets/$1"
-    },
-    {
-      "src": "/(.*)",
-      "dest": "/index.html"
+      "source": "/(.*)",
+      "destination": "/index.html"
     }
   ],
   "headers": [
     {
+      "source": "/(.*)",
+      "headers": [
+        {
+          "key": "X-Content-Type-Options",
+          "value": "nosniff"
+        },
+        {
+          "key": "Referrer-Policy",
+          "value": "strict-origin-when-cross-origin"
+        },
+        {
+          "key": "Strict-Transport-Security",
+          "value": "max-age=31536000"
+        },
+        {
+          "key": "Permissions-Policy",
+          "value": "camera=(), microphone=(), geolocation=()"
+        },
+        {
+          "key": "Content-Security-Policy",
+          "value": "base-uri 'self'; object-src 'none'"
+        }
+      ]
+    },
+    {
+      "source": "/",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-cache, no-store, must-revalidate"
+        }
+      ]
+    },
+    {
       "source": "/index.html",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-cache, no-store, must-revalidate"
+        }
+      ]
+    },
+    {
+      "source": "/sw.js",
       "headers": [
         {
           "key": "Cache-Control",
