@@ -5184,6 +5184,11 @@ async function handlerImpl(req, res) {
       // ikinci savunma katmanı olarak telegram-webhook.js'e de chatId
       // bazlı rate limit eklendi (bkz. o dosya).
       const code = crypto.randomBytes(5).toString('hex').toUpperCase();
+      // Kullanıcı başına TEK geçerli kod: öncekiler silinir (kod yığılmasını ve tahmin yüzeyini azaltır).
+      try {
+        const oldCodes = await db.collection('telegram_link_codes').where('username', '==', realUsername).get();
+        if (!oldCodes.empty) { const bt = db.batch(); oldCodes.forEach(d => bt.delete(d.ref)); await bt.commit(); }
+      } catch (e) { console.error('eski Telegram kodları temizlenemedi:', e); }
       await db.collection('telegram_link_codes').doc(code).set({
         username: realUsername, createdAt: Date.now()
       });
