@@ -679,6 +679,9 @@
         #utab-history{background:linear-gradient(160deg,#0b2a52 0%,#0e3a66 45%,#0b4a5a 100%) !important;border:2.5px solid #38bdf8 !important;border-radius:18px !important;padding:12px 10px 8px !important;box-shadow:0 0 0 1px rgba(56,189,248,0.25),0 0 22px rgba(56,189,248,0.30),0 8px 24px rgba(0,0,0,0.45) !important;}
         #utab-history .hist-head{display:flex;align-items:center;justify-content:center;gap:8px;margin:-2px -2px 10px;padding:9px 10px;border-radius:12px;background:linear-gradient(135deg,rgba(56,189,248,0.32),rgba(99,102,241,0.28));border:1.5px solid #7dd3fc;color:#f0f9ff;font-weight:900;font-size:0.88em;letter-spacing:.4px;text-transform:uppercase;text-shadow:0 1px 2px rgba(0,0,0,0.4);}
         #utab-history [id^="history-section-"]{border-width:1.5px !important;border-radius:14px !important;box-shadow:0 3px 12px rgba(0,0,0,0.28);}
+        .dsr-bar{border-radius:8px;background:linear-gradient(90deg,#1e293b 25%,#273449 50%,#1e293b 75%);background-size:200% 100%;animation:dsr-shimmer 1.2s linear infinite;}
+        @keyframes dsr-shimmer{0%{background-position:200% 0;}100%{background-position:-200% 0;}}
+        @media (prefers-reduced-motion: reduce){.dsr-bar{animation:none;}}
         .pc-chip.pc-pop{animation:pc-pop .45s ease-out;}
         @keyframes pc-pulse{0%{box-shadow:0 0 0 0 rgba(255,255,255,0.40);}70%{box-shadow:0 0 0 9px rgba(255,255,255,0);}100%{box-shadow:0 0 0 0 rgba(255,255,255,0);}}
         @keyframes pc-pop{0%{transform:scale(1);}40%{transform:scale(1.18);}100%{transform:scale(1);}}
@@ -7786,6 +7789,17 @@ function legacyCopyToClipboard(text) {
     }
 }
 
+// Domain detayındaki geç gelen bölümler (satıcı puanı/güven skoru, fiyat geçmişi) için kısa süreli önbellek:
+// aynı domain/satıcı tekrar açılınca (ya da pencere yenilenince) veri anında gelir → ekran hiç kaymaz.
+const _detailApiCache={};
+const DETAIL_API_TTL=60000;
+const DSR_PLACEHOLDER_H=109; // yer tutucu yüksekliği (gerçek satıcı kartının tipik yüksekliği)
+function _detailCached(key){ const c=_detailApiCache[key]; return (c && Date.now()-c.at<DETAIL_API_TTL) ? c.res : null; }
+function cachedDetailApi(key,payload){
+    const hit=_detailCached(key); if(hit) return Promise.resolve(hit);
+    return fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)})
+        .then(r=>r.json()).then(res=>{ if(res&&res.success) _detailApiCache[key]={at:Date.now(),res}; return res; });
+}
 window.openDomainDetail=function(domainName){
     window._detailDomainName=domainName;
     const domain=domains.find(d=>d.name===domainName); if(!domain) return;
@@ -7827,7 +7841,11 @@ window.openDomainDetail=function(domainName){
     const ownershipVerifiedDateStr=data.ownershipVerifiedAt?new Date(data.ownershipVerifiedAt).toLocaleDateString(currentLang==='en'?'en-GB':'tr-TR',{day:'2-digit',month:'2-digit',year:'numeric'}):'';
     const ownershipBadge=data.ownershipVerified?` <span title="${t('ownershipVerifiedTooltip')}${ownershipVerifiedDateStr?' ('+ownershipVerifiedDateStr+')':''}" style="background:rgba(59,130,246,0.15);border:1px solid #3b82f6;color:#93c5fd;font-size:0.72em;font-weight:900;padding:2px 7px;border-radius:20px;white-space:nowrap;cursor:help;">🛡️ ${t('ownershipVerifiedBadge')}</span>`:'';
     rows+=row('👤',t('detailFieldSellerUser'),sellerClickable+ownershipBadge);
-    rows+=`<div id="detail-seller-rating-row" style="display:none;"></div>`;
+    // Veri henüz önbellekte değilse aynı yükseklikte bir yer tutucu: cevap gelince içerik aşağıdaki
+    // satırları (açıklama, butonlar) itmesin diye. Önbellekte varsa satır aşağıda senkron doldurulur.
+    rows+=(data.sellerUsername && !_detailCached('sr:'+data.sellerUsername))
+        ? `<div id="detail-seller-rating-row" style="display:flex;flex-direction:column;gap:8px;min-height:${DSR_PLACEHOLDER_H}px;"><div class="dsr-bar" style="height:46px;"></div><div class="dsr-bar" style="height:14px;width:62%;"></div><div class="dsr-bar" style="height:14px;width:44%;"></div></div>`
+        : `<div id="detail-seller-rating-row" style="display:none;"></div>`;
     // DÜZENLENDİ (kullanıcı geri bildirimi — "domain detay ekranı çok
     // sıkışık"): Fiyat geçmişi tablosu ve satıcı değerlendirme yorumları
     // (araştırma amaçlı EKSTRA bilgi, satın alma kararı için ŞART değil)
@@ -7842,8 +7860,8 @@ window.openDomainDetail=function(domainName){
             <div id="detail-price-history-row" style="display:none;"></div>
             <div id="detail-reviews-row" style="display:none;"></div>
         </div>`;
-    fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'get_domain_price_history',domainName})})
-        .then(r=>r.json()).then(res=>{
+    const pHist=cachedDetailApi('ph:'+domainName,{action:'get_domain_price_history',domainName})
+        .then(res=>{
             const el=document.getElementById('detail-price-history-row');
             if(!el||!res.success||!res.history||!res.history.length) return;
             const locale2=currentLang==='en'?'en-GB':'tr-TR';
@@ -7877,11 +7895,15 @@ window.openDomainDetail=function(domainName){
                 </table>`;
             window.revealDetailMoreToggle();
         }).catch(()=>{});
+    let pRating=Promise.resolve();
     if(data.sellerUsername){
-        fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'get_seller_rating',sellerUsername:data.sellerUsername})})
-            .then(r=>r.json()).then(res=>{
+        pRating=cachedDetailApi('sr:'+data.sellerUsername,{action:'get_seller_rating',sellerUsername:data.sellerUsername})
+            .then(res=>{
                 const el=document.getElementById('detail-seller-rating-row');
-                if(!el||!res.success) return;
+                if(!el) return;
+                // Cevap başarısızsa yer tutucuyu kaldır (boş iskelet kalmasın).
+                if(!res||!res.success){ el.style.display='none'; el.style.minHeight=''; el.innerHTML=''; return; }
+                el.style.minHeight='';
                 const ratingText = res.count>0 ? `⭐ ${res.avg} (${res.count})` : t('noRatingsYet');
                 el.style.display='flex'; el.style.flexDirection='column'; el.style.gap='6px';
                 // YENİ: Yeterince yüksek puanlı satıcılar için "Güvenilir
@@ -7941,7 +7963,10 @@ window.openDomainDetail=function(domainName){
                         window.revealDetailMoreToggle();
                     }
                 }
-            }).catch(()=>{});
+            }).catch(()=>{
+                const el=document.getElementById('detail-seller-rating-row');
+                if(el){ el.style.display='none'; el.style.minHeight=''; el.innerHTML=''; }
+            });
     }
     if(data.sold){
         rows+=row('🧑‍💼',t('detailFieldBuyerUser'),data.buyer?'@'+data.buyer:'—');
@@ -8212,12 +8237,25 @@ window.openDomainDetail=function(domainName){
         if(nb){ nb.value=_prevBidVal; window.checkAuctionBidValidity(nb); window.syncAmountDisplay(nb,'auction-bid-display',t('auctionBidInputPlaceholder')); if(_prevHadFocus) nb.focus(); }
     }
     const detailModalEl = document.getElementById('domain-detail-modal');
-    detailModalEl.style.display='flex';
-    // YENİ: Modal her açıldığında en başa kaydırılır — önceki bir görüntülemeden
-    // kalan kaydırma konumuyla (ör. sayfanın ortasından) açılmasın; bu aynı
-    // zamanda tur adımlarının (ör. satıcı profili) doğru konumda ölçülmesine de yardımcı olur.
-    const detailModalContent = detailModalEl.querySelector('.modal-content');
-    if (detailModalContent) detailModalContent.scrollTop = 0;
+    // KAYMA DÜZELTMESİ: Pencere, satıcı puanı / güven skoru / fiyat geçmişi cevapları gelene kadar (en fazla
+    // 350 ms) AÇILMAZ; cevaplar hızlı gelirse kullanıcı ekranı zaten tamamlanmış görür (hiç kayma olmaz).
+    // Daha yavaşsa pencere, aynı yükseklikte iskelet (yer tutucu) ile açılır. Pencere zaten açıksa (yenileme)
+    // hemen devam edilir; veri önbellekten senkron dolduğu için kare çizilmeden güncellenir.
+    const _revealDetail=()=>{
+        if(window._lastDetailRenderDomain!==domainName) return; // bu arada başka bir domain açıldıysa dokunma
+        const wasOpen=detailModalEl.style.display==='flex';
+        detailModalEl.style.display='flex';
+        // YENİ: Modal her açıldığında en başa kaydırılır — önceki bir görüntülemeden
+        // kalan kaydırma konumuyla (ör. sayfanın ortasından) açılmasın; bu aynı
+        // zamanda tur adımlarının (ör. satıcı profili) doğru konumda ölçülmesine de yardımcı olur.
+        const detailModalContent = detailModalEl.querySelector('.modal-content');
+        if (detailModalContent && !wasOpen) detailModalContent.scrollTop = 0;
+    };
+    if(detailModalEl.style.display==='flex'){
+        _revealDetail();
+    } else {
+        Promise.race([Promise.all([pHist,pRating]),new Promise(r=>setTimeout(r,350))]).then(_revealDetail,_revealDetail);
+    }
 };
 
 window.toggleOwnershipVerified=async function(domainName,verified){
@@ -15220,8 +15258,40 @@ window.openLink = function(url, isExternal) {
 //  sayfa hiç terk edilmiyor.
 // ═══════════════════════════════════════════════════════════════════════
 const legalPageCache = {};
+const legalPagePromise = {};
+function legalUrl(type){ return type === 'privacy' ? 'privacy.html' : 'terms.html'; }
+// İçeriği (tek seferlik) getirir; aynı anda gelen çağrılar aynı isteği paylaşır, hata olursa tekrar denenebilir.
+function loadLegalHtml(type){
+    if (legalPageCache[type]) return Promise.resolve(legalPageCache[type]);
+    if (!legalPagePromise[type]) {
+        legalPagePromise[type] = fetch(legalUrl(type))
+            .then(res => { if (!res.ok) throw new Error('HTTP ' + res.status); return res.text(); })
+            .then(text => {
+                const parsed = new DOMParser().parseFromString(text, 'text/html');
+                const container = parsed.querySelector('.container');
+                const html = container ? container.innerHTML : text;
+                legalPageCache[type] = html;
+                return html;
+            })
+            .catch(e => { delete legalPagePromise[type]; throw e; });
+    }
+    return legalPagePromise[type];
+}
+// ÖNCEDEN YÜKLEME: sayfa açıldıktan sonra boş bir anda iki metni arka planda getir; kullanıcı ilk kez
+// tıkladığında da içerik hazır olur (ikinci tıklamadaki gibi tek seferde, yanıp sönmeden açılır).
+(function prefetchLegalPages(){
+    const go = () => {
+        try { if (navigator.connection && navigator.connection.saveData) return; } catch (_) {}
+        loadLegalHtml('privacy').catch(() => {});
+        loadLegalHtml('terms').catch(() => {});
+    };
+    window.addEventListener('load', () => {
+        if ('requestIdleCallback' in window) requestIdleCallback(go, { timeout: 6000 });
+        else setTimeout(go, 4000);
+    });
+})();
 window.openLegalModal = async function openLegalModal(type) {
-    const url = type === 'privacy' ? 'privacy.html' : 'terms.html';
+    const url = legalUrl(type);
     const titleMap = {
         privacy: { tr: 'GİZLİLİK POLİTİKASI', en: 'PRIVACY POLICY' },
         terms: { tr: 'KULLANIM ŞARTLARI', en: 'TERMS OF USE' }
@@ -15231,24 +15301,33 @@ window.openLegalModal = async function openLegalModal(type) {
     const bodyEl = document.getElementById('legal-modal-body');
 
     titleEl.textContent = titleMap[type][currentLang === 'en' ? 'en' : 'tr'];
+    modal.dataset.legalType = type;
+    bodyEl.scrollTop = 0;
+    const cached = legalPageCache[type];
+    if (cached) {
+        // Hazırsa içerik, pencere görünmeden ÖNCE yerleşir: tek seferde, yanıp sönmeden açılır.
+        bodyEl.style.minHeight = '';
+        bodyEl.innerHTML = cached;
+        modal.style.display = 'flex';
+        return;
+    }
+    // Henüz gelmediyse: içerik gelince pencere yükseklik değiştirmesin diye gövdeyi son boyutuna (65vh) kilitle.
+    bodyEl.style.minHeight = '65vh';
     bodyEl.innerHTML = '<div style="text-align:center;padding:20px 0;color:#64748b;">⏳ ...</div>';
     modal.style.display = 'flex';
 
     try {
-        let html = legalPageCache[type];
-        if (!html) {
-            const res = await fetch(url);
-            const text = await res.text();
-            const parsed = new DOMParser().parseFromString(text, 'text/html');
-            const container = parsed.querySelector('.container');
-            html = container ? container.innerHTML : text;
-            legalPageCache[type] = html;
-        }
+        const html = await loadLegalHtml(type);
+        if (modal.dataset.legalType !== type) return; // bu arada başka sayfa açıldıysa üzerine yazma
         bodyEl.innerHTML = html;
+        bodyEl.style.minHeight = '';
+        bodyEl.scrollTop = 0;
     } catch (e) {
         console.error('Legal modal yükleme hatası:', e);
+        if (modal.dataset.legalType !== type) return;
+        bodyEl.style.minHeight = '';
         // Fetch başarısız olursa (ör. CORS), yeni sekmede aç — en azından SPA'yı bozmaz
-        bodyEl.innerHTML = AWL('<div style="text-align:center;padding:20px 0;color:#f87171;">Yüklenemedi. Yeni sekmede açılıyor...</div>','<div style="text-align:center;padding:20px 0;color:#f87171;">Failed to load. Opening in a new tab...</div>');
+        bodyEl.innerHTML = AWL('<div style="text-align:center;padding:20px 0;color:#f87171;">Yüklenemedi. Yeni sekmede açılıyor...</div>','<div style="text-align:center;padding:20px 0;color:#f87171;">Could not load. Opening in a new tab...</div>');
         window.openLink(url, true);
     }
 }
