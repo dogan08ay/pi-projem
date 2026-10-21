@@ -6882,6 +6882,33 @@ window.switchAdminTab=function(tabId){
     // gecikmeyle (backend'in seenAt yazması için) tazeliyoruz.
     setTimeout(loadAdminTodoSummary, 800);
 };
+// ── İlan talebi REDDEDİLDİ bildirimi: İlanlarım sekmesi rozeti + sekme içinde kendi konusunda gösterim ──
+// • Rozet: okunmamış 'sell_request_rejected' bildirimi varken İlanlarım sekmesinde görünür.
+// • Sekme açılınca bildirimler okundu işaretlenir (rozet kapanır); aynı ziyaret boyunca reddedilen kart(lar)
+//   "🔔 YENİ" etiketiyle ve listenin üstünde bir bilgi kutusuyla gösterilir. Sekme bir sonraki açılışta
+//   etiketler de kalkar ("açınca kapansın").
+window._rejNewDomains=new Set();
+let _rejConsuming=false;
+function isListingsTabVisible(){
+    const ap=document.querySelector('.user-tab-panel.active');
+    const up=document.getElementById('user-panel');
+    return !!ap && ap.id==='utab-listings' && !!up && up.style.display!=='none' && !up.classList.contains('pc-collapsed');
+}
+async function consumeRejectionNotifs(){
+    if(_rejConsuming) return false;
+    const unread=cachedNotifications.filter(n=>n.type==='sell_request_rejected' && !n.read);
+    if(!unread.length) return false;
+    _rejConsuming=true;
+    try{
+        unread.forEach(n=>{ if(n.domainName) window._rejNewDomains.add(n.domainName); });
+        cachedNotifications=cachedNotifications.map(n=>n.type==='sell_request_rejected'?{...n,read:true}:n);
+        renderNotifBadgeAndList(); // rozet hemen kapanır
+        if(piAccessToken){
+            try{ await fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'mark_type_notifications_read',types:['sell_request_rejected'],accessToken:piAccessToken})}); }catch(_){}
+        }
+        return true;
+    } finally { _rejConsuming=false; }
+}
 window.switchUserTab=function(tabId){
     // FIX (Yardım & Şikayetler birleştirmesi): "utab-tickets",
     // "utab-trademark", "utab-myreports" artık ana sekme çubuğunda ayrı
@@ -6894,6 +6921,12 @@ window.switchUserTab=function(tabId){
     const isHelpChild=HELP_GROUP_TABS.includes(tabId);
     document.querySelectorAll('.user-tab-btn').forEach(b=>b.classList.toggle('active', isHelpChild ? b.dataset.utab==='utab-help-group' : b.dataset.utab===tabId));
     document.querySelectorAll('.user-tab-panel').forEach(p=>p.classList.toggle('active',p.id===tabId));
+    if(tabId==='utab-listings'){
+        // Her açılışta önceki "YENİ" etiketleri sıfırlanır; şimdi okunmamış reddetme bildirimleri varsa etiketlenir.
+        const had=window._rejNewDomains.size>0;
+        window._rejNewDomains=new Set();
+        consumeRejectionNotifs().then(changed=>{ if(changed||had){ try{ renderUserPanel(); }catch(_){} } });
+    }
     // Panel içi pill'lerin (Destek/Marka Hakkı/Şikayetler seçimi) vurgusu.
     if(isHelpChild){
         document.querySelectorAll('.help-pill-btn').forEach(b=>b.classList.toggle('active', b.dataset.helpTab===tabId));
@@ -7520,13 +7553,18 @@ function renderNotifBadgeAndList(){
     const listingsRelevantTypes=['offer_received','counter_offer_accepted','counter_offer_rejected','offer_unpaid_expired_seller'];
     const unreadBuyer=cachedNotifications.filter(n=>!n.read&&relevantTypes.includes(n.type)&&n.role==='buyer').length;
     const unreadSeller=cachedNotifications.filter(n=>!n.read&&relevantTypesSeller.includes(n.type)&&n.role==='seller').length;
-    const unreadListings=cachedNotifications.filter(n=>!n.read&&listingsRelevantTypes.includes(n.type)&&n.role==='seller').length;
+    const unreadListings=cachedNotifications.filter(n=>!n.read&&listingsRelevantTypes.includes(n.type)&&n.role==='seller').length
+        +cachedNotifications.filter(n=>!n.read&&n.type==='sell_request_rejected').length; // eski bildirimlerde role alanı yok: türe göre say
     const purchasesBadge=document.getElementById('user-purchases-tab-badge');
     const incomeBadge=document.getElementById('user-income-tab-badge');
     const listingsBadge=document.getElementById('user-listings-tab-badge');
     if(purchasesBadge){ if(unreadBuyer>0){purchasesBadge.style.display='block';purchasesBadge.textContent=unreadBuyer>99?'99+':unreadBuyer;} else {purchasesBadge.style.display='none';} }
     if(incomeBadge){ if(unreadSeller>0){incomeBadge.style.display='block';incomeBadge.textContent=unreadSeller>99?'99+':unreadSeller;} else {incomeBadge.style.display='none';} }
     if(listingsBadge){ if(unreadListings>0){listingsBadge.style.display='block';listingsBadge.textContent=unreadListings>99?'99+':unreadListings;} else {listingsBadge.style.display='none';} }
+    // Kullanıcı zaten İlanlarım sekmesindeyken red bildirimi gelirse: rozet hiç görünmesin, doğrudan etiketlenip okundu olsun.
+    if(isListingsTabVisible() && cachedNotifications.some(n=>n.type==='sell_request_rejected'&&!n.read)){
+        consumeRejectionNotifs().then(changed=>{ if(changed){ try{ renderUserPanel(); }catch(_){} } });
+    }
 
     // YENİ: "Tekliflerim" (Alımlarım sekmesi içinde) ve "Gelen Teklifler"
     // (İlanlarım sekmesi içinde) başlıklarında, tıpkı sekme rozetlerinde
@@ -12763,6 +12801,14 @@ function renderUserPanel(){
                 ${bulkSelectedCleanupRequests.size>0?`<button onclick="window.handleBulkDeleteCleanup()" style="background:#ef4444;color:#fff;border:none;padding:5px 10px;border-radius:6px;font-size:0.74em;font-weight:800;cursor:pointer;white-space:nowrap;">🗑️ ${t('bulkDeleteSelected')(bulkSelectedCleanupRequests.size)}</button>`:''}
             </div>`;
         }
+        // Bu ziyarette yeni reddedilen talepler: konusunun içinde (listenin üstünde) bilgi kutusu.
+        const newRejected=userSellRequests.filter(r=>r.status==='rejected' && window._rejNewDomains && window._rejNewDomains.has(r.domainName));
+        if(newRejected.length){
+            html+=`<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;padding:9px 11px;border-radius:10px;background:rgba(239,68,68,0.12);border:1.5px solid #ef4444;color:#fecaca;font-size:0.78em;font-weight:700;line-height:1.5;">
+                <span style="font-size:1.3em;">🔔</span>
+                <span>${AWL(`${newRejected.length} ilan talebiniz reddedildi: ${newRejected.map(r=>escapeHtml(r.domainName)).join(', ')}. Nedenini aşağıda talebin üzerinde görebilirsiniz.`,`${newRejected.length} of your listing requests ${newRejected.length>1?'were':'was'} rejected: ${newRejected.map(r=>escapeHtml(r.domainName)).join(', ')}. See the reason on the request below.`)}</span>
+            </div>`;
+        }
         if(!userSellRequests.length){
             html+=emptyState('🏷️',t('noListings'));
         } else if(!filteredSellRequests.length){
@@ -12783,15 +12829,19 @@ function renderUserPanel(){
                 const isRejected=finalStatus==='rejected';
                 const isPending=finalStatus==='pending';
                 const isWithdrawn=finalStatus==='withdrawn';
+                const isNewRej=isRejected && window._rejNewDomains && window._rejNewDomains.has(req.domainName);
 
-                return `<div style="background:#0f172a;border:1.5px solid ${finalColor};border-radius:12px;padding:10px;margin-bottom:8px;">
+                return `<div style="background:#0f172a;border:1.5px solid ${finalColor};border-radius:12px;padding:10px;margin-bottom:8px;${isNewRej?'box-shadow:0 0 0 2px rgba(239,68,68,0.35),0 0 14px rgba(239,68,68,0.35);':''}">
                     <!-- Üst satır: (Silinebilir kayıtlar için) Toplu seçim kutusu + Domain adı + Durum etiketi -->
                     <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;gap:8px;">
                         <div style="flex:1;min-width:0;display:flex;align-items:center;gap:8px;">
                             ${(isRejected||isWithdrawn)?`<input type="checkbox" ${bulkSelectedCleanupRequests.has(req.id)?'checked':''} onchange="window.toggleCleanupSelect('${req.id}',this.checked)" style="width:15px;height:15px;flex-shrink:0;accent-color:#f59e0b;">`:''}
                             <b style="color:#f1f5f9;font-size:0.9em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${req.domainName}">${req.domainName}</b>
                         </div>
-                        <span style="background:${finalBg};color:${finalColor};font-size:0.72em;font-weight:800;padding:2px 8px;border-radius:6px;border:1px solid ${finalColor};flex-shrink:0;white-space:nowrap;">${finalLabel}</span>
+                        <span style="display:flex;align-items:center;gap:5px;flex-shrink:0;">
+                            ${isNewRej?`<span style="background:#ef4444;color:#fff;font-size:0.66em;font-weight:900;padding:2px 7px;border-radius:999px;white-space:nowrap;">🔔 ${AWL('YENİ','NEW')}</span>`:''}
+                            <span style="background:${finalBg};color:${finalColor};font-size:0.72em;font-weight:800;padding:2px 8px;border-radius:6px;border:1px solid ${finalColor};white-space:nowrap;">${finalLabel}</span>
+                        </span>
                     </div>
 
                     <!-- Etiket:Değer düzeni -->
