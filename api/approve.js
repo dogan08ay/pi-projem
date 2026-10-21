@@ -4831,6 +4831,8 @@ async function handlerImpl(req, res) {
         await sendNotification(reqData.submittedBy, { en: { title: '❌ Your Domain Suggestion Was Rejected',
           body: `Your suggestion "${reqData.domainName}" was rejected.${rejectReason ? ' Reason: ' + rejectReason : ''}` },
           type: 'sell_request_rejected',
+          role: 'seller',          // İlanlarım sekmesi rozeti bu alanla eşleşir
+          requestId,               // hangi talebin reddedildiği (kart eşleştirme için)
           title: '❌ Domain Öneriniz Reddedildi',
           body: `"${reqData.domainName}" öneriniz reddedildi.${rejectReason ? ' Neden: ' + rejectReason : ''}`,
           domainName: reqData.domainName
