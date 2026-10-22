@@ -39,6 +39,52 @@
     </style>
     <noscript><style>html.app-booting body>*:not(#boot-splash){visibility:visible !important;}#boot-splash{display:none !important;}</style></noscript>
     <script>
+    // GÖZLEMLENEBİLİRLİK (Adım 5): yakalanmamış tarayıcı hataları sunucuya (client_errors) bildirilir.
+    // Sayfa başına en fazla 5 rapor, aynı mesaj bir kez, raporlar arası ≥3 sn; kaynak yükleme hataları,
+    // "Script error." ve ResizeObserver gürültüsü gönderilmez. Bildirim başarısız olursa sessizce yutulur.
+    (function(){
+        var sent=0, seen={}, last=0;
+        function report(kind,msg,stack,src){
+            try{
+                var m=String(msg||'').slice(0,300);
+                if(!m || m==='Script error.' || /ResizeObserver loop/.test(m)) return;
+                var key=kind+'|'+m; var now=Date.now();
+                if(sent>=5 || seen[key] || now-last<3000) return;
+                seen[key]=1; last=now; sent++;
+                var body=JSON.stringify({action:'report_client_error',kind:kind,message:m,stack:String(stack||'').slice(0,1500),
+                    source:String(src||'').slice(0,200),path:location.pathname,ua:String(navigator.userAgent||'').slice(0,200)});
+                if(navigator.sendBeacon){ try{ if(navigator.sendBeacon('/api/approve',new Blob([body],{type:'application/json'}))) return; }catch(_){} }
+                fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},body:body,keepalive:true}).catch(function(){});
+            }catch(_){}
+        }
+        window.addEventListener('error',function(e){
+            if(e && e.target && e.target!==window) return; // <script>/<img> yükleme hataları değil, yalnızca çalışma zamanı hataları
+            report('error',e&&e.message,e&&e.error&&e.error.stack,((e&&e.filename)||'')+':'+((e&&e.lineno)||0));
+        });
+        window.addEventListener('unhandledrejection',function(e){
+            var r=e&&e.reason; report('promise',(r&&r.message)||r,r&&r.stack,'');
+        });
+    })();
+    </script>
+    <script>
+    // PERFORMANS (Adım 4): Ağ yoklamaları (poll) yalnızca sekme GÖRÜNÜRKEN çalışır. Arka plandaki/kilitli
+    // ekrandaki sekmeler sunucuyu boşuna yormaz; kullanıcı geri döndüğünde atlanan yoklamalar HEMEN bir kez çalışır.
+    // Görünürken aralık süresi aynıdır (4 sn bildirim vb.) → kullanıcı deneyimi değişmez.
+    (function(){
+        var reg=new Map(); var nativeClear=window.clearInterval.bind(window);
+        window.clearInterval=function(id){ reg.delete(id); return nativeClear(id); };
+        window.setVisibleInterval=function(fn,ms){
+            var st={fn:fn,skipped:false};
+            var id=setInterval(function(){ if(document.hidden){ st.skipped=true; return; } st.skipped=false; fn(); },ms);
+            reg.set(id,st); return id;
+        };
+        document.addEventListener('visibilitychange',function(){
+            if(document.hidden) return;
+            reg.forEach(function(st){ if(st.skipped){ st.skipped=false; try{ st.fn(); }catch(_){} } });
+        });
+    })();
+    </script>
+    <script>
     (function(){
         var d=document.documentElement; d.classList.add('app-booting');
         var done=false;
@@ -1843,7 +1889,7 @@
         <span data-i18n="reviewGuideTitle"></span>
     </button>
     <div class="side-menu-section-label" data-i18n="contactSection"></div>
-    <a href="mailto:doganay08@hotmail.com" class="side-menu-item" style="text-decoration:none;color:#38bdf8;display:flex;align-items:center;gap:6px;padding:5px 8px;border-radius:7px;font-weight:700;font-size:0.76em;cursor:pointer;margin-bottom:2px;text-align:left;background:transparent;border:none;width:100%;box-sizing:border-box;transition:background 0.15s;">
+    <a href="mailto:info@dofiay.com" class="side-menu-item" style="text-decoration:none;color:#38bdf8;display:flex;align-items:center;gap:6px;padding:5px 8px;border-radius:7px;font-weight:700;font-size:0.76em;cursor:pointer;margin-bottom:2px;text-align:left;background:transparent;border:none;width:100%;box-sizing:border-box;transition:background 0.15s;">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg><span style="color:#38bdf8;" data-i18n="contactUs">BİZE ULAŞIN</span>
     </a>
     <a href="https://t.me/+5jZi9vrcNMM2NGVk" target="_blank" class="side-menu-item" style="text-decoration:none;color:#38bdf8;display:flex;align-items:center;gap:6px;padding:5px 8px;border-radius:7px;font-weight:700;font-size:0.76em;cursor:pointer;margin-bottom:2px;text-align:left;background:transparent;border:none;width:100%;box-sizing:border-box;transition:background 0.15s;" onclick="event.stopPropagation();">
@@ -1979,7 +2025,7 @@
         <div class="img-upload-area" onclick="document.getElementById('sell-img-input').click()">
             <div id="img-upload-hint" data-i18n="imageUploadHint"></div>
             <div style="font-size:0.75em;color:#64748b;margin-top:1px;" data-i18n="imageUploadFormats"></div>
-            <img id="sell-img-preview" class="img-preview">
+            <img id="sell-img-preview" class="img-preview" alt="">
         </div>
         <input type="file" id="sell-img-input" accept="image/*" style="display:none;" onchange="handleImageSelect(event)">
         <label style="font-size:0.78em;color:#cbd5e1;font-weight:700;" data-i18n="sellerNoteLabel"></label>
@@ -2353,7 +2399,7 @@
         <div style="margin:12px 0 10px;padding:8px 10px;border-radius:9px;background:rgba(251,191,36,0.08);border:1px solid rgba(251,191,36,0.35);font-size:0.76em;color:#fde68a;line-height:1.55;" data-i18n="aboutUsTestNote"></div>
         <p style="font-size:0.78em;color:#94a3b8;line-height:1.6;margin:0 0 10px 0;" data-i18n="aboutUsBody2"></p>
         <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:8px;">
-            <a href="mailto:doganay08@hotmail.com" style="display:flex;align-items:center;gap:6px;color:#38bdf8;text-decoration:none;font-weight:700;font-size:0.78em;">📩 doganay08@hotmail.com</a>
+            <a href="mailto:info@dofiay.com" style="display:flex;align-items:center;gap:6px;color:#38bdf8;text-decoration:none;font-weight:700;font-size:0.78em;">📩 info@dofiay.com</a>
             <a href="https://t.me/+5jZi9vrcNMM2NGVk" target="_blank" rel="noopener noreferrer" style="display:flex;align-items:center;gap:6px;color:#38bdf8;text-decoration:none;font-weight:700;font-size:0.78em;" data-i18n="telegramGroup">TELEGRAM GRUBUMUZ</a>
         </div>
         <div style="display:flex;gap:6px;flex-wrap:wrap;margin:4px 0 2px;">
@@ -3533,7 +3579,7 @@
   </div>
 
   <div class="footer-section" style="position:sticky;bottom:0;z-index:50;padding:4px 8px;">
-      <div class="footer-row" style="font-size:0.74em;margin-bottom:2px;">📩 <span data-i18n="contactUs"></span>: <a href="mailto:doganay08@hotmail.com" onclick="window.location.href=this.href;return false;">doganay08@hotmail.com</a></div>
+      <div class="footer-row" style="font-size:0.74em;margin-bottom:2px;">📩 <span data-i18n="contactUs"></span>: <a href="mailto:info@dofiay.com" onclick="window.location.href=this.href;return false;">info@dofiay.com</a></div>
       <div class="footer-row" style="font-size:0.74em;margin-bottom:2px;">💬 <span data-i18n="community"></span>: <a href="https://t.me/+5jZi9vrcNMM2NGVk" target="_blank" rel="noopener noreferrer" data-i18n="telegramGroup">TELEGRAM GRUBUMUZ</a></div>
       <div style="margin-top:2px;font-size:0.72em;"><a href="#" onclick="openLegalModal('privacy');return false;" style="cursor:pointer;" data-i18n="privacyPolicy">GİZLİLİK POLİTİKASI</a> | <a href="#" onclick="openLegalModal('terms');return false;" style="cursor:pointer;" data-i18n="termsOfUse">KULLANIM ŞARTLARI</a></div>
   </div>
@@ -3804,7 +3850,7 @@ function skeletonTicketRowsHTML(n = 3) {
 // ═══════════════════════════════════════════════════════════════════════
 let APP_CONFIG = {
   adminUsername: 'doganay0808',
-  contactEmail: 'doganay08@hotmail.com',
+  contactEmail: 'info@dofiay.com',
   telegramGroup: 'https://t.me/+5jZi9vrcNMM2NGVk',
   // GÜVENLİ VARSAYILAN: /api/config'e hiç ulaşılamazsa bile (ağ hatası
   // vb.) uygulama Testnet modunda kalır — asla yanlışlıkla Mainnet'e
@@ -7623,9 +7669,9 @@ function startNotifPolling(){
     // 4 saniyeye düşürüldü — sunucuyu gereksiz yormayacak kadar makul,
     // ama "bir yerde onaylanan işlem başka yerde hemen görünsün" beklentisini
     // karşılayacak kadar hızlı.
-    notifPollInterval=setInterval(()=>fetchNotifications(true),4000);
+    notifPollInterval=setVisibleInterval(()=>fetchNotifications(true),4000);
     // Açık artırma kazananı: girişte hemen, sonra 15 sn'de bir kontrol.
-    if(window.refreshMyAuctionWins){ window.refreshMyAuctionWins(); if(window._awPoll) clearInterval(window._awPoll); window._awPoll=setInterval(()=>window.refreshMyAuctionWins(),15000); }
+    if(window.refreshMyAuctionWins){ window.refreshMyAuctionWins(); if(window._awPoll) clearInterval(window._awPoll); window._awPoll=setVisibleInterval(()=>window.refreshMyAuctionWins(),15000); }
 }
 function stopNotifPolling(){
     if(notifPollInterval){clearInterval(notifPollInterval);notifPollInterval=null;}
@@ -7637,7 +7683,7 @@ let ticketBadgePollInterval=null;
 function startTicketBadgePolling(){
     stopTicketBadgePolling();
     adminLoadTickets();
-    ticketBadgePollInterval=setInterval(()=>{ adminLoadTickets(); },5000);
+    ticketBadgePollInterval=setVisibleInterval(()=>{ adminLoadTickets(); },5000);
 }
 function stopTicketBadgePolling(){
     if(ticketBadgePollInterval){clearInterval(ticketBadgePollInterval);ticketBadgePollInterval=null;}
@@ -7646,7 +7692,7 @@ let userTicketPollInterval=null;
 function startUserTicketPolling(){
     stopUserTicketPolling();
     loadMyTickets();
-    userTicketPollInterval=setInterval(()=>{ loadMyTickets(); },5000);
+    userTicketPollInterval=setVisibleInterval(()=>{ loadMyTickets(); },5000);
 }
 function stopUserTicketPolling(){
     if(userTicketPollInterval){clearInterval(userTicketPollInterval);userTicketPollInterval=null;}
@@ -8026,7 +8072,7 @@ window.openDomainDetail=function(domainName){
         } else {
             statusColor='#94a3b8'; statusIcon='⏳'; statusText=t('appLinkUncheckedBadge');
         }
-        const safeUrl=escapeHtml(data.connectedAppUrl);
+        const safeUrl=safeHttpHref(data.connectedAppUrl);
         // GÜNCELLEME (kullanıcı geri bildirimi — "link çok küçük, arka planda
         // kayboluyor"): Öncesinde 0.72em, noktalı-altçizgili, soluk renkli
         // düz bir metin linkiydi — diğer satırların arasında kayboluyordu.
@@ -8585,7 +8631,7 @@ function renderReportIssueThumbs(){
     if(!wrap) return;
     wrap.innerHTML=reportIssueState.images.map((img,idx)=>`
         <div style="position:relative;width:64px;height:64px;">
-            <img src="${img.previewUrl}" style="width:64px;height:64px;object-fit:cover;border-radius:8px;border:1.5px solid #334155;">
+            <img src="${img.previewUrl}" alt="" style="width:64px;height:64px;object-fit:cover;border-radius:8px;border:1.5px solid #334155;">
             <button onclick="window.removeReportIssueImage(${idx})" style="position:absolute;top:-6px;right:-6px;width:20px;height:20px;border-radius:50%;background:#ef4444;color:#fff;border:2px solid #0f172a;font-size:0.76em;font-weight:900;cursor:pointer;line-height:1;padding:0;">✕</button>
         </div>
     `).join('');
@@ -8741,7 +8787,7 @@ window.openSellRequestDetail=function(requestId,dataStr){
         {label:t('detailFieldWallet'), value:p.sellerNote||t('pendingWalletUnspecified'), icon:'📝'},
         {label:t('detailFieldDate'), value:p.submittedAt?new Date(p.submittedAt).toLocaleDateString(locale):'-', icon:'📅'},
     ];
-    let html=`<img src="${p.img||'assets/default.jpeg'}" style="width:100%;max-height:110px;object-fit:contain;border-radius:8px;margin-bottom:12px;background:#334155;">`;
+    let html=`<img src="${safeImgSrc(p.img)}" alt="" style="width:100%;max-height:110px;object-fit:contain;border-radius:8px;margin-bottom:12px;background:#334155;">`;
     html+=`<div style="display:flex;flex-direction:column;gap:10px;">`;
     rows.forEach(row=>{
         html+=`<div style="background:#0f172a;border-radius:8px;padding:8px 10px;">
@@ -9462,7 +9508,7 @@ function aucTimeAgo(ms){
 window.loadRecentAuctionBids=async function(domainName){
     const el=document.getElementById('auction-recent-bids'); if(!el) return;
     try{
-        const r=await fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'get_auction_bids',domainName})});
+        const r=await fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'get_auction_bids',domainName,accessToken:piAccessToken})});
         const result=await r.json();
         const cur=document.getElementById('auction-recent-bids');
         if(!cur || window._detailDomainName!==domainName) return;
@@ -9759,7 +9805,7 @@ window.showAuctionBidHistory=async function(domainName, linkEl){
     area.dataset.loaded='1';
     area.innerHTML=`<div style="text-align:center;font-size:0.76em;color:#94a3b8;padding:6px;">${t('auctionBidHistoryLoading')}</div>`;
     try{
-        const r=await fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'get_auction_bids',domainName})});
+        const r=await fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'get_auction_bids',domainName,accessToken:piAccessToken})});
         const result=await r.json();
         if(!result.success){ area.innerHTML=`<div style="text-align:center;font-size:0.76em;color:#f87171;">${result.error||t('genericError')}</div>`; return; }
         if(!result.bids||!result.bids.length){
@@ -9901,7 +9947,7 @@ window.loadListingReports=async function(){
 // listeye/rozete neredeyse anında yansısın diye. Sekmeden çıkılınca durur.
 window.startReportsPolling=function(){
     window.stopReportsPolling();
-    _reportsPollTimer=setInterval(()=>{
+    _reportsPollTimer=setVisibleInterval(()=>{
         if(document.getElementById('tab-reports')?.classList.contains('active')) window.loadListingReports();
     },10000);
 };
@@ -10256,7 +10302,7 @@ window.toggleAdminAuctionDetail=async function(domainName,detailId){
     box.style.display='block';
     box.innerHTML=`${skeletonRows(3)}`;
     try{
-        const r=await fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'get_auction_bids',domainName})});
+        const r=await fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'get_auction_bids',domainName,accessToken:piAccessToken})});
         const result=await r.json();
         const bids=(result&&result.bids)||[];
         if(!bids.length){ box.innerHTML=AWL(`<p style="font-size:0.76em;color:#64748b;text-align:center;">Henüz teklif verilmemiş.</p>`,`<p style="font-size:0.76em;color:#64748b;text-align:center;">No bids yet.</p>`); return; }
@@ -10504,7 +10550,7 @@ window.renderDetailExtras=function(name){
     const sims=getSimilarDomains(name,4);
     const btn='flex:1;min-width:120px;padding:8px 6px;border-radius:9px;font-size:0.76em;font-weight:800;cursor:pointer;';
     const simRows=sims.map(o=>`<div onclick="window.openDomainDetail('${_cmpJs(o.d.name)}')" style="display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:8px;background:#0f172a;border:1px solid #1e293b;cursor:pointer;">
-            <img src="${escapeHtml(o.x.img||o.d.img||'assets/default.jpeg')}" loading="lazy" decoding="async" alt="" style="width:34px;height:22px;object-fit:contain;border-radius:4px;background:#1e293b;flex:0 0 auto;" onerror="this.style.visibility='hidden'">
+            <img src="${safeImgSrc(o.x.img||o.d.img)}" loading="lazy" decoding="async" alt="" style="width:34px;height:22px;object-fit:contain;border-radius:4px;background:#1e293b;flex:0 0 auto;" onerror="this.style.visibility='hidden'">
             <b style="flex:1;min-width:0;color:#e2e8f0;font-size:0.78em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(o.d.name)}</b>
             <span style="color:#fbbf24;font-weight:900;font-size:0.78em;white-space:nowrap;">${o.x.price} π</span></div>`).join('');
     box.innerHTML=`<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;">
@@ -10561,7 +10607,7 @@ window.openCompare=function(){
         [AWL('İlan tarihi','Listed on'),c=>c.d.createdAt?_cmpDate(c.d.createdAt,false):no]
     ];
     const th=cols.map(c=>`<th style="padding:8px 3px;vertical-align:top;">
-        <img src="${escapeHtml(c.d.img||'assets/default.jpeg')}" loading="lazy" decoding="async" alt="" style="width:100%;height:40px;object-fit:contain;border-radius:6px;background:#1e293b;" onerror="this.style.visibility='hidden'">
+        <img src="${safeImgSrc(c.d.img)}" loading="lazy" decoding="async" alt="" style="width:100%;height:40px;object-fit:contain;border-radius:6px;background:#1e293b;" onerror="this.style.visibility='hidden'">
         <div style="margin-top:4px;color:#f1f5f9;font-size:0.8em;font-weight:900;word-break:break-all;">${escapeHtml(c.n)}</div></th>`).join('');
     const trs=rowDefs.map(([k,fn])=>`<tr><td style="padding:7px 6px;color:#94a3b8;font-weight:700;font-size:0.68em;border-top:1px solid #1e293b;vertical-align:top;width:58px;word-break:break-word;">${k}</td>${cols.map(c=>`<td style="padding:7px 3px;border-top:1px solid #1e293b;color:#e2e8f0;font-size:0.72em;text-align:center;vertical-align:top;word-break:break-word;">${fn(c)}</td>`).join('')}</tr>`).join('');
     const acts=cols.map(c=>`<td style="padding:8px 4px;border-top:1px solid #1e293b;text-align:center;vertical-align:top;">
@@ -10913,7 +10959,7 @@ window.refreshMyOffersCache=async function(){
     }catch(e){ /* sessiz: arka plan tazelemesi */ }
     finally{ _offersCacheInFlight=false; }
 };
-setInterval(()=>{ window.refreshMyOffersCache(); }, 12000);
+setVisibleInterval(()=>{ window.refreshMyOffersCache(); }, 12000);
 [2500,7000].forEach(ms=>setTimeout(()=>window.refreshMyOffersCache(),ms));
 // Detay penceresi için "Teklifiniz" bloğu — Tekliflerim panelindeki AYNI detay
 // tablosunu (buildOfferDetailTable) yeniden kullanır, böylece iki yerde farklı
@@ -11740,7 +11786,7 @@ function startAdminTodoSummaryPolling() {
     checkBuildSync();
     if (adminTodoPollTimer) clearInterval(adminTodoPollTimer);
     loadAdminTodoSummary();
-    adminTodoPollTimer = setInterval(loadAdminTodoSummary, 30000);
+    adminTodoPollTimer = setVisibleInterval(loadAdminTodoSummary, 30000);
 }
 
 window.openAuditLogModal=async function(){
@@ -13256,7 +13302,7 @@ function render(){
             }
             return `<div class="domain-price" style="font-size:0.78em;">${label}</div>${timeHtml}${barHtml}${badges?`<div class="auc-badges">${badges}</div>`:''}`;
         })();
-        const imgSrc=data.img||d.img;
+        const imgSrc=safeImgSrc(data.img||d.img);
         const favBtn=isAuth?`<button onclick="window.toggleFavorite('${d.name}',event)" aria-label="${userFavorites.has(d.name)?AWL('Favorilerden çıkar','Remove from favorites'):AWL('Favorilere ekle','Add to favorites')}" style="position:absolute;top:6px;right:6px;z-index:3;width:26px;height:26px;border-radius:50%;border:none;background:rgba(15,23,42,0.7);color:${userFavorites.has(d.name)?'#fbbf24':'#94a3b8'};font-size:0.95em;display:flex;align-items:center;justify-content:center;cursor:pointer;backdrop-filter:blur(4px);">${userFavorites.has(d.name)?'★':'☆'}</button>`:'';
         card.style.position='relative';
         // GÜNCELLEME: Açık artırma/teklif sürecinin GÜNCEL fiyat ve durumu
@@ -13277,7 +13323,7 @@ function render(){
         const cardNameLineHtml=(auctionIsLive||auctionIsEnded)
             ? `<div class="domain-name" style="white-space:normal;overflow:visible;text-overflow:clip;line-height:1.35;">${d.name} ${auctionInlineStatusHtml}</div>${auctionPriceBlockHtml}`
             : `<div class="domain-name">${d.name} <span style="color:#fbbf24;font-weight:800;">(${data.price} π)</span></div><div class="domain-price">${data.price} PI</div>${usdEstimateHtml(data.price)}`;
-        card.innerHTML=`${favBtn}<img src="${imgSrc}" class="domain-img" loading="lazy" decoding="async" onerror="this.src='data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMDAiIGhlaWdodD0iMTAwIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjNDc1NTY5Ii8+PC9zdmc+'">${boostTag}${auctionTag}${newTag}${tTag}${hiddenTag}${cardNameLineHtml}${buildMyOfferChipHtml(d.name)}<div class="card-tap-hint">👆 ${t('tapForDetailHint')}</div>`;
+        card.innerHTML=`${favBtn}<img src="${imgSrc}" alt="" class="domain-img" loading="lazy" decoding="async" onerror="this.src='data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMDAiIGhlaWdodD0iMTAwIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjNDc1NTY5Ii8+PC9zdmc+'">${boostTag}${auctionTag}${newTag}${tTag}${hiddenTag}${cardNameLineHtml}${buildMyOfferChipHtml(d.name)}<div class="card-tap-hint">👆 ${t('tapForDetailHint')}</div>`;
 
         if(data.sold){
             // Satıcılı bir satışta, escrow ödemesi admin tarafından serbest
@@ -13809,7 +13855,7 @@ function listenToLogs(date){
         }
     };
     loadDailyLog();
-    const dailyLogTimer=setInterval(loadDailyLog,15000);
+    const dailyLogTimer=setVisibleInterval(loadDailyLog,15000);
     adminLogUnsubscribe=()=>clearInterval(dailyLogTimer);
     if(adminStatsUnsubscribe) adminStatsUnsubscribe();
     adminStatsUnsubscribe=onSnapshot(doc(db,"daily_stats",date),(snap)=>{
@@ -13841,7 +13887,7 @@ function listenToPendingDomains(){
         }catch(e){console.error("Bekleyen ilan talepleri alınamadı:",e);}
     };
     fetchOnce();
-    pendingDomainsPollTimer=setInterval(fetchOnce,7000);
+    pendingDomainsPollTimer=setVisibleInterval(fetchOnce,7000);
 }
 
 // ══════════════════════════════════════════════════════════════════════
@@ -13883,7 +13929,7 @@ function listenToTrademarkClaims(){
         }catch(e){console.error("Marka hakkı talepleri alınamadı:",e);}
     };
     fetchOnce();
-    trademarkClaimsPollTimer=setInterval(fetchOnce,7000);
+    trademarkClaimsPollTimer=setVisibleInterval(fetchOnce,7000);
 }
 
 let pendingPayoutsPollTimer=null;
@@ -13914,7 +13960,7 @@ function listenToPendingOffersBadge(){
         }catch(e){console.error("Bekleyen teklif sayısı alınamadı:",e);}
     };
     fetchOnce();
-    pendingOffersBadgePollTimer=setInterval(fetchOnce,7000);
+    pendingOffersBadgePollTimer=setVisibleInterval(fetchOnce,7000);
 }
 function listenToPendingPayouts(){
     if(pendingPayoutsPollTimer) clearInterval(pendingPayoutsPollTimer);
@@ -13937,7 +13983,7 @@ function listenToPendingPayouts(){
         }catch(e){console.error("Bekleyen ödemeler alınamadı:",e);}
     };
     fetchOnce();
-    pendingPayoutsPollTimer=setInterval(fetchOnce,7000);
+    pendingPayoutsPollTimer=setVisibleInterval(fetchOnce,7000);
 }
 
 // FIX: reject_sell_request durumunda domains koleksiyonunda HİÇBİR
@@ -13955,7 +14001,7 @@ function listenToPendingPayouts(){
 let myOwnSellRequestsPollTimer=null;
 function listenToMyOwnSellRequests(username){
     if(myOwnSellRequestsPollTimer) clearInterval(myOwnSellRequestsPollTimer);
-    myOwnSellRequestsPollTimer=setInterval(()=>{ if(isAuth && Date.now()-(window._userScrollAt||0)>4000) debouncedProfileRefresh(); },7000);
+    myOwnSellRequestsPollTimer=setVisibleInterval(()=>{ if(isAuth && Date.now()-(window._userScrollAt||0)>4000) debouncedProfileRefresh(); },7000);
 }
 function stopListeningToMyOwnSellRequests(){
     if(myOwnSellRequestsPollTimer){clearInterval(myOwnSellRequestsPollTimer);myOwnSellRequestsPollTimer=null;}
@@ -16465,9 +16511,31 @@ function renderTicketList() {
 }
 
 function escapeHtml(text) {
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
+    // GÜVENLİK (Adım 1): önceki sürüm (textContent→innerHTML) çift/tek tırnağı
+    // kaçırmıyordu; HTML özniteliği içinde (href="...", src="...") kullanıldığında
+    // öznitelikten çıkıp olay işleyicisi (onmouseover/onerror) eklenebiliyordu.
+    return (text === null || text === undefined ? '' : String(text))
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+// GÜVENLİK (Adım 1): görsel src için beyaz liste — yalnızca kendi assets/ yolu
+// veya kendi Storage'ımızdaki domain-images/ adresi; aksi halde varsayılan görsel.
+function safeImgSrc(u) {
+    const DEF = 'assets/default.jpeg';
+    if (typeof u !== 'string') return DEF;
+    const s = u.trim();
+    if (!s || s.length > 500) return DEF;
+    if (/^assets\/[A-Za-z0-9._-]+(?:\/[A-Za-z0-9._-]+)*$/.test(s) && !s.includes('..')) return escapeHtml(s);
+    if (/^https:\/\/storage\.googleapis\.com\/[A-Za-z0-9._-]+\/domain-images\/[A-Za-z0-9._\-\/]+$/.test(s) && !s.includes('..')) return escapeHtml(s);
+    return DEF;
+}
+// GÜVENLİK (Adım 1): bağlantı hedefi yalnızca http/https olabilir.
+function safeHttpHref(u) {
+    try {
+        const p = new URL(String(u));
+        if (p.protocol !== 'http:' && p.protocol !== 'https:') return '#';
+        return escapeHtml(p.toString());
+    } catch (_) { return '#'; }
 }
 
 // ── Admin mesaj panelleri için tarih filtresi yardımcıları ──────────────
@@ -17472,7 +17540,7 @@ let _myReportsPollTimer = null;
 let _reportsArchiveNoticeShown = new Set();
 window.startMyReportsPolling = function () {
     window.stopMyReportsPolling();
-    _myReportsPollTimer = setInterval(() => {
+    _myReportsPollTimer = setVisibleInterval(() => {
         if (document.getElementById('utab-myreports')?.classList.contains('active')) loadMyReports();
     }, 7000);
 };

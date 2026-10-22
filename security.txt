@@ -1,0 +1,6 @@
+# Güvenlik açığı bildirimi / Security vulnerability reporting
+# Bir güvenlik açığı bulduysanız lütfen herkese açık paylaşmadan önce bize bildirin.
+Contact: mailto:info@dofiay.com
+Expires: 2027-10-22T00:00:00.000Z
+Preferred-Languages: tr, en
+Canonical: https://dofiay.com/.well-known/security.txt

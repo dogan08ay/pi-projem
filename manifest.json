@@ -1,6 +1,7 @@
 {
   "name": "Web3 Domain Gateway — .pi Domain Pazar Yeri",
   "short_name": "Web3 Domain",
+  "id": "/",
   "description": "Pi Network üzerinde .pi domain al ve sat. Escrow (emanet) korumalı, güvenli ve şeffaf alışveriş.",
   "start_url": "/",
   "scope": "/",
@@ -29,5 +30,10 @@
       "type": "image/png",
       "purpose": "any"
     }
-  ]
+  ],
+  "categories": [
+    "finance",
+    "shopping"
+  ],
+  "prefer_related_applications": false
 }

@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<meta name="theme-color" content="#0a0f1e">
+<title>Çevrimdışı — Web3 Domain Gateway</title>
+<style>
+  :root { color-scheme: dark; }
+  html, body { height: 100%; margin: 0; }
+  body { background: #0a0f1e; color: #e2e8f0; font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+         display: flex; align-items: center; justify-content: center; padding: 24px; box-sizing: border-box; text-align: center; }
+  main { max-width: 360px; }
+  .icon { font-size: 56px; line-height: 1; margin-bottom: 16px; }
+  h1 { font-size: 1.3rem; margin: 0 0 10px; }
+  p { color: #94a3b8; line-height: 1.5; margin: 0 0 22px; font-size: .95rem; }
+  button { background: #7c3aed; color: #fff; border: 0; border-radius: 10px; padding: 12px 22px; font-size: 1rem; font-weight: 600; cursor: pointer; min-width: 160px; }
+  button:active { transform: scale(.98); }
+  .en { display: none; }
+</style>
+</head>
+<body>
+<main>
+  <div class="icon" aria-hidden="true">📡</div>
+  <h1><span class="tr">İnternet bağlantısı yok</span><span class="en">No internet connection</span></h1>
+  <p><span class="tr">Web3 Domain Gateway'e şu an ulaşılamıyor. Bağlantınızı kontrol edip tekrar deneyin. Escrow işlemleriniz güvende; bağlantı gelince kaldığınız yerden devam edebilirsiniz.</span><span class="en">Web3 Domain Gateway can't be reached right now. Check your connection and try again. Your escrow transactions are safe; you can continue as soon as you're back online.</span></p>
+  <button type="button" id="retry"><span class="tr">Tekrar Dene</span><span class="en">Try Again</span></button>
+</main>
+<script>
+  (function () {
+    var lang = (navigator.language || 'tr').toLowerCase();
+    if (lang.indexOf('tr') !== 0) {
+      document.documentElement.lang = 'en';
+      document.title = 'Offline — Web3 Domain Gateway';
+      var tr = document.querySelectorAll('.tr'), en = document.querySelectorAll('.en'), i;
+      for (i = 0; i < tr.length; i++) tr[i].style.display = 'none';
+      for (i = 0; i < en.length; i++) en[i].style.display = 'inline';
+    }
+    document.getElementById('retry').addEventListener('click', function () { location.reload(); });
+    window.addEventListener('online', function () { location.reload(); });
+  })();
+</script>
+</body>
+</html>
