@@ -22,6 +22,7 @@
 // ══════════════════════════════════════════════════════════════════════
 import { initializeApp, getApps, cert } from 'firebase-admin/app';
 import { getFirestore } from 'firebase-admin/firestore';
+import crypto from 'crypto';
 
 function getAdminApp() {
   if (getApps().length > 0) return getApps()[0];
@@ -53,8 +54,11 @@ export default async function handler(req, res) {
     console.error('[CronDigest] CRON_SECRET tanımlı değil — endpoint güvenlik amacıyla devre dışı.');
     return res.status(401).json({ error: 'CRON_SECRET tanımlı değil' });
   }
+  // GÜVENLİK (Adım 4): sabit-zamanlı karşılaştırma (approve.js'teki check_auctions ile aynı yaklaşım).
   const authHeader = req.headers['authorization'];
-  if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+  const expected = Buffer.from(`Bearer ${process.env.CRON_SECRET}`);
+  const got = Buffer.from(typeof authHeader === 'string' ? authHeader : '');
+  if (got.length !== expected.length || !crypto.timingSafeEqual(got, expected)) {
     return res.status(401).json({ error: 'Yetkisiz' });
   }
 
@@ -63,41 +67,47 @@ export default async function handler(req, res) {
     const now = Date.now();
     const since = now - 24 * 3600 * 1000; // son 24 saat
 
+    // PERFORMANS (Adım 4): 'tickets' ve 'conversations' koleksiyonlarının TAMAMI her gün okunuyordu
+    // (veri büyüdükçe maliyet artar). Artık önce "görüldü" zaman damgaları alınıp yalnızca gerekli
+    // aralıktaki dokümanlar sorgulanıyor. Sonuç aynıdır: alanı olmayan/eşik altındaki dokümanlar
+    // eskiden de sayılmıyordu (eksik alan 0 kabul edilip eşikle karşılaştırılıyordu).
+    const [ticketSeenSnap, reportSeenSnap, msgSeenSnap] = await Promise.all([
+      db.collection('system_config').doc('admin_ticket_seen').get(),
+      db.collection('system_config').doc('admin_report_seen').get(),
+      db.collection('system_config').doc('admin_messages_seen').get()
+    ]);
+    const ticketSeenAt = ticketSeenSnap.exists ? (ticketSeenSnap.data().seenAt || 0) : 0;
+    const reportSeenAt = reportSeenSnap.exists ? (reportSeenSnap.data().seenAt || 0) : 0;
+    const msgSeenAt = msgSeenSnap.exists ? (msgSeenSnap.data().seenAt || 0) : 0;
+
     const [
-      salesSnap, sellReqSnap, ticketsAllSnap, ticketSeenSnap,
+      salesSnap, sellReqSnap, newTicketsSnap, unseenTicketsSnap,
       pendingApprovalsSnap, pendingPayoutsSnap, pendingOffersSnap,
-      tmSnap, reportsSnap, reportSeenSnap, convSnap, msgSeenSnap
+      tmSnap, reportsSnap, unseenConvSnap
     ] = await Promise.all([
       db.collection('global_sales').where('at', '>', since).get(),
       db.collection('sell_requests').where('submittedAt', '>', since).get(),
-      db.collection('tickets').get(),
-      db.collection('system_config').doc('admin_ticket_seen').get(),
+      db.collection('tickets').where('createdAt', '>', since).get(),
+      db.collection('tickets').where('lastUpdate', '>', ticketSeenAt).get(),
       db.collection('sell_requests').where('status', '==', 'pending').get(),
       db.collection('global_sales').where('payoutStatus', '==', 'pending').get(),
       db.collection('offers').where('status', '==', 'pending').get(),
       db.collection('trademark_claims').where('status', 'in', ['new', 'reviewing']).get(),
       db.collection('listing_reports').where('status', 'in', ['new', 'reviewing', 'resolved']).get(),
-      db.collection('system_config').doc('admin_report_seen').get(),
-      db.collection('conversations').get(),
-      db.collection('system_config').doc('admin_messages_seen').get()
+      db.collection('conversations').where('lastMessageAt', '>', msgSeenAt).get()
     ]);
 
     // Son 24 saatte açılan ticket sayısı (createdAt > since)
-    let newTicketsCount = 0;
-    ticketsAllSnap.forEach(d => { if ((d.data().createdAt || 0) > since) newTicketsCount++; });
+    const newTicketsCount = newTicketsSnap.size;
 
     // Açık (kapatılmamış + görülmemiş) ticket sayısı — get_all_tickets ile AYNI mantık
-    const ticketSeenAt = ticketSeenSnap.exists ? (ticketSeenSnap.data().seenAt || 0) : 0;
     let openTickets = 0;
-    ticketsAllSnap.forEach(d => { const t = d.data(); if (t.status !== 'closed' && (t.lastUpdate || 0) > ticketSeenAt) openTickets++; });
+    unseenTicketsSnap.forEach(d => { if (d.data().status !== 'closed') openTickets++; });
 
-    const reportSeenAt = reportSeenSnap.exists ? (reportSeenSnap.data().seenAt || 0) : 0;
     let unseenReports = 0;
     reportsSnap.forEach(d => { if ((d.data().createdAt || 0) > reportSeenAt) unseenReports++; });
 
-    const msgSeenAt = msgSeenSnap.exists ? (msgSeenSnap.data().seenAt || 0) : 0;
-    let unseenMessages = 0;
-    convSnap.forEach(d => { if ((d.data().lastMessageAt || 0) > msgSeenAt) unseenMessages++; });
+    const unseenMessages = unseenConvSnap.size;
 
     // Dünkü satışların toplam hacmi ve komisyonu
     let grossVolume = 0, commissionEarned = 0;

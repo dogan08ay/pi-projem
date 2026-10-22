@@ -7,6 +7,9 @@ import * as PiNetworkPkg from 'pi-backend';
 import crypto from 'crypto';
 import dns from 'dns/promises';
 import net from 'net';
+import http from 'http';
+import https from 'https';
+import zlib from 'zlib';
 // pi-backend gerçek bir native ESM paketi (package.json'ında "type":"module"
 // ve doğru "exports" haritası var) — yani `import PiNetwork from 'pi-backend'`
 // normal şartlarda doğrudan çalışmalı. Yine de Vercel'in fonksiyon
@@ -1211,6 +1214,72 @@ function getAdminApp() {
 function getDb()      { getAdminApp(); return getFirestore(); }
 function getBucket()  { getAdminApp(); return getStorage().bucket(); }
 
+// ── GÜVENLİK (Adım 2): Ortak yardımcılar ────────────────────────────────
+// Metin alanı doğrulaması: undefined/null serbest; verilmişse string ve <= max olmalı.
+// (Nesne/dizi gönderilerek Firestore'a beklenmeyen tip yazılmasını da engeller.)
+function isTooLong(v, max) {
+  return v !== undefined && v !== null && (typeof v !== 'string' || v.length > max);
+}
+// İstemci IP'si: Vercel'in kendi eklediği başlıklar önce; istemcinin ekleyebildiği
+// x-forwarded-for zincirinin ilk değeri en sona bırakıldı.
+function getClientIp(req) {
+  const h = (req && req.headers) || {};
+  const pick = (v) => (typeof v === 'string' ? v.split(',')[0].trim() : '');
+  return pick(h['x-vercel-forwarded-for']) || pick(h['x-real-ip']) || pick(h['x-forwarded-for'])
+    || (req && req.socket && req.socket.remoteAddress) || 'unknown';
+}
+// Sunucu hatası mesajı: yönetici (doğrulanmış, önbellekte) ayrıntıyı görür; diğer
+// kullanıcılar genel bir mesaj alır — dahili hata metni (Firestore/Storage vb.) sızmaz.
+// Ayrıntı her zaman sunucu loguna (console.error) yazılmaya devam eder.
+function publicErr(e, req) {
+  try {
+    const tok = req && req.body && req.body.accessToken;
+    const c = tok && adminCache.get(tok);
+    if (c && c.valid === true && Date.now() - c.ts < ADMIN_CACHE_TTL) return (e && e.message) || String(e);
+  } catch (_) {}
+  return (req && req.body && req.body.lang === 'en')
+    ? 'A server error occurred. Please try again.'
+    : 'Sunucu hatası oluştu, lütfen tekrar deneyin.';
+}
+// Açık artırma teklif listesinde başkalarının kullanıcı adını kısmen gizle.
+const MASK_BIDDER_NAMES = true;
+let _clientErrWindowStart = 0;
+let _clientErrCount = 0;
+function maskUsername(u) {
+  const s = String(u || '');
+  if (!s) return '';
+  return s.slice(0, Math.min(2, s.length)) + '***';
+}
+
+// ── GÜVENLİK (Adım 1): Görsel yolu beyaz listesi ─────────────────────────
+// imgPath daha önce doğrulanmadan Firestore'a yazılıyor ve istemcide
+// <img src="..."> içine basılıyordu (stored XSS). Artık yalnızca (a) uygulamanın
+// kendi statik varlıkları (assets/...) veya (b) upload_image'ın ürettiği,
+// kendi Storage bucket'ımızdaki domain-images/ adresleri kabul edilir.
+// Diğer her şey varsayılan görsele düşer.
+function sanitizeImgPath(p) {
+  const DEF = 'assets/default.jpeg';
+  if (typeof p !== 'string') return DEF;
+  const s = p.trim();
+  if (!s || s.length > 500) return DEF;
+  if (/^assets\/[A-Za-z0-9._-]+(?:\/[A-Za-z0-9._-]+)*$/.test(s) && !s.includes('..')) return s;
+  try {
+    const prefix = `https://storage.googleapis.com/${getBucket().name}/domain-images/`;
+    if (s.startsWith(prefix) && /^[A-Za-z0-9._\-\/]+$/.test(s.slice(prefix.length)) && !s.includes('..')) return s;
+  } catch (_) {}
+  return DEF;
+}
+// ── GÜVENLİK (Adım 1): URL'yi ham string yerine normalize edilmiş haliyle sakla.
+// new URL().toString() tırnak/boşluk gibi karakterleri yüzde-kodlar; böylece
+// saklanan değer HTML özniteliğinden kaçış (attribute breakout) için kullanılamaz.
+function normalizeHttpUrl(s) {
+  try {
+    const u = new URL(String(s));
+    if (u.protocol !== 'http:' && u.protocol !== 'https:') return null;
+    return u.toString();
+  } catch (_) { return null; }
+}
+
 // YENİ: İhtilaf kanıt görseli URL'lerini doğrulayan yardımcı fonksiyon.
 // Bunu confirm_transfer_buyer/seller action'larına GÜVENLİK amacıyla
 // ekliyoruz — client'tan gelen 'evidenceUrls' alanına KÖRÜ KÖRÜNE
@@ -1247,30 +1316,83 @@ function getRtdb()    { getAdminApp(); return getDatabase(); }
 // çözümlenebilir, buna "DNS rebinding" denir), (3) redirect'ler MANUEL
 // takip edilip HER adımda aynı kontrol tekrar uygulanıyor (bir yönlendirme
 // zinciriyle korumayı atlatmak mümkün olmasın diye).
-function isPrivateOrReservedIp(ip) {
-  if (net.isIP(ip) === 4) {
-    const parts = ip.split('.').map(Number);
-    if (parts[0] === 10) return true;
-    if (parts[0] === 127) return true;
-    if (parts[0] === 0) return true;
-    if (parts[0] === 172 && parts[1] >= 16 && parts[1] <= 31) return true;
-    if (parts[0] === 192 && parts[1] === 168) return true;
-    if (parts[0] === 169 && parts[1] === 254) return true; // bulut metadata servisi
-    if (parts[0] >= 224) return true; // multicast/reserved
-    return false;
+// IPv6 adresini 8 adet 16-bitlik sayıya açar (:: kısaltması ve gömülü IPv4 dahil). Hatalıysa null.
+function ipv6ToHextets(ip) {
+  let s = String(ip).toLowerCase().split('%')[0];
+  const m = s.match(/^(.*:)(\d+\.\d+\.\d+\.\d+)$/);
+  if (m) {
+    const p = m[2].split('.').map(Number);
+    if (p.length !== 4 || p.some(n => !(n >= 0 && n <= 255))) return null;
+    s = m[1] + ((p[0] << 8) | p[1]).toString(16) + ':' + ((p[2] << 8) | p[3]).toString(16);
   }
-  if (net.isIP(ip) === 6) {
-    const lower = ip.toLowerCase();
-    if (lower === '::1') return true; // loopback
-    if (lower.startsWith('fe80:')) return true; // link-local
-    if (lower.startsWith('fc') || lower.startsWith('fd')) return true; // unique local
-    if (lower.startsWith('::ffff:')) { // IPv4-mapped — içindeki IPv4'ü de kontrol et
-      const v4 = lower.split(':').pop();
-      if (net.isIP(v4) === 4) return isPrivateOrReservedIp(v4);
-    }
+  const halves = s.split('::');
+  if (halves.length > 2) return null;
+  const head = halves[0] ? halves[0].split(':') : [];
+  const tail = halves.length === 2 && halves[1] ? halves[1].split(':') : [];
+  let parts;
+  if (halves.length === 2) {
+    const fill = 8 - head.length - tail.length;
+    if (fill < 1) return null;
+    parts = [...head, ...Array(fill).fill('0'), ...tail];
+  } else parts = head;
+  if (parts.length !== 8) return null;
+  const out = parts.map(h => (/^[0-9a-f]{1,4}$/.test(h) ? parseInt(h, 16) : NaN));
+  return out.some(Number.isNaN) ? null : out;
+}
+function isPrivateV4Parts(p) {
+  if (p[0] === 10 || p[0] === 127 || p[0] === 0) return true;
+  if (p[0] === 172 && p[1] >= 16 && p[1] <= 31) return true;
+  if (p[0] === 192 && p[1] === 168) return true;
+  if (p[0] === 169 && p[1] === 254) return true;            // link-local / bulut metadata
+  if (p[0] === 100 && p[1] >= 64 && p[1] <= 127) return true; // CGNAT 100.64.0.0/10
+  if (p[0] === 192 && p[1] === 0 && (p[2] === 0 || p[2] === 2)) return true; // 192.0.0.0/24, 192.0.2.0/24
+  if (p[0] === 198 && (p[1] === 18 || p[1] === 19)) return true;             // 198.18.0.0/15 (benchmark)
+  if (p[0] === 198 && p[1] === 51 && p[2] === 100) return true;              // 198.51.100.0/24 (doc)
+  if (p[0] === 203 && p[1] === 0 && p[2] === 113) return true;               // 203.0.113.0/24 (doc)
+  if (p[0] >= 224) return true;                                              // multicast / reserved
+  return false;
+}
+function isPrivateOrReservedIp(ip) {
+  const kind = net.isIP(ip);
+  if (kind === 4) return isPrivateV4Parts(ip.split('.').map(Number));
+  if (kind === 6) {
+    const h = ipv6ToHextets(ip);
+    if (!h) return true; // ayrıştırılamayan her şey güvensiz
+    const v4 = (hi, lo) => [hi >> 8, hi & 255, lo >> 8, lo & 255];
+    const firstFiveZero = h.slice(0, 5).every(x => x === 0);
+    if (h.every(x => x === 0)) return true;                                 // :: (unspecified)
+    if (h.slice(0, 7).every(x => x === 0) && h[7] === 1) return true;       // ::1
+    if (firstFiveZero && h[5] === 0xffff) return isPrivateV4Parts(v4(h[6], h[7])); // ::ffff:a.b.c.d (hex biçim dahil)
+    if (firstFiveZero && h[5] === 0) return true;                           // ::a.b.c.d (IPv4-compatible, kullanımdan kalktı)
+    if (h[0] === 0x64 && h[1] === 0xff9b && h.slice(2, 6).every(x => x === 0)) return isPrivateV4Parts(v4(h[6], h[7])); // NAT64
+    if (h[0] === 0x2002) return isPrivateV4Parts(v4(h[1], h[2]));           // 6to4
+    if ((h[0] & 0xffc0) === 0xfe80) return true;                            // fe80::/10 link-local
+    if ((h[0] & 0xffc0) === 0xfec0) return true;                            // fec0::/10 site-local
+    if ((h[0] & 0xfe00) === 0xfc00) return true;                            // fc00::/7 unique local
+    if ((h[0] & 0xff00) === 0xff00) return true;                            // ff00::/8 multicast
+    if (h[0] === 0x2001 && (h[1] === 0x0db8 || h[1] === 0)) return true;    // dokümantasyon + Teredo
+    if (h[0] === 0x0100 && h.slice(1, 4).every(x => x === 0)) return true;  // 100::/64 discard
     return false;
   }
   return true; // parse edilemeyen her şeyi güvensiz say
+}
+// GÜVENLİK (Adım 2): DNS rebinding (TOCTOU) koruması. Önceden önce DNS çözülüp kontrol
+// ediliyor, sonra fetch KENDİ başına tekrar çözüyordu — iki sorgu arasında saldırgan
+// DNS cevabını iç ağ adresine çevirebilirdi. Artık gerçek bağlantıyı kuran lookup
+// fonksiyonu, kullanılacak IP'yi kontrol edip BAĞLANTIYA O IP İLE devam ediyor.
+function safeLookup(hostname, options, callback) {
+  if (typeof options === 'function') { callback = options; options = {}; }
+  options = options || {};
+  dns.lookup(hostname, { all: true, family: options.family || 0 }).then((records) => {
+    if (!records || !records.length) { const err = new Error('DNS çözümlenemedi'); err.code = 'ENOTFOUND'; return callback(err); }
+    for (const rec of records) {
+      if (isPrivateOrReservedIp(rec.address)) {
+        const err = new Error('Domain özel/rezerve bir IP\'ye çözümleniyor'); err.code = 'EBLOCKEDIP'; return callback(err);
+      }
+    }
+    if (options.all) return callback(null, records.map(r => ({ address: r.address, family: r.family })));
+    return callback(null, records[0].address, records[0].family);
+  }).catch((e) => callback(e));
 }
 
 async function isSafeUrlForAppCheck(urlStr) {
@@ -1300,49 +1422,75 @@ async function isSafeUrlForAppCheck(urlStr) {
 // En fazla 3 yönlendirmeyi MANUEL takip ederek (her adımda tekrar SSRF
 // kontrolü yaparak) güvenli bir şekilde URL'yi çeker. Yanıt gövdesi en
 // fazla 200KB okunur, 8 saniye zaman aşımı uygulanır.
+// Tek bir HTTP(S) GET isteği — bağlantı safeLookup ile kurulur (IP sabitlenir).
+// Yönlendirme TAKİP ETMEZ (çağıran yapar); gövde en fazla 200KB, toplam süre 8 sn.
+function pinnedGet(urlStr) {
+  return new Promise((resolve, reject) => {
+    let u;
+    try { u = new URL(urlStr); } catch (e) { return reject(e); }
+    const lib = u.protocol === 'https:' ? https : http;
+    const MAX_BYTES = 200 * 1024;
+    let settled = false;
+    const done = (fn, v) => { if (!settled) { settled = true; clearTimeout(timer); fn(v); } };
+    const req = lib.request({
+      protocol: u.protocol,
+      hostname: u.hostname.replace(/^\[|\]$/g, ''),
+      port: u.port || (u.protocol === 'https:' ? 443 : 80),
+      path: (u.pathname || '/') + (u.search || ''),
+      method: 'GET',
+      headers: { 'User-Agent': 'DofiayAppLinkChecker/1.0', 'Accept-Encoding': 'gzip, deflate, br', 'Accept': '*/*' },
+      lookup: safeLookup,
+      agent: false
+    }, (res) => {
+      const status = res.statusCode || 0;
+      if ([301, 302, 303, 307, 308].includes(status)) {
+        res.resume();
+        return done(resolve, { status, location: res.headers.location || null, body: '' });
+      }
+      let stream = res;
+      const enc = String(res.headers['content-encoding'] || '').toLowerCase();
+      try {
+        if (enc === 'gzip' || enc === 'x-gzip') stream = res.pipe(zlib.createGunzip());
+        else if (enc === 'deflate') stream = res.pipe(zlib.createInflate());
+        else if (enc === 'br') stream = res.pipe(zlib.createBrotliDecompress());
+      } catch (e) { return done(reject, e); }
+      const chunks = []; let total = 0;
+      const finish = () => done(resolve, { status, location: null, body: Buffer.concat(chunks).subarray(0, MAX_BYTES).toString('utf8') });
+      stream.on('data', (c) => {
+        chunks.push(c); total += c.length;
+        if (total >= MAX_BYTES) { try { req.destroy(); } catch (_) {} finish(); }
+      });
+      stream.on('end', finish);
+      stream.on('error', (e) => { if (total > 0) finish(); else done(reject, e); });
+      res.on('error', (e) => { if (total > 0) finish(); else done(reject, e); });
+    });
+    const timer = setTimeout(() => { try { req.destroy(new Error('Zaman aşımı (8 sn)')); } catch (_) {} done(reject, new Error('Zaman aşımı (8 sn)')); }, 8000);
+    req.on('error', (e) => done(reject, e));
+    req.end();
+  });
+}
+
+// En fazla 3 yönlendirmeyi MANUEL takip ederek (her adımda tekrar SSRF kontrolü ve
+// IP sabitleme ile) URL'yi güvenle çeker.
 async function safeFetchForAppCheck(urlStr, maxRedirects = 3) {
   let currentUrl = urlStr;
   for (let hop = 0; hop <= maxRedirects; hop++) {
     const safety = await isSafeUrlForAppCheck(currentUrl);
     if (!safety.safe) return { ok: false, reason: safety.reason };
-
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 8000);
-    let res;
+    let r;
     try {
-      res = await fetch(currentUrl, {
-        redirect: 'manual',
-        signal: controller.signal,
-        headers: { 'User-Agent': 'DofiayAppLinkChecker/1.0' }
-      });
+      r = await pinnedGet(currentUrl);
     } catch (e) {
-      clearTimeout(timeoutId);
-      return { ok: false, reason: 'İstek başarısız: ' + e.message };
+      if (e && e.code === 'EBLOCKEDIP') return { ok: false, reason: 'Domain özel/rezerve bir IP\'ye çözümleniyor' };
+      return { ok: false, reason: 'İstek başarısız: ' + (e && e.message) };
     }
-    clearTimeout(timeoutId);
-
-    if ([301, 302, 303, 307, 308].includes(res.status)) {
-      const location = res.headers.get('location');
-      if (!location) return { ok: false, reason: 'Yönlendirme hedefi belirtilmemiş' };
-      currentUrl = new URL(location, currentUrl).toString();
+    if ([301, 302, 303, 307, 308].includes(r.status)) {
+      if (!r.location) return { ok: false, reason: 'Yönlendirme hedefi belirtilmemiş' };
+      try { currentUrl = new URL(r.location, currentUrl).toString(); }
+      catch (_) { return { ok: false, reason: 'Geçersiz yönlendirme hedefi' }; }
       continue; // bir sonraki hop'ta tekrar güvenlik kontrolü yapılacak
     }
-
-    // Gövdeyi en fazla 200KB okuyacak şekilde sınırlandır
-    const reader = res.body?.getReader();
-    let received = '';
-    if (reader) {
-      const decoder = new TextDecoder();
-      let totalBytes = 0;
-      while (totalBytes < 200 * 1024) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        totalBytes += value.length;
-        received += decoder.decode(value, { stream: true });
-      }
-      try { reader.cancel(); } catch {}
-    }
-    return { ok: true, status: res.status, body: received, finalUrl: currentUrl };
+    return { ok: true, status: r.status, body: r.body, finalUrl: currentUrl };
   }
   return { ok: false, reason: 'Çok fazla yönlendirme (olası döngü)' };
 }
@@ -1384,7 +1532,7 @@ function shouldSendAdminSecurityAlert(key, cooldownMs = 60 * 60 * 1000) {
 }
 function getIpFromReq(req) {
   if (!req) return 'unknown';
-  return req.headers?.['x-forwarded-for']?.split(',')[0]?.trim() || req.socket?.remoteAddress || 'unknown';
+  return getClientIp(req);
 }
 async function recordAdminKnownIp(db, ip) {
   // IP'yi doküman ID'si olarak kullanabilmek için Firestore'un yasakladığı
@@ -1400,6 +1548,12 @@ async function verifyAdmin(accessToken, req) {
   if (!accessToken) return false;
   const cached = adminCache.get(accessToken);
   if (cached && Date.now() - cached.ts < ADMIN_CACHE_TTL) return cached.valid;
+  // Bellek şişmesini önle (userCache ile aynı mantık).
+  if (adminCache.size >= 2000) {
+    const cutoff = Date.now() - ADMIN_CACHE_TTL;
+    for (const [k, v] of adminCache) { if (v.ts < cutoff) adminCache.delete(k); }
+    if (adminCache.size >= 2000) adminCache.clear();
+  }
   try {
     const response = await fetch('https://api.minepi.com/v2/me', {
       headers: { 'Authorization': `Bearer ${accessToken}` }
@@ -1841,13 +1995,44 @@ async function logAdminAction(adminUsername, action, details) {
   } catch (_) { /* günlükleme hatası sessizce yutulur */ }
 }
 
+// ── GÜVENLİK (Adım 3): Para çıkışı koruması ──────────────────────────────
+// release_seller_payment / refund_buyer_payment sunucudaki escrow cüzdanından Pi gönderir.
+// Çalınmış bir admin oturumu veya hatalı bir döngü hızla büyük zarar verebileceğinden:
+//  (1) admin başına saatlik işlem sınırı (varsayılan 30, ADMIN_MAX_PAYOUTS_PER_HOUR ile değişir),
+//  (2) İSTEĞE BAĞLI günlük toplam tavan: ADMIN_DAILY_PAYOUT_LIMIT_PI ortam değişkeni (Pi).
+//      Tanımlı değilse / 0 ise tavan uygulanmaz (mevcut davranış korunur).
+// Tavan, satış başına yalnızca BİR KEZ sayılır; hata sonrası "kaldığı yerden devam" denemeleri
+// bütçeyi tekrar tüketmez. Sayaç: admin_payout_counters/{YYYY-MM-DD} (UTC).
+const ADMIN_DAILY_PAYOUT_LIMIT_PI = Number(process.env.ADMIN_DAILY_PAYOUT_LIMIT_PI || 0);
+const ADMIN_MAX_PAYOUTS_PER_HOUR = Math.max(1, Number(process.env.ADMIN_MAX_PAYOUTS_PER_HOUR || 30));
+async function reservePayoutBudget(db, saleRef, amount, flagField) {
+  if (!(ADMIN_DAILY_PAYOUT_LIMIT_PI > 0)) return { ok: true, skipped: true };
+  const day = new Date().toISOString().slice(0, 10);
+  const ctrRef = db.collection('admin_payout_counters').doc(day);
+  return db.runTransaction(async (tx) => {
+    const [saleSnap, ctrSnap] = await Promise.all([tx.get(saleRef), tx.get(ctrRef)]);
+    if (saleSnap.exists && saleSnap.data()[flagField]) return { ok: true, already: true };
+    const used = (ctrSnap.exists && Number(ctrSnap.data().total)) || 0;
+    if (used + amount > ADMIN_DAILY_PAYOUT_LIMIT_PI + 1e-9) return { ok: false, used, limit: ADMIN_DAILY_PAYOUT_LIMIT_PI };
+    tx.set(ctrRef, { total: Math.round((used + amount) * 1e7) / 1e7, updatedAt: Date.now() }, { merge: true });
+    tx.set(saleRef, { [flagField]: day }, { merge: true });
+    return { ok: true, used: used + amount };
+  });
+}
+
 // ─── CORS ─────────────────────────────────────────────────────────────────
 function setCors(req, res) {
   const allowedOrigins = (process.env.ALLOWED_ORIGIN || '')
     .split(',').map(o => o.trim()).filter(Boolean);
   const requestOrigin = req.headers.origin;
   if (allowedOrigins.length === 0) {
-    if (requestOrigin) res.setHeader('Access-Control-Allow-Origin', requestOrigin);
+    // GÜVENLİK (Adım 2): fail-closed — ALLOWED_ORIGIN tanımlı değilse hiçbir dış origin'e
+    // izin verilmez (eskiden gelen her Origin yansıtılıyordu). Aynı-origin istekler
+    // (uygulamanın kendi /api/approve çağrıları) CORS gerektirmediği için etkilenmez.
+    if (!globalThis.__corsWarned) {
+      globalThis.__corsWarned = true;
+      console.warn('[CORS] ALLOWED_ORIGIN tanımlı değil — dış origin istekleri engelleniyor. Vercel ortam değişkenine alan adınızı ekleyin.');
+    }
   } else if (requestOrigin && allowedOrigins.includes(requestOrigin)) {
     res.setHeader('Access-Control-Allow-Origin', requestOrigin);
   }
@@ -2275,7 +2460,7 @@ async function handlerImpl(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ error: "Sadece POST kabul edilir" });
 
-  const clientIp = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.socket?.remoteAddress || 'unknown';
+  const clientIp = getClientIp(req);
   const { action, accessToken } = req.body;
 
   if (!action) return res.status(400).json({ error: "action zorunludur" });
@@ -2294,6 +2479,40 @@ async function handlerImpl(req, res) {
     try { await getNetworkMode(getDb()); } catch (_) {}
   }
 
+  // ── Adım 5: İstemci (tarayıcı) hata raporu ─────────────────────────────
+  // Kimliksiz bir uçtur (oturum açmamış kullanıcıların hataları da görülsün diye) — bu yüzden
+  // gelen HER şey saldırgan kontrollü kabul edilir:
+  //  • system_errors'a KARIŞTIRILMAZ (admin "checkup" raporuna/Telegram'a düşüp gerçek hataları
+  //    sahte kayıtlarla gizleyemesin ya da panelde HTML olarak gösterilemesin) → ayrı koleksiyon: client_errors
+  //  • IP başına dakikada 5 + örnek başına saatte 300 kayıt sınırı, alan başına boyut sınırı
+  //  • URL'den sorgu/hash atılır; token/uzun gizli benzeri diziler [gizli] ile değiştirilir
+  //  • Her durumda 200 döner (istemciye hata sızdırılmaz); client_errors yalnızca sunucu (Admin SDK) okur.
+  if (action === 'report_client_error') {
+    try {
+      if (!await checkRateLimit(clientIp, 'client_error', 5, 60000)) return res.status(429).json({ success: false });
+      const nowTs = Date.now();
+      if (nowTs - _clientErrWindowStart > 3600000) { _clientErrWindowStart = nowTs; _clientErrCount = 0; }
+      if (++_clientErrCount > 300) return res.status(200).json({ success: true, dropped: true });
+      const clean = (v, n) => (typeof v === 'string'
+        ? v.replace(/[\u0000-\u0009\u000b-\u001f\u007f]+/g, ' ').replace(/[A-Za-z0-9_\-.~+\/=]{32,}/g, '[gizli]').slice(0, n) : '');
+      const b = req.body || {};
+      const entry = {
+        kind: b.kind === 'promise' ? 'promise' : 'error',
+        message: clean(b.message, 300),
+        stack: clean(b.stack, 1500),
+        source: clean(b.source, 200),
+        path: clean(String(b.path || '').split(/[?#]/)[0], 200),
+        ua: clean(b.ua, 200),
+        ts: nowTs,
+        expiresAt: Timestamp.fromMillis(nowTs + 30 * 24 * 3600 * 1000) // Firestore TTL politikası açıksa 30 gün sonra silinir
+      };
+      if (!entry.message) return res.status(200).json({ success: true });
+      console.warn('[CLIENT-ERROR]', JSON.stringify({ kind: entry.kind, message: entry.message, source: entry.source, path: entry.path }));
+      try { await getDb().collection('client_errors').add(entry); } catch (_) { /* günlükleme hatası sessizce yutulur */ }
+    } catch (_) {}
+    return res.status(200).json({ success: true });
+  }
+
   // ── Görsel Yükleme ─────────────────────────────────────────────────────
   if (action === 'upload_image') {
     if (!await checkRateLimit(clientIp, 'upload_image', 5, 60000))
@@ -2301,6 +2520,10 @@ async function handlerImpl(req, res) {
 
     const realUsername = await getRealUsername(accessToken);
     if (!realUsername) return res.status(403).json({ error: "Geçersiz oturum" });
+    // GÜVENLİK (Adım 2): IP limitine ek olarak KULLANICI başına saatlik kota — dosyalar
+    // herkese açık (public) olduğundan Storage'ın doldurulmasını zorlaştırır.
+    if (!await checkRateLimit(`user:${realUsername}`, 'upload_image_user', 30, 3600000))
+      return res.status(429).json({ error: "Çok fazla görsel yüklediniz. Lütfen daha sonra tekrar deneyin." });
 
     const { imageBase64, mimeType, fileName, context } = req.body;
     if (!imageBase64 || !mimeType) return res.status(400).json({ error: "Görsel verisi eksik" });
@@ -2351,7 +2574,7 @@ async function handlerImpl(req, res) {
       return res.status(200).json({ success: true, url: publicUrl });
     } catch (e) {
       console.error("Görsel yükleme hatası:", e);
-      return res.status(500).json({ error: e.message });
+      return res.status(500).json({ error: publicErr(e, req) });
     }
   }
 
@@ -2375,7 +2598,7 @@ async function handlerImpl(req, res) {
     } catch (e) {
       console.error("[check_auctions] hata:", e);
       await logSystemError('check_auctions', e);
-      return res.status(500).json({ error: e.message });
+      return res.status(500).json({ error: publicErr(e, req) });
     }
   }
 
@@ -2392,7 +2615,10 @@ async function handlerImpl(req, res) {
     checkEndingAuctions(getDb()).catch(() => {});
     try {
       const rtdb = getRtdb();
-      const snap = await rtdb.ref(`notifications/${realUsername}`).once('value');
+      // PERFORMANS (Adım 4): her 4 sn'lik poll'da kullanıcının TÜM bildirimleri indirilmiyor; yalnızca en yeni 100'ü
+      // istenir (sonuç aynı: zaten ts'e göre sıralanıp ilk 100 alınıyordu). Tam verimlilik için RTDB kurallarına
+      // notifications/$user altında ".indexOn": ["ts"] eklenmeli (database_rules.json); eklenmese de sonuç doğru kalır.
+      const snap = await rtdb.ref(`notifications/${realUsername}`).orderByChild('ts').limitToLast(100).once('value');
       const data = snap.val() || {};
       const notifications = Object.entries(data)
         .map(([id, v]) => ({ id, ...v }))
@@ -2401,7 +2627,7 @@ async function handlerImpl(req, res) {
       return res.status(200).json({ success: true, notifications });
     } catch (e) {
       console.error("Bildirim getirme hatası:", e);
-      return res.status(500).json({ error: e.message });
+      return res.status(500).json({ error: publicErr(e, req) });
     }
   }
 
@@ -2418,7 +2644,7 @@ async function handlerImpl(req, res) {
       if (Object.keys(updates).length > 0) await ref.update(updates);
       return res.status(200).json({ success: true });
     } catch (e) {
-      return res.status(500).json({ error: e.message });
+      return res.status(500).json({ error: publicErr(e, req) });
     }
   }
 
@@ -2447,7 +2673,7 @@ async function handlerImpl(req, res) {
       if (Object.keys(updates).length > 0) await ref.update(updates);
       return res.status(200).json({ success: true });
     } catch (e) {
-      return res.status(500).json({ error: e.message });
+      return res.status(500).json({ error: publicErr(e, req) });
     }
   }
 
@@ -2472,7 +2698,7 @@ async function handlerImpl(req, res) {
       if (Object.keys(updates).length > 0) await ref.update(updates);
       return res.status(200).json({ success: true });
     } catch (e) {
-      return res.status(500).json({ error: e.message });
+      return res.status(500).json({ error: publicErr(e, req) });
     }
   }
 
@@ -2488,7 +2714,7 @@ async function handlerImpl(req, res) {
       await rtdb.ref(`notifications/${realUsername}/${notifId}`).remove();
       return res.status(200).json({ success: true });
     } catch (e) {
-      return res.status(500).json({ error: e.message });
+      return res.status(500).json({ error: publicErr(e, req) });
     }
   }
 
@@ -2501,7 +2727,7 @@ async function handlerImpl(req, res) {
       await rtdb.ref(`notifications/${realUsername}`).remove();
       return res.status(200).json({ success: true });
     } catch (e) {
-      return res.status(500).json({ error: e.message });
+      return res.status(500).json({ error: publicErr(e, req) });
     }
   }
 
@@ -2516,7 +2742,7 @@ async function handlerImpl(req, res) {
       await getDb().collection('user_profiles').doc(realUsername).set({ lang }, { merge: true });
       return res.status(200).json({ success: true });
     } catch (e) {
-      return res.status(500).json({ error: e.message });
+      return res.status(500).json({ error: publicErr(e, req) });
     }
   }
 
@@ -2561,7 +2787,7 @@ async function handlerImpl(req, res) {
       return res.status(200).json({ success: true, firstSeen: earliest, isFirstLoginToday });
     } catch (e) {
       console.error("Login log hatası:", e);
-      return res.status(500).json({ error: e.message });
+      return res.status(500).json({ error: publicErr(e, req) });
     }
   }
 
@@ -2626,7 +2852,7 @@ async function handlerImpl(req, res) {
       return res.status(200).json({ success: true });
     } catch (e) {
       console.error("Relist hatası:", e);
-      return res.status(500).json({ error: e.message });
+      return res.status(500).json({ error: publicErr(e, req) });
     }
   }
 
@@ -2645,7 +2871,7 @@ async function handlerImpl(req, res) {
       return res.status(200).json({ success: true, hidden: !!hide });
     } catch (e) {
       console.error("toggle_hide_domain hatası:", e);
-      return res.status(500).json({ error: e.message });
+      return res.status(500).json({ error: publicErr(e, req) });
     }
   }
 
@@ -2675,7 +2901,7 @@ async function handlerImpl(req, res) {
       return res.status(200).json({ success: true, ownershipVerified: !!verified });
     } catch (e) {
       console.error("toggle_ownership_verified hatası:", e);
-      return res.status(500).json({ error: e.message });
+      return res.status(500).json({ error: publicErr(e, req) });
     }
   }
 
@@ -2692,9 +2918,12 @@ async function handlerImpl(req, res) {
     // Boş string = "bağlantıyı kaldır" anlamına gelsin (satıcı vazgeçebilsin)
     const trimmedUrl = typeof appUrl === 'string' ? appUrl.trim() : '';
     if (trimmedUrl && trimmedUrl.length > 300) return res.status(400).json({ error: "URL çok uzun" });
+    let storeAppUrl = null;
     if (trimmedUrl) {
       const safety = await isSafeUrlForAppCheck(trimmedUrl);
       if (!safety.safe) return res.status(400).json({ error: "Geçersiz veya izin verilmeyen URL: " + safety.reason });
+      storeAppUrl = normalizeHttpUrl(trimmedUrl);
+      if (!storeAppUrl || storeAppUrl.length > 500) return res.status(400).json({ error: "Geçersiz URL" });
     }
     try {
       const db = getDb();
@@ -2704,7 +2933,7 @@ async function handlerImpl(req, res) {
       const data = domainSnap.data();
       if (data.sellerUsername !== realUsername) return res.status(403).json({ error: "Bu domain'in satıcısı siz değilsiniz" });
       await domainRef.set({
-        connectedAppUrl: trimmedUrl || null,
+        connectedAppUrl: storeAppUrl,
         // URL değiştiğinde eski otomatik-kontrol ve admin onayı SIFIRLANIR
         // — yeni bir URL, eskisinin doğrulamasını miras alamaz.
         appLinkAutoCheckedAt: null,
@@ -2716,7 +2945,7 @@ async function handlerImpl(req, res) {
       return res.status(200).json({ success: true });
     } catch (e) {
       console.error("set_connected_app_url hatası:", e);
-      return res.status(500).json({ error: e.message });
+      return res.status(500).json({ error: publicErr(e, req) });
     }
   }
 
@@ -2729,7 +2958,7 @@ async function handlerImpl(req, res) {
     const realUsername = await getRealUsername(accessToken);
     if (!realUsername) return res.status(403).json({ error: "Geçersiz oturum" });
     if (!domainName) return res.status(400).json({ error: "Geçersiz domain adı" });
-    const clientIp = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.socket?.remoteAddress || 'unknown';
+    const clientIp = getClientIp(req);
     if (!await checkRateLimit(clientIp, 'check_app_link', 10, 60000)) {
       return res.status(429).json({ error: "Çok fazla istek, lütfen biraz bekleyin" });
     }
@@ -2754,7 +2983,7 @@ async function handlerImpl(req, res) {
       return res.status(200).json({ success: true, isResponding, detail: result.ok ? `HTTP ${result.status}` : result.reason });
     } catch (e) {
       console.error("check_app_link hatası:", e);
-      return res.status(500).json({ error: e.message });
+      return res.status(500).json({ error: publicErr(e, req) });
     }
   }
 
@@ -2777,7 +3006,7 @@ async function handlerImpl(req, res) {
       return res.status(200).json({ success: true, hasActiveApp: !!verified });
     } catch (e) {
       console.error("toggle_active_app_verified hatası:", e);
-      return res.status(500).json({ error: e.message });
+      return res.status(500).json({ error: publicErr(e, req) });
     }
   }
 
@@ -2786,8 +3015,8 @@ async function handlerImpl(req, res) {
     const { domainName: dName, newPrice } = req.body;
     const isAdmin = await verifyAdmin(accessToken, req);
     if (!isAdmin) return res.status(403).json({ error: "Yetki yok" });
-    const priceNum = Number(newPrice);
-    if (!dName || !priceNum || priceNum <= 0) return res.status(400).json({ error: "Geçersiz parametre" });
+    const priceNum = normalizeOfferPrice(newPrice);
+    if (!dName || priceNum === null) return res.status(400).json({ error: "Geçersiz parametre" });
     try {
       const db = getDb();
       const domainRef = db.collection('domains').doc(dName);
@@ -2829,7 +3058,7 @@ async function handlerImpl(req, res) {
       }
       return res.status(200).json({ success: true });
     } catch (e) {
-      return res.status(500).json({ error: e.message });
+      return res.status(500).json({ error: publicErr(e, req) });
     }
   }
 
@@ -2930,7 +3159,7 @@ async function handlerImpl(req, res) {
       return res.status(200).json({ success: true, auctionEndsAt });
     } catch (e) {
       console.error("start_auction hatası:", e);
-      return res.status(500).json({ error: e.message });
+      return res.status(500).json({ error: publicErr(e, req) });
     }
   }
 
@@ -3029,7 +3258,7 @@ async function handlerImpl(req, res) {
       return res.status(200).json({ success: true });
     } catch (e) {
       console.error("cancel_auction hatası:", e);
-      return res.status(500).json({ error: e.message });
+      return res.status(500).json({ error: publicErr(e, req) });
     }
   }
 
@@ -3184,7 +3413,7 @@ async function handlerImpl(req, res) {
       });
     } catch (e) {
       console.error("place_auction_bid hatası:", e);
-      return res.status(500).json({ error: e.message });
+      return res.status(500).json({ error: publicErr(e, req) });
     }
   }
 
@@ -3257,7 +3486,7 @@ async function handlerImpl(req, res) {
       return res.status(200).json({ success: true, price: out.price, deadline: out.deadline });
     } catch (e) {
       console.error("auction_buy_now hatası:", e);
-      return res.status(500).json({ error: e.message });
+      return res.status(500).json({ error: publicErr(e, req) });
     }
   }
 
@@ -3275,7 +3504,7 @@ async function handlerImpl(req, res) {
       return res.status(200).json({ success: true, counts });
     } catch (e) {
       console.error("cleanup_closed_auction_data hatası:", e);
-      return res.status(500).json({ error: e.message });
+      return res.status(500).json({ error: publicErr(e, req) });
     }
   }
 
@@ -3291,7 +3520,7 @@ async function handlerImpl(req, res) {
       return res.status(200).json({ success: true, events });
     } catch (e) {
       console.error("get_auction_events hatası:", e);
-      return res.status(500).json({ error: e.message });
+      return res.status(500).json({ error: publicErr(e, req) });
     }
   }
 
@@ -3332,7 +3561,7 @@ async function handlerImpl(req, res) {
       return res.status(403).json({ error: "Bu açık artırmayı sadece en yüksek teklifi veren kazanabilir" });
     } catch (e) {
       console.error("claim_auction_win hatası:", e);
-      return res.status(500).json({ error: e.message });
+      return res.status(500).json({ error: publicErr(e, req) });
     }
   }
 
@@ -3371,7 +3600,7 @@ async function handlerImpl(req, res) {
       });
     } catch (e) {
       console.error("get_my_auction_wins hatası:", e);
-      return res.status(500).json({ error: e.message });
+      return res.status(500).json({ error: publicErr(e, req) });
     }
   }
 
@@ -3396,21 +3625,32 @@ async function handlerImpl(req, res) {
       // İptal edilip yeniden açılan açık artırmada ESKİ turun teklifleri görünmesin:
       // yalnızca güncel turun başlangıcından (auctionStartedAt) sonraki teklifler.
       const since = domSnap.exists ? (domSnap.data().auctionStartedAt || 0) : 0;
-      const bids = snap.docs.map(d => d.data()).filter(b => (b.at || 0) >= since).sort((a, b) => b.at - a.at).slice(0, 50);
+      // GÜVENLİK (Adım 2): yalnızca bilinen alanlar döner; başkalarının kullanıcı adı
+      // kısmen gizlenir. Admin ve teklifin sahibi tam adı görür (istemci accessToken gönderir).
+      const reqUser = accessToken ? await getRealUsername(accessToken) : null;
+      const privileged = !!reqUser && reqUser === ADMIN_USERNAME;
+      const bids = snap.docs.map(d => d.data()).filter(b => (b.at || 0) >= since).sort((a, b) => b.at - a.at).slice(0, 50)
+        .map(b => ({
+          username: (!MASK_BIDDER_NAMES || privileged || (reqUser && b.username === reqUser)) ? b.username : maskUsername(b.username),
+          bidAmount: b.bidAmount, at: b.at, auto: !!b.auto, buyNow: !!b.buyNow
+        }));
       return res.status(200).json({ success: true, bids });
     } catch (e) {
       console.error("get_auction_bids hatası:", e);
-      return res.status(500).json({ error: e.message });
+      return res.status(500).json({ error: publicErr(e, req) });
     }
   }
 
   // ── Domain Ekle ───────────────────────────────────────────────────────
   if (action === 'add_domain') {
     const { domainName: newName, newPrice: newP, imgPath, domainType, description } = req.body;
+    if (isTooLong(description, 3000) || isTooLong(domainType, 50) || isTooLong(imgPath, 500) || typeof newName !== 'string') {
+      return res.status(400).json({ error: "Bir veya daha fazla alan çok uzun veya geçersiz." });
+    }
     const isAdmin = await verifyAdmin(accessToken, req);
     if (!isAdmin) return res.status(403).json({ error: "Yetki yok" });
-    const priceNum = Number(newP);
-    if (!newName || !priceNum || priceNum <= 0) return res.status(400).json({ error: "Geçersiz parametre" });
+    const priceNum = normalizeOfferPrice(newP);
+    if (!newName || priceNum === null) return res.status(400).json({ error: "Geçersiz parametre" });
     if (!isValidDomainName(newName))
       return res.status(400).json({ error: "Geçersiz domain adı formatı. Örnek: example.com" });
     try {
@@ -3426,7 +3666,7 @@ async function handlerImpl(req, res) {
       }
       await domainRef.set({
         sold: false, price: priceNum,
-        img: imgPath || 'assets/default.jpeg',
+        img: sanitizeImgPath(imgPath),
         type: domainType || 'genel',
         description: description || '',
         txid: null, buyer: null, at: null,
@@ -3445,7 +3685,7 @@ async function handlerImpl(req, res) {
       await notifySavedSearches(db, newName, { type: domainType || 'genel', price: priceNum, description: description || '', sellerUsername: ADMIN_USERNAME });
       return res.status(200).json({ success: true });
     } catch (e) {
-      return res.status(500).json({ error: e.message });
+      return res.status(500).json({ error: publicErr(e, req) });
     }
   }
 
@@ -3506,7 +3746,7 @@ async function handlerImpl(req, res) {
       await logAdminAction(await getRealUsername(accessToken), 'bulk_add_domains', `${successCount}/${rows.length} domain başarıyla eklendi`);
       return res.status(200).json({ success: true, results, successCount, totalCount: rows.length });
     } catch (e) {
-      return res.status(500).json({ error: e.message });
+      return res.status(500).json({ error: publicErr(e, req) });
     }
   }
 
@@ -3588,7 +3828,7 @@ async function handlerImpl(req, res) {
     } catch (e) {
       console.error("recompute_all_ratings hatası:", e);
       await logSystemError('recompute_all_ratings', e);
-      return res.status(500).json({ error: e.message });
+      return res.status(500).json({ error: publicErr(e, req) });
     }
   }
 
@@ -3631,7 +3871,7 @@ async function handlerImpl(req, res) {
       return res.status(200).json({ success: true, fixedCount, fixedNames });
     } catch (e) {
       console.error("backfill_reverse_deleted_ratings hatası:", e);
-      return res.status(500).json({ error: e.message });
+      return res.status(500).json({ error: publicErr(e, req) });
     }
   }
 
@@ -3693,7 +3933,7 @@ async function handlerImpl(req, res) {
 
       return res.status(200).json({ success: true, updatedCount, updatedNames, salesUpdated, salesUpdatedNames });
     } catch (e) {
-      return res.status(500).json({ error: e.message });
+      return res.status(500).json({ error: publicErr(e, req) });
     }
   }
 
@@ -3754,7 +3994,7 @@ async function handlerImpl(req, res) {
 
       return res.status(200).json({ success: true });
     } catch (e) {
-      return res.status(500).json({ error: e.message });
+      return res.status(500).json({ error: publicErr(e, req) });
     }
   }
 
@@ -3831,7 +4071,7 @@ async function handlerImpl(req, res) {
       await logAdminAction(await getRealUsername(accessToken), 'delete_domain', delName);
       return res.status(200).json({ success: true });
     } catch (e) {
-      return res.status(500).json({ error: e.message });
+      return res.status(500).json({ error: publicErr(e, req) });
     }
   }
 
@@ -3857,7 +4097,7 @@ async function handlerImpl(req, res) {
       console.log(`Domain geri getirildi: ${restoreName}`);
       return res.status(200).json({ success: true });
     } catch (e) {
-      return res.status(500).json({ error: e.message });
+      return res.status(500).json({ error: publicErr(e, req) });
     }
   }
 
@@ -3925,7 +4165,7 @@ async function handlerImpl(req, res) {
       console.log(`Domain kalıcı silindi: ${permDelName}`);
       return res.status(200).json({ success: true });
     } catch (e) {
-      return res.status(500).json({ error: e.message });
+      return res.status(500).json({ error: publicErr(e, req) });
     }
   }
 
@@ -3955,7 +4195,7 @@ async function handlerImpl(req, res) {
       active.sort((a, b) => b.lastSeen - a.lastSeen);
       return res.status(200).json({ success: true, active });
     } catch (e) {
-      return res.status(500).json({ error: e.message });
+      return res.status(500).json({ error: publicErr(e, req) });
     }
   }
 
@@ -3969,7 +4209,7 @@ async function handlerImpl(req, res) {
       snap.forEach(d => entries.push({ id: d.id, ...d.data() }));
       return res.status(200).json({ success: true, entries });
     } catch (e) {
-      return res.status(500).json({ error: e.message });
+      return res.status(500).json({ error: publicErr(e, req) });
     }
   }
 
@@ -4089,7 +4329,7 @@ async function handlerImpl(req, res) {
       return res.status(200).json({ success: true, summary });
     } catch (e) {
       console.error("get_admin_todo_summary hatası:", e);
-      return res.status(500).json({ error: e.message });
+      return res.status(500).json({ error: publicErr(e, req) });
     }
   }
 
@@ -4458,7 +4698,7 @@ async function handlerImpl(req, res) {
       });
     } catch (e) {
       console.error("run_system_checkup hatası:", e);
-      return res.status(500).json({ error: e.message });
+      return res.status(500).json({ error: publicErr(e, req) });
     }
   }
 
@@ -4528,7 +4768,7 @@ async function handlerImpl(req, res) {
       return res.status(200).json({ success: true, deletedCount: orphanDocs.length, affectedDomains: affectedList });
     } catch (e) {
       console.error("cleanup_orphaned_offers hatası:", e);
-      return res.status(500).json({ error: e.message });
+      return res.status(500).json({ error: publicErr(e, req) });
     }
   }
 
@@ -4590,7 +4830,7 @@ async function handlerImpl(req, res) {
       return res.status(200).json({ success: true, resetAt: resetTimestamp });
     } catch (e) {
       console.error("Platform sıfırlama hatası:", e);
-      return res.status(500).json({ error: e.message });
+      return res.status(500).json({ error: publicErr(e, req) });
     }
   }
 
@@ -4600,11 +4840,18 @@ async function handlerImpl(req, res) {
       return res.status(429).json({ error: "Çok fazla istek. 1 dakika bekleyin." });
 
     const { domainName: reqDomainName, price: reqPrice, domainType, imgPath: reqImgPath, sellerNote, ownershipProof, description, connectedAppUrl, editMode, oldRequestId } = req.body;
+    // GÜVENLİK (Adım 2): serbest metin alanları için tip + uzunluk sınırı.
+    if (isTooLong(description, 3000) || isTooLong(sellerNote, 1000) || isTooLong(ownershipProof, 1000) ||
+        isTooLong(domainType, 50) || isTooLong(reqImgPath, 500) || isTooLong(connectedAppUrl, 300) ||
+        typeof reqDomainName !== 'string') {
+      return res.status(400).json({ error: "Bir veya daha fazla alan çok uzun veya geçersiz." });
+    }
     const realUsername = await getRealUsername(accessToken);
     if (!realUsername) return res.status(403).json({ error: "Geçerli Pi oturumu bulunamadı" });
 
-    const priceNum = Number(reqPrice);
-    if (!reqDomainName || !priceNum || priceNum <= 0) return res.status(400).json({ error: "Geçersiz parametre" });
+    // GÜVENLİK (Adım 2): Infinity/NaN/aşırı büyük/7+ ondalıklı fiyatlar reddedilir.
+    const priceNum = normalizeOfferPrice(reqPrice);
+    if (!reqDomainName || priceNum === null) return res.status(400).json({ error: "Geçersiz parametre" });
     if (!isValidDomainName(reqDomainName))
       return res.status(400).json({ error: "Geçersiz domain adı formatı. Örnek: example.com" });
     // Sahiplik kanıtı zorunlu — açık artırmayla kazanılmış bir domaini
@@ -4621,6 +4868,9 @@ async function handlerImpl(req, res) {
       const safety = await isSafeUrlForAppCheck(trimmedAppUrl);
       if (!safety.safe) return res.status(400).json({ error: "Geçersiz veya izin verilmeyen uygulama URL'i: " + safety.reason });
     }
+    const storeSellAppUrl = trimmedAppUrl ? normalizeHttpUrl(trimmedAppUrl) : null;
+    if (trimmedAppUrl && (!storeSellAppUrl || storeSellAppUrl.length > 500))
+      return res.status(400).json({ error: "Geçersiz uygulama URL'i" });
 
     try {
       const db = getDb();
@@ -4664,11 +4914,11 @@ async function handlerImpl(req, res) {
         domainName: reqDomainName,
         price: priceNum,
         domainType: domainType || 'genel',
-        img: reqImgPath || 'assets/default.jpeg',
+        img: sanitizeImgPath(reqImgPath),
         sellerNote: sellerNote || null,
         ownershipProof: ownershipProof.trim(),
         description: description || '',
-        connectedAppUrl: trimmedAppUrl || null,
+        connectedAppUrl: storeSellAppUrl,
         submittedBy: realUsername,
         status: 'pending',
         deleted: false,
@@ -4688,7 +4938,7 @@ async function handlerImpl(req, res) {
       return res.status(200).json({ success: true });
     } catch (e) {
       console.error("Satış önerisi hatası:", e);
-      return res.status(500).json({ error: e.message });
+      return res.status(500).json({ error: publicErr(e, req) });
     }
   }
 
@@ -4728,7 +4978,7 @@ async function handlerImpl(req, res) {
 
         await domainRef.set({
           sold: false, price: reqData.price,
-          img: reqData.img, type: reqData.domainType,
+          img: sanitizeImgPath(reqData.img), type: reqData.domainType,
           description: reqData.description || '',
           sellerUsername: reqData.submittedBy,
           sellerNote: reqData.sellerNote,
@@ -4782,12 +5032,12 @@ async function handlerImpl(req, res) {
 
       await domainRef.set({
         sold: false, price: reqData.price,
-        img: reqData.img, type: reqData.domainType,
+        img: sanitizeImgPath(reqData.img), type: reqData.domainType,
         description: reqData.description || '',
         sellerUsername: reqData.submittedBy,
         sellerNote: reqData.sellerNote,
         ownershipProof: reqData.ownershipProof || null,
-        connectedAppUrl: reqData.connectedAppUrl || null,
+        connectedAppUrl: (reqData.connectedAppUrl && normalizeHttpUrl(reqData.connectedAppUrl)) || null,
         txid: null, buyer: null, at: null,
         deleted: false, deletedAt: null,
         createdAt: Date.now()
@@ -4810,7 +5060,7 @@ async function handlerImpl(req, res) {
 
       return res.status(200).json({ success: true });
     } catch (e) {
-      return res.status(500).json({ error: e.message });
+      return res.status(500).json({ error: publicErr(e, req) });
     }
   }
 
@@ -4843,7 +5093,7 @@ async function handlerImpl(req, res) {
 
       return res.status(200).json({ success: true });
     } catch (e) {
-      return res.status(500).json({ error: e.message });
+      return res.status(500).json({ error: publicErr(e, req) });
     }
   }
 
@@ -4865,7 +5115,7 @@ async function handlerImpl(req, res) {
       await requestRef.set({ status: 'withdrawn', withdrawnAt: Date.now() }, { merge: true });
       return res.status(200).json({ success: true });
     } catch (e) {
-      return res.status(500).json({ error: e.message });
+      return res.status(500).json({ error: publicErr(e, req) });
     }
   }
 
@@ -4891,7 +5141,7 @@ async function handlerImpl(req, res) {
       await requestRef.delete();
       return res.status(200).json({ success: true });
     } catch (e) {
-      return res.status(500).json({ error: e.message });
+      return res.status(500).json({ error: publicErr(e, req) });
     }
   }
 
@@ -4909,6 +5159,10 @@ async function handlerImpl(req, res) {
     const realUsername = await getRealUsername(accessToken);
     if (!realUsername) return res.status(403).json({ error: "Geçersiz oturum" });
     if (!subject || !message) return res.status(400).json({ error: "Konu ve mesaj zorunludur" });
+    // GÜVENLİK (Adım 2): tip + uzunluk sınırı (istemci: konu 100, mesaj 2000).
+    if (isTooLong(subject, 200) || isTooLong(message, 4000) || isTooLong(category, 50) || isTooLong(priority, 20)) {
+      return res.status(400).json({ error: "Bir veya daha fazla alan çok uzun veya geçersiz." });
+    }
 
     try {
       const db = getDb();
@@ -4947,7 +5201,7 @@ async function handlerImpl(req, res) {
       return res.status(200).json({ success: true, ticketId: ticketRef.id });
     } catch (e) {
       console.error("Ticket oluşturma hatası:", e);
-      return res.status(500).json({ error: e.message });
+      return res.status(500).json({ error: publicErr(e, req) });
     }
   }
 
@@ -4976,7 +5230,7 @@ async function handlerImpl(req, res) {
       return res.status(200).json({ success: true, tickets, unseenCount, seenAt });
     } catch (e) {
       console.error("get_my_tickets hatası:", e);
-      return res.status(500).json({ error: e.message });
+      return res.status(500).json({ error: publicErr(e, req) });
     }
   }
 
@@ -4991,7 +5245,7 @@ async function handlerImpl(req, res) {
       return res.status(200).json({ success: true, seenAt: now });
     } catch (e) {
       console.error("mark_my_tickets_seen hatası:", e);
-      return res.status(500).json({ error: e.message });
+      return res.status(500).json({ error: publicErr(e, req) });
     }
   }
 
@@ -5048,7 +5302,7 @@ async function handlerImpl(req, res) {
       return res.status(200).json({ success: true });
     } catch (e) {
       console.error("reply_ticket hatası:", e);
-      return res.status(500).json({ error: e.message });
+      return res.status(500).json({ error: publicErr(e, req) });
     }
   }
 
@@ -5076,7 +5330,7 @@ async function handlerImpl(req, res) {
       return res.status(200).json({ success: true, tickets, unseenCount, seenAt });
     } catch (e) {
       console.error("get_all_tickets hatası:", e);
-      return res.status(500).json({ error: e.message });
+      return res.status(500).json({ error: publicErr(e, req) });
     }
   }
 
@@ -5091,7 +5345,7 @@ async function handlerImpl(req, res) {
       return res.status(200).json({ success: true, seenAt: now });
     } catch (e) {
       console.error("mark_tickets_seen hatası:", e);
-      return res.status(500).json({ error: e.message });
+      return res.status(500).json({ error: publicErr(e, req) });
     }
   }
 
@@ -5150,7 +5404,7 @@ async function handlerImpl(req, res) {
       return res.status(200).json({ success: true });
     } catch (e) {
       console.error("sync_user_uid hatası:", e);
-      return res.status(500).json({ error: e.message });
+      return res.status(500).json({ error: publicErr(e, req) });
     }
   }
 
@@ -5198,7 +5452,7 @@ async function handlerImpl(req, res) {
       return res.status(200).json({ success: true, botUrl: `https://t.me/${botUsername}?start=${code}` });
     } catch (e) {
       console.error("link_telegram_start hatası:", e);
-      return res.status(500).json({ error: e.message });
+      return res.status(500).json({ error: publicErr(e, req) });
     }
   }
 
@@ -5228,7 +5482,7 @@ async function handlerImpl(req, res) {
         }
       });
     } catch (e) {
-      return res.status(500).json({ error: e.message });
+      return res.status(500).json({ error: publicErr(e, req) });
     }
   }
 
@@ -5248,7 +5502,7 @@ async function handlerImpl(req, res) {
       }, { merge: true });
       return res.status(200).json({ success: true });
     } catch (e) {
-      return res.status(500).json({ error: e.message });
+      return res.status(500).json({ error: publicErr(e, req) });
     }
   }
 
@@ -5263,7 +5517,7 @@ async function handlerImpl(req, res) {
       }, { merge: true });
       return res.status(200).json({ success: true });
     } catch (e) {
-      return res.status(500).json({ error: e.message });
+      return res.status(500).json({ error: publicErr(e, req) });
     }
   }
 
@@ -5334,7 +5588,7 @@ async function handlerImpl(req, res) {
       return res.status(200).json({ success: true });
     } catch (e) {
       console.error("set_profile_email hatası:", e);
-      return res.status(500).json({ error: e.message });
+      return res.status(500).json({ error: publicErr(e, req) });
     }
   }
 
@@ -5377,7 +5631,7 @@ async function handlerImpl(req, res) {
       return res.status(200).json({ success: true });
     } catch (e) {
       console.error("verify_profile_email hatası:", e);
-      return res.status(500).json({ error: e.message });
+      return res.status(500).json({ error: publicErr(e, req) });
     }
   }
 
@@ -5395,7 +5649,7 @@ async function handlerImpl(req, res) {
       }, { merge: true });
       return res.status(200).json({ success: true });
     } catch (e) {
-      return res.status(500).json({ error: e.message });
+      return res.status(500).json({ error: publicErr(e, req) });
     }
   }
 
@@ -5442,7 +5696,7 @@ async function handlerImpl(req, res) {
       });
     } catch (e) {
       console.error("admin_get_user_details hatası:", e);
-      return res.status(500).json({ error: e.message });
+      return res.status(500).json({ error: publicErr(e, req) });
     }
   }
 
@@ -5471,7 +5725,7 @@ async function handlerImpl(req, res) {
       return res.status(200).json({ success: true });
     } catch (e) {
       console.error("admin_send_email_to_user hatası:", e);
-      return res.status(500).json({ error: e.message });
+      return res.status(500).json({ error: publicErr(e, req) });
     }
   }
 
@@ -5494,7 +5748,7 @@ async function handlerImpl(req, res) {
       return res.status(200).json({ success: true, maintenanceMode: !!enabled });
     } catch (e) {
       console.error("set_maintenance_mode hatası:", e);
-      return res.status(500).json({ error: e.message });
+      return res.status(500).json({ error: publicErr(e, req) });
     }
   }
 
@@ -5554,7 +5808,7 @@ async function handlerImpl(req, res) {
       return res.status(200).json({ success: true });
     } catch (e) {
       console.error("report_listing hatası:", e);
-      return res.status(500).json({ error: e.message });
+      return res.status(500).json({ error: publicErr(e, req) });
     }
   }
 
@@ -5589,7 +5843,7 @@ async function handlerImpl(req, res) {
       return res.status(200).json({ success: true, reports, unseenCount, seenAt });
     } catch (e) {
       console.error("get_listing_reports hatası:", e);
-      return res.status(500).json({ error: e.message });
+      return res.status(500).json({ error: publicErr(e, req) });
     }
   }
 
@@ -5604,7 +5858,7 @@ async function handlerImpl(req, res) {
       return res.status(200).json({ success: true, seenAt: now });
     } catch (e) {
       console.error("mark_reports_seen hatası:", e);
-      return res.status(500).json({ error: e.message });
+      return res.status(500).json({ error: publicErr(e, req) });
     }
   }
 
@@ -5656,7 +5910,7 @@ async function handlerImpl(req, res) {
       return res.status(200).json({ success: true });
     } catch (e) {
       console.error("update_report_status hatası:", e);
-      return res.status(500).json({ error: e.message });
+      return res.status(500).json({ error: publicErr(e, req) });
     }
   }
 
@@ -5696,7 +5950,7 @@ async function handlerImpl(req, res) {
       return res.status(200).json({ success: true, reports });
     } catch (e) {
       console.error("get_my_reports hatası:", e);
-      return res.status(500).json({ error: e.message });
+      return res.status(500).json({ error: publicErr(e, req) });
     }
   }
 
@@ -5726,7 +5980,7 @@ async function handlerImpl(req, res) {
       return res.status(200).json({ success: true, archivedCount });
     } catch (e) {
       console.error("archive_resolved_reports hatası:", e);
-      return res.status(500).json({ error: e.message });
+      return res.status(500).json({ error: publicErr(e, req) });
     }
   }
 
@@ -5752,7 +6006,7 @@ async function handlerImpl(req, res) {
       return res.status(200).json({ success: true });
     } catch (e) {
       console.error("delete_my_report hatası:", e);
-      return res.status(500).json({ error: e.message });
+      return res.status(500).json({ error: publicErr(e, req) });
     }
   }
 
@@ -5880,7 +6134,7 @@ async function handlerImpl(req, res) {
       return res.status(200).json({ success: true, listings, purchases, reports, tickets, trademarkClaims, offers, retentionDays: RETENTION_DAYS_INFO() });
     } catch (e) {
       console.error("get_my_activity_history hatası:", e);
-      return res.status(500).json({ error: e.message });
+      return res.status(500).json({ error: publicErr(e, req) });
     }
   }
 
@@ -5942,7 +6196,7 @@ async function handlerImpl(req, res) {
       return res.status(200).json({ success: true, claimId: claimRef.id });
     } catch (e) {
       console.error("submit_trademark_claim hatası:", e);
-      return res.status(500).json({ error: e.message });
+      return res.status(500).json({ error: publicErr(e, req) });
     }
   }
 
@@ -5959,7 +6213,7 @@ async function handlerImpl(req, res) {
       return res.status(200).json({ success: true, claims });
     } catch (e) {
       console.error("get_trademark_claims hatası:", e);
-      return res.status(500).json({ error: e.message });
+      return res.status(500).json({ error: publicErr(e, req) });
     }
   }
 
@@ -5979,7 +6233,7 @@ async function handlerImpl(req, res) {
       return res.status(200).json({ success: true, requests });
     } catch (e) {
       console.error("get_pending_sell_requests hatası:", e);
-      return res.status(500).json({ error: e.message });
+      return res.status(500).json({ error: publicErr(e, req) });
     }
   }
 
@@ -6014,7 +6268,7 @@ async function handlerImpl(req, res) {
       return res.status(200).json({ success: true });
     } catch (e) {
       console.error("update_trademark_claim_status hatası:", e);
-      return res.status(500).json({ error: e.message });
+      return res.status(500).json({ error: publicErr(e, req) });
     }
   }
 
@@ -6089,7 +6343,7 @@ async function handlerImpl(req, res) {
       return res.status(200).json({ success: true, domainRemoved, note: domainNotFoundNote });
     } catch (e) {
       console.error("approve_trademark_claim hatası:", e);
-      return res.status(500).json({ error: e.message });
+      return res.status(500).json({ error: publicErr(e, req) });
     }
   }
 
@@ -6112,7 +6366,7 @@ async function handlerImpl(req, res) {
       return res.status(200).json({ success: true });
     } catch (e) {
       console.error("delete_trademark_claim hatası:", e);
-      return res.status(500).json({ error: e.message });
+      return res.status(500).json({ error: publicErr(e, req) });
     }
   }
 
@@ -6135,7 +6389,7 @@ async function handlerImpl(req, res) {
       return res.status(200).json({ success: true });
     } catch (e) {
       console.error("delete_my_trademark_claim hatası:", e);
-      return res.status(500).json({ error: e.message });
+      return res.status(500).json({ error: publicErr(e, req) });
     }
   }
 
@@ -6152,7 +6406,7 @@ async function handlerImpl(req, res) {
       return res.status(200).json({ success: true, claims });
     } catch (e) {
       console.error("get_my_trademark_claims hatası:", e);
-      return res.status(500).json({ error: e.message });
+      return res.status(500).json({ error: publicErr(e, req) });
     }
   }
 
@@ -6178,7 +6432,7 @@ async function handlerImpl(req, res) {
       return res.status(200).json({ success: true });
     } catch (e) {
       console.error("withdraw_trademark_claim hatası:", e);
-      return res.status(500).json({ error: e.message });
+      return res.status(500).json({ error: publicErr(e, req) });
     }
   }
 
@@ -6226,7 +6480,7 @@ async function handlerImpl(req, res) {
       return res.status(200).json({ success: true, payouts, staleCount });
     } catch (e) {
       console.error("get_pending_payouts hatası:", e);
-      return res.status(500).json({ error: e.message });
+      return res.status(500).json({ error: publicErr(e, req) });
     }
   }
 
@@ -6284,7 +6538,7 @@ async function handlerImpl(req, res) {
 
       return res.status(200).json({ success: true });
     } catch (e) {
-      return res.status(500).json({ error: e.message });
+      return res.status(500).json({ error: publicErr(e, req) });
     }
   }
 
@@ -6326,7 +6580,7 @@ async function handlerImpl(req, res) {
 
       return res.status(200).json({ success: true });
     } catch (e) {
-      return res.status(500).json({ error: e.message });
+      return res.status(500).json({ error: publicErr(e, req) });
     }
   }
 
@@ -6372,7 +6626,7 @@ async function handlerImpl(req, res) {
 
       return res.status(200).json({ success: true });
     } catch (e) {
-      return res.status(500).json({ error: e.message });
+      return res.status(500).json({ error: publicErr(e, req) });
     }
   }
 
@@ -6414,7 +6668,7 @@ async function handlerImpl(req, res) {
 
       return res.status(200).json({ success: true });
     } catch (e) {
-      return res.status(500).json({ error: e.message });
+      return res.status(500).json({ error: publicErr(e, req) });
     }
   }
 
@@ -6422,6 +6676,9 @@ async function handlerImpl(req, res) {
     const { saleId } = req.body;
     const isAdmin = await verifyAdmin(accessToken, req);
     if (!isAdmin) return res.status(403).json({ error: "Yetki yok" });
+    // GÜVENLİK (Adım 3): admin başına saatlik para çıkışı sınırı
+    if (!await checkRateLimit(`admin:${await getRealUsername(accessToken)}`, 'money_out', ADMIN_MAX_PAYOUTS_PER_HOUR, 3600000))
+      return res.status(429).json({ error: "Saatlik para çıkışı işlem sınırına ulaşıldı. Lütfen daha sonra tekrar deneyin." });
     if (!saleId) return res.status(400).json({ error: "saleId zorunludur" });
 
     try {
@@ -6482,6 +6739,12 @@ async function handlerImpl(req, res) {
       //  Böylece Pi'ler asla "arada" kaybolmaz; en kötü ihtimalle 'failed'
       //  durumunda beklemeye devam eder ve aynı butonla güvenle tekrar denenir.
       // ══════════════════════════════════════════════════════════════════
+      // GÜVENLİK (Adım 3): isteğe bağlı günlük toplam para çıkışı tavanı
+      const payBudget = await reservePayoutBudget(db, saleRef, payoutAmount, 'payoutBudgetDay');
+      if (!payBudget.ok) {
+        await sendTG(TG_CHAT_ID, `🛑 *GÜNLÜK PARA ÇIKIŞI TAVANI AŞILDI*\n\nİşlem: satıcı ödemesi\n🌐 ${tgEsc(sale.domain)}\n💰 ${payoutAmount} Pi\nBugün: ${payBudget.used} / ${payBudget.limit} Pi\nİşlem YAPILMADI.`);
+        return res.status(403).json({ error: `Günlük para çıkışı tavanı (${payBudget.limit} Pi) aşılacağı için işlem yapılmadı. Bugün çıkan: ${payBudget.used} Pi. Tavan ADMIN_DAILY_PAYOUT_LIMIT_PI ile ayarlanır.` });
+      }
       let paymentId = sale.payoutPaymentId || null;
       let txid = sale.payoutTxid || null;
 
@@ -6607,6 +6870,9 @@ async function handlerImpl(req, res) {
     const { saleId } = req.body;
     const isAdmin = await verifyAdmin(accessToken, req);
     if (!isAdmin) return res.status(403).json({ error: "Yetki yok" });
+    // GÜVENLİK (Adım 3): admin başına saatlik para çıkışı sınırı
+    if (!await checkRateLimit(`admin:${await getRealUsername(accessToken)}`, 'money_out', ADMIN_MAX_PAYOUTS_PER_HOUR, 3600000))
+      return res.status(429).json({ error: "Saatlik para çıkışı işlem sınırına ulaşıldı. Lütfen daha sonra tekrar deneyin." });
     if (!saleId) return res.status(400).json({ error: "saleId zorunludur" });
 
     try {
@@ -6646,6 +6912,12 @@ async function handlerImpl(req, res) {
       }
 
       const refundAmount = sale.price;
+      // GÜVENLİK (Adım 3): isteğe bağlı günlük toplam para çıkışı tavanı (iade de aynı bütçeden düşer)
+      const refBudget = await reservePayoutBudget(db, saleRef, refundAmount, 'refundBudgetDay');
+      if (!refBudget.ok) {
+        await sendTG(TG_CHAT_ID, `🛑 *GÜNLÜK PARA ÇIKIŞI TAVANI AŞILDI*\n\nİşlem: alıcı iadesi\n🌐 ${tgEsc(sale.domain)}\n💰 ${refundAmount} Pi\nBugün: ${refBudget.used} / ${refBudget.limit} Pi\nİşlem YAPILMADI.`);
+        return res.status(403).json({ error: `Günlük para çıkışı tavanı (${refBudget.limit} Pi) aşılacağı için işlem yapılmadı. Bugün çıkan: ${refBudget.used} Pi. Tavan ADMIN_DAILY_PAYOUT_LIMIT_PI ile ayarlanır.` });
+      }
       let paymentId = sale.refundPaymentId || null;
       let txid = sale.refundTxid || null;
 
@@ -6744,7 +7016,7 @@ async function handlerImpl(req, res) {
       return res.status(200).json({ success: true });
     } catch (e) {
       console.error("update_ticket_status hatası:", e);
-      return res.status(500).json({ error: e.message });
+      return res.status(500).json({ error: publicErr(e, req) });
     }
   }
 
@@ -6754,6 +7026,7 @@ async function handlerImpl(req, res) {
     const isAdmin = await verifyAdmin(accessToken, req);
     if (!isAdmin) return res.status(403).json({ error: "Yetki yok" });
     if (!ticketId || !text) return res.status(400).json({ error: "ticketId ve mesaj zorunludur" });
+    if (isTooLong(text, 4000)) return res.status(400).json({ error: "Mesaj çok uzun veya geçersiz." });
     try {
       const db = getDb();
       const ticketRef = db.collection('tickets').doc(ticketId);
@@ -6779,7 +7052,7 @@ async function handlerImpl(req, res) {
       return res.status(200).json({ success: true });
     } catch (e) {
       console.error("admin_reply_ticket hatası:", e);
-      return res.status(500).json({ error: e.message });
+      return res.status(500).json({ error: publicErr(e, req) });
     }
   }
 
@@ -6799,7 +7072,7 @@ async function handlerImpl(req, res) {
       return res.status(200).json({ success: true });
     } catch (e) {
       console.error("assign_ticket hatası:", e);
-      return res.status(500).json({ error: e.message });
+      return res.status(500).json({ error: publicErr(e, req) });
     }
   }
 
@@ -6839,7 +7112,7 @@ async function handlerImpl(req, res) {
       return res.status(200).json({ success: true });
     } catch (e) {
       console.error("delete_ticket hatası:", e);
-      return res.status(500).json({ error: e.message });
+      return res.status(500).json({ error: publicErr(e, req) });
     }
   }
 
@@ -6887,7 +7160,7 @@ async function handlerImpl(req, res) {
     } catch (e) {
       console.error("submit_buyer_rating hatası:", e);
       await logSystemError('submit_buyer_rating', e);
-      return res.status(500).json({ error: e.message });
+      return res.status(500).json({ error: publicErr(e, req) });
     }
   }
 
@@ -6921,7 +7194,7 @@ async function handlerImpl(req, res) {
     } catch (e) {
       console.error("submit_seller_rating hatası:", e);
       await logSystemError('submit_seller_rating', e);
-      return res.status(500).json({ error: e.message });
+      return res.status(500).json({ error: publicErr(e, req) });
     }
   }
 
@@ -7085,7 +7358,7 @@ async function handlerImpl(req, res) {
 
       return res.status(200).json({ success: true, avg, count, recentReviews, isTrusted, salesCount, sellerTier, activeListings, joinedAt, hasVerifiedListing, avgResponseMinutes, trustScore, trustLevel, followerCount, isFollowing, isPlatformOwner: sellerUsername === ADMIN_USERNAME });
     } catch (e) {
-      return res.status(500).json({ error: e.message });
+      return res.status(500).json({ error: publicErr(e, req) });
     }
   }
 
@@ -7111,7 +7384,7 @@ async function handlerImpl(req, res) {
       history.sort((a, b) => (b.at || 0) - (a.at || 0));
       return res.status(200).json({ success: true, history: history.slice(0, 20) });
     } catch (e) {
-      return res.status(500).json({ error: e.message });
+      return res.status(500).json({ error: publicErr(e, req) });
     }
   }
 
@@ -7127,7 +7400,7 @@ async function handlerImpl(req, res) {
       const avg = count > 0 ? Math.round((d.buyerRatingSum / count) * 10) / 10 : null;
       return res.status(200).json({ success: true, avg, count });
     } catch (e) {
-      return res.status(500).json({ error: e.message });
+      return res.status(500).json({ error: publicErr(e, req) });
     }
   }
 
@@ -7269,7 +7542,7 @@ async function handlerImpl(req, res) {
     } catch (e) {
       console.error("submit_offer hatası:", e);
       await logSystemError('submit_offer', e);
-      return res.status(500).json({ error: e.message });
+      return res.status(500).json({ error: publicErr(e, req) });
     }
   }
 
@@ -7285,7 +7558,7 @@ async function handlerImpl(req, res) {
       offers.sort((a, b) => b.createdAt - a.createdAt);
       return res.status(200).json({ success: true, offers });
     } catch (e) {
-      return res.status(500).json({ error: e.message });
+      return res.status(500).json({ error: publicErr(e, req) });
     }
   }
 
@@ -7375,7 +7648,7 @@ async function handlerImpl(req, res) {
       return res.status(200).json({ success: true, auctions: visibleAuctions });
     } catch (e) {
       console.error("get_my_auctions hatası:", e);
-      return res.status(500).json({ error: e.message });
+      return res.status(500).json({ error: publicErr(e, req) });
     }
   }
 
@@ -7409,7 +7682,7 @@ async function handlerImpl(req, res) {
       offers.sort((a, b) => b.createdAt - a.createdAt);
       return res.status(200).json({ success: true, offers });
     } catch (e) {
-      return res.status(500).json({ error: e.message });
+      return res.status(500).json({ error: publicErr(e, req) });
     }
   }
 
@@ -7492,7 +7765,7 @@ async function handlerImpl(req, res) {
     } catch (e) {
       console.error("respond_offer hatası:", e);
       await logSystemError('respond_offer', e);
-      return res.status(500).json({ error: e.message });
+      return res.status(500).json({ error: publicErr(e, req) });
     }
   }
 
@@ -7512,7 +7785,7 @@ async function handlerImpl(req, res) {
       await offerRef.set({ status: 'withdrawn', respondedAt: Date.now() }, { merge: true });
       return res.status(200).json({ success: true });
     } catch (e) {
-      return res.status(500).json({ error: e.message });
+      return res.status(500).json({ error: publicErr(e, req) });
     }
   }
 
@@ -7559,7 +7832,7 @@ async function handlerImpl(req, res) {
     } catch (e) {
       console.error("counter_offer hatası:", e);
       await logSystemError('counter_offer', e);
-      return res.status(500).json({ error: e.message });
+      return res.status(500).json({ error: publicErr(e, req) });
     }
   }
 
@@ -7637,7 +7910,7 @@ async function handlerImpl(req, res) {
     } catch (e) {
       console.error("respond_counter_offer hatası:", e);
       await logSystemError('respond_counter_offer', e);
-      return res.status(500).json({ error: e.message });
+      return res.status(500).json({ error: publicErr(e, req) });
     }
   }
 
@@ -7655,7 +7928,7 @@ async function handlerImpl(req, res) {
       return res.status(200).json({ success: true, offers, retentionDays: RETENTION_DAYS_INFO() });
     } catch (e) {
       console.error("get_all_offers hatası:", e);
-      return res.status(500).json({ error: e.message });
+      return res.status(500).json({ error: publicErr(e, req) });
     }
   }
 
@@ -7681,7 +7954,7 @@ async function handlerImpl(req, res) {
       return res.status(200).json({ success: true });
     } catch (e) {
       console.error("admin_delete_offer hatası:", e);
-      return res.status(500).json({ error: e.message });
+      return res.status(500).json({ error: publicErr(e, req) });
     }
   }
 
@@ -7766,7 +8039,7 @@ async function handlerImpl(req, res) {
       return res.status(200).json({ success: true, auctions });
     } catch (e) {
       console.error("get_all_auctions hatası:", e);
-      return res.status(500).json({ error: e.message });
+      return res.status(500).json({ error: publicErr(e, req) });
     }
   }
 
@@ -7783,7 +8056,7 @@ async function handlerImpl(req, res) {
       return res.status(200).json({ success: true, count: snap.size });
     } catch (e) {
       console.error("get_pending_offers_count hatası:", e);
-      return res.status(500).json({ error: e.message });
+      return res.status(500).json({ error: publicErr(e, req) });
     }
   }
 
@@ -7805,7 +8078,7 @@ async function handlerImpl(req, res) {
       return res.status(200).json({ success: true });
     } catch (e) {
       console.error("check_expired_reservation hatası:", e);
-      return res.status(500).json({ error: e.message });
+      return res.status(500).json({ error: publicErr(e, req) });
     }
   }
 
@@ -7849,7 +8122,7 @@ async function handlerImpl(req, res) {
       });
     } catch (e) {
       console.error("get_price_guidance hatası:", e);
-      return res.status(500).json({ error: e.message });
+      return res.status(500).json({ error: publicErr(e, req) });
     }
   }
 
@@ -7885,7 +8158,7 @@ async function handlerImpl(req, res) {
     } catch (e) {
       console.error("request_account_deletion hatası:", e);
       await logSystemError('request_account_deletion', e);
-      return res.status(500).json({ error: e.message });
+      return res.status(500).json({ error: publicErr(e, req) });
     }
   }
 
@@ -7901,7 +8174,7 @@ async function handlerImpl(req, res) {
       const doc = snap.docs[0];
       return res.status(200).json({ success: true, request: { id: doc.id, ...doc.data() } });
     } catch (e) {
-      return res.status(500).json({ error: e.message });
+      return res.status(500).json({ error: publicErr(e, req) });
     }
   }
 
@@ -7917,7 +8190,7 @@ async function handlerImpl(req, res) {
       requests.sort((a, b) => a.createdAt - b.createdAt);
       return res.status(200).json({ success: true, requests });
     } catch (e) {
-      return res.status(500).json({ error: e.message });
+      return res.status(500).json({ error: publicErr(e, req) });
     }
   }
 
@@ -7939,7 +8212,7 @@ async function handlerImpl(req, res) {
       await logAdminAction(await getRealUsername(accessToken), 'resolve_deletion_request', requestId);
       return res.status(200).json({ success: true });
     } catch (e) {
-      return res.status(500).json({ error: e.message });
+      return res.status(500).json({ error: publicErr(e, req) });
     }
   }
 
@@ -7968,7 +8241,7 @@ async function handlerImpl(req, res) {
       }
       return res.status(200).json({ success: true });
     } catch (e) {
-      return res.status(500).json({ error: e.message });
+      return res.status(500).json({ error: publicErr(e, req) });
     }
   }
 
@@ -7998,7 +8271,7 @@ async function handlerImpl(req, res) {
       }
       return res.status(200).json({ success: true });
     } catch (e) {
-      return res.status(500).json({ error: e.message });
+      return res.status(500).json({ error: publicErr(e, req) });
     }
   }
 
@@ -8056,7 +8329,7 @@ async function handlerImpl(req, res) {
       });
       return res.status(200).json({ success: true, id: docRef.id });
     } catch (e) {
-      return res.status(500).json({ error: e.message });
+      return res.status(500).json({ error: publicErr(e, req) });
     }
   }
 
@@ -8069,7 +8342,7 @@ async function handlerImpl(req, res) {
       const searches = snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
       return res.status(200).json({ success: true, searches });
     } catch (e) {
-      return res.status(500).json({ error: e.message });
+      return res.status(500).json({ error: publicErr(e, req) });
     }
   }
 
@@ -8087,7 +8360,7 @@ async function handlerImpl(req, res) {
       await ref.delete();
       return res.status(200).json({ success: true });
     } catch (e) {
-      return res.status(500).json({ error: e.message });
+      return res.status(500).json({ error: publicErr(e, req) });
     }
   }
 
@@ -8178,7 +8451,7 @@ async function handlerImpl(req, res) {
       return res.status(200).json({ success: true, conversationId });
     } catch (e) {
       console.error("send_message hatası:", e);
-      return res.status(500).json({ error: e.message });
+      return res.status(500).json({ error: publicErr(e, req) });
     }
   }
 
@@ -8208,7 +8481,7 @@ async function handlerImpl(req, res) {
       return res.status(200).json({ success: true, conversations });
     } catch (e) {
       console.error("get_conversations hatası:", e);
-      return res.status(500).json({ error: e.message });
+      return res.status(500).json({ error: publicErr(e, req) });
     }
   }
 
@@ -8238,7 +8511,7 @@ async function handlerImpl(req, res) {
         testnetKeysConfigured: !!(process.env.APP_SECRET_TESTNET || process.env.APP_SECRET)
       });
     } catch (e) {
-      return res.status(500).json({ error: e.message });
+      return res.status(500).json({ error: publicErr(e, req) });
     }
   }
 
@@ -8267,7 +8540,7 @@ async function handlerImpl(req, res) {
       piClient = null; _piClientMode = null; // bir sonraki kullanımda doğru anahtarla yeniden kurulsun
       return res.status(200).json({ success: true, mode: newMode });
     } catch (e) {
-      return res.status(500).json({ error: e.message });
+      return res.status(500).json({ error: publicErr(e, req) });
     }
   }
 
@@ -8294,7 +8567,7 @@ async function handlerImpl(req, res) {
       return res.status(200).json({ success: true, conversations, unseenCount, seenAt });
     } catch (e) {
       console.error("get_all_conversations hatası:", e);
-      return res.status(500).json({ error: e.message });
+      return res.status(500).json({ error: publicErr(e, req) });
     }
   }
 
@@ -8309,7 +8582,7 @@ async function handlerImpl(req, res) {
       return res.status(200).json({ success: true, seenAt: now });
     } catch (e) {
       console.error("mark_admin_messages_seen hatası:", e);
-      return res.status(500).json({ error: e.message });
+      return res.status(500).json({ error: publicErr(e, req) });
     }
   }
 
@@ -8356,7 +8629,7 @@ async function handlerImpl(req, res) {
       return res.status(200).json({ success: true, boostedUntil });
     } catch (e) {
       console.error("verify_rewarded_ad hatası:", e);
-      return res.status(500).json({ error: e.message });
+      return res.status(500).json({ error: publicErr(e, req) });
     }
   }
 
@@ -8375,7 +8648,7 @@ async function handlerImpl(req, res) {
       await convRef.update({ [`readBy.${realUsername}`]: Date.now() });
       return res.status(200).json({ success: true });
     } catch (e) {
-      return res.status(500).json({ error: e.message });
+      return res.status(500).json({ error: publicErr(e, req) });
     }
   }
 
@@ -8421,7 +8694,7 @@ async function handlerImpl(req, res) {
       return res.status(200).json({ success: true });
     } catch (e) {
       console.error("delete_conversation_for_me hatası:", e);
-      return res.status(500).json({ error: e.message });
+      return res.status(500).json({ error: publicErr(e, req) });
     }
   }
 
@@ -8464,7 +8737,7 @@ async function handlerImpl(req, res) {
       return res.status(200).json({ success: true });
     } catch (e) {
       console.error("delete_conversation_for_everyone hatası:", e);
-      return res.status(500).json({ error: e.message });
+      return res.status(500).json({ error: publicErr(e, req) });
     }
   }
 
@@ -8484,7 +8757,7 @@ async function handlerImpl(req, res) {
       return res.status(200).json({ success: true, items });
     } catch (e) {
       console.error("get_deleted_conversations hatası:", e);
-      return res.status(500).json({ error: e.message });
+      return res.status(500).json({ error: publicErr(e, req) });
     }
   }
 
@@ -8517,7 +8790,7 @@ async function handlerImpl(req, res) {
       await ref.set({ pushSubscriptions: trimmed }, { merge: true });
       return res.status(200).json({ success: true });
     } catch (e) {
-      return res.status(500).json({ error: e.message });
+      return res.status(500).json({ error: publicErr(e, req) });
     }
   }
 
@@ -8534,7 +8807,7 @@ async function handlerImpl(req, res) {
       await ref.set({ pushSubscriptions: filtered }, { merge: true });
       return res.status(200).json({ success: true });
     } catch (e) {
-      return res.status(500).json({ error: e.message });
+      return res.status(500).json({ error: publicErr(e, req) });
     }
   }
 
@@ -8747,7 +9020,7 @@ async function handlerImpl(req, res) {
       return res.status(200).json({ success: true, list, myRank, myPoints, myUsername: realUsername });
     } catch (e) {
       console.error('get_leaderboard hatası:', e);
-      return res.status(500).json({ error: e.message });
+      return res.status(500).json({ error: publicErr(e, req) });
     }
   }
 
@@ -8843,7 +9116,7 @@ async function handlerImpl(req, res) {
         totalEarned
       });
     } catch (e) {
-      return res.status(500).json({ error: e.message });
+      return res.status(500).json({ error: publicErr(e, req) });
     }
   }
 
@@ -8875,7 +9148,7 @@ async function handlerImpl(req, res) {
       const trend = Object.values(byDay).sort((a, b) => a.date.localeCompare(b.date));
       return res.status(200).json({ success: true, trend });
     } catch (e) {
-      return res.status(500).json({ error: e.message });
+      return res.status(500).json({ error: publicErr(e, req) });
     }
   }
 
@@ -8915,7 +9188,7 @@ async function handlerImpl(req, res) {
       rows.sort((a, b) => (b.at || '').localeCompare(a.at || ''));
       return res.status(200).json({ success: true, rows });
     } catch (e) {
-      return res.status(500).json({ error: e.message });
+      return res.status(500).json({ error: publicErr(e, req) });
     }
   }
 
@@ -8944,7 +9217,7 @@ async function handlerImpl(req, res) {
       await logAdminAction(await getRealUsername(accessToken), 'export_sales_data', `${rows.length} satır`);
       return res.status(200).json({ success: true, rows });
     } catch (e) {
-      return res.status(500).json({ error: e.message });
+      return res.status(500).json({ error: publicErr(e, req) });
     }
   }
 
@@ -9061,7 +9334,7 @@ async function handlerImpl(req, res) {
         salesByDomain
       });
     } catch (e) {
-      return res.status(500).json({ error: e.message });
+      return res.status(500).json({ error: publicErr(e, req) });
     }
   }
 
@@ -9077,7 +9350,7 @@ async function handlerImpl(req, res) {
       if (!snap.exists) return res.status(404).json({ error: "Öneri bulunamadı" });
       return res.status(200).json({ success: true, detail: { id: snap.id, ...snap.data() } });
     } catch (e) {
-      return res.status(500).json({ error: e.message });
+      return res.status(500).json({ error: publicErr(e, req) });
     }
   }
 
@@ -9217,11 +9490,19 @@ async function handlerImpl(req, res) {
   // ölçüde daraltır. (Asıl kesin koruma 'complete' adımındaki transaction'da;
   // bu sadece erken/ucuz bir ön-kontrol, %100 garanti değil çünkü blockchain
   // işlemi kullanıcı tarafında gerçekleşiyor.)
+  // GÜVENLİK (Adım 1): approve, domainName olmadan çağrılamaz — aksi halde hiçbir
+  // domain/fiyat kontrolü yapılmadan keyfi bir ödeme onaylanabilirdi.
+  if (action === 'approve' && !domainName) {
+    return res.status(400).json({ error: "domainName zorunludur" });
+  }
   if (action === 'approve' && domainName) {
     try {
       const db = getDb();
       await revertExpiredReservation(db, domainName);
       const domainSnap = await db.collection('domains').doc(domainName).get();
+      if (!domainSnap.exists) {
+        return res.status(404).json({ error: "Domain bulunamadı" });
+      }
       if (domainSnap.exists) {
         const dData = domainSnap.data();
         if (dData.sold === true) {
@@ -9241,6 +9522,10 @@ async function handlerImpl(req, res) {
         // yapabilsin diye bu kontrolden BİLEREK muaf tutuluyor — normal
         // kullanıcılar için engel aynen geçerli.
         const requesterUsername = await getRealUsername(accessToken);
+        // GÜVENLİK (Adım 1): geçerli oturum olmadan ödeme onaylanmaz.
+        if (!requesterUsername) {
+          return res.status(403).json({ error: "Geçersiz oturum" });
+        }
         if (dData.sellerUsername && requesterUsername && dData.sellerUsername === requesterUsername && !canTradeOwnListing(requesterUsername)) {
           return res.status(403).json({ error: "Bu domainin satıcısı sizsiniz — kendi ilanınızı satın alamazsınız.", ownListing: true });
         }
@@ -9261,11 +9546,37 @@ async function handlerImpl(req, res) {
         if (dData.auctionActive === true) {
           return res.status(409).json({ error: "Bu domain şu anda açık artırmada — normal satın alma ile alınamaz, teklif vermeniz gerekiyor.", auctionActive: true });
         }
+
+        // ── GÜVENLİK (Adım 1): ÖDEME, kullanıcı cüzdanda imzalamadan ÖNCE doğrulanır.
+        // Daha önce tutar/domain/kullanıcı eşleşmesi yalnızca 'complete' adımında ve
+        // para zaten hareket ettikten SONRA kontrol ediliyordu. Pi, onaylanmayan
+        // ödemeyi gerçekleştirmez; bu yüzden asıl koruma burasıdır.
+        if (typeof dData.price !== 'number' || !(dData.price > 0)) {
+          return res.status(400).json({ error: "Domain fiyatı geçersiz" });
+        }
+        const piDetails = await fetchPiPaymentDetails(paymentId, db);
+        if (!piDetails) {
+          return res.status(503).json({ error: "Ödeme şu anda doğrulanamadı, lütfen birkaç saniye sonra tekrar deneyin." });
+        }
+        const piMetaDomain = piDetails.metadata && piDetails.metadata.domain;
+        if (piMetaDomain !== domainName) {
+          console.error(`[GÜVENLİK] approve: metadata.domain uyuşmuyor. paymentId:${paymentId} istek:${domainName} metadata:${piMetaDomain}`);
+          return res.status(409).json({ error: "Ödeme bilgileri istenen domain ile eşleşmiyor." });
+        }
+        const approveUid = await getRealUid(accessToken);
+        if (approveUid && piDetails.user_uid && piDetails.user_uid !== approveUid) {
+          console.error(`[GÜVENLİK] approve: ödeme sahibi uyuşmuyor. paymentId:${paymentId} @${requesterUsername}`);
+          return res.status(403).json({ error: "Bu ödeme size ait değil." });
+        }
+        const approveAmount = verifyPaidAmount(piDetails, dData.price);
+        if (!approveAmount.ok) {
+          return res.status(409).json({ error: "Ödeme tutarı domainin güncel fiyatıyla eşleşmiyor. Lütfen sayfayı yenileyip tekrar deneyin.", amountMismatch: true });
+        }
       }
     } catch (e) {
       console.error("approve ön-kontrol hatası:", e);
-      // Kontrol başarısız olursa akışı durdurmuyoruz (Pi API zaten kendi
-      // içinde onaylayacak) — sadece erken uyarı bir bonus, engel değil.
+      // GÜVENLİK (Adım 1): doğrulama yapılamadıysa ödeme ONAYLANMAZ (fail-closed).
+      return res.status(503).json({ error: "Ödeme doğrulaması şu anda yapılamadı, lütfen tekrar deneyin." });
     }
   }
 
@@ -9433,7 +9744,7 @@ async function handlerImpl(req, res) {
             return { ok: false, reason: 'amount_mismatch', paidAmount: amountCheck.paidAmount, realPrice };
           }
 
-          const code = "WEB3-" + Math.random().toString(36).substr(2, 6).toUpperCase();
+          const code = "WEB3-" + crypto.randomBytes(4).toString('hex').toUpperCase(); // GÜVENLİK (Adım 2): kriptografik rastgelelik
           const sellerUsername = domainSnap.data().sellerUsername || null;
           const previousBuyer = domainSnap.data().buyer || null;
           const payoutStatusForDomain = sellerUsername ? 'pending' : 'no_seller';
@@ -9731,6 +10042,9 @@ async function handlerImpl(req, res) {
   } catch (e) {
     console.error("Sunucu hatası:", e);
     await logSystemError('complete', e);
-    return res.status(500).json({ error: e.message });
+    return res.status(500).json({ error: publicErr(e, req) });
   }
 }
+
+// Adım 5: birim testlerde (vitest) kullanılan yardımcılar. Varsayılan export (handler) değişmedi.
+export { sanitizeImgPath, normalizeHttpUrl, isPrivateOrReservedIp, ipv6ToHextets, isTooLong, maskUsername, getClientIp, publicErr, reservePayoutBudget };
