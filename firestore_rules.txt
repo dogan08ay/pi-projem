@@ -100,9 +100,18 @@ service cloud.firestore {
       allow write: if false;
     }
 
-    match /config/{doc} {
+    // ── GÜVENLİK FIX (Adım 4) ─────────────────────────────────────────────
+    // Daha önce config/{doc} için "allow read: if true" idi → config altındaki HER doküman, ör.
+    // config/platform_stats (platformEarnings, totalVolume, adminOwnEarnings = gelir rakamları) ve
+    // config/platform_settings (ağ modu, değiştiren admin), Firebase config'ini bilen herkes tarafından
+    // doğrudan okunabiliyordu. İstemci (index.html) config'ten YALNIZCA app_status dokümanını okuyor
+    // (bakım modu bandı); diğerlerine yalnızca sunucu erişiyor (Admin SDK kuralları aşar).
+    match /config/app_status {
       allow read: if true;
       allow write: if false;
+    }
+    match /config/{doc} {
+      allow read, write: if false;
     }
 
     // ── GÜVENLİK NOTU ────────────────────────────────────────────────────
