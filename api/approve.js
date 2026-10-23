@@ -1995,6 +1995,24 @@ async function logAdminAction(adminUsername, action, details) {
   } catch (_) { /* günlükleme hatası sessizce yutulur */ }
 }
 
+// ── GÜVENLİK/GÜVENİLİRLİK (Adım 6): para çıkışı için satış başına KİLİT ──────────────────────
+// Bir ödeme/iade zaman aşımıyla yarım kalınca admin aynı düğmeyle "kaldığı yerden devam" ettirir. Bu
+// devam ettirmenin, hâlâ çalışan bir önceki istekle ÇAKIŞMAMASI (çift ödeme) için, işlem başlamadan önce
+// Firestore transaction'ıyla kilit alınır. Kilit 90 sn geçerlidir (fonksiyon süre sınırı 60 sn olduğundan,
+// öldürülen bir istek en geç 90 sn sonra devam ettirilebilir). Hata/başarıda kilit hemen temizlenir.
+// Ödeme ve iade AYNI kilidi paylaşır: aynı satış için aynı anda hem ödeme hem iade çalışamaz.
+const MONEY_LOCK_MS = 90 * 1000;
+async function acquireMoneyLock(db, saleRef) {
+  return db.runTransaction(async (tx) => {
+    const snap = await tx.get(saleRef);
+    const lockAt = snap.exists ? Number(snap.data().moneyLockAt) || 0 : 0;
+    const age = Date.now() - lockAt;
+    if (lockAt && age < MONEY_LOCK_MS) return { ok: false, waitSec: Math.ceil((MONEY_LOCK_MS - age) / 1000) };
+    tx.set(saleRef, { moneyLockAt: Date.now() }, { merge: true });
+    return { ok: true };
+  });
+}
+
 // ── GÜVENLİK (Adım 3): Para çıkışı koruması ──────────────────────────────
 // release_seller_payment / refund_buyer_payment sunucudaki escrow cüzdanından Pi gönderir.
 // Çalınmış bir admin oturumu veya hatalı bir döngü hızla büyük zarar verebileceğinden:
@@ -6690,6 +6708,9 @@ async function handlerImpl(req, res) {
 
       if (sale.payoutStatus === 'released')
         return res.status(400).json({ error: "Bu ödeme zaten satıcıya gönderilmiş." });
+      // GÜVENLİK (Adım 6): iade başlatılmış/yapılmış bir satış için satıcıya da ödeme gönderilemez (çift çıkış engeli).
+      if (sale.payoutStatus === 'refunded' || sale.payoutStatus === 'refund_processing' || sale.refundTxid)
+        return res.status(400).json({ error: "Bu satış için iade başlatılmış veya yapılmış; satıcıya ödeme serbest bırakılamaz." });
       if (!sale.sellerUsername)
         return res.status(400).json({ error: "Bu ilanın kayıtlı bir satıcısı yok, ödeme serbest bırakılamaz." });
 
@@ -6745,6 +6766,11 @@ async function handlerImpl(req, res) {
         await sendTG(TG_CHAT_ID, `🛑 *GÜNLÜK PARA ÇIKIŞI TAVANI AŞILDI*\n\nİşlem: satıcı ödemesi\n🌐 ${tgEsc(sale.domain)}\n💰 ${payoutAmount} Pi\nBugün: ${payBudget.used} / ${payBudget.limit} Pi\nİşlem YAPILMADI.`);
         return res.status(403).json({ error: `Günlük para çıkışı tavanı (${payBudget.limit} Pi) aşılacağı için işlem yapılmadı. Bugün çıkan: ${payBudget.used} Pi. Tavan ADMIN_DAILY_PAYOUT_LIMIT_PI ile ayarlanır.` });
       }
+      // GÜVENLİK (Adım 6): aynı satış için eşzamanlı/çakışan çalıştırmayı engelle (çift ödeme riski)
+      const payLock = await acquireMoneyLock(db, saleRef);
+      if (!payLock.ok) {
+        return res.status(409).json({ error: `Bu satış için başka bir işlem hâlâ sürüyor olabilir. Yaklaşık ${payLock.waitSec} sn sonra tekrar deneyin; işlem kaldığı yerden devam eder.` });
+      }
       let paymentId = sale.payoutPaymentId || null;
       let txid = sale.payoutTxid || null;
 
@@ -6768,6 +6794,7 @@ async function handlerImpl(req, res) {
 
         await saleRef.set({
           payoutStatus: 'released',
+          moneyLockAt: null,
           payoutAt: Date.now(),
           payoutTxid: txid,
           payoutPaymentId: paymentId,
@@ -6841,6 +6868,7 @@ async function handlerImpl(req, res) {
         // deneme sıfırdan başlamasın — Pi'ler güvende, sadece işlem yarım kaldı.
         await saleRef.set({
           payoutStatus: 'failed',
+          moneyLockAt: null,
           payoutError: detail,
           payoutFailedAt: Date.now(),
           payoutPaymentId: paymentId || null,
@@ -6886,6 +6914,10 @@ async function handlerImpl(req, res) {
         return res.status(400).json({ error: "Bu ödeme zaten satıcıya gönderilmiş, artık iade edilemez." });
       if (sale.payoutStatus === 'refunded')
         return res.status(400).json({ error: "Bu ödeme zaten alıcıya iade edilmiş." });
+      // GÜVENLİK (Adım 6): satıcıya ödeme gönderimi başlamış/yarım kalmışsa iade edilemez (çift çıkış engeli).
+      // Önce "Ödemeyi serbest bırak" ile ödeme tamamlanmalı veya sorun çözülmelidir.
+      if (sale.payoutTxid || sale.payoutStatus === 'processing')
+        return res.status(400).json({ error: "Satıcıya ödeme gönderimi başlamış veya yarım kalmış; önce o işlem tamamlanmalı. İade edilemez." });
       if (!sale.user)
         return res.status(400).json({ error: "Bu satışın kayıtlı bir alıcısı yok." });
 
@@ -6918,6 +6950,11 @@ async function handlerImpl(req, res) {
         await sendTG(TG_CHAT_ID, `🛑 *GÜNLÜK PARA ÇIKIŞI TAVANI AŞILDI*\n\nİşlem: alıcı iadesi\n🌐 ${tgEsc(sale.domain)}\n💰 ${refundAmount} Pi\nBugün: ${refBudget.used} / ${refBudget.limit} Pi\nİşlem YAPILMADI.`);
         return res.status(403).json({ error: `Günlük para çıkışı tavanı (${refBudget.limit} Pi) aşılacağı için işlem yapılmadı. Bugün çıkan: ${refBudget.used} Pi. Tavan ADMIN_DAILY_PAYOUT_LIMIT_PI ile ayarlanır.` });
       }
+      // GÜVENLİK (Adım 6): aynı satış için eşzamanlı/çakışan çalıştırmayı engelle
+      const refLock = await acquireMoneyLock(db, saleRef);
+      if (!refLock.ok) {
+        return res.status(409).json({ error: `Bu satış için başka bir işlem hâlâ sürüyor olabilir. Yaklaşık ${refLock.waitSec} sn sonra tekrar deneyin; işlem kaldığı yerden devam eder.` });
+      }
       let paymentId = sale.refundPaymentId || null;
       let txid = sale.refundTxid || null;
 
@@ -6941,6 +6978,7 @@ async function handlerImpl(req, res) {
 
         await saleRef.set({
           payoutStatus: 'refunded',
+          moneyLockAt: null,
           refundAt: Date.now(),
           refundTxid: txid,
           refundPaymentId: paymentId,
@@ -6972,6 +7010,7 @@ async function handlerImpl(req, res) {
         const detail = describePiApiError(stepError);
         await saleRef.set({
           payoutStatus: 'refund_failed',
+          moneyLockAt: null,
           refundError: detail,
           refundFailedAt: Date.now(),
           refundPaymentId: paymentId || null,
