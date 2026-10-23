@@ -17822,8 +17822,9 @@ function renderAdminPayouts(payouts) {
             ? Number(p.payoutAmount)
             : Math.round(Number(p.price || 0) * (1 - (p.commissionRate || 0.05)) * 1e7) / 1e7;
         const commissionAmt = Math.round((p.price - effectivePayout) * 1e7) / 1e7;
-        const canRelease = p.payoutStatus === 'pending' || p.payoutStatus === 'failed';
-        const canRefund = p.payoutStatus === 'pending' || p.payoutStatus === 'failed' || p.payoutStatus === 'refund_failed';
+        // Adım 6: 'processing' (zaman aşımıyla yarım kalmış ödeme) de tekrar denenebilir — sunucu kaldığı yerden devam eder.
+        const canRelease = p.payoutStatus === 'pending' || p.payoutStatus === 'failed' || p.payoutStatus === 'processing';
+        const canRefund = p.payoutStatus === 'pending' || p.payoutStatus === 'failed' || p.payoutStatus === 'refund_failed' || p.payoutStatus === 'refund_processing';
         const row = (label, value) => value ? `<tr><td style="padding:5px 8px 5px 0;font-size:0.72em;color:#94a3b8;font-weight:700;white-space:nowrap;vertical-align:top;width:1%;">${label}</td><td style="padding:5px 0;font-size:0.78em;color:#e2e8f0;word-break:break-word;">${value}</td></tr>` : '';
         // Devir onay durumu — admin, "Transfer Tamam Öde" ya da "İade Et"
         // kararını uygulama dışından gelen bilgiye değil, buradaki gerçek
@@ -17872,6 +17873,8 @@ function renderAdminPayouts(payouts) {
             ${row(t('payoutColAmount'), `${p.price} Pi &nbsp;→&nbsp; <span style="color:#6ee7b7;font-weight:700;">${effectivePayout} Pi</span> <span style="color:#64748b;">(%${Math.round((p.commissionRate || 0.05) * 100)}: ${commissionAmt} Pi)</span>`)}
             ${p.sellerUsername ? row(t('detailFieldPaymentTo'), t('paymentToUsernameNote').replace('{user}','@'+escapeHtml(p.sellerUsername))) : ''}
             ${p.payoutStatus === 'no_seller' ? row(t('payoutColNote'), `<span style="color:#94a3b8;">⚠️ ${t('payoutNoSellerWarning')}</span>`) : ''}
+            ${p.payoutStatus === 'processing' ? row(t('payoutColNote'), `<span style="color:#fbbf24;">⏳ ${AWL('Ödeme yarım kalmış olabilir. "Serbest bırak" ile kaldığı yerden devam eder (çift ödeme olmaz). Bir önceki deneme çok yeni ise ~90 sn bekleyin.','The payout may be partially done. "Release" resumes where it stopped (no double payment). If the last attempt was very recent, wait ~90 s.')}</span>`) : ''}
+            ${p.payoutStatus === 'refund_processing' ? row(t('payoutColNote'), `<span style="color:#fbbf24;">⏳ ${AWL('İade yarım kalmış olabilir. İade düğmesi kaldığı yerden devam eder (çift iade olmaz).','The refund may be partially done. The refund button resumes where it stopped (no double refund).')}</span>`) : ''}
             ${(p.payoutStatus === 'failed' && p.payoutError) ? row(t('payoutColError'), `<span style="color:#f87171;">${escapeHtml(p.payoutError)}</span>`) : ''}
             ${(p.payoutStatus === 'refund_failed' && p.refundError) ? row(t('payoutColError'), `<span style="color:#f87171;">${escapeHtml(p.refundError)}</span>`) : ''}
             ${p.payoutStatus === 'released' && p.payoutTxid ? row(t('payoutColTxid'), `<span style="font-size:0.85em;color:#64748b;word-break:break-all;">${escapeHtml(p.payoutTxid)}</span>`) : ''}
@@ -17971,7 +17974,8 @@ window.adminReleasePayout = async function(saleId, domainName, sellerUsername) {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ action: 'release_seller_payment', saleId, accessToken: piAccessToken })
         });
-        const result = await r.json();
+        const result = await r.json().catch(() => null);
+        if (!result) { showToast(AWL('⏳ Sunucu zamanında yanıt vermedi. Ödeme yarım kalmış olabilir: listeyi yenileyip aynı düğmeyle devam ettirin (çift ödeme olmaz).','⏳ The server did not respond in time. The payout may be partially done: refresh the list and continue with the same button (no double payment).')); return; }
         if (result.success) {
             showToast(AWL(`✅ ${result.payoutAmount} Pi @${sellerUsername} kullanıcısına gönderildi.`,`✅ ${result.payoutAmount} Pi sent to @${sellerUsername}.`));
         } else {
@@ -17999,7 +18003,8 @@ window.adminRefundPayout = async function(saleId, domainName, buyerUsername) {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ action: 'refund_buyer_payment', saleId, accessToken: piAccessToken })
         });
-        const result = await r.json();
+        const result = await r.json().catch(() => null);
+        if (!result) { showToast(AWL('⏳ Sunucu zamanında yanıt vermedi. İade yarım kalmış olabilir: listeyi yenileyip aynı düğmeyle devam ettirin (çift iade olmaz).','⏳ The server did not respond in time. The refund may be partially done: refresh the list and continue with the same button (no double refund).')); return; }
         if (result.success) {
             showToast(AWL(`✅ ${result.refundAmount} Pi @${buyerUsername} kullanıcısına iade edildi.`,`✅ ${result.refundAmount} Pi refunded to @${buyerUsername}.`));
         } else {

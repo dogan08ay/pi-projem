@@ -8,7 +8,7 @@
   },
   "functions": {
     "api/approve.js": {
-      "maxDuration": 10
+      "maxDuration": 60
     },
     "api/config.js": {
       "maxDuration": 10
