@@ -12721,7 +12721,9 @@ function buildEscrowProgressHtml(data){
 
     const bothConfirmed=data.buyerConfirmed===true && data.sellerConfirmed===true;
     let step=1; // 0:ödeme alındı 1:emanette/onay bekleniyor 2:onaylandı/işleniyor 3:tamamlandı
-    if(ps==='released') step=3;
+    // Ödeme satıcıya serbest bırakıldıysa TÜM adımlar tamamlanmıştır (step=4 → hepsi yeşil ✓). Eskiden 3'tü ve son adım
+    // "şu anki adım" (turuncu "4") olarak kalıyordu.
+    if(ps==='released') step=4;
     else if(bothConfirmed || ps==='processing') step=2;
 
     const labels=[t('escrowStepPayment'),t('escrowStepPending'),t('escrowStepConfirmed'),t('escrowStepReleased')];
