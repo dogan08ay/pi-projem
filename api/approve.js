@@ -166,6 +166,10 @@ const REFERRAL_BONUS_REFERRED = 15; // davet edilen (yeni) kişiye "hoş geldin"
 // satın alabileceği bir öncelik penceresi tanınır. Süre dolunca domain
 // herkese açılır (ilk gelen alır).
 const OFFER_RESERVATION_MS = 15 * 60 * 1000; // 15 dakika
+// Adım 8: TEKLİF GEÇERLİLİK SÜRELERİ. Yanıtsız kalan teklifler öylece açık kalmasın diye süreleri vardır;
+// süre dolunca teklif kapanır ve iki tarafa da bildirim gider. Ortam değişkenleriyle değiştirilebilir.
+const OFFER_PENDING_TTL_MS = Math.max(1, Number(process.env.OFFER_PENDING_TTL_HOURS || 48)) * 3600000; // alıcının teklifi: satıcı yanıt vermeli
+const OFFER_COUNTER_TTL_MS = Math.max(1, Number(process.env.OFFER_COUNTER_TTL_HOURS || 24)) * 3600000; // satıcının karşı teklifi: alıcı yanıt vermeli
 
 // ══════════════════════════════════════════════════════════════════════
 //  AÇIK ARTIRMA — SABİTLER VE YARDIMCILAR
@@ -499,7 +503,7 @@ async function expireAuctionWin(db, domainName) {
       }
       tx.set(ref, {
         ...AUCTION_WIN_CLEAR_FIELDS(),
-        reservedFor: FieldValue.delete(),
+        reservedFor: FieldValue.delete(), reservationType: FieldValue.delete(), reservedOfferId: FieldValue.delete(),
         reservedUntil: FieldValue.delete(),
         preNegotiationPrice: FieldValue.delete(),
         auctionActive: false,
@@ -784,6 +788,8 @@ async function checkEndingAuctions(db) {
   }
   // ── C) Pazarlık (teklif/karşı teklif) rezervasyonları: süresi dolanı kapat, hatırlat ──
   await sweepOfferReservations(db);
+  // ── C2) Yanıtsız kalan teklif/karşı teklifleri süresi dolunca kapat + bildir (Adım 8) ──
+  await sweepOfferTimeouts(db);
   // ── D) Saatte bir: eski, sonuçlanmış kayıtları temizle (retention) ──
   if (Date.now() - _lastHistoryCleanupAt >= 60 * 60 * 1000) {
     _lastHistoryCleanupAt = Date.now();
@@ -825,7 +831,7 @@ async function revertExpiredReservation(db, domainName) {
       if (d.sold === true || d.auctionWinPending === true) return null;
       if (!d.reservedFor || !d.reservedUntil || d.reservedUntil > Date.now()) return null;
       const revertPrice = typeof d.preNegotiationPrice === 'number' ? d.preNegotiationPrice : null;
-      const update = { reservedFor: FieldValue.delete(), reservedUntil: FieldValue.delete(), preNegotiationPrice: FieldValue.delete(), reservationWarnedFor: FieldValue.delete() };
+      const update = { reservedFor: FieldValue.delete(), reservationType: FieldValue.delete(), reservedOfferId: FieldValue.delete(), reservedUntil: FieldValue.delete(), preNegotiationPrice: FieldValue.delete(), reservationWarnedFor: FieldValue.delete() };
       if (revertPrice !== null) update.price = revertPrice;
       tx.set(domainRef, update, { merge: true });
       return { buyer: d.reservedFor, agreedPrice: d.price, revertPrice, seller: d.sellerUsername || null };
@@ -891,6 +897,7 @@ async function sweepOfferReservations(db) {
       if (d.sold === true || !d.reservedFor || !d.reservedUntil) continue;
       if (d.auctionWinPending === true) continue; // açık artırma kazananı ayrı akışta yönetiliyor
       if (d.reservedUntil <= now) { await revertExpiredReservation(db, doc.id); continue; }
+      if (d.reservationType === 'counter') continue; // karşı teklif rezervasyonu: "kabul edilen fiyat" uyarısı bu tür için geçerli değil
       if (d.reservationWarnedFor === d.reservedUntil) continue;
       await doc.ref.set({ reservationWarnedFor: d.reservedUntil }, { merge: true });
       const minLeft = Math.max(1, Math.round((d.reservedUntil - now) / 60000));
@@ -1995,6 +2002,158 @@ async function logAdminAction(adminUsername, action, details) {
   } catch (_) { /* günlükleme hatası sessizce yutulur */ }
 }
 
+// ── Adım 8: Escrow bayraklarının sızması ─────────────────────────────────────────────────────────
+// Onay (buyerConfirmed/sellerConfirmed), itiraz ve puan bilgileri domain kaydına da yazılıyor; kullanıcı
+// panelleri BU alanlardan okuyor. Domain "tekrar satılık" yapılıp yeniden satılınca eski satışın bayrakları
+// kayıtta kalıyor ve yeni alıcı/satıcıya "devri onayladınız" gibi yanlış bilgi gösteriliyordu. Artık hem
+// tekrar satılık yapılırken hem YENİ satış tamamlanırken bu alanlar temizlenir.
+const ESCROW_STALE_FIELDS = [
+  'buyerConfirmed', 'buyerConfirmedAt', 'buyerConfirmNote', 'buyerDisputeEvidence', 'buyerDisputeResolution', 'buyerDisputeResolvedAt',
+  'sellerConfirmed', 'sellerConfirmedAt', 'sellerConfirmNote', 'sellerDisputeEvidence', 'sellerDisputeResolution', 'sellerDisputeResolvedAt',
+  'buyerRating', 'sellerRatingOfBuyer'
+];
+function ESCROW_STALE_CLEAR_FIELDS() {
+  const o = {};
+  for (const k of ESCROW_STALE_FIELDS) o[k] = FieldValue.delete();
+  return o;
+}
+
+// ── Adım 8: Pi tarafındaki gerçek ödeme durumu ──────────────────────────────────────────────────
+// Zaman aşımıyla yarım kalan bir denemede Pi işlemi çoktan bitirmiş olabilir (ör. complete edilmiş ama kayıt
+// güncellenememiş). Bu durumda tekrar complete denemek "already_completed" (400) döner ve ödeme "başarısız" görünürdü.
+// Çözüm: devam etmeden önce Pi'deki durumu sor; tamamlanmışsa kaydı kapat, iptal edilmişse yeni ödeme aç.
+async function reconcilePiPayment(db, saleRef, paymentId, txid, txidField) {
+  if (!paymentId) return { paymentId, txid, done: false };
+  let pd = null;
+  try { pd = await fetchPiPaymentDetails(paymentId, db); } catch (_) { pd = null; }
+  const st = pd && pd.status;
+  if (!st) return { paymentId, txid, done: false };
+  if (st.cancelled || st.user_cancelled) return { paymentId: null, txid: null, done: false }; // para hareket etmedi
+  const piTx = pd.transaction && pd.transaction.txid;
+  if (st.developer_completed && piTx) return { paymentId, txid: piTx, done: true };
+  if (piTx && !txid) {
+    await saleRef.set({ [txidField]: piTx }, { merge: true });
+    return { paymentId, txid: piTx, done: false };
+  }
+  return { paymentId, txid, done: false };
+}
+// completePayment, Pi'de zaten tamamlanmış bir ödeme için 400 {"error":"already_completed"} döner (ödeme GERÇEKTEN gitmiştir).
+function piAlreadyCompleted(e) {
+  const d = e && e.response && e.response.data;
+  if (d && d.error === 'already_completed') {
+    return { txid: (d.payment && d.payment.transaction && d.payment.transaction.txid) || null };
+  }
+  return null;
+}
+
+// ── Adım 8: Teklif geçerliliği, karşı teklif rezervasyonu, satış sonrası kapanış ────────────────────
+// Karşı teklif sürerken domain, karşı teklifin sahibi alıcıya AYNI rezervasyon mekanizmasıyla ayrılır
+// (reservedFor/reservedUntil + reservationType:'counter'). Böylece 'approve' ve 'complete' (transaction)
+// zaten başkasının satın almasını engeller. Fiyata dokunulmaz (preNegotiationPrice yok).
+async function releaseCounterReservation(db, domainName, buyerUsername) {
+  try {
+    const ref = db.collection('domains').doc(domainName);
+    await db.runTransaction(async (tx) => {
+      const s = await tx.get(ref);
+      if (!s.exists) return;
+      const d = s.data();
+      if (d.reservationType !== 'counter' || d.reservedFor !== buyerUsername) return; // yalnızca KARŞI TEKLİF rezervasyonu
+      tx.set(ref, { reservedFor: FieldValue.delete(), reservedUntil: FieldValue.delete(), reservationType: FieldValue.delete(),
+        reservedOfferId: FieldValue.delete(), reservationWarnedFor: FieldValue.delete() }, { merge: true });
+    });
+  } catch (e) { console.error(`releaseCounterReservation hatası (${domainName}):`, e); }
+}
+async function expireOfferByTimeout(db, offerRef) {
+  const info = await db.runTransaction(async (tx) => {
+    const s = await tx.get(offerRef);
+    if (!s.exists) return null;
+    const o = s.data();
+    if (o.status !== 'pending' && o.status !== 'countered') return null; // bu arada yanıtlanmış/geri çekilmiş
+    const now = Date.now();
+    tx.set(offerRef, { status: 'expired', expiredReason: 'timeout', expiredFrom: o.status, expiredAt: now, respondedAt: now }, { merge: true });
+    return o;
+  });
+  if (!info) return false;
+  const wasCounter = info.status === 'countered';
+  if (wasCounter) await releaseCounterReservation(db, info.domainName, info.buyerUsername);
+  const price = wasCounter && info.counterPrice != null ? info.counterPrice : info.offerPrice;
+  const hrs = Math.round((wasCounter ? OFFER_COUNTER_TTL_MS : OFFER_PENDING_TTL_MS) / 3600000);
+  try {
+    if (wasCounter) {
+      await sendNotification(info.buyerUsername, { en: { title: '⌛ Counter Offer Expired',
+        body: `You did not respond to the seller's ${price} Pi counter offer for "${info.domainName}" within ${hrs} hours, so it was closed and the domain is open to everyone again. You can make a new offer.` },
+        type: 'offer_timeout', role: 'buyer', title: '⌛ Karşı Teklifin Süresi Doldu',
+        body: `"${info.domainName}" için satıcının ${price} Pi karşı teklifine ${hrs} saat içinde yanıt vermediniz; teklif kapandı ve domain yeniden herkese açıldı. Dilerseniz yeni bir teklif verebilirsiniz.`,
+        domainName: info.domainName });
+      await sendNotification(info.sellerUsername || ADMIN_USERNAME, { en: { title: '⌛ Counter Offer Expired',
+        body: `@${info.buyerUsername} did not respond to your ${price} Pi counter offer for "${info.domainName}" within ${hrs} hours. The offer was closed and the domain is open to everyone again.` },
+        type: 'offer_timeout_seller', role: 'seller', title: '⌛ Karşı Teklifin Süresi Doldu',
+        body: `@${info.buyerUsername}, "${info.domainName}" için ${price} Pi karşı teklifinize ${hrs} saat içinde yanıt vermedi. Teklif kapandı ve domain yeniden herkese açıldı.`,
+        domainName: info.domainName });
+    } else {
+      await sendNotification(info.buyerUsername, { en: { title: '⌛ Offer Expired',
+        body: `Your ${price} Pi offer for "${info.domainName}" was not answered within ${hrs} hours, so it was closed. You can make a new offer or buy it at the listed price.` },
+        type: 'offer_timeout', role: 'buyer', title: '⌛ Teklifinizin Süresi Doldu',
+        body: `"${info.domainName}" için ${price} Pi teklifiniz ${hrs} saat içinde yanıtlanmadığı için kapandı. Yeni bir teklif verebilir veya liste fiyatıyla satın alabilirsiniz.`,
+        domainName: info.domainName });
+      await sendNotification(info.sellerUsername || ADMIN_USERNAME, { en: { title: '⌛ Offer Closed (No Response)',
+        body: `The ${price} Pi offer from @${info.buyerUsername} for "${info.domainName}" was closed because it was not answered within ${hrs} hours.` },
+        type: 'offer_timeout_seller', role: 'seller', title: '⌛ Teklif Yanıtsız Kaldı',
+        body: `@${info.buyerUsername} kullanıcısının "${info.domainName}" için ${price} Pi teklifi ${hrs} saat içinde yanıtlanmadığı için kapandı.`,
+        domainName: info.domainName });
+    }
+  } catch (e) { console.error('expireOfferByTimeout bildirim hatası:', e); }
+  return true;
+}
+let _lastLegacyTimeoutSweepAt = 0;
+async function sweepOfferTimeouts(db) {
+  const now = Date.now();
+  try {
+    // expiresAt tek alanlı aralık sorgusu → ek (bileşik) indeks GEREKMEZ; durum bellekte süzülür.
+    const snap = await db.collection('offers').where('expiresAt', '<=', now).limit(200).get();
+    for (const doc of snap.docs) {
+      const st = doc.data().status;
+      if (st === 'pending' || st === 'countered') await expireOfferByTimeout(db, doc.ref);
+    }
+  } catch (e) { console.error('sweepOfferTimeouts hatası:', e); }
+  // Süre alanı OLMAYAN eski teklifler: saatte ~2 kez taranır, süresi geçmişse kapatılır, değilse expiresAt yazılır.
+  if (now - _lastLegacyTimeoutSweepAt < 30 * 60 * 1000) return;
+  _lastLegacyTimeoutSweepAt = now;
+  try {
+    for (const st of ['pending', 'countered']) {
+      const snap = await db.collection('offers').where('status', '==', st).limit(300).get();
+      for (const doc of snap.docs) {
+        const o = doc.data();
+        if (o.expiresAt) continue;
+        const base = st === 'countered' ? (o.counteredAt || o.updatedAt || o.createdAt || 0) : (o.updatedAt || o.createdAt || 0);
+        const exp = base + (st === 'countered' ? OFFER_COUNTER_TTL_MS : OFFER_PENDING_TTL_MS);
+        if (exp <= now) await expireOfferByTimeout(db, doc.ref);
+        else await doc.ref.set({ expiresAt: exp }, { merge: true });
+      }
+    }
+  } catch (e) { console.error('sweepOfferTimeouts (eski kayıtlar) hatası:', e); }
+}
+// Domain satılınca o domain için hâlâ açık (bekleyen/karşı teklifli) diğer teklifler havada kalmasın.
+async function closeOffersOnSale(db, domainName, buyerUsername) {
+  try {
+    const snap = await db.collection('offers').where('domainName', '==', domainName).get();
+    for (const doc of snap.docs) {
+      const o = doc.data();
+      if (o.status !== 'pending' && o.status !== 'countered') continue;
+      const mine = o.buyerUsername === buyerUsername;
+      const now = Date.now();
+      await doc.ref.set({ status: 'expired', expiredReason: mine ? 'purchased' : 'sold', expiredFrom: o.status, expiredAt: now, respondedAt: now }, { merge: true });
+      if (!mine) {
+        await sendNotification(o.buyerUsername, { en: { title: '🔒 Domain Sold',
+          body: `"${domainName}" was bought by another buyer, so your offer was closed. You can browse similar domains.` },
+          type: 'offer_closed_sold', role: 'buyer', title: '🔒 Domain Satıldı',
+          body: `"${domainName}" başka bir alıcı tarafından satın alındığı için teklifiniz kapandı. Benzer domainlere göz atabilirsiniz.`,
+          domainName });
+      }
+    }
+  } catch (e) { console.error(`closeOffersOnSale hatası (${domainName}):`, e); }
+}
+
 // ── GÜVENLİK/GÜVENİLİRLİK (Adım 6): para çıkışı için satış başına KİLİT ──────────────────────
 // Bir ödeme/iade zaman aşımıyla yarım kalınca admin aynı düğmeyle "kaldığı yerden devam" ettirir. Bu
 // devam ettirmenin, hâlâ çalışan bir önceki istekle ÇAKIŞMAMASI (çift ödeme) için, işlem başlamadan önce
@@ -2842,7 +3001,7 @@ async function handlerImpl(req, res) {
         await reverseSaleAndPoints(db, domainName, prevBuyer, soldPrice, soldAt);
       }
 
-      await domainRef.set({ sold: false, txid: null, buyer: null, at: null }, { merge: true });
+      await domainRef.set({ sold: false, txid: null, buyer: null, at: null, ...ESCROW_STALE_CLEAR_FIELDS() }, { merge: true });
 
       if (prevBuyer) {
         await sendNotification(prevBuyer, { en: { title: 'Domain Back on Sale',
@@ -3214,7 +3373,7 @@ async function handlerImpl(req, res) {
       if (data.auctionWinPending === true && data.sold !== true) {
         await domainRef.set({
           ...AUCTION_WIN_CLEAR_FIELDS(),
-          reservedFor: FieldValue.delete(),
+          reservedFor: FieldValue.delete(), reservationType: FieldValue.delete(), reservedOfferId: FieldValue.delete(),
           reservedUntil: FieldValue.delete(),
           preNegotiationPrice: FieldValue.delete(),
           auctionActive: false,
@@ -6775,6 +6934,12 @@ async function handlerImpl(req, res) {
       let txid = sale.payoutTxid || null;
 
       try {
+        // GÜVENİLİRLİK (Adım 8): zaman aşımından kalan yarım işlemde Pi'deki GERÇEK durumu önce öğren.
+        let piDone = false;
+        if (paymentId) {
+          const rec = await reconcilePiPayment(db, saleRef, paymentId, txid, 'payoutTxid');
+          paymentId = rec.paymentId; txid = rec.txid; piDone = rec.done;
+        }
         if (!paymentId) {
           paymentId = await pi.createPayment({
             amount: payoutAmount,
@@ -6785,12 +6950,19 @@ async function handlerImpl(req, res) {
           await saleRef.set({ payoutStatus: 'processing', payoutPaymentId: paymentId }, { merge: true });
         }
 
-        if (!txid) {
-          txid = await pi.submitPayment(paymentId);
-          await saleRef.set({ payoutTxid: txid }, { merge: true });
+        if (!piDone) {
+          if (!txid) {
+            txid = await pi.submitPayment(paymentId);
+            await saleRef.set({ payoutTxid: txid }, { merge: true });
+          }
+          try {
+            await pi.completePayment(paymentId, txid);
+          } catch (ce) {
+            const ac = piAlreadyCompleted(ce); // Pi: "zaten tamamlanmış" → ödeme gerçekten gitmiş, başarısız SAYMA
+            if (!ac) throw ce;
+            if (ac.txid) txid = ac.txid;
+          }
         }
-
-        await pi.completePayment(paymentId, txid);
 
         await saleRef.set({
           payoutStatus: 'released',
@@ -6959,6 +7131,12 @@ async function handlerImpl(req, res) {
       let txid = sale.refundTxid || null;
 
       try {
+        // GÜVENİLİRLİK (Adım 8): zaman aşımından kalan yarım işlemde Pi'deki GERÇEK durumu önce öğren.
+        let piDone = false;
+        if (paymentId) {
+          const rec = await reconcilePiPayment(db, saleRef, paymentId, txid, 'refundTxid');
+          paymentId = rec.paymentId; txid = rec.txid; piDone = rec.done;
+        }
         if (!paymentId) {
           paymentId = await pi.createPayment({
             amount: refundAmount,
@@ -6969,12 +7147,19 @@ async function handlerImpl(req, res) {
           await saleRef.set({ payoutStatus: 'refund_processing', refundPaymentId: paymentId }, { merge: true });
         }
 
-        if (!txid) {
-          txid = await pi.submitPayment(paymentId);
-          await saleRef.set({ refundTxid: txid }, { merge: true });
+        if (!piDone) {
+          if (!txid) {
+            txid = await pi.submitPayment(paymentId);
+            await saleRef.set({ refundTxid: txid }, { merge: true });
+          }
+          try {
+            await pi.completePayment(paymentId, txid);
+          } catch (ce) {
+            const ac = piAlreadyCompleted(ce); // Pi: "zaten tamamlanmış" → ödeme gerçekten gitmiş, başarısız SAYMA
+            if (!ac) throw ce;
+            if (ac.txid) txid = ac.txid;
+          }
         }
-
-        await pi.completePayment(paymentId, txid);
 
         await saleRef.set({
           payoutStatus: 'refunded',
@@ -7534,10 +7719,12 @@ async function handlerImpl(req, res) {
           counterMessage: null,
           counteredAt: null,
           history,
+          expiresAt: Date.now() + OFFER_PENDING_TTL_MS, // Adım 8: satıcının yanıt süresi
           updatedAt: Date.now()
         }, { merge: true });
 
-        const notifyTarget2 = data.sellerUsername || ADMIN_USERNAME;
+        await releaseCounterReservation(db, domainName, realUsername); // yeni teklif: karşı teklif rezervasyonu biter
+      const notifyTarget2 = data.sellerUsername || ADMIN_USERNAME;
         await sendNotification(notifyTarget2, { en: { title: '💬 You Received a New Offer',
           body: `@${realUsername} made a new offer of ${priceNum} Pi for "${domainName}" (your previous offer: ${prevData.counterPrice || prevData.offerPrice} Pi).` },
           type: 'offer_received',
@@ -7561,7 +7748,8 @@ async function handlerImpl(req, res) {
         offerPrice: priceNum,
         message: message ? String(message).trim().slice(0, 300) : null,
         status: 'pending',
-        createdAt: Date.now()
+        createdAt: Date.now(),
+        expiresAt: Date.now() + OFFER_PENDING_TTL_MS // Adım 8: satıcının yanıt süresi
       });
 
       const notifyTarget = data.sellerUsername || ADMIN_USERNAME;
@@ -7741,6 +7929,10 @@ async function handlerImpl(req, res) {
       if (offer.sellerUsername !== realUsername && !isAdmin)
         return res.status(403).json({ error: "Bu teklife yanıt verme yetkiniz yok" });
       if (offer.status !== 'pending') return res.status(400).json({ error: "Bu teklif zaten yanıtlanmış" });
+      if (offer.expiresAt && offer.expiresAt <= Date.now()) {
+        await expireOfferByTimeout(db, offerRef);
+        return res.status(400).json({ error: "Bu teklifin yanıt süresi dolduğu için kapandı." });
+      }
 
       if (accept) {
         const domainRef = db.collection('domains').doc(offer.domainName);
@@ -7755,7 +7947,7 @@ async function handlerImpl(req, res) {
 
         const reservedUntil = Date.now() + OFFER_RESERVATION_MS;
         const preNegotiationPrice = domainSnap.data().price;
-        await domainRef.set({ price: offer.offerPrice, reservedFor: offer.buyerUsername, reservedUntil, preNegotiationPrice }, { merge: true });
+        await domainRef.set({ price: offer.offerPrice, reservationType: FieldValue.delete(), reservedOfferId: FieldValue.delete(), reservedFor: offer.buyerUsername, reservedUntil, preNegotiationPrice }, { merge: true });
         await offerRef.set({ status: 'accepted', respondedAt: Date.now() }, { merge: true });
 
         // Aynı domain için bekleyen diğer teklifler artık geçersiz — fiyat değişti
@@ -7850,20 +8042,41 @@ async function handlerImpl(req, res) {
       if (offer.sellerUsername !== realUsername && !isAdmin)
         return res.status(403).json({ error: "Bu teklife yanıt verme yetkiniz yok" });
       if (offer.status !== 'pending') return res.status(400).json({ error: "Bu teklif zaten yanıtlanmış" });
+      if (offer.expiresAt && offer.expiresAt <= Date.now()) {
+        await expireOfferByTimeout(db, offerRef);
+        return res.status(400).json({ error: "Bu teklifin yanıt süresi dolduğu için kapandı." });
+      }
 
+      // ADIM 8: karşı teklif sürerken domain, karşı teklif sahibi alıcıya AYRILIR (başkası liste fiyatıyla kapıp götüremesin).
+      // Başka bir alıcı için aktif bir rezervasyon/ödeme süreci varsa karşı teklif şimdilik verilemez.
+      const counterNow = Date.now();
+      const counterDomainRef = db.collection('domains').doc(offer.domainName);
+      const counterDomainSnap = await counterDomainRef.get();
+      if (!counterDomainSnap.exists || counterDomainSnap.data().sold === true)
+        return res.status(400).json({ error: "Domain artık müsait değil" });
+      const cdd = counterDomainSnap.data();
+      if (cdd.reservedFor && cdd.reservedUntil && cdd.reservedUntil > counterNow && cdd.reservedFor !== offer.buyerUsername)
+        return res.status(409).json({ error: "Bu domain şu anda başka bir alıcı için ayrılmış (pazarlık veya ödeme süreci sürüyor). Süre dolunca ya da o süreç bitince karşı teklif verebilirsiniz.", reserved: true });
+      const counterExpiresAt = counterNow + OFFER_COUNTER_TTL_MS;
+      const counterHours = Math.round(OFFER_COUNTER_TTL_MS / 3600000);
       await offerRef.set({
         status: 'countered',
         counterPrice: priceNum,
         counterMessage: counterMessage ? String(counterMessage).trim().slice(0, 300) : null,
-        counteredAt: Date.now()
+        counteredAt: counterNow,
+        expiresAt: counterExpiresAt
       }, { merge: true });
+      if (cdd.auctionActive !== true && cdd.auctionWinPending !== true) {
+        await counterDomainRef.set({ reservedFor: offer.buyerUsername, reservedUntil: counterExpiresAt,
+          reservationType: 'counter', reservedOfferId: offerId, reservationWarnedFor: FieldValue.delete() }, { merge: true });
+      }
 
       await sendNotification(offer.buyerUsername, { en: { title: '🔄 You Received a Counter Offer',
-        body: `For "${offer.domainName}" the seller made a counter offer of ${priceNum} Pi (your offer: ${offer.offerPrice} Pi).` },
+        body: `For "${offer.domainName}" the seller made a counter offer of ${priceNum} Pi (your offer: ${offer.offerPrice} Pi). It is valid for ${counterHours} hours and the domain is held for you meanwhile.` },
         type: 'offer_countered',
         role: 'buyer',
         title: '🔄 Karşı Teklif Aldınız',
-        body: `"${offer.domainName}" için satıcı ${priceNum} Pi karşı teklif sundu (sizin teklifiniz: ${offer.offerPrice} Pi).`,
+        body: `"${offer.domainName}" için satıcı ${priceNum} Pi karşı teklif sundu (sizin teklifiniz: ${offer.offerPrice} Pi). Teklif ${counterHours} saat geçerli; bu sürede domain yalnızca sizin için ayrıldı.`,
         domainName: offer.domainName
       });
       await logAdminAction(realUsername, 'counter_offer', `${offer.domainName}: @${offer.buyerUsername}'in ${offer.offerPrice} Pi teklifine ${priceNum} Pi karşı teklif verildi`);
@@ -7889,6 +8102,10 @@ async function handlerImpl(req, res) {
       const offer = offerSnap.data();
       if (offer.buyerUsername !== realUsername) return res.status(403).json({ error: "Bu teklif size ait değil" });
       if (offer.status !== 'countered') return res.status(400).json({ error: "Bu teklif için bekleyen bir karşı teklif yok" });
+      if (offer.expiresAt && offer.expiresAt <= Date.now()) {
+        await expireOfferByTimeout(db, offerRef);
+        return res.status(400).json({ error: "Bu karşı teklifin süresi dolduğu için kapandı. Dilerseniz yeni bir teklif verebilirsiniz." });
+      }
 
       if (accept) {
         const domainRef = db.collection('domains').doc(offer.domainName);
@@ -7900,7 +8117,7 @@ async function handlerImpl(req, res) {
 
         const reservedUntil = Date.now() + OFFER_RESERVATION_MS;
         const preNegotiationPrice = domainSnap.data().price;
-        await domainRef.set({ price: offer.counterPrice, reservedFor: realUsername, reservedUntil, preNegotiationPrice }, { merge: true });
+        await domainRef.set({ price: offer.counterPrice, reservationType: FieldValue.delete(), reservedOfferId: FieldValue.delete(), reservedFor: realUsername, reservedUntil, preNegotiationPrice }, { merge: true });
         await offerRef.set({ status: 'accepted', respondedAt: Date.now() }, { merge: true });
 
         // FIX: aynı composite-index riski burada da vardı, aynı şekilde
@@ -7935,6 +8152,7 @@ async function handlerImpl(req, res) {
         });
       } else {
         await offerRef.set({ status: 'rejected', respondedAt: Date.now() }, { merge: true });
+        await releaseCounterReservation(db, offer.domainName, realUsername); // Adım 8: pazarlık bitti, domain herkese açık
         await sendNotification(offer.sellerUsername || ADMIN_USERNAME, { en: { title: '❌ Your Counter Offer Was Rejected',
           body: `Your ${offer.counterPrice} Pi counter offer for "${offer.domainName}" was rejected by @${realUsername}.` },
           type: 'counter_offer_rejected',
@@ -9796,8 +10014,9 @@ async function handlerImpl(req, res) {
             // gösterilir; satıcısı yoksa (sistem domaini) zaten beklemeye
             // gerek olmadığından direkt kesin "SATILDI" gösterilir.
             payoutStatus: payoutStatusForDomain,
-            reservedFor: FieldValue.delete(), reservedUntil: FieldValue.delete(),
-            ...AUCTION_WIN_CLEAR_FIELDS()
+            reservedFor: FieldValue.delete(), reservationType: FieldValue.delete(), reservedOfferId: FieldValue.delete(), reservedUntil: FieldValue.delete(),
+            ...AUCTION_WIN_CLEAR_FIELDS(),
+            ...ESCROW_STALE_CLEAR_FIELDS() // Adım 8: önceki satışın onay/itiraz/puan bayrakları yeni satışa taşınmasın
           }, { merge: true });
           // Bu ödeme artık "kullanıldı": aynı paymentId ile ikinci bir tamamlama reddedilecek.
           tx.set(usedPayRef, { domainName, username, txid: txid || null, amount: Number(paymentDetails.amount), at: Date.now() });
@@ -9957,6 +10176,7 @@ async function handlerImpl(req, res) {
             commissionRate: PLATFORM_COMMISSION_RATE,
             payoutAmount: sellerUsername ? calculatePayoutAmount(realPrice) : null
           });
+          await closeOffersOnSale(db, domainName, username); // Adım 8: diğer açık teklifleri kapat + bildir
 
           const today = new Date().toISOString().split('T')[0];
           await db.collection('daily_stats').doc(today).set({
