@@ -1708,6 +1708,72 @@
 }
 
 </style>
+<style id="detail-card-polish">
+/* ═══ Domain detay kartı cilası (Adım 7) ═══════════════════════════════════════════════════════
+   YALNIZCA görünümü iyileştirir: kartın HTML'ine/JS'ine, buton davranışlarına dokunmaz.
+   Geri almak için bu <style id="detail-card-polish"> bloğunu ve modaldaki .detail-close-wrap
+   öğesini silmeniz yeterlidir. */
+#domain-detail-modal{backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px);}
+#domain-detail-modal .modal-content{
+  max-width:420px;border-radius:22px;padding:0 14px 14px;
+  border:1px solid rgba(129,140,248,.5) !important;
+  background:linear-gradient(180deg,var(--card) 0%,#172033 100%);
+  box-shadow:0 24px 64px rgba(0,0,0,.65),0 0 0 1px rgba(99,102,241,.12);
+  scrollbar-width:thin;
+}
+/* Üstte yapışık kapat düğmesi: uzun kartta en alta inmeden kapatılabilsin. Yükseklik 0 → içeriği itmez. */
+#domain-detail-modal .detail-close-wrap{position:sticky;top:0;height:0;z-index:6;display:flex;justify-content:flex-end;overflow:visible;}
+#domain-detail-modal .detail-close-x{
+  margin:10px -2px 0 0;width:38px;height:38px;border-radius:50%;cursor:pointer;
+  background:rgba(15,23,42,.82);color:#e2e8f0;border:1px solid rgba(255,255,255,.18);
+  font-size:1.05em;line-height:1;display:flex;align-items:center;justify-content:center;padding:0;
+  box-shadow:0 4px 14px rgba(0,0,0,.45);
+}
+#domain-detail-modal .detail-close-x:active{transform:scale(.92);}
+#domain-detail-modal #detail-modal-img{
+  height:118px;max-height:118px;margin:12px 0 8px;border-radius:16px;
+  box-sizing:border-box;padding:6px;border:1px solid rgba(148,163,184,.18);
+  background:linear-gradient(135deg,#3b4a63,#27344a);
+}
+#domain-detail-modal #detail-modal-name{
+  font-size:1.3em !important;letter-spacing:.2px;margin:2px 0 8px !important;word-break:break-word;line-height:1.2;
+}
+#domain-detail-modal #detail-modal-fields{
+  background:rgba(15,23,42,.7) !important;border:1px solid rgba(148,163,184,.16);
+  border-radius:14px !important;padding:0 12px !important;gap:0 !important;margin-bottom:8px !important;font-size:.82em !important;
+}
+#domain-detail-modal #detail-modal-fields > div{padding:6px 0;border-bottom:1px solid rgba(148,163,184,.12);}
+#domain-detail-modal #detail-modal-fields > div:last-child{border-bottom:none;}
+#domain-detail-modal #detail-modal-fields > div > span:first-child{min-width:84px !important;font-weight:600 !important;}
+/* 1. satır "Domain Adı" başlıkla aynı bilgiyi tekrar ediyor → gizlenir (başlıkta zaten görünür) */
+#domain-detail-modal #detail-modal-fields > div:first-child{display:none !important;}
+/* Fiyat satırı: öne çıkar */
+#domain-detail-modal #detail-modal-fields > div:nth-child(3){align-items:center;}
+#domain-detail-modal #detail-modal-fields > div:nth-child(3) > span:last-child{font-size:1.35em;letter-spacing:.3px;}
+/* Durum satırı: renk korunur (inline), hap şeklinde rozet */
+#domain-detail-modal #detail-modal-fields > div:nth-child(4) > span:last-child{
+  display:inline-block;padding:2px 11px;border-radius:999px;font-size:.92em;
+  background:rgba(255,255,255,.06);border:1px solid currentColor;
+}
+#domain-detail-modal #detail-extras button{min-height:40px;border-radius:12px !important;margin:4px 0 !important;}
+#domain-detail-modal #detail-extras button.__unused,
+#domain-detail-modal #detail-extras .detail-extra-btn{min-height:40px;border-radius:12px !important;margin:4px 0 !important;}
+/* Düğmeler: parmakla rahat basılsın (≥46px), tutarlı yuvarlaklık */
+#domain-detail-modal #detail-modal-action .detail-icon-row{margin:2px 0 8px;gap:8px;}
+#domain-detail-modal #detail-modal-action .detail-icon-btn{width:42px;height:42px;border-radius:12px;}
+#domain-detail-modal #detail-modal-action .btn-buy,
+#domain-detail-modal #detail-modal-action > .pi-btn{
+  min-height:50px;border-radius:14px !important;font-size:1.05em !important;font-weight:900;letter-spacing:.5px;
+  background:linear-gradient(135deg,#6366f1,#4f46e5) !important;color:#fff;border:none;
+  box-shadow:0 10px 26px rgba(99,102,241,.4);
+}
+#domain-detail-modal #detail-modal-action .btn-buy:active{transform:translateY(1px);box-shadow:0 5px 14px rgba(99,102,241,.35);}
+#domain-detail-modal #detail-modal-action > div[style*="grid"] > button{min-height:44px;border-radius:12px !important;font-size:.9em !important;}
+#domain-detail-modal #detail-modal-action .detail-more-toggle{min-height:44px;border-radius:14px;}
+#domain-detail-modal #detail-modal-action .detail-more-body > *{border-radius:12px !important;min-height:42px;}
+@media (min-width:600px){ #domain-detail-modal .modal-content{max-width:460px;} }
+@media (prefers-reduced-motion:reduce){ #domain-detail-modal .detail-close-x:active{transform:none;} }
+</style>
 </head>
 <body style="margin:0;padding:0;width:100%;min-width:320px;overflow-x:hidden;position:relative;box-sizing:border-box;">
 <div id="boot-splash" role="status" aria-live="polite"><div class="bs-ring"></div><div class="bs-title">Web3 Domain Gateway</div><div class="bs-sub" id="boot-splash-sub">Yükleniyor…</div></div>
@@ -2107,6 +2173,7 @@
 
 <div id="domain-detail-modal" class="modal-overlay" style="display:none;">
     <div class="modal-content" style="border-color:#818cf8;text-align:left;">
+        <div class="detail-close-wrap"><button type="button" class="detail-close-x" aria-label="Kapat / Close" onclick="document.getElementById('domain-detail-modal').style.display='none'">✕</button></div>
         <img id="detail-modal-img" class="detail-img" src="" alt="">
         <h2 id="detail-modal-name" style="color:#f1f5f9;margin:8px 0 10px 0;font-size:1.1em;font-weight:900;"></h2>
         <div id="detail-modal-fields" style="display:flex;flex-direction:column;gap:8px;font-size:0.78em;color:#cbd5e1;line-height:1.4;margin-bottom:12px;background:#0f172a;padding:12px;border-radius:10px;"></div>
@@ -4678,7 +4745,7 @@ const i18n = {
     myAuctionWon:"✅ Kazandınız",myAuctionLost:"❌ Kaybettiniz",myAuctionCancelled:"🚫 İptal Edildi",
     withdrawOfferBtn:"Geri Çek",acceptOfferBtn:"Kabul Et",rejectOfferBtn:"Reddet",
     offerStatusPending:"Bekliyor",offerStatusAccepted:"Kabul Edildi",offerStatusRejected:"Reddedildi",
-    offerStatusWithdrawn:"Geri Çekildi",offerStatusExpired:"Geçersiz Oldu",offerStatusUnpaid:"Satın Alınmadı",offerStatusCountered:"Karşı Teklif Verildi",
+    offerStatusWithdrawn:"Geri Çekildi",offerStatusExpired:"Geçersiz Oldu",offerStatusUnpaid:"Satın Alınmadı",offerStatusCountered:"Karşı Teklif Verildi",offerStatusTimeout:"⌛ Süresi Doldu",offerStatusSoldElsewhere:"🔒 Domain Satıldı",offerValidityLabel:"Geçerlilik",offerValidityLeft:(x)=>`${x} kaldı`,offerValidityEnded:"Süre doldu",resCounterForYou:(x)=>`🤝 Satıcı size karşı teklif verdi — ${x} içinde yanıtlayın. Domain sizin için ayrıldı.`,resCounterForOther:(x)=>`🤝 Bu domain şu anda bir alıcıyla pazarlıkta — ${x} içinde sonuçlanmazsa herkese açılır.`,
     counterOfferBtn:"Karşı Teklif",counterOfferPricePrompt:"Karşı teklif tutarını Pi olarak girin:",
     counterOfferMessagePrompt:"İsteğe bağlı bir not ekleyin (boş bırakabilirsiniz):",
     counterOfferSentSuccess:"Karşı teklifiniz gönderildi.",counterOfferReceivedLabel:"Karşı Teklif",
@@ -5739,7 +5806,7 @@ const i18n = {
     myAuctionWon:"✅ You Won",myAuctionLost:"❌ You Lost",myAuctionCancelled:"🚫 Cancelled",
     withdrawOfferBtn:"Withdraw",acceptOfferBtn:"Accept",rejectOfferBtn:"Reject",
     offerStatusPending:"Pending",offerStatusAccepted:"Accepted",offerStatusRejected:"Rejected",
-    offerStatusWithdrawn:"Withdrawn",offerStatusExpired:"Expired",offerStatusUnpaid:"Not Purchased",offerStatusCountered:"Counter-Offered",
+    offerStatusWithdrawn:"Withdrawn",offerStatusExpired:"Expired",offerStatusUnpaid:"Not Purchased",offerStatusCountered:"Counter-Offered",offerStatusTimeout:"⌛ Expired",offerStatusSoldElsewhere:"🔒 Domain Sold",offerValidityLabel:"Valid for",offerValidityLeft:(x)=>`${x} left`,offerValidityEnded:"Expired",resCounterForYou:(x)=>`🤝 The seller sent you a counter offer — respond within ${x}. The domain is held for you.`,resCounterForOther:(x)=>`🤝 This domain is currently being negotiated with a buyer — it reopens to everyone within ${x} if not concluded.`,
     counterOfferBtn:"Counter-Offer",counterOfferPricePrompt:"Enter your counter-offer amount in Pi:",
     counterOfferMessagePrompt:"Add an optional note (you can leave this blank):",
     counterOfferSentSuccess:"Your counter-offer has been sent.",counterOfferReceivedLabel:"Counter-Offer",
@@ -7594,9 +7661,9 @@ function renderNotifBadgeAndList(){
     // YENİ: 'rating_reminder' (satış sonrası değerlendirme hatırlatıcısı)
     // de artık ilgili sekme rozetine dahil — alıcı için Alımlarım,
     // satıcı için Gelirim sekmesinde küçük bir rozet olarak görünür.
-    const relevantTypes=['transfer_confirmation_reminder','dispute_response','offer_accepted','offer_rejected','offer_countered','rating_reminder','offer_unpaid_expired','offer_reservation_reminder'];
+    const relevantTypes=['transfer_confirmation_reminder','dispute_response','offer_accepted','offer_rejected','offer_countered','rating_reminder','offer_unpaid_expired','offer_reservation_reminder','offer_timeout','offer_closed_sold'];
     const relevantTypesSeller=['transfer_confirmation_reminder','dispute_response','rating_reminder'];
-    const listingsRelevantTypes=['offer_received','counter_offer_accepted','counter_offer_rejected','offer_unpaid_expired_seller'];
+    const listingsRelevantTypes=['offer_received','counter_offer_accepted','counter_offer_rejected','offer_unpaid_expired_seller','offer_timeout_seller'];
     const unreadBuyer=cachedNotifications.filter(n=>!n.read&&relevantTypes.includes(n.type)&&n.role==='buyer').length;
     const unreadSeller=cachedNotifications.filter(n=>!n.read&&relevantTypesSeller.includes(n.type)&&n.role==='seller').length;
     const unreadListings=cachedNotifications.filter(n=>!n.read&&listingsRelevantTypes.includes(n.type)&&n.role==='seller').length
@@ -7618,8 +7685,8 @@ function renderNotifBadgeAndList(){
     // gösterilir. Panel gerçekten AÇILINCA kaybolur (bkz. toggleMyOffersList /
     // toggleReceivedOffersList). Böylece kullanıcı Alımlarım'ı/İlanlarım'ı
     // açtığında hangi alt bölüme yeni veri geldiği net görülür.
-    const myOffersTypes=['offer_accepted','offer_rejected','offer_countered','offer_unpaid_expired','offer_reservation_reminder'];
-    const receivedOffersTypes=['offer_received','counter_offer_accepted','counter_offer_rejected','offer_unpaid_expired_seller'];
+    const myOffersTypes=['offer_accepted','offer_rejected','offer_countered','offer_unpaid_expired','offer_reservation_reminder','offer_timeout','offer_closed_sold'];
+    const receivedOffersTypes=['offer_received','counter_offer_accepted','counter_offer_rejected','offer_unpaid_expired_seller','offer_timeout_seller'];
     const myAuctionsTypes=['auction_outbid','auction_won','auction_win_reminder','auction_win_expired','auction_reserve_not_met','auction_fav_started','auction_fav_ending'];
     const unreadMyOffers=cachedNotifications.filter(n=>!n.read&&myOffersTypes.includes(n.type)&&n.role==='buyer').length;
     const unreadReceivedOffers=cachedNotifications.filter(n=>!n.read&&receivedOffersTypes.includes(n.type)&&n.role==='seller').length;
@@ -8220,7 +8287,7 @@ window.openDomainDetail=function(domainName){
             // SİZİN İÇİN değilse, buton yerine doğrudan engelleyici bir
             // uyarı gösteriliyor — ödeme ekranı hiç açılmıyor.
             const minutesLeft=Math.max(1,Math.ceil((data.reservedUntil-Date.now())/60000));
-            primaryHtml+=`<div style="width:100%;padding:10px;font-size:0.8em;border-radius:9px;background:rgba(239,68,68,0.12);border:1.5px solid #ef4444;color:#fca5a5;text-align:center;font-weight:800;">${t('reservedBlocksBuyMsg')(minutesLeft)}</div>`;
+            primaryHtml+=`<div style="width:100%;padding:10px;font-size:0.8em;border-radius:9px;background:rgba(239,68,68,0.12);border:1.5px solid #ef4444;color:#fca5a5;text-align:center;font-weight:800;">${data.reservationType==='counter' ? resMsgOther(data,minutesLeft) : t('reservedBlocksBuyMsg')(minutesLeft)}</div>`;
         } else {
             primaryHtml+=`<button class="btn-buy" style="width:100%;padding:10px;font-size:0.9em;" onclick="document.getElementById('domain-detail-modal').style.display='none';window.openPreBuyModal('${domainName}',${data.price});">${t('buyNow')}</button>`;
         }
@@ -8250,7 +8317,7 @@ window.openDomainDetail=function(domainName){
         // TEKRAR aynı şeyi söylememek için bu blok artık sadece rezervasyon
         // SİZİN OLDUĞUNDA (ödemenizi tamamlamanız gerektiğinde) çalışıyor.
         const minutesLeft=Math.max(1,Math.ceil((data.reservedUntil-Date.now())/60000));
-        primaryHtml+=`<div style="margin-top:8px;padding:7px 10px;border-radius:8px;font-size:0.76em;font-weight:800;text-align:center;background:rgba(16,185,129,0.15);border:1px solid #10b981;color:#6ee7b7;">${t('reservedForYouMsg')(minutesLeft)}</div>`;
+        primaryHtml+=`<div style="margin-top:8px;padding:7px 10px;border-radius:8px;font-size:0.76em;font-weight:800;text-align:center;background:rgba(16,185,129,0.15);border:1px solid #10b981;color:#6ee7b7;">${resMsgYou(data,minutesLeft)}</div>`;
     }
     // DÜZELTME: Bu kontrol önceden HAM data.auctionActive alanına bakıyordu —
     // süresi dolmuş+teklifsiz bir açık artırma backend'de cron çalışana kadar
@@ -10769,7 +10836,7 @@ window.toggleMyOffersList=function(){
     myOffersExpanded=!myOffersExpanded;
     if(myOffersExpanded){
         _myOffersOpenedAt=now;
-        markRoleNotificationsRead('buyer',['offer_accepted','offer_rejected','offer_countered','offer_unpaid_expired','offer_reservation_reminder']);
+        markRoleNotificationsRead('buyer',['offer_accepted','offer_rejected','offer_countered','offer_unpaid_expired','offer_reservation_reminder','offer_timeout','offer_closed_sold']);
     }
     window.loadMyOffers();
 };
@@ -10815,6 +10882,7 @@ function buildOfferDetailTable(o, statusLabel, statusColor){
     if(o.counterPrice!=null) rows.push([t('offerDetailCounterPrice'), `<span style="color:#a5b4fc;font-weight:800;">${o.counterPrice} Pi</span>`]);
     if(o.message) rows.push([t('offerDetailBuyerNote'), escapeHtml(o.message)]);
     if(o.counterMessage) rows.push([t('offerDetailSellerNote'), escapeHtml(o.counterMessage)]);
+    { const vt=offerValidityText(o); if(vt) rows.push([t('offerValidityLabel'), `<span style="color:#fbbf24;font-weight:800;">⏳ ${vt}</span>`]); }
     let resolved=false;
     const dd=domainData[o.domainName];
     if(dd && dd.sold===true){
@@ -10868,6 +10936,41 @@ function buildOfferDetailTable(o, statusLabel, statusColor){
 // kayıt bu panele hiç girmiyor. Hata ihtimaline karşı try/catch içinde —
 // bir şey ölçülemezse EN GÜVENLİ varsayım "aktif değil" (false) kabul
 // edilir, "belki aktiftir" diye göstermeye çalışıp yine çökmesin.
+// ── Adım 8: teklif geçerliliği + pazarlık (karşı teklif rezervasyonu) yardımcıları ──
+function fmtDuration(ms){
+    if(!(ms>0)) return '0 '+AWL('dk','min');
+    const m=Math.ceil(ms/60000);
+    if(m<60) return m+' '+AWL('dk','min');
+    const hh=Math.floor(m/60), mm=m%60;
+    if(hh<48) return hh+' '+AWL('sa','h')+(mm?' '+mm+' '+AWL('dk','min'):'');
+    return Math.floor(hh/24)+' '+AWL('gün','d')+' '+(hh%24)+' '+AWL('sa','h');
+}
+// Bekleyen/karşı teklifli teklifin kalan geçerlilik süresi (yoksa boş metin)
+function offerValidityText(o){
+    try{
+        if(!o || (o.status!=='pending' && o.status!=='countered') || !o.expiresAt) return '';
+        const left=o.expiresAt-Date.now();
+        return left>0 ? t('offerValidityLeft')(fmtDuration(left)) : t('offerValidityEnded');
+    }catch(e){ return ''; }
+}
+// 'expired' durumunun sebebine göre doğru etiket anahtarı (zaman aşımı / satıldı)
+function offerStatusKey(o){
+    if(o && o.status==='expired'){
+        if(o.expiredReason==='timeout') return 'expired_timeout';
+        if(o.expiredReason==='sold' || o.expiredReason==='purchased') return 'expired_sold';
+    }
+    return o && o.status;
+}
+// Son 3 gün içinde zaman aşımıyla/satışla kapanan teklifler "Tekliflerim"de görünsün (alıcı cevabı kaçırmasın)
+function isRecentClosedOffer(o){
+    try{
+        if(!o || o.status!=='expired') return false;
+        if(o.expiredReason!=='timeout' && o.expiredReason!=='sold') return false;
+        return (o.expiredAt||o.respondedAt||0) > Date.now()-3*86400000;
+    }catch(e){ return false; }
+}
+function resMsgYou(data, m){ return data && data.reservationType==='counter' ? t('resCounterForYou')(fmtDuration(Math.max(1,m)*60000)) : t('reservedForYouMsg')(m); }
+function resMsgOther(data, m){ return data && data.reservationType==='counter' ? t('resCounterForOther')(fmtDuration(Math.max(1,m)*60000)) : t('reservedForOtherMsg')(m); }
 function isOfferStillActive(o){
     try{
         if(!o || o.status==='rejected' || o.status==='withdrawn' || o.status==='expired' || o.status==='unpaid') return false;
@@ -10902,7 +11005,7 @@ window.loadMyOffers=async function(silent){
         if(box.style.display==='none') return;
         // YENİ: Sadece hâlâ aktif teklifleri sakla (bkz. isOfferStillActive
         // yorumu) — sonuçlanmış olanlar bu canlı panelden çıkarıldı.
-        lastMyOffersData=(result.offers||[]).filter(isOfferStillActive);
+        lastMyOffersData=(result.offers||[]).filter(o=>isOfferStillActive(o)||isRecentClosedOffer(o));
         // YENİ (teşhis amaçlı güvenlik ağı): renderMyOffersBox içinde bir
         // hata olursa (ör. teklif verisinde beklenmeyen bir alan), önceki
         // haliyle bu hata SESSİZCE yutulup kutu "takılı" kalıyordu — dışarıdan
@@ -11062,7 +11165,7 @@ function renderMyOffersBox(forceRender){
     if(!box) return;
     if(!forceRender && (!myOffersExpanded || box.style.display==='none')) return;
     if(!lastMyOffersData.length){ box.innerHTML=`${emptyState('💬',t('noOffersYet'))}`; return; }
-    const statusMap={pending:{label:t('offerStatusPending'),color:'#fbbf24'},accepted:{label:t('offerStatusAccepted'),color:'#34d399'},rejected:{label:t('offerStatusRejected'),color:'#f87171'},withdrawn:{label:t('offerStatusWithdrawn'),color:'#94a3b8'},expired:{label:t('offerStatusExpired'),color:'#94a3b8'},unpaid:{label:t('offerStatusUnpaid'),color:'#fb923c'},countered:{label:t('offerStatusCountered'),color:'#818cf8'}};
+    const statusMap={pending:{label:t('offerStatusPending'),color:'#fbbf24'},accepted:{label:t('offerStatusAccepted'),color:'#34d399'},rejected:{label:t('offerStatusRejected'),color:'#f87171'},withdrawn:{label:t('offerStatusWithdrawn'),color:'#94a3b8'},expired:{label:t('offerStatusExpired'),color:'#94a3b8'},unpaid:{label:t('offerStatusUnpaid'),color:'#fb923c'},countered:{label:t('offerStatusCountered'),color:'#818cf8'},expired_timeout:{label:t('offerStatusTimeout'),color:'#f59e0b'},expired_sold:{label:t('offerStatusSoldElsewhere'),color:'#94a3b8'}};
     // FIX (KÖK NEDEN — GERÇEK HATA BURADAYDI): Aşağıdaki .map() içindeki
     // her teklif kendi try/catch'iyle render ediliyor, hata olursa o kayıt
     // için '' (boş string) döndürüyordu. Tek teklifiniz olduğu için, O
@@ -11081,7 +11184,7 @@ function renderMyOffersBox(forceRender){
         // çiziliyor — biri patlarsa sadece o kayıt atlanır, geri kalan
         // teklifler normal şekilde görünmeye devam eder.
         try{
-            const sv=statusMap[o.status]||statusMap.pending;
+            const sv=statusMap[offerStatusKey(o)]||statusMap.pending;
             const {html:detailHtml, resolved}=buildOfferDetailTable(o, sv.label, sv.color);
             return `<div style="background:#0f172a;border-radius:9px;padding:10px;margin-bottom:8px;border-left:3px solid ${sv.color};">
                 ${detailHtml}
@@ -11119,7 +11222,7 @@ window.toggleReceivedOffersList=function(){
     receivedOffersExpanded=!receivedOffersExpanded;
     if(receivedOffersExpanded){
         _receivedOffersOpenedAt=now;
-        markRoleNotificationsRead('seller',['offer_received','counter_offer_accepted','counter_offer_rejected','offer_unpaid_expired_seller']);
+        markRoleNotificationsRead('seller',['offer_received','counter_offer_accepted','counter_offer_rejected','offer_unpaid_expired_seller','offer_timeout_seller']);
     }
     window.loadReceivedOffers();
 };
@@ -11159,7 +11262,7 @@ function renderReceivedOffersBox(forceRender){
     const statusMap={pending:{label:t('offerStatusPending'),color:'#fbbf24'},countered:{label:t('offerStatusCountered'),color:'#818cf8'},accepted:{label:t('offerStatusAccepted'),color:'#34d399'}};
     const renderedHtml=lastReceivedOffersData.map(o=>{
       try{
-        const sv=statusMap[o.status]||statusMap.pending;
+        const sv=statusMap[offerStatusKey(o)]||statusMap.pending;
         const {html:detailHtml, resolved}=buildOfferDetailTable(o, sv.label, sv.color);
         // Aksiyon butonları (kabul/karşı teklif/reddet) SADECE domain hâlâ
         // satılmamışsa VE teklif gerçekten bekliyorsa gösterilir. "resolved"
@@ -13439,7 +13542,7 @@ function render(){
                 const minutesLeft=Math.max(1,Math.ceil((data.reservedUntil-Date.now())/60000));
                 const resBadge=document.createElement('div');
                 resBadge.style.cssText=`margin-top:4px;padding:5px 8px;border-radius:6px;font-size:0.72em;font-weight:800;text-align:center;${isMine?'background:rgba(16,185,129,0.15);border:1px solid #10b981;color:#6ee7b7;':'background:rgba(148,163,184,0.12);border:1px solid #64748b;color:#94a3b8;'}`;
-                resBadge.textContent=isMine ? t('reservedForYouMsg')(minutesLeft) : t('reservedForOtherMsg')(minutesLeft);
+                resBadge.textContent=isMine ? resMsgYou(data,minutesLeft) : resMsgOther(data,minutesLeft);
                 card.appendChild(resBadge);
             } else if(data.reservedFor && data.reservedUntil && data.reservedUntil<=Date.now()){
                 // Rezervasyon süresi dolmuş ama Firestore'da hâlâ eski
