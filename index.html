@@ -688,6 +688,9 @@
         .filter-chip{flex-shrink:0;background:#2a3a52;border:1.5px solid #3f5575;color:#cbd5e1;padding:3px 8px;border-radius:12px;font-size:0.74em;font-weight:700;cursor:pointer;transition:all 0.15s;}
         .filter-chip.active{background:linear-gradient(135deg,#6366f1,#818cf8);border-color:#818cf8;color:#fff;box-shadow:0 0 10px rgba(99,102,241,0.4);}
         .sell-form-input{background:#0f172a;color:#fff;border:1.5px solid #f59e0b;padding:5px;border-radius:6px;font-size:0.8em;width:100%;box-sizing:border-box;outline:none;margin-bottom:4px;}
+        /* Tıklayınca (odaklanınca) ipucu metni (örn. ornek.pi, 100) hemen kaybolur ve yanıp sönen imleç görünür; alan boşalınca ipucu geri gelir. */
+        .sell-form-input{caret-color:#fbbf24;}
+        .sell-form-input:focus::placeholder{color:transparent !important;opacity:0 !important;}
         .sell-form-input.field-error, .img-upload-area.field-error{border-color:#ef4444 !important;box-shadow:0 0 0 2px rgba(239,68,68,0.35);}
         #trademark-submit-btn:disabled{opacity:0.45;cursor:not-allowed;}
         #trademark-submit-btn:not(:disabled){opacity:1;cursor:pointer;}
