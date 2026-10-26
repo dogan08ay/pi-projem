@@ -8385,6 +8385,7 @@ window.openDomainDetail=function(domainName){
     const _prevHadFocus=!!_prevBidEl && document.activeElement===_prevBidEl;
     window._lastDetailRenderDomain=domainName;
     actionEl.innerHTML = iconRowBlock + winBannerHtml + buildMyOfferBlockHtml(domainName) + primaryHtml + secondaryGridHtml;
+    try{ window.placeCompareInIconRow(domainName); }catch(_e){}
     if(data.auctionActive===true||data.auctionWinPending===true){ window.loadRecentAuctionBids(domainName); }
     if(_prevBidVal){
         const nb=document.getElementById('auction-bid-input');
@@ -10623,14 +10624,31 @@ window.renderDetailExtras=function(name){
             <img src="${safeImgSrc(o.x.img||o.d.img)}" loading="lazy" decoding="async" alt="" style="width:34px;height:22px;object-fit:contain;border-radius:4px;background:#1e293b;flex:0 0 auto;" onerror="this.style.visibility='hidden'">
             <b style="flex:1;min-width:0;color:#e2e8f0;font-size:0.78em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(o.d.name)}</b>
             <span style="color:#fbbf24;font-weight:900;font-size:0.78em;white-space:nowrap;">${o.x.price} π</span></div>`).join('');
-    box.innerHTML=`<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;">
-            <button type="button" onclick="window.toggleCompare('${_cmpJs(name)}')" style="${btn}background:${inList?'rgba(167,139,250,0.22)':'rgba(167,139,250,0.10)'};border:1.5px solid #a78bfa;color:#ddd6fe;">⚖️ ${inList?AWL('Karşılaştırmadan çıkar','Remove from compare'):AWL('Karşılaştırmaya ekle','Add to compare')} (${n}/${CMP_MAX})</button>
+    box.innerHTML=`<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:${n>=2?8:0}px;">
             ${n>=2?`<button type="button" onclick="window.openCompare()" style="${btn}background:#6d28d9;border:1.5px solid #a78bfa;color:#fff;">📊 ${AWL('Karşılaştır','Compare')} (${n})</button>`:''}
         </div>
         ${sims.length?`<div class="acc-card" style="margin-bottom:8px;">
             <button type="button" onclick="window.toggleSimilar(this)" aria-expanded="false" style="width:100%;display:flex;align-items:center;justify-content:center;gap:4px;background:rgba(56,189,248,0.10);border:1px solid #38bdf8;color:#7dd3fc;font-size:0.76em;font-weight:800;padding:7px;border-radius:9px;cursor:pointer;">🔎 ${AWL('Benzer domainler','Similar domains')} (${sims.length})${_chipHtml()}</button>
             <div class="sim-list" style="display:none;flex-direction:column;gap:5px;margin-top:6px;">${simRows}</div>
         </div>`:''}`;
+    try{ window.placeCompareInIconRow(name); }catch(_e){}
+};
+// Karşılaştırmaya ekle/çıkar düğmesi, kompakt biçimde 🔗 (paylaş) ve ☆ (favori) ile AYNI satırda gösterilir.
+// İkon satırı (#detail-modal-action) renderDetailExtras'tan SONRA çizildiği için bu fonksiyon hem burada hem
+// aksiyon alanı çizildikten sonra çağrılır; tekrar çağrılırsa eski düğmeyi silip yenisini koyar (çift olmaz).
+window.placeCompareInIconRow=function(name){
+    const row=document.querySelector('#detail-modal-action .detail-icon-row');
+    if(!row || !name) return;
+    const old=row.querySelector('.detail-cmp-btn'); if(old) old.remove();
+    _cmpPrune();
+    const inList=_cmp.includes(name), n=_cmp.length;
+    const label=(inList?AWL('Karşılaştırmadan çıkar','Remove from compare'):AWL('Karşılaştırmaya ekle','Add to compare'))+' ('+n+'/'+CMP_MAX+')';
+    const btn=document.createElement('button');
+    btn.type='button'; btn.className='detail-icon-btn detail-cmp-btn'; btn.title=label; btn.setAttribute('aria-label',label);
+    btn.style.cssText='flex:1 1 0;width:auto;min-width:0;padding:0 8px;display:block;line-height:38px;text-align:center;font-size:0.74em;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;border-color:#a78bfa;color:#ddd6fe;background:'+(inList?'rgba(167,139,250,0.30)':'rgba(167,139,250,0.12)')+';';
+    btn.textContent='⚖️ '+label;
+    btn.addEventListener('click',function(){ window.toggleCompare(name); });
+    row.insertBefore(btn,row.firstChild);
 };
 window.toggleSimilar=function(btn){
     const card=btn.closest('.acc-card'); if(!card) return;
