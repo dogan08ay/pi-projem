@@ -1551,6 +1551,7 @@ async function recordAdminKnownIp(db, ip) {
   await ref.set({ ip, lastSeenAt: Date.now(), seenCount: FieldValue.increment(1) }, { merge: true });
   return isNew;
 }
+const _knownIpSeen = new Map(); // Adım 11: IP → son kontrol zamanı (örnek içi)
 async function verifyAdmin(accessToken, req) {
   if (!accessToken) return false;
   const cached = adminCache.get(accessToken);
@@ -1578,8 +1579,22 @@ async function verifyAdmin(accessToken, req) {
         try {
           const ip = getIpFromReq(req);
           if (ip === 'unknown') return;
+          // GÜVENİLİRLİK (Adım 11): sayfa açılışında ~25 paralel istek aynı admin IP'si için ~25 Firestore işlemi
+          // başlatıyordu; bazıları takılıp 99 sn sonra DEADLINE_EXCEEDED hatası veriyordu. Artık aynı örnekte aynı IP
+          // 6 saatte bir kontrol edilir ve her kontrol en çok 15 sn bekler. Yeni IP uyarısı ilk istekte yine gelir.
+          const seenAt = _knownIpSeen.get(ip);
+          if (seenAt && Date.now() - seenAt < 6 * 3600 * 1000) return;
+          if (_knownIpSeen.size > 200) _knownIpSeen.clear();
+          _knownIpSeen.set(ip, Date.now());
           const db = getDb();
-          const isNewIp = await recordAdminKnownIp(db, ip);
+          let isNewIp;
+          let _kt;
+          try {
+            isNewIp = await Promise.race([
+              recordAdminKnownIp(db, ip),
+              new Promise((_, rej) => { _kt = setTimeout(() => rej(new Error('zaman aşımı (15 sn)')), 15000); })
+            ]);
+          } catch (te) { _knownIpSeen.delete(ip); throw te; } finally { clearTimeout(_kt); }
           if (isNewIp && shouldSendAdminSecurityAlert(`known_ip_alert:${ip}`)) {
             await sendTG(TG_CHAT_ID, `🛡️ *Yeni IP'den Admin Girişi*\n\nHesap: @${ADMIN_USERNAME}\nIP: \`${ip}\`\n\nBu siz değilseniz, Pi Developer Portal üzerinden erişim token'larınızı gözden geçirin.`);
           }
