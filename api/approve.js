@@ -1599,7 +1599,13 @@ async function verifyAdmin(accessToken, req) {
             await sendTG(TG_CHAT_ID, `🛡️ *Yeni IP'den Admin Girişi*\n\nHesap: @${ADMIN_USERNAME}\nIP: \`${ip}\`\n\nBu siz değilseniz, Pi Developer Portal üzerinden erişim token'larınızı gözden geçirin.`);
           }
         } catch (e) {
-          console.error('[AdminSecurity] known-IP kontrolü başarısız:', e.message);
+          // Firestore ara sıra yanıt vermiyor (zaman aşımı/DEADLINE_EXCEEDED). Bu kontrol yalnızca "yeni IP" uyarısı içindir,
+          // arka planda çalışır ve siteyi etkilemez; bu yüzden geçici yavaşlıklar hata değil UYARI olarak yazılır.
+          if (/zaman aşımı|DEADLINE_EXCEEDED|UNAVAILABLE/i.test(String(e && e.message))) {
+            console.warn('[AdminSecurity] known-IP kontrolü atlandı (Firestore geçici yavaşlık, site etkilenmedi):', e.message);
+          } else {
+            console.error('[AdminSecurity] known-IP kontrolü başarısız:', e.message);
+          }
         }
       })();
     } else if (userDto && userDto.username) {
@@ -7921,6 +7927,15 @@ async function handlerImpl(req, res) {
         const snap = await db.collection('offers').where('sellerUsername', '==', realUsername).get();
         snap.forEach(d => { const data = d.data(); if (data.status === 'pending' || data.status === 'countered' || data.status === 'accepted') offers.push({ id: d.id, ...data }); });
       }
+      // Adım 12: süre dolumu/satış nedeniyle kapanan teklifler son 3 gün listede kalır (bildirim rozeti ile liste tutarlı olsun).
+      try {
+        const closedCutoff = Date.now() - 3 * 86400000;
+        const closedSnap = await db.collection('offers').where('sellerUsername', '==', realUsername).where('status', '==', 'expired').get();
+        closedSnap.forEach(d => {
+          const x = d.data();
+          if ((x.expiredReason === 'timeout' || x.expiredReason === 'sold') && (x.expiredAt || x.respondedAt || 0) > closedCutoff) offers.push({ id: d.id, ...x });
+        });
+      } catch (ce) { console.error('[get_received_offers] kapanan teklifler okunamadı:', ce.message); }
       offers.sort((a, b) => b.createdAt - a.createdAt);
       return res.status(200).json({ success: true, offers });
     } catch (e) {
@@ -8780,6 +8795,8 @@ async function handlerImpl(req, res) {
         success: true,
         mode,
         mainnetKeysConfigured: !!(process.env.APP_SECRET_MAINNET && process.env.PI_WALLET_PRIVATE_SEED_MAINNET),
+        // Tanı: HANGİ anahtar eksik (yalnızca ad döner, değer ASLA dönmez)
+        mainnetKeysMissing: ['APP_SECRET_MAINNET', 'PI_WALLET_PRIVATE_SEED_MAINNET'].filter(k => !process.env[k]),
         testnetKeysConfigured: !!(process.env.APP_SECRET_TESTNET || process.env.APP_SECRET)
       });
     } catch (e) {
