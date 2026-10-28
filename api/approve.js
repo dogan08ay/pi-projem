@@ -99,7 +99,7 @@ export function calculatePayoutAmount(price, commissionRate = PLATFORM_COMMISSIO
 // burada throw etmiyoruz, sadece bir bayrak tutuyoruz.
 const VAPID_PUBLIC_KEY = process.env.VAPID_PUBLIC_KEY;
 const VAPID_PRIVATE_KEY = process.env.VAPID_PRIVATE_KEY;
-const VAPID_SUBJECT = process.env.VAPID_SUBJECT || 'mailto:[email protected]';
+const VAPID_SUBJECT = process.env.VAPID_SUBJECT || 'mailto:info@dofiay.com'; // Adım 14: eski varsayılan geçersiz bir yer tutucuydu; Vercel'de VAPID_SUBJECT tanımlayabilirsiniz
 const WEB_PUSH_ENABLED = !!(VAPID_PUBLIC_KEY && VAPID_PRIVATE_KEY);
 if (WEB_PUSH_ENABLED) {
   webpush.setVapidDetails(VAPID_SUBJECT, VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY);
@@ -640,21 +640,27 @@ async function cleanupClosedHistory(db, { rounds = 1, force = false, scope = 'al
       await delDocs(del); counts.auctionBids += del.length; didAny += del.length;
     } catch (e) { console.error('cleanup auction_bids hatası:', e); }
     if (doAuctions) try {
-      const ev = await db.collection('auction_events').where('at', '<', force ? now + 1 : now - AUCTION_EVENTS_RETENTION_MS).limit(500).get();
+      // Adım 14: ZORLA modunda filtre YOK → 'at' alanı eksik/sayısal olmayan kayıtlar da silinir (eskiden hiç eşleşmeyip kalıyordu).
+      const ev = await (force ? db.collection('auction_events').limit(500) : db.collection('auction_events').where('at', '<', now - AUCTION_EVENTS_RETENTION_MS).limit(500)).get();
       await delDocs(ev.docs); counts.auctionEvents += ev.docs.length; didAny += ev.docs.length;
     } catch (e) { console.error('cleanup auction_events hatası:', e); }
     if (doAuctions) try {
-      const df = await db.collection('auction_defaults').where('at', '<', force ? now + 1 : now - AUCTION_DEFAULTS_RETENTION_MS).limit(500).get();
+      const df = await (force ? db.collection('auction_defaults').limit(500) : db.collection('auction_defaults').where('at', '<', now - AUCTION_DEFAULTS_RETENTION_MS).limit(500)).get();
       await delDocs(df.docs); counts.auctionDefaults += df.docs.length; didAny += df.docs.length;
     } catch (e) { console.error('cleanup auction_defaults hatası:', e); }
     // Satışsız kapanmış açık artırmanın domain üzerindeki izi (yönetici "Açık Artırma Takip" kaydı):
     // süre dolunca ya da zorla silmede kaldırılır. Aktif / ödeme bekleyen açık artırmalara dokunulmaz.
     if (doAuctions) try {
-      const ds = await db.collection('domains').where('auctionClosedAt', '>', 0).limit(500).get();
-      const clr = ds.docs.filter(d => {
+      // Adım 14: yönetici listesi 'auctionStartedAt > 0' olan domainleri gösterir; eskiden yalnızca 'auctionClosedAt > 0' olanlar
+      // temizleniyordu → kapanış işareti hiç yazılmamış kayıtlar (hemen-al/iptal vb.) listede sonsuza dek kalıyordu.
+      const dsClosed = await db.collection('domains').where('auctionClosedAt', '>', 0).limit(500).get();
+      const dsStarted = await db.collection('domains').where('auctionStartedAt', '>', 0).limit(500).get();
+      const seenIds = new Set();
+      const clr = [...dsClosed.docs, ...dsStarted.docs].filter(d => {
+        if (seenIds.has(d.id)) return false; seenIds.add(d.id);
         const x = d.data();
         if (x.auctionActive === true || x.auctionWinPending === true) return false;
-        return force || (x.auctionClosedAt || 0) < now - AUCTION_BIDS_RETENTION_MS;
+        return force || (x.auctionClosedAt || x.auctionStartedAt || 0) < now - AUCTION_BIDS_RETENTION_MS;
       });
       for (let i = 0; i < clr.length; i += 400) {
         const b = db.batch();
@@ -1901,21 +1907,35 @@ const TG_GROUP_ID  = process.env.TG_GROUP_ID;
 // Telegram'ın mesajı REDDETMESİNE (uyarı sessizce kaybolur) ya da yöneticiye sahte bağlantı/biçim
 // enjekte edilmesine yol açar.
 const tgEsc = (v) => String(v ?? '').replace(/([_*`\[])/g, '\\$1');
+// Adım 14: Vercel→Telegram bağlantısı ara sıra ETIMEDOUT veriyordu (işletim sistemi zaman aşımı ~20 sn bekletiyordu).
+// Artık her deneme TG_TIMEOUT_MS (varsayılan 5 sn) ile sınırlı ve ağ hatasında 1 kez yeniden denenir.
+const TG_TIMEOUT_MS = Math.max(200, Number(process.env.TG_TIMEOUT_MS || 5000));
+async function tgFetch(url, payload) {
+  let lastErr;
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      return await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload), signal: AbortSignal.timeout(TG_TIMEOUT_MS) });
+    } catch (e) { lastErr = e; if (attempt === 0) await new Promise(r => setTimeout(r, 800)); }
+  }
+  throw lastErr;
+}
 async function sendTG(chatId, text) {
   if (!TG_BOT_TOKEN || !chatId) return;
   const url = `https://api.telegram.org/bot${TG_BOT_TOKEN}/sendMessage`;
   const body = String(text).slice(0, 4000); // Telegram sınırı 4096
   try {
-    let resp = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ chat_id: chatId, text: body, parse_mode: 'Markdown' }) });
+    let resp = await tgFetch(url, { chat_id: chatId, text: body, parse_mode: 'Markdown' });
     if (!resp.ok) {
       // Çoğunlukla "can't parse entities": biçimlendirmeyi kaldırıp DÜZ METİN olarak yeniden gönder.
       console.error('[Telegram] Markdown reddedildi, düz metinle yeniden deneniyor:', resp.status);
-      resp = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ chat_id: chatId, text: body }) }); // parse_mode yok: biçim işaretleri olduğu gibi görünür, hiçbir şey silinmez
+      resp = await tgFetch(url, { chat_id: chatId, text: body }); // parse_mode yok: biçim işaretleri olduğu gibi görünür, hiçbir şey silinmez
       if (!resp.ok) console.error('[Telegram] Düz metin de gönderilemedi:', resp.status);
     }
-  } catch (e) { console.error("TG Error:", e); }
+  } catch (e) {
+    // Telegram'a ulaşılamadı (ağ). Yönetici bildirimi iletilemedi ama site işleyişi etkilenmez → hata değil uyarı.
+    console.warn('[Telegram] mesaj gönderilemedi (ağ/zaman aşımı):', (e && e.cause && e.cause.code) || (e && e.name) || '', (e && e.message) || '');
+  }
 }
 
 // Bot kullanıcı adı (ör. "DomainMarketBot") sık değişmeyeceği için, her
@@ -9884,6 +9904,12 @@ async function handlerImpl(req, res) {
     try { data = await response.json(); } catch (e) { data = {}; }
 
     if (!response.ok) {
+      // Adım 14: kullanıcı ödemeyi cüzdanda iptal edince uygulama 'cancel' bildirir; Pi ise yalnızca uygulamadan-kullanıcıya
+      // (A2U) ödemelerin sunucudan iptal edilebildiğini söyleyip 403 döner. Ödeme zaten kullanıcı tarafından iptal edilmiştir → hata değil.
+      if (action === 'cancel' && response.status === 403 && data && data.error === 'forbidden') {
+        console.warn('[Pi] cancel: kullanıcı→uygulama ödemesi sunucudan iptal edilemez (beklenen, kullanıcı iptal etmiş):', paymentId);
+        return res.status(200).json({ success: true, cancelledByUser: true });
+      }
       console.error("Pi API hatası:", action, paymentId, data);
       return res.status(response.status).json({ error: "Pi API hatası", details: data });
     }
