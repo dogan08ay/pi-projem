@@ -1557,6 +1557,21 @@ async function recordAdminKnownIp(db, ip) {
   await ref.set({ ip, lastSeenAt: Date.now(), seenCount: FieldValue.increment(1) }, { merge: true });
   return isNew;
 }
+// Adım 15: gizli anahtardan (S…) genel cüzdan adresini (G…) türetir. Paket/anahtar geçersizse null (hiçbir şeyi bozmaz).
+async function deriveWalletAddress(seed) {
+  try {
+    const sd = typeof seed === 'string' ? seed.trim() : '';
+    if (!/^S[A-Z2-7]{55}$/.test(sd)) return null;
+    for (const pkg of ['stellar-base', 'stellar-sdk']) {
+      try {
+        const m = await import(pkg);
+        const K = m.Keypair || (m.default && m.default.Keypair);
+        if (K) return K.fromSecret(sd).publicKey();
+      } catch (_) { /* sıradaki paketi dene */ }
+    }
+  } catch (_) {}
+  return null;
+}
 const _knownIpSeen = new Map(); // Adım 11: IP → son kontrol zamanı (örnek içi)
 async function verifyAdmin(accessToken, req) {
   if (!accessToken) return false;
@@ -8817,6 +8832,10 @@ async function handlerImpl(req, res) {
         mainnetKeysConfigured: !!(process.env.APP_SECRET_MAINNET && process.env.PI_WALLET_PRIVATE_SEED_MAINNET),
         // Tanı: HANGİ anahtar eksik (yalnızca ad döner, değer ASLA dönmez)
         mainnetKeysMissing: ['APP_SECRET_MAINNET', 'PI_WALLET_PRIVATE_SEED_MAINNET'].filter(k => !process.env[k]),
+        // Doğrulama: girilen gizli anahtardan türetilen GENEL cüzdan adresi (G…). Developer Portal'daki adresle karşılaştırılır.
+        // Gizli anahtar (S…) ASLA döndürülmez; türetilemezse null döner.
+        mainnetWalletAddress: await deriveWalletAddress(process.env.PI_WALLET_PRIVATE_SEED_MAINNET),
+        testnetWalletAddress: await deriveWalletAddress(process.env.PI_WALLET_PRIVATE_SEED_TESTNET || process.env.PI_WALLET_PRIVATE_SEED),
         testnetKeysConfigured: !!(process.env.APP_SECRET_TESTNET || process.env.APP_SECRET)
       });
     } catch (e) {
