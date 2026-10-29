@@ -40,7 +40,7 @@
 
         /* ── MARKA KARŞILAMA: logo + animasyonlu adres (açılış, bağlanıyor ve hoş geldin ekranları) ── */
         .brand-logo{position:relative;width:96px;height:96px;flex:0 0 auto;border-radius:50%;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#4f46e5,#7c3aed);color:#fff;font:900 2.4em/1 system-ui,sans-serif;box-shadow:0 0 34px rgba(99,102,241,0.55);animation:brand-breathe 2.6s ease-in-out infinite;}
-        .brand-logo::before{content:'π';position:absolute;inset:0;display:flex;align-items:center;justify-content:center;}
+        .brand-logo::before{content:'D';position:absolute;inset:0;display:flex;align-items:center;justify-content:center;}
         .brand-logo img{position:absolute;inset:0;width:100%;height:100%;border-radius:50%;object-fit:cover;border:2px solid #818cf8;box-sizing:border-box;background:#0a0f1e;}
         .brand-logo::after{content:'';position:absolute;inset:-9px;border-radius:50%;border:3px solid rgba(129,140,248,0.18);border-top-color:#818cf8;border-right-color:rgba(52,211,153,0.55);animation:bs-spin 1.1s linear infinite;pointer-events:none;}
         .brand-logo.bl-static::after{display:none;}
@@ -328,7 +328,6 @@
         .domain-img{width:100%;height:52px;margin-bottom:4px;border-radius:8px;object-fit:contain;background:linear-gradient(135deg,#2a3a52 0%,#1e293b 100%);padding:2px;}
         .domain-name{font-size:0.75em;font-weight:bold;margin-bottom:2px;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#e2e8f0;}
         .domain-price{color:var(--price);font-size:0.76em;font-weight:700;margin:0;display:none;}
-        .domain-price-usd{color:#94a3b8;font-size:0.72em;font-weight:600;margin-top:1px;}
         .pi-verified-badge{display:inline-flex;align-items:center;gap:3px;background:rgba(16,185,129,0.14);color:#6ee7b7;border:1px solid rgba(52,211,153,0.5);border-radius:20px;padding:1px 7px;font-size:0.72em;font-weight:800;letter-spacing:0.2px;box-shadow:0 0 8px rgba(16,185,129,0.15);vertical-align:middle;}
         .domain-type-tag{font-size:0.72em;color:#94a3b8;background:rgba(148,163,184,0.15);border-radius:5px;padding:2px 6px;margin-bottom:3px;display:inline-block;}
         .btn-buy{background:var(--accent);color:white;border:none;padding:5px 6px;border-radius:6px;cursor:pointer;margin-top:4px;font-weight:bold;width:100%;font-size:0.78em;}
@@ -2040,12 +2039,13 @@
             <div style="font-size:0.76em;color:#64748b;margin-top:-6px;" data-i18n="notifPrefsHelp"></div>
 
             <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
-                <span style="font-size:0.78em;color:#cbd5e1;font-weight:700;">📨 Telegram</span>
+                <span style="display:flex;flex-direction:column;gap:2px;min-width:0;"><span style="font-size:0.78em;color:#cbd5e1;font-weight:700;">📨 Telegram</span><span style="font-size:0.7em;color:#94a3b8;font-weight:600;line-height:1.4;" data-i18n="telegramPurposeNote"></span></span>
                 <button id="telegram-link-btn" onclick="window.handleTelegramLinkClick()" class="pi-btn" style="background:#0ea5e9;animation:none;padding:6px 12px;font-size:0.78em;width:auto;margin:0;border-radius:8px;"></button>
             </div>
 
             <div style="display:flex;flex-direction:column;gap:6px;">
                 <span style="font-size:0.78em;color:#cbd5e1;font-weight:700;">✉️ E-posta</span>
+                <div style="font-size:0.7em;color:#94a3b8;font-weight:600;line-height:1.45;margin-top:-2px;" data-i18n="emailPurposeNote"></div>
                 <div id="email-not-set-ui" style="display:flex;gap:6px;">
                     <input type="email" id="profile-email-input" data-i18n-placeholder="emailAddPlaceholder" style="flex:1;min-width:0;background:#1e293b;border:1.5px solid #334155;border-radius:8px;padding:8px;color:#e2e8f0;font-size:0.76em;box-sizing:border-box;">
                     <button onclick="window.handleSetProfileEmail()" class="pi-btn" data-i18n="emailAddBtn" style="background:#6366f1;animation:none;padding:8px 12px;font-size:0.78em;width:auto;margin:0;border-radius:8px;"></button>
@@ -4187,7 +4187,7 @@ const i18n = {
     menu:"Menü",account:"Hesap",preferences:"Tercihler",connected:"Bağlı",menuThemeLabel:"Menü Teması",menuHapticLabel:"Titreşim",menuHapticHint:"Dokunuşlarda hafif titreşim. Önemli uyarılar her zaman titreşimle gelir.",hapticToggleAria:"Titreşimi aç/kapat",hapticOnToast:"Titreşim açıldı",hapticOffToast:"Titreşim kapatıldı",
     purchasedDomain:"ALINAN DOMAIN",firstLogin:"İLK GİRİŞ",
     profileSettings:"Profil Ayarları",myPanel:"Panelim",sellMyDomain:"Domainimi Satışa Çıkar",
-    languageOptions:"Dil Seçenekleri",logout:"Çıkış Yap",connectWithPi:"<span style='display:inline-flex;align-items:center;gap:10px;'><span style='display:inline-block;animation:logo-pulse 1.5s ease-in-out infinite;font-size:1.3em;'>π</span><span style='font-size:1.05em;'>Pi ile Bağlan</span></span>",
+    languageOptions:"Dil Seçenekleri",logout:"Çıkış Yap",connectWithPi:"<span style='display:inline-flex;align-items:center;gap:10px;'><img src='assets/logo.jpeg' alt='' onerror='this.remove()' style='width:26px;height:26px;border-radius:50%;object-fit:cover;display:inline-block;animation:logo-pulse 1.5s ease-in-out infinite;'><span style='font-size:1.05em;'>Pi ile Bağlan</span></span>",
     runSystemCheckupBtn:"Sistem Kontrolü Yap",cleanupOrphanedBtn:"Yetim Verileri Temizle",adminAuditLogBtn:"Admin İşlem Günlüğü",deletionRequestsBtn:"Hesap Silme Talepleri",
     auditLogSubtitle:"Son 100 kayıt, en yeni üstte. Kim, ne zaman, ne yaptı.",
     auditViewCategoryBtn:"📁 Kategoriye Göre",auditViewTimelineBtn:"🕐 Zaman Akışı",
@@ -4416,7 +4416,6 @@ const i18n = {
     contactUs:"SORULARINIZ İÇİN",community:"TOPLULUK GRUBUMUZ",
     telegramGroup:"TELEGRAM GRUBUMUZ",privacyPolicy:"GİZLİLİK POLİTİKASI",termsOfUse:"KULLANIM ŞARTLARI",
     notifications:"Bildirimler",markAllRead:"Tümünü Okundu Yap",noNotifications:"Henüz bildiriminiz yok.",
-    usdEstimateTooltip:"Güncel piyasa kuruna göre yaklaşık değer — sadece bilgi amaçlıdır. Sistem test ağında (Testnet) çalıştığından bu tutarın gerçek bir Pi karşılığı yoktur.",
     piVerifiedLabel:"Pi ile Doğrulanmış",
     piVerifiedTooltip:"Bu kullanıcı, resmi Pi SDK giriş akışıyla gerçek bir Pi Network hesabına sahip olduğunu doğruladı. Not: bu, Pi Network'ün resmi KYC (kimlik) doğrulamasının yerine geçmez.",
     aboutUsMenuItem:"Hakkımızda",aboutUsTitle:"Hakkımızda",aboutUsRoleLabel:"Bağımsız Geliştirici · Kurucu",
@@ -5249,7 +5248,7 @@ const i18n = {
     telegramLinkOpened:"Telegram açıldı, botu başlattıktan sonra buraya dönün.",
     telegramLinkFailed:"Bağlantı başlatılamadı, lütfen tekrar deneyin.",
     telegramUnlinked:"Telegram bağlantısı kaldırıldı.",
-    emailAddPlaceholder:"ornek@eposta.com",
+    emailAddPlaceholder:"ornek@eposta.com",emailPurposeNote:"İsteğe bağlıdır. E-postanız yalnızca satış, teklif ve escrow bildirimlerini göndermek için kullanılır; üçüncü kişilerle paylaşılmaz ve istediğiniz an kaldırabilirsiniz.",telegramPurposeNote:"İsteğe bağlıdır. Anlık bildirimler ve topluluk duyuruları için.",
     emailAddBtn:"Ekle",
     emailInvalid:"Geçerli bir e-posta adresi girin.",
     emailCodeSent:"Doğrulama kodu e-postanıza gönderildi.",
@@ -5264,7 +5263,7 @@ const i18n = {
     menu:"Menu",account:"Account",preferences:"Preferences",connected:"Connected",menuThemeLabel:"Menu Theme",menuHapticLabel:"Vibration",menuHapticHint:"Gentle feedback on taps. Important alerts always vibrate.",hapticToggleAria:"Toggle vibration",hapticOnToast:"Vibration on",hapticOffToast:"Vibration off",
     purchasedDomain:"OWNED DOMAINS",firstLogin:"FIRST LOGIN",
     profileSettings:"Profile Settings",myPanel:"My Panel",sellMyDomain:"List My Domain for Sale",
-    languageOptions:"Language Options",logout:"Sign Out",connectWithPi:"<span style='display:inline-flex;align-items:center;gap:10px;'><span style='display:inline-block;animation:logo-pulse 1.5s ease-in-out infinite;font-size:1.3em;'>π</span><span style='font-size:1.05em;'>Connect with Pi</span></span>",
+    languageOptions:"Language Options",logout:"Sign Out",connectWithPi:"<span style='display:inline-flex;align-items:center;gap:10px;'><img src='assets/logo.jpeg' alt='' onerror='this.remove()' style='width:26px;height:26px;border-radius:50%;object-fit:cover;display:inline-block;animation:logo-pulse 1.5s ease-in-out infinite;'><span style='font-size:1.05em;'>Connect with Pi</span></span>",
     runSystemCheckupBtn:"Run System Checkup",cleanupOrphanedBtn:"Clean Up Orphaned Data",adminAuditLogBtn:"Admin Action Log",deletionRequestsBtn:"Account Deletion Requests",
     auditLogSubtitle:"Last 100 entries, newest on top. Who did what, and when.",
     auditViewCategoryBtn:"📁 By Category",auditViewTimelineBtn:"🕐 Timeline",
@@ -5489,7 +5488,6 @@ const i18n = {
     contactUs:"CONTACT US",community:"OUR COMMUNITY",telegramGroup:"OUR TELEGRAM GROUP",
     privacyPolicy:"PRIVACY POLICY",termsOfUse:"TERMS OF USE",
     notifications:"Notifications",markAllRead:"Mark All Read",noNotifications:"No notifications yet.",
-    usdEstimateTooltip:"Approximate value based on the current market rate — for informational purposes only. Since the system runs on Testnet, this amount has no real Pi equivalent.",
     piVerifiedLabel:"Pi Verified",
     piVerifiedTooltip:"This user confirmed ownership of a real Pi Network account through the official Pi SDK login flow. Note: this does not replace Pi Network's official KYC (identity) verification.",
     aboutUsMenuItem:"About Us",aboutUsTitle:"About Us",aboutUsRoleLabel:"Independent Developer · Founder",
@@ -6304,7 +6302,7 @@ const i18n = {
     telegramLinkOpened:"Telegram opened — come back here after starting the bot.",
     telegramLinkFailed:"Couldn't start the connection, please try again.",
     telegramUnlinked:"Telegram disconnected.",
-    emailAddPlaceholder:"you@email.com",
+    emailAddPlaceholder:"you@email.com",emailPurposeNote:"Optional. Your email is used only to send sale, offer and escrow notifications; it is never shared with third parties and you can remove it at any time.",telegramPurposeNote:"Optional. For instant notifications and community announcements.",
     emailAddBtn:"Add",
     emailInvalid:"Enter a valid email address.",
     emailCodeSent:"A verification code was sent to your email.",
@@ -12901,7 +12899,7 @@ function renderUserPanel(){
         if(data?.sold&&data.buyer===currentUser){
             const date=data.at?new Date(data.at).toLocaleDateString(locale,{day:'2-digit',month:'2-digit',year:'numeric'})+' '+new Date(data.at).toLocaleTimeString(locale,{hour:'2-digit',minute:'2-digit'}):'-';
             // DOĞRULA: artık kartın sağında ayrı bir sütun değil, aksiyon satırının bir parçası (taşma yok).
-            const dogrulaRowBtn=data.txid?`<a href="https://blockexplorer.minepi.com/testnet/tx/${data.txid}" target="_blank" rel="noopener" class="verify-btn verify-btn-row">${t('verify')}</a>`:`<span class="verify-btn-disabled verify-btn-row">${t('verifyLocked')}</span>`;
+            const dogrulaRowBtn=data.txid?`<a href="https://blockexplorer.minepi.com/${APP_CONFIG.piSandboxMode!==false?'testnet':'mainnet'}/tx/${data.txid}" target="_blank" rel="noopener" class="verify-btn verify-btn-row">${t('verify')}</a>`:`<span class="verify-btn-disabled verify-btn-row">${t('verifyLocked')}</span>`;
             // Escrow devir onayı: gerçek bir satıcı varsa ve ödeme henüz
             // sonuçlanmadıysa, alıcıdan domaini teslim alıp almadığını sorar.
             const needsConfirm = data.sellerUsername && data.payoutStatus!=='released' && data.payoutStatus!=='refunded';
@@ -13554,7 +13552,7 @@ function render(){
         // tek satırda kalmaya devam ediyor, onlara dokunmadık.
         const cardNameLineHtml=(auctionIsLive||auctionIsEnded)
             ? `<div class="domain-name" style="white-space:normal;overflow:visible;text-overflow:clip;line-height:1.35;">${d.name} ${auctionInlineStatusHtml}</div>${auctionPriceBlockHtml}`
-            : `<div class="domain-name">${d.name} <span style="color:#fbbf24;font-weight:800;">(${data.price} π)</span></div><div class="domain-price">${data.price} PI</div>${usdEstimateHtml(data.price)}`;
+            : `<div class="domain-name">${d.name} <span style="color:#fbbf24;font-weight:800;">(${data.price} π)</span></div><div class="domain-price">${data.price} PI</div>`;
         card.innerHTML=`${favBtn}<img src="${imgSrc}" alt="" class="domain-img" loading="lazy" decoding="async" onerror="this.src='data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMDAiIGhlaWdodD0iMTAwIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjNDc1NTY5Ii8+PC9zdmc+'">${boostTag}${auctionTag}${newTag}${tTag}${hiddenTag}${cardNameLineHtml}${buildMyOfferChipHtml(d.name)}<div class="card-tap-hint">👆 ${t('tapForDetailHint')}</div>`;
 
         if(data.sold){
@@ -15060,46 +15058,6 @@ function debouncedProfileRefresh(){
     },1200);
 }
 
-// YENİ: Pi/USD yaklaşık değer gösterimi. ÖNEMLİ — bu değer sadece bilgi
-// amaçlıdır ve gerçek piyasadaki Pi/USD kurundan (CoinGecko) alınır; asla
-// topluluk içinde dolaşan "1 Pi = 314.159$" gibi doğrulanmamış/gerçekçi
-// olmayan rakamlarla KARIŞTIRILMAMALIDIR. Uygulama şu an test ağında
-// (sandbox) çalıştığından, gösterilen tutarın test-Pi için hiçbir gerçek
-// karşılığı olmadığı ayrıca tooltip ile belirtilir (bkz. faqA3/testNetWarning
-// ile aynı mesaj tutarlılığı).
-let piUsdRate=null;
-async function fetchPiUsdRate(){
-    try{
-        const cacheRaw=localStorage.getItem('w3dg_pi_usd_cache');
-        if(cacheRaw){
-            const cached=JSON.parse(cacheRaw);
-            if(cached && cached.rate && (Date.now()-cached.ts)<15*60*1000){
-                piUsdRate=cached.rate;
-                return piUsdRate;
-            }
-        }
-        const res=await fetch('https://api.coingecko.com/api/v3/simple/price?ids=pi-network&vs_currencies=usd');
-        const json=await res.json();
-        const rate=json && json['pi-network'] && json['pi-network'].usd;
-        if(rate){
-            piUsdRate=rate;
-            localStorage.setItem('w3dg_pi_usd_cache',JSON.stringify({rate,ts:Date.now()}));
-        }
-    }catch(e){
-        // Kur alınamazsa sessizce hiçbir şey gösterilmez — asla tahmini/
-        // uydurma bir rakam kullanılmaz.
-        console.warn('Pi/USD kuru alınamadı:',e);
-    }
-    return piUsdRate;
-}
-function usdEstimateHtml(price){
-    if(!piUsdRate) return '';
-    const n=Number(price);
-    if(!n || isNaN(n)) return '';
-    const usd=n*piUsdRate;
-    const formatted=usd<0.01?usd.toFixed(4):usd.toFixed(2);
-    return `<div class="domain-price-usd" title="${t('usdEstimateTooltip')}">≈ $${formatted}</div>`;
-}
 // YENİ: "Pi ile Doğrulanmış" rozeti. DİKKAT — bu rozet Pi'nin resmi KYC
 // (kimlik) doğrulamasını TEMSİL ETMEZ; Pi SDK üzerinden bu uygulamaya
 // sadece kullanıcı adı bilgisi geliyor, tam KYC durumu bu uygulamaya
@@ -15215,7 +15173,6 @@ window.downloadReceiptFile = function() {
 function emptyState(icon,title,sub){
     return `<div class="empty-state"><div class="empty-icon">${icon}</div><div class="empty-title">${title}</div>${sub?`<div class="empty-sub">${sub}</div>`:''}</div>`;
 }
-fetchPiUsdRate().then(()=>{ if(typeof render==='function') render(); });
 
 onSnapshot(collection(db,"domains"),(snapshot)=>{
     window.__domainsFirstSnapshot=true; // "Pi ile Bağlan" sonrası ekran, liste verisi gelene kadar bekleyebilsin
@@ -15589,6 +15546,11 @@ window.openLink = function(url, isExternal) {
 const legalPageCache = {};
 const legalPagePromise = {};
 function legalUrl(type){ return type === 'privacy' ? 'privacy.html' : 'terms.html'; }
+// Yasal sayfalar TR+EN birlikte gelir; modalda yalnızca seçili dil görünür.
+function applyLegalLang(root){
+    const l=(currentLang==='en')?'en':'tr';
+    root.querySelectorAll('[data-legal-lang]').forEach(n=>{ n.style.display=(n.getAttribute('data-legal-lang')===l)?'':'none'; });
+}
 // İçeriği (tek seferlik) getirir; aynı anda gelen çağrılar aynı isteği paylaşır, hata olursa tekrar denenebilir.
 function loadLegalHtml(type){
     if (legalPageCache[type]) return Promise.resolve(legalPageCache[type]);
@@ -15636,7 +15598,7 @@ window.openLegalModal = async function openLegalModal(type) {
     if (cached) {
         // Hazırsa içerik, pencere görünmeden ÖNCE yerleşir: tek seferde, yanıp sönmeden açılır.
         bodyEl.style.minHeight = '';
-        bodyEl.innerHTML = cached;
+        bodyEl.innerHTML = cached; applyLegalLang(bodyEl);
         modal.style.display = 'flex';
         return;
     }
@@ -15648,7 +15610,7 @@ window.openLegalModal = async function openLegalModal(type) {
     try {
         const html = await loadLegalHtml(type);
         if (modal.dataset.legalType !== type) return; // bu arada başka sayfa açıldıysa üzerine yazma
-        bodyEl.innerHTML = html;
+        bodyEl.innerHTML = html; applyLegalLang(bodyEl);
         bodyEl.style.minHeight = '';
         bodyEl.scrollTop = 0;
     } catch (e) {
