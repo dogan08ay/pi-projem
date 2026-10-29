@@ -6575,7 +6575,7 @@ window.toggleHaptics=function(){
     on=!on;
     try{ localStorage.setItem('w3dg_haptics',on?'on':'off'); }catch(_){}
     applyHapticPreference();
-    if(on&&window.hapticPulse) window.hapticPulse(32); // açılırken titreşimi hissettir
+    if(on&&window.hapticPulse) window.hapticPulse(55); // açılırken titreşimi hissettir
     try{ showToast(t(on?'hapticOnToast':'hapticOffToast'),'info'); }catch(_){}
 };
 document.addEventListener('DOMContentLoaded', applyHapticPreference);
@@ -9473,7 +9473,7 @@ window.confirmAuctionAction=function(opts){
     window.hapticPulse=function(pattern){
         try{ if(off()||!navigator.vibrate) return false; window._hapticAt=Date.now(); return navigator.vibrate(pattern); }catch(_){ return false; }
     };
-    const P={tick:10, light:8, confirm:32, danger:[38,50,38], success:[26,40,26], error:70};
+    const P={tick:22, light:15, confirm:55, danger:[65,60,65], success:[50,55,50], error:110};
     const EXACT_CONFIRM=new Set(['ok','tamam','evet','yes','onayla','kabul et','accept','confirm','approve']);
     const EXACT_CANCEL=new Set(['no','hayır','iptal','vazgeç','kapat','close','cancel','back','geri','×','✕','✖','x']);
     const CANCEL_RE=/vazge[çc]|cancel|kapat|close|dismiss|sonra|later|skip|atla/;
