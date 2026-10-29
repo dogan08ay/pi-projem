@@ -629,6 +629,15 @@
         .theme-toggle-switch::after{content:'';position:absolute;top:1.5px;left:1.5px;width:17px;height:17px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,0.4);transition:transform 0.2s;}
         body.light-theme .theme-toggle-switch{background:#6366f1;border-color:#6366f1;}
         body.light-theme .theme-toggle-switch::after{transform:translateX(18px);}
+        /* Titreşim anahtarı: tema anahtarıyla aynı görünüm, ama durumu .on sınıfından alır (açık temadan etkilenmez) */
+        .hp-switch{position:relative;width:40px;height:22px;border-radius:11px;background:rgba(148,163,184,0.35);border:1px solid rgba(148,163,184,0.5);cursor:pointer;flex-shrink:0;transition:background 0.2s,border-color 0.2s;}
+        .hp-switch::after{content:'';position:absolute;top:1.5px;left:1.5px;width:17px;height:17px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,0.4);transition:transform 0.2s;}
+        .hp-switch.on{background:#6366f1;border-color:#6366f1;}
+        .hp-switch.on::after{transform:translateX(18px);}
+        .hp-label{display:flex;align-items:center;gap:8px;color:#e2e8f0;font-weight:700;font-size:0.82em;}
+        body.light-theme .hp-label{color:#1e293b;}
+        .hp-sub{margin:2px 0 0 26px;font-size:0.68em;font-weight:600;line-height:1.4;color:#94a3b8;text-align:left;}
+        body.light-theme .hp-sub{color:#64748b;}
         .lang-option:hover,.lang-option.active{background:rgba(99,102,241,0.2);}
         .lang-option.active{color:#a5b4fc;}
         html,body{overscroll-behavior-y:contain;}
@@ -1944,6 +1953,11 @@
     <div class="theme-toggle-row">
         <span style="display:flex;align-items:center;gap:8px;color:#e2e8f0;font-weight:700;font-size:0.82em;" id="theme-toggle-label">🌙 <span data-i18n="menuThemeLabel"></span></span>
         <div class="theme-toggle-switch" id="theme-toggle-switch" onclick="window.toggleAppTheme()" role="button" aria-label="Tema değiştir" data-i18n-aria="themeToggleAria"></div>
+    </div>
+    <!-- Titreşim (haptic) tercihi: yalnızca bu cihazda saklanır (localStorage 'w3dg_haptics'). -->
+    <div class="theme-toggle-row" data-no-haptic>
+        <div style="min-width:0;padding-right:10px;"><span class="hp-label">📳 <span data-i18n="menuHapticLabel"></span></span><div class="hp-sub" data-i18n="menuHapticHint"></div></div>
+        <div class="hp-switch" id="haptic-toggle-switch" onclick="window.toggleHaptics()" role="switch" aria-checked="true" data-i18n-aria="hapticToggleAria"></div>
     </div>
     <div class="side-menu-divider"></div>
     <div class="side-menu-section-label" data-i18n="whatsNewSection"></div>
@@ -3896,6 +3910,7 @@ function showToast(message, forceType) {
         };
         el.addEventListener('click', remove);
         container.appendChild(el);
+        try{ if(window.hapticToast) window.hapticToast(type); }catch(_){}
         setTimeout(remove, duration);
     } catch (e) {
         console.error('showToast hatası:', e);
@@ -4169,7 +4184,7 @@ window.openPreBuyModal=function(domainName, price){
 
 const i18n = {
   tr: {
-    menu:"Menü",account:"Hesap",preferences:"Tercihler",connected:"Bağlı",menuThemeLabel:"Menü Teması",
+    menu:"Menü",account:"Hesap",preferences:"Tercihler",connected:"Bağlı",menuThemeLabel:"Menü Teması",menuHapticLabel:"Titreşim",menuHapticHint:"Dokunuşlarda hafif titreşim. Önemli uyarılar her zaman titreşimle gelir.",hapticToggleAria:"Titreşimi aç/kapat",hapticOnToast:"Titreşim açıldı",hapticOffToast:"Titreşim kapatıldı",
     purchasedDomain:"ALINAN DOMAIN",firstLogin:"İLK GİRİŞ",
     profileSettings:"Profil Ayarları",myPanel:"Panelim",sellMyDomain:"Domainimi Satışa Çıkar",
     languageOptions:"Dil Seçenekleri",logout:"Çıkış Yap",connectWithPi:"<span style='display:inline-flex;align-items:center;gap:10px;'><span style='display:inline-block;animation:logo-pulse 1.5s ease-in-out infinite;font-size:1.3em;'>π</span><span style='font-size:1.05em;'>Pi ile Bağlan</span></span>",
@@ -5246,7 +5261,7 @@ const i18n = {
     emailRemoved:"E-posta kaldırıldı.",
   },
   en: {
-    menu:"Menu",account:"Account",preferences:"Preferences",connected:"Connected",menuThemeLabel:"Menu Theme",
+    menu:"Menu",account:"Account",preferences:"Preferences",connected:"Connected",menuThemeLabel:"Menu Theme",menuHapticLabel:"Vibration",menuHapticHint:"Gentle feedback on taps. Important alerts always vibrate.",hapticToggleAria:"Toggle vibration",hapticOnToast:"Vibration on",hapticOffToast:"Vibration off",
     purchasedDomain:"OWNED DOMAINS",firstLogin:"FIRST LOGIN",
     profileSettings:"Profile Settings",myPanel:"My Panel",sellMyDomain:"List My Domain for Sale",
     languageOptions:"Language Options",logout:"Sign Out",connectWithPi:"<span style='display:inline-flex;align-items:center;gap:10px;'><span style='display:inline-block;animation:logo-pulse 1.5s ease-in-out infinite;font-size:1.3em;'>π</span><span style='font-size:1.05em;'>Connect with Pi</span></span>",
@@ -6549,6 +6564,22 @@ window.toggleAppTheme=function(){
 };
 document.addEventListener('DOMContentLoaded', applyMenuThemePreference);
 if(document.readyState==='complete'||document.readyState==='interactive') applyMenuThemePreference();
+// Yan menü titreşim anahtarı (varsayılan AÇIK). Genel dinleyici (hapticPulse) aynı 'w3dg_haptics' değerini okur.
+function applyHapticPreference(){
+    let on=true; try{ on=localStorage.getItem('w3dg_haptics')!=='off'; }catch(_){}
+    const sw=document.getElementById('haptic-toggle-switch');
+    if(sw){ sw.classList.toggle('on',on); sw.setAttribute('aria-checked',on?'true':'false'); }
+}
+window.toggleHaptics=function(){
+    let on=true; try{ on=localStorage.getItem('w3dg_haptics')!=='off'; }catch(_){}
+    on=!on;
+    try{ localStorage.setItem('w3dg_haptics',on?'on':'off'); }catch(_){}
+    applyHapticPreference();
+    if(on&&window.hapticPulse) window.hapticPulse(32); // açılırken titreşimi hissettir
+    try{ showToast(t(on?'hapticOnToast':'hapticOffToast'),'info'); }catch(_){}
+};
+document.addEventListener('DOMContentLoaded', applyHapticPreference);
+if(document.readyState==='complete'||document.readyState==='interactive') applyHapticPreference();
 let currentDetailDomainName=null; // YENİ: İlan şikayet formu için
 // YENİ: Referral (davet) sistemi — URL'de ?ref=kullaniciadi varsa yakala.
 // Sadece bu değişkende tutuluyor, girişte sync_user_uid çağrısına
@@ -9431,6 +9462,46 @@ window.confirmAuctionAction=function(opts){
         document.getElementById('auc-confirm-cancel').onclick=()=>done(false);
     });
 };
+// ═══ GENEL DOKUNSAL GERİ BİLDİRİM (haptic) KATMANI ═══
+// Her butona tek tek kod eklemek yerine tek bir "click" dinleyicisi (capture) butonun türünü anlar:
+//  • onay/tamam/gönder/öde  → belirgin tek titreşim     • sil/reddet/çıkış → çift (uyarı) titreşim
+//  • iptal/kapat/vazgeç      → çok hafif dokunuş         • diğer buton ve menüler → hafif "tık"
+// Kapatmak için: localStorage.setItem('w3dg_haptics','off'). Desteklemeyen cihazda (ör. iOS) sessizce çalışmaz.
+(function(){
+    if(window.__hapticLayer) return; window.__hapticLayer=true;
+    const off=()=>{ try{ return localStorage.getItem('w3dg_haptics')==='off'; }catch(_){ return false; } };
+    window.hapticPulse=function(pattern){
+        try{ if(off()||!navigator.vibrate) return false; window._hapticAt=Date.now(); return navigator.vibrate(pattern); }catch(_){ return false; }
+    };
+    const P={tick:10, light:8, confirm:32, danger:[38,50,38], success:[26,40,26], error:70};
+    const EXACT_CONFIRM=new Set(['ok','tamam','evet','yes','onayla','kabul et','accept','confirm','approve']);
+    const EXACT_CANCEL=new Set(['no','hayır','iptal','vazgeç','kapat','close','cancel','back','geri','×','✕','✖','x']);
+    const CANCEL_RE=/vazge[çc]|cancel|kapat|close|dismiss|sonra|later|skip|atla/;
+    const DANGER_RE=/delete|remove|reject|decline|dispute|logout|sign out|\bsil\b|sil\b|silinsin|reddet|kald[ıi]r|[çc][ıi]k[ıi][şs]|itiraz|hesab[ıi]m[ıi] sil/;
+    const CONFIRM_RE=/confirm|approve|accept|submit|proceed|continue|save|send|pay|buy|bid|connect|onay|tamam|evet|kabul|g[öo]nder|kaydet|sat[ıi]n|[öo]de|devam|teklif|ba[şs]lat|ba[ğg]lan|payla[şs]|g[üu]ncelle|yay[ıi]nla|listele/;
+    let last=0;
+    document.addEventListener('click',function(e){
+        try{
+            const el=e.target&&e.target.closest&&e.target.closest('button,.btn-buy,.pi-btn,.side-menu-item,[role="button"]');
+            if(!el||el.disabled||el.getAttribute('aria-disabled')==='true'||el.closest('[data-no-haptic],.toast-item')) return;
+            const now=Date.now(); if(now-last<90) return; last=now; // iç içe öğelerde çift titreşimi önle
+            const txt=(el.textContent||'').replace(/\s+/g,' ').trim().toLocaleLowerCase('tr').slice(0,60); // 'İptal' → 'iptal'
+            const meta=((el.id||'')+' '+(el.getAttribute('onclick')||'')+' '+(el.className&&el.className.baseVal===undefined?el.className:'')).toLowerCase();
+            const hay=txt+' '+meta;
+            let pat=P.tick;
+            if(EXACT_CANCEL.has(txt)||CANCEL_RE.test(txt)) pat=P.light;
+            else if(DANGER_RE.test(hay)) pat=P.danger;
+            else if(EXACT_CONFIRM.has(txt)||CONFIRM_RE.test(hay)||el.classList.contains('btn-buy')) pat=P.confirm;
+            window.hapticPulse(pat);
+        }catch(_){}
+    },true);
+    // "Tamamlandı" (başarı) bildirimi gelince onay hissi; hata bildirimi yalnızca kullanıcı az önce dokunduysa.
+    window.hapticToast=function(type){
+        const sinceTap=Date.now()-last, sinceHaptic=Date.now()-(window._hapticAt||0);
+        if(type==='success'){ if(sinceHaptic>250) window.hapticPulse(P.success); }
+        else if(type==='error'){ if(sinceTap<2000&&sinceHaptic>250) window.hapticPulse(P.error); }
+    };
+})();
 window.hapticOutbid=function(){ try{ if(navigator.vibrate) navigator.vibrate([180,90,180]); }catch(_){} };
 // Adım 15: ÖNEMLİ bildirimler (onay/transfer, teklif, açık artırma, ödeme/iade, itiraz) geldiğinde kısa titreşim + toast.
 // 'auction_outbid' kendi (daha uzun) titreşimine sahip olduğu için burada YOK. İlk yüklemede mevcut okunmamışlar titretmez.
