@@ -7616,6 +7616,7 @@ async function fetchNotifications(silent){
                     }
                 }
             }catch(_){}
+            try{ window.handleImportantNotifHaptics(cachedNotifications); }catch(_){}
         } else {
             // FIX: Önceden başarısız yanıtlar tamamen sessizce yutuluyordu
             // ve ikon hiç görünür hale gelmiyordu (display='flex' sadece
@@ -9414,6 +9415,23 @@ window.confirmAuctionAction=function(opts){
     });
 };
 window.hapticOutbid=function(){ try{ if(navigator.vibrate) navigator.vibrate([180,90,180]); }catch(_){} };
+// Adım 15: ÖNEMLİ bildirimler (onay/transfer, teklif, açık artırma, ödeme/iade, itiraz) geldiğinde kısa titreşim + toast.
+// 'auction_outbid' kendi (daha uzun) titreşimine sahip olduğu için burada YOK. İlk yüklemede mevcut okunmamışlar titretmez.
+window.IMPORTANT_NOTIF_TYPES=['auction_won','auction_won_seller','auction_win_reminder','auction_win_expired','auction_win_expired_seller','auction_ending_soon','auction_cancelled','auction_new_bid_seller',
+  'offer_received','offer_accepted','offer_rejected','offer_countered','counter_offer_accepted','counter_offer_rejected','offer_timeout','offer_timeout_seller','offer_closed_sold','offer_unpaid_expired','offer_unpaid_expired_seller','offer_reservation_reminder',
+  'transfer_confirmation','transfer_confirmation_reminder','dispute_response','purchase_success','your_domain_sold','new_sale','payout_released','seller_payout','buyer_refund','refund_issued','payout_needs_login','refund_needs_login'];
+window.hapticImportant=function(){ try{ if(navigator.vibrate) navigator.vibrate([90,60,90]); }catch(_){} };
+window.handleImportantNotifHaptics=function(list){
+    const keyOf=(n)=>n.id||n.key||n.ts;
+    const imp=(list||[]).filter(n=>n && !n.read && window.IMPORTANT_NOTIF_TYPES.indexOf(n.type)>=0);
+    if(window._seenImportantKeys===undefined){ window._seenImportantKeys=new Set(imp.map(keyOf)); return 0; }
+    const fresh=imp.filter(n=>!window._seenImportantKeys.has(keyOf(n)));
+    if(!fresh.length) return 0;
+    fresh.forEach(n=>window._seenImportantKeys.add(keyOf(n)));
+    window.hapticImportant();
+    try{ const ttl=notifTitle(fresh[0]); if(ttl) showToast(ttl); }catch(_){}
+    return fresh.length;
+};
 window.flashBidBox=function(){
     const w=document.querySelector('#domain-action-area .amount-input-wrap')||document.querySelector('.amount-input-wrap');
     if(w){ w.classList.remove('outbid-flash'); void w.offsetWidth; w.classList.add('outbid-flash'); }
@@ -14321,6 +14339,7 @@ window.openNetworkModeModal=async function(){
         html+=`<div style="margin-top:12px;padding:10px;background:rgba(239,68,68,0.08);border:1px solid #ef4444;border-radius:10px;">
             <p style="color:#fca5a5;font-weight:800;margin:0 0 6px 0;">⚠️ ${t('networkModeSwitchToMainnetWarning')}</p>
             <p style="margin:0 0 10px 0;font-size:0.9em;">${info.mainnetKeysConfigured?('✅ '+t('networkModeKeysReady')):('❌ '+t('networkModeKeysMissing')+((info.mainnetKeysMissing&&info.mainnetKeysMissing.length)?(' <b style="color:#fbbf24;">'+AWL('Sunucunun şu an göremediği:','Currently not visible to the server:')+' '+info.mainnetKeysMissing.map(escapeHtml).join(', ')+'</b>'):''))}</p>
+            ${(info.mainnetWalletAddress||info.testnetWalletAddress)?`<div style="margin-top:8px;font-size:0.82em;color:#94a3b8;line-height:1.5;">🔎 ${AWL('Cüzdan adresi doğrulama (anahtarınızdan türetilir, gizli anahtar gösterilmez). Pi Developer Portal adresiyle AYNI olmalı:','Wallet address check (derived from your key, the secret is never shown). It must MATCH the address in Pi Developer Portal:')}${info.testnetWalletAddress?`<br><b style="color:#cbd5e1;">Testnet:</b> <code style="word-break:break-all;color:#a5f3fc;">${escapeHtml(info.testnetWalletAddress)}</code>`:''}${info.mainnetWalletAddress?`<br><b style="color:#cbd5e1;">Mainnet:</b> <code style="word-break:break-all;color:#a5f3fc;">${escapeHtml(info.mainnetWalletAddress)}</code>`:''}</div>`:''}
             <button ${info.mainnetKeysConfigured?'':'disabled'} onclick="window.confirmSetNetworkMode('mainnet')" style="width:100%;padding:10px;border:none;border-radius:8px;background:${info.mainnetKeysConfigured?'linear-gradient(135deg,#ef4444,#b91c1c)':'#475569'};color:#fff;font-weight:900;cursor:${info.mainnetKeysConfigured?'pointer':'not-allowed'};">🔴 ${t('networkModeSwitchToMainnetBtn')}</button>
         </div>`;
     }else{
