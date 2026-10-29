@@ -38,7 +38,10 @@ function resolvePiNetworkCtor() {
 const PiNetwork = resolvePiNetworkCtor();
 
 // ─── Admin Config ───────────────────────────────────────────────────────
-const ADMIN_USERNAME = process.env.ADMIN_USERNAME || 'doganay0808';
+// Yönetici kullanıcı adı yalnızca ortam değişkeninden (ADMIN_USERNAME) okunur; koda sabit varsayılan YAZILMAZ.
+// Tanımlı değilse hiçbir hesap yönetici sayılmaz (güvenli taraf) ve konsola uyarı düşer.
+const ADMIN_USERNAME = String(process.env.ADMIN_USERNAME || '').trim();
+if (!ADMIN_USERNAME) console.error('[CONFIG] ADMIN_USERNAME ortam değişkeni tanımlı değil — yönetici işlemleri devre dışı.');
 const PLATFORM_COMMISSION_RATE = 0.05; // %5 komisyon
 
 // ─── Test Muafiyeti: Kendi ilanıyla işlem yapabilme ─────────────────────
@@ -4905,7 +4908,7 @@ async function handlerImpl(req, res) {
       const optionalEnvVars = [
         { key: 'VAPID_PUBLIC_KEY', label: 'Web Push genel anahtarı — eksikse tarayıcı bildirimleri çalışmaz' },
         { key: 'VAPID_PRIVATE_KEY', label: 'Web Push özel anahtarı — eksikse tarayıcı bildirimleri çalışmaz' },
-        { key: 'ADMIN_USERNAME', label: `eksikse kod içindeki varsayılan ("${ADMIN_USERNAME}") kullanılıyor` }
+        { key: 'ADMIN_USERNAME', label: 'yönetici kullanıcı adı (zorunlu — tanımlı değilse yönetici işlemleri kapalı)' }
       ];
       const missingOptionalEnv = optionalEnvVars.filter(v => !process.env[v.key]);
       if (missingOptionalEnv.length > 0) {
