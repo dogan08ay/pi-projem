@@ -22,7 +22,8 @@
         /* "Pi ile Bağlan" sonrası: uygulama arka planda yüklenirken tam ekran bağlanıyor ekranı */
         #connect-overlay{position:fixed;inset:0;z-index:1000000;background:radial-gradient(ellipse at 50% 35%,#1e1b4b 0%,#0a0f1e 72%);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:24px;box-sizing:border-box;text-align:center;opacity:0;transition:opacity .25s ease;}
         #connect-overlay.co-show{opacity:1;}
-        #connect-overlay .co-orb{position:relative;width:64px;height:64px;}
+        #connect-overlay .co-orb{position:relative;width:78px;height:78px;}
+        #connect-overlay .co-orb img{position:absolute;inset:14px;width:50px;height:50px;border-radius:50%;object-fit:cover;border:2px solid #818cf8;box-sizing:border-box;background:#0a0f1e;animation:brand-breathe 2.6s ease-in-out infinite;}
         #connect-overlay .co-orb::before,#connect-overlay .co-orb::after{content:'';position:absolute;inset:0;border-radius:50%;border:3px solid transparent;}
         #connect-overlay .co-orb::before{border-top-color:#818cf8;border-right-color:rgba(129,140,248,0.35);animation:bs-spin 1s linear infinite;}
         #connect-overlay .co-orb::after{inset:10px;border-bottom-color:#34d399;border-left-color:rgba(52,211,153,0.35);animation:bs-spin 1.4s linear infinite reverse;}
@@ -36,6 +37,21 @@
         #connect-overlay .co-step.co-done .co-ico::before{content:'✓';}
         #connect-overlay .co-step.co-active{color:#f1f5f9;}
         #connect-overlay .co-step.co-active .co-ico{border-color:rgba(129,140,248,0.3);border-top-color:#818cf8;animation:bs-spin .9s linear infinite;}
+
+        /* ── MARKA KARŞILAMA: logo + animasyonlu adres (açılış, bağlanıyor ve hoş geldin ekranları) ── */
+        .brand-logo{position:relative;width:96px;height:96px;flex:0 0 auto;border-radius:50%;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#4f46e5,#7c3aed);color:#fff;font:900 2.4em/1 system-ui,sans-serif;box-shadow:0 0 34px rgba(99,102,241,0.55);animation:brand-breathe 2.6s ease-in-out infinite;}
+        .brand-logo::before{content:'π';position:absolute;inset:0;display:flex;align-items:center;justify-content:center;}
+        .brand-logo img{position:absolute;inset:0;width:100%;height:100%;border-radius:50%;object-fit:cover;border:2px solid #818cf8;box-sizing:border-box;background:#0a0f1e;}
+        .brand-logo::after{content:'';position:absolute;inset:-9px;border-radius:50%;border:3px solid rgba(129,140,248,0.18);border-top-color:#818cf8;border-right-color:rgba(52,211,153,0.55);animation:bs-spin 1.1s linear infinite;pointer-events:none;}
+        .brand-logo.bl-static::after{display:none;}
+        @keyframes brand-breathe{0%,100%{transform:scale(1);box-shadow:0 0 28px rgba(99,102,241,0.45);}50%{transform:scale(1.04);box-shadow:0 0 44px rgba(99,102,241,0.8);}}
+        .brand-url{position:relative;display:inline-block;margin-top:2px;padding-bottom:5px;font:800 .95em/1.2 system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;letter-spacing:.6px;background:linear-gradient(100deg,#818cf8 0%,#c7d2fe 25%,#34d399 50%,#c7d2fe 75%,#818cf8 100%);background-size:250% 100%;-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:transparent;animation:brand-shimmer 2.8s linear infinite,brand-in .7s ease both;user-select:none;}
+        .brand-url::after{content:'';position:absolute;left:0;bottom:0;height:2px;width:100%;border-radius:2px;background:linear-gradient(90deg,transparent,#818cf8,#34d399,transparent);background-size:50% 100%;background-repeat:no-repeat;animation:brand-sweep 1.9s ease-in-out infinite;}
+        @keyframes brand-shimmer{to{background-position:-250% 0;}}
+        @keyframes brand-sweep{0%{background-position:-60% 0;}100%{background-position:160% 0;}}
+        @keyframes brand-in{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:none;}}
+        @media (prefers-reduced-motion:reduce){.brand-logo,.brand-logo::after,.brand-url,.brand-url::after{animation:none !important;}}
+        @media (max-height:560px){.brand-logo{width:72px;height:72px;}}
     </style>
     <noscript><style>html.app-booting body>*:not(#boot-splash){visibility:visible !important;}#boot-splash{display:none !important;}</style></noscript>
     <script>
@@ -1779,7 +1795,7 @@
 </style>
 </head>
 <body style="margin:0;padding:0;width:100%;min-width:320px;overflow-x:hidden;position:relative;box-sizing:border-box;">
-<div id="boot-splash" role="status" aria-live="polite"><div class="bs-ring"></div><div class="bs-title">Web3 Domain Gateway</div><div class="bs-sub" id="boot-splash-sub">Yükleniyor…</div></div>
+<div id="boot-splash" role="status" aria-live="polite"><div class="brand-logo"><img src="assets/logo.jpeg" alt="" decoding="async" onerror="this.style.display='none'"></div><div class="bs-title" style="margin-top:8px;">Web3 Domain Gateway</div><div class="bs-sub" id="boot-splash-sub">Yükleniyor…</div><div class="brand-url">https://dofiay.com</div></div>
 <script>try{if(localStorage.getItem('w3dg_lang')==='en'){document.getElementById('boot-splash-sub').textContent='Loading…';}}catch(e){}</script>
 <div id="toast-container" aria-live="polite"></div>
 
@@ -1811,9 +1827,10 @@
      ═══════════════════════════════════════════════════════════════ -->
 <div id="welcome-greeting-modal" onclick="window.skipWelcomeGreeting()" style="display:none;position:fixed;inset:0;z-index:100000;background:rgba(5,8,20,0.88);backdrop-filter:blur(6px);align-items:center;justify-content:center;padding:16px;box-sizing:border-box;cursor:pointer;">
     <div style="width:100%;max-width:360px;background:linear-gradient(165deg,#0a0f1e 0%,#1e1b4b 55%,#0a0f1e 100%);border:1.5px solid rgba(129,140,248,0.45);border-radius:18px;padding:26px 20px;box-shadow:0 8px 32px rgba(0,0,0,0.5),0 0 26px rgba(99,102,241,0.25);text-align:center;">
-        <div style="font-size:2.4em;margin-bottom:10px;">👋</div>
+        <div class="brand-logo bl-static" style="margin:6px auto 18px;width:84px;height:84px;"><img src="assets/logo.jpeg" alt="" decoding="async" onerror="this.style.display='none'"></div>
         <div style="color:#e0e7ff;font-size:1.05em;font-weight:800;line-height:1.6;min-height:2.6em;"><span id="welcome-greeting-typed"></span><span class="wg-caret"></span></div>
         <button onclick="event.stopPropagation();window.skipWelcomeGreeting();" style="margin-top:16px;padding:9px 22px;border:1.5px solid rgba(165,180,252,0.5);border-radius:20px;background:rgba(99,102,241,0.15);color:#c7d2fe;font-size:0.78em;font-weight:800;cursor:pointer;display:inline-flex;align-items:center;gap:5px;" data-i18n="welcomeGreetingSkipHint"></button>
+        <div style="margin-top:16px;"><span class="brand-url" style="font-size:.85em;">https://dofiay.com</span></div>
     </div>
 </div>
 
@@ -14502,7 +14519,7 @@ function showConnectOverlay(){
     let el=document.getElementById('connect-overlay');
     if(!el){
         el=document.createElement('div'); el.id='connect-overlay'; el.setAttribute('role','status'); el.setAttribute('aria-live','polite');
-        el.innerHTML='<div class="co-orb"></div><div class="co-title" id="co-title"></div><ul class="co-steps" id="co-steps"></ul><div class="co-sub" id="co-sub"></div>';
+        el.innerHTML='<div class="co-orb"><img src="assets/logo.jpeg" alt="" decoding="async" onerror="this.remove()"></div><div class="co-title" id="co-title"></div><ul class="co-steps" id="co-steps"></ul><div class="co-sub" id="co-sub"></div><div class="brand-url">https://dofiay.com</div>';
         document.body.appendChild(el);
     }
     document.getElementById('co-title').textContent=AWL('Bağlanılıyor…','Connecting…');
