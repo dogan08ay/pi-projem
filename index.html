@@ -2638,8 +2638,40 @@
         <h2 style="color:#818cf8;margin:0 0 4px 0;font-size:1.05em;font-weight:900;" data-i18n="totalUniqueUsers"></h2>
         <div id="unique-user-total" style="font-size:2.5em;font-weight:900;color:#fbbf24;margin:8px 0 6px 0;">—</div>
         <div style="font-size:0.76em;color:#94a3b8;margin-bottom:12px;" data-i18n="totalUniqueUsersDesc"></div>
+        <div style="display:flex;gap:6px;margin-bottom:10px;">
+            <input id="block-manual-user" type="text" autocomplete="off" autocapitalize="off" maxlength="64" data-i18n-placeholder="blockManualPlaceholder" style="flex:1;min-width:0;padding:9px 10px;border-radius:10px;border:1px solid #334155;background:#0f172a;color:#e2e8f0;font-size:0.85em;">
+            <button type="button" onclick="blockManualUser()" data-i18n="blockManualBtn" style="padding:9px 14px;border-radius:10px;border:none;background:#475569;color:#fff;font-weight:800;font-size:0.8em;cursor:pointer;"></button>
+        </div>
         <div id="unique-user-list" style="max-height:300px;overflow-y:auto;text-align:left;margin-bottom:12px;"></div>
         <button class="pi-btn" style="background:#6366f1;animation:none;padding:10px;margin:0;width:100%;" onclick="document.getElementById('unique-users-modal').style.display='none'" data-i18n="close"></button>
+    </div>
+</div>
+
+<div id="block-user-modal" class="modal-overlay" style="display:none;">
+    <div class="modal-content" style="border-color:#ef4444;">
+        <div style="font-size:2em;margin-bottom:6px;">🚫</div>
+        <h2 id="block-modal-title" style="color:#f87171;margin:0 0 4px 0;font-size:1.05em;font-weight:900;"></h2>
+        <div id="block-modal-user" style="font-weight:900;color:#fbbf24;margin:4px 0 10px 0;word-break:break-all;"></div>
+        <div id="block-modal-reason-wrap" style="text-align:left;margin-bottom:8px;">
+            <div style="font-size:0.76em;color:#94a3b8;margin-bottom:4px;" data-i18n="blockReasonLabel"></div>
+            <textarea id="block-modal-reason" rows="3" maxlength="200" data-i18n-placeholder="blockReasonPlaceholder" style="width:100%;box-sizing:border-box;padding:9px 10px;border-radius:10px;border:1px solid #334155;background:#0f172a;color:#e2e8f0;font-size:0.85em;resize:none;"></textarea>
+        </div>
+        <div id="block-modal-hint" style="font-size:0.74em;color:#94a3b8;line-height:1.5;margin-bottom:10px;"></div>
+        <div id="block-modal-err" style="display:none;font-size:0.8em;color:#f87171;margin-bottom:8px;"></div>
+        <div style="display:flex;gap:8px;">
+            <button type="button" onclick="closeBlockModal()" data-i18n="blockCancelBtn" style="flex:1;padding:10px;border-radius:10px;border:1px solid #475569;background:transparent;color:#cbd5e1;font-weight:800;cursor:pointer;"></button>
+            <button type="button" id="block-modal-confirm" onclick="submitBlockModal()" style="flex:1;padding:10px;border-radius:10px;border:none;background:#ef4444;color:#fff;font-weight:900;cursor:pointer;"></button>
+        </div>
+    </div>
+</div>
+
+<div id="blocked-overlay" style="display:none;position:fixed;inset:0;z-index:2147483000;background:#0a0f1e;align-items:center;justify-content:center;padding:24px;text-align:center;">
+    <div style="max-width:340px;">
+        <div style="font-size:3.2em;margin-bottom:10px;">🚫</div>
+        <h2 id="blocked-title" style="color:#f87171;margin:0 0 10px 0;font-size:1.25em;font-weight:900;"></h2>
+        <p id="blocked-body" style="color:#cbd5e1;font-size:0.9em;line-height:1.6;margin:0 0 12px 0;"></p>
+        <div id="blocked-reason" style="display:none;color:#fbbf24;font-size:0.85em;font-weight:700;margin-bottom:14px;word-break:break-word;"></div>
+        <a href="mailto:info@dofiay.com" style="color:#38bdf8;font-weight:800;">info@dofiay.com</a>
     </div>
 </div>
 <div id="active-users-modal" class="modal-overlay" style="display:none;">
@@ -4616,7 +4648,7 @@ const i18n = {
     addDomainFail:"Domain ekleme başarısız: ",addDomainError:"Bir hata oluştu.",
     addDomainSuccess:(n)=>`"${n}" domaini eklendi.`,
     loginError:"GİRİŞ HATASI!",paymentError:"ÖDEME HATASI!",
-    noRecord:"KAYIT BULUNAMADI.",noUsers:"Kayıt bulunamadı.",usersError:"Hata oluştu.",
+    noRecord:"KAYIT BULUNAMADI.",noUsers:"Kayıt bulunamadı.",blockBtn:"🚫 Engelle",unblockBtn:"✅ Kaldır",blockedBadge:"ENGELLİ",blockModalTitle:"Kullanıcıyı Engelle",unblockModalTitle:"Engeli Kaldır",blockReasonLabel:"Gerekçe (kullanıcıya gösterilir)",blockReasonPlaceholder:"Örn: Usulsüz işlem denemesi",blockConfirmBtn:"Engelle",unblockConfirmBtn:"Engeli Kaldır",blockCancelBtn:"Vazgeç",blockHint:"Engellenen kullanıcı uygulamayı kullanamaz; yalnızca başlamış ödemesini tamamlayabilir. Aktif ilan ve satışlarını ayrıca siz yönetirsiniz.",unblockHint:"Bu kullanıcı uygulamayı yeniden kullanabilecek.",blockManualPlaceholder:"Kullanıcı adı ile engelle",blockManualBtn:"Devam",blockDoneToast:"Kullanıcı engellendi",unblockDoneToast:"Engel kaldırıldı",blockedScreenTitle:"Hesabınız engellendi",blockedScreenBody:"Hesabınız, uygulama kurallarına aykırı kullanım nedeniyle engellenmiştir. İtiraz veya bilgi için bize yazabilirsiniz.",blockedReasonPrefix:"Gerekçe: ",usersError:"Hata oluştu.",
     logoutBtn:"Çıkış",logoutBtnEn:"Logout",connectedPrefix:"BAĞLI: @",lastSeenPrefix:"Son: ",soldPiLabel:" Pİ ALINDI",
     pendingSentBy:"Gönderen: @",pendingWallet:"Not: ",pendingWalletUnspecified:"belirtilmemiş",
     updateBtn:"Güncelle",deleteBtn:"Sil",
@@ -5685,7 +5717,7 @@ const i18n = {
     addDomainFail:"Failed to add domain: ",addDomainError:"An error occurred.",
     addDomainSuccess:(n)=>`"${n}" domain added.`,
     loginError:"LOGIN ERROR!",paymentError:"PAYMENT ERROR!",
-    noRecord:"NO RECORDS FOUND.",noUsers:"No records found.",usersError:"An error occurred.",
+    noRecord:"NO RECORDS FOUND.",noUsers:"No records found.",blockBtn:"🚫 Block",unblockBtn:"✅ Unblock",blockedBadge:"BLOCKED",blockModalTitle:"Block User",unblockModalTitle:"Remove Block",blockReasonLabel:"Reason (shown to the user)",blockReasonPlaceholder:"e.g. Attempted irregular transactions",blockConfirmBtn:"Block",unblockConfirmBtn:"Remove Block",blockCancelBtn:"Cancel",blockHint:"A blocked user cannot use the app; they can only complete a payment already in progress. You manage their active listings and sales separately.",unblockHint:"This user will be able to use the app again.",blockManualPlaceholder:"Block by username",blockManualBtn:"Next",blockDoneToast:"User blocked",unblockDoneToast:"Block removed",blockedScreenTitle:"Your account is blocked",blockedScreenBody:"Your account has been blocked for violating the app rules. You can write to us for an appeal or more information.",blockedReasonPrefix:"Reason: ",usersError:"An error occurred.",
     logoutBtn:"Çıkış",logoutBtnEn:"Logout",connectedPrefix:"CONNECTED: @",lastSeenPrefix:"Last: ",soldPiLabel:" PI PURCHASED",
     pendingSentBy:"Submitted by: @",pendingWallet:"Note: ",pendingWalletUnspecified:"not specified",
     updateBtn:"Update",deleteBtn:"Delete",
@@ -14237,6 +14269,77 @@ function stopListeningToMyOwnSellRequests(){
     if(myOwnSellRequestsPollTimer){clearInterval(myOwnSellRequestsPollTimer);myOwnSellRequestsPollTimer=null;}
 }
 
+// ── KULLANICI ENGELLEME (yönetici) ───────────────────────────────────────────
+window._blockedUsers={};
+async function refreshBlockedUsers(){
+    try{
+        const r=await fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'admin_get_blocked_users',accessToken:piAccessToken})});
+        const d=await r.json();
+        if(d&&d.success){const m={};(d.users||[]).forEach(u=>{m[u.username]={reason:u.reason||''};});window._blockedUsers=m;}
+    }catch(e){}
+}
+let _blockTarget=null,_blockMode='block';
+window.openBlockModal=function(username,mode){
+    _blockTarget=username;_blockMode=mode==='unblock'?'unblock':'block';
+    const isB=_blockMode==='block';
+    document.getElementById('block-modal-title').textContent=t(isB?'blockModalTitle':'unblockModalTitle');
+    document.getElementById('block-modal-user').textContent='@'+username;
+    document.getElementById('block-modal-reason-wrap').style.display=isB?'block':'none';
+    document.getElementById('block-modal-reason').value='';
+    document.getElementById('block-modal-hint').textContent=t(isB?'blockHint':'unblockHint');
+    const err=document.getElementById('block-modal-err');err.style.display='none';err.textContent='';
+    const btn=document.getElementById('block-modal-confirm');btn.disabled=false;btn.textContent=t(isB?'blockConfirmBtn':'unblockConfirmBtn');
+    btn.style.background=isB?'#ef4444':'#16a34a';
+    document.getElementById('block-user-modal').style.display='flex';
+};
+window.closeBlockModal=function(){document.getElementById('block-user-modal').style.display='none';_blockTarget=null;};
+window.submitBlockModal=async function(){
+    if(!_blockTarget) return;
+    const btn=document.getElementById('block-modal-confirm');const err=document.getElementById('block-modal-err');
+    btn.disabled=true;err.style.display='none';
+    try{
+        const isB=_blockMode==='block';
+        const r=await fetch('/api/approve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'admin_set_user_block',accessToken:piAccessToken,username:_blockTarget,blocked:isB,reason:isB?document.getElementById('block-modal-reason').value:''})});
+        const d=await r.json();
+        if(!d.success) throw new Error(d.error||'err');
+        closeBlockModal();
+        try{showToast(t(isB?'blockDoneToast':'unblockDoneToast'),'success');}catch(_){}
+        const inp=document.getElementById('block-manual-user');if(inp) inp.value='';
+        await refreshBlockedUsers();
+        renderUniqueUsersList(cachedUniqueUsers||[]);
+    }catch(e){err.textContent=(e&&e.message)||'?';err.style.display='block';btn.disabled=false;}
+};
+window.blockManualUser=function(){
+    const inp=document.getElementById('block-manual-user');if(!inp) return;
+    const v=inp.value.trim().replace(/^@/,'');
+    if(!/^[A-Za-z0-9_.\-]{1,64}$/.test(v)) return;
+    openBlockModal(v,(window._blockedUsers||{})[v]?'unblock':'block');
+};
+// Engelli hesap ekranı: sunucu 403 + blocked:true döndüğünde (giriş sırasında ya da oturum ortasında) tam ekran gösterilir.
+window.showBlockedScreen=function(reason){
+    const o=document.getElementById('blocked-overlay');if(!o) return;
+    document.getElementById('blocked-title').textContent=t('blockedScreenTitle');
+    document.getElementById('blocked-body').textContent=t('blockedScreenBody');
+    const rEl=document.getElementById('blocked-reason');
+    if(reason){rEl.textContent=t('blockedReasonPrefix')+reason;rEl.style.display='block';}else{rEl.style.display='none';}
+    o.style.display='flex';
+};
+(function(){
+    const _origFetch=window.fetch;
+    window.fetch=async function(input){
+        const res=await _origFetch.apply(this,arguments);
+        try{
+            if(res.status===403){
+                const u=typeof input==='string'?input:((input&&input.url)||'');
+                if(u.indexOf('/api/approve')!==-1){
+                    res.clone().json().then(d=>{if(d&&d.blocked) window.showBlockedScreen(d.reason);}).catch(()=>{});
+                }
+            }
+        }catch(_){}
+        return res;
+    };
+})();
+
 // UNIQUE USERS
 let cachedUniqueUsers=null;
 async function fetchUniqueUsers(){
@@ -14254,12 +14357,14 @@ function renderUniqueUsersList(sorted){
     const badge=document.getElementById("unique-users-badge"); if(badge) badge.innerText=sorted.length;
     const locale=currentLang==='en'?'en-GB':'tr-TR';
     listEl.innerHTML=sorted.length===0?`${emptyState('👥',t('noUsers'))}`
-        :sorted.map(([username,info])=>`<div class="log-item"><b>@${escapeHtml(username)}</b><span style="color:#94a3b8;font-size:0.85em;">${t('lastSeenPrefix')}${new Date(info.lastSeen).toLocaleDateString(locale,{day:'2-digit',month:'2-digit',year:'numeric'})}</span></div>`).join('');
+        :sorted.map(([username,info])=>(()=>{const blk=(window._blockedUsers||{})[username];const isAdm=username===APP_CONFIG.adminUsername;return `<div class="log-item" style="gap:8px;flex-wrap:wrap;align-items:center;"><b>@${escapeHtml(username)}</b>${blk?`<span style="background:#7f1d1d;color:#fecaca;font-size:0.68em;font-weight:900;padding:2px 7px;border-radius:8px;">${t('blockedBadge')}</span>`:''}<span style="color:#94a3b8;font-size:0.85em;">${t('lastSeenPrefix')}${new Date(info.lastSeen).toLocaleDateString(locale,{day:'2-digit',month:'2-digit',year:'numeric'})}</span>${isAdm?'':`<button type="button" data-bu="${escapeHtml(username)}" data-mode="${blk?'unblock':'block'}" style="margin-left:auto;padding:5px 10px;border-radius:8px;border:none;font-size:0.72em;font-weight:900;cursor:pointer;background:${blk?'#166534':'#7f1d1d'};color:#fff;">${t(blk?'unblockBtn':'blockBtn')}</button>`}</div>`;})()).join('');
 }
 window.openUniqueUsersModal=async function(){
     document.getElementById('unique-users-modal').style.display='flex';
-    if(cachedUniqueUsers){renderUniqueUsersList(cachedUniqueUsers);return;}
-    try{renderUniqueUsersList(await fetchUniqueUsers());}
+    const _ul=document.getElementById('unique-user-list');
+    if(_ul&&!_ul._buBound){_ul._buBound=true;_ul.addEventListener('click',(ev)=>{const b=ev.target.closest&&ev.target.closest('[data-bu]');if(b) openBlockModal(b.getAttribute('data-bu'),b.getAttribute('data-mode'));});}
+    if(cachedUniqueUsers){renderUniqueUsersList(cachedUniqueUsers);refreshBlockedUsers().then(()=>renderUniqueUsersList(cachedUniqueUsers));return;}
+    try{const _u=await fetchUniqueUsers();await refreshBlockedUsers();renderUniqueUsersList(_u);}
     catch(e){const l=document.getElementById("unique-user-list");if(l)l.innerHTML=`<p style="color:#ef4444;text-align:center;font-size:0.8em;">${t('usersError')} (${escapeHtml(e&&e.message?e.message:'?')})</p>`;}
 };
 async function loadUniqueBadgeCount(){
