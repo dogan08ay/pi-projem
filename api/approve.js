@@ -1707,6 +1707,8 @@ async function getBlockInfo(db, username) {
     return null; // erişilebilirlik için hata durumunda kullanıcıyı haksız yere kilitleme
   }
 }
+// Bu tutar ve üzerindeki satışlarda yönetici bildirimi "Büyük Satış" olarak vurgulanır (Vercel env: ADMIN_ALERT_AMOUNT, varsayılan 100 Pi).
+const ADMIN_ALERT_AMOUNT = Number(process.env.ADMIN_ALERT_AMOUNT) > 0 ? Number(process.env.ADMIN_ALERT_AMOUNT) : 100;
 const BLOCK_MESSAGE = 'Hesabınız engellenmiştir. Bilgi için info@dofiay.com adresine yazabilirsiniz.';
 // Engelli kullanıcıya da AÇIK kalanlar: başlamış ödemenin tamamlanması/iptali (parası takılı kalmasın),
 // kişisel veri hakları (silme talebi, veri dışa aktarma) ve istemci hata raporu.
@@ -10391,7 +10393,7 @@ async function handlerImpl(req, res) {
 
           await sendNotificationToAdmin({
             type: 'new_sale',
-            title: '💰 Yeni Satış!',
+            title: Number(realPrice) >= ADMIN_ALERT_AMOUNT ? '🚨 Büyük Satış!' : '💰 Yeni Satış!',
             body: `@${username} tarafından "${domainName}" ${realPrice} Pi'ye satıldı.`,
             domainName, buyer: username, price: realPrice
           });
