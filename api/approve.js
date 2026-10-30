@@ -1685,6 +1685,33 @@ async function getRealUsername(accessToken) {
   }
 }
 
+// ── Kullanıcı engelleme ─────────────────────────────────────────────────────────────────────────
+// Engelli kullanıcılar ayrı 'blocked_users/{kullanıcıAdı}' koleksiyonunda tutulur (user_profiles'ta DEĞİL):
+// profil silme / platform sıfırlama gibi işlemler engeli yanlışlıkla kaldırmasın diye. Koleksiyon yalnızca
+// sunucu (Admin SDK) tarafından okunur/yazılır; Firestore kurallarında tanımlı olmadığı için istemciye kapalıdır.
+const blockCache = new Map(); // kullanıcıAdı → { info, ts }  (örnek içi 60 sn önbellek)
+const BLOCK_CACHE_TTL = 60 * 1000;
+function isValidBlockUsername(u) { return typeof u === 'string' && /^[A-Za-z0-9_.\-]{1,64}$/.test(u); }
+async function getBlockInfo(db, username) {
+  if (!username) return null;
+  const c = blockCache.get(username);
+  if (c && Date.now() - c.ts < BLOCK_CACHE_TTL) return c.info;
+  try {
+    const snap = await db.collection('blocked_users').doc(username).get();
+    const info = snap.exists ? { reason: String(snap.data().reason || '') } : null;
+    if (blockCache.size >= 2000) blockCache.clear();
+    blockCache.set(username, { info, ts: Date.now() });
+    return info;
+  } catch (e) {
+    console.error('[BLOCK] engel kontrolü başarısız (engel uygulanmadı):', e && e.message ? e.message : e);
+    return null; // erişilebilirlik için hata durumunda kullanıcıyı haksız yere kilitleme
+  }
+}
+const BLOCK_MESSAGE = 'Hesabınız engellenmiştir. Bilgi için info@dofiay.com adresine yazabilirsiniz.';
+// Engelli kullanıcıya da AÇIK kalanlar: başlamış ödemenin tamamlanması/iptali (parası takılı kalmasın),
+// kişisel veri hakları (silme talebi, veri dışa aktarma) ve istemci hata raporu.
+const BLOCK_EXEMPT_ACTIONS = new Set(['report_client_error', 'complete', 'cancel', 'request_account_deletion', 'get_my_deletion_request', 'export_my_sales_data', 'get_network_mode']);
+
 // Doğrulanmış kullanıcının Pi uid'si (ödeme sahibi eşleştirmesi için). getRealUsername aynı önbelleği doldurur.
 async function getRealUid(accessToken) {
   if (!accessToken) return null;
@@ -2563,6 +2590,7 @@ const ERR_EN = {
   "Zorunlu alanlar eksik: ad, domain adı, açıklama ve e-posta gereklidir.": "Required fields are missing: name, domain name, description and email are required.",
   "\"Hemen Al\" fiyatı başlangıç + minimum artıştan ve rezerv fiyatından büyük olmalı": "The \"Buy Now\" price must be higher than the start price + minimum increment and the reserve price",
   "action zorunludur": "action is required",
+  "Hesabınız engellenmiştir. Bilgi için info@dofiay.com adresine yazabilirsiniz.": "Your account has been blocked. You can write to info@dofiay.com for more information.",
   "cancel işlemi için username gerekli": "A username is required for the cancel operation",
   "claimId zorunludur": "claimId is required",
   "domainName zorunlu": "domainName is required",
@@ -2709,6 +2737,17 @@ async function handlerImpl(req, res) {
     if (dn !== undefined && dn !== null && dn !== '' && !isValidDomainName(dn)) {
       return res.status(400).json({ error: "Geçersiz domain adı" });
     }
+  }
+  // ── Kullanıcı engeli: oturumu doğrulanmış ve engelli bir hesap, muaf işlemler dışında HİÇBİR işlem yapamaz.
+  // (Pi ile Bağlan'ın kendisi Pi tarafında çalışır; engel, bağlandıktan sonra sunucuda uygulanır.)
+  if (accessToken && !BLOCK_EXEMPT_ACTIONS.has(action)) {
+    try {
+      const gateUser = await getRealUsername(accessToken);
+      if (gateUser && gateUser !== ADMIN_USERNAME) {
+        const bi = await getBlockInfo(getDb(), gateUser);
+        if (bi) return res.status(403).json({ error: BLOCK_MESSAGE, blocked: true, reason: bi.reason });
+      }
+    } catch (_) { /* engel kontrolü asıl isteği asla düşürmesin */ }
   }
   // Kendi ilanıyla işlem muafiyetinin (test) mainnet'te kapanabilmesi için ağ modunu önbelleğe al.
   if (['approve','complete','place_auction_bid','auction_buy_now','submit_offer','send_message'].includes(action)) {
@@ -5895,6 +5934,50 @@ async function handlerImpl(req, res) {
   //  bulup (satın alma/satış/ticket geçmişiyle birlikte) hem görebilmesi
   //  hem de doğrudan e-posta atabilmesi.
   // ══════════════════════════════════════════════════════════════════════
+
+  // ── Admin: Kullanıcı Engelle / Engeli Kaldır ───────────────────────────────────────────────────
+  if (action === 'admin_set_user_block') {
+    const isAdmin = await verifyAdmin(accessToken, req);
+    if (!isAdmin) return res.status(403).json({ error: "Yetki yok" });
+    const { username: target, blocked, reason } = req.body;
+    if (!isValidBlockUsername(target)) return res.status(400).json({ error: "Geçerli bir kullanıcı adı gerekli" });
+    if (ADMIN_USERNAME && target.toLowerCase() === ADMIN_USERNAME.toLowerCase())
+      return res.status(400).json({ error: "Yönetici hesabı engellenemez" });
+    try {
+      const db = getDb();
+      const adminName = await getRealUsername(accessToken);
+      const ref = db.collection('blocked_users').doc(target);
+      if (blocked === true) {
+        const cleanReason = String(reason || '').replace(/[\u0000-\u001f\u007f]+/g, ' ').trim().slice(0, 200);
+        await ref.set({ username: target, reason: cleanReason, blockedAt: Date.now(), blockedBy: adminName || 'admin' });
+        blockCache.delete(target);
+        await logAdminAction(adminName, 'block_user', `@${target}${cleanReason ? ': ' + cleanReason : ''}`);
+      } else {
+        await ref.delete();
+        blockCache.delete(target);
+        await logAdminAction(adminName, 'unblock_user', `@${target}`);
+      }
+      return res.status(200).json({ success: true, username: target, blocked: blocked === true });
+    } catch (e) {
+      console.error("admin_set_user_block hatası:", e);
+      return res.status(500).json({ error: publicErr(e, req) });
+    }
+  }
+
+  // ── Admin: Engelli Kullanıcı Listesi ───────────────────────────────────────────────────────────
+  if (action === 'admin_get_blocked_users') {
+    const isAdmin = await verifyAdmin(accessToken, req);
+    if (!isAdmin) return res.status(403).json({ error: "Yetki yok" });
+    try {
+      const snap = await getDb().collection('blocked_users').orderBy('blockedAt', 'desc').limit(500).get();
+      const users = [];
+      snap.forEach(d => { const x = d.data(); users.push({ username: x.username || d.id, reason: x.reason || '', blockedAt: x.blockedAt || null }); });
+      return res.status(200).json({ success: true, users });
+    } catch (e) {
+      console.error("admin_get_blocked_users hatası:", e);
+      return res.status(500).json({ error: publicErr(e, req) });
+    }
+  }
 
   // ── Admin: Bir Kullanıcının Tüm Aktivitesini Görüntüle ──────────────────
   if (action === 'admin_get_user_details') {
