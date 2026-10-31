@@ -76,12 +76,33 @@
   <h2>Contact</h2>
   <p>For questions: <a href="mailto:info@dofiay.com">info@dofiay.com</a></p>
 </div>
+<div data-legal-lang="vi" style="display:none;">
+  <h1>Điều khoản sử dụng</h1>
+  <p class="updated">Cập nhật lần cuối: 30 tháng 10 năm 2026</p>
+  <p>Khi sử dụng Web3 Domain Gateway, bạn đồng ý với các điều khoản sau.</p>
+  <h2>Phạm vi dịch vụ</h2>
+  <p>Ứng dụng là một chợ độc lập nơi người dùng có thể đăng bán và mua tên miền .pi bằng Pi; đây không phải là sản phẩm chính thức của Pi Network. Chỉ đăng nhập bằng tài khoản Pi và mọi khoản thanh toán chỉ được nhận bằng Pi. Ứng dụng có thể chạy trên Pi Testnet hoặc Pi Mainnet; Test-Pi không có giá trị thực, còn giao dịch trên Mainnet là thật và có thể không hoàn tác được. Các tên .pi được đăng không phải là đăng ký tên miền truyền thống (ICANN/DNS).</p>
+  <h2>Thanh toán, hoa hồng và ký quỹ</h2>
+  <p>Nền tảng khấu trừ 5% hoa hồng từ khoản chi trả cho người bán trong các giao dịch bán. Giao dịch bán chạy theo quy trình ký quỹ: khoản thanh toán được tiếp nhận và giải ngân cho người bán sau khi các bên xác nhận giao dịch. Có thể hoàn tiền cho các giao dịch không được xác minh hoặc bị hủy.</p>
+  <h2>Đề nghị và đấu giá</h2>
+  <p>Các đề nghị bạn đưa ra và các cuộc đấu giá bạn thắng đều có tính ràng buộc. Các vi phạm như không thanh toán đúng hạn có thể dẫn đến hạn chế đặt giá hoặc mua hàng. Tài khoản mới có thể bị giới hạn mức đặt giá vì lý do bảo mật.</p>
+  <h2>Hành vi không được chấp nhận</h2>
+  <p>Cấm tin đăng giả, vi phạm nhãn hiệu hoặc bản quyền, đề nghị giả, lạm dụng hệ thống hoặc đánh lừa người khác. Thông báo về nhãn hiệu/bản quyền có thể được gửi qua mẫu yêu cầu trong ứng dụng. Quản trị viên có thể duyệt, từ chối hoặc gỡ tin đăng và hạn chế các tài khoản vi phạm khi cần thiết. Dữ liệu lịch sử về các tin đăng đã gỡ có thể được lưu giữ để làm hồ sơ.</p>
+  <h2>Miễn trừ trách nhiệm</h2>
+  <p>Ứng dụng được cung cấp “nguyên trạng”. Nhà phát triển không chịu trách nhiệm về việc gián đoạn dịch vụ, độ trễ mạng hoặc các vấn đề phát sinh từ nền tảng Pi.</p>
+  <h2>Quyền riêng tư</h2>
+  <p>Cách dữ liệu cá nhân được xử lý được mô tả trong Chính sách quyền riêng tư.</p>
+  <h2>Thay đổi</h2>
+  <p>Các điều khoản này có thể được cập nhật theo thời gian. Phiên bản hiện hành luôn có trên trang này.</p>
+  <h2>Liên hệ</h2>
+  <p>Mọi câu hỏi: <a href="mailto:info@dofiay.com">info@dofiay.com</a></p>
+</div>
 
 </div>
 <script>
 /* Bağımsız açılışta (modal dışında) uygulamanın seçili dilini göster; modalda bu işi index.html yapar. */
 (function(){var l='tr';try{l=localStorage.getItem('w3dg_lang')||((navigator.language||'tr').slice(0,2));}catch(e){}
-l=(l==='en')?'en':'tr';document.documentElement.lang=l;
+l=(l==='en'||l==='vi')?l:'tr';document.documentElement.lang=l;
 [].forEach.call(document.querySelectorAll('[data-legal-lang]'),function(n){n.style.display=(n.getAttribute('data-legal-lang')===l)?'':'none';});})();
 </script>
 </body>
